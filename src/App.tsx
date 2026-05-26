@@ -110,6 +110,8 @@ const PdvNovo = lazy(() => import("./pages/PdvNovo.tsx"));
 const StoreHome = lazy(() => import("./pages/StoreHome.tsx"));
 const PdvSimuladorIfood = lazy(() => import("./pages/PdvSimuladorIfood.tsx"));
 const PdvMonitorIfood = lazy(() => import("./pages/PdvMonitorIfood.tsx"));
+const SmartPos = lazy(() => import("./pages/SmartPos.tsx"));
+const SmartPosLogin = lazy(() => import("./pages/SmartPosLogin.tsx"));
 const Totem = lazy(() => import("./pages/Totem.tsx"));
 const Balcao = lazy(() => import("./pages/Balcao.tsx"));
 const Menu = lazy(() => import("./pages/Menu.tsx"));
@@ -246,6 +248,11 @@ const App = () => (
             {/* Loja (PDV + atalhos) — fullscreen sem sidebar/breadcrumb */}
             <Route path="/loja" element={
               <ProtectedRoute requireRoles={[...STAFF]}><StoreHome /></ProtectedRoute>
+            } />
+            {/* Smart POS — fullscreen mobile (Cielo LIO / Stone / qualquer Android) */}
+            <Route path="/smartpos/login" element={<SmartPosLogin />} />
+            <Route path="/smartpos" element={
+              <ProtectedRoute requireRoles={[...STAFF]}><SmartPos /></ProtectedRoute>
             } />
 
 
