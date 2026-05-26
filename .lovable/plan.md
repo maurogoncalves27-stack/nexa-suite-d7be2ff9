@@ -1,16 +1,16 @@
 # NEXA Smart POS — Caminho Rápido
 
 ## Decisão travada
-- **Hardware alvo:** Cielo LIO V3 (publicação via Infinity Pay / Cielo Store)
-- **Por quê é o mais rápido:** Cielo já fornece TEF, impressora e NFC-e nativos. Não precisamos desenvolver SDK de pagamento agora — só empacotar o app web dentro do container Cielo.
+- **Hardware alvo:** Stone S920 / Ton T3 (mesma família, mesmo SDK PlugPag)
+- **Por quê é o mais rápido:** SDK PlugPag é aberto e documentado publicamente, sem NDA. Aceita APK próprio sem burocracia. Homologação TEF em ~30 dias. Impressora térmica integrada com API simples.
 - **Fase 1 (agora):** construir só o shell visual web em `/smartpos`, com TEF mockado, rodando no navegador. Sem Capacitor, sem APK, sem maquininha.
-- **Fase 2 (depois do iFood homologar):** empacotar como app Infinity Pay e publicar.
+- **Fase 2 (depois do iFood homologar):** empacotar como APK Capacitor, integrar PlugPag (Stone/Ton), instalar via USB na maquininha.
 
 ## O que será construído nesta fase
 
 ### Rota e layout
 - Nova rota `/smartpos` (pública, login dedicado igual ao /pdv-novo)
-- Viewport alvo fixo: **480×800** (tela típica Cielo LIO V3)
+- Viewport alvo fixo: **480×800** (tela típica Smart POS Android — Stone S920 / Ton T3)
 - Layout single-screen, sem sidebar, botões grandes (mín. 48px), tipografia legível à distância de braço
 
 ### Telas
@@ -60,15 +60,15 @@ export interface TefAdapter {
   charge(amountCents: number, method: 'credit'|'debit'|'pix'): Promise<TefResult>;
 }
 // Fase 1: smartPosTefAdapter → resolve após 2s com status='approved'
-// Fase 2: trocar implementação por Cielo SDK sem mudar quem chama
+// Fase 2: trocar implementação por PlugPag (Stone/Ton) sem mudar quem chama
 ```
 
 ## Roadmap pós-Fase 1 (só pra contexto, NÃO executar agora)
 
 | Fase | Quando | O quê |
 |------|--------|-------|
-| 2 | Após iFood homologar | Empacotar com Capacitor, publicar na Cielo Store via Infinity Pay |
-| 3 | Após Fase 2 estável | TEF real Cielo + impressora térmica nativa |
+| 2 | Após iFood homologar | Empacotar com Capacitor (APK Android), instalar via USB/ADB na Stone S920 / Ton T3 |
+| 3 | Após Fase 2 estável | TEF real via PlugPag (Stone/Ton) + impressora térmica nativa |
 | 4 | Após Fase 3 | NFC-e via Focus NFe, sync `pdv_sales`, modo offline |
 
 ## Critério de aceite Fase 1
