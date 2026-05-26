@@ -1,10 +1,10 @@
 # NEXA Smart POS — Caminho Rápido
 
 ## Decisão travada
-- **Hardware alvo:** Cielo LIO V3 (publicação via Infinity Pay / Cielo Store)
-- **Por quê é o mais rápido:** Cielo já fornece TEF, impressora e NFC-e nativos. Não precisamos desenvolver SDK de pagamento agora — só empacotar o app web dentro do container Cielo.
+- **Hardware alvo:** Stone S920 / Ton T3 (mesma família, mesmo SDK PlugPag)
+- **Por quê é o mais rápido:** SDK PlugPag é aberto e documentado publicamente, sem NDA. Aceita APK próprio sem burocracia. Homologação TEF em ~30 dias. Impressora térmica integrada com API simples.
 - **Fase 1 (agora):** construir só o shell visual web em `/smartpos`, com TEF mockado, rodando no navegador. Sem Capacitor, sem APK, sem maquininha.
-- **Fase 2 (depois do iFood homologar):** empacotar como app Infinity Pay e publicar.
+- **Fase 2 (depois do iFood homologar):** empacotar como APK Capacitor, integrar PlugPag (Stone/Ton), instalar via USB na maquininha.
 
 ## O que será construído nesta fase
 
