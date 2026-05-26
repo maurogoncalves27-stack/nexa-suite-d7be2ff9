@@ -1,0 +1,2 @@
+ALTER TABLE public.pdv_orders ADD COLUMN IF NOT EXISTS dre_excluded boolean NOT NULL DEFAULT false;
+CREATE INDEX IF NOT EXISTS idx_pdv_orders_concluded_at ON public.pdv_orders(concluded_at) WHERE status = 'concluded';

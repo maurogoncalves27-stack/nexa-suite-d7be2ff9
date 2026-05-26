@@ -1,0 +1,1 @@
+INSERT INTO public.cbo_codes (code, title) VALUES ('5134-35','Atendente de lanchonete'),('4101-05','Supervisor administrativo'),('5101-30','Encarregado de cozinha'),('1415-10','Gerente de loja e supermercado') ON CONFLICT (code) DO UPDATE SET title = EXCLUDED.title

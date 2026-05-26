@@ -1,0 +1,1 @@
+UPDATE public.employees SET position = cbo_title WHERE cbo_code IS NOT NULL AND cbo_title IS NOT NULL;

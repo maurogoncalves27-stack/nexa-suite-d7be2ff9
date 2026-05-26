@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="Sirene Águas Claras">
+  <rect width="192" height="192" rx="42" fill="hsl(217 91% 60%)"/>
+  <path d="M56 132h80" stroke="hsl(0 0% 100%)" stroke-width="14" stroke-linecap="round"/>
+  <path d="M70 132V86c0-18 12-34 26-34s26 16 26 34v46" fill="none" stroke="hsl(0 0% 100%)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M50 82 32 70M142 82l18-12M96 36V20" stroke="hsl(0 0% 100%)" stroke-width="12" stroke-linecap="round"/>
+  <path d="M78 92h36" stroke="hsl(0 0% 100%)" stroke-width="10" stroke-linecap="round" opacity="0.75"/>
+</svg>

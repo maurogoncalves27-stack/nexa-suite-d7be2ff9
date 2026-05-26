@@ -1,0 +1,2 @@
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS health_plan_copay NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (health_plan_copay >= 0);
+COMMENT ON COLUMN public.employees.health_plan_copay IS 'Co-participação mensal do plano de saúde (R$)';

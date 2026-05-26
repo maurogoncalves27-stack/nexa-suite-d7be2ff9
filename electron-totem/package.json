@@ -1,0 +1,68 @@
+{
+  "name": "nexa-totem",
+  "productName": "Nexa Totem",
+  "version": "1.0.33",
+  "description": "Nexa Totem — Autoatendimento (Gertec G250 + pinpad PPC930 via SiTef)",
+  "main": "main.cjs",
+  "author": {
+    "name": "Aquela Parme",
+    "email": "contato@aquelaparme.com.br"
+  },
+  "scripts": {
+    "start": "electron .",
+    "preflight:version": "node scripts/preflight-version.cjs",
+    "clean:release": "node -e \"const fs=require('fs'); for (const dir of ['release','pack','dist-electron']) fs.rmSync(dir,{recursive:true,force:true});\"",
+    "dist:win": "npm run preflight:version && npm run clean:release && electron-builder --win nsis --x64",
+    "dist:win-portable": "npm run preflight:version && npm run clean:release && electron-builder --win portable --x64"
+  },
+  "dependencies": {
+    "koffi": "^2.10.0",
+    "node-thermal-printer": "^4.4.4"
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.0.0",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.aquelaparme.nexatotem",
+    "productName": "Nexa Totem",
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "sitef-agent.cjs",
+      "sitef-real.cjs",
+      "build/**"
+    ],
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["ia32"]
+        }
+      ],
+      "publisherName": "Aquela Parme"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Nexa Totem",
+      "deleteAppDataOnUninstall": false,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico"
+    }
+  }
+}

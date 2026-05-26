@@ -1,0 +1,1 @@
+DELETE FROM public.payroll_imports WHERE id = '9b49c127-7b7a-435f-bfd2-214d6758ec05';

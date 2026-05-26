@@ -1,0 +1,63 @@
+{
+  "name": "nexa-pdv",
+  "productName": "Nexa PDV",
+  "version": "1.0.0",
+  "description": "Nexa PDV — Frente de caixa (desktop wrapper)",
+  "main": "main.cjs",
+  "author": {
+    "name": "Aquela Parme",
+    "email": "contato@aquelaparme.com.br"
+  },
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win nsis --x64",
+    "dist:win-portable": "electron-builder --win portable --x64",
+    "dist:mac": "electron-builder --mac --x64 --arm64",
+    "dist:linux": "electron-builder --linux AppImage --x64"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.aquelaparme.nexa",
+    "productName": "Nexa PDV",
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "sitef-agent.cjs",
+      "icon.png",
+      "icon.ico"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ],
+      "icon": "icon.ico",
+      "publisherName": "Aquela Parme"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Nexa PDV",
+      "installerIcon": "icon.ico",
+      "uninstallerIcon": "icon.ico",
+      "installerHeaderIcon": "icon.ico",
+      "deleteAppDataOnUninstall": false
+    },
+    "mac": {
+      "category": "public.app-category.business",
+      "icon": "icon.png"
+    },
+    "linux": {
+      "category": "Office",
+      "icon": "icon.png"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+ALTER TABLE public.stores
+  ADD COLUMN IF NOT EXISTS latitude NUMERIC(10,7),
+  ADD COLUMN IF NOT EXISTS longitude NUMERIC(10,7),
+  ADD COLUMN IF NOT EXISTS geofence_radius_m INTEGER NOT NULL DEFAULT 200;
+
+ALTER TABLE public.time_clock_entries
+  ADD COLUMN IF NOT EXISTS is_outside_geofence BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS distance_from_store_m NUMERIC(10,2);

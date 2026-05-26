@@ -1,0 +1,1 @@
+DELETE FROM public.appointment_reminders_sent WHERE appointment_id IN (SELECT id FROM public.appointments WHERE status='scheduled' AND start_at >= now() - interval '1 day');

@@ -1,0 +1,1 @@
+ALTER TYPE public.payroll_advance_type ADD VALUE IF NOT EXISTS 'night_addition';

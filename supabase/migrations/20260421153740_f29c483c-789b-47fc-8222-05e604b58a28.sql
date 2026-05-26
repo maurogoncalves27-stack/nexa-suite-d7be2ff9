@@ -1,0 +1,1 @@
+ALTER TYPE task_periodicity ADD VALUE IF NOT EXISTS 'once';

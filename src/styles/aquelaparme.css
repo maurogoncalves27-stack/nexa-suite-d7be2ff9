@@ -1,0 +1,165 @@
+/* Identidade visual Aquela Parmê — escopo público (vagas).
+ * Aplicado via classe .ap-brand no wrapper raiz da página.
+ * Cores em HSL extraídas do site aquelaparme.com.br.
+ */
+.ap-brand {
+  /* Paleta */
+  --ap-cream: 38 80% 94%;          /* #fbf3e1 fundo principal */
+  --ap-cream-2: 36 60% 88%;        /* variação para cards */
+  --ap-red: 0 71% 28%;             /* #7a1416 vermelho profundo */
+  --ap-red-soft: 0 65% 38%;
+  --ap-orange: 22 90% 67%;         /* #f59362 laranja terroso */
+  --ap-brown: 24 30% 28%;          /* marrom escuro */
+  --ap-ink: 30 15% 12%;            /* preto quente do header */
+  --ap-tomato: 4 75% 50%;
+
+  background: hsl(var(--ap-cream));
+  color: hsl(var(--ap-ink));
+  font-family: ui-serif, Georgia, "Recoleta", "Playfair Display", serif;
+}
+.ap-brand .ap-sans {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Header escuro como o site */
+.ap-brand .ap-header {
+  background: hsl(var(--ap-ink));
+  color: hsl(var(--ap-cream));
+}
+
+/* Header flutuante (igual ao site) — pílula com cantos arredondados */
+.ap-brand .ap-header-floating {
+  position: sticky;
+  top: 0.75rem;
+  z-index: 50;
+  margin: 0.75rem auto 0;
+  max-width: min(1200px, calc(100% - 1.5rem));
+  background: hsl(var(--ap-ink));
+  color: hsl(var(--ap-cream));
+  border-radius: 9999px;
+  box-shadow: 0 12px 30px -12px hsl(var(--ap-ink) / .5);
+  padding: 1rem 1.5rem; /* mesma altura visual do header do site */
+}
+@media (max-width: 640px) {
+  .ap-brand .ap-header-floating {
+    border-radius: 1.5rem;
+    padding: 0.5rem 0.75rem;
+  }
+}
+
+/* Rodapé laranja vibrante (igual ao site oficial) */
+.ap-brand .ap-footer {
+  position: relative;
+  margin-top: 4rem;
+  background: #e6532a; /* laranja-tomate do rodapé do site */
+  color: hsl(var(--ap-cream));
+  border-radius: 1.5rem 1.5rem 0 0;
+  overflow: hidden;
+}
+/* Faixa "drip" preta no topo do rodapé (igual ao site) */
+.ap-brand .ap-footer-drip {
+  height: 56px;
+  background: hsl(var(--ap-ink));
+  -webkit-mask: radial-gradient(22px at 50% 100%, #0000 98%, #000) 50% 100% / 80px 100% repeat-x;
+          mask: radial-gradient(22px at 50% 100%, #0000 98%, #000) 50% 100% / 80px 100% repeat-x;
+}
+.ap-brand .ap-footer a.ap-footer-link {
+  color: hsl(var(--ap-cream));
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: hsl(var(--ap-cream) / .6);
+  font-family: ui-serif, "Recoleta", "Playfair Display", Georgia, serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+.ap-brand .ap-footer a.ap-footer-link:hover {
+  text-decoration-color: hsl(var(--ap-cream));
+}
+.ap-brand .ap-footer h4 {
+  font-family: ui-serif, "Recoleta", "Playfair Display", Georgia, serif;
+  font-weight: 700;
+  color: hsl(var(--ap-cream));
+}
+
+/* Botão CTA principal (creme com texto escuro, igual o "Saiba mais" do site) */
+.ap-brand .ap-btn-primary {
+  background: hsl(var(--ap-cream));
+  color: hsl(var(--ap-ink));
+  border: 1px solid hsl(var(--ap-cream));
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0.6rem 1.2rem;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.ap-brand .ap-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px -8px hsl(var(--ap-ink) / .35);
+}
+.ap-brand .ap-btn-outline {
+  background: transparent;
+  color: hsl(var(--ap-cream));
+  border: 1px solid hsl(var(--ap-cream) / .8);
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-weight: 500;
+}
+
+/* Cards no estilo do site (cantos arredondados, bege claro com bordas suaves) */
+.ap-brand .ap-card {
+  background: hsl(var(--ap-cream-2) / .35);
+  border: 1px solid hsl(var(--ap-brown) / .15);
+  border-radius: 1.25rem;
+  overflow: hidden;
+}
+.ap-brand .ap-card-strong {
+  background: hsl(var(--ap-red));
+  color: hsl(var(--ap-cream));
+}
+
+/* Headlines em serifada */
+.ap-brand .ap-display {
+  font-family: ui-serif, "Recoleta", "Playfair Display", Georgia, serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: hsl(var(--ap-red));
+}
+.ap-brand .ap-display-light {
+  color: hsl(var(--ap-cream));
+}
+
+/* Badges/tag */
+.ap-brand .ap-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  background: hsl(var(--ap-orange) / .2);
+  color: hsl(var(--ap-red));
+  border: 1px solid hsl(var(--ap-orange) / .45);
+  padding: .25rem .65rem;
+  border-radius: 999px;
+  font-size: .75rem;
+  font-weight: 600;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+.ap-brand .ap-tag-soft {
+  background: hsl(var(--ap-cream-2));
+  color: hsl(var(--ap-brown));
+  border-color: hsl(var(--ap-brown) / .2);
+}
+
+/* Divider sutil */
+.ap-brand .ap-divider {
+  height: 1px;
+  background: hsl(var(--ap-brown) / .15);
+}
+
+/* Inputs/labels com tipografia limpa */
+.ap-brand .ap-form label,
+.ap-brand .ap-form input,
+.ap-brand .ap-form textarea,
+.ap-brand .ap-form select,
+.ap-brand .ap-form button {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}

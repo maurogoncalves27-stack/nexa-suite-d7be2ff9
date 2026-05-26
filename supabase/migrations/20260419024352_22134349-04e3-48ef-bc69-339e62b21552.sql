@@ -1,0 +1,1 @@
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS exempt_from_timeclock BOOLEAN NOT NULL DEFAULT false;

@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS public.recipe_book_entries CASCADE;

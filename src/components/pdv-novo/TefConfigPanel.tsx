@@ -1,0 +1,228 @@
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { CreditCard, Loader2, Save, Wifi, WifiOff, PlayCircle } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { checkSitefAgent } from "@/lib/tef/sitefAdapter";
+import { TefPaymentDialog } from "@/components/tef/TefPaymentDialog";
+import type { TefPaymentRequest } from "@/lib/tef";
+
+interface Store { id: string; name: string }
+
+interface TefCfg {
+  id?: string;
+  store_id: string;
+  provider: "sitef" | "paygo" | "mock";
+  agent_url: string;
+  merchant_code: string | null;
+  terminal_code: string | null;
+  acquirer: string | null;
+  is_active: boolean;
+}
+
+const blank = (storeId: string): TefCfg => ({
+  store_id: storeId,
+  provider: "mock",
+  agent_url: "http://localhost:60906",
+  merchant_code: "",
+  terminal_code: "",
+  acquirer: "",
+  is_active: true,
+});
+
+export default function TefConfigPanel() {
+  const [stores, setStores] = useState<Store[]>([]);
+  const [storeId, setStoreId] = useState<string>("");
+  const [cfg, setCfg] = useState<TefCfg | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [agent, setAgent] = useState<{ ok: boolean; mode?: string; version?: string; error?: string }>({ ok: false });
+  const [testReq, setTestReq] = useState<TefPaymentRequest | null>(null);
+
+  // Polling de saúde do agente local (a cada 5s enquanto montado)
+  useEffect(() => {
+    if (!cfg?.agent_url) return;
+    let cancelled = false;
+    const tick = async () => {
+      const r = await checkSitefAgent(cfg.agent_url);
+      if (!cancelled) setAgent(r);
+    };
+    void tick();
+    const id = setInterval(tick, 5000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [cfg?.agent_url]);
+
+  useEffect(() => {
+    void (async () => {
+      const { data } = await supabase
+        .from("stores")
+        .select("id,name")
+        .eq("is_virtual", false)
+        .order("name");
+      setStores((data ?? []) as Store[]);
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!storeId) { setCfg(null); return; }
+    setLoading(true);
+    void (async () => {
+      const { data } = await supabase
+        .from("pdv_tef_config")
+        .select("*")
+        .eq("store_id", storeId)
+        .maybeSingle();
+      setCfg((data as TefCfg) ?? blank(storeId));
+      setLoading(false);
+    })();
+  }, [storeId]);
+
+  const save = async () => {
+    if (!cfg) return;
+    setSaving(true);
+    const payload = {
+      store_id: cfg.store_id,
+      provider: cfg.provider,
+      agent_url: cfg.agent_url,
+      merchant_code: cfg.merchant_code || null,
+      terminal_code: cfg.terminal_code || null,
+      acquirer: cfg.acquirer || null,
+      is_active: cfg.is_active,
+    };
+    const { error } = cfg.id
+      ? await supabase.from("pdv_tef_config").update(payload).eq("id", cfg.id)
+      : await supabase.from("pdv_tef_config").insert(payload);
+    setSaving(false);
+    if (error) {
+      toast({ title: "Erro ao salvar TEF", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Configuração TEF salva" });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <CreditCard className="h-5 w-5" /> TEF (pinpad)
+        </CardTitle>
+        <CardDescription>
+          Configure o provedor de pagamento por loja. Use <Badge variant="secondary">mock</Badge> para
+          testes sem hardware. Em produção, instale o agente local (SiTef/PayGo) na máquina do totem.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <Label>Loja</Label>
+          <Select value={storeId} onValueChange={setStoreId}>
+            <SelectTrigger><SelectValue placeholder="Selecione a loja" /></SelectTrigger>
+            <SelectContent>
+              {stores.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {loading && <Loader2 className="animate-spin" />}
+
+        {cfg && !loading && (
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="md:col-span-2 flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-3 py-2">
+              {agent.ok ? (
+                <>
+                  <Wifi className="h-4 w-4 text-green-600" />
+                  <span className="text-sm">Agente SiTef online</span>
+                  {agent.mode && <Badge variant="secondary">modo: {agent.mode}</Badge>}
+                  {agent.version && <Badge variant="outline">v{agent.version}</Badge>}
+                </>
+              ) : (
+                <>
+                  <WifiOff className="h-4 w-4 text-destructive" />
+                  <span className="text-sm">Agente SiTef offline</span>
+                  <span className="text-xs text-muted-foreground">{agent.error ?? "sem resposta em " + cfg.agent_url}</span>
+                </>
+              )}
+            </div>
+
+            <div>
+              <Label>Provedor TEF</Label>
+              <Select value={cfg.provider} onValueChange={(v) => setCfg({ ...cfg, provider: v as TefCfg["provider"] })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="mock">Mock (simulação)</SelectItem>
+                  <SelectItem value="sitef">SiTef (Software Express)</SelectItem>
+                  <SelectItem value="paygo">PayGo (em breve)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>URL do agente local</Label>
+              <Input value={cfg.agent_url} onChange={e => setCfg({ ...cfg, agent_url: e.target.value })}
+                placeholder="http://localhost:60906" />
+            </div>
+            <div>
+              <Label>Código da loja (PV)</Label>
+              <Input value={cfg.merchant_code ?? ""} onChange={e => setCfg({ ...cfg, merchant_code: e.target.value })} />
+            </div>
+            <div>
+              <Label>Código do terminal</Label>
+              <Input value={cfg.terminal_code ?? ""} onChange={e => setCfg({ ...cfg, terminal_code: e.target.value })} />
+            </div>
+            <div>
+              <Label>Adquirente principal</Label>
+              <Input value={cfg.acquirer ?? ""} onChange={e => setCfg({ ...cfg, acquirer: e.target.value })}
+                placeholder="C6 Pay, Cielo, Rede..." />
+            </div>
+            <div className="flex items-center gap-3 pt-6">
+              <Switch checked={cfg.is_active} onCheckedChange={(v) => setCfg({ ...cfg, is_active: v })} />
+              <Label>TEF ativo nesta loja</Label>
+            </div>
+
+            <div className="md:col-span-2 flex flex-wrap justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setTestReq({ amount: 1, method: "credit", storeId: cfg.store_id, orderId: `test_${Date.now()}` })}
+                disabled={!cfg.is_active}
+              >
+                <PlayCircle className="h-4 w-4 mr-2" />
+                Testar crédito R$ 1,00
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setTestReq({ amount: 1, method: "pix", storeId: cfg.store_id, orderId: `test_${Date.now()}` })}
+                disabled={!cfg.is_active}
+              >
+                <PlayCircle className="h-4 w-4 mr-2" />
+                Testar PIX R$ 1,00
+              </Button>
+              <Button onClick={save} disabled={saving}>
+                {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                Salvar
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+
+      <TefPaymentDialog
+        open={!!testReq}
+        request={testReq}
+        onClose={() => setTestReq(null)}
+        onResult={(r) => {
+          toast({
+            title: r.status === "approved" ? "Teste aprovado" : `Teste: ${r.status}`,
+            description: r.message,
+            variant: r.status === "approved" ? "default" : "destructive",
+          });
+        }}
+      />
+    </Card>
+  );
+}

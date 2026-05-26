@@ -1,0 +1,1 @@
+ALTER TABLE public.stores ADD COLUMN IF NOT EXISTS pdv_sla_minutes integer NOT NULL DEFAULT 25;

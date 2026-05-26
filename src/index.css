@@ -1,0 +1,257 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* HR System – Design tokens (HSL apenas) */
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* NEXA - Azul profundo (do gradiente da logo) */
+    --primary: 212 85% 38%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 188 75% 45%;
+
+    --secondary: 195 30% 95%;
+    --secondary-foreground: 212 60% 18%;
+
+    --muted: 195 25% 95%;
+    --muted-foreground: 210 16% 45%;
+
+    /* NEXA - Teal/Verde-azulado (final do gradiente da logo) */
+    --accent: 178 70% 40%;
+    --accent-foreground: 0 0% 100%;
+
+    --success: 142 71% 38%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 200 25% 88%;
+    --input: 200 25% 88%;
+    --ring: 212 85% 38%;
+
+    /* Store colors */
+    --store-asa-sul: 48 96% 53%;          /* amarelo */
+    --store-asa-sul-foreground: 222 47% 11%;
+    --store-lago-sul: 330 81% 70%;        /* rosa */
+    --store-lago-sul-foreground: 0 0% 100%;
+    --store-asa-norte: 142 71% 42%;       /* verde */
+    --store-asa-norte-foreground: 0 0% 100%;
+    --store-aguas-claras: 217 91% 55%;    /* azul */
+    --store-aguas-claras-foreground: 0 0% 100%;
+
+    /* Portal pills (auth screens) */
+    --portal-colaborador: 212 85% 38%;        /* azul NEXA */
+    --portal-colaborador-foreground: 0 0% 100%;
+    --portal-freelancer: 142 71% 38%;         /* verde */
+    --portal-freelancer-foreground: 0 0% 100%;
+    --portal-fornecedor: 24 90% 50%;          /* laranja */
+    --portal-fornecedor-foreground: 0 0% 100%;
+    --portal-parceiro: 265 65% 52%;           /* roxo */
+    --portal-parceiro-foreground: 0 0% 100%;
+
+    --radius: 0.6rem;
+
+    /* Gradiente NEXA: azul → teal (espelha a logo) */
+    --gradient-primary: linear-gradient(135deg, hsl(212 85% 38%), hsl(178 70% 40%));
+    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(var(--secondary)));
+    --shadow-elegant: 0 10px 30px -12px hsl(212 85% 38% / 0.28);
+    --shadow-card: 0 1px 3px hsl(212 47% 11% / 0.06), 0 1px 2px hsl(212 47% 11% / 0.04);
+
+    /* Sidebar: slate quase-preto com leve toque azul (estilo Linear/Vercel) */
+    --sidebar-background: 220 25% 10%;
+    --sidebar-foreground: 210 20% 94%;
+    --sidebar-primary: 220 20% 16%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 18% 22%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 18% 18%;
+    --sidebar-ring: 212 85% 50%;
+  }
+
+  .dark {
+    --background: 0 0% 8%;
+    --foreground: 0 0% 82%;
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 82%;
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 82%;
+    --primary: 0 0% 88%;
+    --primary-foreground: 0 0% 10%;
+    --primary-glow: 0 0% 70%;
+    --secondary: 0 0% 18%;
+    --secondary-foreground: 0 0% 82%;
+    --muted: 0 0% 16%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 0 0% 22%;
+    --accent-foreground: 0 0% 88%;
+    --success: 142 25% 55%;
+    --success-foreground: 0 0% 10%;
+    --warning: 40 35% 60%;
+    --warning-foreground: 0 0% 10%;
+    --destructive: 0 40% 55%;
+    --destructive-foreground: 0 0% 95%;
+    --border: 0 0% 22%;
+    --input: 0 0% 22%;
+    --ring: 0 0% 60%;
+    --sidebar-background: 0 0% 8%;
+    --sidebar-foreground: 0 0% 82%;
+    --sidebar-primary: 0 0% 18%;
+    --sidebar-primary-foreground: 0 0% 95%;
+    --sidebar-accent: 0 0% 22%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 0 0% 18%;
+    --sidebar-ring: 0 0% 60%;
+
+    --store-asa-sul: 48 30% 60%;
+    --store-asa-sul-foreground: 0 0% 10%;
+    --store-lago-sul: 330 25% 60%;
+    --store-lago-sul-foreground: 0 0% 95%;
+    --store-asa-norte: 142 25% 50%;
+    --store-asa-norte-foreground: 0 0% 95%;
+    --store-aguas-claras: 217 30% 55%;
+    --store-aguas-claras-foreground: 0 0% 95%;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground antialiased; }
+}
+
+/* Dark mode: botões mais sóbrios (preto/branco), preservando badges coloridos.
+   Aplicado apenas a <button>, sem afetar .badge nem outros componentes que usam os mesmos tokens. */
+@layer components {
+  .dark button.bg-primary:not([data-keep-color]) {
+    background-color: hsl(210 20% 92%);
+    color: hsl(222 18% 10%);
+  }
+  .dark button.bg-primary:not([data-keep-color]):hover {
+    background-color: hsl(210 20% 84%);
+  }
+  .dark button.bg-destructive:not([data-keep-color]) {
+    background-color: hsl(220 10% 22%);
+    color: hsl(0 75% 70%);
+    border: 1px solid hsl(0 60% 40% / 0.5);
+  }
+  .dark button.bg-destructive:not([data-keep-color]):hover {
+    background-color: hsl(220 10% 28%);
+  }
+  .dark button.bg-secondary:not([data-keep-color]) {
+    background-color: hsl(220 12% 20%);
+    color: hsl(210 24% 96%);
+  }
+  .dark button.bg-secondary:not([data-keep-color]):hover {
+    background-color: hsl(220 12% 26%);
+}
+
+/* Dark mode: dessaturar ícones e textos com cores fortes do Tailwind (atalhos do gestor, etc.) */
+.dark .text-red-500, .dark .text-red-600, .dark .text-rose-500 { color: hsl(0 35% 65%); }
+.dark .text-orange-500, .dark .text-orange-600, .dark .text-amber-500, .dark .text-amber-600, .dark .text-yellow-500, .dark .text-yellow-600 { color: hsl(40 30% 65%); }
+.dark .text-green-500, .dark .text-green-600, .dark .text-emerald-500, .dark .text-emerald-600 { color: hsl(142 25% 60%); }
+.dark .text-blue-500, .dark .text-blue-600, .dark .text-sky-500, .dark .text-sky-600, .dark .text-indigo-500, .dark .text-indigo-600 { color: hsl(210 30% 65%); }
+.dark .text-cyan-500, .dark .text-cyan-600, .dark .text-teal-500, .dark .text-teal-600 { color: hsl(180 25% 60%); }
+.dark .text-purple-500, .dark .text-purple-600, .dark .text-violet-500, .dark .text-violet-600, .dark .text-fuchsia-500, .dark .text-pink-500 { color: hsl(280 25% 65%); }
+}
+
+/* Modo Sócio: somente leitura — bloqueia inputs, edição e ações que mutam dados.
+   Mantém liberados navegação (links), tabs, accordions, dropdowns de visualização
+   e elementos marcados com [data-partner-allow]. */
+.partner-readonly input:not([type="hidden"]):not([data-partner-allow]),
+.partner-readonly textarea:not([data-partner-allow]),
+.partner-readonly select:not([data-partner-allow]) {
+  pointer-events: none !important;
+  background-color: hsl(var(--muted) / 0.4) !important;
+  cursor: not-allowed !important;
+}
+.partner-readonly [contenteditable="true"]:not([data-partner-allow]) {
+  pointer-events: none !important;
+}
+.partner-readonly [role="switch"]:not([data-partner-allow]),
+.partner-readonly [role="checkbox"]:not([data-partner-allow]),
+.partner-readonly [role="radio"]:not([data-partner-allow]),
+.partner-readonly [role="slider"]:not([data-partner-allow]) {
+  pointer-events: none !important;
+  opacity: 0.6;
+}
+
+.partner-readonly button:not([data-partner-allow]):not([role="combobox"]):not([role="tab"]):not([aria-label="Voltar"]):not([aria-label="Painel do Sócio"]):not([aria-label="Sair"]),
+.partner-readonly [role="button"]:not([data-partner-allow]) {
+  pointer-events: none !important;
+  opacity: 0.55;
+  cursor: not-allowed !important;
+}
+
+/* ===== Tour guiado (driver.js) — alinha cores ao design system ===== */
+.driver-popover {
+  background: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  box-shadow: 0 10px 30px -10px hsl(var(--primary) / 0.25), 0 4px 12px -4px rgba(0,0,0,0.15);
+  font-family: inherit;
+  max-width: min(360px, calc(100vw - 24px));
+}
+.driver-popover-title {
+  color: hsl(var(--foreground));
+  font-weight: 700;
+  font-size: 1rem;
+}
+.driver-popover-description {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.driver-popover-progress-text {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+}
+.driver-popover-footer button {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-shadow: none;
+  box-shadow: none;
+}
+.driver-popover-footer button:hover {
+  background: hsl(var(--primary) / 0.9);
+}
+.driver-popover-prev-btn {
+  background: hsl(var(--secondary)) !important;
+  color: hsl(var(--secondary-foreground)) !important;
+}
+.driver-popover-prev-btn:hover {
+  background: hsl(var(--secondary) / 0.8) !important;
+}
+.driver-popover-close-btn {
+  color: hsl(var(--muted-foreground));
+  font-size: 1.25rem;
+}
+.driver-popover-arrow-side-bottom.driver-popover-arrow {
+  border-bottom-color: hsl(var(--card));
+}
+.driver-popover-arrow-side-top.driver-popover-arrow {
+  border-top-color: hsl(var(--card));
+}
+.driver-popover-arrow-side-left.driver-popover-arrow {
+  border-left-color: hsl(var(--card));
+}
+.driver-popover-arrow-side-right.driver-popover-arrow {
+  border-right-color: hsl(var(--card));
+}

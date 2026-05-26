@@ -1,0 +1,3 @@
+UPDATE public.employees SET work_regime = 'clt' WHERE work_regime IS NULL AND (contract_type IS NULL OR LOWER(contract_type) NOT LIKE '%estag%');
+UPDATE public.employees SET salary_type = 'mensal' WHERE salary_type IS NULL AND (contract_type IS NULL OR LOWER(contract_type) NOT LIKE '%estag%');
+UPDATE public.employees SET journey_type = '1' WHERE journey_type IS NULL AND (contract_type IS NULL OR LOWER(contract_type) NOT LIKE '%estag%');
