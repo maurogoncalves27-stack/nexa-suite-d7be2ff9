@@ -34,7 +34,7 @@ import {
   Search,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { createMockAdapter } from "@/lib/tef";
+import { createMockAdapter } from "@/lib/tef/mockAdapter";
 import type { TefStatus, TefPaymentMethod } from "@/lib/tef/types";
 import { useSmartPosCart } from "@/hooks/useSmartPosCart";
 
