@@ -1,5 +1,7 @@
 # NEXA Smart POS — Caminho Rápido
 
+> **Nota DFe (26/05):** Sincronização de NF-e (Focus NFe) desligada neste projeto por enquanto — o outro projeto (local/Electron) é o "dono" da entrada de mercadorias. Não cadastrar CNPJs em `dfe_companies` aqui até nova ordem.
+
 ## Decisão travada
 - **Hardware alvo:** Stone S920 / Ton T3 (mesma família, mesmo SDK PlugPag)
 - **Por quê é o mais rápido:** SDK PlugPag é aberto e documentado publicamente, sem NDA. Aceita APK próprio sem burocracia. Homologação TEF em ~30 dias. Impressora térmica integrada com API simples.
