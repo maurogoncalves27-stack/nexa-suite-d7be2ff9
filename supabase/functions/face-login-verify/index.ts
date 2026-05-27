@@ -56,7 +56,8 @@ Deno.serve(async (req) => {
 
     const dist = distance(descriptor as number[], face.descriptor as number[]);
     if (dist > FACE_THRESHOLD) {
-      return new Response(JSON.stringify({ error: "Rosto não reconhecido", distance: dist }), {
+      console.warn("face-login-verify: face mismatch", { email });
+      return new Response(JSON.stringify({ error: "Rosto não reconhecido" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -74,7 +75,6 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       email,
       token: linkData.properties.email_otp,
-      distance: dist,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     const err = e as Error;
