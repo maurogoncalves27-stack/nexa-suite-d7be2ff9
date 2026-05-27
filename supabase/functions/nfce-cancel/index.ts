@@ -1,5 +1,6 @@
 // Cancela uma NFC-e autorizada via Focus NFe (janela de até 30 min após autorização)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireRole } from "../_shared/requireRole.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,6 +22,9 @@ Deno.serve(async (req) => {
   );
 
   try {
+    const auth = await requireRole(req, ["admin", "manager"], corsHeaders);
+    if (!auth.ok) return auth.response!;
+
     const { invoice_id, justificativa } = await req.json();
     if (!invoice_id) throw new Error("invoice_id obrigatório");
     const motivo = String(justificativa ?? "").trim();

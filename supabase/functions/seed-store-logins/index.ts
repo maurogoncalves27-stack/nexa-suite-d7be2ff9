@@ -1,13 +1,14 @@
 // Cria/atualiza os 4 logins fixos de loja (PCs do balcão) com role 'employee'.
 // Execução manual via supabase.functions.invoke('seed-store-logins').
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireRole } from "../_shared/requireRole.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const PASSWORD = "Parme@123";
+const PASSWORD = Deno.env.get("STORE_LOGIN_PASSWORD") ?? "Parme@123";
 const LOGINS = [
   { email: "asasul@aquelaparme.com.br", name: "PC ASA SUL" },
   { email: "asanorte@aquelaparme.com.br", name: "PC ASA NORTE" },
@@ -17,6 +18,10 @@ const LOGINS = [
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const auth = await requireRole(req, ["admin"], corsHeaders);
+  if (!auth.ok) return auth.response!;
+
 
   const admin = createClient(
     Deno.env.get("SUPABASE_URL")!,

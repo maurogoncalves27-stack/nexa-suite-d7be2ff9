@@ -1,5 +1,6 @@
 // Emite NFC-e via Focus NFe a partir de um pdv_orders.id
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireRole } from "../_shared/requireRole.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,6 +33,9 @@ Deno.serve(async (req) => {
   let invoiceId: string | null = null;
 
   try {
+    const auth = await requireRole(req, ["admin", "manager", "employee"], corsHeaders);
+    if (!auth.ok) return auth.response!;
+
     const { order_id } = await req.json();
     if (!order_id) throw new Error("order_id obrigatório");
 

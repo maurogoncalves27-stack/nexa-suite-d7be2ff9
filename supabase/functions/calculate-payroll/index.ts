@@ -14,6 +14,7 @@
 // - Salário-família: mantido (R$ 65,00 / dependente <14, salário ≤ R$ 1.906,04).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { requireRole } from "../_shared/requireRole.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -163,6 +164,9 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
+    const auth = await requireRole(req, ["admin", "hr", "manager"], corsHeaders);
+    if (!auth.ok) return auth.response!;
+
     const { year, month, employee_id: onlyEmployeeId } = await req.json();
     if (!year || !month || month < 1 || month > 12) {
       return new Response(JSON.stringify({ error: "year/month obrigatórios" }), {

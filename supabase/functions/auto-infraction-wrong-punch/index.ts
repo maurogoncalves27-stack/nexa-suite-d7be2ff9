@@ -1,6 +1,7 @@
 // Aplica infração automática para sequência de batidas errada/incompleta
 // baseado em regras configuráveis (automation_rules, trigger_type='wrong_punch').
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireCronSecret } from "../_shared/requireRole.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,6 +29,8 @@ function checkSequence(entries: { entry_type: EntryType; entry_at: string }[], h
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const guard = requireCronSecret(req, corsHeaders);
+  if (guard) return guard;
 
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);

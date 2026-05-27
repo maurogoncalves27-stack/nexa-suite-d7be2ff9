@@ -1,6 +1,7 @@
 // dfe-sync: lista NF-e destinadas via Focus NFe, baixa XML e popula dfe_inbound_notes/items.
 // Pode ser chamada para 1 CNPJ (body: { company_id }) ou todos os ativos (sem body / { all: true }).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireRole } from "../_shared/requireRole.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -310,6 +311,9 @@ Deno.serve(async (req) => {
   );
 
   try {
+    const auth = await requireRole(req, ["admin", "manager", "hr"], corsHeaders);
+    if (!auth.ok) return auth.response!;
+
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
     const companyId = body?.company_id as string | undefined;
     const reparseIds = (body?.reparse_note_id

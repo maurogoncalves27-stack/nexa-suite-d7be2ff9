@@ -3,6 +3,7 @@
 // sem nenhuma batida de ponto, sem justificativa aprovada e sem afastamento.
 // Configurável via automation_rules trigger_type='unjustified_absence'.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireCronSecret } from "../_shared/requireRole.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +12,8 @@ const corsHeaders = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const guard = requireCronSecret(req, corsHeaders);
+  if (guard) return guard;
 
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
