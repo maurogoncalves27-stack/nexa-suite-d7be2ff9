@@ -3,6 +3,7 @@
 //         | "unknown" (desconhecer — Desconhecimento 210220)
 //         | "ciencia" (dar ciência — 210210)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireRole } from "../_shared/requireRole.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
