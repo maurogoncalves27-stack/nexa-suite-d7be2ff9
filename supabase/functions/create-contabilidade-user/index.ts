@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireRole } from "../_shared/requireRole.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,12 +9,21 @@ const corsHeaders = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
+    const auth = await requireRole(req, ["admin"], corsHeaders);
+    if (!auth.ok) return auth.response!;
+
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
-    const email = "pessoal@exactcontabil.com.br";
-    const password = "Exact123$";
+    const body = await req.json().catch(() => ({}));
+    const email: string = (body?.email ?? "").trim();
+    const password: string = body?.password ?? "";
+    if (!email || !/^.+@.+\..+$/.test(email) || password.length < 12) {
+      return new Response(JSON.stringify({ error: "email/password obrigatórios (senha mínima 12 chars)" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     let userId: string | null = null;
     const { data: list } = await admin.auth.admin.listUsers();
