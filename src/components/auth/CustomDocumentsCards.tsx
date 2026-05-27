@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import DOMPurify from "dompurify";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -263,7 +264,7 @@ export default function CustomDocumentsCards({ employeeId, employeePosition }: C
           <ScrollArea className="flex-1 min-h-0 px-4 sm:px-6">
             <div
               className="prose prose-sm dark:prose-invert max-w-none py-4"
-              dangerouslySetInnerHTML={{ __html: openDoc?.content ?? "" }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(openDoc?.content ?? "") }}
             />
           </ScrollArea>
 
