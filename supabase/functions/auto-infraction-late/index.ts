@@ -3,6 +3,7 @@
 // Para cada regra também aplica as regras 'infraction_recurrence' associadas ao mesmo infraction_type.
 // Idempotente por (employee_id, occurred_on, infraction_type_id).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireCronSecret } from "../_shared/requireRole.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,6 +19,8 @@ function diffMinutes(scheduledHHMM: string, entryISO: string, dateYYYYMMDD: stri
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const guard = requireCronSecret(req, corsHeaders);
+  if (guard) return guard;
 
   try {
     const supabase = createClient(
