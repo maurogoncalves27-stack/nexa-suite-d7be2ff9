@@ -27,6 +27,9 @@ Deno.serve(async (req) => {
   );
 
   try {
+    const auth = await requireRole(req, ["admin", "manager", "hr"], corsHeaders);
+    if (!auth.ok) return auth.response!;
+
     const { note_id, action, justificativa } = await req.json();
     if (!note_id || !TIPO[action]) throw new Error("note_id e action válidos são obrigatórios");
 
