@@ -70,14 +70,26 @@ async function upsertChunked(client: SupabaseClient, table: string, rows: any[])
   const chunkSize = 500;
   let ok = 0;
   const errors: any[] = [];
+  // Detecta se a tabela tem coluna "id" (pra escolher upsert vs insert simples).
+  const hasId = rows[0] && Object.prototype.hasOwnProperty.call(rows[0], "id");
   for (let i = 0; i < rows.length; i += chunkSize) {
     const chunk = rows.slice(i, i + chunkSize);
-    const { error } = await client.from(table).upsert(chunk, { onConflict: "id" });
-    if (error) errors.push({ chunkIndex: i, message: error.message });
-    else ok += chunk.length;
+    const q = hasId
+      ? client.from(table).upsert(chunk, { onConflict: "id", ignoreDuplicates: false })
+      : client.from(table).insert(chunk);
+    const { error } = await q;
+    if (error) {
+      // Fallback: tenta insert simples ignorando duplicatas
+      const { error: e2 } = await client.from(table).upsert(chunk, { ignoreDuplicates: true });
+      if (e2) errors.push({ chunkIndex: i, message: error.message });
+      else ok += chunk.length;
+    } else {
+      ok += chunk.length;
+    }
   }
   return { ok, errors };
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
