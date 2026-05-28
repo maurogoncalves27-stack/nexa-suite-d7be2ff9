@@ -1763,9 +1763,14 @@ function OrdersList({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-sm truncate">
-                    {orderLabel(o)}
-
+                    {(() => {
+                      const raw = (channelName(o.channel_id) ?? "").toUpperCase();
+                      const prefix = raw.includes("IFOOD") ? "IFOOD" : raw.includes("TOTEM") ? "TOTEM" : raw.includes("SAL") ? "SALÃO" : raw.includes("BALC") ? "BALCÃO" : raw || "PEDIDO";
+                      const num = o.external_display_id ?? o.order_number ?? "—";
+                      return `${prefix} - ${num}`;
+                    })()}
                   </span>
+
                   <Badge variant="outline" className="text-[10px] py-0">
                     {channelName(o.channel_id)}
                   </Badge>
