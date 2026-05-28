@@ -1024,7 +1024,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
               </div>
             ) : (
               displayOrders.map((o) => {
-                const colIdx = COLUMNS.findIndex((c) => c.statuses.includes(o.status));
+                const colIdx = COLUMNS.findIndex((c) => matchesCol(c, o));
                 if (colIdx === -1) return null;
                 const col = COLUMNS[colIdx];
                 const elapsed = minutesSince(o.opened_at);
