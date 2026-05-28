@@ -780,7 +780,7 @@ export function AppSidebar() {
                           : "bg-sidebar-accent/60 text-sidebar-foreground border-sidebar-border hover:bg-sidebar-accent"
                       }`}
                     >
-                      <Icon className="h-5 w-5" />
+                      <Icon className="h-4 w-4" />
                       <span>{b.label}</span>
                     </button>
                   );
