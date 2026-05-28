@@ -274,11 +274,8 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
 
     setStores(list);
     if (!storeId && list.length > 0) {
-      // Padrão: primeira loja física real (não virtual e não fábrica/escritório/estoque)
-      const firstReal = list.find(
-        (s: any) => s.is_virtual === false && !/escrit|fabri|estoque/i.test(s.name ?? "")
-      );
-      setStoreId((firstReal ?? list[0]).id);
+      // Padrão: "Ver todas as lojas"
+      setStoreId("ALL");
     }
   }, [storeId, user, lockedStoreId]);
 
