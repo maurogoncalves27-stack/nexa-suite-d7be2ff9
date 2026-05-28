@@ -1044,7 +1044,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                     ? "border-success/60 bg-success/5 text-success hover:bg-success/10"
                     : "border-destructive/60 bg-destructive/5 text-destructive hover:bg-destructive/10";
                   const label = isDone ? "Concluído" : "Cancelado";
-                  const num = `${o.external_display_id ?? o.order_number ?? o.id.slice(0, 4)}`;
+                  const num = `${o.external_display_id ?? o.order_number ?? "—"}`;
                   return (
                     <button
                       key={o.id}
