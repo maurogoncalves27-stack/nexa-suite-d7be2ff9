@@ -1,54 +1,30 @@
-# Migrar dados do NEXA original → NEXA Suite (este remix)
+# Status da migração NEXA original → NEXA Suite
 
-## Direção
+## Diagnóstico
 
-```
-ORIGEM (leitura):  Projeto "NEXA"          → Supabase xmswsrhfofwhwtykjqef
-DESTINO (escrita): Este remix "NEXA Suite" → Supabase ixjgmerxxakdkfdzgumy
-```
+Acabei de testar a edge function `migrate-to-nexa` no modo `plan` e ela **conecta com sucesso no NEXA original**:
 
-A edge function `migrate-to-nexa` que já existe aqui está **invertida** (lê deste projeto, escreve no outro). Vou virar a direção: ela passa a ler do NEXA original e escrever aqui.
+- 233 tabelas listadas
+- Dados reais detectados: `employees=42`, `stores=?`, `brands=7`, `employee_documents=543`, `accounts_payable=732`, `inventory_count_items=3457`, etc.
+- Conexão com o `SOURCE_NEXA_SERVICE_ROLE_KEY` está OK
+- Destino (este projeto): `employees=0`, `stores=0`, `brands=0` — confirmado vazio
 
-## Passos
+**Ou seja: a função está pronta e funcionando, mas a migração de fato ainda não foi disparada** (nenhum log de execução `mode=full` desde o último deploy).
 
-### 1. Pedir 1 secret novo
-Preciso da `service_role key` do projeto NEXA original (Settings → API do projeto NEXA na sua conta Lovable). Vou guardá-la como **`SOURCE_NEXA_SERVICE_ROLE_KEY`**. A URL de origem fica fixa no código (`https://xmswsrhfofwhwtykjqef.supabase.co`).
+## O que falta
 
-### 2. Reescrever o edge function `migrate-to-nexa`
-- `sourceClient` aponta pra `SOURCE_NEXA_URL` + `SOURCE_NEXA_SERVICE_ROLE_KEY`.
-- `destClient` usa `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` locais (injetados aqui).
-- Mantém: descoberta via `information_schema`, ordenação topológica por FK, `SKIP_PREFIXES` (pdv_, pos_, saipos_…), batch por `startIdx`/`count`, modos `plan`/`triggers`/`full`/`dryRun`.
-- Mantém: triggers off no destino antes de escrever, on no final.
+Você precisa abrir a página e clicar o botão. Provavelmente o que aconteceu é que o botão ainda não foi clicado, ou foi clicado mas a página dava erro de JSX que eu corrigi agora há pouco.
 
-### 3. Ajustar `/admin/migrate-nexa`
-- Textos atualizados (puxa do NEXA original).
-- Fluxo: **Plan → Dry-run → Migração completa em lotes** com progresso por tabela.
+### Passos manuais
+1. Abrir **/admin/migrate-nexa**
+2. Clicar **"Listar tabelas e contagens"** — confirma 233 tabelas
+3. Clicar **"Migração completa"** — vai processar lotes de 8 tabelas; ~3-5 min total
+4. Acompanhar progresso no painel
 
-### 4. Tabelas que NÃO migram
-- Prefixos: `pdv_`, `pos_`, `saipos_`, `_migration`, `migration_`
-- Exatas: `payroll_xml_history`, `schema_migrations`
-- Schemas do Supabase (`auth.*`, `storage.*`) — fora de escopo.
+## Plano caso queira que eu dispare via curl
 
-### 5. FKs pra `auth.users`
-`user_roles`, `user_signatures`, `payroll_edit_locks`, `employees.user_id` etc. dependem de users existirem aqui. Como auth **não migra automaticamente** entre projetos:
-- Migro as linhas mesmo assim; falhas de FK são reportadas por tabela.
-- Gero uma lista de e-mails do NEXA original que precisam recriação aqui → **fase separada**, depois desta.
+Posso disparar a migração inteira via `curl_edge_functions` em loop (lotes de 8) sem você precisar clicar nada, e te mostrar o resumo final com:
+- Quantas linhas foram gravadas por tabela
+- Quais tabelas falharam (esperado: as que têm FK pra `auth.users` — tipo `user_roles`, `user_signatures`)
 
-### 6. Execução
-1. Você adiciona o secret quando eu pedir.
-2. Deploy automático.
-3. Você abre `/admin/migrate-nexa` → **Plan** (lista 233 tabelas) → **Migração completa** (lotes ~8/chamada, ~5 min).
-4. Painel mostra `read/written/errors` por tabela.
-
-### 7. Fora deste plano
-- Migrar `auth.users` (usuários/senhas) → fase separada.
-- Migrar arquivos de Storage (PDFs em `employee_documents`) → fase separada.
-- Secrets/edge functions do projeto antigo → manual.
-
-## Detalhes técnicos
-- Arquivos: `supabase/functions/migrate-to-nexa/index.ts` e `src/pages/admin/MigrateNexa.tsx`.
-- Leitura paginada 1000 em 1000 com `range()`.
-- Escrita `upsert(rows, { onConflict: 'id' })` em chunks de 500.
-- Triggers controladas via RPC `_migration_set_triggers(state text)` (já existe aqui).
-
-Confirma que pode prosseguir e eu já peço o secret.
+Se quiser que eu rode agora, me confirma. Senão, é só clicar o botão da página.
