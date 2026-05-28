@@ -1,30 +1,42 @@
-# Status da migração NEXA original → NEXA Suite
+## Contexto
 
-## Diagnóstico
+O histórico do PDV Gestor está vazio porque **nenhum pedido iFood foi recebido nas últimas 24h em nenhuma loja** (não é bug do filtro/select):
 
-Acabei de testar a edge function `migrate-to-nexa` no modo `plan` e ela **conecta com sucesso no NEXA original**:
+- `pdv_ifood_webhook_log`: 0 registros nas últimas 24h
+- `pdv_ifood_failed_events`: vazio
+- `pdv_orders` últimos 7 dias: 0 linhas
+- Token OAuth iFood: válido, renovado 28/05 19:34
 
-- 233 tabelas listadas
-- Dados reais detectados: `employees=42`, `stores=?`, `brands=7`, `employee_documents=543`, `accounts_payable=732`, `inventory_count_items=3457`, etc.
-- Conexão com o `SOURCE_NEXA_SERVICE_ROLE_KEY` está OK
-- Destino (este projeto): `employees=0`, `stores=0`, `brands=0` — confirmado vazio
+A integração autentica, mas o iFood não está enviando eventos (nem por webhook, nem disponíveis no polling).
 
-**Ou seja: a função está pronta e funcionando, mas a migração de fato ainda não foi disparada** (nenhum log de execução `mode=full` desde o último deploy).
+⚠️ Código de integração iFood é INTOCÁVEL (já em produção). Esse plano é só investigação + cadastros, **sem alterar edge functions iFood**.
 
-## O que falta
+## Passos
 
-Você precisa abrir a página e clicar o botão. Provavelmente o que aconteceu é que o botão ainda não foi clicado, ou foi clicado mas a página dava erro de JSX que eu corrigi agora há pouco.
+### 1. Verificar agendamento do polling (read-only)
+- Criar migration somente com `SELECT` em `cron.job` e `cron.job_run_details` filtrando por `%ifood%` para confirmar se existe job ativo chamando `ifood-poll` e se as últimas execuções foram sucesso.
+- Se não houver job, **não criar automaticamente** — só reportar para você decidir o intervalo (sugestão: a cada 30s, padrão iFood).
 
-### Passos manuais
-1. Abrir **/admin/migrate-nexa**
-2. Clicar **"Listar tabelas e contagens"** — confirma 233 tabelas
-3. Clicar **"Migração completa"** — vai processar lotes de 8 tabelas; ~3-5 min total
-4. Acompanhar progresso no painel
+### 2. Conferir status das lojas no Portal do Parceiro iFood
+- Confirmar com você (manual no Portal) se as lojas com `ifood_merchant_uuid` (Asa Sul, Asa Norte e virtuais) estão:
+  - Abertas / em horário de funcionamento
+  - Com webhook URL apontando para `https://ixjgmerxxakdkfdzgumy.supabase.co/functions/v1/ifood-webhook`
+  - Com secret `IFOOD_WEBHOOK_SECRET` igual ao configurado em Lovable Cloud
 
-## Plano caso queira que eu dispare via curl
+### 3. Disparar polling manual de teste
+- Chamar `ifood-poll` via `supabase--curl_edge_functions` apontando para `production` e mostrar a resposta (`events: N` ou `sem eventos`).
+- Olhar `supabase--edge_function_logs` de `ifood-poll` e `ifood-webhook` para ver se houve qualquer chamada nas últimas horas.
 
-Posso disparar a migração inteira via `curl_edge_functions` em loop (lotes de 8) sem você precisar clicar nada, e te mostrar o resumo final com:
-- Quantas linhas foram gravadas por tabela
-- Quais tabelas falharam (esperado: as que têm FK pra `auth.users` — tipo `user_roles`, `user_signatures`)
+### 4. Reportar diagnóstico final
+- Se o polling responde "sem eventos" e o webhook não foi chamado → **o problema está no iFood / cadastro do Portal**, não no nosso lado. Você precisaria abrir chamado no iFood ou ajustar config no Portal.
+- Se o polling responde com eventos mas eles não viram pedido → log mostrará `merchant_not_mapped` ou `channel_not_found` e aí cadastramos.
+- Se webhook foi chamado mas falhou assinatura → ajustar secret.
 
-Se quiser que eu rode agora, me confirma. Senão, é só clicar o botão da página.
+### 5. (Opcional, só com sua autorização) Cadastrar merchant_uuid para Águas Claras e Lago Sul
+- Hoje só Asa Sul e Asa Norte têm merchant cadastrado. Se você tiver os IDs reais das 3 marcas × 2 lojas faltantes, abrir a engrenagem do PDV Gestor → aba iFood → preencher os 6 cards. Não precisa de código.
+
+## Fora do escopo
+
+- Alterar qualquer arquivo em `supabase/functions/ifood-*` ou `supabase/functions/_shared/ifoodAuth.ts`
+- Mudar a loja "iFood Homologação"
+- Recriar o canal iFood em `pdv_channels` automaticamente (fica para outro plano se virar necessidade real)
