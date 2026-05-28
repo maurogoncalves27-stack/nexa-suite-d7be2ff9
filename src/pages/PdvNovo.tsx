@@ -995,6 +995,25 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                   Buscar pedidos no iFood agora
                 </Button>
               )}
+
+              {(() => {
+                const homolog = stores.find((s: any) => (s.name ?? "").toLowerCase().includes("homolog"));
+                if (!homolog || homolog.id === storeId) return null;
+                return (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => {
+                      setStoreId(homolog.id);
+                      setSettingsOpen(false);
+                      toast({ title: "Acessando iFood Homologação" });
+                    }}
+                  >
+                    Acessar iFood Homologação
+                  </Button>
+                );
+              })()}
             </TabsContent>
 
             <TabsContent value="nfce" className="mt-4">
