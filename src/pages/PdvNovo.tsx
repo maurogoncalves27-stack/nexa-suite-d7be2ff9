@@ -856,7 +856,8 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     { key: "producao",   label: "Em produção",
       statuses: ["confirmed", "preparing"].concat(autoAcceptEnabled ? ["placed"] : []) as PdvStatus[],
       headerCls: "bg-orange-500 text-white border-orange-600",
-      accentCls: "border-l-orange-500",  nextLabel: "Pronto p/ retirada", nextTo: "ready", nextBtnCls: "bg-emerald-600 hover:bg-emerald-700 text-white" },
+      accentCls: "border-l-orange-500",  nextLabel: "Pronto p/ embalar", nextTo: "ready", nextBtnCls: "bg-emerald-600 hover:bg-emerald-700 text-white" },
+
 
     { key: "pronto",     label: "Pronto p/ retirada", statuses: ["ready"],                    headerCls: "bg-emerald-500 text-white border-emerald-600",
       accentCls: "border-l-emerald-500", nextLabel: "Despachar", nextTo: "dispatched", nextBtnCls: "bg-blue-600 hover:bg-blue-700 text-white" },
