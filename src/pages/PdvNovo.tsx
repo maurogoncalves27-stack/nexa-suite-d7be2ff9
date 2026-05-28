@@ -718,7 +718,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                 </SelectTrigger>
                 <SelectContent>
                   {stores
-                    .filter((s) => !/escrit|fabri|estoque/i.test(s.name))
+                    .filter((s) => s.is_virtual === false && !/escrit|fabri|estoque/i.test(s.name))
                     .map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}
