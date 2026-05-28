@@ -897,7 +897,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   const ordersByColumn = useMemo(() => {
     const m: Record<string, Order[]> = {};
     for (const col of COLUMNS) {
-      m[col.key] = orders.filter((o) => col.statuses.includes(o.status));
+      m[col.key] = orders.filter((o) => matchesCol(col, o));
     }
     return m;
     // eslint-disable-next-line react-hooks/exhaustive-deps
