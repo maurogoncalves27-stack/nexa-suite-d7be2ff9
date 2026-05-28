@@ -1720,6 +1720,10 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                     : (it.complements && typeof it.complements === "object" ? Object.values(it.complements as any) : []);
                   for (let i = 0; i < comps.length; i++) {
                     if (!readyChecks[`comp:${it.id}:${i}`]) return true;
+                  }
+                }
+                return false;
+              })()}
               onClick={async () => {
                 const o = readyChecklistOrder;
                 if (!o) return;
@@ -1738,11 +1742,6 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
               {checklistMode === "pack" ? "Confirmar e embalar" : "Confirmar e marcar pronto"}
             </Button>
 
-              }}
-            >
-              {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Confirmar e marcar pronto
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
