@@ -1,42 +1,40 @@
-## Contexto
+## Objetivo
+Fazer os pedidos novos do iFood voltarem a aparecer no `/pdv-novo`.
 
-O histórico do PDV Gestor está vazio porque **nenhum pedido iFood foi recebido nas últimas 24h em nenhuma loja** (não é bug do filtro/select):
+## Diagnóstico
+- O backend está saudável.
+- A tela não está escondendo pedidos: hoje a consulta de `pdv_orders` está voltando vazia.
+- A causa mais provável está na ingestão: só a **ASA SUL** tem canal `iFood` cadastrado em `pdv_channels`.
+- As demais lojas com `ifood_merchant_uuid` ativo (**ASA NORTE, ÁGUAS CLARAS, LAGO SUL e lojas virtuais de marca**) estão sem canal, então o processamento do iFood tende a pular os eventos com `channel_not_found` antes de gravar em `pdv_orders`.
+- Há também um ponto de risco no webhook: ele busca token fixo em **sandbox**, mesmo para lojas em produção.
 
-- `pdv_ifood_webhook_log`: 0 registros nas últimas 24h
-- `pdv_ifood_failed_events`: vazio
-- `pdv_orders` últimos 7 dias: 0 linhas
-- Token OAuth iFood: válido, renovado 28/05 19:34
+## Plano
+1. **Corrigir o cadastro base dos canais iFood**
+   - Criar os registros faltantes em `pdv_channels` para as lojas que já têm integração iFood ativa.
+   - Garantir que cada loja que recebe evento tenha um canal `code = 'ifood'` utilizável pelo ingestor.
 
-A integração autentica, mas o iFood não está enviando eventos (nem por webhook, nem disponíveis no polling).
+2. **Ajustar o processamento do webhook/polling**
+   - Revisar o fluxo de ingestão para usar o ambiente correto da loja (`production`/`sandbox`) ao buscar detalhes do pedido.
+   - Melhorar o tratamento de erro/log quando uma loja estiver mapeada mas sem canal, para o problema ficar visível imediatamente.
 
-⚠️ Código de integração iFood é INTOCÁVEL (já em produção). Esse plano é só investigação + cadastros, **sem alterar edge functions iFood**.
+3. **Validar ponta a ponta**
+   - Disparar uma leitura manual do polling.
+   - Confirmar criação de linhas em `pdv_orders`.
+   - Conferir se os pedidos aparecem no `/pdv-novo` para a loja selecionada e suas marcas agregadas.
 
-## Passos
+## Detalhes técnicos
+- Dados verificados agora:
+  - `pdv_orders` nas últimas horas: **0 registros**
+  - `pdv_ifood_failed_events`: **0 registros**
+  - `pdv_ifood_webhook_log`: **0 registros**
+  - `pdv_channels` com iFood:
+    - **ASA SUL**: possui canal
+    - **ASA NORTE / ÁGUAS CLARAS / LAGO SUL / virtuais**: sem canal
+- Arquivos que provavelmente precisarão de ajuste:
+  - `supabase/functions/ifood-poll/index.ts`
+  - `supabase/functions/ifood-webhook/index.ts`
+  - possivelmente uma migration para normalizar `pdv_channels`
 
-### 1. Verificar agendamento do polling (read-only)
-- Criar migration somente com `SELECT` em `cron.job` e `cron.job_run_details` filtrando por `%ifood%` para confirmar se existe job ativo chamando `ifood-poll` e se as últimas execuções foram sucesso.
-- Se não houver job, **não criar automaticamente** — só reportar para você decidir o intervalo (sugestão: a cada 30s, padrão iFood).
-
-### 2. Conferir status das lojas no Portal do Parceiro iFood
-- Confirmar com você (manual no Portal) se as lojas com `ifood_merchant_uuid` (Asa Sul, Asa Norte e virtuais) estão:
-  - Abertas / em horário de funcionamento
-  - Com webhook URL apontando para `https://ixjgmerxxakdkfdzgumy.supabase.co/functions/v1/ifood-webhook`
-  - Com secret `IFOOD_WEBHOOK_SECRET` igual ao configurado em Lovable Cloud
-
-### 3. Disparar polling manual de teste
-- Chamar `ifood-poll` via `supabase--curl_edge_functions` apontando para `production` e mostrar a resposta (`events: N` ou `sem eventos`).
-- Olhar `supabase--edge_function_logs` de `ifood-poll` e `ifood-webhook` para ver se houve qualquer chamada nas últimas horas.
-
-### 4. Reportar diagnóstico final
-- Se o polling responde "sem eventos" e o webhook não foi chamado → **o problema está no iFood / cadastro do Portal**, não no nosso lado. Você precisaria abrir chamado no iFood ou ajustar config no Portal.
-- Se o polling responde com eventos mas eles não viram pedido → log mostrará `merchant_not_mapped` ou `channel_not_found` e aí cadastramos.
-- Se webhook foi chamado mas falhou assinatura → ajustar secret.
-
-### 5. (Opcional, só com sua autorização) Cadastrar merchant_uuid para Águas Claras e Lago Sul
-- Hoje só Asa Sul e Asa Norte têm merchant cadastrado. Se você tiver os IDs reais das 3 marcas × 2 lojas faltantes, abrir a engrenagem do PDV Gestor → aba iFood → preencher os 6 cards. Não precisa de código.
-
-## Fora do escopo
-
-- Alterar qualquer arquivo em `supabase/functions/ifood-*` ou `supabase/functions/_shared/ifoodAuth.ts`
-- Mudar a loja "iFood Homologação"
-- Recriar o canal iFood em `pdv_channels` automaticamente (fica para outro plano se virar necessidade real)
+## Resultado esperado
+- Novos pedidos do iFood passam a ser persistidos em `pdv_orders`.
+- O histórico e a lista atual do `/pdv-novo` voltam a mostrar os pedidos normalmente.
