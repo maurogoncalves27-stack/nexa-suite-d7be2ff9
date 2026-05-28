@@ -1730,7 +1730,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
               }}
             >
               {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {checklistMode === "pack" ? "Confirmar e embalar" : "Confirmar e marcar pronto"}
+              {checklistMode === "pack" ? "Confirmar e embalar" : "Conferido"}
             </Button>
 
           </DialogFooter>
