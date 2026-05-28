@@ -813,7 +813,7 @@ export function AppSidebar() {
                     title={`${b.label} — Em breve`}
                     className={`${baseClass} bg-sidebar-accent/30 text-sidebar-foreground/40 border-sidebar-border/60 cursor-not-allowed`}
                   >
-                    <Icon className="h-5 w-5" />
+                    <Icon className="h-4 w-4" />
                     <span>{b.label}</span>
                   </button>
                 );
