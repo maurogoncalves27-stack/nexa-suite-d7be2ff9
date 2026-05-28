@@ -1981,8 +1981,14 @@ export type Database = {
           note_id: string
           quantity: number
           raw: Json | null
+          suggested_confidence: number | null
+          suggested_pack_size: number | null
+          suggested_pack_unit: string | null
           suggested_product_id: string | null
           total_value: number
+          trib_quantity: number | null
+          trib_unit: string | null
+          trib_unit_value: number | null
           unit: string | null
           unit_value: number
         }
@@ -1997,8 +2003,14 @@ export type Database = {
           note_id: string
           quantity?: number
           raw?: Json | null
+          suggested_confidence?: number | null
+          suggested_pack_size?: number | null
+          suggested_pack_unit?: string | null
           suggested_product_id?: string | null
           total_value?: number
+          trib_quantity?: number | null
+          trib_unit?: string | null
+          trib_unit_value?: number | null
           unit?: string | null
           unit_value?: number
         }
@@ -2013,8 +2025,14 @@ export type Database = {
           note_id?: string
           quantity?: number
           raw?: Json | null
+          suggested_confidence?: number | null
+          suggested_pack_size?: number | null
+          suggested_pack_unit?: string | null
           suggested_product_id?: string | null
           total_value?: number
+          trib_quantity?: number | null
+          trib_unit?: string | null
+          trib_unit_value?: number | null
           unit?: string | null
           unit_value?: number
         }
