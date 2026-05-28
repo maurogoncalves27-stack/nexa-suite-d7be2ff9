@@ -534,8 +534,40 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cancelOpen, selectedOrder?.id]);
 
-  const advanceStatus = async (order: Order, newStatus: PdvStatus, eventCode?: string) => {
+  const advanceStatus = async (
+    order: Order,
+    newStatus: PdvStatus,
+    eventCode?: string,
+    options?: { skipIfood?: boolean }
+  ) => {
     setBusy(true);
+    if (options?.skipIfood) {
+      const { data, error } = await supabase.rpc("pdv_advance_order_status", {
+        p_order_id: order.id,
+        p_new_status: newStatus,
+        p_event_code: eventCode ?? null,
+        p_payload: {
+          internal_only: true,
+          skipped_ifood_action: true,
+        },
+        p_source: "internal",
+        p_external_event_id: null,
+        p_reason_code: null,
+        p_reason_text: "Checklist interno concluído sem notificar iFood",
+      });
+      setBusy(false);
+      if (error) {
+        toast({ title: "Não foi possível avançar", description: error.message, variant: "destructive" });
+        return;
+      }
+      toast({ title: `Pedido ${STATUS_LABEL[newStatus].label.toLowerCase()}` });
+      if (data && typeof data === "object" && "id" in data) {
+        setSelectedOrder(data as Order);
+      }
+      void loadForStore(storeId);
+      return;
+    }
+
     const ifoodAction = STATUS_TO_IFOOD_ACTION[newStatus];
     if (isIfoodOrder(order) && ifoodAction) {
       const env = stores.find((s) => s.id === order.store_id)?.ifood_environment ?? "sandbox";
@@ -1776,7 +1808,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                 if (mode === "pack") {
                   await packOrder(o);
                 } else {
-                  await advanceStatus(o, "ready");
+                  await advanceStatus(o, "ready", "internal_ready_checklist", { skipIfood: isIfoodOrder(o) });
                 }
               }}
             >
