@@ -1474,7 +1474,8 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
 
       {/* ===== Dialog: detalhes + ações do pedido ===== */}
       <Dialog open={!!selectedOrder && !cancelOpen} onOpenChange={(v) => !v && setSelectedOrder(null)}>
-        <DialogContent className="max-w-md max-h-[92vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl sm:max-w-4xl max-h-[92vh] overflow-y-auto">
+
           {selectedOrder && (() => {
             const meta = STATUS_LABEL[selectedOrder.status] ?? STATUS_LABEL.placed;
             const next = NEXT_STEP[selectedOrder.status];
