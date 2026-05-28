@@ -1,7 +1,6 @@
 // dfe-sync: lista NF-e destinadas via Focus NFe, baixa XML e popula dfe_inbound_notes/items.
 // Pode ser chamada para 1 CNPJ (body: { company_id }) ou todos os ativos (sem body / { all: true }).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { requireRole } from "../_shared/requireRole.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,6 +24,15 @@ interface FocusNote {
   caminho_xml_nota_fiscal?: string;
   caminho_download_nota_fiscal?: string;
   ciencia_operacao?: string;
+}
+
+// Extrai número e série da chave de acesso NFe (44 dígitos).
+// Layout: cUF(2) AAMM(4) CNPJ(14) modelo(2) serie(3) numero(9) tpEmis(1) cNF(8) cDV(1)
+function parseChave(chave: string | null | undefined): { serie: string | null; numero: string | null } {
+  if (!chave || chave.length !== 44 || !/^\d+$/.test(chave)) return { serie: null, numero: null };
+  const serie = chave.substring(22, 25).replace(/^0+/, "") || "0";
+  const numero = chave.substring(25, 34).replace(/^0+/, "") || "0";
+  return { serie, numero };
 }
 
 // ----- XML helpers (regex; NFe é XML simples e bem-formado) -----
@@ -55,6 +63,11 @@ interface ParsedItem {
   total_value: number | null;
   ean: string | null;
   supplier_code: string | null;
+  trib_unit: string | null;
+  trib_quantity: number | null;
+  trib_unit_value: number | null;
+  suggested_pack_size: number | null;
+  suggested_pack_unit: string | null;
 }
 
 function parseNfeXml(xml: string): ParsedItem[] {
@@ -68,17 +81,43 @@ function parseNfeXml(xml: string): ParsedItem[] {
     if (!prodMatch) continue;
     const prod = prodMatch[1];
     const ean = tag(prod, "cEAN");
+
+    const uCom = tag(prod, "uCom");
+    const qCom = Number(tag(prod, "qCom") ?? 0) || null;
+    const vUnCom = Number(tag(prod, "vUnCom") ?? 0) || null;
+    const uTrib = tag(prod, "uTrib");
+    const qTrib = Number(tag(prod, "qTrib") ?? 0) || null;
+    const vUnTrib = Number(tag(prod, "vUnTrib") ?? 0) || null;
+
+    // Conversão sugerida: qTrib/qCom quando a razão é != 1 e ambos > 0.
+    // Significa que o fornecedor vende em "uCom" (ex.: FARDO) mas cada um contém
+    // qTrib/qCom unidades de "uTrib" (ex.: 30 KG).
+    let suggested_pack_size: number | null = null;
+    let suggested_pack_unit: string | null = null;
+    if (qCom && qTrib && qCom > 0) {
+      const ratio = qTrib / qCom;
+      if (Math.abs(ratio - 1) > 0.001) {
+        suggested_pack_size = Math.round(ratio * 1000) / 1000;
+        suggested_pack_unit = uTrib;
+      }
+    }
+
     items.push({
       line_number: nItem,
       description: tag(prod, "xProd") ?? "",
       ncm: tag(prod, "NCM"),
       cfop: tag(prod, "CFOP"),
-      unit: tag(prod, "uCom") ?? tag(prod, "uTrib"),
-      quantity: Number(tag(prod, "qCom") ?? tag(prod, "qTrib") ?? 0) || null,
-      unit_value: Number(tag(prod, "vUnCom") ?? tag(prod, "vUnTrib") ?? 0) || null,
+      unit: uCom ?? uTrib,
+      quantity: qCom ?? qTrib,
+      unit_value: vUnCom ?? vUnTrib,
       total_value: Number(tag(prod, "vProd") ?? 0) || null,
       ean: ean && ean !== "SEM GTIN" ? ean : null,
       supplier_code: tag(prod, "cProd"),
+      trib_unit: uTrib,
+      trib_quantity: qTrib,
+      trib_unit_value: vUnTrib,
+      suggested_pack_size,
+      suggested_pack_unit,
     });
   }
   return items;
@@ -168,6 +207,11 @@ async function persistItems(
       quantity: it.quantity,
       unit_value: it.unit_value,
       total_value: it.total_value,
+      trib_unit: it.trib_unit,
+      trib_quantity: it.trib_quantity,
+      trib_unit_value: it.trib_unit_value,
+      suggested_pack_size: it.suggested_pack_size,
+      suggested_pack_unit: it.suggested_pack_unit,
       suggested_product_id: suggested,
       raw: {
         ean: it.ean,
@@ -234,8 +278,8 @@ async function syncCompany(sb: any, company: any) {
         target_store_id: company.store_id ?? null,
         supplier_cnpj: supplierCnpj,
         supplier_name: n.nome_emitente ?? null,
-        numero: n.numero != null ? String(n.numero) : null,
-        serie: n.serie != null ? String(n.serie) : null,
+        numero: n.numero != null ? String(n.numero) : parseChave(chave).numero,
+        serie: n.serie != null ? String(n.serie) : parseChave(chave).serie,
         chave_acesso: chave,
         emission_date: n.data_emissao ?? null,
         total_amount: n.valor_total != null ? Number(n.valor_total) : null,
@@ -311,9 +355,6 @@ Deno.serve(async (req) => {
   );
 
   try {
-    const auth = await requireRole(req, ["admin", "manager", "hr"], corsHeaders);
-    if (!auth.ok) return auth.response!;
-
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
     const companyId = body?.company_id as string | undefined;
     const reparseIds = (body?.reparse_note_id

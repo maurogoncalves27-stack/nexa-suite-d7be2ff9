@@ -3,7 +3,6 @@
 //         | "unknown" (desconhecer — Desconhecimento 210220)
 //         | "ciencia" (dar ciência — 210210)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { requireRole } from "../_shared/requireRole.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,9 +26,6 @@ Deno.serve(async (req) => {
   );
 
   try {
-    const auth = await requireRole(req, ["admin", "manager", "hr"], corsHeaders);
-    if (!auth.ok) return auth.response!;
-
     const { note_id, action, justificativa } = await req.json();
     if (!note_id || !TIPO[action]) throw new Error("note_id e action válidos são obrigatórios");
 

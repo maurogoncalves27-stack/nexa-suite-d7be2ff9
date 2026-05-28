@@ -8,9 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Package, Sparkles, X, Check, Search, Lock, ShieldCheck, Settings2 } from "lucide-react";
+import { Loader2, Package, Sparkles, X, Check, Search, Lock, ShieldCheck, Settings2, PackagePlus, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import SupplierConversionPopover from "./SupplierConversionPopover";
+import QuickCreateProductDialog from "./QuickCreateProductDialog";
 
 interface InvProd {
   id: string; name: string;
@@ -43,6 +44,9 @@ interface DfeItem {
   unit_value: number;
   total_value: number;
   suggested_product_id: string | null;
+  suggested_confidence: number | null;
+  suggested_pack_size: number | null;
+  suggested_pack_unit: string | null;
   mapped_product_id: string | null;
 }
 interface InvItem {
@@ -54,6 +58,7 @@ interface InvItem {
 interface Conv { pack_size: number; purchase_unit: string | null; package_description: string | null }
 interface MapEntry { product_id: string; hits: number }
 const CONFIRM_THRESHOLD = 3;
+const STRONG_CONF = 0.7;
 const normDesc = (s: string) => s.trim().toLowerCase();
 
 interface Props {
@@ -76,6 +81,8 @@ export default function DfeNoteDialog({ noteId, onClose, onImported }: Props) {
   const [saving, setSaving] = useState(false);
   const [bulkReceiving, setBulkReceiving] = useState(false);
   const [receivingLine, setReceivingLine] = useState<number | null>(null);
+  const [aiRan, setAiRan] = useState(false);
+  const [quickCreateFor, setQuickCreateFor] = useState<DfeItem | null>(null);
 
   const productById = useMemo(() => {
     const m: Record<string, InvProd> = {};
@@ -157,6 +164,9 @@ export default function DfeNoteDialog({ noteId, onClose, onImported }: Props) {
         await supabase.functions.invoke("dfe-sync", { body: { reparse_note_id: n.id } });
         const re = await supabase.from("dfe_inbound_items").select("*").eq("note_id", n.id).order("line_number");
         rawItems = (re.data as DfeItem[]) ?? [];
+        // Recarrega a nota — dfe-sync pode ter preenchido supplier_cnpj a partir do XML
+        const { data: refreshed } = await supabase.from("dfe_inbound_notes").select("*").eq("id", n.id).single();
+        if (refreshed) { Object.assign(n, refreshed); setNote(refreshed as DfeNote); }
         if (rawItems.length === 0) {
           toast.info("Nota ainda sem XML detalhado disponível na SEFAZ. Tente novamente em alguns minutos.");
         }
@@ -178,11 +188,14 @@ export default function DfeNoteDialog({ noteId, onClose, onImported }: Props) {
           rawItems = (re.data as DfeItem[]) ?? rawItems;
           toast.success(`IA sugeriu produto para ${aiData.suggested} item(ns)`);
         }
+        setAiRan(true);
       } catch (e: any) {
         console.warn("AI suggest failed", e);
       } finally {
         setAiSuggesting(false);
       }
+    } else {
+      setAiRan(true);
     }
 
     const map = n?.supplier_cnpj ? await reloadSupplierMap(n.supplier_cnpj) : {};
@@ -194,8 +207,13 @@ export default function DfeNoteDialog({ noteId, onClose, onImported }: Props) {
       if (!it.mapped_product_id && it.suggested_product_id) {
         const entry = map[normDesc(it.description)];
         const isConfirmed = entry && entry.product_id === it.suggested_product_id && entry.hits >= CONFIRM_THRESHOLD;
-        if (isConfirmed) autoConfirmed++; else autoSug++;
-        return { ...it, mapped_product_id: it.suggested_product_id };
+        const isStrong = (it.suggested_confidence ?? 0) >= STRONG_CONF;
+        // Só auto-vincula se for confirmado pelo histórico OU sugestão forte da IA.
+        // Sugestão fraca fica visível como badge âmbar mas exige aprovação manual.
+        if (isConfirmed || isStrong) {
+          if (isConfirmed) autoConfirmed++; else autoSug++;
+          return { ...it, mapped_product_id: it.suggested_product_id };
+        }
       }
       return it;
     });
@@ -212,9 +230,31 @@ export default function DfeNoteDialog({ noteId, onClose, onImported }: Props) {
   }, [noteId, reloadConversions, reloadInvItems, reloadSupplierMap]);
 
   useEffect(() => {
+    setAiRan(false);
     if (noteId) load();
     else { setNote(null); setItems([]); setInvItems({}); setConversions({}); setSupplierMap({}); }
   }, [noteId, load]);
+
+  // Cadastra produto rápido a partir da descrição da NF e vincula automaticamente.
+  const handleQuickCreated = async (it: DfeItem, created: { id: string; name: string; unit: string | null; purchase_unit: string | null; pack_size: number | null }) => {
+    // adiciona ao catálogo local
+    setProducts((prev) => prev.some((p) => p.id === created.id) ? prev : [...prev, created]);
+    // vincula no item da nota
+    setMapped(it.id, created.id);
+    await supabase.from("dfe_inbound_items")
+      .update({ mapped_product_id: created.id })
+      .eq("id", it.id);
+    // 1º hit pro fornecedor (alimenta o auto-aceite em 3x)
+    if (note?.supplier_cnpj) {
+      await supabase.rpc("dfe_register_supplier_map", {
+        _cnpj: note.supplier_cnpj,
+        _desc_norm: normDesc(it.description),
+        _product_id: created.id,
+      });
+      await reloadSupplierMap(note.supplier_cnpj);
+    }
+    toast.success(`"${created.name}" cadastrado e vinculado`);
+  };
 
   // ----- métricas -----
   const semProduto = items.filter((i) => !i.mapped_product_id).length;
@@ -268,45 +308,59 @@ export default function DfeNoteDialog({ noteId, onClose, onImported }: Props) {
     const uid = userRes.user?.id;
     if (!uid) throw new Error("Sem usuário autenticado");
 
-    const { data: inv, error: invErr } = await supabase.from("inventory_invoices").insert({
-      store_id: note.target_store_id,
-      created_by: uid,
-      supplier_name: note.supplier_name,
-      supplier_cnpj: note.supplier_cnpj,
-      invoice_number: note.numero,
-      invoice_series: note.serie,
-      invoice_key: note.chave_acesso,
-      issue_date: note.emission_date ? note.emission_date.slice(0, 10) : null,
-      total_amount: note.total_amount,
-      extraction_status: "reviewed",
-      raw_extraction: note.raw_payload,
-    }).select("id").single();
-    if (invErr || !inv) throw invErr ?? new Error("Falha ao criar nota");
+    // Reusa invoice existente com a mesma chave_acesso (constraint inventory_invoices_chave_uniq).
+    let invId: string | null = null;
+    if (note.chave_acesso) {
+      const { data: existing } = await supabase
+        .from("inventory_invoices")
+        .select("id")
+        .eq("invoice_key", note.chave_acesso)
+        .maybeSingle();
+      if (existing?.id) invId = existing.id;
+    }
 
-    // cria todas as linhas em draft (sem received)
-    const payload = items.map((it) => ({
-      invoice_id: inv.id,
-      line_number: it.line_number,
-      original_description: it.description,
-      unit: it.unit ?? "UN",
-      quantity: it.quantity,
-      unit_value: it.unit_value,
-      total_value: it.total_value,
-      product_id: it.mapped_product_id,
-    }));
-    if (payload.length > 0) {
-      const { error: itemsErr } = await supabase.from("inventory_invoice_items").insert(payload);
-      if (itemsErr) throw itemsErr;
+    if (!invId) {
+      const { data: inv, error: invErr } = await supabase.from("inventory_invoices").insert({
+        store_id: note.target_store_id,
+        created_by: uid,
+        supplier_name: note.supplier_name,
+        supplier_cnpj: note.supplier_cnpj,
+        invoice_number: note.numero,
+        invoice_series: note.serie,
+        invoice_key: note.chave_acesso,
+        issue_date: note.emission_date ? note.emission_date.slice(0, 10) : null,
+        total_amount: note.total_amount,
+        extraction_status: "done",
+        raw_extraction: note.raw_payload,
+      }).select("id").single();
+      if (invErr || !inv) throw invErr ?? new Error("Falha ao criar nota");
+      invId = inv.id;
+
+      // cria todas as linhas em draft (sem received)
+      const payload = items.map((it) => ({
+        invoice_id: invId!,
+        line_number: it.line_number,
+        original_description: it.description,
+        unit: it.unit ?? "UN",
+        quantity: it.quantity,
+        unit_value: it.unit_value,
+        total_value: it.total_value,
+        product_id: it.mapped_product_id,
+      }));
+      if (payload.length > 0) {
+        const { error: itemsErr } = await supabase.from("inventory_invoice_items").insert(payload);
+        if (itemsErr) throw itemsErr;
+      }
     }
 
     await supabase.from("dfe_inbound_notes").update({
-      imported_invoice_id: inv.id,
+      imported_invoice_id: invId,
       status: "in_review",
     }).eq("id", note.id);
 
-    setNote({ ...note, imported_invoice_id: inv.id, status: "in_review" });
-    await reloadInvItems(inv.id);
-    return inv.id;
+    setNote({ ...note, imported_invoice_id: invId, status: "in_review" });
+    await reloadInvItems(invId);
+    return invId;
   };
 
   // ----- recebe 1 item -----
@@ -502,23 +556,13 @@ export default function DfeNoteDialog({ noteId, onClose, onImported }: Props) {
               const isReceiving = receivingLine === it.line_number;
               const mapEntry = supplierMap[normDesc(it.description)];
               const isConfirmed = !!(suggested && mapEntry && mapEntry.product_id === suggested.id && mapEntry.hits >= CONFIRM_THRESHOLD);
+              const isStrongSug = (it.suggested_confidence ?? 0) >= STRONG_CONF;
 
               return (
                 <div key={it.id} className={`rounded-lg border p-3 space-y-2 ${recebido ? "bg-muted/30 opacity-70" : ""}`}>
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge variant="outline">#{it.line_number}</Badge>
-                      {suggested && isConfirmed && (
-                        <Badge className="gap-1 border-success text-success bg-success/10" variant="outline">
-                          <ShieldCheck className="h-3 w-3" /> Padrão deste fornecedor: {suggested.name}
-                        </Badge>
-                      )}
-                      {suggested && !isConfirmed && (
-                        <Badge className="gap-1">
-                          <Sparkles className="h-3 w-3" />
-                          {mapEntry?.hits ? `Sugestão (${mapEntry.hits}/${CONFIRM_THRESHOLD})` : "Sugestão IA"}: {suggested.name}
-                        </Badge>
-                      )}
                       {recebido && (
                         <Badge variant="outline" className="border-success text-success gap-1">
                           <Check className="h-3 w-3" /> Recebido
@@ -526,6 +570,16 @@ export default function DfeNoteDialog({ noteId, onClose, onImported }: Props) {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
+                      {!it.mapped_product_id && !recebido && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setQuickCreateFor(it)}
+                          className="gap-1 border-primary text-primary hover:bg-primary/10"
+                        >
+                          <PackagePlus className="h-3 w-3" /> Cadastrar produto
+                        </Button>
+                      )}
                       {suggested && it.mapped_product_id !== suggested.id && !recebido && (
                         <Button
                           size="sm"
@@ -533,7 +587,8 @@ export default function DfeNoteDialog({ noteId, onClose, onImported }: Props) {
                           onClick={() => acceptSuggestion(it)}
                           className="gap-1 border-primary text-primary hover:bg-primary/10"
                         >
-                          <Sparkles className="h-3 w-3" /> Aceitar sugestão
+                          {isConfirmed ? <ShieldCheck className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}
+                          Aceitar: {suggested.name}
                         </Button>
                       )}
                       {!recebido && (
@@ -563,12 +618,41 @@ export default function DfeNoteDialog({ noteId, onClose, onImported }: Props) {
                         disabled={recebido}
                       />
                       <div className="mt-1 flex items-center gap-2 flex-wrap">
+                        {!recebido && it.mapped_product_id && note?.supplier_cnpj && conv.source === "none" && it.suggested_pack_size && it.suggested_pack_size > 0 && mappedProd?.unit && (it.suggested_pack_unit ?? "").trim().toUpperCase() === mappedProd.unit.trim().toUpperCase() && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-7 gap-1 text-xs"
+                            onClick={async () => {
+                              const { error } = await supabase.from("dfe_supplier_unit_conversion").upsert({
+                                supplier_cnpj: note.supplier_cnpj,
+                                product_id: it.mapped_product_id,
+                                purchase_unit: it.unit || null,
+                                pack_size: Number(it.suggested_pack_size),
+                                package_description: null,
+                                last_used_at: new Date().toISOString(),
+                              }, { onConflict: "supplier_cnpj,product_id" });
+                              if (error) return toast.error(error.message);
+                              toast.success("Conversão da NF aceita");
+                              if (note?.supplier_cnpj) reloadConversions(note.supplier_cnpj);
+                            }}
+                          >
+                            <Check className="h-3 w-3" />
+                            Aceitar sugestão NF: 1 {it.unit ?? "emb"} = {it.suggested_pack_size} {it.suggested_pack_unit}
+                          </Button>
+                        )}
                         {!recebido && it.mapped_product_id && note?.supplier_cnpj && (
                           <SupplierConversionPopover
                             supplierCnpj={note.supplier_cnpj}
                             productId={it.mapped_product_id}
                             productName={mappedProd?.name}
                             baseUnit={mappedProd?.unit ?? null}
+                            nfQuantity={Number(it.quantity)}
+                            nfUnitValue={Number(it.quantity) > 0 ? Number(it.total_value) / Number(it.quantity) : Number(it.unit_value)}
+                            nfPurchaseUnit={it.unit}
+                            suggestedPackSize={it.suggested_pack_size}
+                            suggestedPackUnit={it.suggested_pack_unit}
                             onSaved={() => note?.supplier_cnpj && reloadConversions(note.supplier_cnpj)}
                             trigger={
                               <Button
@@ -603,20 +687,25 @@ export default function DfeNoteDialog({ noteId, onClose, onImported }: Props) {
                       <Label className="text-xs">Unidade</Label>
                       <Input value={it.unit ?? ""} readOnly />
                     </div>
-                    <div>
-                      <Label className="text-xs">Quantidade (NF)</Label>
-                      <Input value={it.quantity} readOnly />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Valor unit. (NF)</Label>
-                      <Input value={it.unit_value} readOnly />
-                    </div>
+                     <div>
+                       <Label className="text-xs">Quantidade (NF)</Label>
+                       <Input value={Number(it.quantity).toLocaleString("pt-BR",{minimumFractionDigits:0,maximumFractionDigits:4})} readOnly />
+                     </div>
+                     <div>
+                       <Label className="text-xs">Valor unit. (NF)</Label>
+                       <Input
+                         value={`R$ ${(Number(it.quantity) > 0 ? Number(it.total_value) / Number(it.quantity) : Number(it.unit_value)).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}`}
+                         readOnly
+                       />
+                     </div>
                   </div>
-                  {conv.source !== "none" && it.mapped_product_id && (
-                    <p className="text-[11px] text-muted-foreground">
-                      → no estoque: {(Number(it.quantity) * conv.pack_size).toLocaleString("pt-BR")} {mappedProd?.unit ?? "un"}
-                      {" "}a R$ {(Number(it.unit_value) / (conv.pack_size || 1)).toLocaleString("pt-BR",{minimumFractionDigits:4})} cada
-                    </p>
+                  {conv.source !== "none" && it.mapped_product_id && conv.pack_size !== 1 && (
+                    <div className="rounded-md bg-primary/5 border border-primary/20 px-2 py-1.5 text-[11px] text-foreground">
+                      <span className="font-medium">Conversão {conv.source === "supplier" ? "do fornecedor" : "padrão do produto"}:</span>{" "}
+                      1 {it.unit ?? "emb"} = {conv.pack_size} {mappedProd?.unit ?? "un"} →{" "}
+                      entra no estoque <strong>{(Number(it.quantity) * conv.pack_size).toLocaleString("pt-BR")} {mappedProd?.unit ?? "un"}</strong>
+                      {" "}a <strong>R$ {(Number(it.unit_value) / (conv.pack_size || 1)).toLocaleString("pt-BR",{minimumFractionDigits:4})}</strong>/{mappedProd?.unit ?? "un"}
+                    </div>
                   )}
                   <div className="text-xs text-muted-foreground text-right">
                     Total: R$ {Number(it.total_value).toLocaleString("pt-BR",{minimumFractionDigits:2})}
@@ -624,9 +713,26 @@ export default function DfeNoteDialog({ noteId, onClose, onImported }: Props) {
                 </div>
               );
             })}
-            <div className="text-right text-sm font-semibold">
-              Total geral: R$ {totalGeral.toLocaleString("pt-BR",{minimumFractionDigits:2})}
-            </div>
+            {(() => {
+              const totalNf = Number(note?.total_amount ?? 0);
+              const outras = totalNf > 0 ? Math.max(0, totalNf - totalGeral) : 0;
+              return (
+                <div className="rounded-md border bg-muted/30 p-3 space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Soma dos itens</span>
+                    <span className="font-medium">R$ {totalGeral.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Outras despesas (frete/seguro/outros)</span>
+                    <span className="font-medium">R$ {outras.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+                  </div>
+                  <div className="flex justify-between border-t pt-1 mt-1">
+                    <span className="font-semibold">Total da NF</span>
+                    <span className="font-bold">R$ {totalNf.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+                  </div>
+                </div>
+              );
+            })()}
           </TabsContent>
 
           <TabsContent value="details" className="text-sm space-y-1 mt-3">
@@ -655,6 +761,21 @@ export default function DfeNoteDialog({ noteId, onClose, onImported }: Props) {
           <Button variant="secondary" onClick={onClose}>Fechar</Button>
         </DialogFooter>
       </DialogContent>
+      {quickCreateFor && (
+        <QuickCreateProductDialog
+          open={!!quickCreateFor}
+          onOpenChange={(v) => { if (!v) setQuickCreateFor(null); }}
+          defaultName={quickCreateFor.description}
+          defaultUnit={quickCreateFor.unit}
+          defaultPurchaseUnit={quickCreateFor.unit}
+          defaultPackSize={1}
+          onCreated={(p) => {
+            const item = quickCreateFor;
+            setQuickCreateFor(null);
+            if (item) void handleQuickCreated(item, p);
+          }}
+        />
+      )}
     </Dialog>
   );
 }

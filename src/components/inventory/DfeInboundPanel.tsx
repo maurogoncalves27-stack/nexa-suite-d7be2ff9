@@ -36,6 +36,15 @@ const STATUS_LABELS: Record<string, { label: string; cls: string }> = {
   unknown: { label: "Desconhecida", cls: "bg-muted text-muted-foreground border-border" },
 };
 
+// Extrai número/série da chave de acesso NFe (44 dígitos) como fallback
+// quando o payload da Focus não traz esses campos populados.
+function parseChave(chave: string | null | undefined): { serie: string | null; numero: string | null } {
+  if (!chave || chave.length !== 44 || !/^\d+$/.test(chave)) return { serie: null, numero: null };
+  const serie = chave.substring(22, 25).replace(/^0+/, "") || "0";
+  const numero = chave.substring(25, 34).replace(/^0+/, "") || "0";
+  return { serie, numero };
+}
+
 export default function DfeInboundPanel() {
   const [notes, setNotes] = useState<DfeNote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,6 +95,40 @@ export default function DfeInboundPanel() {
     load();
   };
 
+  const [reparsing, setReparsing] = useState(false);
+  const reparseConv = async () => {
+    setReparsing(true);
+    try {
+      // 1) IDs das notas ainda em rascunho
+      const { data: pendingNotes } = await supabase
+        .from("dfe_inbound_notes")
+        .select("id")
+        .in("status", ["ready", "awaiting_sefaz"])
+        .limit(500);
+      const noteIds = (pendingNotes ?? []).map((n: any) => n.id);
+      if (noteIds.length === 0) { toast.info("Nenhuma nota pendente para atualizar."); return; }
+      // 2) Dessas, quais ainda têm item sem trib_quantity (parsing antigo)
+      const { data: pendingItems } = await supabase
+        .from("dfe_inbound_items")
+        .select("note_id")
+        .is("trib_quantity", null)
+        .in("note_id", noteIds);
+      const ids = Array.from(new Set((pendingItems ?? []).map((r: any) => r.note_id)));
+      if (ids.length === 0) {
+        toast.info("Nenhuma nota pendente para atualizar.");
+        return;
+      }
+      const { error } = await supabase.functions.invoke("dfe-sync", { body: { reparse_note_id: ids } });
+      if (error) throw error;
+      toast.success(`${ids.length} nota(s) reprocessada(s) com a nova conversão.`);
+      load();
+    } catch (e: any) {
+      toast.error("Falha ao reprocessar: " + (e.message ?? e));
+    } finally {
+      setReparsing(false);
+    }
+  };
+
   const refuseQuick = async (note: DfeNote, action: "refuse" | "unknown") => {
     const motivo = prompt(action === "refuse"
       ? "Justificativa (15-255 caracteres) para RECUSAR:"
@@ -125,9 +168,13 @@ export default function DfeInboundPanel() {
                 Notas (DF-e) capturadas automaticamente da SEFAZ via Focus NFe ou upload manual de notas e boletos.
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button variant="outline" size="sm" asChild>
                 <Link to="/nf-arquivadas">Ver todas</Link>
+              </Button>
+              <Button variant="outline" size="sm" onClick={reparseConv} disabled={reparsing} className="gap-1">
+                {reparsing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                Atualizar conversões da NF
               </Button>
               <Button size="sm" onClick={syncNow} disabled={syncing} className="gap-1">
                 {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
@@ -150,7 +197,7 @@ export default function DfeInboundPanel() {
                 <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto_auto] gap-3">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline" className="text-[10px] uppercase">Série {n.serie ?? "—"}</Badge>
+                      <Badge variant="outline" className="text-[10px] uppercase">Série {n.serie ?? parseChave(n.chave_acesso).serie ?? "—"}</Badge>
                       <button
                         onClick={() => setNoteOpen(n.id)}
                         className="font-semibold text-foreground hover:underline text-left"
@@ -159,7 +206,7 @@ export default function DfeInboundPanel() {
                       </button>
                     </div>
                     <p className="text-xs text-muted-foreground">NF / Chave</p>
-                    <p className="text-sm font-medium">{n.numero ?? "—"}</p>
+                    <p className="text-sm font-medium">{n.numero ?? parseChave(n.chave_acesso).numero ?? "—"}</p>
                     <p className="font-mono text-[10px] text-muted-foreground break-all">{n.chave_acesso}</p>
                   </div>
                   <div className="text-sm">

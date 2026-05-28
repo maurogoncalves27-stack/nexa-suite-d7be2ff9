@@ -76,14 +76,63 @@ Responda APENAS JSON no formato:
     try { parsed = JSON.parse(content); } catch { parsed = {}; }
     const matches = parsed.matches ?? [];
 
+    // Fallback determinístico por token: garante sugestão quando IA retorna -1
+    // mas há overlap claro de palavras-chave (ex.: "CORACAO DA ALCATRA" → "BOMBOM ALCATRA").
+    const STOPWORDS = new Set([
+      "de","da","do","das","dos","e","com","sem","para","por","a","o","os","as","um","uma",
+      "kg","g","mg","un","unid","cx","pc","pct","l","ml","lt","fd","fardo","pacote","caixa",
+      "tipo","cor","ref","cod","nf","nfe",
+    ]);
+    const tokenize = (s: string): Set<string> => {
+      const norm = s.toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9\s]/g, " ");
+      const out = new Set<string>();
+      for (const t of norm.split(/\s+/)) {
+        if (t.length >= 4 && !STOPWORDS.has(t) && !/^\d+$/.test(t)) out.add(t);
+      }
+      return out;
+    };
+    const prodTokens = prods.map((p) => tokenize(p.name));
+
     let updated = 0;
+    const handledItems = new Set<number>();
     for (const m of matches) {
       const item = its[m.item_index];
       const prod = prods[m.product_index];
+      handledItems.add(m.item_index);
       if (!item || !prod) continue;
-      if (!(m.confidence >= 0.5)) continue;
+      // aceitar matches fracos (>=0.2) — UI distingue forte (>=0.7) × fraco
+      if (!(m.confidence >= 0.2)) continue;
       const { error } = await sb.from("dfe_inbound_items")
-        .update({ suggested_product_id: prod.id })
+        .update({
+          suggested_product_id: prod.id,
+          suggested_confidence: m.confidence,
+        })
+        .eq("id", item.id);
+      if (!error) updated++;
+    }
+
+    // Fallback keyword pra itens sem sugestão da IA
+    for (let i = 0; i < its.length; i++) {
+      if (handledItems.has(i)) continue;
+      const item = its[i];
+      const itTokens = tokenize(item.description);
+      if (itTokens.size === 0) continue;
+      let bestIdx = -1, bestScore = 0;
+      for (let p = 0; p < prods.length; p++) {
+        let s = 0;
+        for (const t of itTokens) if (prodTokens[p].has(t)) s++;
+        if (s > bestScore) { bestScore = s; bestIdx = p; }
+      }
+      if (bestIdx < 0 || bestScore < 1) continue;
+      const prod = prods[bestIdx];
+      const confidence = Math.min(0.35, 0.2 + bestScore * 0.05);
+      const { error } = await sb.from("dfe_inbound_items")
+        .update({
+          suggested_product_id: prod.id,
+          suggested_confidence: confidence,
+        })
         .eq("id", item.id);
       if (!error) updated++;
     }
