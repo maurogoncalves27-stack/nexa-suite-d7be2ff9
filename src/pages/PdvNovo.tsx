@@ -833,11 +833,11 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     { key: "cancelado",  label: "Cancelado",          statuses: ["cancelled", "dispute"],     headerCls: "bg-red-500 text-white border-red-600",
       accentCls: "border-l-destructive" },
   ];
-  // Quando "Aceitar automaticamente" está ligado, a coluna "Em análise" some — pedidos novos
-  // vão direto para "Em produção" e disparamos a confirmação no iFood em segundo plano.
-  const COLUMNS: KanbanCol[] = autoAcceptEnabled
-    ? ALL_COLUMNS.filter((c) => c.key !== "analise")
-    : ALL_COLUMNS;
+  // "Concluído" e "Cancelado" não aparecem no kanban — consulta-se pela aba "Histórico de pedidos".
+  // Quando "Aceitar automaticamente" está ligado, "Em análise" também some.
+  const COLUMNS: KanbanCol[] = ALL_COLUMNS.filter(
+    (c) => c.key !== "concluido" && c.key !== "cancelado" && (!autoAcceptEnabled || c.key !== "analise")
+  );
 
   // Auto-confirma pedidos em "placed" quando o toggle está ligado (notifica iFood se aplicável).
   const autoConfirmingRef = useRef<Set<string>>(new Set());
@@ -883,19 +883,9 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
   const isToday = (iso: string) => new Date(iso).getTime() >= startOfToday.getTime();
   const displayOrders = orders
-    .filter((o) =>
-      activeStatuses.includes(o.status)
-        ? true
-        : (["concluded", "cancelled", "dispute"] as PdvStatus[]).includes(o.status)
-            && isToday(o.opened_at)
-    )
-    // Ativos primeiro, concluídos/cancelados embaixo. Dentro de cada grupo, mais recente primeiro.
-    .sort((a, b) => {
-      const aActive = activeStatuses.includes(a.status) ? 0 : 1;
-      const bActive = activeStatuses.includes(b.status) ? 0 : 1;
-      if (aActive !== bActive) return aActive - bActive;
-      return new Date(b.opened_at).getTime() - new Date(a.opened_at).getTime();
-    });
+    .filter((o) => activeStatuses.includes(o.status))
+    .sort((a, b) => new Date(b.opened_at).getTime() - new Date(a.opened_at).getTime());
+
 
   // ===== Render ==========================================================
   return (
@@ -976,9 +966,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
             <div className="sticky top-0 z-20 rounded-lg border bg-card shadow-sm">
               <div className="grid gap-px bg-border rounded-lg overflow-hidden" style={{ gridTemplateColumns: `repeat(${COLUMNS.length}, minmax(0, 1fr))` }}>
                 {COLUMNS.map((c) => {
-                  const count = activeOrders.filter((o) => c.statuses.includes(o.status)).length
-                    + (c.key === "concluido" ? orders.filter((o) => o.status === "concluded").length : 0)
-                    + (c.key === "cancelado" ? orders.filter((o) => ["cancelled", "dispute"].includes(o.status)).length : 0);
+                  const count = activeOrders.filter((o) => c.statuses.includes(o.status)).length;
                   return (
                     <div key={c.key} className={`px-2 py-2 ${c.headerCls} flex items-center justify-between min-w-0`}>
                       <span className="text-[10px] md:text-xs font-semibold uppercase tracking-tight truncate">{c.label}</span>
