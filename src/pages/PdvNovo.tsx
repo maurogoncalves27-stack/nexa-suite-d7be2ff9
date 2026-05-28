@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -641,6 +641,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(AUTO_ACCEPT_KEY) === "1";
   });
+  const realtimeRefreshRef = useRef<number | null>(null);
   useEffect(() => {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(AUTO_ACCEPT_KEY, autoAcceptEnabled ? "1" : "0");
@@ -659,6 +660,43 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     }, 30_000);
     return () => clearInterval(t);
   }, [storeId, loadForStore]);
+  useEffect(() => {
+    if (!storeId || aggregatedStoreIds.length === 0) return;
+
+    const refreshVisibleData = (changedStoreId?: string | null) => {
+      if (changedStoreId && !aggregatedStoreIds.includes(changedStoreId)) return;
+      if (realtimeRefreshRef.current) {
+        window.clearTimeout(realtimeRefreshRef.current);
+      }
+      realtimeRefreshRef.current = window.setTimeout(() => {
+        void loadForStore(storeId);
+        if (historyDateStart && historyDateEnd) {
+          void loadHistoryOrders(storeId, historyDateStart, historyDateEnd);
+        }
+      }, 350);
+    };
+
+    const channel = supabase
+      .channel(`pdv-orders-live:${storeId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "pdv_orders" },
+        (payload) => {
+          const nextStoreId = (payload.new as { store_id?: string } | null)?.store_id;
+          const prevStoreId = (payload.old as { store_id?: string } | null)?.store_id;
+          refreshVisibleData(nextStoreId ?? prevStoreId ?? null);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (realtimeRefreshRef.current) {
+        window.clearTimeout(realtimeRefreshRef.current);
+        realtimeRefreshRef.current = null;
+      }
+      void supabase.removeChannel(channel);
+    };
+  }, [aggregatedStoreIds, historyDateEnd, historyDateStart, loadForStore, loadHistoryOrders, storeId]);
 
   // Carrega itens reais do pedido ao abrir o checklist
   useEffect(() => {
@@ -711,7 +749,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     { key: "cancelado",  label: "Cancelado",          statuses: ["cancelled", "dispute"],     headerCls: "bg-red-500 text-white border-red-600",
       accentCls: "border-l-destructive" },
   ];
-  const COLUMNS: KanbanCol[] = autoAcceptEnabled ? ALL_COLUMNS.filter((c) => c.key !== "analise") : ALL_COLUMNS;
+  const COLUMNS: KanbanCol[] = ALL_COLUMNS;
 
 
   const ordersByColumn = useMemo(() => {
