@@ -98,18 +98,6 @@ export default function MigrateNexa() {
       <div>
         <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
           <Database className="h-6 w-6 md:h-7 md:w-7 text-primary" />
-          Migrar dados para o NEXA
-        </h1>
-        <p className="text-muted-foreground">
-          Copia o conteúdo deste projeto para o projeto NEXA em lotes de {BATCH_SIZE} tabelas (para não estourar timeout). Pula{" "}
-          <code>pdv_*</code>, <code>pos_*</code>, <code>saipos_*</code> e tabelas internas.
-        </p>
-      </div>
-
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-          <Database className="h-6 w-6 md:h-7 md:w-7 text-primary" />
           Importar dados do NEXA original
         </h1>
         <p className="text-muted-foreground">
