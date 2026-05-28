@@ -65,17 +65,22 @@ async function fetchAll(client: SupabaseClient, table: string) {
   return all;
 }
 
+// Conflict keys customizados por tabela (quando não houver `id`).
+const CONFLICT_KEYS: Record<string, string> = {
+  user_roles: "user_id,role",
+};
+
 async function upsertChunked(client: SupabaseClient, table: string, rows: any[]) {
   if (rows.length === 0) return { ok: 0, errors: [] as any[] };
   const chunkSize = 500;
   let ok = 0;
   const errors: any[] = [];
   const hasId = rows[0] && Object.prototype.hasOwnProperty.call(rows[0], "id");
+  const conflictKey = CONFLICT_KEYS[table] ?? (hasId ? "id" : null);
   const stripCols = new Set<string>();
 
   for (let i = 0; i < rows.length; i += chunkSize) {
     let chunk = rows.slice(i, i + chunkSize);
-    // Aplica strips conhecidos (colunas geradas detectadas em chunks anteriores)
     if (stripCols.size > 0) {
       chunk = chunk.map((r) => {
         const c = { ...r };
@@ -85,12 +90,11 @@ async function upsertChunked(client: SupabaseClient, table: string, rows: any[])
     }
     let attempt = 0;
     while (attempt < 5) {
-      const q = hasId
-        ? client.from(table).upsert(chunk, { onConflict: "id", ignoreDuplicates: false })
+      const q = conflictKey
+        ? client.from(table).upsert(chunk, { onConflict: conflictKey, ignoreDuplicates: true })
         : client.from(table).insert(chunk);
       const { error } = await q;
       if (!error) { ok += chunk.length; break; }
-      // Detecta coluna gerada e tira do payload
       const m = error.message.match(/non-DEFAULT value into column "([^"]+)"/);
       if (m && !stripCols.has(m[1])) {
         stripCols.add(m[1]);
@@ -104,6 +108,7 @@ async function upsertChunked(client: SupabaseClient, table: string, rows: any[])
   }
   return { ok, errors, stripped: [...stripCols] };
 }
+
 
 
 
@@ -181,11 +186,81 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Migra auth.users da origem para o destino, preservando o UUID.
+    // Senhas NÃO podem ser exportadas via API: os usuários precisarão usar "esqueci a senha".
+    if (mode === "auth") {
+      const result = {
+        scanned: 0,
+        created: 0,
+        already: 0,
+        errors: [] as { email?: string; id?: string; message: string }[],
+      };
+      let page = 1;
+      const perPage = 200;
+      // Cache de e-mails já existentes no destino
+      const existing = new Set<string>();
+      const existingIds = new Set<string>();
+      {
+        let p = 1;
+        while (true) {
+          const { data, error } = await dst.auth.admin.listUsers({ page: p, perPage });
+          if (error) break;
+          (data.users ?? []).forEach((u) => {
+            if (u.email) existing.add(u.email.toLowerCase());
+            existingIds.add(u.id);
+          });
+          if (!data.users || data.users.length < perPage) break;
+          p++;
+        }
+      }
+      while (true) {
+        const { data, error } = await src.auth.admin.listUsers({ page, perPage });
+        if (error) {
+          result.errors.push({ message: `listUsers page ${page}: ${error.message}` });
+          break;
+        }
+        const users = data.users ?? [];
+        if (users.length === 0) break;
+        for (const u of users) {
+          result.scanned++;
+          const email = (u.email ?? "").toLowerCase();
+          if (existingIds.has(u.id) || (email && existing.has(email))) {
+            result.already++;
+            continue;
+          }
+          if (dryRun) continue;
+          // createUser aceita `id` (passthrough p/ gotrue) — preserva UUID p/ casar com profiles/employees.
+          const payload: any = {
+            id: u.id,
+            email: u.email ?? undefined,
+            phone: u.phone ?? undefined,
+            email_confirm: true,
+            user_metadata: u.user_metadata ?? {},
+            app_metadata: u.app_metadata ?? {},
+          };
+          const { error: cErr } = await dst.auth.admin.createUser(payload);
+          if (cErr) {
+            result.errors.push({ id: u.id, email: u.email ?? undefined, message: cErr.message });
+          } else {
+            result.created++;
+            if (u.email) existing.add(email);
+            existingIds.add(u.id);
+          }
+        }
+        if (users.length < perPage) break;
+        page++;
+      }
+      return new Response(JSON.stringify({ ok: true, mode, ...result }, null, 2), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (mode !== "full" && mode !== "tables") {
       return new Response(JSON.stringify({ error: `mode inválido: ${mode}` }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     const slice = count > 0 ? targetTables.slice(startIdx, startIdx + count) : targetTables.slice(startIdx);
     const log: any = { mode, dryRun, startIdx, count: slice.length, totalTables: targetTables.length, results: {} as Record<string, any> };
