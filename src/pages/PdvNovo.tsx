@@ -1157,6 +1157,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                             }`}
                           >
                             {active && (
+                              <div className="flex flex-col items-center gap-1.5 w-full">
                                 <button
                                   type="button"
                                   onClick={() => setSelectedOrder(o)}
@@ -1174,7 +1175,6 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                                   )}
                                 </button>
 
-                                </button>
                                 {(() => {
                                   const action: { label: string; nextTo?: PdvStatus; customAction?: "pack" } | null =
                                     c.key === "producao"
