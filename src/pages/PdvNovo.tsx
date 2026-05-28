@@ -698,6 +698,17 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     return `${prefix} - ${num}`;
   };
 
+  // Marca (AQUELA PARMÊ / ESTROGONOFE / BOX CAIPIRA) derivada do nome da loja virtual.
+  // Paleta fixa conforme design memory.
+  const brandFromOrder = (o: Order): { label: string; className: string } | null => {
+    const sName = (stores.find((s) => s.id === o.store_id)?.name ?? "").toUpperCase();
+    if (sName.includes("PARM")) return { label: "AQUELA PARMÊ", className: "bg-brand-parme text-brand-parme-foreground border-transparent" };
+    if (sName.includes("ESTROGONOFE")) return { label: "ESTROGONOFE", className: "bg-brand-estrogonofe text-brand-estrogonofe-foreground border-transparent" };
+    if (sName.includes("BOX")) return { label: "BOX CAIPIRA", className: "bg-brand-box text-brand-box-foreground border-transparent" };
+    return null;
+  };
+
+
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const AUTO_ACCEPT_KEY = "pdvNovo:autoAcceptEnabled";
@@ -1142,10 +1153,15 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                       title="Ver detalhes do pedido"
                     >
                       <span className="font-extrabold text-base">{num}</span>
+                      {(() => {
+                        const b = brandFromOrder(o);
+                        return b ? <Badge className={`text-[10px] ${b.className}`}>{b.label}</Badge> : null;
+                      })()}
                       <span className="text-xs font-semibold uppercase tracking-wide">{label}</span>
                     </button>
                   );
                 }
+
 
                 return (
                   <div
@@ -1180,6 +1196,13 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                                     </span>
                                   )}
                                 </button>
+
+                                {(() => {
+                                  const b = brandFromOrder(o);
+                                  return b ? <Badge className={`text-[10px] ${b.className}`}>{b.label}</Badge> : null;
+                                })()}
+
+
 
                                 {(() => {
                                   const action: { label: string; nextTo?: PdvStatus; customAction?: "pack" } | null =
@@ -1496,6 +1519,10 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                       {meta.label}
                     </span>
                     <Badge variant="outline" className="text-[10px]">{channelName(selectedOrder.channel_id)}</Badge>
+                    {(() => {
+                      const b = brandFromOrder(selectedOrder);
+                      return b ? <Badge className={`text-[10px] ${b.className}`}>{b.label}</Badge> : null;
+                    })()}
                   </DialogDescription>
                 </DialogHeader>
 

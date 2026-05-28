@@ -62,6 +62,14 @@
     --portal-parceiro: 265 65% 52%;           /* roxo */
     --portal-parceiro-foreground: 0 0% 100%;
 
+    /* Brand colors (fixed palette per design memory) */
+    --brand-parme: 0 71% 42%;            /* vermelho AQUELA PARMÊ */
+    --brand-parme-foreground: 0 0% 100%;
+    --brand-estrogonofe: 24 45% 32%;     /* marrom ESTROGONOFE */
+    --brand-estrogonofe-foreground: 0 0% 100%;
+    --brand-box: 24 90% 50%;             /* laranja BOX CAIPIRA */
+    --brand-box-foreground: 0 0% 100%;
+
     --radius: 0.6rem;
 
     /* Gradiente NEXA: azul → teal (espelha a logo) */
