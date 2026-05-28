@@ -646,7 +646,9 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
       : raw.includes("BALC")
       ? "BALCÃO"
       : raw || "PEDIDO";
-    const num = o.external_display_id ?? o.order_number ?? (o.id ? o.id.slice(0, 4).toUpperCase() : "—");
+    const fallback = o.id ? String(parseInt(o.id.replace(/-/g, "").slice(0, 8), 16) % 10000).padStart(4, "0") : "----";
+    const num = o.external_display_id ?? o.order_number ?? fallback;
+
     return `${prefix} - ${num}`;
   };
 
