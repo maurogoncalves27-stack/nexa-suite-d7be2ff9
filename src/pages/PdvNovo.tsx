@@ -381,9 +381,6 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
       setHistoryOrders((data ?? []) as Order[]);
       setHistoryLoading(false);
     },
-    [computeAggregatedIds]
-  );
-    [computeAggregatedIds]
   );
 
   useEffect(() => {
@@ -395,8 +392,8 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   }, [storeId, loadForStore]);
 
   useEffect(() => {
-    if (storeId && historyDate) void loadHistoryOrders(storeId, historyDate);
-  }, [storeId, historyDate, loadHistoryOrders]);
+    if (storeId && historyDateStart && historyDateEnd) void loadHistoryOrders(storeId, historyDateStart, historyDateEnd);
+  }, [storeId, historyDateStart, historyDateEnd, loadHistoryOrders]);
 
   // ===== Caixa ===========================================================
   const handleOpenCash = async () => {
