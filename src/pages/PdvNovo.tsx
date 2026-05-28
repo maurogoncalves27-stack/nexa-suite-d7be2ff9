@@ -1155,7 +1155,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
 
                                 </button>
                                 {(() => {
-                                  const action =
+                                  const action: { label: string; nextTo?: PdvStatus; customAction?: "pack" } | null =
                                     c.key === "producao"
                                       ? (o.status === "confirmed"
                                           ? { label: "Iniciar preparo", nextTo: "preparing" as PdvStatus }
