@@ -209,8 +209,22 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   // IDs agregados: quando a loja selecionada é uma física real (não virtual),
   // inclui ela própria + todas as lojas virtuais filhas (marcas Estroga, Box),
   // mas NUNCA inclui a "iFood Homologação" automaticamente.
+  // Quando storeId === "ALL", inclui TODAS as lojas físicas + filhas.
   const aggregatedStoreIds = useMemo(() => {
     if (!storeId) return [] as string[];
+    if (storeId === "ALL") {
+      const realStores = stores.filter(
+        (s) => s.is_virtual === false && !/escrit|fabri|estoque/i.test(s.name ?? "")
+      );
+      const allIds = new Set<string>();
+      realStores.forEach((rs) => {
+        allIds.add(rs.id);
+        stores
+          .filter((s) => s.is_virtual && s.parent_store_id === rs.id && !/homolog/i.test(s.name ?? ""))
+          .forEach((c) => allIds.add(c.id));
+      });
+      return Array.from(allIds);
+    }
     const sel = stores.find((s) => s.id === storeId);
     if (!sel) return [storeId];
     if (sel.is_virtual) return [sel.id]; // virtual selecionada diretamente (ex.: homolog)
@@ -273,8 +287,22 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   );
 
   // Calcula IDs agregados a partir de um storeId raiz (loja física = inclui marcas virtuais filhas)
+  // "ALL" = todas as lojas físicas + suas filhas virtuais
   const computeAggregatedIds = useCallback(
     (sid: string): string[] => {
+      if (sid === "ALL") {
+        const realStores = stores.filter(
+          (s) => s.is_virtual === false && !/escrit|fabri|estoque/i.test(s.name ?? "")
+        );
+        const allIds = new Set<string>();
+        realStores.forEach((rs) => {
+          allIds.add(rs.id);
+          stores
+            .filter((s) => s.is_virtual && s.parent_store_id === rs.id && !/homolog/i.test(s.name ?? ""))
+            .forEach((c) => allIds.add(c.id));
+        });
+        return Array.from(allIds);
+      }
       const sel = stores.find((s) => s.id === sid);
       if (!sel) return [sid];
       if (sel.is_virtual) return [sel.id];
@@ -286,22 +314,26 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     [stores]
   );
 
+
   const loadForStore = useCallback(
     async (sid: string) => {
       setLoading(true);
       const ids = computeAggregatedIds(sid);
+      const isAll = sid === "ALL";
       const [chRes, sessRes, ordRes] = await Promise.all([
         supabase
           .from("pdv_channels")
           .select("id,store_id,code,name,is_active,sort_order")
           .in("store_id", ids)
           .order("sort_order"),
-        supabase
-          .from("pdv_cash_sessions")
-          .select("id,store_id,opened_by,opened_at,opening_amount,closed_at,closing_amount,status")
-          .eq("store_id", sid)
-          .eq("status", "open")
-          .maybeSingle(),
+        isAll
+          ? Promise.resolve({ data: null })
+          : supabase
+              .from("pdv_cash_sessions")
+              .select("id,store_id,opened_by,opened_at,opening_amount,closed_at,closing_amount,status")
+              .eq("store_id", sid)
+              .eq("status", "open")
+              .maybeSingle(),
         supabase
           .from("pdv_orders")
           .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by")
@@ -310,17 +342,21 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
           .limit(150),
       ]);
       setChannels(chRes.data ?? []);
-      let sess = (sessRes.data ?? null) as CashSession | null;
-      // Auto-abre sessão "virtual" (sem dinheiro físico) se não houver — vendas só por totem/cartão/Pix
-      if (!sess && user) {
-        const { data: created } = await supabase
-          .from("pdv_cash_sessions")
-          .insert({ store_id: sid, opened_by: user.id, opening_amount: 0, status: "open" })
-          .select("id,store_id,opened_by,opened_at,opening_amount,closed_at,closing_amount,status")
-          .maybeSingle();
-        if (created) sess = created as CashSession;
+      if (isAll) {
+        setSession(null);
+      } else {
+        let sess = (sessRes.data ?? null) as CashSession | null;
+        // Auto-abre sessão "virtual" (sem dinheiro físico) se não houver — vendas só por totem/cartão/Pix
+        if (!sess && user) {
+          const { data: created } = await supabase
+            .from("pdv_cash_sessions")
+            .insert({ store_id: sid, opened_by: user.id, opening_amount: 0, status: "open" })
+            .select("id,store_id,opened_by,opened_at,opening_amount,closed_at,closing_amount,status")
+            .maybeSingle();
+          if (created) sess = created as CashSession;
+        }
+        setSession(sess);
       }
-      setSession(sess);
       setOrders((ordRes.data ?? []) as Order[]);
       setLoading(false);
     },
@@ -749,6 +785,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                   <SelectValue placeholder="Loja / canal" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="ALL">Ver todas as lojas</SelectItem>
                   {stores
                     .filter((s) => s.is_virtual === false && !/escrit|fabri|estoque/i.test(s.name))
                     .map((s) => (
