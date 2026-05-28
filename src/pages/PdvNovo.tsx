@@ -201,8 +201,9 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   const [readyItems, setReadyItems] = useState<Array<{ id: string; name: string; quantity: number; notes: string | null; complements: any }> | null>(null);
   const [loadingReadyItems, setLoadingReadyItems] = useState(false);
 
-  // Histórico de pedidos — filtro por data
-  const [historyDate, setHistoryDate] = useState<Date | undefined>(new Date());
+  // Histórico de pedidos — filtro por período (data inicial e final)
+  const [historyDateStart, setHistoryDateStart] = useState<Date | undefined>(new Date());
+  const [historyDateEnd, setHistoryDateEnd] = useState<Date | undefined>(new Date());
   const [historyOrders, setHistoryOrders] = useState<Order[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
@@ -362,14 +363,13 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     },
     [user, computeAggregatedIds]
   );
-
   const loadHistoryOrders = useCallback(
-    async (sid: string, date: Date) => {
+    async (sid: string, startDate: Date, endDate: Date) => {
       setHistoryLoading(true);
       const ids = computeAggregatedIds(sid);
-      const start = new Date(date);
+      const start = new Date(startDate);
       start.setHours(0, 0, 0, 0);
-      const end = new Date(date);
+      const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
       const { data } = await supabase
         .from("pdv_orders")
@@ -393,8 +393,8 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   }, [storeId, loadForStore]);
 
   useEffect(() => {
-    if (storeId && historyDate) void loadHistoryOrders(storeId, historyDate);
-  }, [storeId, historyDate, loadHistoryOrders]);
+    if (storeId && historyDateStart && historyDateEnd) void loadHistoryOrders(storeId, historyDateStart, historyDateEnd);
+  }, [storeId, historyDateStart, historyDateEnd, loadHistoryOrders]);
 
   // ===== Caixa ===========================================================
   const handleOpenCash = async () => {
@@ -951,36 +951,68 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                 <div>
                   <CardTitle className="text-base">Histórico de pedidos</CardTitle>
                   <CardDescription className="text-xs">
-                    Pedidos do dia selecionado.
+                    Pedidos no período selecionado.
                   </CardDescription>
                 </div>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-[180px] justify-start text-left font-normal",
-                        !historyDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {historyDate ? (
-                        format(historyDate, "dd/MM/yyyy", { locale: ptBR })
-                      ) : (
-                        <span>Selecionar data</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="end">
-                    <Calendar
-                      mode="single"
-                      selected={historyDate}
-                      onSelect={setHistoryDate}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
+                <div className="flex items-center gap-2">
+                  {/* Data inicial */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-[140px] justify-start text-left font-normal text-xs",
+                          !historyDateStart && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
+                        {historyDateStart ? (
+                          format(historyDateStart, "dd/MM/yyyy", { locale: ptBR })
+                        ) : (
+                          <span>Data inicial</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                      <Calendar
+                        mode="single"
+                        selected={historyDateStart}
+                        onSelect={setHistoryDateStart}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <span className="text-muted-foreground text-xs">até</span>
+                  {/* Data final */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-[140px] justify-start text-left font-normal text-xs",
+                          !historyDateEnd && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
+                        {historyDateEnd ? (
+                          format(historyDateEnd, "dd/MM/yyyy", { locale: ptBR })
+                        ) : (
+                          <span>Data final</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                      <Calendar
+                        mode="single"
+                        selected={historyDateEnd}
+                        onSelect={setHistoryDateEnd}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -992,7 +1024,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                 <OrdersList
                   orders={historyOrders}
                   channelName={channelName}
-                  emptyMsg="Nenhum pedido para esta data."
+                  emptyMsg="Nenhum pedido no período selecionado."
                   onSelect={setSelectedOrder}
                 />
               )}
