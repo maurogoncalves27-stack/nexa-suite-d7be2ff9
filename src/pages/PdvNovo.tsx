@@ -199,6 +199,8 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   const [ifoodCancelReasons, setIfoodCancelReasons] = useState<{ cancelCodeId: string; description: string }[] | null>(null);
   const [loadingCancelReasons, setLoadingCancelReasons] = useState(false);
   const [readyChecklistOrder, setReadyChecklistOrder] = useState<Order | null>(null);
+  const [checklistMode, setChecklistMode] = useState<"ready" | "pack">("ready");
+
   const [readyChecks, setReadyChecks] = useState<Record<string, boolean>>({});
   const [checkedByName, setCheckedByName] = useState("");
   const [readyItems, setReadyItems] = useState<Array<{ id: string; name: string; quantity: number; notes: string | null; complements: any }> | null>(null);
@@ -855,7 +857,8 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
       statuses: inProductionStatuses,
       match: isInProduction,
       headerCls: "bg-orange-500 text-white border-orange-600",
-      accentCls: "border-l-orange-500",  nextLabel: "Embalar", customAction: "pack", nextBtnCls: "bg-purple-600 hover:bg-purple-700 text-white" },
+      accentCls: "border-l-orange-500",  nextLabel: "Pronto p/ embalar", customAction: "pack", nextBtnCls: "bg-purple-600 hover:bg-purple-700 text-white" },
+
     { key: "embalado",   label: "Pedido embalado",
       statuses: ["preparing"],
       match: isPacked,
@@ -1112,15 +1115,20 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                                     disabled={busy}
                                     onClick={() => {
                                       if (c.customAction === "pack") {
-                                        packOrder(o);
+                                        setReadyChecks({});
+                                        setCheckedByName("");
+                                        setChecklistMode("pack");
+                                        setReadyChecklistOrder(o);
                                       } else if (c.nextTo === "ready") {
                                         setReadyChecks({});
                                         setCheckedByName("");
+                                        setChecklistMode("ready");
                                         setReadyChecklistOrder(o);
                                       } else if (c.nextTo) {
                                         advanceStatus(o, c.nextTo);
                                       }
                                     }}
+
                                   >
                                     {c.nextTo === "confirmed" ? "Aceitar" : c.nextLabel}
                                     <ArrowRight className="h-3.5 w-3.5 ml-1" />
@@ -1516,19 +1524,19 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
         </DialogContent>
       </Dialog>
 
-
-      {/* ===== Dialog: checklist interno antes de marcar pronto p/ retirada ===== */}
       <Dialog open={!!readyChecklistOrder} onOpenChange={(v) => !v && setReadyChecklistOrder(null)}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Conferência do pedido</DialogTitle>
+            <DialogTitle>{checklistMode === "pack" ? "Conferência para embalar" : "Conferência do pedido"}</DialogTitle>
+
             <DialogDescription>
-              Confira cada item antes de marcar como pronto. Este checklist é apenas para controle interno.
+              Confira cada item antes de marcar como {checklistMode === "pack" ? "embalado" : "pronto"}. Este checklist é apenas para controle interno.
             </DialogDescription>
           </DialogHeader>
           {readyChecklistOrder && (
             <div className="space-y-3">
               <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+
                 <div className="font-semibold">
                   Pedido {orderLabel(readyChecklistOrder)}
 
@@ -1712,19 +1720,24 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                 }
                 return false;
               })()}
-
               onClick={async () => {
                 const o = readyChecklistOrder;
                 if (!o) return;
-                console.log("[PDV] Pedido conferido por:", checkedByName.trim(), "order:", o.id);
+                console.log("[PDV] Pedido conferido por:", checkedByName.trim(), "order:", o.id, "mode:", checklistMode);
+                const mode = checklistMode;
                 setReadyChecklistOrder(null);
                 setCheckedByName("");
-                await advanceStatus(o, "ready");
+                if (mode === "pack") {
+                  await packOrder(o);
+                } else {
+                  await advanceStatus(o, "ready");
+                }
               }}
             >
               {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Confirmar e marcar pronto
+              {checklistMode === "pack" ? "Confirmar e embalar" : "Confirmar e marcar pronto"}
             </Button>
+
           </DialogFooter>
         </DialogContent>
       </Dialog>
