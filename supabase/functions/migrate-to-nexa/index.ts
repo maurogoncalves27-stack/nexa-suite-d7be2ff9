@@ -65,17 +65,22 @@ async function fetchAll(client: SupabaseClient, table: string) {
   return all;
 }
 
+// Conflict keys customizados por tabela (quando não houver `id`).
+const CONFLICT_KEYS: Record<string, string> = {
+  user_roles: "user_id,role",
+};
+
 async function upsertChunked(client: SupabaseClient, table: string, rows: any[]) {
   if (rows.length === 0) return { ok: 0, errors: [] as any[] };
   const chunkSize = 500;
   let ok = 0;
   const errors: any[] = [];
   const hasId = rows[0] && Object.prototype.hasOwnProperty.call(rows[0], "id");
+  const conflictKey = CONFLICT_KEYS[table] ?? (hasId ? "id" : null);
   const stripCols = new Set<string>();
 
   for (let i = 0; i < rows.length; i += chunkSize) {
     let chunk = rows.slice(i, i + chunkSize);
-    // Aplica strips conhecidos (colunas geradas detectadas em chunks anteriores)
     if (stripCols.size > 0) {
       chunk = chunk.map((r) => {
         const c = { ...r };
@@ -85,12 +90,11 @@ async function upsertChunked(client: SupabaseClient, table: string, rows: any[])
     }
     let attempt = 0;
     while (attempt < 5) {
-      const q = hasId
-        ? client.from(table).upsert(chunk, { onConflict: "id", ignoreDuplicates: false })
+      const q = conflictKey
+        ? client.from(table).upsert(chunk, { onConflict: conflictKey, ignoreDuplicates: true })
         : client.from(table).insert(chunk);
       const { error } = await q;
       if (!error) { ok += chunk.length; break; }
-      // Detecta coluna gerada e tira do payload
       const m = error.message.match(/non-DEFAULT value into column "([^"]+)"/);
       if (m && !stripCols.has(m[1])) {
         stripCols.add(m[1]);
@@ -104,6 +108,7 @@ async function upsertChunked(client: SupabaseClient, table: string, rows: any[])
   }
   return { ok, errors, stripped: [...stripCols] };
 }
+
 
 
 
