@@ -1742,7 +1742,7 @@ function OrdersList({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-sm truncate">
-                    {o.external_display_id ?? o.order_number ?? o.id.slice(0, 6)}
+                    {o.external_display_id ?? o.order_number ?? "—"}
                   </span>
                   <Badge variant="outline" className="text-[10px] py-0">
                     {channelName(o.channel_id)}
