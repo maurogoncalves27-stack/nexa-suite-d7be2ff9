@@ -37,6 +37,13 @@ function eventToStatus(code: string): string | null {
   }
 }
 
+function isKeepAlivePayload(body: unknown): boolean {
+  if (Array.isArray(body)) {
+    return body.length > 0 && body.every((item) => item && typeof item === "object" && (item as { code?: string }).code === "KEEPALIVE");
+  }
+  return !!body && typeof body === "object" && (body as { code?: string }).code === "KEEPALIVE";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   // Healthcheck do iFood ("Testar conexão" no portal) — só precisa responder 200
@@ -98,6 +105,13 @@ Deno.serve(async (req) => {
   } catch {
     return new Response(JSON.stringify({ ok: false, error: "invalid json" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  if (isKeepAlivePayload(body)) {
+    return new Response(JSON.stringify({ ok: true, presence: "accepted" }), {
+      status: 202,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
