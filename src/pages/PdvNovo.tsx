@@ -907,9 +907,10 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
       accentCls: "border-l-destructive" },
   ];
   // "Em análise" some quando "Aceitar automaticamente" está ligado.
-  // "Concluído" e "Cancelado" permanecem na operação para o dia atual (clicáveis para reimprimir).
+  // "Concluído" e "Cancelado" ficam ocultos como colunas; os pedidos finalizados/cancelados
+  // do dia atual aparecem no final da coluna "Em entrega" (clicáveis para reimprimir).
   const COLUMNS: KanbanCol[] = ALL_COLUMNS.filter(
-    (c) => !autoAcceptEnabled || c.key !== "analise"
+    (c) => c.key !== "concluido" && c.key !== "cancelado" && (!autoAcceptEnabled || c.key !== "analise")
   );
 
   // Helper: pertence à coluna?
@@ -949,13 +950,25 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
 
 
   const ordersByColumn = useMemo(() => {
+    const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+    const isFromToday = (iso: string) => new Date(iso).getTime() >= startOfDay.getTime();
     const m: Record<string, Order[]> = {};
     for (const col of COLUMNS) {
       m[col.key] = orders.filter((o) => matchesCol(col, o));
     }
+    // Anexa finalizados/cancelados do dia ao final da última coluna visível,
+    // para manter visibilidade (reimpressão) sem expor as colunas dedicadas.
+    const lastCol = COLUMNS[COLUMNS.length - 1];
+    if (lastCol) {
+      const finalized = orders
+        .filter((o) => (o.status === "concluded" || o.status === "cancelled" || o.status === "dispute") && isFromToday(o.opened_at))
+        .sort((a, b) => new Date(b.opened_at).getTime() - new Date(a.opened_at).getTime());
+      m[lastCol.key] = [...m[lastCol.key], ...finalized];
+    }
     return m;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orders]);
+
 
   const minutesSince = (iso: string) => Math.floor((now - new Date(iso).getTime()) / 60000);
   const fmtElapsed = (iso: string) => {
