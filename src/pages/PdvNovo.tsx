@@ -1519,6 +1519,10 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                       {meta.label}
                     </span>
                     <Badge variant="outline" className="text-[10px]">{channelName(selectedOrder.channel_id)}</Badge>
+                    {(() => {
+                      const b = brandFromOrder(selectedOrder);
+                      return b ? <Badge className={`text-[10px] ${b.className}`}>{b.label}</Badge> : null;
+                    })()}
                   </DialogDescription>
                 </DialogHeader>
 
