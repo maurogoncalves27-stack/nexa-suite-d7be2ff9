@@ -634,6 +634,22 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   };
 
   const channelName = (id: string) => channels.find((c) => c.id === id)?.name ?? "—";
+  const orderLabel = (o: Order) => {
+    const ch = channels.find((c) => c.id === o.channel_id);
+    const raw = (ch?.name ?? "").toUpperCase();
+    const prefix = raw.includes("IFOOD") || raw.includes("I-FOOD") || raw.includes("IFD")
+      ? "IFOOD"
+      : raw.includes("TOTEM")
+      ? "TOTEM"
+      : raw.includes("SAL")
+      ? "SALÃO"
+      : raw.includes("BALC")
+      ? "BALCÃO"
+      : raw || "PEDIDO";
+    const num = o.external_display_id ?? o.order_number ?? "—";
+    return `${prefix} - ${num}`;
+  };
+
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const AUTO_ACCEPT_KEY = "pdvNovo:autoAcceptEnabled";
