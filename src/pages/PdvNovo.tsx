@@ -272,14 +272,29 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     [stores, storeId]
   );
 
+  // Calcula IDs agregados a partir de um storeId raiz (loja física = inclui marcas virtuais filhas)
+  const computeAggregatedIds = useCallback(
+    (sid: string): string[] => {
+      const sel = stores.find((s) => s.id === sid);
+      if (!sel) return [sid];
+      if (sel.is_virtual) return [sel.id];
+      const children = stores.filter(
+        (s) => s.is_virtual && s.parent_store_id === sel.id && !/homolog/i.test(s.name ?? "")
+      );
+      return [sel.id, ...children.map((c) => c.id)];
+    },
+    [stores]
+  );
+
   const loadForStore = useCallback(
     async (sid: string) => {
       setLoading(true);
+      const ids = computeAggregatedIds(sid);
       const [chRes, sessRes, ordRes] = await Promise.all([
         supabase
           .from("pdv_channels")
           .select("id,store_id,code,name,is_active,sort_order")
-          .eq("store_id", sid)
+          .in("store_id", ids)
           .order("sort_order"),
         supabase
           .from("pdv_cash_sessions")
@@ -290,9 +305,9 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
         supabase
           .from("pdv_orders")
           .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by")
-          .eq("store_id", sid)
+          .in("store_id", ids)
           .order("opened_at", { ascending: false })
-          .limit(50),
+          .limit(150),
       ]);
       setChannels(chRes.data ?? []);
       let sess = (sessRes.data ?? null) as CashSession | null;
@@ -309,12 +324,13 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
       setOrders((ordRes.data ?? []) as Order[]);
       setLoading(false);
     },
-    [user]
+    [user, computeAggregatedIds]
   );
 
   const loadHistoryOrders = useCallback(
     async (sid: string, date: Date) => {
       setHistoryLoading(true);
+      const ids = computeAggregatedIds(sid);
       const start = new Date(date);
       start.setHours(0, 0, 0, 0);
       const end = new Date(date);
@@ -322,14 +338,14 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
       const { data } = await supabase
         .from("pdv_orders")
         .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by")
-        .eq("store_id", sid)
+        .in("store_id", ids)
         .gte("opened_at", start.toISOString())
         .lte("opened_at", end.toISOString())
         .order("opened_at", { ascending: false });
       setHistoryOrders((data ?? []) as Order[]);
       setHistoryLoading(false);
     },
-    []
+    [computeAggregatedIds]
   );
 
   useEffect(() => {
