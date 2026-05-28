@@ -839,6 +839,20 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     ? ALL_COLUMNS.filter((c) => c.key !== "analise")
     : ALL_COLUMNS;
 
+  // Auto-confirma pedidos em "placed" quando o toggle está ligado (notifica iFood se aplicável).
+  const autoConfirmingRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!autoAcceptEnabled) return;
+    const placedOrders = orders.filter((o) => o.status === "placed");
+    placedOrders.forEach((o) => {
+      if (autoConfirmingRef.current.has(o.id)) return;
+      autoConfirmingRef.current.add(o.id);
+      void advanceStatus(o, "confirmed").catch(() => {
+        autoConfirmingRef.current.delete(o.id);
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders, autoAcceptEnabled]);
 
 
   const ordersByColumn = useMemo(() => {
