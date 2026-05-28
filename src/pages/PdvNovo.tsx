@@ -201,8 +201,9 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   const [readyItems, setReadyItems] = useState<Array<{ id: string; name: string; quantity: number; notes: string | null; complements: any }> | null>(null);
   const [loadingReadyItems, setLoadingReadyItems] = useState(false);
 
-  // Histórico de pedidos — filtro por data
-  const [historyDate, setHistoryDate] = useState<Date | undefined>(new Date());
+  // Histórico de pedidos — filtro por período (data inicial e final)
+  const [historyDateStart, setHistoryDateStart] = useState<Date | undefined>(new Date());
+  const [historyDateEnd, setHistoryDateEnd] = useState<Date | undefined>(new Date());
   const [historyOrders, setHistoryOrders] = useState<Order[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
