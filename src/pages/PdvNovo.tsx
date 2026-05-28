@@ -542,12 +542,50 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
       const { data, error } = await supabase.functions.invoke("ifood-action", {
         body: { orderId: order.id, action: ifoodAction, environment: env },
       });
-      setBusy(false);
-      if (error || (data as { ok?: boolean })?.ok === false) {
-        const msg = error?.message || (data as { error?: string })?.error || "Falha ao notificar iFood";
-        toast({ title: "Não foi possível avançar", description: msg, variant: "destructive" });
+      const payload = (data ?? {}) as { ok?: boolean; error?: string; code?: string; status?: number };
+
+      if (error || payload.ok === false) {
+        const fallbackAllowed = payload.code === "ForbiddenOrderAccess" && payload.status === 403;
+
+        if (!fallbackAllowed) {
+          setBusy(false);
+          const msg = error?.message || payload.error || "Falha ao notificar iFood";
+          toast({ title: "Não foi possível avançar", description: msg, variant: "destructive" });
+          return;
+        }
+
+        const { data: localData, error: localError } = await supabase.rpc("pdv_advance_order_status", {
+          p_order_id: order.id,
+          p_new_status: newStatus,
+          p_event_code: eventCode ?? `fallback_${ifoodAction}`,
+          p_payload: {
+            fallback_reason: "ForbiddenOrderAccess",
+            fallback_origin: "ifood-action",
+            ifood_action: ifoodAction,
+          },
+          p_source: "internal",
+          p_external_event_id: null,
+          p_reason_code: "ForbiddenOrderAccess",
+          p_reason_text: payload.error ?? "Pedido avançado localmente após bloqueio externo",
+        });
+        setBusy(false);
+
+        if (localError) {
+          toast({ title: "Não foi possível avançar", description: localError.message, variant: "destructive" });
+          return;
+        }
+
+        toast({
+          title: `Pedido ${STATUS_LABEL[newStatus].label.toLowerCase()}`,
+          description: "Avançado localmente para não travar a operação.",
+        });
+        if (localData && typeof localData === "object" && "id" in localData) {
+          setSelectedOrder(localData as Order);
+        }
+        void loadForStore(storeId);
         return;
       }
+      setBusy(false);
       toast({ title: `Pedido ${STATUS_LABEL[newStatus].label.toLowerCase()} (iFood)` });
       void loadForStore(storeId);
       return;

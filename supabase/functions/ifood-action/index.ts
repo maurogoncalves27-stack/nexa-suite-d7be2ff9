@@ -74,7 +74,35 @@ Deno.serve(async (req) => {
 
     const ifoodText = await ifoodRes.text();
     if (!ifoodRes.ok) {
-      throw new Error(`iFood ${action} falhou ${ifoodRes.status}: ${ifoodText}`);
+      let parsed: { error?: { code?: string; message?: string } } | null = null;
+      try {
+        parsed = ifoodText ? JSON.parse(ifoodText) : null;
+      } catch {
+        parsed = null;
+      }
+
+      const code = parsed?.error?.code ?? null;
+      const message = parsed?.error?.message ?? (ifoodText || `Falha ${ifoodRes.status}`);
+
+      console.error("ifood-action erro upstream:", {
+        action,
+        orderId,
+        externalOrderId: order.external_order_id,
+        status: ifoodRes.status,
+        code,
+        message,
+      });
+
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          status: ifoodRes.status,
+          code,
+          error: `iFood ${action} falhou ${ifoodRes.status}: ${message}`,
+          upstreamMessage: message,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     // Avança status local
