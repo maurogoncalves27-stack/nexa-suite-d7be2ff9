@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
     try {
       const { data: store } = await sb
         .from("stores")
-        .select("id, ifood_environment, ifood_auto_accept")
+        .select("id, name, ifood_environment, ifood_auto_accept")
         .eq("ifood_merchant_uuid", ev.merchantId)
         .maybeSingle();
 
@@ -140,6 +140,11 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (!channel) {
+        const isHomologStore = /homolog/i.test((store as { name?: string | null }).name ?? "");
+        if (isHomologStore) {
+          processed.push({ event: ev.id, skipped: "homolog_store_ignored", storeId: store.id });
+          continue;
+        }
         const reason = `channel_not_found:${store.id}`;
         await sb.from("pdv_ifood_failed_events").upsert({
           external_event_id: ev.id,
