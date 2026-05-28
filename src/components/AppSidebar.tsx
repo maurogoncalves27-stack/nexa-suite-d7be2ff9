@@ -395,10 +395,10 @@ export function AppSidebar() {
         <SidebarMenuItem key={item.title}>
           <SidebarMenuButton
             disabled
-            className="text-[17px] py-3 font-normal whitespace-normal break-words leading-snug data-[active=true]:font-normal opacity-50 cursor-not-allowed"
+            className="text-[19px] py-4 font-normal whitespace-normal break-words leading-snug data-[active=true]:font-normal opacity-50 cursor-not-allowed"
             title="Em breve"
           >
-            <item.icon className="h-5 w-5 shrink-0" />
+            <item.icon className="h-6 w-6 shrink-0" />
             {!collapsed && <span>{item.title}</span>}
           </SidebarMenuButton>
         </SidebarMenuItem>
@@ -406,7 +406,7 @@ export function AppSidebar() {
     }
     return (
       <SidebarMenuItem key={item.title}>
-        <SidebarMenuButton asChild isActive={isActive(item.url)} className="text-[17px] py-3 font-normal whitespace-normal break-words leading-snug data-[active=true]:font-normal">
+        <SidebarMenuButton asChild isActive={isActive(item.url)} className="text-[19px] py-4 font-normal whitespace-normal break-words leading-snug data-[active=true]:font-normal">
           <NavLink
             to={item.url}
             end={item.url === "/"}
@@ -414,7 +414,7 @@ export function AppSidebar() {
             className={collapsed ? "flex items-center justify-center w-full" : "flex items-center gap-2"}
             title={item.requiredForPayroll ? (approvalByUrl[item.url] ? "Aprovado para a folha vigente (mês anterior)" : "Aprovação obrigatória para gerar a folha (mês anterior)") : undefined}
           >
-            <item.icon className="h-5 w-5 shrink-0" />
+            <item.icon className="h-6 w-6 shrink-0" />
             {!collapsed && (
               <span className="flex items-center gap-1.5 flex-1">
                 <span>{item.title}</span>
@@ -447,7 +447,7 @@ export function AppSidebar() {
           <SidebarMenuItem key={group.label}>
             <SidebarMenuButton
               disabled
-              className="text-[17px] py-3 font-normal whitespace-normal break-words leading-snug data-[active=true]:font-normal opacity-50 cursor-not-allowed"
+              className="text-[19px] py-4 font-normal whitespace-normal break-words leading-snug data-[active=true]:font-normal opacity-50 cursor-not-allowed"
               title={`${group.label} — Em breve`}
             >
               <group.icon className="h-5 w-5 shrink-0" />
@@ -459,7 +459,7 @@ export function AppSidebar() {
         <Collapsible key={group.label} className="group/collapsible">
           <SidebarMenuItem>
             <CollapsibleTrigger asChild>
-              <SidebarMenuButton className="text-[17px] py-3 font-normal whitespace-normal break-words leading-snug data-[active=true]:font-normal opacity-60">
+              <SidebarMenuButton className="text-[19px] py-4 font-normal whitespace-normal break-words leading-snug data-[active=true]:font-normal opacity-60">
                 <group.icon className="h-5 w-5 shrink-0" />
                 <span>{group.label}</span>
                 <ChevronRight className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
@@ -493,7 +493,7 @@ export function AppSidebar() {
       const item = visibleItems[0];
       return (
         <SidebarMenuItem key={group.label}>
-          <SidebarMenuButton asChild isActive={isActive(item.url)} className="text-[17px] py-3 font-normal whitespace-normal break-words leading-snug data-[active=true]:font-normal">
+          <SidebarMenuButton asChild isActive={isActive(item.url)} className="text-[19px] py-4 font-normal whitespace-normal break-words leading-snug data-[active=true]:font-normal">
             <NavLink
               to={item.url}
               end={item.url === "/"}
@@ -520,14 +520,14 @@ export function AppSidebar() {
         </div>
         {visibleItems.map((item) => (
           <SidebarMenuItem key={item.title}>
-            <SidebarMenuButton asChild isActive={isActive(item.url)} className="text-[17px] py-3 font-normal whitespace-normal break-words leading-snug data-[active=true]:font-normal">
+            <SidebarMenuButton asChild isActive={isActive(item.url)} className="text-[19px] py-4 font-normal whitespace-normal break-words leading-snug data-[active=true]:font-normal">
               <NavLink
                 to={item.url}
                 end={item.url === "/"}
                 onClick={closeSidebar}
                 className="flex items-center gap-2"
               >
-                <item.icon className="h-5 w-5 shrink-0" />
+                <item.icon className="h-6 w-6 shrink-0" />
                 <span>{item.title}</span>
               </NavLink>
             </SidebarMenuButton>

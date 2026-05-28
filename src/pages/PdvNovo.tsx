@@ -1154,32 +1154,45 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                                   {orderLabel(o)}
 
                                 </button>
-                                {(c.nextTo || c.customAction) && c.nextLabel && (
+                                {(() => {
+                                  const action: { label: string; nextTo?: PdvStatus; customAction?: "pack" } | null =
+                                    c.key === "producao"
+                                      ? (o.status === "confirmed"
+                                          ? { label: "Iniciar preparo", nextTo: "preparing" as PdvStatus }
+                                          : { label: c.nextLabel ?? "Pronto p/ embalar", nextTo: "ready" as PdvStatus })
+                                      : (c.nextTo || c.customAction)
+                                      ? { label: c.nextLabel!, nextTo: c.nextTo, customAction: c.customAction }
+                                      : null;
+
+                                  if (!action) return null;
+
+                                  return (
                                   <Button
                                     size="sm"
                                     className={`h-8 text-[11px] px-3 ${c.nextBtnCls ?? ""}`}
                                     disabled={busy}
                                     onClick={() => {
-                                      if (c.customAction === "pack") {
+                                      if (action.customAction === "pack") {
                                         setReadyChecks({});
                                         setCheckedByName("");
                                         setChecklistMode("pack");
                                         setReadyChecklistOrder(o);
-                                      } else if (c.nextTo === "ready") {
+                                      } else if (action.nextTo === "ready") {
                                         setReadyChecks({});
                                         setCheckedByName("");
                                         setChecklistMode("ready");
                                         setReadyChecklistOrder(o);
-                                      } else if (c.nextTo) {
-                                        advanceStatus(o, c.nextTo);
+                                      } else if (action.nextTo) {
+                                        advanceStatus(o, action.nextTo);
                                       }
                                     }}
 
                                   >
-                                    {c.nextTo === "confirmed" ? "Aceitar" : c.nextLabel}
+                                    {action.nextTo === "confirmed" ? "Aceitar" : action.label}
                                     <ArrowRight className="h-3.5 w-3.5 ml-1" />
                                   </Button>
-                                )}
+                                  );
+                                })()}
                               </div>
                             )}
                           </div>
@@ -1776,7 +1789,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                 if (mode === "pack") {
                   await packOrder(o);
                 } else {
-                  await advanceStatus(o, "ready");
+                  await advanceStatus(o, "ready", "internal_ready_checklist");
                 }
               }}
             >
