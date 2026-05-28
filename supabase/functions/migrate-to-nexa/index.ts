@@ -119,8 +119,11 @@ Deno.serve(async (req) => {
     const mode = (body.mode ?? url.searchParams.get("mode") ?? "plan") as string;
     const only: string[] | null = body.only ?? (url.searchParams.get("only")?.split(",").filter(Boolean) ?? null);
     const dryRun = body.dry === true || url.searchParams.get("dry") === "1";
-    const disableTriggers = body.disableTriggers !== false; // default true em full
     const skipTables = new Set<string>(body.skip ?? []);
+    // Batching: process a slice of the ordered table list
+    const startIdx: number = Number(body.startIdx ?? url.searchParams.get("startIdx") ?? 0) || 0;
+    const count: number = Number(body.count ?? url.searchParams.get("count") ?? 0) || 0; // 0 = all
+    const triggersAction: string | undefined = body.triggers ?? url.searchParams.get("triggers") ?? undefined; // "off" | "on"
 
     let targetTables = ordered.filter((t) => !skipTables.has(t));
     if (only && only.length) targetTables = targetTables.filter((t) => only.includes(t));
@@ -142,45 +145,45 @@ Deno.serve(async (req) => {
       }, null, 2), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // mode=full ou mode=tables
+    // mode=triggers: liga/desliga triggers no destino
+    if (mode === "triggers") {
+      const enable = triggersAction === "on";
+      const { error } = await dst.rpc("_migration_set_triggers", { p_enable: enable });
+      return new Response(JSON.stringify({ ok: !error, triggers: enable ? "on" : "off", error: error?.message }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (mode !== "full" && mode !== "tables") {
       return new Response(JSON.stringify({ error: `mode inválido: ${mode}` }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const log: any = { mode, dryRun, disableTriggers, results: {} as Record<string, any> };
+    // Slice
+    const slice = count > 0 ? targetTables.slice(startIdx, startIdx + count) : targetTables.slice(startIdx);
+    const log: any = { mode, dryRun, startIdx, count: slice.length, totalTables: targetTables.length, results: {} as Record<string, any> };
 
-    if (!dryRun && disableTriggers && mode === "full") {
-      const { error } = await dst.rpc("_migration_set_triggers", { p_enable: false });
-      if (error) log.triggersOff = { error: error.message };
-      else log.triggersOff = "ok";
-    }
-
-    try {
-      for (const t of targetTables) {
-        try {
-          const rows = await fetchAll(src, t);
-          if (rows.length === 0) {
-            log.results[t] = { read: 0 };
-            continue;
-          }
-          if (dryRun) {
-            log.results[t] = { read: rows.length, written: 0, dryRun: true };
-            continue;
-          }
-          const { ok, errors } = await upsertChunked(dst, t, rows);
-          log.results[t] = { read: rows.length, written: ok, errors: errors.length ? errors : undefined };
-        } catch (e) {
-          log.results[t] = { error: (e as Error).message };
+    for (const t of slice) {
+      try {
+        const rows = await fetchAll(src, t);
+        if (rows.length === 0) {
+          log.results[t] = { read: 0 };
+          continue;
         }
-      }
-    } finally {
-      if (!dryRun && disableTriggers && mode === "full") {
-        const { error } = await dst.rpc("_migration_set_triggers", { p_enable: true });
-        log.triggersOn = error ? { error: error.message } : "ok";
+        if (dryRun) {
+          log.results[t] = { read: rows.length, written: 0, dryRun: true };
+          continue;
+        }
+        const { ok, errors } = await upsertChunked(dst, t, rows);
+        log.results[t] = { read: rows.length, written: ok, errors: errors.length ? errors : undefined };
+      } catch (e) {
+        log.results[t] = { error: (e as Error).message };
       }
     }
+
+    log.nextStartIdx = startIdx + slice.length;
+    log.done = log.nextStartIdx >= targetTables.length;
 
     return new Response(JSON.stringify({ ok: true, ...log }, null, 2), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -190,4 +193,6 @@ Deno.serve(async (req) => {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
+});
+
 });
