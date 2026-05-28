@@ -1,65 +1,54 @@
-# Migração de dados para o projeto NEXA
+# Migrar dados do NEXA original → NEXA Suite (este remix)
 
-## Objetivo
-Copiar todos os dados deste projeto (origem) para o projeto NEXA (destino), preservando IDs e respeitando dependências entre tabelas.
+## Direção
 
-## O que será migrado
-Todas as tabelas do schema `public`, **exceto**:
-- `pdv_*` (PDV novo — destino vai começar limpo)
-- `pos_*`, `saipos_*` (Saipos legado descontinuado)
-- `payroll_xml_history` (log local)
-- Tabelas que começam com `_` ou `migration_*` (internas)
+```
+ORIGEM (leitura):  Projeto "NEXA"          → Supabase xmswsrhfofwhwtykjqef
+DESTINO (escrita): Este remix "NEXA Suite" → Supabase ixjgmerxxakdkfdzgumy
+```
 
-Buckets de Storage e usuários (`auth.users`) **não** são migrados — o NEXA fará seu próprio onboarding de auth.
+A edge function `migrate-to-nexa` que já existe aqui está **invertida** (lê deste projeto, escreve no outro). Vou virar a direção: ela passa a ler do NEXA original e escrever aqui.
 
-## Como funciona
+## Passos
 
-1. **Edge function `migrate-to-nexa`** (one-shot, removível depois)
-   - Lê do projeto atual via service_role local
-   - Escreve no NEXA via `NEXA_SUITE_URL` + `NEXA_SUITE_SERVICE_ROLE_KEY` (já configurados)
-   - Faz upsert por `id` (idempotente — pode rodar várias vezes)
+### 1. Pedir 1 secret novo
+Preciso da `service_role key` do projeto NEXA original (Settings → API do projeto NEXA na sua conta Lovable). Vou guardá-la como **`SOURCE_NEXA_SERVICE_ROLE_KEY`**. A URL de origem fica fixa no código (`https://xmswsrhfofwhwtykjqef.supabase.co`).
 
-2. **Ordem de carga**
-   - Descobre dependências FK via `pg_catalog` no destino
-   - Ordena tabelas topologicamente (pais antes de filhos)
-   - Fallback: lista manual de prioridades (stores, brands, employees, suppliers, products, recipes, etc.)
+### 2. Reescrever o edge function `migrate-to-nexa`
+- `sourceClient` aponta pra `SOURCE_NEXA_URL` + `SOURCE_NEXA_SERVICE_ROLE_KEY`.
+- `destClient` usa `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` locais (injetados aqui).
+- Mantém: descoberta via `information_schema`, ordenação topológica por FK, `SKIP_PREFIXES` (pdv_, pos_, saipos_…), batch por `startIdx`/`count`, modos `plan`/`triggers`/`full`/`dryRun`.
+- Mantém: triggers off no destino antes de escrever, on no final.
 
-3. **Paginação e chunks**
-   - Lê 1000 linhas por vez da origem
-   - Grava em chunks de 500 no destino
-   - Continua em caso de erro por tabela (não aborta tudo)
+### 3. Ajustar `/admin/migrate-nexa`
+- Textos atualizados (puxa do NEXA original).
+- Fluxo: **Plan → Dry-run → Migração completa em lotes** com progresso por tabela.
 
-4. **Modos de execução** (via query param)
-   - `?mode=plan` — só lista o que será copiado, contagens por tabela, sem escrever
-   - `?mode=tables&only=stores,employees` — copia só tabelas específicas
-   - `?mode=full` — copia tudo na ordem topológica
-   - `?dry=1` — lê tudo mas não escreve
+### 4. Tabelas que NÃO migram
+- Prefixos: `pdv_`, `pos_`, `saipos_`, `_migration`, `migration_`
+- Exatas: `payroll_xml_history`, `schema_migrations`
+- Schemas do Supabase (`auth.*`, `storage.*`) — fora de escopo.
 
-5. **UI mínima**
-   - Página oculta `/admin/migrate-nexa` (só super-user) com:
-     - Botão "Listar tabelas" (mode=plan)
-     - Botão "Copiar selecionadas"
-     - Botão "Migração completa"
-     - Log em tempo real do retorno
+### 5. FKs pra `auth.users`
+`user_roles`, `user_signatures`, `payroll_edit_locks`, `employees.user_id` etc. dependem de users existirem aqui. Como auth **não migra automaticamente** entre projetos:
+- Migro as linhas mesmo assim; falhas de FK são reportadas por tabela.
+- Gero uma lista de e-mails do NEXA original que precisam recriação aqui → **fase separada**, depois desta.
 
-## Riscos e mitigações
-- **FKs faltando**: rodar em ordem topológica + retry no fim para o que falhou
-- **RLS no destino**: service_role bypassa RLS, então não bloqueia
-- **Triggers no destino**: vão disparar (ex: auto-gerar PDFs). Desabilitamos temporariamente via `ALTER TABLE ... DISABLE TRIGGER USER` antes da carga e reabilitamos no fim — feito via RPC no destino.
-- **Volume grande**: edge functions têm timeout. Vamos dividir em chamadas por grupo de tabelas se necessário.
+### 6. Execução
+1. Você adiciona o secret quando eu pedir.
+2. Deploy automático.
+3. Você abre `/admin/migrate-nexa` → **Plan** (lista 233 tabelas) → **Migração completa** (lotes ~8/chamada, ~5 min).
+4. Painel mostra `read/written/errors` por tabela.
+
+### 7. Fora deste plano
+- Migrar `auth.users` (usuários/senhas) → fase separada.
+- Migrar arquivos de Storage (PDFs em `employee_documents`) → fase separada.
+- Secrets/edge functions do projeto antigo → manual.
 
 ## Detalhes técnicos
-- Cliente Supabase com `auth.persistSession: false`
-- Função RPC nova no destino: `_migration_list_tables()` e `_migration_set_triggers(enable bool)`
-- Tipos TS não regenerados (função one-shot, será deletada)
+- Arquivos: `supabase/functions/migrate-to-nexa/index.ts` e `src/pages/admin/MigrateNexa.tsx`.
+- Leitura paginada 1000 em 1000 com `range()`.
+- Escrita `upsert(rows, { onConflict: 'id' })` em chunks de 500.
+- Triggers controladas via RPC `_migration_set_triggers(state text)` (já existe aqui).
 
-## Entregáveis
-- `supabase/functions/migrate-to-nexa/index.ts`
-- Migration no destino com RPCs auxiliares (você roda manualmente no NEXA via chat de lá, eu te entrego o SQL)
-- Página `src/pages/admin/MigrateNexa.tsx` + rota no AppLayout
-- Atualização de `PAGE_TITLES`
-
-## O que vou pedir para você fazer
-1. Aprovar este plano
-2. Depois que eu entregar, ir no projeto NEXA, colar um SQL pequeno (vou te mandar) que cria 2 funções auxiliares lá
-3. Voltar aqui e abrir `/admin/migrate-nexa` → primeiro botão "Listar" pra confirmar contagens, depois "Migração completa"
+Confirma que pode prosseguir e eu já peço o secret.
