@@ -762,10 +762,10 @@ export function AppSidebar() {
 
         return (
           <div className="shrink-0 border-b border-sidebar-border" style={{ background: "hsl(var(--sidebar-background))" }}>
-            <div className="grid grid-cols-3 gap-1.5 px-2 py-2">
+            <div className="grid grid-cols-6 gap-1 px-2 py-2">
               {buttons.map((b, idx) => {
                 const Icon = b.icon;
-                const baseClass = "flex flex-col items-center justify-center gap-1 rounded-lg py-2 px-1 transition-colors font-medium text-[11px] text-center leading-tight min-h-[54px] border break-words hyphens-auto";
+                const baseClass = "flex flex-col items-center justify-center gap-0.5 rounded-md py-1.5 px-0.5 transition-colors font-medium text-[9px] text-center leading-tight min-h-[44px] border break-words hyphens-auto";
                 if (b.kind === "mode") {
                   const active = activeGridButton === `mode:${b.mode}`;
                   return (
@@ -780,7 +780,7 @@ export function AppSidebar() {
                           : "bg-sidebar-accent/60 text-sidebar-foreground border-sidebar-border hover:bg-sidebar-accent"
                       }`}
                     >
-                      <Icon className="h-5 w-5" />
+                      <Icon className="h-4 w-4" />
                       <span>{b.label}</span>
                     </button>
                   );
@@ -800,7 +800,7 @@ export function AppSidebar() {
                           : "bg-sidebar-accent/60 text-sidebar-foreground border-sidebar-border hover:bg-sidebar-accent"
                       }`}
                     >
-                      <Icon className="h-5 w-5" />
+                      <Icon className="h-4 w-4" />
                       <span>{b.label}</span>
                     </NavLink>
                   );
@@ -813,7 +813,7 @@ export function AppSidebar() {
                     title={`${b.label} — Em breve`}
                     className={`${baseClass} bg-sidebar-accent/30 text-sidebar-foreground/40 border-sidebar-border/60 cursor-not-allowed`}
                   >
-                    <Icon className="h-5 w-5" />
+                    <Icon className="h-4 w-4" />
                     <span>{b.label}</span>
                   </button>
                 );
