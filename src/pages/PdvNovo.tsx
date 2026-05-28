@@ -868,10 +868,10 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     { key: "cancelado",  label: "Cancelado",          statuses: ["cancelled", "dispute"],     headerCls: "bg-red-500 text-white border-red-600",
       accentCls: "border-l-destructive" },
   ];
-  // "Concluído" e "Cancelado" não aparecem no kanban — consulta-se pela aba "Histórico de pedidos".
-  // Quando "Aceitar automaticamente" está ligado, "Em análise" também some.
+  // "Em análise" some quando "Aceitar automaticamente" está ligado.
+  // "Concluído" e "Cancelado" permanecem na operação para o dia atual (clicáveis para reimprimir).
   const COLUMNS: KanbanCol[] = ALL_COLUMNS.filter(
-    (c) => c.key !== "concluido" && c.key !== "cancelado" && (!autoAcceptEnabled || c.key !== "analise")
+    (c) => !autoAcceptEnabled || c.key !== "analise"
   );
 
   // Helper: pertence à coluna?
@@ -938,7 +938,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
   const isToday = (iso: string) => new Date(iso).getTime() >= startOfToday.getTime();
   const displayOrders = orders
-    .filter((o) => activeStatuses.includes(o.status))
+    .filter((o) => activeStatuses.includes(o.status) || ((o.status === "concluded" || o.status === "cancelled" || o.status === "dispute") && isToday(o.opened_at)))
     .sort((a, b) => new Date(b.opened_at).getTime() - new Date(a.opened_at).getTime());
 
 
@@ -1021,7 +1021,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
             <div className="sticky top-0 z-20 rounded-lg border bg-card shadow-sm">
               <div className="grid gap-px bg-border rounded-lg overflow-hidden" style={{ gridTemplateColumns: `repeat(${COLUMNS.length}, minmax(0, 1fr))` }}>
                 {COLUMNS.map((c) => {
-                  const count = activeOrders.filter((o) => matchesCol(c, o)).length;
+                  const count = displayOrders.filter((o) => matchesCol(c, o)).length;
                   return (
                     <div key={c.key} className={`px-2 py-2 ${c.headerCls} flex items-center justify-between min-w-0`}>
                       <span className="text-[10px] md:text-xs font-semibold uppercase tracking-tight truncate">{c.label}</span>
