@@ -273,6 +273,19 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
 
     setStores(list);
     if (!storeId && list.length > 0) {
+      // Padrão: primeira loja física real (não virtual e não fábrica/escritório/estoque)
+      const firstReal = list.find(
+        (s: any) => s.is_virtual === false && !/escrit|fabri|estoque/i.test(s.name ?? "")
+      );
+      setStoreId((firstReal ?? list[0]).id);
+    }
+  }, [storeId, user, lockedStoreId]);
+
+  const selectedStore = useMemo(
+    () => stores.find((s) => s.id === storeId) ?? null,
+    [stores, storeId]
+  );
+
   // Calcula IDs agregados a partir de um storeId raiz (loja física = inclui marcas virtuais filhas)
   // "ALL" = todas as lojas físicas + suas filhas virtuais
   const computeAggregatedIds = useCallback(
