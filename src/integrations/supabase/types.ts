@@ -9884,6 +9884,7 @@ export type Database = {
           opened_at: string
           order_number: string | null
           order_type: string
+          packed_at: string | null
           pickup_code: string | null
           preparation_started_at: string | null
           ready_at: string | null
@@ -9926,6 +9927,7 @@ export type Database = {
           opened_at?: string
           order_number?: string | null
           order_type?: string
+          packed_at?: string | null
           pickup_code?: string | null
           preparation_started_at?: string | null
           ready_at?: string | null
@@ -9968,6 +9970,7 @@ export type Database = {
           opened_at?: string
           order_number?: string | null
           order_type?: string
+          packed_at?: string | null
           pickup_code?: string | null
           preparation_started_at?: string | null
           ready_at?: string | null
@@ -14859,6 +14862,7 @@ export type Database = {
           opened_at: string
           order_number: string | null
           order_type: string
+          packed_at: string | null
           pickup_code: string | null
           preparation_started_at: string | null
           ready_at: string | null

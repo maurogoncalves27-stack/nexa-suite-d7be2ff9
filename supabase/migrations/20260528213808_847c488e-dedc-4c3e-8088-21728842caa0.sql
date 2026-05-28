@@ -1,0 +1,1 @@
+ALTER TABLE public.pdv_orders ADD COLUMN IF NOT EXISTS packed_at TIMESTAMPTZ NULL;

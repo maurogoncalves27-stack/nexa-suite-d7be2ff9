@@ -197,6 +197,17 @@ Deno.serve(async (req) => {
 
       const newStatus = eventToStatus(ev.code);
 
+      // Detecta eventos vindos do simulador de homologação do iFood
+      // (CLIENT_ID/appName contém "homologation"). Nesses casos, o token de
+      // produção da loja não tem escopo nesse pedido — força sandbox.
+      const evMeta = (ev as unknown as { metadata?: Record<string, unknown> }).metadata ?? {};
+      const isHomologEvent =
+        /homologation/i.test(String(evMeta.appName ?? "")) ||
+        /homologation/i.test(String(evMeta.CLIENT_ID ?? ""));
+      const effectiveEnv: "sandbox" | "production" = isHomologEvent
+        ? "sandbox"
+        : ((store.ifood_environment as "sandbox" | "production") ?? "sandbox");
+
       const { data: existing } = await sb
         .from("pdv_orders")
         .select("id, status")
@@ -205,11 +216,28 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (!existing) {
-        const token = await getToken((store.ifood_environment as "sandbox" | "production") ?? "sandbox");
+        const token = await getToken(effectiveEnv);
         const detRes = await fetch(`${API_BASE}/order/v1.0/orders/${ev.orderId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        const orderDetails = detRes.ok ? await detRes.json() : null;
+        if (!detRes.ok) {
+          const body = await detRes.text().catch(() => "");
+          const reason = `detail_fetch_${detRes.status}:${body.slice(0, 200)}`;
+          console.error("[ifood-webhook] detail fetch falhou", { orderId: ev.orderId, env: effectiveEnv, status: detRes.status, body: body.slice(0, 300) });
+          await sb.from("pdv_ifood_failed_events").upsert({
+            external_event_id: ev.id,
+            event_code: ev.code,
+            order_id_external: ev.orderId,
+            merchant_id: ev.merchantId ?? null,
+            payload: { ...ev, effective_env: effectiveEnv } as unknown as Record<string, unknown>,
+            error: reason,
+            source: "webhook",
+            attempts: 1,
+          }, { onConflict: "external_event_id", ignoreDuplicates: false });
+          processed.push({ event: ev.id, skipped: reason });
+          continue; // não cria pedido vazio — iFood reenvia próximos eventos
+        }
+        const orderDetails = await detRes.json();
         const customer = orderDetails?.customer ?? {};
         const total = orderDetails?.total?.orderAmount ?? orderDetails?.totalPrice ?? 0;
         const subtotal = orderDetails?.total?.subTotal ?? total;
@@ -264,12 +292,13 @@ Deno.serve(async (req) => {
             orderId: created.id,
             externalOrderId: ev.orderId,
             storeId: store.id,
-            environment: (store.ifood_environment as "sandbox" | "production") ?? "sandbox",
+            environment: effectiveEnv,
           });
         }
 
 
         processed.push({ event: ev.id, action: "created", orderId: created.id });
+
       } else {
         if (newStatus && newStatus !== existing.status) {
           await sb.rpc("pdv_advance_order_status", {

@@ -114,7 +114,9 @@ interface Order {
   opened_at: string;
   order_type?: string | null;
   delivery_by?: string | null;
+  packed_at?: string | null;
 }
+
 
 type PdvStatus =
   | "placed"
@@ -335,7 +337,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
               .maybeSingle(),
         supabase
           .from("pdv_orders")
-          .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by")
+          .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by,packed_at")
           .in("store_id", ids)
           .order("opened_at", { ascending: false })
           .limit(150),
@@ -371,7 +373,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
       end.setHours(23, 59, 59, 999);
       const { data } = await supabase
         .from("pdv_orders")
-        .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by")
+        .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by,packed_at")
         .in("store_id", ids)
         .gte("opened_at", start.toISOString())
         .lte("opened_at", end.toISOString())
@@ -815,15 +817,32 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     nextLabel?: string;
     nextTo?: PdvStatus;
     nextBtnCls?: string;
+    /** Predicado opcional. Quando definido, sobrepõe statuses.includes(o.status). */
+    match?: (o: Order) => boolean;
+    /** Ação alternativa do botão "próximo" — usada por colunas internas (ex.: Embalar). */
+    customAction?: "pack";
   };
+
+  // Predicados auxiliares para distinguir "Em produção" de "Pedido embalado"
+  const inProductionStatuses: PdvStatus[] = autoAcceptEnabled
+    ? ["placed", "confirmed", "preparing"]
+    : ["confirmed", "preparing"];
+  const isInProduction = (o: Order) => inProductionStatuses.includes(o.status) && !o.packed_at;
+  const isPacked = (o: Order) => o.status === "preparing" && !!o.packed_at;
 
   const ALL_COLUMNS: KanbanCol[] = [
     { key: "analise",    label: "Em análise",         statuses: ["placed"],                   headerCls: "bg-amber-500 text-white border-amber-600",
       accentCls: "border-l-amber-500",   nextLabel: "Aceitar pedido", nextTo: "confirmed", nextBtnCls: "bg-blue-600 hover:bg-blue-700 text-white" },
     { key: "producao",   label: "Em produção",
-      statuses: autoAcceptEnabled ? ["placed", "confirmed", "preparing"] : ["confirmed", "preparing"],
+      statuses: inProductionStatuses,
+      match: isInProduction,
       headerCls: "bg-orange-500 text-white border-orange-600",
-      accentCls: "border-l-orange-500",  nextLabel: "Pronto p/ retirada", nextTo: "ready", nextBtnCls: "bg-emerald-600 hover:bg-emerald-700 text-white" },
+      accentCls: "border-l-orange-500",  nextLabel: "Embalar", customAction: "pack", nextBtnCls: "bg-purple-600 hover:bg-purple-700 text-white" },
+    { key: "embalado",   label: "Pedido embalado",
+      statuses: ["preparing"],
+      match: isPacked,
+      headerCls: "bg-secondary text-secondary-foreground border-border",
+      accentCls: "border-l-secondary",   nextLabel: "Pronto p/ retirada", nextTo: "ready", nextBtnCls: "bg-emerald-600 hover:bg-emerald-700 text-white" },
     { key: "pronto",     label: "Pronto p/ retirada", statuses: ["ready"],                    headerCls: "bg-emerald-500 text-white border-emerald-600",
       accentCls: "border-l-emerald-500", nextLabel: "Despachar", nextTo: "dispatched", nextBtnCls: "bg-blue-600 hover:bg-blue-700 text-white" },
     { key: "entrega",    label: "Em entrega",         statuses: ["dispatched"],               headerCls: "bg-blue-600 text-white border-blue-700",
@@ -838,6 +857,26 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   const COLUMNS: KanbanCol[] = ALL_COLUMNS.filter(
     (c) => c.key !== "concluido" && c.key !== "cancelado" && (!autoAcceptEnabled || c.key !== "analise")
   );
+
+  // Helper: pertence à coluna?
+  const matchesCol = (c: KanbanCol, o: Order) =>
+    c.match ? c.match(o) : c.statuses.includes(o.status);
+
+  // Marca pedido como embalado (uso interno, não toca em status do iFood).
+  const packOrder = useCallback(async (o: Order) => {
+    setBusy(true);
+    const { error } = await supabase
+      .from("pdv_orders")
+      .update({ packed_at: new Date().toISOString() })
+      .eq("id", o.id);
+    setBusy(false);
+    if (error) {
+      toast({ title: "Erro ao marcar como embalado", description: error.message, variant: "destructive" });
+      return;
+    }
+    setOrders((prev) => prev.map((x) => (x.id === o.id ? { ...x, packed_at: new Date().toISOString() } : x)));
+  }, []);
+
 
   // Auto-confirma pedidos em "placed" quando o toggle está ligado (notifica iFood se aplicável).
   const autoConfirmingRef = useRef<Set<string>>(new Set());
@@ -858,7 +897,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   const ordersByColumn = useMemo(() => {
     const m: Record<string, Order[]> = {};
     for (const col of COLUMNS) {
-      m[col.key] = orders.filter((o) => col.statuses.includes(o.status));
+      m[col.key] = orders.filter((o) => matchesCol(col, o));
     }
     return m;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -966,7 +1005,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
             <div className="sticky top-0 z-20 rounded-lg border bg-card shadow-sm">
               <div className="grid gap-px bg-border rounded-lg overflow-hidden" style={{ gridTemplateColumns: `repeat(${COLUMNS.length}, minmax(0, 1fr))` }}>
                 {COLUMNS.map((c) => {
-                  const count = activeOrders.filter((o) => c.statuses.includes(o.status)).length;
+                  const count = activeOrders.filter((o) => matchesCol(c, o)).length;
                   return (
                     <div key={c.key} className={`px-2 py-2 ${c.headerCls} flex items-center justify-between min-w-0`}>
                       <span className="text-[10px] md:text-xs font-semibold uppercase tracking-tight truncate">{c.label}</span>
@@ -985,7 +1024,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
               </div>
             ) : (
               displayOrders.map((o) => {
-                const colIdx = COLUMNS.findIndex((c) => c.statuses.includes(o.status));
+                const colIdx = COLUMNS.findIndex((c) => matchesCol(c, o));
                 if (colIdx === -1) return null;
                 const col = COLUMNS[colIdx];
                 const elapsed = minutesSince(o.opened_at);
@@ -1005,7 +1044,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                     ? "border-success/60 bg-success/5 text-success hover:bg-success/10"
                     : "border-destructive/60 bg-destructive/5 text-destructive hover:bg-destructive/10";
                   const label = isDone ? "Concluído" : "Cancelado";
-                  const num = `${o.external_display_id ?? o.order_number ?? o.id.slice(0, 4)}`;
+                  const num = `${o.external_display_id ?? o.order_number ?? "—"}`;
                   return (
                     <button
                       key={o.id}
@@ -1043,20 +1082,22 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                                   className="font-extrabold text-base hover:underline"
                                   title="Ver detalhes do pedido"
                                 >
-                                  {o.external_display_id ?? o.order_number ?? o.id.slice(0, 4)}
+                                  {o.external_display_id ?? o.order_number ?? "—"}
                                 </button>
-                                {c.nextTo && c.nextLabel && (
+                                {(c.nextTo || c.customAction) && c.nextLabel && (
                                   <Button
                                     size="sm"
                                     className={`h-8 text-[11px] px-3 ${c.nextBtnCls ?? ""}`}
                                     disabled={busy}
                                     onClick={() => {
-                                      if (c.nextTo === "ready") {
+                                      if (c.customAction === "pack") {
+                                        packOrder(o);
+                                      } else if (c.nextTo === "ready") {
                                         setReadyChecks({});
                                         setCheckedByName("");
                                         setReadyChecklistOrder(o);
-                                      } else {
-                                        advanceStatus(o, c.nextTo!);
+                                      } else if (c.nextTo) {
+                                        advanceStatus(o, c.nextTo);
                                       }
                                     }}
                                   >
@@ -1330,7 +1371,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2">
                     <ShoppingBag className="h-5 w-5 text-primary" />
-                    Pedido {selectedOrder.external_display_id ?? selectedOrder.order_number ?? selectedOrder.id.slice(0, 6)}
+                    Pedido {selectedOrder.external_display_id ?? selectedOrder.order_number ?? "—"}
                   </DialogTitle>
                   <DialogDescription className="flex items-center gap-2">
                     <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium ${meta.tone}`}>
@@ -1467,7 +1508,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
             <div className="space-y-3">
               <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
                 <div className="font-semibold">
-                  Pedido {readyChecklistOrder.external_display_id ?? readyChecklistOrder.order_number ?? readyChecklistOrder.id.slice(0, 6)}
+                  Pedido {readyChecklistOrder.external_display_id ?? readyChecklistOrder.order_number ?? "—"}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {readyChecklistOrder.customer_name ?? "Sem cliente"} • {fmt(readyChecklistOrder.total)}
@@ -1701,7 +1742,7 @@ function OrdersList({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-sm truncate">
-                    {o.external_display_id ?? o.order_number ?? o.id.slice(0, 6)}
+                    {o.external_display_id ?? o.order_number ?? "—"}
                   </span>
                   <Badge variant="outline" className="text-[10px] py-0">
                     {channelName(o.channel_id)}
