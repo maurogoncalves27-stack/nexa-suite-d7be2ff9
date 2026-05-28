@@ -820,7 +820,9 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   const ALL_COLUMNS: KanbanCol[] = [
     { key: "analise",    label: "Em análise",         statuses: ["placed"],                   headerCls: "bg-amber-500 text-white border-amber-600",
       accentCls: "border-l-amber-500",   nextLabel: "Aceitar pedido", nextTo: "confirmed", nextBtnCls: "bg-blue-600 hover:bg-blue-700 text-white" },
-    { key: "producao",   label: "Em produção",        statuses: ["confirmed", "preparing"],   headerCls: "bg-orange-500 text-white border-orange-600",
+    { key: "producao",   label: "Em produção",
+      statuses: autoAcceptEnabled ? ["placed", "confirmed", "preparing"] : ["confirmed", "preparing"],
+      headerCls: "bg-orange-500 text-white border-orange-600",
       accentCls: "border-l-orange-500",  nextLabel: "Pronto p/ retirada", nextTo: "ready", nextBtnCls: "bg-emerald-600 hover:bg-emerald-700 text-white" },
     { key: "pronto",     label: "Pronto p/ retirada", statuses: ["ready"],                    headerCls: "bg-emerald-500 text-white border-emerald-600",
       accentCls: "border-l-emerald-500", nextLabel: "Despachar", nextTo: "dispatched", nextBtnCls: "bg-blue-600 hover:bg-blue-700 text-white" },
@@ -831,7 +833,26 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     { key: "cancelado",  label: "Cancelado",          statuses: ["cancelled", "dispute"],     headerCls: "bg-red-500 text-white border-red-600",
       accentCls: "border-l-destructive" },
   ];
-  const COLUMNS: KanbanCol[] = ALL_COLUMNS;
+  // Quando "Aceitar automaticamente" está ligado, a coluna "Em análise" some — pedidos novos
+  // vão direto para "Em produção" e disparamos a confirmação no iFood em segundo plano.
+  const COLUMNS: KanbanCol[] = autoAcceptEnabled
+    ? ALL_COLUMNS.filter((c) => c.key !== "analise")
+    : ALL_COLUMNS;
+
+  // Auto-confirma pedidos em "placed" quando o toggle está ligado (notifica iFood se aplicável).
+  const autoConfirmingRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!autoAcceptEnabled) return;
+    const placedOrders = orders.filter((o) => o.status === "placed");
+    placedOrders.forEach((o) => {
+      if (autoConfirmingRef.current.has(o.id)) return;
+      autoConfirmingRef.current.add(o.id);
+      void advanceStatus(o, "confirmed").catch(() => {
+        autoConfirmingRef.current.delete(o.id);
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders, autoAcceptEnabled]);
 
 
   const ordersByColumn = useMemo(() => {
