@@ -319,18 +319,21 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     async (sid: string) => {
       setLoading(true);
       const ids = computeAggregatedIds(sid);
+      const isAll = sid === "ALL";
       const [chRes, sessRes, ordRes] = await Promise.all([
         supabase
           .from("pdv_channels")
           .select("id,store_id,code,name,is_active,sort_order")
           .in("store_id", ids)
           .order("sort_order"),
-        supabase
-          .from("pdv_cash_sessions")
-          .select("id,store_id,opened_by,opened_at,opening_amount,closed_at,closing_amount,status")
-          .eq("store_id", sid)
-          .eq("status", "open")
-          .maybeSingle(),
+        isAll
+          ? Promise.resolve({ data: null })
+          : supabase
+              .from("pdv_cash_sessions")
+              .select("id,store_id,opened_by,opened_at,opening_amount,closed_at,closing_amount,status")
+              .eq("store_id", sid)
+              .eq("status", "open")
+              .maybeSingle(),
         supabase
           .from("pdv_orders")
           .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by")
@@ -339,17 +342,21 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
           .limit(150),
       ]);
       setChannels(chRes.data ?? []);
-      let sess = (sessRes.data ?? null) as CashSession | null;
-      // Auto-abre sessão "virtual" (sem dinheiro físico) se não houver — vendas só por totem/cartão/Pix
-      if (!sess && user) {
-        const { data: created } = await supabase
-          .from("pdv_cash_sessions")
-          .insert({ store_id: sid, opened_by: user.id, opening_amount: 0, status: "open" })
-          .select("id,store_id,opened_by,opened_at,opening_amount,closed_at,closing_amount,status")
-          .maybeSingle();
-        if (created) sess = created as CashSession;
+      if (isAll) {
+        setSession(null);
+      } else {
+        let sess = (sessRes.data ?? null) as CashSession | null;
+        // Auto-abre sessão "virtual" (sem dinheiro físico) se não houver — vendas só por totem/cartão/Pix
+        if (!sess && user) {
+          const { data: created } = await supabase
+            .from("pdv_cash_sessions")
+            .insert({ store_id: sid, opened_by: user.id, opening_amount: 0, status: "open" })
+            .select("id,store_id,opened_by,opened_at,opening_amount,closed_at,closing_amount,status")
+            .maybeSingle();
+          if (created) sess = created as CashSession;
+        }
+        setSession(sess);
       }
-      setSession(sess);
       setOrders((ordRes.data ?? []) as Order[]);
       setLoading(false);
     },
