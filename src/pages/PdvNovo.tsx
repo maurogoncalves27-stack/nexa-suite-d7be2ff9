@@ -243,11 +243,11 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
 
     setStores(list);
     if (!storeId && list.length > 0) {
-      // Padrão temporário: loja virtual de homologação iFood
-      const homolog = list.find((s: any) =>
-        (s.name ?? "").toLowerCase().includes("homolog")
+      // Padrão: primeira loja física real (não virtual e não fábrica/escritório/estoque)
+      const firstReal = list.find(
+        (s: any) => s.is_virtual === false && !/escrit|fabri|estoque/i.test(s.name ?? "")
       );
-      setStoreId((homolog ?? list[0]).id);
+      setStoreId((firstReal ?? list[0]).id);
     }
   }, [storeId, user, lockedStoreId]);
 
@@ -718,7 +718,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                 </SelectTrigger>
                 <SelectContent>
                   {stores
-                    .filter((s) => !/escrit|fabri|estoque/i.test(s.name))
+                    .filter((s) => s.is_virtual === false && !/escrit|fabri|estoque/i.test(s.name))
                     .map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}
@@ -995,6 +995,25 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                   Buscar pedidos no iFood agora
                 </Button>
               )}
+
+              {(() => {
+                const homolog = stores.find((s: any) => (s.name ?? "").toLowerCase().includes("homolog"));
+                if (!homolog || homolog.id === storeId) return null;
+                return (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => {
+                      setStoreId(homolog.id);
+                      setSettingsOpen(false);
+                      toast({ title: "Acessando iFood Homologação" });
+                    }}
+                  >
+                    Acessar iFood Homologação
+                  </Button>
+                );
+              })()}
             </TabsContent>
 
             <TabsContent value="nfce" className="mt-4">
