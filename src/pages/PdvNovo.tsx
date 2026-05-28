@@ -1508,7 +1508,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
             <div className="space-y-3">
               <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
                 <div className="font-semibold">
-                  Pedido {readyChecklistOrder.external_display_id ?? readyChecklistOrder.order_number ?? readyChecklistOrder.id.slice(0, 6)}
+                  Pedido {readyChecklistOrder.external_display_id ?? readyChecklistOrder.order_number ?? "—"}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {readyChecklistOrder.customer_name ?? "Sem cliente"} • {fmt(readyChecklistOrder.total)}
