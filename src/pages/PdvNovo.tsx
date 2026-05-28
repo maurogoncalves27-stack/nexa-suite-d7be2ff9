@@ -1154,7 +1154,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                   >
                     <div className="grid gap-px bg-border" style={{ gridTemplateColumns: `repeat(${COLUMNS.length}, minmax(0, 1fr))` }}>
                       {COLUMNS.map((c, i) => {
-                        const active = i === colIdx;
+                        const active = c.key === col!.key;
                         return (
                           <div
                             key={c.key}
