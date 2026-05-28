@@ -1104,15 +1104,20 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
               </div>
             ) : (
               displayOrders.map((o) => {
-                const colIdx = COLUMNS.findIndex((c) => matchesCol(c, o));
-                if (colIdx === -1) return null;
-                const col = COLUMNS[colIdx];
                 const elapsed = minutesSince(o.opened_at);
                 const num = orderLabel(o);
 
                 const isDone = o.status === "concluded";
                 const isCancel = o.status === "cancelled" || o.status === "dispute";
                 const isFinal = isDone || isCancel;
+
+                let col: typeof COLUMNS[number] | undefined;
+                if (!isFinal) {
+                  const colIdx = COLUMNS.findIndex((c) => matchesCol(c, o));
+                  if (colIdx === -1) return null;
+                  col = COLUMNS[colIdx];
+                }
+
                 const late = !isFinal && elapsed >= 60;
                 const warning = !late && !isFinal && elapsed >= 45;
                 const blinkCls = late
@@ -1120,6 +1125,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                   : warning
                   ? "animate-blink-warning border-warning"
                   : "";
+
 
                 if (isFinal) {
                   const cls = isDone
@@ -1148,7 +1154,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                   >
                     <div className="grid gap-px bg-border" style={{ gridTemplateColumns: `repeat(${COLUMNS.length}, minmax(0, 1fr))` }}>
                       {COLUMNS.map((c, i) => {
-                        const active = i === colIdx;
+                        const active = c.key === col!.key;
                         return (
                           <div
                             key={c.key}
