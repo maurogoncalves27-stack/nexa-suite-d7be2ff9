@@ -1044,7 +1044,8 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                 if (colIdx === -1) return null;
                 const col = COLUMNS[colIdx];
                 const elapsed = minutesSince(o.opened_at);
-                const isDone = o.status === "concluded";
+                  const num = orderLabel(o);
+
                 const isCancel = o.status === "cancelled" || o.status === "dispute";
                 const isFinal = isDone || isCancel;
                 const late = !isFinal && elapsed >= 60;
