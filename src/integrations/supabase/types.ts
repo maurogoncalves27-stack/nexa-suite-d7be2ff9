@@ -9878,6 +9878,7 @@ export type Database = {
           expected_delivery_at: string | null
           external_display_id: string | null
           external_order_id: string | null
+          has_unread_chat: boolean
           id: string
           last_synced_at: string | null
           notes: string | null
@@ -9921,6 +9922,7 @@ export type Database = {
           expected_delivery_at?: string | null
           external_display_id?: string | null
           external_order_id?: string | null
+          has_unread_chat?: boolean
           id?: string
           last_synced_at?: string | null
           notes?: string | null
@@ -9964,6 +9966,7 @@ export type Database = {
           expected_delivery_at?: string | null
           external_display_id?: string | null
           external_order_id?: string | null
+          has_unread_chat?: boolean
           id?: string
           last_synced_at?: string | null
           notes?: string | null
@@ -14856,6 +14859,7 @@ export type Database = {
           expected_delivery_at: string | null
           external_display_id: string | null
           external_order_id: string | null
+          has_unread_chat: boolean
           id: string
           last_synced_at: string | null
           notes: string | null
