@@ -199,6 +199,8 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   const [ifoodCancelReasons, setIfoodCancelReasons] = useState<{ cancelCodeId: string; description: string }[] | null>(null);
   const [loadingCancelReasons, setLoadingCancelReasons] = useState(false);
   const [readyChecklistOrder, setReadyChecklistOrder] = useState<Order | null>(null);
+  const [checklistMode, setChecklistMode] = useState<"ready" | "pack">("ready");
+
   const [readyChecks, setReadyChecks] = useState<Record<string, boolean>>({});
   const [checkedByName, setCheckedByName] = useState("");
   const [readyItems, setReadyItems] = useState<Array<{ id: string; name: string; quantity: number; notes: string | null; complements: any }> | null>(null);
