@@ -534,40 +534,8 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cancelOpen, selectedOrder?.id]);
 
-  const advanceStatus = async (
-    order: Order,
-    newStatus: PdvStatus,
-    eventCode?: string,
-    options?: { skipIfood?: boolean }
-  ) => {
+  const advanceStatus = async (order: Order, newStatus: PdvStatus, eventCode?: string) => {
     setBusy(true);
-    if (options?.skipIfood) {
-      const { data, error } = await supabase.rpc("pdv_advance_order_status", {
-        p_order_id: order.id,
-        p_new_status: newStatus,
-        p_event_code: eventCode ?? null,
-        p_payload: {
-          internal_only: true,
-          skipped_ifood_action: true,
-        },
-        p_source: "internal",
-        p_external_event_id: null,
-        p_reason_code: null,
-        p_reason_text: "Checklist interno concluído sem notificar iFood",
-      });
-      setBusy(false);
-      if (error) {
-        toast({ title: "Não foi possível avançar", description: error.message, variant: "destructive" });
-        return;
-      }
-      toast({ title: `Pedido ${STATUS_LABEL[newStatus].label.toLowerCase()}` });
-      if (data && typeof data === "object" && "id" in data) {
-        setSelectedOrder(data as Order);
-      }
-      void loadForStore(storeId);
-      return;
-    }
-
     const ifoodAction = STATUS_TO_IFOOD_ACTION[newStatus];
     if (isIfoodOrder(order) && ifoodAction) {
       const env = stores.find((s) => s.id === order.store_id)?.ifood_environment ?? "sandbox";
@@ -1186,32 +1154,45 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                                   {orderLabel(o)}
 
                                 </button>
-                                {(c.nextTo || c.customAction) && c.nextLabel && (
+                                {(() => {
+                                  const action =
+                                    c.key === "producao"
+                                      ? (o.status === "confirmed"
+                                          ? { label: "Iniciar preparo", nextTo: "preparing" as PdvStatus }
+                                          : { label: c.nextLabel ?? "Pronto p/ embalar", nextTo: "ready" as PdvStatus })
+                                      : (c.nextTo || c.customAction)
+                                      ? { label: c.nextLabel!, nextTo: c.nextTo, customAction: c.customAction }
+                                      : null;
+
+                                  if (!action) return null;
+
+                                  return (
                                   <Button
                                     size="sm"
                                     className={`h-8 text-[11px] px-3 ${c.nextBtnCls ?? ""}`}
                                     disabled={busy}
                                     onClick={() => {
-                                      if (c.customAction === "pack") {
+                                      if (action.customAction === "pack") {
                                         setReadyChecks({});
                                         setCheckedByName("");
                                         setChecklistMode("pack");
                                         setReadyChecklistOrder(o);
-                                      } else if (c.nextTo === "ready") {
+                                      } else if (action.nextTo === "ready") {
                                         setReadyChecks({});
                                         setCheckedByName("");
                                         setChecklistMode("ready");
                                         setReadyChecklistOrder(o);
-                                      } else if (c.nextTo) {
-                                        advanceStatus(o, c.nextTo);
+                                      } else if (action.nextTo) {
+                                        advanceStatus(o, action.nextTo);
                                       }
                                     }}
 
                                   >
-                                    {c.nextTo === "confirmed" ? "Aceitar" : c.nextLabel}
+                                    {action.nextTo === "confirmed" ? "Aceitar" : action.label}
                                     <ArrowRight className="h-3.5 w-3.5 ml-1" />
                                   </Button>
-                                )}
+                                  );
+                                })()}
                               </div>
                             )}
                           </div>
@@ -1808,7 +1789,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                 if (mode === "pack") {
                   await packOrder(o);
                 } else {
-                  await advanceStatus(o, "ready", "internal_ready_checklist", { skipIfood: isIfoodOrder(o) });
+                  await advanceStatus(o, "ready", "internal_ready_checklist");
                 }
               }}
             >
