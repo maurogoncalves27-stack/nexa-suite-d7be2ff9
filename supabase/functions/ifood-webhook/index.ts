@@ -3,6 +3,13 @@
 // (configurado no Portal do Parceiro) via header `x-ifood-signature`.
 // Mesma lógica de processamento do ifood-poll, mas SEM ACK por evento
 // (o webhook usa entrega garantida via 200 OK).
+//
+// TODO iFood Chat: quando habilitarmos eventos de chat do iFood, ao receber
+// um evento de mensagem do cliente, executar:
+//   UPDATE public.pdv_orders SET has_unread_chat = true
+//   WHERE external_order_id = <orderId do evento>
+// Hoje a flag é apenas mock controlado por UI/SQL manual.
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
