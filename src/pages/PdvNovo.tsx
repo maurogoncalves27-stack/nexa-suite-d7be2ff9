@@ -50,7 +50,9 @@ import {
   AlertTriangle,
   ArrowRight,
   CalendarIcon,
+  MessageCircle,
 } from "lucide-react";
+
 import { toast } from "@/hooks/use-toast";
 import { sortStores } from "@/lib/storeSort";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -115,6 +117,8 @@ interface Order {
   order_type?: string | null;
   delivery_by?: string | null;
   packed_at?: string | null;
+  has_unread_chat?: boolean | null;
+
 }
 
 
@@ -339,7 +343,8 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
               .maybeSingle(),
         supabase
           .from("pdv_orders")
-          .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by,packed_at")
+          .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by,packed_at,has_unread_chat")
+
           .in("store_id", ids)
           .order("opened_at", { ascending: false })
           .limit(150),
@@ -375,7 +380,8 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
       end.setHours(23, 59, 59, 999);
       const { data } = await supabase
         .from("pdv_orders")
-        .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by,packed_at")
+        .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by,packed_at,has_unread_chat")
+
         .in("store_id", ids)
         .gte("opened_at", start.toISOString())
         .lte("opened_at", end.toISOString())
@@ -1155,12 +1161,20 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                                 <button
                                   type="button"
                                   onClick={() => setSelectedOrder(o)}
-                                  className="font-extrabold text-base hover:underline"
-                                  title="Ver detalhes do pedido"
+                                  className="font-extrabold text-base hover:underline inline-flex items-center gap-1.5"
+                                  title={o.has_unread_chat ? "Cliente enviou mensagem no chat do iFood" : "Ver detalhes do pedido"}
                                 >
                                   {orderLabel(o)}
-
+                                  {o.has_unread_chat && (
+                                    <span
+                                      className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-destructive text-destructive-foreground animate-pulse shadow"
+                                      aria-label="Mensagem do cliente não lida"
+                                    >
+                                      <MessageCircle className="h-3 w-3" />
+                                    </span>
+                                  )}
                                 </button>
+
                                 {(() => {
                                   const action: { label: string; nextTo?: PdvStatus; customAction?: "pack" } | null =
                                     c.key === "producao"
@@ -1477,6 +1491,36 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                     <Badge variant="outline" className="text-[10px]">{channelName(selectedOrder.channel_id)}</Badge>
                   </DialogDescription>
                 </DialogHeader>
+
+                {selectedOrder.has_unread_chat && (
+                  <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm">
+                    <MessageCircle className="h-4 w-4 text-destructive animate-pulse shrink-0" />
+                    <span className="flex-1 text-destructive">
+                      Mensagem do cliente no chat do iFood — abra o app do iFood para responder.
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      disabled={busy}
+                      onClick={async () => {
+                        const { error } = await supabase
+                          .from("pdv_orders")
+                          .update({ has_unread_chat: false })
+                          .eq("id", selectedOrder.id);
+                        if (error) {
+                          toast({ title: "Erro ao marcar como lida", description: error.message, variant: "destructive" });
+                          return;
+                        }
+                        setOrders((prev) => prev.map((x) => (x.id === selectedOrder.id ? { ...x, has_unread_chat: false } : x)));
+                        setSelectedOrder({ ...selectedOrder, has_unread_chat: false });
+                      }}
+                    >
+                      Marcar como lida
+                    </Button>
+                  </div>
+                )}
+
 
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between"><span className="text-muted-foreground">Cliente</span><span className="font-medium">{selectedOrder.customer_name ?? "—"}</span></div>
