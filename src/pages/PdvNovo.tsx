@@ -1524,11 +1524,15 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
         </DialogContent>
       </Dialog>
 
+            <DialogTitle>{checklistMode === "pack" ? "Conferência para embalar" : "Conferência do pedido"}</DialogTitle>
+            <DialogDescription>
+              Confira cada item antes de marcar como {checklistMode === "pack" ? "embalado" : "pronto"}. Este checklist é apenas para controle interno.
+            </DialogDescription>
+          </DialogHeader>
+          {readyChecklistOrder && (
+            <div className="space-y-3">
+              <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
 
-      {/* ===== Dialog: checklist interno antes de marcar pronto p/ retirada ===== */}
-      <Dialog open={!!readyChecklistOrder} onOpenChange={(v) => !v && setReadyChecklistOrder(null)}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
             <DialogTitle>Conferência do pedido</DialogTitle>
             <DialogDescription>
               Confira cada item antes de marcar como pronto. Este checklist é apenas para controle interno.
@@ -1716,18 +1720,24 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                     : (it.complements && typeof it.complements === "object" ? Object.values(it.complements as any) : []);
                   for (let i = 0; i < comps.length; i++) {
                     if (!readyChecks[`comp:${it.id}:${i}`]) return true;
-                  }
-                }
-                return false;
-              })()}
-
               onClick={async () => {
                 const o = readyChecklistOrder;
                 if (!o) return;
-                console.log("[PDV] Pedido conferido por:", checkedByName.trim(), "order:", o.id);
+                console.log("[PDV] Pedido conferido por:", checkedByName.trim(), "order:", o.id, "mode:", checklistMode);
+                const mode = checklistMode;
                 setReadyChecklistOrder(null);
                 setCheckedByName("");
-                await advanceStatus(o, "ready");
+                if (mode === "pack") {
+                  await packOrder(o);
+                } else {
+                  await advanceStatus(o, "ready");
+                }
+              }}
+            >
+              {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {checklistMode === "pack" ? "Confirmar e embalar" : "Confirmar e marcar pronto"}
+            </Button>
+
               }}
             >
               {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
