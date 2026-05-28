@@ -381,6 +381,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
       setHistoryOrders((data ?? []) as Order[]);
       setHistoryLoading(false);
     },
+    [computeAggregatedIds]
   );
 
   useEffect(() => {
