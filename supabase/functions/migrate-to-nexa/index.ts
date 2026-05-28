@@ -70,25 +70,41 @@ async function upsertChunked(client: SupabaseClient, table: string, rows: any[])
   const chunkSize = 500;
   let ok = 0;
   const errors: any[] = [];
-  // Detecta se a tabela tem coluna "id" (pra escolher upsert vs insert simples).
   const hasId = rows[0] && Object.prototype.hasOwnProperty.call(rows[0], "id");
+  const stripCols = new Set<string>();
+
   for (let i = 0; i < rows.length; i += chunkSize) {
-    const chunk = rows.slice(i, i + chunkSize);
-    const q = hasId
-      ? client.from(table).upsert(chunk, { onConflict: "id", ignoreDuplicates: false })
-      : client.from(table).insert(chunk);
-    const { error } = await q;
-    if (error) {
-      // Fallback: tenta insert simples ignorando duplicatas
-      const { error: e2 } = await client.from(table).upsert(chunk, { ignoreDuplicates: true });
-      if (e2) errors.push({ chunkIndex: i, message: error.message });
-      else ok += chunk.length;
-    } else {
-      ok += chunk.length;
+    let chunk = rows.slice(i, i + chunkSize);
+    // Aplica strips conhecidos (colunas geradas detectadas em chunks anteriores)
+    if (stripCols.size > 0) {
+      chunk = chunk.map((r) => {
+        const c = { ...r };
+        stripCols.forEach((k) => { delete c[k]; });
+        return c;
+      });
+    }
+    let attempt = 0;
+    while (attempt < 5) {
+      const q = hasId
+        ? client.from(table).upsert(chunk, { onConflict: "id", ignoreDuplicates: false })
+        : client.from(table).insert(chunk);
+      const { error } = await q;
+      if (!error) { ok += chunk.length; break; }
+      // Detecta coluna gerada e tira do payload
+      const m = error.message.match(/non-DEFAULT value into column "([^"]+)"/);
+      if (m && !stripCols.has(m[1])) {
+        stripCols.add(m[1]);
+        chunk = chunk.map((r) => { const c = { ...r }; delete c[m[1]]; return c; });
+        attempt++;
+        continue;
+      }
+      errors.push({ chunkIndex: i, message: error.message });
+      break;
     }
   }
-  return { ok, errors };
+  return { ok, errors, stripped: [...stripCols] };
 }
+
 
 
 Deno.serve(async (req) => {
