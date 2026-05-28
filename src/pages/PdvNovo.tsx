@@ -243,11 +243,11 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
 
     setStores(list);
     if (!storeId && list.length > 0) {
-      // Padrão temporário: loja virtual de homologação iFood
-      const homolog = list.find((s: any) =>
-        (s.name ?? "").toLowerCase().includes("homolog")
+      // Padrão: primeira loja física real (não virtual e não fábrica/escritório/estoque)
+      const firstReal = list.find(
+        (s: any) => s.is_virtual === false && !/escrit|fabri|estoque/i.test(s.name ?? "")
       );
-      setStoreId((homolog ?? list[0]).id);
+      setStoreId((firstReal ?? list[0]).id);
     }
   }, [storeId, user, lockedStoreId]);
 
