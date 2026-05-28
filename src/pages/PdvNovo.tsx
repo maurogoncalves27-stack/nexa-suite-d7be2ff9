@@ -833,11 +833,11 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     { key: "cancelado",  label: "Cancelado",          statuses: ["cancelled", "dispute"],     headerCls: "bg-red-500 text-white border-red-600",
       accentCls: "border-l-destructive" },
   ];
-  // Quando "Aceitar automaticamente" está ligado, a coluna "Em análise" some — pedidos novos
-  // vão direto para "Em produção" e disparamos a confirmação no iFood em segundo plano.
-  const COLUMNS: KanbanCol[] = autoAcceptEnabled
-    ? ALL_COLUMNS.filter((c) => c.key !== "analise")
-    : ALL_COLUMNS;
+  // "Concluído" e "Cancelado" não aparecem no kanban — consulta-se pela aba "Histórico de pedidos".
+  // Quando "Aceitar automaticamente" está ligado, "Em análise" também some.
+  const COLUMNS: KanbanCol[] = ALL_COLUMNS.filter(
+    (c) => c.key !== "concluido" && c.key !== "cancelado" && (!autoAcceptEnabled || c.key !== "analise")
+  );
 
   // Auto-confirma pedidos em "placed" quando o toggle está ligado (notifica iFood se aplicável).
   const autoConfirmingRef = useRef<Set<string>>(new Set());
