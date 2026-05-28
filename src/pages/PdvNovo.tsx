@@ -778,7 +778,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     };
   }, [aggregatedStoreIds, historyDateEnd, historyDateStart, loadForStore, loadHistoryOrders, storeId, printNewOrder]);
 
-  }, [aggregatedStoreIds, historyDateEnd, historyDateStart, loadForStore, loadHistoryOrders, storeId]);
+
 
   // Carrega itens reais do pedido ao abrir o checklist
   useEffect(() => {
