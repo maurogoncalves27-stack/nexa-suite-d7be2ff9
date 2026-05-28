@@ -1,24 +1,42 @@
-## Problema
-Pedidos concluídos e cancelados sumiram da tela `/loja`. As colunas "Concluído" e "Cancelado" foram ocultadas (correto), mas o render do card também passou a descartar qualquer pedido cujo status não bate com nenhuma coluna visível — então os cards verdes/vermelhos nunca chegam a ser desenhados.
+## Badge de marca nos pedidos (/loja)
 
-Trecho responsável em `src/pages/PdvNovo.tsx` (~linha 1107):
-```ts
-const colIdx = COLUMNS.findIndex((c) => matchesCol(c, o));
-if (colIdx === -1) return null;   // ← derruba concluded/cancelled
-```
+Adicionar um badge colorido identificando a marca (AQUELA PARMÊ / ESTROGONOFE / BOX CAIPIRA) nos cards de pedido e no modal de detalhe, usando a paleta fixa de marcas.
 
-## Correção
-1. Em `src/pages/PdvNovo.tsx`, dentro do `.map` de `displayOrders`, tratar o caso finalizado ANTES de calcular `colIdx`:
-   - Se `o.status` é `concluded`, `cancelled` ou `dispute`, renderizar direto o botão verde/vermelho já existente (bloco `if (isFinal)`), sem exigir `colIdx`.
-   - Só depois, para pedidos ativos, calcular `colIdx` e retornar `null` quando não houver coluna correspondente.
-2. Manter a ordenação atual (`ordersByColumn`/`displayOrders` já colocam finalizados depois dos ativos).
+### Cores (HSL via tokens, sem hardcoded Tailwind)
 
-Nenhuma outra mudança: colunas continuam ocultas, sem mexer em iFood, edge functions, ou layout.
+Adicionar tokens em `src/index.css` (`:root` e `.dark`) e mapear em `tailwind.config.ts`:
 
-## Arquivos afetados
-- `src/pages/PdvNovo.tsx` — reordenar o bloco do `.map` para renderizar cards finalizados independentemente de `colIdx`.
+- `--brand-parme`: vermelho (`0 71% 42%`) / fg branco
+- `--brand-estrogonofe`: marrom (`24 45% 32%`) / fg branco
+- `--brand-box`: laranja (`24 90% 50%`) / fg branco
 
-## Como validar
-- Em `/loja`, fechar um pedido (Concluir). O card verde "Concluído #NNNN" deve aparecer abaixo dos pedidos vigentes.
-- Cancelar outro pedido. O card vermelho "Cancelado #NNNN" também aparece abaixo.
-- Atualizar a página: os cards finalizados do dia continuam visíveis (já que `displayOrders` filtra por "hoje").
+No `tailwind.config.ts`, adicionar `colors.brand.parme`, `colors.brand.estrogonofe`, `colors.brand.box` apontando para os tokens.
+
+### Helper
+
+Em `src/pages/PdvNovo.tsx`, criar `brandFromStoreName(storeName?: string)` que retorna `{ label, className } | null`:
+
+- contém "PARMÊ" / "PARME" → `{ label: "AQUELA PARMÊ", className: "bg-brand-parme text-brand-parme-foreground" }`
+- contém "ESTROGONOFE" → `{ label: "ESTROGONOFE", className: "bg-brand-estrogonofe text-brand-estrogonofe-foreground" }`
+- contém "BOX" → `{ label: "BOX CAIPIRA", className: "bg-brand-box text-brand-box-foreground" }`
+- caso contrário: `null` (não renderiza badge)
+
+### Onde renderizar
+
+1. **Card de pedido ativo** (área amarela/laranja) — badge ao lado do nº do pedido.
+2. **Card concluído** (verde) — mesmo lugar.
+3. **Card cancelado** (vermelho) — mesmo lugar.
+4. **Modal de detalhe** (`DialogTitle`) — badge ao lado do chip `iFood / Totem / Salão`.
+
+Usar `<Badge>` do shadcn com `className` do helper. Não renderizar nada quando `brandFromStoreName` retorna `null` (lojas sem marca identificável, ex.: Fábrica).
+
+### Fora do escopo
+
+- Receita impressa (`src/lib/printOrder.ts`) — sem alterações; o nome da loja já vai no ticket.
+- Backend, edge functions, schema — sem alterações.
+
+### Arquivos alterados
+
+- `src/index.css` — 3 tokens novos (light + dark)
+- `tailwind.config.ts` — namespace `brand`
+- `src/pages/PdvNovo.tsx` — helper + badges nos 3 cards + modal
