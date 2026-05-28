@@ -302,8 +302,22 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   );
 
   // Calcula IDs agregados a partir de um storeId raiz (loja física = inclui marcas virtuais filhas)
+  // "ALL" = todas as lojas físicas + suas filhas virtuais
   const computeAggregatedIds = useCallback(
     (sid: string): string[] => {
+      if (sid === "ALL") {
+        const realStores = stores.filter(
+          (s) => s.is_virtual === false && !/escrit|fabri|estoque/i.test(s.name ?? "")
+        );
+        const allIds = new Set<string>();
+        realStores.forEach((rs) => {
+          allIds.add(rs.id);
+          stores
+            .filter((s) => s.is_virtual && s.parent_store_id === rs.id && !/homolog/i.test(s.name ?? ""))
+            .forEach((c) => allIds.add(c.id));
+        });
+        return Array.from(allIds);
+      }
       const sel = stores.find((s) => s.id === sid);
       if (!sel) return [sid];
       if (sel.is_virtual) return [sel.id];
