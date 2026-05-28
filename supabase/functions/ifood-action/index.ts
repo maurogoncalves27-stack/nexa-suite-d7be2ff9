@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
       }
 
       const code = parsed?.error?.code ?? null;
-      const message = parsed?.error?.message ?? ifoodText || `Falha ${ifoodRes.status}`;
+      const message = parsed?.error?.message ?? (ifoodText || `Falha ${ifoodRes.status}`);
 
       console.error("ifood-action erro upstream:", {
         action,
