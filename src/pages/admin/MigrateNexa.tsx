@@ -106,29 +106,29 @@ export default function MigrateNexa() {
         </p>
       </div>
 
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+          <Database className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+          Importar dados do NEXA original
+        </h1>
+        <p className="text-muted-foreground">
+          Lê do projeto <strong>NEXA original</strong> (<code>xmswsrhfofwhwtykjqef</code>) e grava aqui no <strong>NEXA Suite</strong>, em lotes de {BATCH_SIZE} tabelas. Pula{" "}
+          <code>pdv_*</code>, <code>pos_*</code>, <code>saipos_*</code> e tabelas internas.
+        </p>
+      </div>
+
       <Card className="border-warning/40 bg-warning/5">
         <CardContent className="pt-6 flex gap-3">
           <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
           <div className="text-sm space-y-2">
-            <p>Antes da primeira execução, rode no projeto NEXA o SQL auxiliar. Sem ele a função retorna erro.</p>
-            <p>A migração é <strong>idempotente</strong> (upsert por id). Triggers do destino são desabilitados no início e religados no fim.</p>
+            <p>Origem precisa ter as RPCs <code>_migration_list_tables</code> e <code>_migration_set_triggers</code> (já existiam no NEXA original).</p>
+            <p>FKs que apontam para <code>auth.users</code> vão falhar até os usuários serem recriados aqui — isso é esperado e fica para a próxima fase.</p>
+            <p>Idempotente (upsert por id). Triggers locais são desabilitados no início e religados no fim.</p>
           </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>1. Listar o que será copiado</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Button onClick={loadPlan} disabled={!!running}>
-            {running === "plan" && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-            Listar tabelas e contagens
-          </Button>
-          {plan && (
-            <div className="text-sm space-y-2">
-              <p><strong>{plan.totalTables}</strong> tabelas — total ~{totalRows.toLocaleString("pt-BR")} linhas.</p>
-              <details>
                 <summary className="cursor-pointer text-muted-foreground">Ver ordem e contagens</summary>
                 <div className="mt-2 max-h-80 overflow-auto border rounded p-2 font-mono text-xs">
                   {plan.order.map((t) => (
