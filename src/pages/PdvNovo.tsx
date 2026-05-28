@@ -988,9 +988,16 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   // No dia seguinte, finalizados/cancelados saem da operação e ficam só no histórico.
   const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
   const isToday = (iso: string) => new Date(iso).getTime() >= startOfToday.getTime();
+  const isFinalStatus = (s: PdvStatus) => s === "concluded" || s === "cancelled" || s === "dispute";
   const displayOrders = orders
-    .filter((o) => activeStatuses.includes(o.status) || ((o.status === "concluded" || o.status === "cancelled" || o.status === "dispute") && isToday(o.opened_at)))
-    .sort((a, b) => new Date(b.opened_at).getTime() - new Date(a.opened_at).getTime());
+    .filter((o) => activeStatuses.includes(o.status) || (isFinalStatus(o.status) && isToday(o.opened_at)))
+    .sort((a, b) => {
+      const af = isFinalStatus(a.status) ? 1 : 0;
+      const bf = isFinalStatus(b.status) ? 1 : 0;
+      if (af !== bf) return af - bf; // ativos primeiro, finalizados depois
+      return new Date(b.opened_at).getTime() - new Date(a.opened_at).getTime();
+    });
+
 
 
   // ===== Render ==========================================================
