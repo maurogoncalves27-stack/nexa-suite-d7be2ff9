@@ -1533,14 +1533,6 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
             <div className="space-y-3">
               <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
 
-            <DialogTitle>Conferência do pedido</DialogTitle>
-            <DialogDescription>
-              Confira cada item antes de marcar como pronto. Este checklist é apenas para controle interno.
-            </DialogDescription>
-          </DialogHeader>
-          {readyChecklistOrder && (
-            <div className="space-y-3">
-              <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
                 <div className="font-semibold">
                   Pedido {orderLabel(readyChecklistOrder)}
 
