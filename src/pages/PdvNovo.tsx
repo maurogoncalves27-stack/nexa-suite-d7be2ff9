@@ -209,8 +209,22 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   // IDs agregados: quando a loja selecionada é uma física real (não virtual),
   // inclui ela própria + todas as lojas virtuais filhas (marcas Estroga, Box),
   // mas NUNCA inclui a "iFood Homologação" automaticamente.
+  // Quando storeId === "ALL", inclui TODAS as lojas físicas + filhas.
   const aggregatedStoreIds = useMemo(() => {
     if (!storeId) return [] as string[];
+    if (storeId === "ALL") {
+      const realStores = stores.filter(
+        (s) => s.is_virtual === false && !/escrit|fabri|estoque/i.test(s.name ?? "")
+      );
+      const allIds = new Set<string>();
+      realStores.forEach((rs) => {
+        allIds.add(rs.id);
+        stores
+          .filter((s) => s.is_virtual && s.parent_store_id === rs.id && !/homolog/i.test(s.name ?? ""))
+          .forEach((c) => allIds.add(c.id));
+      });
+      return Array.from(allIds);
+    }
     const sel = stores.find((s) => s.id === storeId);
     if (!sel) return [storeId];
     if (sel.is_virtual) return [sel.id]; // virtual selecionada diretamente (ex.: homolog)
