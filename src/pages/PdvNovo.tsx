@@ -638,6 +638,17 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   const [autoAcceptEnabled, setAutoAcceptEnabled] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(AUTO_ACCEPT_KEY) === "1";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(AUTO_ACCEPT_KEY, autoAcceptEnabled ? "1" : "0");
+    }
+  }, [autoAcceptEnabled]);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
   const realtimeRefreshRef = useRef<number | null>(null);
   const seenOrderIdsRef = useRef<Set<string>>(new Set());
   const firstOrdersLoadRef = useRef<boolean>(false);
