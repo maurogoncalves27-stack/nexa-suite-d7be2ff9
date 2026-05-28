@@ -975,8 +975,10 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                       <span className="text-xs font-bold ml-1 shrink-0">{count}</span>
                     </div>
                   );
-                {COLUMNS.map((c) => {
-                  const count = activeOrders.filter((o) => c.statuses.includes(o.status)).length;
+                })}
+              </div>
+            </div>
+
             {displayOrders.length === 0 ? (
               <div className="rounded-lg border bg-card p-10">
                 <p className="text-xs text-muted-foreground text-center">
