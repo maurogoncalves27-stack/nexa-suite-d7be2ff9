@@ -1492,6 +1492,36 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                   </DialogDescription>
                 </DialogHeader>
 
+                {selectedOrder.has_unread_chat && (
+                  <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm">
+                    <MessageCircle className="h-4 w-4 text-destructive animate-pulse shrink-0" />
+                    <span className="flex-1 text-destructive">
+                      Mensagem do cliente no chat do iFood — abra o app do iFood para responder.
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      disabled={busy}
+                      onClick={async () => {
+                        const { error } = await supabase
+                          .from("pdv_orders")
+                          .update({ has_unread_chat: false })
+                          .eq("id", selectedOrder.id);
+                        if (error) {
+                          toast({ title: "Erro ao marcar como lida", description: error.message, variant: "destructive" });
+                          return;
+                        }
+                        setOrders((prev) => prev.map((x) => (x.id === selectedOrder.id ? { ...x, has_unread_chat: false } : x)));
+                        setSelectedOrder({ ...selectedOrder, has_unread_chat: false });
+                      }}
+                    >
+                      Marcar como lida
+                    </Button>
+                  </div>
+                )}
+
+
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between"><span className="text-muted-foreground">Cliente</span><span className="font-medium">{selectedOrder.customer_name ?? "—"}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Tipo</span><span className="font-medium">{selectedOrder.order_type ?? "—"}{selectedOrder.delivery_by ? ` • ${selectedOrder.delivery_by}` : ""}</span></div>
