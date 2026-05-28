@@ -1525,7 +1525,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
             <DialogTitle>{checklistMode === "pack" ? "Conferência para embalar" : "Conferência do pedido"}</DialogTitle>
 
             <DialogDescription>
-              Confira cada item antes de marcar como {checklistMode === "pack" ? "embalado" : "pronto"}. Este checklist é apenas para controle interno.
+              Confira cada item com calma e atenção!
             </DialogDescription>
           </DialogHeader>
           {readyChecklistOrder && (
