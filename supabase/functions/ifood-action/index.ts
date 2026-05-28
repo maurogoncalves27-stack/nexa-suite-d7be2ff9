@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
           error: `iFood ${action} falhou ${ifoodRes.status}: ${message}`,
           upstreamMessage: message,
         }),
-        { status: ifoodRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
