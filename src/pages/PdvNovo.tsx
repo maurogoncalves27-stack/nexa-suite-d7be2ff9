@@ -938,7 +938,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
   const isToday = (iso: string) => new Date(iso).getTime() >= startOfToday.getTime();
   const displayOrders = orders
-    .filter((o) => activeStatuses.includes(o.status))
+    .filter((o) => activeStatuses.includes(o.status) || ((o.status === "concluded" || o.status === "cancelled" || o.status === "dispute") && isToday(o.opened_at)))
     .sort((a, b) => new Date(b.opened_at).getTime() - new Date(a.opened_at).getTime());
 
 
