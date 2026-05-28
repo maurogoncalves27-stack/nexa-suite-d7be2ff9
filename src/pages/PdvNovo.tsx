@@ -1157,14 +1157,22 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                             }`}
                           >
                             {active && (
-                              <div className="flex flex-col items-center gap-1.5 w-full">
                                 <button
                                   type="button"
                                   onClick={() => setSelectedOrder(o)}
-                                  className="font-extrabold text-base hover:underline"
-                                  title="Ver detalhes do pedido"
+                                  className="font-extrabold text-base hover:underline inline-flex items-center gap-1.5"
+                                  title={o.has_unread_chat ? "Cliente enviou mensagem no chat do iFood" : "Ver detalhes do pedido"}
                                 >
                                   {orderLabel(o)}
+                                  {o.has_unread_chat && (
+                                    <span
+                                      className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-destructive text-destructive-foreground animate-pulse shadow"
+                                      aria-label="Mensagem do cliente não lida"
+                                    >
+                                      <MessageCircle className="h-3 w-3" />
+                                    </span>
+                                  )}
+                                </button>
 
                                 </button>
                                 {(() => {
