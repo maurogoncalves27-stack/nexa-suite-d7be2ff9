@@ -1,5 +1,6 @@
-// Edge function ONE-SHOT — migra todos os dados deste projeto para o projeto NEXA.
-// Lê via service_role local; escreve no NEXA via NEXA_SUITE_URL/NEXA_SUITE_SERVICE_ROLE_KEY.
+// Edge function ONE-SHOT — migra todos os dados do NEXA original para este projeto (NEXA Suite).
+// Lê via SOURCE_NEXA_URL / SOURCE_NEXA_SERVICE_ROLE_KEY (projeto NEXA original).
+// Escreve neste projeto via SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY (auto-injetados).
 // Pode ser removida após a migração concluída.
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
@@ -7,6 +8,9 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// URL fixa do projeto NEXA original (origem da leitura).
+const SOURCE_NEXA_URL = "https://xmswsrhfofwhwtykjqef.supabase.co";
 
 // Prefixos / nomes a NUNCA copiar.
 const SKIP_PREFIXES = ["pdv_", "pos_", "saipos_", "_migration", "migration_"];
@@ -37,7 +41,6 @@ function topoSort(tables: string[], fks: { t: string; ref: string }[]): string[]
       [...deps.get(t)!].every((d) => !remaining.has(d))
     );
     if (ready.length === 0) {
-      // Ciclo — joga o resto em ordem alfabética
       out.push(...[...remaining].sort());
       break;
     }
@@ -80,36 +83,34 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const SRC_URL = Deno.env.get("SUPABASE_URL")!;
-    const SRC_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const DST_URL = Deno.env.get("NEXA_SUITE_URL")?.trim();
-    const DST_KEY = Deno.env.get("NEXA_SUITE_SERVICE_ROLE_KEY")?.trim();
+    // ORIGEM = NEXA original
+    const SRC_URL = SOURCE_NEXA_URL;
+    const SRC_KEY = Deno.env.get("SOURCE_NEXA_SERVICE_ROLE_KEY")?.trim();
+    // DESTINO = este projeto (NEXA Suite)
+    const DST_URL = Deno.env.get("SUPABASE_URL")!;
+    const DST_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    if (!DST_URL || !DST_KEY) {
+    if (!SRC_KEY) {
       return new Response(JSON.stringify({
-        error: "Faltam NEXA_SUITE_URL / NEXA_SUITE_SERVICE_ROLE_KEY",
+        error: "Falta SOURCE_NEXA_SERVICE_ROLE_KEY (service_role do projeto NEXA original)",
       }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const src = createClient(SRC_URL, SRC_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
-    const dst = createClient(DST_URL, DST_KEY, {
+    const src = createClient(SRC_URL, SRC_KEY, {
       auth: { persistSession: false, autoRefreshToken: false },
-      global: { headers: { Authorization: `Bearer ${DST_KEY}`, apikey: DST_KEY } },
+      global: { headers: { Authorization: `Bearer ${SRC_KEY}`, apikey: SRC_KEY } },
     });
+    const dst = createClient(DST_URL, DST_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 
-    // Probe destino
-    const probe = await dst.rpc("_migration_list_tables");
+    // Probe origem (precisa do SQL auxiliar lá)
+    const probe = await src.rpc("_migration_list_tables");
     if (probe.error) {
       return new Response(JSON.stringify({
-        error: "Destino não tem _migration_list_tables. Rode o SQL auxiliar no NEXA primeiro.",
+        error: "Origem (NEXA original) não tem _migration_list_tables. Rode o SQL auxiliar lá primeiro.",
         details: probe.error.message,
       }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-
-    // Lista tabelas da ORIGEM
-    const srcMeta = await src.rpc("_migration_list_tables");
-    if (srcMeta.error) throw new Error(`origem _migration_list_tables: ${srcMeta.error.message}`);
-    const meta = srcMeta.data as { tables: string[]; fks: { t: string; ref: string }[] };
+    const meta = probe.data as { tables: string[]; fks: { t: string; ref: string }[] };
 
     const candidates = meta.tables.filter((t) => !shouldSkip(t));
     const ordered = topoSort(candidates, meta.fks);
@@ -120,15 +121,13 @@ Deno.serve(async (req) => {
     const only: string[] | null = body.only ?? (url.searchParams.get("only")?.split(",").filter(Boolean) ?? null);
     const dryRun = body.dry === true || url.searchParams.get("dry") === "1";
     const skipTables = new Set<string>(body.skip ?? []);
-    // Batching: process a slice of the ordered table list
     const startIdx: number = Number(body.startIdx ?? url.searchParams.get("startIdx") ?? 0) || 0;
-    const count: number = Number(body.count ?? url.searchParams.get("count") ?? 0) || 0; // 0 = all
-    const triggersAction: string | undefined = body.triggers ?? url.searchParams.get("triggers") ?? undefined; // "off" | "on"
+    const count: number = Number(body.count ?? url.searchParams.get("count") ?? 0) || 0;
+    const triggersAction: string | undefined = body.triggers ?? url.searchParams.get("triggers") ?? undefined;
 
     let targetTables = ordered.filter((t) => !skipTables.has(t));
     if (only && only.length) targetTables = targetTables.filter((t) => only.includes(t));
 
-    // mode=plan: só retorna a lista + contagem na origem
     if (mode === "plan") {
       const counts: Record<string, number> = {};
       for (const t of targetTables) {
@@ -145,7 +144,7 @@ Deno.serve(async (req) => {
       }, null, 2), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // mode=triggers: liga/desliga triggers no destino
+    // Liga/desliga triggers NO DESTINO (este projeto).
     if (mode === "triggers") {
       const enable = triggersAction === "on";
       const { error } = await dst.rpc("_migration_set_triggers", { p_enable: enable });
@@ -160,7 +159,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Slice
     const slice = count > 0 ? targetTables.slice(startIdx, startIdx + count) : targetTables.slice(startIdx);
     const log: any = { mode, dryRun, startIdx, count: slice.length, totalTables: targetTables.length, results: {} as Record<string, any> };
 
