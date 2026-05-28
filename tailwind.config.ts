@@ -88,7 +88,21 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
-      },
+        },
+        brand: {
+          parme: {
+            DEFAULT: "hsl(var(--brand-parme))",
+            foreground: "hsl(var(--brand-parme-foreground))",
+          },
+          estrogonofe: {
+            DEFAULT: "hsl(var(--brand-estrogonofe))",
+            foreground: "hsl(var(--brand-estrogonofe-foreground))",
+          },
+          box: {
+            DEFAULT: "hsl(var(--brand-box))",
+            foreground: "hsl(var(--brand-box-foreground))",
+          },
+        },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },
