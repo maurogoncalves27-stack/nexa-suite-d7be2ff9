@@ -64,6 +64,8 @@ interface Store {
   id: string;
   name: string;
   is_virtual?: boolean;
+  parent_store_id?: string | null;
+  brand_id?: string | null;
   ifood_merchant_id?: string | null;
   ifood_merchant_uuid?: string | null;
   ifood_environment?: "sandbox" | "production" | null;
@@ -204,9 +206,23 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   const [historyOrders, setHistoryOrders] = useState<Order[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
+  // IDs agregados: quando a loja selecionada é uma física real (não virtual),
+  // inclui ela própria + todas as lojas virtuais filhas (marcas Estroga, Box),
+  // mas NUNCA inclui a "iFood Homologação" automaticamente.
+  const aggregatedStoreIds = useMemo(() => {
+    if (!storeId) return [] as string[];
+    const sel = stores.find((s) => s.id === storeId);
+    if (!sel) return [storeId];
+    if (sel.is_virtual) return [sel.id]; // virtual selecionada diretamente (ex.: homolog)
+    const children = stores.filter(
+      (s) => s.is_virtual && s.parent_store_id === sel.id && !/homolog/i.test(s.name ?? "")
+    );
+    return [sel.id, ...children.map((c) => c.id)];
+  }, [storeId, stores]);
+
   const channelsByStore = useMemo(
-    () => channels.filter((c) => c.store_id === storeId),
-    [channels, storeId]
+    () => channels.filter((c) => aggregatedStoreIds.includes(c.store_id)),
+    [channels, aggregatedStoreIds]
   );
 
 
@@ -224,12 +240,12 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
       }
     }
 
-    // Inclui lojas físicas + lojas virtuais que têm merchantId iFood (homologação)
+    // Carrega todas as lojas ativas (físicas + virtuais por marca) para poder
+    // agregar pedidos das marcas filhas (Estroga, Box) sob a loja física.
     const { data } = await supabase
       .from("stores")
-      .select("id,name,store_type,is_virtual,is_active,ifood_merchant_id,ifood_merchant_uuid,ifood_environment,cnpj,legal_name,inscricao_estadual,inscricao_municipal,regime_tributario,nfce_serie,nfce_next_number,nfce_environment")
+      .select("id,name,store_type,is_virtual,parent_store_id,brand_id,is_active,ifood_merchant_id,ifood_merchant_uuid,ifood_environment,cnpj,legal_name,inscricao_estadual,inscricao_municipal,regime_tributario,nfce_serie,nfce_next_number,nfce_environment")
       .eq("is_active", true)
-      .or("is_virtual.eq.false,ifood_merchant_id.not.is.null")
       .order("name");
     let list = sortStores(data ?? []) as Store[];
 
@@ -256,14 +272,29 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     [stores, storeId]
   );
 
+  // Calcula IDs agregados a partir de um storeId raiz (loja física = inclui marcas virtuais filhas)
+  const computeAggregatedIds = useCallback(
+    (sid: string): string[] => {
+      const sel = stores.find((s) => s.id === sid);
+      if (!sel) return [sid];
+      if (sel.is_virtual) return [sel.id];
+      const children = stores.filter(
+        (s) => s.is_virtual && s.parent_store_id === sel.id && !/homolog/i.test(s.name ?? "")
+      );
+      return [sel.id, ...children.map((c) => c.id)];
+    },
+    [stores]
+  );
+
   const loadForStore = useCallback(
     async (sid: string) => {
       setLoading(true);
+      const ids = computeAggregatedIds(sid);
       const [chRes, sessRes, ordRes] = await Promise.all([
         supabase
           .from("pdv_channels")
           .select("id,store_id,code,name,is_active,sort_order")
-          .eq("store_id", sid)
+          .in("store_id", ids)
           .order("sort_order"),
         supabase
           .from("pdv_cash_sessions")
@@ -274,9 +305,9 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
         supabase
           .from("pdv_orders")
           .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by")
-          .eq("store_id", sid)
+          .in("store_id", ids)
           .order("opened_at", { ascending: false })
-          .limit(50),
+          .limit(150),
       ]);
       setChannels(chRes.data ?? []);
       let sess = (sessRes.data ?? null) as CashSession | null;
@@ -293,12 +324,13 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
       setOrders((ordRes.data ?? []) as Order[]);
       setLoading(false);
     },
-    [user]
+    [user, computeAggregatedIds]
   );
 
   const loadHistoryOrders = useCallback(
     async (sid: string, date: Date) => {
       setHistoryLoading(true);
+      const ids = computeAggregatedIds(sid);
       const start = new Date(date);
       start.setHours(0, 0, 0, 0);
       const end = new Date(date);
@@ -306,14 +338,14 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
       const { data } = await supabase
         .from("pdv_orders")
         .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by")
-        .eq("store_id", sid)
+        .in("store_id", ids)
         .gte("opened_at", start.toISOString())
         .lte("opened_at", end.toISOString())
         .order("opened_at", { ascending: false });
       setHistoryOrders((data ?? []) as Order[]);
       setHistoryLoading(false);
     },
-    []
+    [computeAggregatedIds]
   );
 
   useEffect(() => {
@@ -971,9 +1003,37 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                 />
               </div>
 
-              {selectedStore && (
-                <IfoodStoreEditor store={selectedStore} onSaved={() => void loadStores()} />
-              )}
+              {/* Um editor de vínculo iFood por marca: a loja física (Aquela Parmê)
+                  + cada loja virtual filha (ex.: AQUELE ESTROGONOFE, BOX CAIPIRA).
+                  A "iFood Homologação" não entra aqui — fica no botão separado abaixo. */}
+              {selectedStore && (() => {
+                const brandStores = selectedStore.is_virtual
+                  ? [selectedStore]
+                  : [
+                      selectedStore,
+                      ...stores.filter(
+                        (s) =>
+                          s.is_virtual &&
+                          s.parent_store_id === selectedStore.id &&
+                          !/homolog/i.test(s.name ?? "")
+                      ),
+                    ];
+                return (
+                  <div className="space-y-4">
+                    {brandStores.map((bs) => (
+                      <div key={bs.id} className="rounded-lg border bg-card p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold">{bs.name}</p>
+                          <Badge variant="outline" className="text-[10px]">
+                            {bs.is_virtual ? "Marca virtual" : "Loja física"}
+                          </Badge>
+                        </div>
+                        <IfoodStoreEditor store={bs} onSaved={() => void loadStores()} />
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
               {selectedStore?.ifood_merchant_uuid && (
                 <Button
                   variant="outline"
