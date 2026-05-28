@@ -1767,11 +1767,11 @@ function OrdersList({
                   <span className="font-medium text-sm truncate">
                     {(() => {
                       const raw = (channelName(o.channel_id) ?? "").toUpperCase();
+                      const prefix = raw.includes("IFOOD") ? "IFOOD" : raw.includes("TOTEM") ? "TOTEM" : raw.includes("SAL") ? "SALÃO" : raw.includes("BALC") ? "BALCÃO" : raw || "PEDIDO";
                       const num = o.external_display_id ?? o.order_number ?? (o.id ? String(parseInt(o.id.replace(/-/g, "").slice(0, 8), 16) % 10000).padStart(4, "0") : "----");
-
-                      const num = o.external_display_id ?? o.order_number ?? (o.id ? o.id.slice(0, 4).toUpperCase() : "—");
                       return `${prefix} - ${num}`;
                     })()}
+
 
                   </span>
 
