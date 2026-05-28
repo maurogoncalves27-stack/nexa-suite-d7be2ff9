@@ -651,6 +651,14 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     const t = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(t);
   }, []);
+  useEffect(() => {
+    if (!storeId) return;
+    const t = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      void loadForStore(storeId);
+    }, 30_000);
+    return () => clearInterval(t);
+  }, [storeId, loadForStore]);
 
   // Carrega itens reais do pedido ao abrir o checklist
   useEffect(() => {
