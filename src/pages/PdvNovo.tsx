@@ -966,9 +966,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
             <div className="sticky top-0 z-20 rounded-lg border bg-card shadow-sm">
               <div className="grid gap-px bg-border rounded-lg overflow-hidden" style={{ gridTemplateColumns: `repeat(${COLUMNS.length}, minmax(0, 1fr))` }}>
                 {COLUMNS.map((c) => {
-                  const count = activeOrders.filter((o) => c.statuses.includes(o.status)).length
-                    + (c.key === "concluido" ? orders.filter((o) => o.status === "concluded").length : 0)
-                    + (c.key === "cancelado" ? orders.filter((o) => ["cancelled", "dispute"].includes(o.status)).length : 0);
+                  const count = activeOrders.filter((o) => c.statuses.includes(o.status)).length;
                   return (
                     <div key={c.key} className={`px-2 py-2 ${c.headerCls} flex items-center justify-between min-w-0`}>
                       <span className="text-[10px] md:text-xs font-semibold uppercase tracking-tight truncate">{c.label}</span>
