@@ -1,0 +1,1 @@
+DELETE FROM public.payroll_edit_locks;
