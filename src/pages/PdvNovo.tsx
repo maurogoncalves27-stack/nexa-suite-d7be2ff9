@@ -1044,8 +1044,9 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                 if (colIdx === -1) return null;
                 const col = COLUMNS[colIdx];
                 const elapsed = minutesSince(o.opened_at);
-                  const num = orderLabel(o);
+                const num = orderLabel(o);
 
+                const isDone = o.status === "concluded";
                 const isCancel = o.status === "cancelled" || o.status === "dispute";
                 const isFinal = isDone || isCancel;
                 const late = !isFinal && elapsed >= 60;
@@ -1061,7 +1062,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                     ? "border-success/60 bg-success/5 text-success hover:bg-success/10"
                     : "border-destructive/60 bg-destructive/5 text-destructive hover:bg-destructive/10";
                   const label = isDone ? "Concluído" : "Cancelado";
-                  const num = `${o.external_display_id ?? o.order_number ?? "—"}`;
+
                   return (
                     <button
                       key={o.id}
