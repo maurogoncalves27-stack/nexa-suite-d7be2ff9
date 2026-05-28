@@ -50,7 +50,9 @@ import {
   AlertTriangle,
   ArrowRight,
   CalendarIcon,
+  MessageCircle,
 } from "lucide-react";
+
 import { toast } from "@/hooks/use-toast";
 import { sortStores } from "@/lib/storeSort";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
