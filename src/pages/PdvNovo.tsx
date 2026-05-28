@@ -1082,20 +1082,22 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                                   className="font-extrabold text-base hover:underline"
                                   title="Ver detalhes do pedido"
                                 >
-                                  {o.external_display_id ?? o.order_number ?? o.id.slice(0, 4)}
+                                  {o.external_display_id ?? o.order_number ?? "—"}
                                 </button>
-                                {c.nextTo && c.nextLabel && (
+                                {(c.nextTo || c.customAction) && c.nextLabel && (
                                   <Button
                                     size="sm"
                                     className={`h-8 text-[11px] px-3 ${c.nextBtnCls ?? ""}`}
                                     disabled={busy}
                                     onClick={() => {
-                                      if (c.nextTo === "ready") {
+                                      if (c.customAction === "pack") {
+                                        packOrder(o);
+                                      } else if (c.nextTo === "ready") {
                                         setReadyChecks({});
                                         setCheckedByName("");
                                         setReadyChecklistOrder(o);
-                                      } else {
-                                        advanceStatus(o, c.nextTo!);
+                                      } else if (c.nextTo) {
+                                        advanceStatus(o, c.nextTo);
                                       }
                                     }}
                                   >
