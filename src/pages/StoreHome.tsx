@@ -94,7 +94,6 @@ export default function StoreHome() {
         </div>
       </nav>
 
-      </nav>
 
       <div className="flex-1 min-h-0 overflow-auto">
         <PdvNovo hideHeader />
