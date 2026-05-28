@@ -1,82 +1,65 @@
-# NEXA Smart POS — Caminho Rápido
+# Migração de dados para o projeto NEXA
 
-> **Nota DFe (26/05):** Sincronização de NF-e (Focus NFe) desligada neste projeto por enquanto — o outro projeto (local/Electron) é o "dono" da entrada de mercadorias. Não cadastrar CNPJs em `dfe_companies` aqui até nova ordem.
+## Objetivo
+Copiar todos os dados deste projeto (origem) para o projeto NEXA (destino), preservando IDs e respeitando dependências entre tabelas.
 
-## Decisão travada
-- **Hardware alvo:** Stone S920 / Ton T3 (mesma família, mesmo SDK PlugPag)
-- **Por quê é o mais rápido:** SDK PlugPag é aberto e documentado publicamente, sem NDA. Aceita APK próprio sem burocracia. Homologação TEF em ~30 dias. Impressora térmica integrada com API simples.
-- **Fase 1 (agora):** construir só o shell visual web em `/smartpos`, com TEF mockado, rodando no navegador. Sem Capacitor, sem APK, sem maquininha.
-- **Fase 2 (depois do iFood homologar):** empacotar como APK Capacitor, integrar PlugPag (Stone/Ton), instalar via USB na maquininha.
+## O que será migrado
+Todas as tabelas do schema `public`, **exceto**:
+- `pdv_*` (PDV novo — destino vai começar limpo)
+- `pos_*`, `saipos_*` (Saipos legado descontinuado)
+- `payroll_xml_history` (log local)
+- Tabelas que começam com `_` ou `migration_*` (internas)
 
-## O que será construído nesta fase
+Buckets de Storage e usuários (`auth.users`) **não** são migrados — o NEXA fará seu próprio onboarding de auth.
 
-### Rota e layout
-- Nova rota `/smartpos` (pública, login dedicado igual ao /pdv-novo)
-- Viewport alvo fixo: **480×800** (tela típica Smart POS Android — Stone S920 / Ton T3)
-- Layout single-screen, sem sidebar, botões grandes (mín. 48px), tipografia legível à distância de braço
+## Como funciona
 
-### Telas
-1. **Login Smart POS** — email/senha, seleção de loja (só Asa Sul, Asa Norte, Águas Claras, Lago Sul — sem Fábrica)
-2. **Home / Catálogo** — grid de categorias (`pdv_categories`) → grid de produtos (`pdv_products`)
-3. **Carrinho lateral/inferior** — itens, quantidade, subtotal
-4. **Tela de cobrança** — total + botão "Cobrar" (mock: simula aprovação após 2s)
-5. **Comprovante** — tela de sucesso com resumo (impressão mockada)
+1. **Edge function `migrate-to-nexa`** (one-shot, removível depois)
+   - Lê do projeto atual via service_role local
+   - Escreve no NEXA via `NEXA_SUITE_URL` + `NEXA_SUITE_SERVICE_ROLE_KEY` (já configurados)
+   - Faz upsert por `id` (idempotente — pode rodar várias vezes)
 
-### Reaproveitamento
-- Reusa `pdv_categories`, `pdv_products`, `pdv_sales` (já existem)
-- Reusa design system NEXA (tokens, cabeçalho padrão adaptado pra mobile)
-- TEF: cria `src/lib/tef/smartPosTefAdapter.ts` retornando mock aprovado (mesma interface do adapter SiTef futuro)
+2. **Ordem de carga**
+   - Descobre dependências FK via `pg_catalog` no destino
+   - Ordena tabelas topologicamente (pais antes de filhos)
+   - Fallback: lista manual de prioridades (stores, brands, employees, suppliers, products, recipes, etc.)
 
-### O que NÃO entra agora
-- Capacitor / APK / build Android
-- SDK Cielo / Stone / PlugPag
-- Integração TEF real
-- Impressora térmica nativa
-- NFC-e (vem na Fase 3)
-- Sincronização offline
-- Mexer em `/pdv`, `/pdv-novo`, `pos_*`, SiTef, Gertec, iFood (tudo congelado pela regra de prioridade)
+3. **Paginação e chunks**
+   - Lê 1000 linhas por vez da origem
+   - Grava em chunks de 500 no destino
+   - Continua em caso de erro por tabela (não aborta tudo)
+
+4. **Modos de execução** (via query param)
+   - `?mode=plan` — só lista o que será copiado, contagens por tabela, sem escrever
+   - `?mode=tables&only=stores,employees` — copia só tabelas específicas
+   - `?mode=full` — copia tudo na ordem topológica
+   - `?dry=1` — lê tudo mas não escreve
+
+5. **UI mínima**
+   - Página oculta `/admin/migrate-nexa` (só super-user) com:
+     - Botão "Listar tabelas" (mode=plan)
+     - Botão "Copiar selecionadas"
+     - Botão "Migração completa"
+     - Log em tempo real do retorno
+
+## Riscos e mitigações
+- **FKs faltando**: rodar em ordem topológica + retry no fim para o que falhou
+- **RLS no destino**: service_role bypassa RLS, então não bloqueia
+- **Triggers no destino**: vão disparar (ex: auto-gerar PDFs). Desabilitamos temporariamente via `ALTER TABLE ... DISABLE TRIGGER USER` antes da carga e reabilitamos no fim — feito via RPC no destino.
+- **Volume grande**: edge functions têm timeout. Vamos dividir em chamadas por grupo de tabelas se necessário.
 
 ## Detalhes técnicos
+- Cliente Supabase com `auth.persistSession: false`
+- Função RPC nova no destino: `_migration_list_tables()` e `_migration_set_triggers(enable bool)`
+- Tipos TS não regenerados (função one-shot, será deletada)
 
-### Arquivos novos
-```
-src/pages/SmartPos.tsx              # Shell + roteamento interno
-src/pages/SmartPosLogin.tsx         # Login dedicado
-src/components/smartpos/
-  ├─ Catalog.tsx                    # Categorias + produtos
-  ├─ Cart.tsx                       # Carrinho
-  ├─ ChargeScreen.tsx               # Tela de cobrança
-  └─ Receipt.tsx                    # Comprovante
-src/lib/tef/smartPosTefAdapter.ts   # Mock TEF (interface única)
-src/hooks/useSmartPosCart.ts        # Estado do carrinho
-```
+## Entregáveis
+- `supabase/functions/migrate-to-nexa/index.ts`
+- Migration no destino com RPCs auxiliares (você roda manualmente no NEXA via chat de lá, eu te entrego o SQL)
+- Página `src/pages/admin/MigrateNexa.tsx` + rota no AppLayout
+- Atualização de `PAGE_TITLES`
 
-### Alterações pontuais
-- `src/App.tsx`: adicionar rotas `/smartpos` e `/smartpos/login` (fora do AppLayout)
-- `src/components/AppLayout.tsx`: adicionar PAGE_TITLES `/smartpos`
-- Sem migrations (Fase 1 só lê tabelas existentes)
-
-### Mock TEF (interface)
-```ts
-export interface TefAdapter {
-  charge(amountCents: number, method: 'credit'|'debit'|'pix'): Promise<TefResult>;
-}
-// Fase 1: smartPosTefAdapter → resolve após 2s com status='approved'
-// Fase 2: trocar implementação por PlugPag (Stone/Ton) sem mudar quem chama
-```
-
-## Roadmap pós-Fase 1 (só pra contexto, NÃO executar agora)
-
-| Fase | Quando | O quê |
-|------|--------|-------|
-| 2 | Após iFood homologar | Empacotar com Capacitor (APK Android), instalar via USB/ADB na Stone S920 / Ton T3 |
-| 3 | Após Fase 2 estável | TEF real via PlugPag (Stone/Ton) + impressora térmica nativa |
-| 4 | Após Fase 3 | NFC-e via Focus NFe, sync `pdv_sales`, modo offline |
-
-## Critério de aceite Fase 1
-- Acessar `/smartpos` no navegador (PC ou celular) e ver tela 480×800 funcional
-- Logar com qualquer usuário existente, escolher loja
-- Navegar categorias → produtos → adicionar ao carrinho
-- Clicar "Cobrar" → mock aprovado → tela de comprovante
-- Voltar pro catálogo e iniciar nova venda
-- Zero alteração em `/pdv`, `/pdv-novo`, iFood ou qualquer fluxo de produção
+## O que vou pedir para você fazer
+1. Aprovar este plano
+2. Depois que eu entregar, ir no projeto NEXA, colar um SQL pequeno (vou te mandar) que cria 2 funções auxiliares lá
+3. Voltar aqui e abrir `/admin/migrate-nexa` → primeiro botão "Listar" pra confirmar contagens, depois "Migração completa"
