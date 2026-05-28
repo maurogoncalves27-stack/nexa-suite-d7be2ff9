@@ -115,6 +115,8 @@ interface Order {
   order_type?: string | null;
   delivery_by?: string | null;
   packed_at?: string | null;
+  has_unread_chat?: boolean | null;
+
 }
 
 
