@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
           .from("pdv_channels")
           .select("id")
           .eq("store_id", store.id)
-          .ilike("name", "iFood%")
+          .eq("code", "ifood")
           .maybeSingle();
 
         if (!channel) {
