@@ -634,6 +634,22 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   };
 
   const channelName = (id: string) => channels.find((c) => c.id === id)?.name ?? "—";
+  const orderLabel = (o: Order) => {
+    const ch = channels.find((c) => c.id === o.channel_id);
+    const raw = (ch?.name ?? "").toUpperCase();
+    const prefix = raw.includes("IFOOD") || raw.includes("I-FOOD") || raw.includes("IFD")
+      ? "IFOOD"
+      : raw.includes("TOTEM")
+      ? "TOTEM"
+      : raw.includes("SAL")
+      ? "SALÃO"
+      : raw.includes("BALC")
+      ? "BALCÃO"
+      : raw || "PEDIDO";
+    const num = o.external_display_id ?? o.order_number ?? "—";
+    return `${prefix} - ${num}`;
+  };
+
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const AUTO_ACCEPT_KEY = "pdvNovo:autoAcceptEnabled";
@@ -1028,6 +1044,8 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                 if (colIdx === -1) return null;
                 const col = COLUMNS[colIdx];
                 const elapsed = minutesSince(o.opened_at);
+                const num = orderLabel(o);
+
                 const isDone = o.status === "concluded";
                 const isCancel = o.status === "cancelled" || o.status === "dispute";
                 const isFinal = isDone || isCancel;
@@ -1044,7 +1062,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                     ? "border-success/60 bg-success/5 text-success hover:bg-success/10"
                     : "border-destructive/60 bg-destructive/5 text-destructive hover:bg-destructive/10";
                   const label = isDone ? "Concluído" : "Cancelado";
-                  const num = `${o.external_display_id ?? o.order_number ?? "—"}`;
+
                   return (
                     <button
                       key={o.id}
@@ -1082,7 +1100,8 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                                   className="font-extrabold text-base hover:underline"
                                   title="Ver detalhes do pedido"
                                 >
-                                  {o.external_display_id ?? o.order_number ?? "—"}
+                                  {orderLabel(o)}
+
                                 </button>
                                 {(c.nextTo || c.customAction) && c.nextLabel && (
                                   <Button
@@ -1371,7 +1390,8 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2">
                     <ShoppingBag className="h-5 w-5 text-primary" />
-                    Pedido {selectedOrder.external_display_id ?? selectedOrder.order_number ?? "—"}
+                    Pedido {orderLabel(selectedOrder)}
+
                   </DialogTitle>
                   <DialogDescription className="flex items-center gap-2">
                     <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium ${meta.tone}`}>
@@ -1508,7 +1528,8 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
             <div className="space-y-3">
               <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
                 <div className="font-semibold">
-                  Pedido {readyChecklistOrder.external_display_id ?? readyChecklistOrder.order_number ?? "—"}
+                  Pedido {orderLabel(readyChecklistOrder)}
+
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {readyChecklistOrder.customer_name ?? "Sem cliente"} • {fmt(readyChecklistOrder.total)}
@@ -1742,8 +1763,14 @@ function OrdersList({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-sm truncate">
-                    {o.external_display_id ?? o.order_number ?? "—"}
+                    {(() => {
+                      const raw = (channelName(o.channel_id) ?? "").toUpperCase();
+                      const prefix = raw.includes("IFOOD") ? "IFOOD" : raw.includes("TOTEM") ? "TOTEM" : raw.includes("SAL") ? "SALÃO" : raw.includes("BALC") ? "BALCÃO" : raw || "PEDIDO";
+                      const num = o.external_display_id ?? o.order_number ?? "—";
+                      return `${prefix} - ${num}`;
+                    })()}
                   </span>
+
                   <Badge variant="outline" className="text-[10px] py-0">
                     {channelName(o.channel_id)}
                   </Badge>
