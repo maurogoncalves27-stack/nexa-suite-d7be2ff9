@@ -264,6 +264,7 @@ const App = () => (
               providers permanecem vivos, evitando o "refresh" do sistema.
             */}
             <Route element={<AppLayout />}>
+              <Route path="/admin/migrate-nexa" element={<Guarded staff><MigrateNexa /></Guarded>} />
               <Route path="/dashboard" element={<Guarded staff partner><Dashboard /></Guarded>} />
               <Route path="/painel-socio" element={<ProtectedRoute><PartnerDashboard /></ProtectedRoute>} />
               <Route path="/ranking" element={<Guarded staff partner><EmployeeRanking /></Guarded>} />
