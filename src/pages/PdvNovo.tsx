@@ -57,6 +57,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import NfceSection from "@/components/pdv-novo/NfceSection";
 import TefConfigPanel from "@/components/pdv-novo/TefConfigPanel";
 import StockShortagesPanel from "@/components/pdv-novo/StockShortagesPanel";
+import { routePrintOrder } from "@/lib/routePrint";
 
 
 // ===== Tipos ============================================================
@@ -638,7 +639,6 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(AUTO_ACCEPT_KEY) === "1";
   });
-  const realtimeRefreshRef = useRef<number | null>(null);
   useEffect(() => {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(AUTO_ACCEPT_KEY, autoAcceptEnabled ? "1" : "0");
@@ -649,6 +649,74 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     const t = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(t);
   }, []);
+  const realtimeRefreshRef = useRef<number | null>(null);
+  const seenOrderIdsRef = useRef<Set<string>>(new Set());
+  const firstOrdersLoadRef = useRef<boolean>(false);
+
+  // Marca os pedidos já existentes como "vistos" no 1º carregamento para não imprimir histórico
+  useEffect(() => {
+    if (firstOrdersLoadRef.current) return;
+    if (orders.length === 0 && !storeId) return;
+    orders.forEach((o) => seenOrderIdsRef.current.add(o.id));
+    firstOrdersLoadRef.current = true;
+  }, [orders, storeId]);
+
+  // Imprime comanda + cupom de um pedido recém-chegado
+  const printNewOrder = useCallback(async (orderId: string, orderStoreId: string) => {
+    try {
+      const [ordRes, itemsRes, chRes, stRes] = await Promise.all([
+        supabase.from("pdv_orders")
+          .select("id,order_number,external_display_id,customer_name,customer_phone,delivery_address,notes,total,opened_at,order_type,channel_id")
+          .eq("id", orderId).maybeSingle(),
+        supabase.from("pdv_order_items")
+          .select("name,quantity,unit_price,total_price,notes")
+          .eq("order_id", orderId).order("created_at"),
+        supabase.from("pdv_channels").select("id,name").eq("store_id", orderStoreId),
+        supabase.from("stores").select("name").eq("id", orderStoreId).maybeSingle(),
+      ]);
+      const ord = ordRes.data as any;
+      if (!ord) return;
+      const chName = (chRes.data ?? []).find((c: any) => c.id === ord.channel_id)?.name ?? "";
+      const sName = (stRes.data as any)?.name ?? "";
+      // sino curto
+      try {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        [0, 180, 360].forEach((delay) => setTimeout(() => {
+          const osc = ctx.createOscillator(); const g = ctx.createGain();
+          osc.type = "sine"; osc.connect(g); g.connect(ctx.destination);
+          osc.frequency.value = 1480; g.gain.value = 0.18;
+          osc.start(); setTimeout(() => osc.stop(), 140);
+        }, delay));
+        setTimeout(() => ctx.close(), 1200);
+      } catch {}
+      await routePrintOrder({
+        storeId: orderStoreId,
+        storeName: sName,
+        order: {
+          id: ord.id,
+          order_number: ord.external_display_id ?? ord.order_number,
+          channel_name: chName,
+          order_type: ord.order_type,
+          customer_name: ord.customer_name,
+          customer_phone: ord.customer_phone,
+          delivery_address: ord.delivery_address,
+          notes: ord.notes,
+          total: Number(ord.total ?? 0),
+          opened_at: ord.opened_at,
+          items: (itemsRes.data ?? []).map((it: any) => ({
+            name: it.name,
+            quantity: Number(it.quantity ?? 1),
+            unit_price: Number(it.unit_price ?? 0),
+            total: Number(it.total_price ?? 0),
+            notes: it.notes,
+          })),
+        },
+      });
+    } catch (e) {
+      console.warn("[pdv-novo] falha ao imprimir comanda automática", e);
+    }
+  }, []);
+
   useEffect(() => {
     if (!storeId) return;
     const t = setInterval(() => {
@@ -681,7 +749,22 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
         (payload) => {
           const nextStoreId = (payload.new as { store_id?: string } | null)?.store_id;
           const prevStoreId = (payload.old as { store_id?: string } | null)?.store_id;
-          refreshVisibleData(nextStoreId ?? prevStoreId ?? null);
+          const sid = nextStoreId ?? prevStoreId ?? null;
+          // Auto-impressão de comanda em pedido NOVO
+          if (
+            payload.eventType === "INSERT" &&
+            nextStoreId &&
+            aggregatedStoreIds.includes(nextStoreId) &&
+            firstOrdersLoadRef.current
+          ) {
+            const newId = (payload.new as { id?: string } | null)?.id;
+            if (newId && !seenOrderIdsRef.current.has(newId)) {
+              seenOrderIdsRef.current.add(newId);
+              // pequeno atraso pra garantir que pdv_order_items já chegou
+              window.setTimeout(() => { void printNewOrder(newId, nextStoreId); }, 600);
+            }
+          }
+          refreshVisibleData(sid);
         }
       )
       .subscribe();
@@ -693,7 +776,9 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
       }
       void supabase.removeChannel(channel);
     };
-  }, [aggregatedStoreIds, historyDateEnd, historyDateStart, loadForStore, loadHistoryOrders, storeId]);
+  }, [aggregatedStoreIds, historyDateEnd, historyDateStart, loadForStore, loadHistoryOrders, storeId, printNewOrder]);
+
+
 
   // Carrega itens reais do pedido ao abrir o checklist
   useEffect(() => {
