@@ -1153,10 +1153,15 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                       title="Ver detalhes do pedido"
                     >
                       <span className="font-extrabold text-base">{num}</span>
+                      {(() => {
+                        const b = brandFromOrder(o);
+                        return b ? <Badge className={`text-[10px] ${b.className}`}>{b.label}</Badge> : null;
+                      })()}
                       <span className="text-xs font-semibold uppercase tracking-wide">{label}</span>
                     </button>
                   );
                 }
+
 
                 return (
                   <div
