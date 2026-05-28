@@ -857,7 +857,8 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
       statuses: inProductionStatuses,
       match: isInProduction,
       headerCls: "bg-orange-500 text-white border-orange-600",
-      accentCls: "border-l-orange-500",  nextLabel: "Embalar", customAction: "pack", nextBtnCls: "bg-purple-600 hover:bg-purple-700 text-white" },
+      accentCls: "border-l-orange-500",  nextLabel: "Pronto p/ embalar", customAction: "pack", nextBtnCls: "bg-purple-600 hover:bg-purple-700 text-white" },
+
     { key: "embalado",   label: "Pedido embalado",
       statuses: ["preparing"],
       match: isPacked,
@@ -1114,15 +1115,20 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                                     disabled={busy}
                                     onClick={() => {
                                       if (c.customAction === "pack") {
-                                        packOrder(o);
+                                        setReadyChecks({});
+                                        setCheckedByName("");
+                                        setChecklistMode("pack");
+                                        setReadyChecklistOrder(o);
                                       } else if (c.nextTo === "ready") {
                                         setReadyChecks({});
                                         setCheckedByName("");
+                                        setChecklistMode("ready");
                                         setReadyChecklistOrder(o);
                                       } else if (c.nextTo) {
                                         advanceStatus(o, c.nextTo);
                                       }
                                     }}
+
                                   >
                                     {c.nextTo === "confirmed" ? "Aceitar" : c.nextLabel}
                                     <ArrowRight className="h-3.5 w-3.5 ml-1" />
