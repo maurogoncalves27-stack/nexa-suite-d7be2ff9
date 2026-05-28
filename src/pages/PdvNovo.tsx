@@ -64,6 +64,8 @@ interface Store {
   id: string;
   name: string;
   is_virtual?: boolean;
+  parent_store_id?: string | null;
+  brand_id?: string | null;
   ifood_merchant_id?: string | null;
   ifood_merchant_uuid?: string | null;
   ifood_environment?: "sandbox" | "production" | null;
