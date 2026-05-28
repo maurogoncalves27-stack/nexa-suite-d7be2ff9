@@ -82,12 +82,23 @@ Deno.serve(async (req) => {
         // Encontra a loja virtual pelo merchantId
         const { data: store } = await sb
           .from("stores")
-          .select("id, parent_store_id, ifood_environment, ifood_auto_accept")
+          .select("id, name, parent_store_id, ifood_environment, ifood_auto_accept")
           .eq("ifood_merchant_uuid", ev.merchantId)
           .maybeSingle();
 
         if (!store) {
-          processed.push({ event: ev.id, skipped: "merchant_not_mapped", merchantId: ev.merchantId });
+          const reason = "merchant_not_mapped";
+          await sb.from("pdv_ifood_failed_events").upsert({
+            external_event_id: ev.id,
+            event_code: ev.code,
+            order_id_external: ev.orderId,
+            merchant_id: ev.merchantId ?? null,
+            payload: ev as unknown as Record<string, unknown>,
+            error: reason,
+            source: "poll",
+            attempts: 1,
+          }, { onConflict: "external_event_id", ignoreDuplicates: false });
+          processed.push({ event: ev.id, skipped: reason, merchantId: ev.merchantId });
           continue;
         }
 
@@ -96,11 +107,28 @@ Deno.serve(async (req) => {
           .from("pdv_channels")
           .select("id")
           .eq("store_id", store.id)
-          .ilike("name", "iFood%")
+          .eq("code", "ifood")
           .maybeSingle();
 
         if (!channel) {
-          processed.push({ event: ev.id, skipped: "channel_not_found" });
+          const isHomologStore = /homolog/i.test((store as { name?: string | null }).name ?? "");
+          if (isHomologStore) {
+            processed.push({ event: ev.id, skipped: "homolog_store_ignored", storeId: store.id });
+            ackList.push({ id: ev.id });
+            continue;
+          }
+          const reason = `channel_not_found:${store.id}`;
+          await sb.from("pdv_ifood_failed_events").upsert({
+            external_event_id: ev.id,
+            event_code: ev.code,
+            order_id_external: ev.orderId,
+            merchant_id: ev.merchantId ?? null,
+            payload: { ...ev, resolved_store_id: store.id } as unknown as Record<string, unknown>,
+            error: reason,
+            source: "poll",
+            attempts: 1,
+          }, { onConflict: "external_event_id", ignoreDuplicates: false });
+          processed.push({ event: ev.id, skipped: reason });
           continue;
         }
 
