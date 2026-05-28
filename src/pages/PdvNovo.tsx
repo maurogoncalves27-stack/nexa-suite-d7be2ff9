@@ -337,7 +337,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
               .maybeSingle(),
         supabase
           .from("pdv_orders")
-          .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by")
+          .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by,packed_at")
           .in("store_id", ids)
           .order("opened_at", { ascending: false })
           .limit(150),
