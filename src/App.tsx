@@ -133,6 +133,7 @@ const CandidateDocumentUpload = lazy(() => import("./pages/CandidateDocumentUplo
 const LegalPage = lazy(() => import("./pages/LegalPage.tsx"));
 const PartnerDashboard = lazy(() => import("./pages/PartnerDashboard.tsx"));
 const SelectAccess = lazy(() => import("./pages/SelectAccess.tsx"));
+const MigrateNexa = lazy(() => import("./pages/admin/MigrateNexa.tsx"));
 
 const queryClient = new QueryClient();
 
