@@ -1198,6 +1198,13 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                                 </button>
 
                                 {(() => {
+                                  const b = brandFromOrder(o);
+                                  return b ? <Badge className={`text-[10px] ${b.className}`}>{b.label}</Badge> : null;
+                                })()}
+
+
+
+                                {(() => {
                                   const action: { label: string; nextTo?: PdvStatus; customAction?: "pack" } | null =
                                     c.key === "producao"
                                       ? (o.status === "confirmed"
