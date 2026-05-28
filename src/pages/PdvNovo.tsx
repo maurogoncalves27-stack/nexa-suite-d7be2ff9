@@ -226,12 +226,12 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
       }
     }
 
-    // Inclui lojas físicas + lojas virtuais que têm merchantId iFood (homologação)
+    // Carrega todas as lojas ativas (físicas + virtuais por marca) para poder
+    // agregar pedidos das marcas filhas (Estroga, Box) sob a loja física.
     const { data } = await supabase
       .from("stores")
-      .select("id,name,store_type,is_virtual,is_active,ifood_merchant_id,ifood_merchant_uuid,ifood_environment,cnpj,legal_name,inscricao_estadual,inscricao_municipal,regime_tributario,nfce_serie,nfce_next_number,nfce_environment")
+      .select("id,name,store_type,is_virtual,parent_store_id,brand_id,is_active,ifood_merchant_id,ifood_merchant_uuid,ifood_environment,cnpj,legal_name,inscricao_estadual,inscricao_municipal,regime_tributario,nfce_serie,nfce_next_number,nfce_environment")
       .eq("is_active", true)
-      .or("is_virtual.eq.false,ifood_merchant_id.not.is.null")
       .order("name");
     let list = sortStores(data ?? []) as Store[];
 
