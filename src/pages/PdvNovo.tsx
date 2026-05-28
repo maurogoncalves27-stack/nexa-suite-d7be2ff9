@@ -817,15 +817,32 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     nextLabel?: string;
     nextTo?: PdvStatus;
     nextBtnCls?: string;
+    /** Predicado opcional. Quando definido, sobrepõe statuses.includes(o.status). */
+    match?: (o: Order) => boolean;
+    /** Ação alternativa do botão "próximo" — usada por colunas internas (ex.: Embalar). */
+    customAction?: "pack";
   };
+
+  // Predicados auxiliares para distinguir "Em produção" de "Pedido embalado"
+  const inProductionStatuses: PdvStatus[] = autoAcceptEnabled
+    ? ["placed", "confirmed", "preparing"]
+    : ["confirmed", "preparing"];
+  const isInProduction = (o: Order) => inProductionStatuses.includes(o.status) && !o.packed_at;
+  const isPacked = (o: Order) => o.status === "preparing" && !!o.packed_at;
 
   const ALL_COLUMNS: KanbanCol[] = [
     { key: "analise",    label: "Em análise",         statuses: ["placed"],                   headerCls: "bg-amber-500 text-white border-amber-600",
       accentCls: "border-l-amber-500",   nextLabel: "Aceitar pedido", nextTo: "confirmed", nextBtnCls: "bg-blue-600 hover:bg-blue-700 text-white" },
     { key: "producao",   label: "Em produção",
-      statuses: autoAcceptEnabled ? ["placed", "confirmed", "preparing"] : ["confirmed", "preparing"],
+      statuses: inProductionStatuses,
+      match: isInProduction,
       headerCls: "bg-orange-500 text-white border-orange-600",
-      accentCls: "border-l-orange-500",  nextLabel: "Pronto p/ retirada", nextTo: "ready", nextBtnCls: "bg-emerald-600 hover:bg-emerald-700 text-white" },
+      accentCls: "border-l-orange-500",  nextLabel: "Embalar", customAction: "pack", nextBtnCls: "bg-purple-600 hover:bg-purple-700 text-white" },
+    { key: "embalado",   label: "Pedido embalado",
+      statuses: ["preparing"],
+      match: isPacked,
+      headerCls: "bg-secondary text-secondary-foreground border-border",
+      accentCls: "border-l-secondary",   nextLabel: "Pronto p/ retirada", nextTo: "ready", nextBtnCls: "bg-emerald-600 hover:bg-emerald-700 text-white" },
     { key: "pronto",     label: "Pronto p/ retirada", statuses: ["ready"],                    headerCls: "bg-emerald-500 text-white border-emerald-600",
       accentCls: "border-l-emerald-500", nextLabel: "Despachar", nextTo: "dispatched", nextBtnCls: "bg-blue-600 hover:bg-blue-700 text-white" },
     { key: "entrega",    label: "Em entrega",         statuses: ["dispatched"],               headerCls: "bg-blue-600 text-white border-blue-700",
@@ -840,6 +857,26 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   const COLUMNS: KanbanCol[] = ALL_COLUMNS.filter(
     (c) => c.key !== "concluido" && c.key !== "cancelado" && (!autoAcceptEnabled || c.key !== "analise")
   );
+
+  // Helper: pertence à coluna?
+  const matchesCol = (c: KanbanCol, o: Order) =>
+    c.match ? c.match(o) : c.statuses.includes(o.status);
+
+  // Marca pedido como embalado (uso interno, não toca em status do iFood).
+  const packOrder = useCallback(async (o: Order) => {
+    setBusy(true);
+    const { error } = await supabase
+      .from("pdv_orders")
+      .update({ packed_at: new Date().toISOString() })
+      .eq("id", o.id);
+    setBusy(false);
+    if (error) {
+      toast({ title: "Erro ao marcar como embalado", description: error.message, variant: "destructive" });
+      return;
+    }
+    setOrders((prev) => prev.map((x) => (x.id === o.id ? { ...x, packed_at: new Date().toISOString() } : x)));
+  }, []);
+
 
   // Auto-confirma pedidos em "placed" quando o toggle está ligado (notifica iFood se aplicável).
   const autoConfirmingRef = useRef<Set<string>>(new Set());
