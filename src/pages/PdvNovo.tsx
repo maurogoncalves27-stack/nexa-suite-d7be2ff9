@@ -273,17 +273,32 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
 
     setStores(list);
     if (!storeId && list.length > 0) {
-      // Padrão: primeira loja física real (não virtual e não fábrica/escritório/estoque)
-      const firstReal = list.find(
-        (s: any) => s.is_virtual === false && !/escrit|fabri|estoque/i.test(s.name ?? "")
+  // Calcula IDs agregados a partir de um storeId raiz (loja física = inclui marcas virtuais filhas)
+  // "ALL" = todas as lojas físicas + suas filhas virtuais
+  const computeAggregatedIds = useCallback(
+    (sid: string): string[] => {
+      if (sid === "ALL") {
+        const realStores = stores.filter(
+          (s) => s.is_virtual === false && !/escrit|fabri|estoque/i.test(s.name ?? "")
+        );
+        const allIds = new Set<string>();
+        realStores.forEach((rs) => {
+          allIds.add(rs.id);
+          stores
+            .filter((s) => s.is_virtual && s.parent_store_id === rs.id && !/homolog/i.test(s.name ?? ""))
+            .forEach((c) => allIds.add(c.id));
+        });
+        return Array.from(allIds);
+      }
+      const sel = stores.find((s) => s.id === sid);
+      if (!sel) return [sid];
+      if (sel.is_virtual) return [sel.id];
+      const children = stores.filter(
+        (s) => s.is_virtual && s.parent_store_id === sel.id && !/homolog/i.test(s.name ?? "")
       );
-      setStoreId((firstReal ?? list[0]).id);
-    }
-  }, [storeId, user, lockedStoreId]);
-
-  const selectedStore = useMemo(
-    () => stores.find((s) => s.id === storeId) ?? null,
-    [stores, storeId]
+      return [sel.id, ...children.map((c) => c.id)];
+    },
+    [stores]
   );
 
   // Calcula IDs agregados a partir de um storeId raiz (loja física = inclui marcas virtuais filhas)
