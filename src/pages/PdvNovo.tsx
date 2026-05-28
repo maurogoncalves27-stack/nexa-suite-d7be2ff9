@@ -1003,9 +1003,37 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                 />
               </div>
 
-              {selectedStore && (
-                <IfoodStoreEditor store={selectedStore} onSaved={() => void loadStores()} />
-              )}
+              {/* Um editor de vínculo iFood por marca: a loja física (Aquela Parmê)
+                  + cada loja virtual filha (ex.: AQUELE ESTROGONOFE, BOX CAIPIRA).
+                  A "iFood Homologação" não entra aqui — fica no botão separado abaixo. */}
+              {selectedStore && (() => {
+                const brandStores = selectedStore.is_virtual
+                  ? [selectedStore]
+                  : [
+                      selectedStore,
+                      ...stores.filter(
+                        (s) =>
+                          s.is_virtual &&
+                          s.parent_store_id === selectedStore.id &&
+                          !/homolog/i.test(s.name ?? "")
+                      ),
+                    ];
+                return (
+                  <div className="space-y-4">
+                    {brandStores.map((bs) => (
+                      <div key={bs.id} className="rounded-lg border bg-card p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold">{bs.name}</p>
+                          <Badge variant="outline" className="text-[10px]">
+                            {bs.is_virtual ? "Marca virtual" : "Loja física"}
+                          </Badge>
+                        </div>
+                        <IfoodStoreEditor store={bs} onSaved={() => void loadStores()} />
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
               {selectedStore?.ifood_merchant_uuid && (
                 <Button
                   variant="outline"
