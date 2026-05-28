@@ -868,10 +868,10 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     { key: "cancelado",  label: "Cancelado",          statuses: ["cancelled", "dispute"],     headerCls: "bg-red-500 text-white border-red-600",
       accentCls: "border-l-destructive" },
   ];
-  // "Concluído" e "Cancelado" não aparecem no kanban — consulta-se pela aba "Histórico de pedidos".
-  // Quando "Aceitar automaticamente" está ligado, "Em análise" também some.
+  // "Em análise" some quando "Aceitar automaticamente" está ligado.
+  // "Concluído" e "Cancelado" permanecem na operação para o dia atual (clicáveis para reimprimir).
   const COLUMNS: KanbanCol[] = ALL_COLUMNS.filter(
-    (c) => c.key !== "concluido" && c.key !== "cancelado" && (!autoAcceptEnabled || c.key !== "analise")
+    (c) => !autoAcceptEnabled || c.key !== "analise"
   );
 
   // Helper: pertence à coluna?
