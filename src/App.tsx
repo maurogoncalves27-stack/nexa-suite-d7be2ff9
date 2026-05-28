@@ -133,6 +133,7 @@ const CandidateDocumentUpload = lazy(() => import("./pages/CandidateDocumentUplo
 const LegalPage = lazy(() => import("./pages/LegalPage.tsx"));
 const PartnerDashboard = lazy(() => import("./pages/PartnerDashboard.tsx"));
 const SelectAccess = lazy(() => import("./pages/SelectAccess.tsx"));
+const MigrateNexa = lazy(() => import("./pages/admin/MigrateNexa.tsx"));
 
 const queryClient = new QueryClient();
 
@@ -263,6 +264,7 @@ const App = () => (
               providers permanecem vivos, evitando o "refresh" do sistema.
             */}
             <Route element={<AppLayout />}>
+              <Route path="/admin/migrate-nexa" element={<Guarded staff><MigrateNexa /></Guarded>} />
               <Route path="/dashboard" element={<Guarded staff partner><Dashboard /></Guarded>} />
               <Route path="/painel-socio" element={<ProtectedRoute><PartnerDashboard /></ProtectedRoute>} />
               <Route path="/ranking" element={<Guarded staff partner><EmployeeRanking /></Guarded>} />

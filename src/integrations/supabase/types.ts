@@ -14367,6 +14367,11 @@ export type Database = {
       }
     }
     Functions: {
+      _migration_list_tables: { Args: never; Returns: Json }
+      _migration_set_triggers: {
+        Args: { p_enable: boolean }
+        Returns: undefined
+      }
       active_maintenance_for_employee: {
         Args: { _user_id: string }
         Returns: {

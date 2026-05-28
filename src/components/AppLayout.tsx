@@ -36,6 +36,7 @@ const PAGE_TITLES: PageMeta[] = [
   { match: (p) => p === "/", title: "Área do Colaborador" },
   { match: (p) => p === "/painel-socio", title: "Painel do Sócio" },
   { match: (p) => p === "/selecionar-acesso", title: "Selecionar acesso" },
+  { match: (p) => p === "/admin/migrate-nexa", title: "Migrar para NEXA", group: "Admin" },
   { match: (p) => p === "/dashboard", title: "Dashboard" },
   { match: (p) => p.startsWith("/visualizar-colaborador"), title: "Visualizar colaborador", group: "Pessoas" },
   { match: (p) => p.startsWith("/area-colaborador"), title: "Área do Colaborador" },
