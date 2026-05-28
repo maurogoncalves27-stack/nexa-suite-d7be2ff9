@@ -1371,7 +1371,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2">
                     <ShoppingBag className="h-5 w-5 text-primary" />
-                    Pedido {selectedOrder.external_display_id ?? selectedOrder.order_number ?? selectedOrder.id.slice(0, 6)}
+                    Pedido {selectedOrder.external_display_id ?? selectedOrder.order_number ?? "—"}
                   </DialogTitle>
                   <DialogDescription className="flex items-center gap-2">
                     <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium ${meta.tone}`}>
