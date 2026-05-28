@@ -698,6 +698,17 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     return `${prefix} - ${num}`;
   };
 
+  // Marca (AQUELA PARMÊ / ESTROGONOFE / BOX CAIPIRA) derivada do nome da loja virtual.
+  // Paleta fixa conforme design memory.
+  const brandFromOrder = (o: Order): { label: string; className: string } | null => {
+    const sName = (stores.find((s) => s.id === o.store_id)?.name ?? "").toUpperCase();
+    if (sName.includes("PARM")) return { label: "AQUELA PARMÊ", className: "bg-brand-parme text-brand-parme-foreground border-transparent" };
+    if (sName.includes("ESTROGONOFE")) return { label: "ESTROGONOFE", className: "bg-brand-estrogonofe text-brand-estrogonofe-foreground border-transparent" };
+    if (sName.includes("BOX")) return { label: "BOX CAIPIRA", className: "bg-brand-box text-brand-box-foreground border-transparent" };
+    return null;
+  };
+
+
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const AUTO_ACCEPT_KEY = "pdvNovo:autoAcceptEnabled";
