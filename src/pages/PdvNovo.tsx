@@ -778,6 +778,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                   <SelectValue placeholder="Loja / canal" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="ALL">Ver todas as lojas</SelectItem>
                   {stores
                     .filter((s) => s.is_virtual === false && !/escrit|fabri|estoque/i.test(s.name))
                     .map((s) => (
