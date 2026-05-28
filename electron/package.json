@@ -1,7 +1,7 @@
 {
   "name": "nexa-pdv",
   "productName": "Nexa PDV",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Nexa PDV — Frente de caixa (desktop wrapper)",
   "main": "main.cjs",
   "author": {
