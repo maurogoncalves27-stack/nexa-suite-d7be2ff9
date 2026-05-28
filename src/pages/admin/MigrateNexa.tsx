@@ -129,6 +129,20 @@ export default function MigrateNexa() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>1. Listar o que será copiado</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Button onClick={loadPlan} disabled={!!running}>
+            {running === "plan" && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            Listar tabelas e contagens
+          </Button>
+          {plan && (
+            <div className="text-sm space-y-2">
+              <p><strong>{plan.totalTables}</strong> tabelas — total ~{totalRows.toLocaleString("pt-BR")} linhas na origem.</p>
+              <details>
+
                 <summary className="cursor-pointer text-muted-foreground">Ver ordem e contagens</summary>
                 <div className="mt-2 max-h-80 overflow-auto border rounded p-2 font-mono text-xs">
                   {plan.order.map((t) => (
