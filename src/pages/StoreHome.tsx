@@ -58,7 +58,7 @@ export default function StoreHome() {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
       <nav
-        className="shrink-0 border-r bg-card shadow-sm flex flex-col w-[100px]"
+        className="shrink-0 border-r bg-card shadow-sm flex flex-col w-[150px]"
         aria-label="Atalhos da loja"
       >
         <ul className="flex-1 flex flex-col divide-y divide-border/40 overflow-y-auto">
@@ -69,29 +69,31 @@ export default function StoreHome() {
                 <button
                   type="button"
                   onClick={() => setActive(s)}
-                  className="flex h-full w-full flex-col items-center justify-center gap-1 rounded-none border border-transparent px-1 py-1 text-xs font-semibold text-foreground transition-all hover:bg-muted active:scale-95"
+                  className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-none border border-transparent px-2 py-2 text-sm font-semibold text-foreground transition-all hover:bg-muted active:scale-95"
                 >
-                  <span className={`flex h-7 w-7 items-center justify-center rounded-full ${s.bg}`}>
-                    <Icon className={`h-4 w-4 ${s.color}`} strokeWidth={2.2} />
+                  <span className={`flex h-11 w-11 items-center justify-center rounded-full ${s.bg}`}>
+                    <Icon className={`h-6 w-6 ${s.color}`} strokeWidth={2.2} />
                   </span>
-                  <span className="text-center leading-tight text-[10px]">{s.label}</span>
+                  <span className="text-center leading-tight text-[13px]">{s.label}</span>
                 </button>
               </li>
             );
           })}
         </ul>
-        <div className="shrink-0 border-t flex items-center justify-center p-1.5">
+        <div className="shrink-0 border-t flex items-center justify-center p-2">
           <Button
             variant="ghost"
             size="sm"
             onClick={handleLogout}
-            className="flex flex-col h-auto gap-0.5 py-1 w-full text-muted-foreground hover:text-destructive"
+            className="flex flex-col h-auto gap-1 py-2 w-full text-muted-foreground hover:text-destructive"
             title="Sair desta sessão"
           >
-            <LogOut className="h-4 w-4" />
-            <span className="text-[10px] font-medium">Sair</span>
+            <LogOut className="h-5 w-5" />
+            <span className="text-xs font-medium">Sair</span>
           </Button>
         </div>
+      </nav>
+
       </nav>
 
       <div className="flex-1 min-h-0 overflow-auto">
