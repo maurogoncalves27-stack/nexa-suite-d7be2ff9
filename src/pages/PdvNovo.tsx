@@ -363,14 +363,13 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     },
     [user, computeAggregatedIds]
   );
-
   const loadHistoryOrders = useCallback(
-    async (sid: string, date: Date) => {
+    async (sid: string, startDate: Date, endDate: Date) => {
       setHistoryLoading(true);
       const ids = computeAggregatedIds(sid);
-      const start = new Date(date);
+      const start = new Date(startDate);
       start.setHours(0, 0, 0, 0);
-      const end = new Date(date);
+      const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
       const { data } = await supabase
         .from("pdv_orders")
@@ -382,6 +381,8 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
       setHistoryOrders((data ?? []) as Order[]);
       setHistoryLoading(false);
     },
+    [computeAggregatedIds]
+  );
     [computeAggregatedIds]
   );
 
