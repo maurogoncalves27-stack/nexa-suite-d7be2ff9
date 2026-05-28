@@ -37,6 +37,13 @@ function eventToStatus(code: string): string | null {
   }
 }
 
+// TODO iFood Chat: quando integrarmos a API de chat do iFood (merchant chat),
+// ao receber evento de nova mensagem do cliente, executar:
+//   UPDATE public.pdv_orders SET has_unread_chat = true
+//   WHERE external_order_id = <orderId do evento>
+// Hoje a flag é apenas mock controlado por UI/SQL manual.
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
