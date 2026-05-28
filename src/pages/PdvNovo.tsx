@@ -114,7 +114,9 @@ interface Order {
   opened_at: string;
   order_type?: string | null;
   delivery_by?: string | null;
+  packed_at?: string | null;
 }
+
 
 type PdvStatus =
   | "placed"
