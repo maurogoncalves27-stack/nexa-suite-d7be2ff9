@@ -1,42 +1,29 @@
-## Badge de marca nos pedidos (/loja)
+## Rebuild do Nexa PDV (Loja) — nova versão Windows
 
-Adicionar um badge colorido identificando a marca (AQUELA PARMÊ / ESTROGONOFE / BOX CAIPIRA) nos cards de pedido e no modal de detalhe, usando a paleta fixa de marcas.
+A build já existe em `electron/` (electron-builder + NSIS x64). O app aponta para `https://rhplus.lovable.app/balcao` em produção, então **basta bumpar a versão e rodar o build localmente** — não precisa mexer em código do React/Vite.
 
-### Cores (HSL via tokens, sem hardcoded Tailwind)
+### O que eu vou fazer aqui no repo
 
-Adicionar tokens em `src/index.css` (`:root` e `.dark`) e mapear em `tailwind.config.ts`:
+1. **`electron/package.json`** — bump de `version` de `1.0.0` para a próxima (sugestão: `1.0.1`).
+2. **Confirmar `icon.ico`** continua sendo o ícone NEXA oficial (sem alterar arquivo).
 
-- `--brand-parme`: vermelho (`0 71% 42%`) / fg branco
-- `--brand-estrogonofe`: marrom (`24 45% 32%`) / fg branco
-- `--brand-box`: laranja (`24 90% 50%`) / fg branco
+Nada mais muda no projeto. Sem alterações em `src/`, `vite.config.ts`, `main.cjs`, `preload.cjs` ou `sitef-agent.cjs`.
 
-No `tailwind.config.ts`, adicionar `colors.brand.parme`, `colors.brand.estrogonofe`, `colors.brand.box` apontando para os tokens.
+### O que você roda na sua máquina (Windows)
 
-### Helper
+No seu repo local `C:\Users\Mauro\Documents\GitHub\rhplus`:
 
-Em `src/pages/PdvNovo.tsx`, criar `brandFromStoreName(storeName?: string)` que retorna `{ label, className } | null`:
+```powershell
+cd electron
+npm install
+npm run dist:win
+```
 
-- contém "PARMÊ" / "PARME" → `{ label: "AQUELA PARMÊ", className: "bg-brand-parme text-brand-parme-foreground" }`
-- contém "ESTROGONOFE" → `{ label: "ESTROGONOFE", className: "bg-brand-estrogonofe text-brand-estrogonofe-foreground" }`
-- contém "BOX" → `{ label: "BOX CAIPIRA", className: "bg-brand-box text-brand-box-foreground" }`
-- caso contrário: `null` (não renderiza badge)
+Saída: `electron/release/Nexa PDV Setup 1.0.1.exe` (instalador NSIS x64).
 
-### Onde renderizar
+### Perguntas rápidas antes de eu aplicar
 
-1. **Card de pedido ativo** (área amarela/laranja) — badge ao lado do nº do pedido.
-2. **Card concluído** (verde) — mesmo lugar.
-3. **Card cancelado** (vermelho) — mesmo lugar.
-4. **Modal de detalhe** (`DialogTitle`) — badge ao lado do chip `iFood / Totem / Salão`.
+- Versão nova: **1.0.1** (patch) está bom, ou prefere outra (`1.1.0` / valor específico)?
+- Posso assumir que **nada do código mudou desde a última build** e o objetivo é só re-empacotar o wrapper apontando para a mesma URL publicada?
 
-Usar `<Badge>` do shadcn com `className` do helper. Não renderizar nada quando `brandFromStoreName` retorna `null` (lojas sem marca identificável, ex.: Fábrica).
-
-### Fora do escopo
-
-- Receita impressa (`src/lib/printOrder.ts`) — sem alterações; o nome da loja já vai no ticket.
-- Backend, edge functions, schema — sem alterações.
-
-### Arquivos alterados
-
-- `src/index.css` — 3 tokens novos (light + dark)
-- `tailwind.config.ts` — namespace `brand`
-- `src/pages/PdvNovo.tsx` — helper + badges nos 3 cards + modal
+Se confirmar, eu só altero o `version` no `electron/package.json` e você roda o `dist:win`.
