@@ -2,6 +2,7 @@
 // para nutri_temperature_readings dos equipamentos vinculados.
 import { createClient } from "npm:@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { requireCronOrRole } from "../_shared/requireRole.ts";
 
 interface Body {
   store_id?: string;
