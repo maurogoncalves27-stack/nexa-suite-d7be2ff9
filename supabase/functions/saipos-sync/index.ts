@@ -141,31 +141,15 @@ async function fetchAllPages<T>(
 }
 
 // ===== Handler =====
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  // ============================================================
-  // FUNÇÃO DESATIVADA — mai/2026
-  // O Saipos foi descontinuado. Faturamento agora vem de
-  // monthly_revenue (lançamento manual em /faturamento) e em
-  // breve do /pdv-novo (tabelas pdv_*). Não importar mais nada.
-  // ============================================================
-  return new Response(
-    JSON.stringify({
-      disabled: true,
-      message: "saipos-sync foi desativado. Use o lançamento manual em /faturamento ou aguarde o /pdv-novo.",
-    }),
-    { status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-  );
-});
+// REATIVADO temporariamente (29/05/2026) a pedido do usuário, até o /pdv-novo
+// assumir 100% das vendas. Mantemos a função legada como implementação ativa.
+Deno.serve((req) => _legacySaiposSync(req));
 
 // ============================================================
-// Código legado do saipos-sync mantido apenas como referência
-// histórica. Nunca é executado (handler retorna 410 acima).
+// Implementação legada do saipos-sync (volta a ser a ativa).
 // ============================================================
 async function _legacySaiposSync(req: Request) {
+
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
