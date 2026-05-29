@@ -68,10 +68,15 @@ const TOOL_SCHEMA = {
     },
   },
 };
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  const auth = await requireRole(req, ["admin", "manager", "hr"], corsHeaders);
+  if (!auth.ok) return auth.response!;
+
+
   }
 
   try {
