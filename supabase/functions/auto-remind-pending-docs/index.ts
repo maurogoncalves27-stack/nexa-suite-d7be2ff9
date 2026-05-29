@@ -3,8 +3,9 @@
 // Limita a 1 cobrança automática por semana por candidato (via metadata.last_auto_reminder).
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
-
+import { requireCronOrRole } from "../_shared/requireRole.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const PUBLIC_BASE = Deno.env.get("PUBLIC_BASE_URL") ?? "https://nexa.aquelaparme.com.br";
