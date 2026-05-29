@@ -1490,6 +1490,19 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
               <TefConfigPanel />
             </TabsContent>
 
+            <TabsContent value="impressoras" className="mt-4">
+              {storeId && selectedStore ? (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <Printer className="h-4 w-4 text-primary" /> Impressoras desta loja
+                  </h3>
+                  <PrintersPanel storeId={storeId} storeName={selectedStore.name} />
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-4 text-center">Selecione uma loja para configurar impressoras.</p>
+              )}
+            </TabsContent>
+
             <TabsContent value="estoque" className="mt-4">
               <StockShortagesPanel storeId={storeId} />
             </TabsContent>
