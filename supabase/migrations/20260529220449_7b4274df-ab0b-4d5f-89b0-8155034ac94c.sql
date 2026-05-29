@@ -1,0 +1,1 @@
+DELETE FROM public.pdv_ifood_tokens; DELETE FROM public.pdv_ifood_failed_events WHERE error LIKE 'detail_fetch_403%';
