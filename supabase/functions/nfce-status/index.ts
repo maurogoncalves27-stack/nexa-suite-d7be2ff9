@@ -1,5 +1,6 @@
 // Consulta status de uma NFC-e na Focus NFe (atualiza pdv_fiscal_invoices)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireRole } from "../_shared/requireRole.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
