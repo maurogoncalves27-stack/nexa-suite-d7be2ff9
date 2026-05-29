@@ -60,6 +60,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import NfceSection from "@/components/pdv-novo/NfceSection";
 import TefConfigPanel from "@/components/pdv-novo/TefConfigPanel";
 import StockShortagesPanel from "@/components/pdv-novo/StockShortagesPanel";
+import { PrintersPanel } from "@/components/pdv-novo/PrintersPanel";
 import { routePrintOrder } from "@/lib/routePrint";
 
 
