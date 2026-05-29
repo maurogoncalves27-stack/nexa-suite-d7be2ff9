@@ -9807,6 +9807,7 @@ export type Database = {
           notes: string | null
           order_id: string
           quantity: number
+          round_id: string | null
           total: number
           unit_price: number
         }
@@ -9820,6 +9821,7 @@ export type Database = {
           notes?: string | null
           order_id: string
           quantity?: number
+          round_id?: string | null
           total?: number
           unit_price?: number
         }
@@ -9833,6 +9835,7 @@ export type Database = {
           notes?: string | null
           order_id?: string
           quantity?: number
+          round_id?: string | null
           total?: number
           unit_price?: number
         }
@@ -9849,6 +9852,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "pdv_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdv_order_items_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "pdv_table_rounds"
             referencedColumns: ["id"]
           },
         ]
@@ -10218,6 +10228,155 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "pdv_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pdv_table_rounds: {
+        Row: {
+          delivered_at: string | null
+          id: string
+          notes: string | null
+          ready_at: string | null
+          round_number: number
+          sent_at: string
+          session_id: string
+          status: string
+        }
+        Insert: {
+          delivered_at?: string | null
+          id?: string
+          notes?: string | null
+          ready_at?: string | null
+          round_number: number
+          sent_at?: string
+          session_id: string
+          status?: string
+        }
+        Update: {
+          delivered_at?: string | null
+          id?: string
+          notes?: string | null
+          ready_at?: string | null
+          round_number?: number
+          sent_at?: string
+          session_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdv_table_rounds_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "pdv_table_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pdv_table_sessions: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          guests: number
+          id: string
+          notes: string | null
+          opened_at: string
+          order_id: string | null
+          status: string
+          store_id: string
+          table_id: string
+          updated_at: string
+          waiter_id: string | null
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          guests?: number
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          order_id?: string | null
+          status?: string
+          store_id: string
+          table_id: string
+          updated_at?: string
+          waiter_id?: string | null
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          guests?: number
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          order_id?: string | null
+          status?: string
+          store_id?: string
+          table_id?: string
+          updated_at?: string
+          waiter_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdv_table_sessions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pdv_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdv_table_sessions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdv_table_sessions_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "pdv_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pdv_tables: {
+        Row: {
+          area: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string | null
+          number: number
+          seats: number
+          store_id: string
+        }
+        Insert: {
+          area?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string | null
+          number: number
+          seats?: number
+          store_id: string
+        }
+        Update: {
+          area?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string | null
+          number?: number
+          seats?: number
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdv_tables_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
@@ -15078,6 +15237,7 @@ export type Database = {
         | "outsourced"
         | "contabilidade"
         | "partner"
+        | "waiter"
       automation_trigger_type:
         | "late_arrival"
         | "wrong_punch"
@@ -15306,6 +15466,7 @@ export const Constants = {
         "outsourced",
         "contabilidade",
         "partner",
+        "waiter",
       ],
       automation_trigger_type: [
         "late_arrival",

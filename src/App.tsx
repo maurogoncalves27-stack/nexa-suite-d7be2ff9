@@ -112,6 +112,7 @@ const PdvSimuladorIfood = lazy(() => import("./pages/PdvSimuladorIfood.tsx"));
 const PdvMonitorIfood = lazy(() => import("./pages/PdvMonitorIfood.tsx"));
 const SmartPos = lazy(() => import("./pages/SmartPos.tsx"));
 const SmartPosLogin = lazy(() => import("./pages/SmartPosLogin.tsx"));
+const Garcom = lazy(() => import("./pages/Garcom.tsx"));
 const Totem = lazy(() => import("./pages/Totem.tsx"));
 const Balcao = lazy(() => import("./pages/Balcao.tsx"));
 const Menu = lazy(() => import("./pages/Menu.tsx"));
@@ -255,6 +256,11 @@ const App = () => (
             <Route path="/smartpos" element={
               <ProtectedRoute requireRoles={[...STAFF]}><SmartPos /></ProtectedRoute>
             } />
+            {/* NEXA Garçom — Gertec GPOS780 + PayGo (Fase 1: TEF mock) */}
+            <Route path="/garcom" element={
+              <ProtectedRoute requireRoles={[...STAFF]}><Garcom /></ProtectedRoute>
+            } />
+
 
 
             {/*
