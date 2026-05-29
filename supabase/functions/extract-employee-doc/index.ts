@@ -1,8 +1,10 @@
 // Edge function: extrai dados estruturados de documentos (RG, CPF, CNH, comprovante de residência)
 // usando Lovable AI Gateway (Gemini 2.5 Flash com visão).
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
+import { requireRole } from "../_shared/requireRole.ts";
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+
 
 interface ExtractRequest {
   // base64 sem prefixo data:
