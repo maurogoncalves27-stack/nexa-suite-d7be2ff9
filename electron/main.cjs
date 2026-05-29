@@ -26,7 +26,7 @@ try {
 const APP_URL =
   process.env.NEXA_URL ||
   (app.isPackaged
-    ? "https://rhplus.lovable.app/balcao"
+    ? "https://nexasuite.aquelaparme.com.br/balcao"
     : "http://localhost:8080/balcao");
 
 let mainWindow;
