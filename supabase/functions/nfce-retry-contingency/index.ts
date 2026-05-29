@@ -17,6 +17,11 @@ const basicAuth = (t: string) => "Basic " + btoa(t + ":");
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  const auth = await requireCronOrRole(req, ["admin", "manager"], corsHeaders);
+  if (!auth.ok) return auth.response!;
+
+
+
   const sb = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
