@@ -19,9 +19,14 @@ const LOGINS = [
   { email: "aguasclaras@aquelaparme.com.br", name: "PC ÁGUAS CLARAS" },
   { email: "lagosul@aquelaparme.com.br", name: "PC LAGO SUL" },
 ];
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  if (!PASSWORD) {
+    return new Response(JSON.stringify({ error: "STORE_LOGIN_PASSWORD não configurado" }), {
+      status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   const auth = await requireRole(req, ["admin"], corsHeaders);
   if (!auth.ok) return auth.response!;
