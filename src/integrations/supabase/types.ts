@@ -14599,6 +14599,10 @@ export type Database = {
         Args: { _reason?: string; _transfer_id: string }
         Returns: boolean
       }
+      candidate_accepts_uploads: {
+        Args: { _candidate_id: string }
+        Returns: boolean
+      }
       candidate_id_from_upload_token: {
         Args: { _token: string }
         Returns: string
