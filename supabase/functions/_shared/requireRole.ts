@@ -86,3 +86,20 @@ export function requireCronSecret(
   }
   return null;
 }
+
+// Allows either a valid CRON_SECRET (header x-cron-secret) for scheduled
+// invocations, OR a valid JWT with one of the allowed roles for manual
+// triggers from the UI. Returns ok=true if either path succeeds.
+export async function requireCronOrRole(
+  req: Request,
+  allowedRoles: string[],
+  corsHeaders: Record<string, string>,
+): Promise<RoleCheckResult> {
+  const expected = Deno.env.get("CRON_SECRET");
+  const xCron = req.headers.get("x-cron-secret") ?? "";
+  if (expected && xCron && xCron === expected) {
+    return { ok: true };
+  }
+  return await requireRole(req, allowedRoles, corsHeaders);
+}
+
