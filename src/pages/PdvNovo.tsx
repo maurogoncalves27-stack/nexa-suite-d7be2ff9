@@ -1365,11 +1365,12 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
           </DialogHeader>
 
           <Tabs defaultValue="ifood">
-            <TabsList className="grid grid-cols-2 sm:grid-cols-5 w-full">
+            <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full">
               <TabsTrigger value="ifood" className="text-xs">iFood</TabsTrigger>
               <TabsTrigger value="nfce" className="text-xs">NFC-e</TabsTrigger>
               <TabsTrigger value="canais" className="text-xs">Canais</TabsTrigger>
               <TabsTrigger value="tef" className="text-xs">TEF</TabsTrigger>
+              <TabsTrigger value="impressoras" className="text-xs">Impressoras</TabsTrigger>
               <TabsTrigger value="estoque" className="text-xs">Estoque</TabsTrigger>
             </TabsList>
 
