@@ -35,6 +35,10 @@ function tzDateTimeToUtc(dateStr: string, timeStr: string): Date {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  const auth = await requireCronOrRole(req, ["admin", "manager", "hr"], corsHeaders);
+  if (!auth.ok) return auth.response!;
+
+
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, serviceKey);
