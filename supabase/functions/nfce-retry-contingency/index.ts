@@ -1,6 +1,7 @@
 // Reenvia NFC-e em contingência para a Focus NFe.
 // Pode ser chamada manualmente ou por cron (pg_cron + pg_net).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireCronOrRole } from "../_shared/requireRole.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
