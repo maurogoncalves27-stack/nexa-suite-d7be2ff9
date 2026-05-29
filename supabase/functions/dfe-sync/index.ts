@@ -1,6 +1,7 @@
 // dfe-sync: lista NF-e destinadas via Focus NFe, baixa XML e popula dfe_inbound_notes/items.
 // Pode ser chamada para 1 CNPJ (body: { company_id }) ou todos os ativos (sem body / { all: true }).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireCronOrRole } from "../_shared/requireRole.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -348,6 +349,10 @@ async function syncCompany(sb: any, company: any) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const auth = await requireCronOrRole(req, ["admin", "manager", "contabilidade"], corsHeaders);
+  if (!auth.ok) return auth.response!;
+
 
   const sb = createClient(
     Deno.env.get("SUPABASE_URL")!,

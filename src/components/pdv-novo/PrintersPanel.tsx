@@ -176,21 +176,33 @@ export function PrintersPanel({ storeId, storeName }: { storeId: string; storeNa
     });
     const w = window.open("", "_blank", "width=400,height=600");
     if (!w) return;
+    const esc = (s: unknown) =>
+      String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    const conn =
+      p.connection_type === "network"
+        ? `Rede ${esc(p.host)}:${esc(p.port)}`
+        : `USB ${esc(p.usb_device_name)}`;
     w.document.write(`
       <html><head><title>Teste impressora</title></head>
       <body style="font-family:monospace;padding:20px;">
         <h2 style="text-align:center;">TESTE DE IMPRESSÃO</h2>
-        <p><strong>Loja:</strong> ${storeName}</p>
-        <p><strong>Impressora:</strong> ${p.name}</p>
-        <p><strong>Conexão:</strong> ${p.connection_type === "network" ? `Rede ${p.host}:${p.port}` : `USB ${p.usb_device_name}`}</p>
-        <p><strong>Função:</strong> ${ROLE_LABELS[p.print_role]}</p>
+        <p><strong>Loja:</strong> ${esc(storeName)}</p>
+        <p><strong>Impressora:</strong> ${esc(p.name)}</p>
+        <p><strong>Conexão:</strong> ${conn}</p>
+        <p><strong>Função:</strong> ${esc(ROLE_LABELS[p.print_role])}</p>
         <hr/>
         <p>Se este texto saiu na impressora correta, o cadastro está OK.</p>
-        <p style="text-align:center;margin-top:30px;">${new Date().toLocaleString("pt-BR")}</p>
+        <p style="text-align:center;margin-top:30px;">${esc(new Date().toLocaleString("pt-BR"))}</p>
         <script>window.print();</script>
       </body></html>
     `);
     w.document.close();
+
   };
 
   return (

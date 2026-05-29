@@ -1,5 +1,6 @@
 // Consulta status de uma NFC-e na Focus NFe (atualiza pdv_fiscal_invoices)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireRole } from "../_shared/requireRole.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,6 +15,11 @@ const basicAuth = (t: string) => "Basic " + btoa(t + ":");
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const auth = await requireRole(req, ["admin", "manager", "employee", "waiter"], corsHeaders);
+  if (!auth.ok) return auth.response!;
+
+
 
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   try {

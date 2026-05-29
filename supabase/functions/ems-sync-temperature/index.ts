@@ -2,6 +2,7 @@
 // para nutri_temperature_readings dos equipamentos vinculados.
 import { createClient } from "npm:@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { requireCronOrRole } from "../_shared/requireRole.ts";
 
 interface Body {
   store_id?: string;
@@ -11,6 +12,10 @@ interface Body {
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const auth = await requireCronOrRole(req, ["admin", "manager", "nutritionist"], corsHeaders);
+  if (!auth.ok) return auth.response!;
+
 
   try {
     const supabase = createClient(

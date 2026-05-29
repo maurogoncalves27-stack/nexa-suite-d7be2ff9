@@ -3,14 +3,19 @@
 // Limita a 1 cobrança automática por semana por candidato (via metadata.last_auto_reminder).
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
-
+import { requireCronOrRole } from "../_shared/requireRole.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const PUBLIC_BASE = Deno.env.get("PUBLIC_BASE_URL") ?? "https://nexa.aquelaparme.com.br";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const auth = await requireCronOrRole(req, ["admin", "manager", "hr"], corsHeaders);
+  if (!auth.ok) return auth.response!;
+
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
   const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();

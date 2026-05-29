@@ -1,6 +1,7 @@
 // Reenvia NFC-e em contingência para a Focus NFe.
 // Pode ser chamada manualmente ou por cron (pg_cron + pg_net).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireCronOrRole } from "../_shared/requireRole.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,6 +16,11 @@ const basicAuth = (t: string) => "Basic " + btoa(t + ":");
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const auth = await requireCronOrRole(req, ["admin", "manager"], corsHeaders);
+  if (!auth.ok) return auth.response!;
+
+
 
   const sb = createClient(
     Deno.env.get("SUPABASE_URL")!,
