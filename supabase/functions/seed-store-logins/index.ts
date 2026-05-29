@@ -8,7 +8,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const PASSWORD = Deno.env.get("STORE_LOGIN_PASSWORD") ?? "Parme@123";
+const PASSWORD = Deno.env.get("STORE_LOGIN_PASSWORD");
+if (!PASSWORD) {
+  console.error("STORE_LOGIN_PASSWORD não configurado — função desabilitada");
+}
+
 const LOGINS = [
   { email: "asasul@aquelaparme.com.br", name: "PC ASA SUL" },
   { email: "asanorte@aquelaparme.com.br", name: "PC ASA NORTE" },
