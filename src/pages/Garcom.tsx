@@ -293,7 +293,7 @@ export default function Garcom() {
       // pega canal "Salão" da loja (fallback: primeiro canal)
       const { data: ch } = await supabase
         .from("pdv_channels")
-        .select("id,kind")
+        .select("id")
         .eq("store_id", storeId)
         .limit(1)
         .maybeSingle();
