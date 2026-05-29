@@ -877,7 +877,7 @@ export function AppSidebar() {
               onClick={goSelectAccess}
               title="Trocar acesso"
             >
-              <RefreshCw className="h-5 w-5" />
+              <ArrowLeftRight className="h-5 w-5" />
               {collapsed && <span className="sr-only">Trocar acesso</span>}
             </Button>
           )}
