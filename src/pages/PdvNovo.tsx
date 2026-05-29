@@ -51,6 +51,7 @@ import {
   ArrowRight,
   CalendarIcon,
   MessageCircle,
+  Printer,
 } from "lucide-react";
 
 import { toast } from "@/hooks/use-toast";
