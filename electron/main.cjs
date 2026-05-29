@@ -1,11 +1,14 @@
-// Processo principal do Electron - Nexa Balcão Desktop
+// Processo principal do Electron - Nexa PDV (Loja) Desktop
 // Responsável por:
-//  - Abrir a janela que carrega o app web (https://rhplus.lovable.app/balcao em prod, dev URL em dev)
+//  - Abrir a janela que carrega o app web em /loja (StoreHome: PDV + atalhos da loja)
 //  - Expor IPC para impressão térmica ESC/POS (USB Bematech / Rede Gertec)
 //  - Listar impressoras USB instaladas no Windows
 //
 // Comunicação: o frontend chama window.electron.* (definido em preload.cjs).
 // Build: feito SOMENTE no final do projeto via @electron/packager (--platform=win32).
+// Trava de loja: a tela /loja usa o RPC `get_terminal_store_id` (tabela
+// store_terminal_users) — quando o usuário logado é um terminal de loja, o
+// seletor abre travado na loja específica e o PDV só vê os pedidos dela.
 
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
@@ -26,8 +29,9 @@ try {
 const APP_URL =
   process.env.NEXA_URL ||
   (app.isPackaged
-    ? "https://nexasuite.aquelaparme.com.br/balcao"
-    : "http://localhost:8080/balcao");
+    ? "https://nexasuite.aquelaparme.com.br/loja"
+    : "http://localhost:8080/loja");
+
 
 let mainWindow;
 
