@@ -82,6 +82,32 @@ const bodyWithoutOccurrenceStore = (message: string) =>
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  // Auth: aceita service-role key (chamadas internas) OU usuário autenticado com role staff
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  const isServiceRole = token && token === SERVICE_ROLE;
+
+  if (!isServiceRole) {
+    const adminCheck = createClient(SUPABASE_URL, SERVICE_ROLE, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: userData } = await adminCheck.auth.getUser();
+    if (!userData?.user) {
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: roles } = await createClient(SUPABASE_URL, SERVICE_ROLE)
+      .from("user_roles").select("role").eq("user_id", userData.user.id);
+    const allowed = new Set(["admin", "manager", "hr", "supervisor", "employee"]);
+    const ok = (roles ?? []).some((r: any) => allowed.has(r.role));
+    if (!ok) {
+      return new Response(JSON.stringify({ error: "forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  }
+
   try {
     const body = (await req.json()) as Body;
     if (!body?.user_id || !body?.title || !body?.message) {
