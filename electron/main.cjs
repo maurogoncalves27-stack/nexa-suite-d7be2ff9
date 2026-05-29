@@ -25,12 +25,26 @@ try {
 }
 
 // URL do app: em dev usa o servidor Vite, em prod aponta pro Lovable publicado.
-// Pode ser sobrescrito via variável de ambiente NEXA_URL.
-const APP_URL =
-  process.env.NEXA_URL ||
-  (app.isPackaged
-    ? "https://nexasuite.aquelaparme.com.br/loja"
-    : "http://localhost:8080/loja");
+// Mesmo que a máquina tenha uma NEXA_URL antiga salva com /balcao, o wrapper
+// sempre normaliza para /loja.
+const DEFAULT_APP_URL = app.isPackaged
+  ? "https://nexasuite.aquelaparme.com.br/loja"
+  : "http://localhost:8080/loja";
+
+function normalizeAppUrl(rawUrl) {
+  if (!rawUrl) return DEFAULT_APP_URL;
+
+  try {
+    const url = new URL(rawUrl);
+    url.pathname = "/loja";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return DEFAULT_APP_URL;
+  }
+}
+
+const APP_URL = normalizeAppUrl(process.env.NEXA_URL || DEFAULT_APP_URL);
 
 
 let mainWindow;
