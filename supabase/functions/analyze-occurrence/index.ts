@@ -2,6 +2,7 @@
 // Usa o catálogo completo + linguagem da empresa como contexto.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireRole } from "../_shared/requireRole.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +12,10 @@ const corsHeaders = {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const auth = await requireRole(req, ["admin", "manager", "hr", "supervisor", "employee"], corsHeaders);
+  if (!auth.ok) return auth.response!;
+
 
   try {
     const { relato, contexto_extra } = (await req.json()) as {
