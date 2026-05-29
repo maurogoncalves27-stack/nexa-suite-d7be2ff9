@@ -103,7 +103,7 @@ export default function StoreHome() {
 
       <Dialog open={!!active} onOpenChange={(o) => !o && setActive(null)}>
         <DialogContent
-          className="max-w-none w-screen h-screen p-0 gap-0 rounded-none border-0 sm:rounded-none flex flex-col"
+          className="max-w-[70vw] w-[70vw] h-[85vh] p-0 gap-0 rounded-lg border shadow-2xl flex flex-col"
           onInteractOutside={(e) => e.preventDefault()}
         >
           <header className="shrink-0 flex items-center gap-3 border-b bg-card px-4 py-3">
