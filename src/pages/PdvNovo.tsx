@@ -51,6 +51,7 @@ import {
   ArrowRight,
   CalendarIcon,
   MessageCircle,
+  Printer,
 } from "lucide-react";
 
 import { toast } from "@/hooks/use-toast";
@@ -59,6 +60,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import NfceSection from "@/components/pdv-novo/NfceSection";
 import TefConfigPanel from "@/components/pdv-novo/TefConfigPanel";
 import StockShortagesPanel from "@/components/pdv-novo/StockShortagesPanel";
+import { PrintersPanel } from "@/components/pdv-novo/PrintersPanel";
 import { routePrintOrder } from "@/lib/routePrint";
 
 
@@ -1363,11 +1365,12 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
           </DialogHeader>
 
           <Tabs defaultValue="ifood">
-            <TabsList className="grid grid-cols-2 sm:grid-cols-5 w-full">
+            <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full">
               <TabsTrigger value="ifood" className="text-xs">iFood</TabsTrigger>
               <TabsTrigger value="nfce" className="text-xs">NFC-e</TabsTrigger>
               <TabsTrigger value="canais" className="text-xs">Canais</TabsTrigger>
               <TabsTrigger value="tef" className="text-xs">TEF</TabsTrigger>
+              <TabsTrigger value="impressoras" className="text-xs">Impressoras</TabsTrigger>
               <TabsTrigger value="estoque" className="text-xs">Estoque</TabsTrigger>
             </TabsList>
 
@@ -1485,6 +1488,19 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
 
             <TabsContent value="tef" className="mt-4">
               <TefConfigPanel />
+            </TabsContent>
+
+            <TabsContent value="impressoras" className="mt-4">
+              {storeId && selectedStore ? (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <Printer className="h-4 w-4 text-primary" /> Impressoras desta loja
+                  </h3>
+                  <PrintersPanel storeId={storeId} storeName={selectedStore.name} />
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-4 text-center">Selecione uma loja para configurar impressoras.</p>
+              )}
             </TabsContent>
 
             <TabsContent value="estoque" className="mt-4">
