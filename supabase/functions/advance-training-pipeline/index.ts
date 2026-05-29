@@ -41,6 +41,10 @@ function daysBetween(startDate: string): number {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  const auth = await requireCronOrRole(req, ["admin", "manager", "hr"], corsHeaders);
+  if (!auth.ok) return auth.response!;
+
+
   try {
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
