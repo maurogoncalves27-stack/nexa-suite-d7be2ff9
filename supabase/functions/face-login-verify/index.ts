@@ -21,6 +21,21 @@ function distance(a: number[], b: number[]): number {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  // Endpoint só pode ser chamado por dispositivos autorizados (totem/PDV) com segredo compartilhado.
+  // Sem o segredo configurado, falha fechada — nunca emite OTP sem prova de origem.
+  const TOTEM_SECRET = Deno.env.get("TOTEM_SHARED_SECRET");
+  if (!TOTEM_SECRET) {
+    return new Response(JSON.stringify({ error: "Login facial indisponível" }), {
+      status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  const provided = req.headers.get("x-totem-secret") ?? "";
+  if (provided !== TOTEM_SECRET) {
+    return new Response(JSON.stringify({ error: "unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   try {
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,

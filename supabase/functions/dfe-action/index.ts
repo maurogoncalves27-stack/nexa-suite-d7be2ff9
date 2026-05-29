@@ -3,6 +3,7 @@
 //         | "unknown" (desconhecer — Desconhecimento 210220)
 //         | "ciencia" (dar ciência — 210210)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireRole } from "../_shared/requireRole.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,10 +21,15 @@ const TIPO: Record<string, string> = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const auth = await requireRole(req, ["admin", "manager"], corsHeaders);
+  if (!auth.ok) return auth.response!;
+
   const sb = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
+
 
   try {
     const { note_id, action, justificativa } = await req.json();
