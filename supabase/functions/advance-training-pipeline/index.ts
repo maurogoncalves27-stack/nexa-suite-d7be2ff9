@@ -3,7 +3,8 @@
 // Dia 1 = start_date. Dia 7 = última pílula. Após o dia 7, não avança para
 // "contratado" (decisão sempre manual do gestor).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireCronOrRole } from "../_shared/requireRole.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
