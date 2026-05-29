@@ -238,9 +238,9 @@ const App = () => (
             <Route path="/selecionar-acesso" element={<ProtectedRoute><SelectAccess /></ProtectedRoute>} />
             <Route path="/nutricionista/painel" element={<ProtectedRoute><NutritionistPanel /></ProtectedRoute>} />
 
-            {/* Modo Balcão — fullscreen sem sidebar (PDV físico de loja) */}
+            {/* Modo Balcão — replica /loja com lock de loja por login (asasul/asanorte/aguasclaras/lagosul) */}
             <Route path="/balcao" element={
-              <ProtectedRoute requireRoles={[...STAFF]}><Balcao /></ProtectedRoute>
+              <ProtectedRoute requireRoles={[...STAFF]}><StoreHome /></ProtectedRoute>
             } />
             {/* Totem fullscreen kiosk - fora do AppLayout */}
             <Route path="/totem" element={
