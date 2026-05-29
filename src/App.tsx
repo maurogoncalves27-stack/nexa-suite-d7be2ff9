@@ -256,6 +256,11 @@ const App = () => (
             <Route path="/smartpos" element={
               <ProtectedRoute requireRoles={[...STAFF]}><SmartPos /></ProtectedRoute>
             } />
+            {/* NEXA Garçom — Gertec GPOS780 + PayGo (Fase 1: TEF mock) */}
+            <Route path="/garcom" element={
+              <ProtectedRoute requireRoles={[...STAFF]}><Garcom /></ProtectedRoute>
+            } />
+
 
 
             {/*
