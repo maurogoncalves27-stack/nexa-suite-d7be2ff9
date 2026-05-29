@@ -1,5 +1,6 @@
 // Sugere produto do estoque para itens de DF-e sem vínculo, via Lovable AI Gateway.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireRole } from "../_shared/requireRole.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,10 +17,14 @@ interface Item { id: string; description: string; unit: string | null; quantity:
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
+    const auth = await requireRole(req, ["admin", "manager", "hr"], corsHeaders);
+    if (!auth.ok) return auth.response!;
+
     const { note_id } = await req.json();
     if (!note_id) return json({ error: "note_id required" }, 400);
 
     const sb = createClient(SUPABASE_URL, SERVICE_ROLE);
+
 
     const [{ data: note }, { data: items }, { data: products }] = await Promise.all([
       sb.from("dfe_inbound_notes").select("supplier_name").eq("id", note_id).single(),
