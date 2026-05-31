@@ -441,6 +441,7 @@ export default function EmployeeArea({ impersonateUserId }: EmployeeAreaProps = 
           )}
           <FaceEnrollment employeeId={employee.id} onEnrolled={() => loadAvatar(employee)} />
           <PushNotificationSettings />
+          <WhatsAppOptOutCard />
         </TabsContent>
 
 
