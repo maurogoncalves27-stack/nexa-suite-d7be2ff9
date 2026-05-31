@@ -195,10 +195,29 @@ Deno.serve(async (req) => {
       }),
     );
 
+    // 3) Canal WhatsApp (paralelo, fire-and-forget). Apenas categorias relevantes.
+    const WA_ENABLED_CATEGORIES = new Set(["occurrence", "announcement", "payslip", "schedule"]);
+    if (WA_ENABLED_CATEGORIES.has(body.category ?? "")) {
+      fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${SERVICE_ROLE}`,
+        },
+        body: JSON.stringify({
+          user_id: body.user_id,
+          message: `*${finalTitle}*\n${body.message}`,
+          category: body.category,
+          tag: body.tag,
+        }),
+      }).catch((e) => console.error("send-whatsapp dispatch error", e));
+    }
+
     return new Response(JSON.stringify({ ok: true, sent, removed }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+
   } catch (e: any) {
     console.error("notify-user error", e);
     return new Response(JSON.stringify({ error: e?.message ?? "unknown" }), {
