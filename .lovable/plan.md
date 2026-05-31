@@ -1,79 +1,141 @@
+# Bot WhatsApp do Cliente — SAC + Pedidos com IA
 
-# WhatsApp como canal adicional de notificação
+Canal de atendimento automatizado por WhatsApp, separado do canal de notificações internas. IA conversa de forma natural, tira dúvidas, monta pedido e envia link de pagamento Pix. Sem inbox humano nesta fase.
 
-Objetivo: enviar notificações de colaborador também via WhatsApp (mantendo o push), usando provedor SaaS não-oficial agora (Z-API) e já deixando arquitetura pronta pra trocar pela **API oficial Meta Cloud** depois sem reescrever nada.
+## Decisões já tomadas
 
-## Decisões base
-- **Provedor inicial: Z-API** (SaaS brasileiro, REST simples, sobe em ~30min, ~R$ 100/mês). Recomendado em vez de Evolution self-hosted pra não termos custo de manutenção de VPS agora.
-- **Push continua funcionando normalmente.** WhatsApp é canal extra paralelo.
-- **Número de destino:** `employees.phone` (já cadastrado). Sem novo campo agora.
-- **Opt-out:** colaborador pode desativar WhatsApp na área dele (sem mexer no telefone do cadastro).
-- **Meta de migração:** trocar pra API oficial Meta Cloud (gratuita até 1k conv/mês) quando aprovarem o número comercial. Toda lógica de envio fica atrás de um `whatsappAdapter` exatamente como já fizemos com TEF.
+- **Provider**: Z-API (mesmo já configurado para notificações), mas **instância nova** com chip dedicado ao cliente. Migração futura para Meta Cloud quando aprovado.
+- **Tom**: IA livre via Lovable AI Gateway (`google/gemini-3-flash-preview` por padrão — rápido e barato).
+- **Sem handoff humano** nesta fase. Se a IA não souber resolver, ela orienta a ligar ou tentar de novo.
+- **Pagamento**: link Pix gerado via TEF/C6 (conta centralizada já existe) ou “pagar na entrega”.
+- **Escopo inicial**: 1 loja piloto (sugestão: Asa Sul). Replicar depois.
+
+## Fluxos suportados
+
+**SAC**
+- Horário de funcionamento, endereço, telefone, formas de pagamento.
+- Cardápio (link ou texto resumido).
+- Status de pedido em andamento (consulta por nome/telefone).
+- Reclamação simples (registra em tabela e responde com prazo de retorno).
+
+**Pedido**
+1. Cliente: “quero um parmê de frango”.
+2. IA consulta cardápio (function call `search_menu`), confirma item, sugere acompanhamentos.
+3. Monta carrinho na conversa, mostra subtotal.
+4. Pede endereço e forma de pagamento.
+5. Gera link Pix (function call `create_pix_payment`) ou marca “pagar na entrega”.
+6. Cria pedido no sistema (`pdv_orders` com `origin='whatsapp'`), notifica KDS futuro.
+7. Envia confirmação e prazo estimado.
 
 ## Arquitetura
 
 ```text
-notify-user (já existe)
-    ├── insert user_notifications  (in-app/sino)  [mantido]
-    ├── send web push              (push)         [mantido]
-    └── enqueue WhatsApp (novo) ──► edge: send-whatsapp ──► adapter
-                                                              ├── zapi (ativo)
-                                                              └── meta-cloud (stub futuro)
+Cliente WhatsApp
+       │
+       ▼
+  Z-API (instância CLIENTE)
+       │ webhook on-message
+       ▼
+edge: whatsapp-webhook  ──► salva em whatsapp_conversations / whatsapp_messages
+       │
+       ▼
+edge: whatsapp-ai-reply ──► Lovable AI Gateway (gemini-3-flash)
+       │                      ├─ tool: search_menu
+       │                      ├─ tool: get_store_info
+       │                      ├─ tool: check_order_status
+       │                      ├─ tool: create_order (draft)
+       │                      ├─ tool: create_pix_payment
+       │                      └─ tool: register_complaint
+       ▼
+  Z-API send-text  ──► Cliente
 ```
 
-## Passos de implementação
+## Banco de dados (novas tabelas)
 
-### 1. Banco
-- Tabela `whatsapp_notifications_log` (id, user_id, employee_id, phone, message, provider, status, provider_message_id, error, sent_at, created_at) — auditoria + retry.
-- Coluna `employees.whatsapp_opt_out boolean default false`.
-- (Opcional, fase 2) tabela `whatsapp_templates` se quisermos mensagens parametrizadas; agora começa só com texto livre.
+- `whatsapp_customer_conversations` — id, phone (E.164), customer_name, store_id, status (`active|idle|closed`), last_message_at, context_summary (resumo curto pra IA economizar tokens).
+- `whatsapp_customer_messages` — id, conversation_id, role (`user|assistant|tool`), content, tool_name, tool_args, tool_result, created_at.
+- `whatsapp_customer_orders_draft` — id, conversation_id, items (jsonb), address (jsonb), payment_method, total, status (`drafting|awaiting_payment|confirmed|cancelled`), pdv_order_id (FK quando confirmado).
+- `whatsapp_customer_complaints` — id, conversation_id, phone, message, status, created_at.
 
-### 2. Secrets
-- `WHATSAPP_PROVIDER` = `zapi`
-- `ZAPI_INSTANCE_ID`, `ZAPI_TOKEN`, `ZAPI_CLIENT_TOKEN` (3 valores que a Z-API dá no painel)
-- Pedidos via `add_secret` quando entrarmos em build.
+Todas com RLS: admin/atendente leem tudo da loja; cliente final não tem acesso (não logado).
 
-### 3. Edge function `send-whatsapp`
-- Recebe `{ user_id?, employee_id?, phone?, message, category?, tag? }`.
-- Resolve telefone (prioridade: phone explícito → employees.phone do user_id).
-- Checa `whatsapp_opt_out`. Se opt-out, pula com status `skipped`.
-- Normaliza número pra E.164 (+55…).
-- Chama adapter (`/lib/whatsapp/zapiAdapter.ts` no edge): POST `https://api.z-api.io/instances/{id}/token/{token}/send-text` com header `Client-Token`.
-- Grava log com resultado.
+## Edge functions
 
-### 4. Integrar no `notify-user`
-- Após o bloco de push, em paralelo: chama `send-whatsapp` (fire-and-forget, não bloqueia resposta).
-- Filtro por categoria: começar enviando apenas categorias importantes (`occurrence`, `announcement` priority=urgent, `payslip`, `schedule`). Categorias triviais ficam só no push. Lista controlada por const no código (fácil de ajustar).
+1. **`whatsapp-webhook`** (público, sem JWT)
+   - Recebe POST da Z-API a cada mensagem recebida.
+   - Identifica/cria conversa por `phone`.
+   - Salva mensagem do cliente.
+   - Dispara `whatsapp-ai-reply` em background.
 
-### 5. UI do colaborador
-- Em `/area-colaborador` (ou Settings do colaborador): toggle "Receber notificações no WhatsApp" + exibe o número que será usado e link "atualizar telefone no RH".
-- Atualiza `employees.whatsapp_opt_out`.
+2. **`whatsapp-ai-reply`** (interno)
+   - Carrega últimas 20 mensagens + `context_summary`.
+   - Chama Lovable AI Gateway com system prompt + tools (function calling).
+   - Loop de tool calls até resposta final (máx 5 iterações pra não estourar).
+   - Envia resposta via Z-API.
+   - A cada 10 mensagens, resume conversa em `context_summary` (economia de tokens).
 
-### 6. UI admin (RH)
-- Página simples em `/configuracoes` ou aba nova "WhatsApp": status da instância Z-API (ping `/status`), últimos 50 envios da `whatsapp_notifications_log`, botão "enviar teste".
+3. **Tools chamáveis pela IA** (implementadas dentro da própria edge):
+   - `search_menu(query, store_id)` → consulta `pdv_categories`/`pdv_items` ativos da loja.
+   - `get_store_info(store_id)` → horário, endereço, formas de pagamento.
+   - `check_order_status(phone)` → última `pdv_orders` do telefone.
+   - `create_order_draft(items, address, payment_method)` → grava em `whatsapp_customer_orders_draft`.
+   - `create_pix_payment(draft_id)` → gera link Pix (mock na Fase 1, integração real C6 na Fase 2).
+   - `register_complaint(message)` → grava em `whatsapp_customer_complaints`.
+   - `confirm_order(draft_id)` → cria `pdv_orders` real e marca draft como confirmado.
 
-### 7. Migração futura para Meta Cloud (não fazer agora, só deixar pronto)
-- Criar `metaCloudAdapter.ts` stub.
-- Trocar `WHATSAPP_PROVIDER=meta_cloud` + secrets `META_WA_TOKEN`, `META_WA_PHONE_NUMBER_ID` quando aprovarem.
-- Nenhuma outra parte do código muda.
+## UI admin (NEXA Gestor)
 
-## Riscos a comunicar pro usuário (ficam registrados)
-- Chip dedicado: usar um número **novo**, não o pessoal/comercial principal — risco de ban existe.
-- Aquecer o número: começar com volume baixo (10-20 msgs/dia) e ir subindo.
-- Sem SLA: se WhatsApp mudar protocolo, Z-API pode ficar fora algumas horas.
-- Para mensagens "iniciadas pela empresa" em larga escala, oficial Meta Cloud é o destino correto — Z-API é ponte temporária.
+Página **`/configuracoes/whatsapp-cliente`** (só admin):
+- Toggle on/off do bot por loja.
+- Configuração: prompt do sistema (editável), horário de atendimento, mensagem fora do horário.
+- Lista de conversas recentes (últimas 50) com prévia.
+- Visualização de uma conversa (read-only, tipo chat).
+- Estatísticas: nº conversas/dia, nº pedidos gerados, ticket médio, taxa de conversão.
+- Lista de reclamações pendentes.
 
-## Detalhes técnicos relevantes
-- Adapter pattern espelhando o TEF (`src/lib/tef/*`), mas no edge (Deno).
-- Envio é fire-and-forget do `notify-user` pra não atrasar push.
-- Rate limit simples no `send-whatsapp`: máx 1 msg/seg por número (Z-API recomenda).
-- Telefone inválido ou opt-out → `status='skipped'` no log, não vira erro.
-- `whatsapp_notifications_log` com RLS: admin/HR leem tudo; colaborador lê só os próprios.
+Sidebar: novo item em **Configurações → WhatsApp Cliente** (separado do existente “WhatsApp” que é o de notificações internas).
 
-## Fora do escopo desta fase
-- Receber respostas do colaborador via webhook (Z-API suporta, mas não precisamos agora).
-- Templates HSM/aprovados (só na fase Meta Cloud).
-- Mídia (imagem/PDF do holerite via WhatsApp) — fase 2 se quiser.
-- Mexer em iFood, TEF, PDV-novo (parqueados pela prioridade atual).
+## Segurança e proteção
 
-Confirma esse plano que eu já implemento? Se sim, vou precisar que você crie a conta Z-API em https://app.z-api.io e me passe os 3 valores quando eu pedir os secrets.
+- Rate limit por número: máx 30 msgs/min (anti-spam/loop).
+- Lista de bloqueio: tabela `whatsapp_blocked_numbers` (admin pode banir).
+- Filtro de conteúdo: se a IA detectar tentativa de jailbreak/abuso, responde mensagem genérica e sinaliza para revisão.
+- LGPD: aviso na primeira mensagem (“Esta conversa é processada por IA e armazenada para melhoria do atendimento”).
+
+## Fases de entrega
+
+**Fase 1 — MVP SAC (sem pedido)** ~1 dia
+- Tabelas, webhook, IA respondendo dúvidas (horário/endereço/cardápio em texto).
+- Painel admin básico de conversas.
+- Sem geração de pedido. Cliente é direcionado pro iFood/telefone se quiser pedir.
+
+**Fase 2 — Pedido com pagamento na entrega** ~1 dia
+- Tools de cardápio + criar pedido.
+- Pedido cai em `pdv_orders` com pagamento “na entrega”.
+- Sem Pix ainda.
+
+**Fase 3 — Pix integrado** ~1 dia
+- Geração de cobrança Pix C6.
+- Webhook de confirmação de pagamento.
+- Pedido só vira “confirmado” após Pix pago.
+
+**Fase 4 — Polimento**
+- Resumo automático de contexto.
+- Métricas/dashboard.
+- Migração para Meta Cloud quando aprovado.
+
+## Riscos
+
+- **Ban do chip**: chip novo + volume de atendimento aumenta risco. Acelerar Meta Cloud assim que possível.
+- **IA inventar item/preço**: mitigado por function calling — IA não fala preço sem chamar `search_menu` (instrução forte no system prompt).
+- **Custo Lovable AI**: cada conversa consome créditos. Estimar ~R$0,01-0,05 por conversa com Gemini Flash. Monitorar no admin.
+- **Conflito com canal de notificações**: chip e instância Z-API totalmente separados — sem risco de mistura.
+
+## O que preciso de você antes de começar
+
+1. **Chip novo** ativo no WhatsApp (número exclusivo do atendimento ao cliente).
+2. **Nova instância Z-API** criada com esse chip (não reutilizar a de notificações). Vou precisar dos 3 valores novos: `ZAPI_CUSTOMER_INSTANCE_ID`, `ZAPI_CUSTOMER_TOKEN`, `ZAPI_CUSTOMER_CLIENT_TOKEN`.
+3. **Loja piloto**: confirma Asa Sul ou prefere outra?
+4. **Cardápio**: posso usar o que já está em `pdv_items` da loja escolhida, ou prefere um cardápio simplificado/separado pro WhatsApp?
+
+Assim que aprovar, começo pela Fase 1 (SAC).
