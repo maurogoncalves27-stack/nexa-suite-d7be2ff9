@@ -1,50 +1,79 @@
-# Padronizar /estagio com o layout de /vagas-diaria
 
-## Objetivo
-Deixar a página **/estagio** visualmente e funcionalmente igual à **/vagas-diaria** (FreelancerJobs), reaproveitando o mesmo componente de calendário semanal por loja, as mesmas abas (Abertas / Preenchidas / Concluídas / Canceladas), os mesmos botões superiores (Copiar link público / Ver página pública / Nova vaga) e o mesmo rodapé com legenda.
+# WhatsApp como canal adicional de notificação
 
-## O que muda em /estagio
+Objetivo: enviar notificações de colaborador também via WhatsApp (mantendo o push), usando provedor SaaS não-oficial agora (Z-API) e já deixando arquitetura pronta pra trocar pela **API oficial Meta Cloud** depois sem reescrever nada.
 
-1. **Cabeçalho idêntico**
-   - Ícone `GraduationCap` (mantém identidade do módulo) + título "Estágio" + subtítulo "Divulgue oportunidades de estágio para os candidatos se cadastrarem."
-   - Lado direito: botões **Copiar link público**, **Ver página pública**, **Nova vaga de estágio** (cor primária).
+## Decisões base
+- **Provedor inicial: Z-API** (SaaS brasileiro, REST simples, sobe em ~30min, ~R$ 100/mês). Recomendado em vez de Evolution self-hosted pra não termos custo de manutenção de VPS agora.
+- **Push continua funcionando normalmente.** WhatsApp é canal extra paralelo.
+- **Número de destino:** `employees.phone` (já cadastrado). Sem novo campo agora.
+- **Opt-out:** colaborador pode desativar WhatsApp na área dele (sem mexer no telefone do cadastro).
+- **Meta de migração:** trocar pra API oficial Meta Cloud (gratuita até 1k conv/mês) quando aprovarem o número comercial. Toda lógica de envio fica atrás de um `whatsappAdapter` exatamente como já fizemos com TEF.
 
-2. **Navegador semanal + abas de status**
-   - Setas ◀ / ▶ semana + label "DD/MM – DD/MM/AAAA  Esta semana".
-   - Abas no canto direito: **Abertas · Preenchidas · Concluídas · Canceladas**.
+## Arquitetura
 
-3. **Grid calendário (linhas = lojas, colunas = dias da semana)**
-   - Linhas: lojas físicas reais (`stores.is_virtual=false`) com a paleta fixa: ÁGUAS CLARAS azul, ASA NORTE verde, ASA SUL amarelo, LAGO SUL rosa.
-   - Colunas: Seg→Dom da semana selecionada.
-   - Cada **vaga de estágio (internship_opening)** aparece como card no dia da sua `start_date`, mostrando: valor da bolsa (quando houver), horário, candidato preenchido (se houver) e badge de status (Aberta / Preenchida / Concluída / Cancelada).
+```text
+notify-user (já existe)
+    ├── insert user_notifications  (in-app/sino)  [mantido]
+    ├── send web push              (push)         [mantido]
+    └── enqueue WhatsApp (novo) ──► edge: send-whatsapp ──► adapter
+                                                              ├── zapi (ativo)
+                                                              └── meta-cloud (stub futuro)
+```
 
-4. **Rodapé com legenda**
-   - Mesmos chips coloridos: Aberta · Preenchida · Concluída · Cancelada + texto "Clique em uma vaga para editar."
+## Passos de implementação
 
-5. **Dialog de criar/editar vaga de estágio**
-   - Mesmo formato do dialog de Nova vaga em /vagas-diaria, adaptado aos campos de estágio (loja, título, descrição, data, horário, valor da bolsa, nº de vagas).
+### 1. Banco
+- Tabela `whatsapp_notifications_log` (id, user_id, employee_id, phone, message, provider, status, provider_message_id, error, sent_at, created_at) — auditoria + retry.
+- Coluna `employees.whatsapp_opt_out boolean default false`.
+- (Opcional, fase 2) tabela `whatsapp_templates` se quisermos mensagens parametrizadas; agora começa só com texto livre.
 
-6. **Página pública de estágio**
-   - Botão "Ver página pública" abre `/vagas?tipo=estagio` (ou rota análoga já existente) listando apenas openings de estágio.
-   - Botão "Copiar link público" copia esse URL.
+### 2. Secrets
+- `WHATSAPP_PROVIDER` = `zapi`
+- `ZAPI_INSTANCE_ID`, `ZAPI_TOKEN`, `ZAPI_CLIENT_TOKEN` (3 valores que a Z-API dá no painel)
+- Pedidos via `add_secret` quando entrarmos em build.
 
-## O que NÃO muda (preservado)
-- A página atual /estagio também gerencia **estágios ativos**, **pagamentos de bolsa**, **contratos de estágio** e **candidatos**. Esses blocos ficam **abaixo do calendário**, em **accordion/tab secundário** ("Gestão de estagiários ativos"), preservando integralmente as funcionalidades hoje existentes (InternshipPaymentsPanel, InternshipContractCard, InternshipCandidatesPanel, CRUD de internships).
-- Toda a lógica de `internship_openings`, `internships`, `internship_contracts` e a trigger `trg_auto_terminate_internship` continua igual no banco — só a camada visual é refatorada.
+### 3. Edge function `send-whatsapp`
+- Recebe `{ user_id?, employee_id?, phone?, message, category?, tag? }`.
+- Resolve telefone (prioridade: phone explícito → employees.phone do user_id).
+- Checa `whatsapp_opt_out`. Se opt-out, pula com status `skipped`.
+- Normaliza número pra E.164 (+55…).
+- Chama adapter (`/lib/whatsapp/zapiAdapter.ts` no edge): POST `https://api.z-api.io/instances/{id}/token/{token}/send-text` com header `Client-Token`.
+- Grava log com resultado.
 
-## Implementação técnica
+### 4. Integrar no `notify-user`
+- Após o bloco de push, em paralelo: chama `send-whatsapp` (fire-and-forget, não bloqueia resposta).
+- Filtro por categoria: começar enviando apenas categorias importantes (`occurrence`, `announcement` priority=urgent, `payslip`, `schedule`). Categorias triviais ficam só no push. Lista controlada por const no código (fácil de ajustar).
 
-- **Extrair componente compartilhado** `WeeklyOpeningsCalendar` a partir do código atual de FreelancerJobs (grid loja × dia, navegação semanal, abas, legenda). Recebe via props: `openings[]`, `stores[]`, `onSelectOpening`, `onNewOpening`, `publicUrl`, labels customizáveis (título da entidade, status map).
-- Refatorar `src/pages/FreelancerJobs.tsx` para usar `<WeeklyOpeningsCalendar>` (sem mudança visual).
-- Refatorar `src/pages/Internships.tsx`:
-  - Adaptar `internship_openings` para o shape esperado pelo calendário (mapear `start_date` → `work_date`, derivar `status` a partir das vagas preenchidas vs `positions_count`).
-  - Renderizar `<WeeklyOpeningsCalendar>` no topo.
-  - Mover o conteúdo atual (estagiários ativos, pagamentos, contratos, candidatos) para uma seção colapsável "Gestão de estagiários" abaixo do calendário.
-- Atualizar `src/pages/PublicJobs.tsx` (ou criar filtro) para suportar listar openings de estágio.
-- Usar exclusivamente tokens do design system (`primary`, `success`, `warning`, `destructive`, `muted`) — sem cores hardcoded — exceto a paleta fixa de lojas.
-- Manter mobile-first: no viewport ~427px o grid vira cards empilhados por loja, igual já acontece em /vagas-diaria.
+### 5. UI do colaborador
+- Em `/area-colaborador` (ou Settings do colaborador): toggle "Receber notificações no WhatsApp" + exibe o número que será usado e link "atualizar telefone no RH".
+- Atualiza `employees.whatsapp_opt_out`.
 
-## Pontos a confirmar antes de codar
-1. **Bolsa de estágio**: as openings de estágio têm valor de bolsa por dia ou por mês? Hoje `internship_openings` não tem campo de valor — devo adicionar `stipend_amount`?
-2. **Múltiplas vagas (positions_count)**: quando uma opening tem 3 vagas, deve aparecer 1 card que diz "0/3 preenchidas" ou 3 cards separados no dia?
-3. **Página pública**: já existe rota pública para vagas de estágio ou devo criar/adaptar `/vagas?tipo=estagio`?
+### 6. UI admin (RH)
+- Página simples em `/configuracoes` ou aba nova "WhatsApp": status da instância Z-API (ping `/status`), últimos 50 envios da `whatsapp_notifications_log`, botão "enviar teste".
+
+### 7. Migração futura para Meta Cloud (não fazer agora, só deixar pronto)
+- Criar `metaCloudAdapter.ts` stub.
+- Trocar `WHATSAPP_PROVIDER=meta_cloud` + secrets `META_WA_TOKEN`, `META_WA_PHONE_NUMBER_ID` quando aprovarem.
+- Nenhuma outra parte do código muda.
+
+## Riscos a comunicar pro usuário (ficam registrados)
+- Chip dedicado: usar um número **novo**, não o pessoal/comercial principal — risco de ban existe.
+- Aquecer o número: começar com volume baixo (10-20 msgs/dia) e ir subindo.
+- Sem SLA: se WhatsApp mudar protocolo, Z-API pode ficar fora algumas horas.
+- Para mensagens "iniciadas pela empresa" em larga escala, oficial Meta Cloud é o destino correto — Z-API é ponte temporária.
+
+## Detalhes técnicos relevantes
+- Adapter pattern espelhando o TEF (`src/lib/tef/*`), mas no edge (Deno).
+- Envio é fire-and-forget do `notify-user` pra não atrasar push.
+- Rate limit simples no `send-whatsapp`: máx 1 msg/seg por número (Z-API recomenda).
+- Telefone inválido ou opt-out → `status='skipped'` no log, não vira erro.
+- `whatsapp_notifications_log` com RLS: admin/HR leem tudo; colaborador lê só os próprios.
+
+## Fora do escopo desta fase
+- Receber respostas do colaborador via webhook (Z-API suporta, mas não precisamos agora).
+- Templates HSM/aprovados (só na fase Meta Cloud).
+- Mídia (imagem/PDF do holerite via WhatsApp) — fase 2 se quiser.
+- Mexer em iFood, TEF, PDV-novo (parqueados pela prioridade atual).
+
+Confirma esse plano que eu já implemento? Se sim, vou precisar que você crie a conta Z-API em https://app.z-api.io e me passe os 3 valores quando eu pedir os secrets.

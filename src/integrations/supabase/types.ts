@@ -3169,6 +3169,7 @@ export type Database = {
           voter_section: string | null
           voter_zone: string | null
           weekly_hours: number | null
+          whatsapp_opt_out: boolean
           work_regime: string | null
           work_schedule: string | null
           zip_code: string | null
@@ -3262,6 +3263,7 @@ export type Database = {
           voter_section?: string | null
           voter_zone?: string | null
           weekly_hours?: number | null
+          whatsapp_opt_out?: boolean
           work_regime?: string | null
           work_schedule?: string | null
           zip_code?: string | null
@@ -3355,6 +3357,7 @@ export type Database = {
           voter_section?: string | null
           voter_zone?: string | null
           weekly_hours?: number | null
+          whatsapp_opt_out?: boolean
           work_regime?: string | null
           work_schedule?: string | null
           zip_code?: string | null
@@ -14249,6 +14252,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      whatsapp_notifications_log: {
+        Row: {
+          category: string | null
+          created_at: string
+          employee_id: string | null
+          error: string | null
+          id: string
+          message: string
+          phone: string | null
+          provider: string
+          provider_message_id: string | null
+          sent_at: string | null
+          status: string
+          tag: string | null
+          user_id: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          employee_id?: string | null
+          error?: string | null
+          id?: string
+          message: string
+          phone?: string | null
+          provider?: string
+          provider_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          tag?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          employee_id?: string | null
+          error?: string | null
+          id?: string
+          message?: string
+          phone?: string | null
+          provider?: string
+          provider_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          tag?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       work_schedules: {
         Row: {
