@@ -14253,6 +14253,210 @@ export type Database = {
           },
         ]
       }
+      whatsapp_blocked_numbers: {
+        Row: {
+          blocked_by: string | null
+          created_at: string
+          id: string
+          phone: string
+          reason: string | null
+        }
+        Insert: {
+          blocked_by?: string | null
+          created_at?: string
+          id?: string
+          phone: string
+          reason?: string | null
+        }
+        Update: {
+          blocked_by?: string | null
+          created_at?: string
+          id?: string
+          phone?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
+      whatsapp_customer_complaints: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          id: string
+          message: string
+          phone: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          store_id: string | null
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          phone: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          store_id?: string | null
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          phone?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_customer_complaints_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_customer_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_customer_complaints_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_customer_config: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          off_hours_message: string | null
+          opening_hours: string | null
+          store_id: string
+          system_prompt: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          off_hours_message?: string | null
+          opening_hours?: string | null
+          store_id: string
+          system_prompt?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          off_hours_message?: string | null
+          opening_hours?: string | null
+          store_id?: string
+          system_prompt?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_customer_config_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_customer_conversations: {
+        Row: {
+          context_summary: string | null
+          created_at: string
+          customer_name: string | null
+          id: string
+          last_message_at: string
+          phone: string
+          status: string
+          store_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          context_summary?: string | null
+          created_at?: string
+          customer_name?: string | null
+          id?: string
+          last_message_at?: string
+          phone: string
+          status?: string
+          store_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          context_summary?: string | null
+          created_at?: string
+          customer_name?: string | null
+          id?: string
+          last_message_at?: string
+          phone?: string
+          status?: string
+          store_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_customer_conversations_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_customer_messages: {
+        Row: {
+          content: string | null
+          conversation_id: string
+          created_at: string
+          id: string
+          role: string
+          tool_args: Json | null
+          tool_name: string | null
+          tool_result: Json | null
+          zapi_message_id: string | null
+        }
+        Insert: {
+          content?: string | null
+          conversation_id: string
+          created_at?: string
+          id?: string
+          role: string
+          tool_args?: Json | null
+          tool_name?: string | null
+          tool_result?: Json | null
+          zapi_message_id?: string | null
+        }
+        Update: {
+          content?: string | null
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+          tool_args?: Json | null
+          tool_name?: string | null
+          tool_result?: Json | null
+          zapi_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_customer_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_customer_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_notifications_log: {
         Row: {
           category: string | null

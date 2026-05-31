@@ -1,0 +1,92 @@
+// Webhook público da Z-API (instância CLIENTE) — recebe msgs do WhatsApp do cliente
+// e dispara o whatsapp-customer-ai-reply em background.
+import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { createClient } from 'npm:@supabase/supabase-js@2';
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+function normalizePhone(p: string) {
+  const digits = (p || '').replace(/\D/g, '');
+  return digits.startsWith('55') ? digits : (digits.length >= 10 ? '55' + digits : digits);
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  try {
+    const body = await req.json().catch(() => ({}));
+    console.log('[wa-customer-webhook] payload', JSON.stringify(body).slice(0, 500));
+
+    // Z-API "on-message-received" formato
+    const fromMe = body?.fromMe === true;
+    if (fromMe) return new Response('ignored:fromMe', { headers: corsHeaders });
+
+    const phoneRaw = body?.phone || body?.from || body?.sender?.phone;
+    const text = body?.text?.message || body?.message || body?.body || '';
+    const senderName = body?.senderName || body?.chatName || null;
+    const zapiMessageId = body?.messageId || body?.id || null;
+
+    if (!phoneRaw || !text) {
+      return new Response(JSON.stringify({ ok: true, skipped: 'no phone or text' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const phone = normalizePhone(phoneRaw);
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
+
+    // bloqueio?
+    const { data: blocked } = await supabase
+      .from('whatsapp_blocked_numbers').select('id').eq('phone', phone).maybeSingle();
+    if (blocked) {
+      return new Response(JSON.stringify({ ok: true, blocked: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // conversa (Fase 1: 1 loja piloto via env STORE_ID; depois multi-loja)
+    const pilotStoreId = Deno.env.get('WHATSAPP_CUSTOMER_PILOT_STORE_ID') || null;
+    let { data: conv } = await supabase
+      .from('whatsapp_customer_conversations')
+      .select('*')
+      .eq('phone', phone)
+      .eq('store_id', pilotStoreId)
+      .maybeSingle();
+
+    if (!conv) {
+      const ins = await supabase
+        .from('whatsapp_customer_conversations')
+        .insert({ phone, customer_name: senderName, store_id: pilotStoreId, status: 'active' })
+        .select().single();
+      conv = ins.data;
+    } else {
+      await supabase.from('whatsapp_customer_conversations')
+        .update({ last_message_at: new Date().toISOString(), status: 'active', customer_name: senderName || conv.customer_name })
+        .eq('id', conv.id);
+    }
+
+    await supabase.from('whatsapp_customer_messages').insert({
+      conversation_id: conv!.id,
+      role: 'user',
+      content: text,
+      zapi_message_id: zapiMessageId,
+    });
+
+    // dispara IA em background
+    fetch(`${SUPABASE_URL}/functions/v1/whatsapp-customer-ai-reply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE}` },
+      body: JSON.stringify({ conversation_id: conv!.id }),
+    }).catch((e) => console.error('dispatch ai-reply', e));
+
+    return new Response(JSON.stringify({ ok: true, conversation_id: conv!.id }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  } catch (e) {
+    console.error('[wa-customer-webhook] error', e);
+    return new Response(JSON.stringify({ error: String(e) }), {
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+});
