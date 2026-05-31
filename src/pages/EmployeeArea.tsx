@@ -21,6 +21,7 @@ import FaceEnrollment from "@/components/timeclock/FaceEnrollment";
 import EmployeeTimeClockCards from "@/components/timeclock/EmployeeTimeClockCards";
 import EmployeePunchHistory from "@/components/timeclock/EmployeePunchHistory";
 import PushNotificationSettings from "@/components/auth/PushNotificationSettings";
+import WhatsAppOptOutCard from "@/components/employees/WhatsAppOptOutCard";
 
 import UpcomingAppointmentsCard from "@/components/announcements/UpcomingAppointmentsCard";
 import EmployeeDocumentsTab from "@/components/auth/EmployeeDocumentsTab";
