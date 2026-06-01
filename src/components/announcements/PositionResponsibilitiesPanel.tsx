@@ -194,6 +194,7 @@ export default function PositionResponsibilitiesPanel() {
               <SelectItem value="all">Todos os cargos</SelectItem>
               {positions.map((p) => (
                 <SelectItem key={p.id} value={p.name}>
+                  {p.cbo_code ? `${p.cbo_code} · ` : ""}
                   {p.name}
                 </SelectItem>
               ))}
@@ -205,6 +206,7 @@ export default function PositionResponsibilitiesPanel() {
             <Button onClick={openNew}>
               <Plus className="h-4 w-4 mr-2" />
               Nova responsabilidade
+
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
