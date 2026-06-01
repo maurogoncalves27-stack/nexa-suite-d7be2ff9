@@ -78,9 +78,14 @@ const TOTEM_THEME_STYLE = {
 const normalize = (value: string) =>
   value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
-const brandLogo = (name: string): { src: string; scale: number } | null => {
-  const n = normalize(name);
-  // scale compensa o "padding" interno de cada PNG para visualmente igualar tamanhos
+const buildBrandLogoResolver = (
+  customLogos: Record<string, string>,
+  brandSlugById: Record<string, string>,
+) => (brand: { id?: string; name: string }): { src: string; scale: number } | null => {
+  const slug = brand.id ? brandSlugById[brand.id] : undefined;
+  const custom = slug ? customLogos[slug] : undefined;
+  if (custom) return { src: custom, scale: 1 };
+  const n = normalize(brand.name);
   if (n.includes("box") || n.includes("caipira")) return { src: logoBoxCaipira, scale: 0.86 };
   if (n.includes("estrog")) return { src: logoEstrogonofe, scale: 0.78 };
   if (n.includes("parme")) return { src: logoAquelaParme, scale: 2.2 };
