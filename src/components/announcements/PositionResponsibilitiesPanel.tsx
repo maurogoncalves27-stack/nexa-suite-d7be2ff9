@@ -73,6 +73,14 @@ export default function PositionResponsibilitiesPanel() {
     load();
   }, []);
 
+  const cboByPosition = useMemo(() => {
+    const m = new Map<string, { code: string | null; title: string | null }>();
+    positions.forEach((p) =>
+      m.set(p.name, { code: p.cbo_code ?? null, title: p.cbo_title ?? null }),
+    );
+    return m;
+  }, [positions]);
+
   const filtered = useMemo(() => {
     if (filter === "all") return items;
     return items.filter((i) => i.position === filter);
@@ -86,6 +94,7 @@ export default function PositionResponsibilitiesPanel() {
     });
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [filtered]);
+
 
   const openNew = () => {
     setEditingId(null);
