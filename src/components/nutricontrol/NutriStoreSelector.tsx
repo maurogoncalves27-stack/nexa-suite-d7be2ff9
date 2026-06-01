@@ -60,7 +60,7 @@ export const NutriStoreSelector = ({ value, onChange }: Props) => {
       setLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, isAdmin]);
+  }, [user, isAdmin, isManager, isSuperUser, isNutritionist]);
 
   return (
     <div className="flex items-center gap-2">
