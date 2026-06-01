@@ -457,7 +457,7 @@ export default function NightAddition() {
                         <Input
                           inputMode="decimal"
                           className="w-32 ml-auto text-right"
-                          value={value === 0 && !r ? "" : String(value).replace(".", ",")}
+                          value={draftValues[e.id] ?? (value === 0 && !r ? "" : String(value).replace(".", ","))}
                           onChange={(ev) => updateAmount(e.id, ev.target.value)}
                           placeholder="0,00"
                         />
@@ -509,7 +509,7 @@ export default function NightAddition() {
                     <Input
                       inputMode="decimal"
                       className="flex-1"
-                      value={value === 0 && !r ? "" : String(value).replace(".", ",")}
+                      value={draftValues[e.id] ?? (value === 0 && !r ? "" : String(value).replace(".", ","))}
                       onChange={(ev) => updateAmount(e.id, ev.target.value)}
                       placeholder="0,00"
                     />
