@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle2, XCircle, ShieldCheck, Truck, Stethoscope, Eye } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, ShieldCheck, Truck, Stethoscope, Eye, Link2 } from "lucide-react";
 import { EXTERNAL_MODULES } from "@/lib/externalModules";
 import { Link } from "react-router-dom";
 
