@@ -203,7 +203,7 @@ const pagamentosSections: Section[] = [
 const pdvSections: Section[] = [
   { label: "Operação", items: [
     { title: "PDV (gestor)", url: "/pdv-novo", icon: ShoppingBag, staffOnly: true },
-    { title: "Totem", url: "/totem", icon: Monitor, staffOnly: true },
+    { title: "Totem", url: "/configuracoes/totem", icon: Monitor, staffOnly: true },
   ]},
   { label: "Cardápio", items: [
     { title: "Cardápio", url: "/cardapio", icon: ScanText, staffOnly: true },
