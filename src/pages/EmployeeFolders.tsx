@@ -113,18 +113,17 @@ export default function EmployeeFolders() {
   };
 
   return (
-    <div className="space-y-4 p-4 md:p-6 max-w-5xl mx-auto">
-      <div className="flex items-center gap-3">
-        <div className="rounded-md bg-primary/10 text-primary p-2">
-          <FolderOpen className="h-6 w-6" />
-        </div>
-        <div>
-          <h1 className="text-xl md:text-xl font-bold flex items-center gap-2">Pasta do Colaborador</h1>
-          <p className="text-sm text-muted-foreground">
-            Acesse os documentos de cada colaborador.
-          </p>
-        </div>
+    <div className="space-y-6 p-4 md:p-6 max-w-5xl mx-auto">
+      <div>
+        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+          <Archive className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+          Pasta do Colaborador
+        </h1>
+        <p className="text-muted-foreground">
+          Acesse os documentos de cada colaborador.
+        </p>
       </div>
+
 
       <Card>
         <CardHeader>
