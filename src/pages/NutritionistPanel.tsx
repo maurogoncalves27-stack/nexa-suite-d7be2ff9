@@ -9,24 +9,32 @@ const ITEMS = [
   {
     to: "/nutricontrol",
     icon: Salad,
+    color: "text-success",
+    bg: "bg-success/10",
     title: "NutriControle",
     desc: "Temperaturas, recebimentos, óleo, pragas, água, manutenção...",
   },
   {
     to: "/nutri-visita",
     icon: ClipboardCheck,
+    color: "text-accent",
+    bg: "bg-accent/10",
     title: "Visita técnica",
     desc: "Checklist e relatório de visita.",
   },
   {
     to: "/nutri-relatorios",
     icon: FileBarChart2,
+    color: "text-primary",
+    bg: "bg-primary/10",
     title: "Relatórios",
     desc: "Relatórios consolidados do NutriControle.",
   },
   {
     to: "/checklists",
     icon: ListChecks,
+    color: "text-warning",
+    bg: "bg-warning/10",
     title: "Check-lists",
     desc: "Check-lists operacionais das lojas.",
   },
@@ -66,7 +74,7 @@ export default function NutritionistPanel() {
             <Link key={it.to} to={it.to} className="block">
               <Card className="h-full hover:border-primary/40 hover:shadow-md transition-all">
                 <CardContent className="p-4 flex flex-col items-center text-center gap-2">
-                  <div className="h-12 w-12 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                  <div className={`h-12 w-12 rounded-full ${it.bg} ${it.color} flex items-center justify-center`}>
                     <it.icon className="h-6 w-6" />
                   </div>
                   <div className="font-semibold text-base">{it.title}</div>
