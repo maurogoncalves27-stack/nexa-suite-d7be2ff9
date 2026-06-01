@@ -19,7 +19,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import {
-  KeyRound, Phone, Plus, Search, Eye, EyeOff, Copy, Pencil, Trash2, Tag, Tags, Mail, Globe, Building2, ExternalLink,
+  KeyRound, Phone, Plus, Search, Eye, EyeOff, Copy, Pencil, Trash2, Tag, Tags, Mail, Globe, Building2, ExternalLink, Lock,
 } from "lucide-react";
 
 type Kind = "credential" | "contact";
