@@ -176,34 +176,72 @@ export default function OutsourcedProfessionalsPanel() {
 
   const createAccess = async () => {
     if (!accessOpen) return;
-    if (!accessForm.email || !accessForm.password) {
-      return toast({ title: "Preencha email e senha", variant: "destructive" });
+    if (!accessForm.email) {
+      return toast({ title: "Preencha o e-mail", variant: "destructive" });
     }
     setCreatingAccess(true);
-    // Cria conta de acesso (signUp). O usuário precisará confirmar email se não estiver auto-confirmado.
-    const { data, error } = await supabase.auth.signUp({
-      email: accessForm.email,
-      password: accessForm.password,
-      options: { data: { full_name: accessOpen.full_name } },
-    });
-    if (error || !data.user) {
-      setCreatingAccess(false);
-      return toast({ title: "Erro ao criar acesso", description: error?.message ?? "Falha", variant: "destructive" });
+
+    // 1) Tenta localizar usuário já existente pelo e-mail (ex.: colaborador interno
+    //    que já possui login). Isso evita criar um auth user duplicado e atribuir
+    //    a role de nutricionista ao user_id errado (bug observado com a Raquel).
+    let userId: string | null = null;
+
+    const { data: existingProfile } = await supabase
+      .from("profiles")
+      .select("user_id")
+      .ilike("email", accessForm.email)
+      .maybeSingle();
+    if (existingProfile?.user_id) userId = existingProfile.user_id;
+
+    if (!userId) {
+      const { data: existingEmp } = await supabase
+        .from("employees")
+        .select("user_id")
+        .ilike("email", accessForm.email)
+        .not("user_id", "is", null)
+        .maybeSingle();
+      if (existingEmp?.user_id) userId = existingEmp.user_id;
     }
-    // Vincula user_id ao profissional
+
+    // 2) Se não existe, cria novo auth user (signUp exige senha).
+    if (!userId) {
+      if (!accessForm.password) {
+        setCreatingAccess(false);
+        return toast({ title: "Defina uma senha para o novo acesso", variant: "destructive" });
+      }
+      const { data, error } = await supabase.auth.signUp({
+        email: accessForm.email,
+        password: accessForm.password,
+        options: { data: { full_name: accessOpen.full_name } },
+      });
+      if (error || !data.user) {
+        setCreatingAccess(false);
+        return toast({ title: "Erro ao criar acesso", description: error?.message ?? "Falha", variant: "destructive" });
+      }
+      userId = data.user.id;
+    }
+
+    // 3) Vincula user_id ao profissional terceirizado.
     await supabase.from("outsourced_professionals").update({
-      user_id: data.user.id,
+      user_id: userId,
       email: accessForm.email,
       is_nutritionist: accessForm.grant_nutritionist || accessOpen.is_nutritionist,
     }).eq("id", accessOpen.id);
 
-    // Atribui role 'nutritionist' se aplicável
+    // 4) Garante a role 'nutritionist' (idempotente) no user_id correto.
     if (accessForm.grant_nutritionist) {
-      await supabase.from("user_roles").insert({ user_id: data.user.id, role: "nutritionist" as any });
+      await supabase
+        .from("user_roles")
+        .upsert({ user_id: userId, role: "nutritionist" as any }, { onConflict: "user_id,role" });
     }
     setCreatingAccess(false);
     setAccessOpen(null);
-    toast({ title: "Acesso criado", description: "O profissional pode entrar com o e-mail e senha definidos." });
+    toast({
+      title: "Acesso configurado",
+      description: existingProfile?.user_id
+        ? "Usuário existente vinculado e role de nutricionista garantida."
+        : "Conta criada e role de nutricionista atribuída.",
+    });
     load();
   };
 
