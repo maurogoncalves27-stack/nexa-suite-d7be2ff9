@@ -70,7 +70,9 @@ export default function NightAddition() {
 
   const load = async () => {
     setLoading(true);
-    const [empRes, nightRes, calcRes, revRes] = await Promise.all([
+    // Cálculo automático agora vem da edge function compute-night-addition,
+    // que lê o ponto direto (independe de payroll_calculated / folha gerada).
+    const [empRes, nightRes, computeRes, revRes] = await Promise.all([
       supabase
         .from("employees")
         .select("id, full_name, position, store_id, night_shift_eligible")
@@ -81,11 +83,9 @@ export default function NightAddition() {
         .select("employee_id, amount, source, notes")
         .eq("reference_year", refYear)
         .eq("reference_month", refMonth),
-      supabase
-        .from("payroll_calculated")
-        .select("employee_id, calculation_details")
-        .eq("reference_year", refYear)
-        .eq("reference_month", refMonth),
+      supabase.functions.invoke("compute-night-addition", {
+        body: { year: refYear, month: refMonth },
+      }),
       (supabase as any)
         .from("payroll_night_addition_review")
         .select("id")
@@ -107,8 +107,9 @@ export default function NightAddition() {
     setRows(map);
 
     const auto: Record<string, number> = {};
-    ((calcRes.data ?? []) as any[]).forEach((r) => {
-      const v = Number(r.calculation_details?.night_addition_calculated ?? 0);
+    const results = (computeRes?.data as any)?.results ?? [];
+    results.forEach((r: any) => {
+      const v = Number(r.amount ?? 0);
       if (v > 0) auto[r.employee_id] = v;
     });
     setAutoMap(auto);
