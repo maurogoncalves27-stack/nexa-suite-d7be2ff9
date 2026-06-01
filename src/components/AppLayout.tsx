@@ -406,12 +406,14 @@ export const AppLayout = ({ children }: { children?: ReactNode }) => {
     return <Navigate to="/nutricionista/painel" replace />;
   }
 
+  const showNutritionistBack =
+    isNutritionistMode && pathname !== "/nutricionista/painel" && pathname !== "/nutricionista";
+
   return (
     <SidebarProvider open={isMobile ? undefined : true} onOpenChange={isMobile ? undefined : setOpen}>
       <div className="min-h-screen flex w-full bg-background">
         {!showPartnerBanner && !isEmployeeMode && !isNutritionistMode && <AppSidebar />}
         {!showPartnerBanner && isEmployeeMode && <EmployeeSidebar />}
-        {!showPartnerBanner && isNutritionistMode && <NutritionistSidebar />}
         <div className="flex-1 flex flex-col min-w-0">
           <HeaderBar
             title={currentTitle}
@@ -425,6 +427,17 @@ export const AppLayout = ({ children }: { children?: ReactNode }) => {
               showPartnerBanner ? "partner-readonly" : ""
             }`}
           >
+            {showNutritionistBack && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/nutricionista/painel")}
+                className="gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Voltar ao painel
+              </Button>
+            )}
             <EnsureUserSignature />
             <WarningSignatureDialog />
             {children ?? <Outlet />}
