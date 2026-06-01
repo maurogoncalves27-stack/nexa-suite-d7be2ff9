@@ -73,6 +73,7 @@ const Recruitment = lazy(() => import("./pages/Recruitment.tsx"));
 const Settings = lazy(() => import("./pages/Settings.tsx"));
 const WhatsAppAdmin = lazy(() => import("./pages/WhatsAppAdmin.tsx"));
 const WhatsAppCustomerAdmin = lazy(() => import("./pages/WhatsAppCustomerAdmin.tsx"));
+const DeliverySettings = lazy(() => import("./pages/DeliverySettings.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const VerifySignature = lazy(() => import("./pages/VerifySignature.tsx"));
 const InventoryReceiving = lazy(() => import("./pages/InventoryReceiving.tsx"));
