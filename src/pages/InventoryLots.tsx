@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { History, AlertTriangle } from "lucide-react";
+import { History, AlertTriangle, CalendarClock } from "lucide-react";
 import LotsPanel from "@/components/inventory/LotsPanel";
 import LossesPanel from "@/components/inventory/LossesPanel";
 
