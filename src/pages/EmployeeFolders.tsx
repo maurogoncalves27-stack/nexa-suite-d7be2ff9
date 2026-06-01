@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { FolderOpen, FileDown, FileText, Loader2, Search } from "lucide-react";
+import { Archive, FolderOpen, FileDown, FileText, Loader2, Search } from "lucide-react";
 
 interface EmployeeOption {
   id: string;

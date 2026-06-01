@@ -141,7 +141,7 @@ const RecipeBook = () => {
                       <img src={url} alt={r.title} className="h-40 w-full object-cover" />
                     ) : (
                       <div className="h-40 w-full bg-muted flex items-center justify-center">
-                        <BookOpen className="h-10 w-10 text-muted-foreground" />
+                        <BookMarked className="h-10 w-10 text-muted-foreground" />
                       </div>
                     )}
                     <div className="p-3 flex-1 flex flex-col gap-1">
