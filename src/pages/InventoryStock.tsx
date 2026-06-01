@@ -119,11 +119,15 @@ const InventoryStock = () => {
   const totalValue = filtered.reduce((sum, s) => sum + Number(s.quantity) * Number(s.inventory_products?.average_cost ?? 0), 0);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">Estoque</h1>
+        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+          <BarChart2 className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+          Saldo de estoque
+        </h1>
         <p className="text-muted-foreground">Saldo atual de produtos por loja e controle de validades por lote.</p>
       </div>
+
 
       <Tabs defaultValue="saldo" className="space-y-4">
         <TabsList className="grid w-full max-w-md grid-cols-2">
