@@ -236,9 +236,16 @@ export default function ExternalAccessPanel() {
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-muted-foreground">
-        Aprove cadastros de fornecedores e profissionais terceirizados, e libere os módulos do sistema para cada um.
-      </p>
+      <div>
+        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+          <Link2 className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+          Acessos externos
+        </h1>
+        <p className="text-muted-foreground">
+          Aprove cadastros de fornecedores e profissionais terceirizados, e libere os módulos do sistema para cada um.
+        </p>
+      </div>
+
 
       <Card>
         <CardHeader>
