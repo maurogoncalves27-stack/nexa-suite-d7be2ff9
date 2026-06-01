@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { format, subDays } from "date-fns";
-import { Loader2, TrendingUp, Package, AlertCircle, DollarSign } from "lucide-react";
+import { Loader2, TrendingUp, Package, AlertCircle, DollarSign, Percent } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
