@@ -1,8 +1,13 @@
 // ems-sync-temperature: importa últimas leituras de ems_sensor_readings
 // para nutri_temperature_readings dos equipamentos vinculados.
 import { createClient } from "npm:@supabase/supabase-js@2.45.0";
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { requireCronOrRole } from "../_shared/requireRole.ts";
+
+const corsHeaders: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
 
 interface Body {
   store_id?: string;

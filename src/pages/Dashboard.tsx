@@ -22,6 +22,7 @@ import MetricsCard, { type Metric } from "@/components/dashboard/MetricsCard";
 import DashboardSection from "@/components/dashboard/DashboardSection";
 import ManagerQuickActions from "@/components/dashboard/ManagerQuickActions";
 import { SupplierOffersCard } from "@/components/dashboard/SupplierOffersCard";
+import ColdChamberStatusCard from "@/components/dashboard/ColdChamberStatusCard";
 const AnalyticsCharts = lazy(() => import("@/components/dashboard/AnalyticsCharts"));
 import MaintenanceSummaryCard from "@/components/dashboard/MaintenanceSummaryCard";
 import { useDashboardPrefs } from "@/hooks/useDashboardPrefs";
@@ -440,6 +441,8 @@ export default function Dashboard() {
       {isStaff && !prefs.hidden.includes("quick-actions") && <ManagerQuickActions />}
 
       {isStaff && <SupplierOffersCard />}
+
+      {isStaff && <ColdChamberStatusCard />}
 
       {isStaff && !prefs.hidden.includes("analytics-charts") && (
         <Suspense fallback={<Card><CardContent className="p-6 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-primary" /></CardContent></Card>}>
