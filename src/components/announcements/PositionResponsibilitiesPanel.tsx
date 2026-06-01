@@ -73,6 +73,14 @@ export default function PositionResponsibilitiesPanel() {
     load();
   }, []);
 
+  const cboByPosition = useMemo(() => {
+    const m = new Map<string, { code: string | null; title: string | null }>();
+    positions.forEach((p) =>
+      m.set(p.name, { code: p.cbo_code ?? null, title: p.cbo_title ?? null }),
+    );
+    return m;
+  }, [positions]);
+
   const filtered = useMemo(() => {
     if (filter === "all") return items;
     return items.filter((i) => i.position === filter);
@@ -86,6 +94,7 @@ export default function PositionResponsibilitiesPanel() {
     });
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [filtered]);
+
 
   const openNew = () => {
     setEditingId(null);
@@ -185,6 +194,7 @@ export default function PositionResponsibilitiesPanel() {
               <SelectItem value="all">Todos os cargos</SelectItem>
               {positions.map((p) => (
                 <SelectItem key={p.id} value={p.name}>
+                  {p.cbo_code ? `${p.cbo_code} · ` : ""}
                   {p.name}
                 </SelectItem>
               ))}
@@ -196,6 +206,7 @@ export default function PositionResponsibilitiesPanel() {
             <Button onClick={openNew}>
               <Plus className="h-4 w-4 mr-2" />
               Nova responsabilidade
+
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
@@ -217,10 +228,12 @@ export default function PositionResponsibilitiesPanel() {
                   <SelectContent>
                     {positions.map((p) => (
                       <SelectItem key={p.id} value={p.name}>
+                        {p.cbo_code ? `${p.cbo_code} · ` : ""}
                         {p.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
+
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
                   Para adicionar/editar cargos, vá em Área do Gestor → Cargos.
@@ -278,16 +291,30 @@ export default function PositionResponsibilitiesPanel() {
               className="border rounded-lg bg-card overflow-hidden"
             >
               <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                <div className="flex items-center gap-2 min-w-0 flex-1 text-left">
+                <div className="flex items-center gap-2 min-w-0 flex-1 text-left flex-wrap">
                   <Briefcase className="h-5 w-5 text-primary shrink-0" />
                   <span className="font-semibold text-sm md:text-base truncate">
                     {position}
                   </span>
+                  {cboByPosition.get(position)?.code ? (
+                    <Badge
+                      variant="outline"
+                      className="font-mono text-[10px] shrink-0"
+                      title={cboByPosition.get(position)?.title ?? undefined}
+                    >
+                      CBO {cboByPosition.get(position)!.code}
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-[10px] shrink-0">
+                      isento de CBO
+                    </Badge>
+                  )}
                   <Badge variant="outline" className="ml-auto mr-2 shrink-0">
                     {list.length}
                   </Badge>
                 </div>
               </AccordionTrigger>
+
               <AccordionContent className="px-3 pb-3">
                 <ul className="space-y-2">
                   {list.map((r) => (
