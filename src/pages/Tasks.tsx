@@ -5,7 +5,7 @@ export default function Tasks() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">
+        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
           <ListChecks className="h-6 w-6 md:h-7 md:w-7 text-primary" />
           Tarefas
         </h1>

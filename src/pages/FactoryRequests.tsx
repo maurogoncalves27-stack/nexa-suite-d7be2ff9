@@ -351,7 +351,7 @@ export default function FactoryRequests() {
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
             <AlertTriangle className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Requisições de urgência
           </h1>
           <p className="text-muted-foreground text-sm">

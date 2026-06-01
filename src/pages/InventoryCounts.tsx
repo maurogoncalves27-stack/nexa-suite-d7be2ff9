@@ -287,7 +287,7 @@ const InventoryCounts = () => {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">Contagem de estoque</h1>
+        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">Contagem de estoque</h1>
         <p className="text-muted-foreground text-sm">
           Selecione a loja e digite a quantidade contada de cada produto. As diferenças são ajustadas após aprovação do gestor.
         </p>

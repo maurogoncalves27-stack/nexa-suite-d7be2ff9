@@ -10,7 +10,7 @@ const Settings = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">Configurações</h1>
+        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">Configurações</h1>
         <p className="text-muted-foreground">Centralize aqui as configurações do sistema.</p>
       </div>
 

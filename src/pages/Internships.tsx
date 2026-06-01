@@ -147,7 +147,7 @@ export default function Internships() {
       <div className="flex items-center gap-3">
         <GraduationCap className="h-7 w-7 text-primary" />
         <div>
-          <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">Estágio / Trainee</h1>
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">Estágio / Trainee</h1>
           <p className="text-muted-foreground">Vagas de estágio, vigência e pagamentos</p>
         </div>
       </div>

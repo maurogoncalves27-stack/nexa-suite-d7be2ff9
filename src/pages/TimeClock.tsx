@@ -129,7 +129,7 @@ export default function TimeClock() {
       <div className="flex items-center gap-3">
         <Clock className="h-7 w-7 text-primary" />
         <div>
-          <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">Controle de Ponto</h1>
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">Controle de Ponto</h1>
           <p className="text-muted-foreground">Batidas registradas com reconhecimento facial</p>
         </div>
       </div>

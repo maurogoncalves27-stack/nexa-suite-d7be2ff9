@@ -98,7 +98,7 @@ const RecipeBook = () => {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">
+        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
           <BookMarked className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Receituário
         </h1>
         <p className="text-muted-foreground">

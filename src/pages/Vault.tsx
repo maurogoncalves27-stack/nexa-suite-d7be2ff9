@@ -130,7 +130,7 @@ const Vault = () => {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">Cofre</h1>
+        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">Cofre</h1>
         <p className="text-muted-foreground text-sm">
           Logins, senhas e contatos importantes das lojas em um só lugar.
         </p>
