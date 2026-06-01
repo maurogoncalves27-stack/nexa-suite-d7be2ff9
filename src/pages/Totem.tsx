@@ -50,7 +50,7 @@ const isValidCpf = (cpf: string): boolean => {
 type Step = "idle" | "store" | "type" | "menu" | "checkout" | "done";
 type OrderType = "eat_in" | "takeout";
 
-interface Brand { id: string; name: string }
+interface Brand { id: string; name: string; slug?: string }
 interface Store { id: string; name: string; brand_id: string | null; parent_store_id?: string | null; parent_store?: { name: string } | null }
 interface Category { id: string; name: string; sort_order: number; brand_id: string | null }
 interface MenuItem {
@@ -150,16 +150,24 @@ export default function Totem() {
   const [showNoteKb, setShowNoteKb] = useState(false);
   const [showCpfKb, setShowCpfKb] = useState(false);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
+  const [customBackgrounds, setCustomBackgrounds] = useState<string[]>([]);
+  const [customLogos, setCustomLogos] = useState<Record<string, string>>({});
 
-  // ----- carregar marcas/lojas
+  // ----- carregar marcas/lojas + assets do totem
   useEffect(() => {
     void (async () => {
-      const [b, s] = await Promise.all([
-        supabase.from("brands").select("id,name").eq("is_active", true).not("name", "ilike", "%fábrica%").not("name", "ilike", "%fabrica%").order("sort_order"),
+      const [b, s, ta] = await Promise.all([
+        supabase.from("brands").select("id,name,slug").eq("is_active", true).not("name", "ilike", "%fábrica%").not("name", "ilike", "%fabrica%").order("sort_order"),
         supabase.from("stores").select("id,name,brand_id,parent_store_id,parent_store:parent_store_id(name)").eq("is_virtual", true).order("name"),
+        (supabase as any).from("totem_assets").select("kind,brand_slug,image_url,sort_order,is_active").eq("is_active", true).order("sort_order"),
       ]);
       setBrands(((b.data ?? []) as Brand[]).filter(x => !/f[áa]brica/i.test(x.name)));
       setStores((s.data ?? []) as Store[]);
+      const assets = (ta.data ?? []) as Array<{ kind: string; brand_slug: string | null; image_url: string }>;
+      setCustomBackgrounds(assets.filter(a => a.kind === "background").map(a => a.image_url));
+      const logoMap: Record<string, string> = {};
+      assets.filter(a => a.kind === "logo" && a.brand_slug).forEach(a => { logoMap[a.brand_slug!] = a.image_url; });
+      setCustomLogos(logoMap);
     })();
   }, []);
 
