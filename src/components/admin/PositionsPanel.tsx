@@ -61,6 +61,17 @@ export default function PositionsPanel() {
       toast({ title: "Informe o nome do cargo", variant: "destructive" });
       return;
     }
+    if (!form.cbo_code) {
+      const exempt = /est[áa]gi|trainee|freelancer/i.test(form.name);
+      if (!exempt) {
+        toast({
+          title: "CBO obrigatório",
+          description: "Selecione o código CBO. Apenas Estágio / Trainee / Freelancer ficam isentos.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     setSaving(true);
     const payload = {
       name: form.name.trim(),
@@ -144,7 +155,7 @@ export default function PositionsPanel() {
                   }
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Opcional — usado para emissão de contratos, eSocial e relatórios.
+                  Obrigatório — exceto para Estágio, Trainee e Freelancer.
                 </p>
               </div>
               <div className="flex items-center gap-2">
