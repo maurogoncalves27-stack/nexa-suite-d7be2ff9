@@ -530,7 +530,7 @@ export default function Totem() {
           <div className="h-full overflow-auto p-8 flex items-center justify-center animate-fade-in">
             <div className="flex flex-col gap-12 w-full max-w-4xl mx-auto">
               {displayedBrands.map(b => {
-                const logo = brandLogo(b.name);
+                const logo = brandLogo(b);
                 return (
                   <button
                     key={b.id}
