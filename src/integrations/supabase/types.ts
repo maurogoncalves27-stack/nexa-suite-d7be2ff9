@@ -1859,6 +1859,184 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_job_events: {
+        Row: {
+          event_type: string
+          id: string
+          job_id: string | null
+          payload: Json
+          provider: string
+          received_at: string
+        }
+        Insert: {
+          event_type: string
+          id?: string
+          job_id?: string | null
+          payload: Json
+          provider: string
+          received_at?: string
+        }
+        Update: {
+          event_type?: string
+          id?: string
+          job_id?: string | null
+          payload?: Json
+          provider?: string
+          received_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_job_events_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_jobs: {
+        Row: {
+          cancelled_at: string | null
+          created_at: string
+          delivered_at: string | null
+          driver_name: string | null
+          driver_phone: string | null
+          dropoff_address: Json | null
+          error_message: string | null
+          eta_minutes: number | null
+          fee_cents: number | null
+          id: string
+          order_id: string | null
+          picked_up_at: string | null
+          pickup_address: Json | null
+          provider: string
+          provider_order_id: string | null
+          provider_quote_id: string | null
+          quoted_at: string
+          raw_order: Json | null
+          raw_quote: Json | null
+          requested_at: string | null
+          status: string
+          store_id: string
+          tracking_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          cancelled_at?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          driver_name?: string | null
+          driver_phone?: string | null
+          dropoff_address?: Json | null
+          error_message?: string | null
+          eta_minutes?: number | null
+          fee_cents?: number | null
+          id?: string
+          order_id?: string | null
+          picked_up_at?: string | null
+          pickup_address?: Json | null
+          provider: string
+          provider_order_id?: string | null
+          provider_quote_id?: string | null
+          quoted_at?: string
+          raw_order?: Json | null
+          raw_quote?: Json | null
+          requested_at?: string | null
+          status?: string
+          store_id: string
+          tracking_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cancelled_at?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          driver_name?: string | null
+          driver_phone?: string | null
+          dropoff_address?: Json | null
+          error_message?: string | null
+          eta_minutes?: number | null
+          fee_cents?: number | null
+          id?: string
+          order_id?: string | null
+          picked_up_at?: string | null
+          pickup_address?: Json | null
+          provider?: string
+          provider_order_id?: string | null
+          provider_quote_id?: string | null
+          quoted_at?: string
+          raw_order?: Json | null
+          raw_quote?: Json | null
+          requested_at?: string | null
+          status?: string
+          store_id?: string
+          tracking_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_jobs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pdv_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_jobs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_provider_config: {
+        Row: {
+          created_at: string
+          extra_config: Json
+          id: string
+          is_active: boolean
+          pickup_address: Json | null
+          priority: number
+          provider: string
+          service_type: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          extra_config?: Json
+          id?: string
+          is_active?: boolean
+          pickup_address?: Json | null
+          priority?: number
+          provider: string
+          service_type?: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          extra_config?: Json
+          id?: string
+          is_active?: boolean
+          pickup_address?: Json | null
+          priority?: number
+          provider?: string
+          service_type?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_provider_config_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       development_plans: {
         Row: {
           actions: string | null
@@ -9885,6 +10063,9 @@ export type Database = {
           delivery_by: string | null
           delivery_code: string | null
           delivery_fee: number
+          delivery_job_id: string | null
+          delivery_provider: string | null
+          delivery_tracking_url: string | null
           discount: number
           dispatched_at: string | null
           dre_excluded: boolean
@@ -9929,6 +10110,9 @@ export type Database = {
           delivery_by?: string | null
           delivery_code?: string | null
           delivery_fee?: number
+          delivery_job_id?: string | null
+          delivery_provider?: string | null
+          delivery_tracking_url?: string | null
           discount?: number
           dispatched_at?: string | null
           dre_excluded?: boolean
@@ -9973,6 +10157,9 @@ export type Database = {
           delivery_by?: string | null
           delivery_code?: string | null
           delivery_fee?: number
+          delivery_job_id?: string | null
+          delivery_provider?: string | null
+          delivery_tracking_url?: string | null
           discount?: number
           dispatched_at?: string | null
           dre_excluded?: boolean
@@ -10012,6 +10199,13 @@ export type Database = {
             columns: ["channel_id"]
             isOneToOne: false
             referencedRelation: "pdv_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdv_orders_delivery_job_id_fkey"
+            columns: ["delivery_job_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_jobs"
             referencedColumns: ["id"]
           },
           {
@@ -15271,6 +15465,9 @@ export type Database = {
           delivery_by: string | null
           delivery_code: string | null
           delivery_fee: number
+          delivery_job_id: string | null
+          delivery_provider: string | null
+          delivery_tracking_url: string | null
           discount: number
           dispatched_at: string | null
           dre_excluded: boolean
