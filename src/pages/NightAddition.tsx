@@ -123,31 +123,34 @@ export default function NightAddition() {
   // Sincroniza valores automáticos: cria row com source='auto' para quem tem
   // adicional noturno calculado pelo ponto e ainda não tem override.
   const syncAuto = async () => {
-    const inserts: any[] = [];
+    const upserts: any[] = [];
     for (const [empId, v] of Object.entries(autoMap)) {
-      if (rows[empId]) continue;
-      inserts.push({
+      const existing = rows[empId];
+      if (existing?.source === "manual") continue;
+      if (existing?.source === "auto" && Number(existing.amount ?? 0) === Number(v ?? 0)) continue;
+      upserts.push({
         employee_id: empId,
         reference_year: refYear,
         reference_month: refMonth,
         amount: v,
         source: "auto",
+        notes: existing?.source === "auto" ? existing.notes : null,
         created_by: user?.id ?? null,
       });
     }
-    if (inserts.length === 0) {
-      toast({ title: "Nada a sincronizar", description: "Todos os valores automáticos já estão na lista." });
+    if (upserts.length === 0) {
+      toast({ title: "Nada a sincronizar", description: "Todos os valores automáticos já estão atualizados na lista." });
       return;
     }
     const { error } = await (supabase as any)
       .from("payroll_night_addition")
-      .insert(inserts);
+      .upsert(upserts, { onConflict: "employee_id,reference_year,reference_month" });
     if (error) {
       toast({ title: "Erro ao sincronizar", description: error.message, variant: "destructive" });
       return;
     }
     await invalidateApproval();
-    toast({ title: "Sincronizado", description: `${inserts.length} colaborador(es) adicionado(s) automaticamente.` });
+    toast({ title: "Sincronizado", description: `${upserts.length} colaborador(es) automático(s) atualizado(s).` });
     load();
   };
 
