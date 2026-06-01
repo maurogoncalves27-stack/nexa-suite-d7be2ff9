@@ -15,7 +15,7 @@ import {
   PieChart, Pie, Cell, LabelList,
 } from "recharts";
 import { fmtBRL } from "@/lib/dre";
-import { FileSpreadsheet, RefreshCw, Plus } from "lucide-react";
+import { FileSpreadsheet, RefreshCw, Plus, TrendingUp } from "lucide-react";
 import { ManualRevenueDialog } from "@/components/faturamento/ManualRevenueDialog";
 import { DailyAnalytics } from "@/components/faturamento/DailyAnalytics";
 
