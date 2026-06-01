@@ -244,9 +244,20 @@ export default function Totem() {
     if (!noteDialog) setShowNoteKb(false);
   }, [step, noteDialog]);
 
+  const brandSlugById = useMemo(() => {
+    const map: Record<string, string> = {};
+    brands.forEach((b) => { if (b.slug) map[b.id] = b.slug; });
+    return map;
+  }, [brands]);
+
+  const brandLogo = useMemo(
+    () => buildBrandLogoResolver(customLogos, brandSlugById),
+    [customLogos, brandSlugById]
+  );
+
   const displayedBrands = useMemo(
-    () => brands.filter((b) => !!brandLogo(b.name)),
-    [brands]
+    () => brands.filter((b) => !!brandLogo(b)),
+    [brands, brandLogo]
   );
 
   const storesForBrand = useMemo(
