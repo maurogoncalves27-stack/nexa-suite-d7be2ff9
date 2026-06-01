@@ -15,7 +15,7 @@ import {
   FileSignature, Users, FolderArchive, User, GraduationCap, MapPin, Briefcase, Landmark,
 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
 import { downloadContractPdf, getActiveContractTemplate, type ContractEmployeeData } from "@/lib/contractPdf";
 import { toast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -26,7 +26,7 @@ import DocExtractDialog from "@/components/employees/DocExtractDialog";
 import { getMissingAdmissionDocs, getMissingEmployeeFields } from "@/lib/requiredDocs";
 import { getMissingS2200Fields } from "@/lib/esocialS2200Export";
 import { MARITAL_REQUIRES_SPOUSE } from "@/lib/employeeOptions";
-import { usePositions } from "@/hooks/usePositions";
+
 import { sortStores } from "@/lib/storeSort";
 import PersonalIdentificationCard from "@/components/employees/form/PersonalIdentificationCard";
 import DocumentsAndEducationCard from "@/components/employees/form/DocumentsAndEducationCard";
