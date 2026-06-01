@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, RefreshCw, Factory, Boxes, ChefHat, AlertTriangle, Sparkles, Hand, Layers, ShoppingCart, CalendarDays, CheckCircle2 } from "lucide-react";
+import { Loader2, RefreshCw, Factory, Boxes, ChefHat, AlertTriangle, Sparkles, Hand, Layers, ShoppingCart, CalendarRange, CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -201,8 +201,8 @@ export default function FactoryWeeklyPlan() {
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-            <CalendarDays className="h-7 w-7 text-primary" /> Plano semanal da fábrica
+          <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">
+            <CalendarRange className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Plano semanal da fábrica
           </h1>
           <p className="text-muted-foreground text-sm">
             Consolida sugestões automáticas (estoque mínimo das lojas) + solicitações manuais e

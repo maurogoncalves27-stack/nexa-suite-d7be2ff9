@@ -183,8 +183,8 @@ export default function OccurrencesReport() {
     <div className="container mx-auto px-3 py-4 md:py-6 max-w-6xl space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-            <BarChart3 className="h-7 w-7 text-primary" />
+          <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">
+            <BarChart3 className="h-6 w-6 md:h-7 md:w-7 text-primary" />
             Relatório de Ocorrências
           </h1>
           <p className="text-sm text-muted-foreground">

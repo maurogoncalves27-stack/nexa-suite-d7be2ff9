@@ -224,7 +224,7 @@ export default function FinanceCmv() {
   return (
     <div className="space-y-4 p-3 sm:p-6 max-w-7xl mx-auto">
       <div className="flex flex-col gap-1">
-        <h1 className="text-lg sm:text-2xl font-bold tracking-tight leading-tight">CMV — Custo da Mercadoria Vendida</h1>
+        <h1 className="text-xl sm:text-xl font-bold md:text-2xl flex items-center gap-2">CMV — Custo da Mercadoria Vendida</h1>
         <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
           Calcula custo real de cada prato vendido com base nas fichas técnicas e no último custo dos insumos.
         </p>

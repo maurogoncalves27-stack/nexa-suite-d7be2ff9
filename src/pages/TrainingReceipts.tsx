@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, FileText, GraduationCap, Banknote, Download, Save, Trash2, CheckCircle2 } from "lucide-react";
+import { Loader2, FileText, BadgeCheck, Banknote, Download, Save, Trash2, CheckCircle2 } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -364,8 +364,8 @@ export default function TrainingReceipts() {
   return (
     <div className="flex flex-col gap-4 md:gap-6">
       <div>
-        <h1 className="text-xl md:text-3xl font-bold flex items-center gap-2">
-          <GraduationCap className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+        <h1 className="text-xl md:text-xl font-bold flex items-center gap-2">
+          <BadgeCheck className="md: md: h-6 w-6 md:h-7 md:w-7 text-primary" />
           Recibos de treinamento
         </h1>
         <p className="text-sm md:text-base text-muted-foreground">

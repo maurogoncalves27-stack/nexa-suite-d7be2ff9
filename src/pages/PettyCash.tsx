@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Wallet, ArrowDownCircle, ArrowUpCircle, Plus, Trash2, FileImage, RefreshCw, Filter } from "lucide-react";
+import { Loader2, PiggyBank, ArrowDownCircle, ArrowUpCircle, Plus, Trash2, FileImage, RefreshCw, Filter } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -196,8 +196,8 @@ export default function PettyCash() {
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-            <Wallet className="h-7 w-7 text-primary" /> Caixinha da loja
+          <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">
+            <PiggyBank className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Caixinha da loja
           </h1>
           <p className="text-muted-foreground text-sm">
             Controle pequenas compras e o dinheiro recebido por PIX em cada loja física.

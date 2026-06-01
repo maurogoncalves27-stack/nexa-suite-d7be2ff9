@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, BookOpen, Search, Pencil, Trash2, Clock, FileDown } from "lucide-react";
+import { Loader2, BookMarked, Search, Pencil, Trash2, Clock, FileDown } from "lucide-react";
 import { generateRecipeBookPdf, imageUrlToDataUrl } from "@/lib/recipeBookPdf";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -98,8 +98,8 @@ const RecipeBook = () => {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-          <BookOpen className="h-7 w-7" /> Receituário
+        <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">
+          <BookMarked className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Receituário
         </h1>
         <p className="text-muted-foreground">
           Receituários gerados a partir das fichas técnicas. Editar ou excluir aqui não afeta a ficha original.
@@ -141,7 +141,7 @@ const RecipeBook = () => {
                       <img src={url} alt={r.title} className="h-40 w-full object-cover" />
                     ) : (
                       <div className="h-40 w-full bg-muted flex items-center justify-center">
-                        <BookOpen className="h-10 w-10 text-muted-foreground" />
+                        <BookMarked className="h-10 w-10 text-muted-foreground" />
                       </div>
                     )}
                     <div className="p-3 flex-1 flex flex-col gap-1">

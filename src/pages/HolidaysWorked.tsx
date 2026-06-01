@@ -384,8 +384,8 @@ export default function HolidaysWorked() {
   return (
     <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-xl md:text-3xl font-bold flex items-center gap-2">
-          <CalendarDays className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Feriados trabalhados
+        <h1 className="text-xl md:text-xl font-bold flex items-center gap-2">
+          <CalendarDays className="md: md: h-6 w-6 md:h-7 md:w-7 text-primary" /> Feriados trabalhados
         </h1>
         <p className="text-sm md:text-base text-muted-foreground">
           Marque os colaboradores que trabalharam em cada feriado. <strong>É obrigatório aprovar antes de gerar a folha do mês.</strong>

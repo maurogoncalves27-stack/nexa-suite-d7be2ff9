@@ -377,7 +377,7 @@ export default function Quotations() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold">Cotações</h1>
+        <h1 className="text-xl font-bold md:text-2xl flex items-center gap-2">Cotações</h1>
         <Button onClick={() => { resetForm(); setCreateOpen(true); }}>
           <Plus className="h-4 w-4 mr-2" /> Nova cotação
         </Button>

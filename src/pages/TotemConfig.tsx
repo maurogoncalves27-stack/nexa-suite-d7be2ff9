@@ -131,8 +131,8 @@ export default function TotemConfig() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-2 flex-wrap">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-            <Monitor className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+          <h1 className="text-xl md:text-xl font-bold flex items-center gap-2">
+            <Monitor className="md: md: h-6 w-6 md:h-7 md:w-7 text-primary" />
             Configuração do Totem
           </h1>
           <p className="text-muted-foreground">

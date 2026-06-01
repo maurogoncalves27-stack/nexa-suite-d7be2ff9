@@ -2,7 +2,7 @@ import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Users, GraduationCap, Award, Wallet, BookOpen, Briefcase, LogOut, CalendarClock, UserCircle, HeartHandshake, Plane, Shirt, Clock, FolderOpen, Fingerprint, UserSearch, Settings, ChevronRight, Megaphone, ShieldAlert, FileText, Stethoscope, ClipboardCheck, Gift, ReceiptText, Bus, ListChecks, FileSignature, Wrench, RefreshCw, Package, ShoppingCart, DollarSign, Truck, ShoppingBag, TrendingUp, FileBarChart, Landmark, Lock, ChefHat, ScanText, Layers, Send, UsersRound, AlertTriangle, Monitor, ShieldCheck, Factory, Search, Siren, Boxes, PackageCheck, CalendarDays, ClipboardList, Tags, ScrollText, BadgePercent, Coins, Building2, Scale, BookMarked, Archive, FolderLock, ArrowLeftRight, Calculator, Flame, Hourglass, Trophy, Star, Percent, HandCoins, UserX, Sparkles, Activity } from "lucide-react";
+import { LayoutDashboard, Users, GraduationCap, Award, Wallet, BookOpen, Briefcase, LogOut, CalendarClock, UserCircle, HeartHandshake, Plane, Shirt, Clock, FolderOpen, Fingerprint, UserSearch, Settings, ChevronRight, Megaphone, ShieldAlert, FileText, Stethoscope, ClipboardCheck, Gift, ReceiptText, Bus, ListChecks, FileSignature, Wrench, RefreshCw, Package, ShoppingCart, DollarSign, Truck, ShoppingBag, TrendingUp, FileBarChart, Landmark, Lock, ChefHat, ScanText, Layers, Send, UsersRound, AlertTriangle, Monitor, ShieldCheck, Factory, Search, Siren, Boxes, PackageCheck, CalendarDays, ClipboardList, Tags, ScrollText, BadgePercent, Coins, Building2, Scale, BookMarked, Archive, FolderLock, ArrowLeftRight, Calculator, Flame, Hourglass, Trophy, Star, Percent, HandCoins, UserX, Sparkles, Activity , BarChart2 , History , CalendarRange , Receipt , Building , FileSpreadsheet , PiggyBank , BadgeCheck , Banknote } from "lucide-react";
 import { openCommandPalette } from "@/components/CommandPalette";
 import { toast } from "@/hooks/use-toast";
 
@@ -87,7 +87,7 @@ const rhSections: Section[] = [
 // Documentos (flat) — mantido para fallback
 const documentosItems: Item[] = [
   { title: "Contratos", url: "/contratos", icon: FileText, staffOnly: true },
-  { title: "Termos e circulares", url: "/documentos-personalizados", icon: FileSignature, staffOnly: true },
+  { title: "Termos e circulares", url: "/documentos-personalizados", icon: FileSpreadsheet, staffOnly: true },
   { title: "Pasta do Colaborador", url: "/pasta-colaborador", icon: FolderOpen, staffOnly: true },
   { title: "Cofre (logins e contatos)", url: "/cofre", icon: Lock, staffOnly: true },
 ];
@@ -98,13 +98,13 @@ const estoqueSections: Section[] = [
     { title: "Entrada de mercadorias", url: "/recebimento", icon: PackageCheck },
     { title: "Transferências", url: "/transferencias", icon: ArrowLeftRight, staffOnly: true },
     { title: "Requisições de urgência", url: "/solicitacoes-fabrica", icon: AlertTriangle },
-    { title: "Plano semanal da fábrica", url: "/plano-fabrica", icon: CalendarDays, staffOnly: true },
+    { title: "Plano semanal da fábrica", url: "/plano-fabrica", icon: CalendarRange, staffOnly: true },
     { title: "Checklist de separação", url: "/separacao", icon: ClipboardList, staffOnly: true },
   ]},
   { label: "Controle", items: [
-    { title: "Saldo de estoque", url: "/estoque", icon: TrendingUp },
+    { title: "Saldo de estoque", url: "/estoque", icon: BarChart2 },
     { title: "Contagem", url: "/inventario", icon: Boxes },
-    { title: "Lotes, validades e perdas", url: "/lotes", icon: CalendarClock },
+    { title: "Lotes, validades e perdas", url: "/lotes", icon: History },
   ]},
   { label: "Cadastros", items: [
     { title: "Produtos", url: "/produtos", icon: Package },
@@ -133,14 +133,14 @@ const financeiroSections: Section[] = [
     { title: "Precificação", url: "/financeiro/precificacao", icon: Calculator, staffOnly: true },
   ]},
   { label: "Caixa & Contas", items: [
-    { title: "Caixinha da loja", url: "/caixinha", icon: Wallet, staffOnly: false },
+    { title: "Caixinha da loja", url: "/caixinha", icon: PiggyBank, staffOnly: false },
     { title: "Incluir NF/boleto", url: "/recebimento#boletos", icon: ReceiptText, staffOnly: true },
     { title: "Contas bancárias", url: "/financeiro/contas", icon: Building2, staffOnly: true },
-    { title: "Conciliação", url: "/conciliacao", icon: Landmark, staffOnly: true },
+    { title: "Conciliação", url: "/conciliacao", icon: Receipt, staffOnly: true },
   ]},
   { label: "Cadastros", items: [
     { title: "Categorias", url: "/financeiro/categorias", icon: Tags, staffOnly: true },
-    { title: "Patrimônio", url: "/patrimonio", icon: Landmark, staffOnly: true },
+    { title: "Patrimônio", url: "/patrimonio", icon: Building, staffOnly: true },
   ]},
 ];
 
@@ -167,7 +167,7 @@ const operacaoSections: Section[] = [
 const documentosSections: Section[] = [
   { label: "Documentos formais", items: [
     { title: "Contratos", url: "/contratos", icon: ScrollText, staffOnly: true },
-    { title: "Termos e circulares", url: "/documentos-personalizados", icon: FileSignature, staffOnly: true },
+    { title: "Termos e circulares", url: "/documentos-personalizados", icon: FileSpreadsheet, staffOnly: true },
   ]},
   { label: "Arquivos", items: [
     { title: "Pasta do Colaborador", url: "/pasta-colaborador", icon: Archive, staffOnly: true },
@@ -193,9 +193,9 @@ const pagamentosSections: Section[] = [
   { label: "Outros pagamentos", items: [
     { title: "Bonificações", url: "/bonificacoes", icon: BadgePercent, staffOnly: true },
     { title: "Bônus por cargo", url: "/bonus-cargo", icon: Coins, staffOnly: true },
-    { title: "Recibos de treinamento", url: "/recibos-treinamento", icon: GraduationCap, staffOnly: true },
+    { title: "Recibos de treinamento", url: "/recibos-treinamento", icon: BadgeCheck, staffOnly: true },
     { title: "Bolsa Estágio", url: "/estagio/pagamentos", icon: HandCoins, staffOnly: true },
-    { title: "Diárias de freelancers", url: "/diarias-freelancers", icon: HandCoins, staffOnly: true },
+    { title: "Diárias de freelancers", url: "/diarias-freelancers", icon: Banknote, staffOnly: true },
   ]},
 ];
 
@@ -215,7 +215,7 @@ const pdvSections: Section[] = [
 // Fábrica: produção (sem rótulos — conforme print)
 const fabricaSections: Section[] = [
   { items: [
-    { title: "Plano semanal", url: "/plano-fabrica", icon: CalendarDays, staffOnly: true },
+    { title: "Plano semanal", url: "/plano-fabrica", icon: CalendarRange, staffOnly: true },
     { title: "Requisições de urgência", url: "/solicitacoes-fabrica", icon: AlertTriangle, staffOnly: true },
     { title: "Checklist de separação", url: "/separacao", icon: ClipboardList, staffOnly: true },
   ]},

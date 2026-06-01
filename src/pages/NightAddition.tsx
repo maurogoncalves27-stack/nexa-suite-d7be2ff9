@@ -18,7 +18,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Moon, CheckCircle2, ChevronLeft, ChevronRight, Loader2, Plus, Save, Trash2,
+  Hourglass, CheckCircle2, ChevronLeft, ChevronRight, Loader2, Plus, Save, Trash2,
 } from "lucide-react";
 
 const MONTHS = [
@@ -296,8 +296,8 @@ export default function NightAddition() {
   return (
     <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-xl md:text-3xl font-bold flex items-center gap-2">
-          <Moon className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Adicional Noturno
+        <h1 className="text-xl md:text-xl font-bold flex items-center gap-2">
+          <Hourglass className="md: md: h-6 w-6 md:h-7 md:w-7 text-primary" /> Adicional Noturno
         </h1>
         <p className="text-sm md:text-base text-muted-foreground">
           O valor automático é calculado <strong>direto do ponto</strong> (não depende de gerar a folha antes).
@@ -310,7 +310,7 @@ export default function NightAddition() {
         <CardHeader className="py-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-base flex items-center gap-2">
-              <Moon className="h-5 w-5 text-primary" />
+              <Hourglass className="h-5 w-5 text-primary" />
               Adicional noturno de {MONTHS[refMonth - 1]}/{refYear}
               {approved && (
                 <Badge className="ml-2 bg-emerald-600 hover:bg-emerald-600 text-white gap-1">

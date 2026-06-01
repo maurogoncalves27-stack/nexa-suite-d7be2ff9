@@ -23,8 +23,8 @@ export default function Infractions() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-          <ShieldAlert className="h-7 w-7 text-destructive" />
+        <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">
+          <ShieldAlert className="h-6 w-6 md:h-7 md:w-7 text-primary" />
           Infrações e Advertências
         </h1>
         <p className="text-muted-foreground">Registre pontuações e advertências.</p>

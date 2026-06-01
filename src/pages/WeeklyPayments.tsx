@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-import { Wallet, ChevronLeft, ChevronRight, CalendarDays, Trophy } from "lucide-react";
+import { HandCoins, ChevronLeft, ChevronRight, CalendarDays, Trophy } from "lucide-react";
 import WeeklyPaymentsPanel from "@/components/evaluations/WeeklyPaymentsPanel";
 
 const weekStartOf = (date: Date): Date => {
@@ -56,8 +56,8 @@ export default function WeeklyPayments() {
       {/* Cabeçalho compacto: título + seletor de semana em uma linha no desktop */}
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
-          <h1 className="text-xl md:text-3xl font-bold flex items-center gap-2">
-            <Wallet className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+          <h1 className="text-xl md:text-xl font-bold flex items-center gap-2">
+            <HandCoins className="md: md: h-6 w-6 md:h-7 md:w-7 text-primary" />
             Bonificações
             <Button asChild variant="outline" size="sm" className="h-8 gap-1.5 ml-1">
               <Link to="/ranking">

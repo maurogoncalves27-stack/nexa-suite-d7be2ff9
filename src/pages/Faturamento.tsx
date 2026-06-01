@@ -15,7 +15,7 @@ import {
   PieChart, Pie, Cell, LabelList,
 } from "recharts";
 import { fmtBRL } from "@/lib/dre";
-import { FileSpreadsheet, RefreshCw, Plus } from "lucide-react";
+import { FileSpreadsheet, RefreshCw, Plus, TrendingUp } from "lucide-react";
 import { ManualRevenueDialog } from "@/components/faturamento/ManualRevenueDialog";
 import { DailyAnalytics } from "@/components/faturamento/DailyAnalytics";
 
@@ -456,9 +456,17 @@ export default function Faturamento() {
   }
 
   return (
-    <div className="space-y-4 p-3 sm:p-4">
+    <div className="space-y-6 p-3 sm:p-4">
+      <div>
+        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+          <TrendingUp className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+          Faturamento bruto
+        </h1>
+        <p className="text-muted-foreground">Receita por loja, marca e canal de venda — consolidado mensal.</p>
+      </div>
       {/* Header / filtros */}
       <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+
         <div className="flex items-center gap-2">
           <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
             <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>

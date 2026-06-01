@@ -271,8 +271,8 @@ export default function Contabilidade() {
     <div className="flex flex-col gap-4 md:gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl md:text-3xl font-bold flex items-center gap-2">
-            <Calculator className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Contabilidade
+          <h1 className="text-xl md:text-xl font-bold flex items-center gap-2">
+            <Calculator className="md: md: h-6 w-6 md:h-7 md:w-7 text-primary" /> Contabilidade
           </h1>
           <p className="text-sm md:text-base text-muted-foreground">
             Confira as folhas já fechadas pelo gestor, dê o "ok" da contabilidade e baixe o eSocial S-1200 para transmissão.

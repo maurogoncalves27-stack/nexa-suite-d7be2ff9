@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle2, XCircle, ShieldCheck, Truck, Stethoscope, Eye } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, ShieldCheck, Truck, Stethoscope, Eye, Link2 } from "lucide-react";
 import { EXTERNAL_MODULES } from "@/lib/externalModules";
 import { Link } from "react-router-dom";
 
@@ -236,9 +236,16 @@ export default function ExternalAccessPanel() {
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-muted-foreground">
-        Aprove cadastros de fornecedores e profissionais terceirizados, e libere os módulos do sistema para cada um.
-      </p>
+      <div>
+        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+          <Link2 className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+          Acessos externos
+        </h1>
+        <p className="text-muted-foreground">
+          Aprove cadastros de fornecedores e profissionais terceirizados, e libere os módulos do sistema para cada um.
+        </p>
+      </div>
+
 
       <Card>
         <CardHeader>

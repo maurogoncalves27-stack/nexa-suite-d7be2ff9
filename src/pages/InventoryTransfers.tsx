@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Plus, Send, Check, X, Truck, ArrowRight, Trash2, Lightbulb, History } from "lucide-react";
+import { Loader2, Plus, Send, Check, X, ArrowLeftRight, ArrowRight, Trash2, Lightbulb, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -257,8 +257,8 @@ const InventoryTransfers = () => {
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-end gap-2 sm:justify-between">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-            <Truck className="h-6 w-6" /> Transferências
+          <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">
+            <ArrowLeftRight className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Transferências
           </h1>
           <p className="text-muted-foreground">Sugestões automáticas e envios entre lojas físicas.</p>
         </div>

@@ -5,8 +5,8 @@ export default function ChecklistsManage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-          <ClipboardCheck className="h-7 w-7 text-primary" />
+        <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">
+          <ClipboardCheck className="h-6 w-6 md:h-7 md:w-7 text-primary" />
           Check-lists
         </h1>
         <p className="text-muted-foreground">Gerencie templates, atribuições e histórico de check-lists.</p>

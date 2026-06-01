@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, FileText, FileDown, ChevronLeft, ChevronRight, CalendarDays, FileSpreadsheet, Wallet, Calculator } from "lucide-react";
+import { Loader2, FileSignature, FileDown, ChevronLeft, ChevronRight, CalendarDays, FileSpreadsheet, Wallet, Calculator } from "lucide-react";
 import { format } from "date-fns";
 import { generateTrctPdf } from "@/lib/trctPdf";
 import { toast } from "@/hooks/use-toast";
@@ -275,8 +275,8 @@ export default function Rescissions() {
     <div className="flex flex-col gap-4 md:gap-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
-          <h1 className="text-xl md:text-3xl font-bold flex items-center gap-2">
-            <FileText className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+          <h1 className="text-xl md:text-xl font-bold flex items-center gap-2">
+            <FileSignature className="md: md: h-6 w-6 md:h-7 md:w-7 text-primary" />
             Rescisões
           </h1>
           <p className="text-sm md:text-base text-muted-foreground">
