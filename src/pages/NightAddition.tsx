@@ -70,7 +70,9 @@ export default function NightAddition() {
 
   const load = async () => {
     setLoading(true);
-    const [empRes, nightRes, calcRes, revRes] = await Promise.all([
+    // Cálculo automático agora vem da edge function compute-night-addition,
+    // que lê o ponto direto (independe de payroll_calculated / folha gerada).
+    const [empRes, nightRes, computeRes, revRes] = await Promise.all([
       supabase
         .from("employees")
         .select("id, full_name, position, store_id, night_shift_eligible")
@@ -81,11 +83,9 @@ export default function NightAddition() {
         .select("employee_id, amount, source, notes")
         .eq("reference_year", refYear)
         .eq("reference_month", refMonth),
-      supabase
-        .from("payroll_calculated")
-        .select("employee_id, calculation_details")
-        .eq("reference_year", refYear)
-        .eq("reference_month", refMonth),
+      supabase.functions.invoke("compute-night-addition", {
+        body: { year: refYear, month: refMonth },
+      }),
       (supabase as any)
         .from("payroll_night_addition_review")
         .select("id")
@@ -107,8 +107,9 @@ export default function NightAddition() {
     setRows(map);
 
     const auto: Record<string, number> = {};
-    ((calcRes.data ?? []) as any[]).forEach((r) => {
-      const v = Number(r.calculation_details?.night_addition_calculated ?? 0);
+    const results = (computeRes?.data as any)?.results ?? [];
+    results.forEach((r: any) => {
+      const v = Number(r.amount ?? 0);
       if (v > 0) auto[r.employee_id] = v;
     });
     setAutoMap(auto);
@@ -299,9 +300,9 @@ export default function NightAddition() {
           <Moon className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Adicional Noturno
         </h1>
         <p className="text-sm md:text-base text-muted-foreground">
-          Quem bate ponto e tem o adicional habilitado já vem preenchido (use <strong>Sincronizar do ponto</strong>).
-          Inclua manualmente quem precisa receber sem ter cálculo automático.
-          <strong> É obrigatório aprovar antes de gerar a folha do mês.</strong>
+          O valor automático é calculado <strong>direto do ponto</strong> (não depende de gerar a folha antes).
+          Clique em <strong>Sincronizar do ponto</strong> para preencher os elegíveis e adicione manualmente quem não bate ponto.
+          <strong> Aprove o mês para liberar a geração da folha.</strong>
         </p>
       </div>
 
