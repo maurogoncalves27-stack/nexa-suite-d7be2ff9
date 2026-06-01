@@ -485,18 +485,21 @@ export default function Totem() {
             onClick={() => setStep("store")}
             className="absolute inset-0 w-full h-full overflow-hidden text-left"
           >
-            {/* slideshow de fundo */}
-            {[fakeParme, fakeBox, fakeEstrogonofe].map((src, i) => (
-              <img
-                key={i}
-                src={src}
-                alt=""
-                aria-hidden
-                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
-                  idleSlide % 3 === i ? "opacity-100" : "opacity-0"
-                }`}
-              />
-            ))}
+            {/* slideshow de fundo (usa imagens do banco se configuradas, senão fallback) */}
+            {(() => {
+              const slides = customBackgrounds.length > 0 ? customBackgrounds : [fakeParme, fakeBox, fakeEstrogonofe];
+              return slides.map((src, i) => (
+                <img
+                  key={`${src}-${i}`}
+                  src={src}
+                  alt=""
+                  aria-hidden
+                  className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+                    idleSlide % slides.length === i ? "opacity-100" : "opacity-0"
+                  }`}
+                />
+              ));
+            })()}
             <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/90" />
             <div className="relative h-full flex flex-col items-center justify-center text-white px-8 gap-12">
               <div className="text-center">
