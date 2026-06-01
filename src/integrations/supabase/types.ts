@@ -3318,6 +3318,7 @@ export type Database = {
           pix_key: string | null
           pix_key_type: string | null
           position: string | null
+          position_id: string | null
           registration_number: string | null
           reservist_number: string | null
           rg: string | null
@@ -3412,6 +3413,7 @@ export type Database = {
           pix_key?: string | null
           pix_key_type?: string | null
           position?: string | null
+          position_id?: string | null
           registration_number?: string | null
           reservist_number?: string | null
           rg?: string | null
@@ -3506,6 +3508,7 @@ export type Database = {
           pix_key?: string | null
           pix_key_type?: string | null
           position?: string | null
+          position_id?: string | null
           registration_number?: string | null
           reservist_number?: string | null
           rg?: string | null
@@ -3546,6 +3549,13 @@ export type Database = {
             columns: ["allocated_store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "positions"
             referencedColumns: ["id"]
           },
           {
