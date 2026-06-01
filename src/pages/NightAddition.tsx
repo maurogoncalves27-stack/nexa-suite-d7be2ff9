@@ -60,6 +60,7 @@ export default function NightAddition() {
   const [savingApproval, setSavingApproval] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [draftValues, setDraftValues] = useState<Record<string, string>>({});
 
   // Manual add dialog
   const [openAdd, setOpenAdd] = useState(false);
