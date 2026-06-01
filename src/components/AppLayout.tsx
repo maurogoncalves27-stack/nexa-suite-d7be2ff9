@@ -328,6 +328,7 @@ const HeaderBar = ({
  */
 export const AppLayout = ({ children }: { children?: ReactNode }) => {
   const { pathname, search, hash } = useLocation();
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(true);
   const [paletteOpen, setPaletteOpen] = useCommandPalette();
