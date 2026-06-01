@@ -16,10 +16,11 @@ interface Props {
 }
 
 export const NutriStoreSelector = ({ value, onChange }: Props) => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isManager, isSuperUser, hasRole } = useAuth();
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [loading, setLoading] = useState(true);
-  const canSeeAll = isAdmin;
+  const isNutritionist = hasRole("nutritionist");
+  const canSeeAll = isAdmin || isManager || isSuperUser || isNutritionist;
 
   useEffect(() => {
     if (!user) return;
@@ -59,7 +60,7 @@ export const NutriStoreSelector = ({ value, onChange }: Props) => {
       setLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, isAdmin]);
+  }, [user, isAdmin, isManager, isSuperUser, isNutritionist]);
 
   return (
     <div className="flex items-center gap-2">
