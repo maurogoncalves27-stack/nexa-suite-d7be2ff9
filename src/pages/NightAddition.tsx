@@ -300,9 +300,9 @@ export default function NightAddition() {
           <Moon className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Adicional Noturno
         </h1>
         <p className="text-sm md:text-base text-muted-foreground">
-          Quem bate ponto e tem o adicional habilitado já vem preenchido (use <strong>Sincronizar do ponto</strong>).
-          Inclua manualmente quem precisa receber sem ter cálculo automático.
-          <strong> É obrigatório aprovar antes de gerar a folha do mês.</strong>
+          O valor automático é calculado <strong>direto do ponto</strong> (não depende de gerar a folha antes).
+          Clique em <strong>Sincronizar do ponto</strong> para preencher os elegíveis e adicione manualmente quem não bate ponto.
+          <strong> Aprove o mês para liberar a geração da folha.</strong>
         </p>
       </div>
 
