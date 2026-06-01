@@ -1,120 +1,69 @@
+## Objetivo
 
-## Auditoria concluída — 70 páginas analisadas
+Acabar com a duplicidade de cargo no sistema. Hoje convivem:
+- `employees.position` — texto livre (ex: "SUPERVISOR DE LOJA", "Supervisor de Loja", "ATENDENTE")
+- `employees.cbo_code` / `cbo_title` — CBO oficial
+- Tabela `positions` — cargos internos já mapeados a CBO
 
-**Resultado:** 7 ✅ corretas · 52 ⚠️ divergentes · 11 ❌ sem cabeçalho padrão.
-Exceções (PDV, Totem, Garçom, painéis Sócio/Nutricionista/Fornecedor/Freelancer/Terceirizado, Auth, públicas) foram ignoradas.
+Resultado disso: Janaina aparece como "SUPERVISOR ADMINISTRATIVO" (porque foi digitado livre na ficha), enquanto o cargo dela em /cargos é "Supervisor de Loja". Bonificações, regras automáticas e relatórios quebram porque dependem do texto.
 
----
-
-## Padrão oficial reforçado
-
-```tsx
-<div className="space-y-6">
-  <div>
-    <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-      <Icon className="h-6 w-6 md:h-7 md:w-7 text-primary" />
-      Título
-    </h1>
-    <p className="text-muted-foreground">Descrição.</p>
-  </div>
-  …conteúdo…
-</div>
-```
-
-Regras:
-- Tamanho do h1 **fixo** em `text-xl md:text-2xl` (nunca `text-3xl`).
-- Ícone **sempre** `h-6 w-6 md:h-7 md:w-7 text-primary` (sem `text-red-*`, `text-destructive`, hardcode).
-- O ícone do h1 deve ser **idêntico** ao ícone do item correspondente no `AppSidebar`.
-- Sem CardTitle/Header duplicando o título da página logo abaixo do h1.
+A partir de agora vai existir **uma única fonte**: a tabela `positions`. Todo colaborador precisa ter um `position_id` escolhido de lá. O `cbo_code` e `cbo_title` vêm automaticamente do cargo escolhido. Não existe mais "cargo livre".
 
 ---
 
-## Etapa 1 — Corrigir tamanhos e cor do ícone (52 páginas ⚠️)
+## O que muda na prática
 
-Aplicar substituição mecânica nas páginas listadas para deixar h1 em `text-xl md:text-2xl font-bold flex items-center gap-2` e ícone em `h-6 w-6 md:h-7 md:w-7 text-primary`.
+### 1. Cadastro do colaborador (`EmployeeForm`)
+- Combobox de cargo passa a ser **lista fechada** dos cargos ativos em `/cargos` (sem opção "usar como cargo livre", sem busca direta na tabela CBO).
+- Ao escolher um cargo, o sistema preenche `position` (nome do cargo interno), `cbo_code` e `cbo_title` automaticamente — esses três campos passam a ser sempre coerentes.
+- Se o cargo desejado não existe, o RH precisa cadastrar primeiro em `/cargos` (escolhendo o CBO lá).
 
-Grupos:
-- **`text-2xl md:text-3xl` → `text-xl md:text-2xl`** (~40 páginas): Announcements, AutomationRules, BankReconciliation, Checklists, ChecklistsManage, Climate, Contracts, CustomDocuments, Dashboard, Employees, EquipmentWarranties, Evaluations, FactoryRequests, FactoryWeeklyPlan, Infractions, Internships, InventoryCounts, InventoryLots, InventoryStock, InventoryTransfers, MedicalCertificates, Occurrences, OccurrencesReport, PettyCash, PositionBonuses, PurchaseSuggestions, RecipeBook, Recipes, Recruitment, Responsibilities, Schedules, SeparationChecklist, Settings, Stores, Tasks, TerminatedEmployees, TimeClock, Trainings, Uniforms, Vacations, Vault.
-- **`text-xl md:text-3xl` → `text-xl md:text-2xl`** (md errado): Contabilidade, Gratifications, HolidaysWorked, InternshipPaymentsPage, MyPayslips, NightAddition, PayrollAdvances, Rescissions, TrainingReceipts, TransportVoucher, WeeklyPayments.
-- **Casos especiais de h1**: Payroll (`text-lg md:text-3xl`), FinanceCmv, FinanceGasVouchers, FinancePricing, Menu, Quotations, EmployeeRanking, EmployeeForm, EmployeeFolders — reescrever bloco do cabeçalho inteiro.
-- **Ícone sem `text-primary` / com cor errada**: Infractions (`text-destructive`), Occurrences (`text-red-600`), RecipeBook, Recipes, InventoryTransfers, FinancePricing → trocar para `text-primary`.
+### 2. Página `/cargos`
+- Continua sendo o único lugar para criar/editar cargos.
+- CBO passa a ser **obrigatório** ao criar/editar um cargo (hoje é opcional — Trainee, Estagiário e Freelancer estão sem CBO; vamos ter que escolher o CBO certo pra esses três antes de fechar).
 
----
+### 3. Bonificações, regras automáticas, ranking, ficha técnica, etc.
+- Tudo que hoje faz `WHERE employees.position = 'SUPERVISOR DE LOJA'` continua funcionando, porque o `position` vai estar normalizado (sempre igual ao `name` do cargo da lista). Não é preciso reescrever as features — só garantir que os dados batam.
+- `position_bonuses.position` e `position_responsibilities.position` continuam casando por texto, mas agora o texto vem 100% da tabela `positions`.
 
-## Etapa 2 — Adicionar cabeçalho padrão onde falta (11 páginas ❌)
+### 4. Normalização dos colaboradores existentes (one-shot)
+Hoje temos divergências reais:
+- 1 colaborador com `position = "Supervisor de Loja"` (capitalizado) + 8 com `SUPERVISOR DE LOJA` (maiúsculas) → unificar para o `name` exato da tabela `positions` ("Supervisor de Loja").
+- Janaina (1 reg.) com `position = "SUPERVISOR ADMINISTRATIVO"` → revisar manualmente: virou Supervisor de Loja ou Encarregado de Escritório?
+- 1 colaborador "AUXILIAR DE PRODUÇÃO" com CBO `Operador de empilhadeira` (errado, herdado da tabela) → revisar.
+- "Estagiário"/"ESTAGIÁRIO" duplicado → unificar.
+- "AUXILIAR ADMINISTRATIVO" no `employees` vs "Auxiliar administrativo" no `positions` → unificar nome.
 
-Inserir o bloco padrão (h1 + descrição) com o ícone do sidebar:
+Vou listar todos os colaboradores fora do padrão num relatório SQL antes de migrar e te peço para confirmar caso a caso os ambíguos (Janaina, auxiliar de produção, etc.).
 
-| Página | Ícone (do sidebar) | Título |
-|---|---|---|
-| AssetInventory | `Landmark` | Patrimônio |
-| CustomerReviews | `Star` | Avaliações de clientes |
-| Faturamento | `TrendingUp` | Faturamento |
-| Finance | `DollarSign` | Financeiro |
-| FinanceAccounts | `Building2` | Contas bancárias |
-| FinanceCategories | `Tags` | Categorias financeiras |
-| FinanceDre | `FileBarChart` | DRE |
-| ExternalAccess | `Link2` | Acessos externos |
-| BancoHoras | `Hourglass` | Banco de horas |
-| EmployeeArea | `User` | Minha área |
-| ViewEmployee | `User` | Visualizar colaborador |
-
-Balcao e SupplierDashboard ficam fora (exceções — kitchen display / portal fornecedor).
+### 5. Integridade futura
+- Adicionar coluna `position_id uuid REFERENCES positions(id)` em `employees`, populada a partir do `position` atual via match exato (case-insensitive).
+- Trigger que, ao salvar `employees`, **bloqueia** se `position_id` for nulo OU se o `position`/`cbo_code`/`cbo_title` não baterem com o cargo referenciado — impedindo divergência futura.
+- Trigger no `positions` que, ao renomear um cargo, propaga o novo nome para `employees.position` e tabelas dependentes (`position_bonuses.position`, `position_responsibilities.position`).
 
 ---
 
-## Etapa 3 — Alinhar ícones página ↔ sidebar (9 divergências)
+## Passos de execução
 
-Trocar **na página** para casar com o sidebar (mantém memória visual do menu):
-
-| Página | Trocar `Icon da página` por | Motivo |
-|---|---|---|
-| AutomationRules | `Settings2` → `Settings` | igual ao sidebar |
-| EmployeeFolders | `FolderOpen` → `Archive` | igual ao sidebar |
-| Gratifications | `Gift` → `BadgePercent` | igual ao sidebar |
-| InventoryReceiving | `Package` → `PackageCheck` | igual ao sidebar |
-| InventoryTransfers | `Truck` → `ArrowLeftRight` | igual ao sidebar |
-| NightAddition | `Moon` → `Hourglass` | igual ao sidebar |
-| RecipeBook | `BookOpen` → `BookMarked` | igual ao sidebar |
-| Rescissions | `FileText` → `FileSignature` | igual ao sidebar |
-| WeeklyPayments | `Wallet` → `HandCoins` | igual ao sidebar |
+1. **Levantar relatório** dos colaboradores com `position` divergente do `positions.name` e confirmar com você os ambíguos.
+2. **Migration** adicionando `employees.position_id` + trigger de integridade + trigger de propagação de rename.
+3. **Atualizar `/cargos`** para tornar CBO obrigatório; cadastrar CBO faltante em Trainee/Estagiário/Freelancer (te pergunto os códigos).
+4. **Atualizar `PositionCboCombobox`** (ou substituir por um novo `PositionSelect`) usado em `EmployeeForm` para ser lista fechada vinda só de `positions`.
+5. **Rodar UPDATE** normalizando `employees.position`, `cbo_code`, `cbo_title` e preenchendo `position_id`.
+6. **Validar**: rodar de novo a query que mostra divergências (deve voltar zero), abrir `/bonificacoes` e conferir que Janaina e os outros supervisores aparecem corretos.
 
 ---
 
-## Etapa 4 — Resolver ícones duplicados no sidebar
+## Pontos técnicos
 
-10 colisões detectadas. Proposta de troca **no sidebar** (e refletir na página correspondente):
-
-| Item afetado | Ícone atual | Novo ícone | Conflito que resolve |
-|---|---|---|---|
-| Lotes, validades e perdas | `CalendarClock` | `PackageCheck` (ou `ClipboardX`) | conflito com Escalas |
-| Plano semanal (Fábrica) | `CalendarDays` | `CalendarRange` | conflito com Feriados trabalhados |
-| Faturamento bruto | `TrendingUp` | `BarChart2` | conflito com Saldo de estoque |
-| Conciliação | `Landmark` | `Scale` | conflito com Extrato |
-| Patrimônio | `Landmark` | `Building` | conflito com Extrato |
-| Termos e circulares | `FileSignature` | `FileText` | conflito com Rescisões |
-| Diárias de freelancers | `HandCoins` | `Banknote` | conflito com Bolsa Estágio |
-| Caixinha da loja | `Wallet` | `PiggyBank` | conflito com Acréscimos/Descontos |
-| Recibos de treinamento | `GraduationCap` | `FileBadge` | conflito com Estágio |
-
-Após trocar no sidebar, alinhar o h1 das páginas (`AssetInventory`, `BankReconciliation`, `FactoryWeeklyPlan`, `InventoryLots`, `Faturamento`, `CustomDocuments`, `FreelancerDailyPayments` *(exceção, ignorar)*, `PettyCash`, `TrainingReceipts`).
+- Tabelas afetadas: `employees` (novo `position_id` + triggers), `positions` (CBO obrigatório).
+- Lugares no código que vão mudar: `EmployeeForm.tsx`, `PositionCboCombobox.tsx` (ou novo componente), `Positions` (página /cargos).
+- Lugares que **não mudam**: bonificações, regras automáticas, holerite, contrato, eSocial S-2200 — todos continuam lendo `position`/`cbo_code`/`cbo_title` como hoje, só que agora garantidamente coerentes.
 
 ---
 
-## Etapa 5 — Memória do projeto
+## O que preciso confirmar antes de implementar
 
-Atualizar `mem://preferences/header-pattern` (criar se não existir) com:
-- Snippet do padrão completo.
-- Regra: ícone do h1 = ícone do sidebar.
-- Lista de exceções permanentes (PDV, Totem, Garçom, painéis Sócio/Nutricionista/Fornecedor/Freelancer/Terceirizado, Auth/públicas).
-
-Indexar no `mem://index.md`.
-
----
-
-## Detalhes técnicos
-
-- Edits 100% mecânicos via `code--line_replace` por arquivo; sem mudança de lógica.
-- Verificar ausência de `CardHeader > CardTitle` duplicando o título do h1; quando houver, remover esse CardHeader.
-- Para páginas em `❌ Sem cabeçalho`, embrulhar o conteúdo atual num `<div className="space-y-6">` se ainda não estiver.
-- Total estimado: ~70 arquivos tocados, sem migrações, sem mudanças de rota, sem alteração de comportamento.
+Vou rodar o relatório das divergências e te trazer a lista para você decidir:
+- Para qual cargo da lista cada colaborador "fora do padrão" deve apontar (principalmente Janaina e o "auxiliar de produção" com CBO de empilhadeira).
+- Qual CBO usar para Trainee, Estagiário e Freelancer (ou se eles ficam como exceção isenta — nesse caso, CBO obrigatório só para CLT).
