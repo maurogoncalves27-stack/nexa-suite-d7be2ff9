@@ -111,8 +111,6 @@ const Quotations = lazy(() => import("./pages/Quotations.tsx"));
 const Pdv = lazy(() => import("./pages/Pdv.tsx"));
 const PdvNovo = lazy(() => import("./pages/PdvNovo.tsx"));
 const StoreHome = lazy(() => import("./pages/StoreHome.tsx"));
-const PdvSimuladorIfood = lazy(() => import("./pages/PdvSimuladorIfood.tsx"));
-const PdvMonitorIfood = lazy(() => import("./pages/PdvMonitorIfood.tsx"));
 const SmartPos = lazy(() => import("./pages/SmartPos.tsx"));
 const SmartPosLogin = lazy(() => import("./pages/SmartPosLogin.tsx"));
 const Garcom = lazy(() => import("./pages/Garcom.tsx"));
@@ -366,8 +364,6 @@ const App = () => (
               <Route path="/pdv" element={<Guarded staff><Pdv /></Guarded>} />
               <Route path="/pdv-novo" element={<Guarded staff><PdvNovo /></Guarded>} />
               {/* /loja movido para fora do AppLayout (fullscreen) */}
-              <Route path="/pdv-novo/simulador" element={<Guarded staff><PdvSimuladorIfood /></Guarded>} />
-              <Route path="/pdv-novo/monitor" element={<Guarded staff><PdvMonitorIfood /></Guarded>} />
               <Route path="/cardapio" element={<Guarded staff><Menu /></Guarded>} />
               <Route path="/ocorrencias" element={<Guarded><Occurrences /></Guarded>} />
               <Route path="/ocorrencias/relatorio" element={<Guarded staff partner><OccurrencesReport /></Guarded>} />
