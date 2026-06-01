@@ -223,7 +223,7 @@ export default function AssetInventory() {
     <div className="space-y-4 p-4 md:p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Patrimônio</h1>
+          <h1 className="text-xl font-bold md:text-2xl flex items-center gap-2">Patrimônio</h1>
           <p className="text-sm text-muted-foreground">
             Inventário de mobiliário, equipamentos e utensílios por loja
           </p>

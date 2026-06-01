@@ -150,7 +150,7 @@ export default function Menu() {
     <div className="container mx-auto p-4 sm:p-6 space-y-4 max-w-6xl">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Cardápio</h1>
+          <h1 className="text-xl sm:text-xl font-bold md:text-2xl flex items-center gap-2">Cardápio</h1>
           <p className="text-sm text-muted-foreground">
             {activeBrandObj ? `Marca: ${activeBrandObj.name}` : "Selecione uma marca"}
           </p>

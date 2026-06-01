@@ -17,7 +17,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import {
-  Settings2, Loader2, Plus, Pencil, Trash2, Play, History, AlertTriangle,
+  Settings, Loader2, Plus, Pencil, Trash2, Play, History, AlertTriangle,
   Clock, FileX, ShieldAlert, Repeat, Users, Briefcase, X, ChevronsUpDown,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -144,8 +144,8 @@ export default function AutomationRules() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-            <Settings2 className="h-7 w-7 text-primary" />
+          <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">
+            <Settings className="h-6 w-6 md:h-7 md:w-7 text-primary" />
             Regras automáticas
           </h1>
           <p className="text-muted-foreground text-sm md:text-base">

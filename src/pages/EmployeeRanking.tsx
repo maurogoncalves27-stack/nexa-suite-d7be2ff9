@@ -375,7 +375,7 @@ export default function EmployeeRanking() {
         <div className="flex items-center gap-2 min-w-0">
           <Trophy className="h-5 w-5 md:h-6 md:w-6 text-primary shrink-0" />
           <div className="min-w-0">
-            <h1 className="text-lg md:text-2xl font-bold leading-tight">Ranking de Colaboradores</h1>
+            <h1 className="text-lg md:text-xl font-bold flex items-center gap-2">Ranking de Colaboradores</h1>
             <p className="text-xs text-muted-foreground hidden md:block">
               Comparativo de bonificações pagas no período
             </p>

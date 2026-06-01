@@ -109,7 +109,7 @@ export default function PurchaseSuggestions() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold">Sugestão de compra</h1>
+        <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">Sugestão de compra</h1>
         <p className="text-muted-foreground">
           Produtos cujo estoque total (soma de todas as lojas) está abaixo do mínimo configurado.
         </p>

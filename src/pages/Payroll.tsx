@@ -98,8 +98,8 @@ export default function Payroll() {
     <div className="md:h-[calc(100vh-7rem)] md:overflow-hidden flex flex-col gap-3 md:gap-6">
       <div className="shrink-0 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
-          <h1 className="text-lg md:text-3xl font-bold flex items-center gap-2">
-            <ReceiptText className="h-5 w-5 md:h-7 md:w-7 text-primary shrink-0" />
+          <h1 className="text-lg md:text-xl font-bold flex items-center gap-2">
+            <ReceiptText className="md: md: shrink-0 h-6 w-6 md:h-7 md:w-7 text-primary" />
             <span className="truncate">Folha de pagamento</span>
           </h1>
           {showAccountantView && (

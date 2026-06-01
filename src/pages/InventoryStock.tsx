@@ -121,7 +121,7 @@ const InventoryStock = () => {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold">Estoque</h1>
+        <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">Estoque</h1>
         <p className="text-muted-foreground">Saldo atual de produtos por loja e controle de validades por lote.</p>
       </div>
 

@@ -201,8 +201,8 @@ export default function FactoryWeeklyPlan() {
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-            <CalendarDays className="h-7 w-7 text-primary" /> Plano semanal da fábrica
+          <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">
+            <CalendarDays className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Plano semanal da fábrica
           </h1>
           <p className="text-muted-foreground text-sm">
             Consolida sugestões automáticas (estoque mínimo das lojas) + solicitações manuais e

@@ -7,8 +7,8 @@ export default function InventoryLots() {
   return (
     <div className="container mx-auto p-4 space-y-4 max-w-7xl">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-          <CalendarClock className="h-6 w-6 text-primary" />
+        <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">
+          <CalendarClock className="h-6 w-6 md:h-7 md:w-7 text-primary" />
           Lotes, validades e perdas
         </h1>
         <p className="text-sm text-muted-foreground">Controle de validade por lote com alertas e registro de perdas diárias.</p>

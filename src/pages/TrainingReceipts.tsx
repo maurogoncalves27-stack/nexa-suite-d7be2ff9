@@ -364,8 +364,8 @@ export default function TrainingReceipts() {
   return (
     <div className="flex flex-col gap-4 md:gap-6">
       <div>
-        <h1 className="text-xl md:text-3xl font-bold flex items-center gap-2">
-          <GraduationCap className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+        <h1 className="text-xl md:text-xl font-bold flex items-center gap-2">
+          <GraduationCap className="md: md: h-6 w-6 md:h-7 md:w-7 text-primary" />
           Recibos de treinamento
         </h1>
         <p className="text-sm md:text-base text-muted-foreground">

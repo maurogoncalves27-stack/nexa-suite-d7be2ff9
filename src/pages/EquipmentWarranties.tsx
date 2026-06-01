@@ -4,7 +4,7 @@ const EquipmentWarranties = () => {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold">Garantias de equipamentos</h1>
+        <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">Garantias de equipamentos</h1>
         <p className="text-muted-foreground">
           Acompanhe vigência, fornecedor e nº de série dos equipamentos comprados.
         </p>

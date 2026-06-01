@@ -521,8 +521,8 @@ export default function Occurrences() {
     <div className="container mx-auto px-3 py-4 md:py-6 max-w-4xl flex flex-col gap-4">
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-          <Siren className="h-7 w-7 text-red-600" />
+        <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">
+          <Siren className="h-6 w-6 md:h-7 md:w-7 text-primary" />
           Central de Ocorrências
         </h1>
         {canManage && (

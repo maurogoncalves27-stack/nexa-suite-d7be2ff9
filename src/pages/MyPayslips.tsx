@@ -107,8 +107,8 @@ export default function MyPayslips() {
   return (
     <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-xl md:text-3xl font-bold flex items-center gap-2">
-          <ReceiptText className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Meus holerites
+        <h1 className="text-xl md:text-xl font-bold flex items-center gap-2">
+          <ReceiptText className="md: md: h-6 w-6 md:h-7 md:w-7 text-primary" /> Meus holerites
         </h1>
         <p className="text-sm md:text-base text-muted-foreground">
           Visualize e assine os holerites enviados pela empresa.

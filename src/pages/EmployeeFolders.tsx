@@ -119,7 +119,7 @@ export default function EmployeeFolders() {
           <FolderOpen className="h-6 w-6" />
         </div>
         <div>
-          <h1 className="text-xl md:text-2xl font-bold">Pasta do Colaborador</h1>
+          <h1 className="text-xl md:text-xl font-bold flex items-center gap-2">Pasta do Colaborador</h1>
           <p className="text-sm text-muted-foreground">
             Acesse os documentos de cada colaborador.
           </p>

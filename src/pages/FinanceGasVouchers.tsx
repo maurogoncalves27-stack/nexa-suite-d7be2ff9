@@ -340,7 +340,7 @@ export default function FinanceGasVouchers() {
     <div className="space-y-4">
       {/* Cabeçalho */}
       <div>
-        <h1 className="text-xl font-bold leading-tight">Controle de Gás</h1>
+        <h1 className="text-xl font-bold md:text-2xl flex items-center gap-2">Controle de Gás</h1>
         <p className="text-xs text-muted-foreground">
           Toque em <span className="font-medium">"Usei reserva"</span> ao trocar o bujão e em <span className="font-medium">"Usei vale"</span> ao receber um novo.
         </p>

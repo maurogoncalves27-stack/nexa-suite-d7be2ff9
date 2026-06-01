@@ -18,7 +18,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Moon, CheckCircle2, ChevronLeft, ChevronRight, Loader2, Plus, Save, Trash2,
+  Hourglass, CheckCircle2, ChevronLeft, ChevronRight, Loader2, Plus, Save, Trash2,
 } from "lucide-react";
 
 const MONTHS = [
@@ -296,8 +296,8 @@ export default function NightAddition() {
   return (
     <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-xl md:text-3xl font-bold flex items-center gap-2">
-          <Moon className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Adicional Noturno
+        <h1 className="text-xl md:text-xl font-bold flex items-center gap-2">
+          <Hourglass className="md: md: h-6 w-6 md:h-7 md:w-7 text-primary" /> Adicional Noturno
         </h1>
         <p className="text-sm md:text-base text-muted-foreground">
           O valor automático é calculado <strong>direto do ponto</strong> (não depende de gerar a folha antes).

@@ -61,8 +61,8 @@ export default function NfArchived() {
         <Button variant="ghost" size="sm" asChild className="mb-2">
           <Link to="/recebimento"><ArrowLeft className="h-4 w-4 mr-1" /> Voltar</Link>
         </Button>
-        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-          <Archive className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+        <h1 className="text-xl md:text-xl font-bold flex items-center gap-2">
+          <Archive className="md: md: h-6 w-6 md:h-7 md:w-7 text-primary" />
           NF arquivadas
         </h1>
         <p className="text-muted-foreground">Histórico de notas fiscais de entrada importadas e processadas.</p>

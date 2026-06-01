@@ -318,7 +318,7 @@ export default function BancoHoras() {
         <div className="flex items-center gap-3">
           <Hourglass className="h-7 w-7 text-primary" />
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Banco de Horas</h1>
+            <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">Banco de Horas</h1>
             <p className="text-sm text-muted-foreground">Conversão 1:1 · Validade de 6 meses · Atrasos e saídas antec. abatem créditos</p>
           </div>
         </div>
