@@ -228,10 +228,12 @@ export default function PositionResponsibilitiesPanel() {
                   <SelectContent>
                     {positions.map((p) => (
                       <SelectItem key={p.id} value={p.name}>
+                        {p.cbo_code ? `${p.cbo_code} · ` : ""}
                         {p.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
+
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
                   Para adicionar/editar cargos, vá em Área do Gestor → Cargos.
