@@ -128,9 +128,11 @@ export default function Recruitment() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <UserSearch className="h-7 w-7 text-primary" />
           <div>
-            <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">Recrutamento e Seleção</h1>
+            <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+              <UserSearch className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+              Recrutamento e Seleção
+            </h1>
             <p className="text-muted-foreground">Gerencie vagas, candidatos e avaliações com roteiros estruturados.</p>
           </div>
         </div>

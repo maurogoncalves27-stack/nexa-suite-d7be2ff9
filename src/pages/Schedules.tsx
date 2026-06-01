@@ -378,9 +378,11 @@ export default function Schedules() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <CalendarClock className="h-7 w-7 text-primary shrink-0" />
           <div className="min-w-0">
-            <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">Escala de Horários</h1>
+            <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+              <CalendarClock className="h-6 w-6 md:h-7 md:w-7 text-primary shrink-0" />
+              Escala de Horários
+            </h1>
             <p className="text-muted-foreground">Defina horários e folgas por colaborador</p>
           </div>
         </div>

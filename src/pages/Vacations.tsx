@@ -224,9 +224,11 @@ export default function Vacations() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Plane className="h-7 w-7 text-primary" />
         <div className="flex-1">
-          <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">Programação de Férias</h1>
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+            <Plane className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+            Programação de Férias
+          </h1>
           <p className="text-muted-foreground">
             Regra CLT: 12 meses para conquistar + 12 meses para usar (limite 24 meses sob risco de multa em dobro).
           </p>

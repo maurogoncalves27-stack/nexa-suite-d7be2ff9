@@ -7,7 +7,7 @@ export default function InventoryLots() {
   return (
     <div className="container mx-auto p-4 space-y-4 max-w-7xl">
       <div>
-        <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">
+        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
           <History className="h-6 w-6 md:h-7 md:w-7 text-primary" />
           Lotes, validades e perdas
         </h1>
