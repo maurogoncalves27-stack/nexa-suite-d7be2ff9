@@ -220,14 +220,18 @@ export default function AssetInventory() {
   }
 
   return (
-    <div className="space-y-4 p-4 md:p-6">
+    <div className="space-y-6 p-4 md:p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-xl font-bold md:text-2xl flex items-center gap-2">Patrimônio</h1>
-          <p className="text-sm text-muted-foreground">
-            Inventário de mobiliário, equipamentos e utensílios por loja
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+            <Building className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+            Patrimônio
+          </h1>
+          <p className="text-muted-foreground">
+            Inventário de mobiliário, equipamentos e utensílios por loja.
           </p>
         </div>
+
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={exportCsv} disabled={filtered.length === 0}>
             <Download className="h-4 w-4 mr-1" /> Exportar CSV
