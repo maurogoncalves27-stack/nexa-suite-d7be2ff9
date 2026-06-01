@@ -15,7 +15,7 @@ import {
   FileSignature, Users, FolderArchive, User, GraduationCap, MapPin, Briefcase, Landmark,
 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
 import { downloadContractPdf, getActiveContractTemplate, type ContractEmployeeData } from "@/lib/contractPdf";
 import { toast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -26,7 +26,7 @@ import DocExtractDialog from "@/components/employees/DocExtractDialog";
 import { getMissingAdmissionDocs, getMissingEmployeeFields } from "@/lib/requiredDocs";
 import { getMissingS2200Fields } from "@/lib/esocialS2200Export";
 import { MARITAL_REQUIRES_SPOUSE } from "@/lib/employeeOptions";
-import { usePositions } from "@/hooks/usePositions";
+
 import { sortStores } from "@/lib/storeSort";
 import PersonalIdentificationCard from "@/components/employees/form/PersonalIdentificationCard";
 import DocumentsAndEducationCard from "@/components/employees/form/DocumentsAndEducationCard";
@@ -163,6 +163,7 @@ const EMPTY_EMPLOYEE = {
   city: "",
   state: "",
   position: "",
+  position_id: null,
   cbo_code: "",
   cbo_title: "",
   department: "",
@@ -214,10 +215,7 @@ export default function EmployeeForm() {
   const [searchParams] = useSearchParams();
   const fromCandidateId = isNew ? searchParams.get("fromCandidate") : null;
   const { user } = useAuth();
-  const { reload: reloadPositions } = usePositions();
-  const [newPositionOpen, setNewPositionOpen] = useState(false);
-  const [newPositionName, setNewPositionName] = useState("");
-  const [savingPosition, setSavingPosition] = useState(false);
+  // (legado removido) Cargos s\u00f3 s\u00e3o criados em Configura\u00e7\u00f5es \u2192 Cargos.
 
   const [stores, setStores] = useState<{ id: string; name: string; cnpj: string | null; legal_name: string | null; parent_store_id: string | null }[]>([]);
   const [loading, setLoading] = useState(!isNew);
@@ -238,25 +236,6 @@ export default function EmployeeForm() {
   const [preparingExtract, setPreparingExtract] = useState(false);
   const [autofillingKey, setAutofillingKey] = useState<string | null>(null);
 
-  const createPosition = async () => {
-    const name = newPositionName.trim();
-    if (!name) {
-      toast({ title: "Informe o nome do cargo", variant: "destructive" });
-      return;
-    }
-    setSavingPosition(true);
-    const { error } = await supabase.from("positions").insert({ name });
-    setSavingPosition(false);
-    if (error) {
-      toast({ title: "Erro ao criar cargo", description: error.message, variant: "destructive" });
-      return;
-    }
-    toast({ title: "Cargo criado", description: "Sem CBO (isento)" });
-    await reloadPositions();
-    setEmployee((prev: any) => ({ ...prev, position: name, cbo_code: "", cbo_title: "" }));
-    setNewPositionName("");
-    setNewPositionOpen(false);
-  };
 
   const handleGenerateContract = async () => {
     if (!id) return;
@@ -590,6 +569,7 @@ export default function EmployeeForm() {
       city: up(safeData.city),
       state: up(safeData.state),
       position: up(safeData.position),
+      position_id: employee.position_id || null,
       cbo_code: employee.cbo_code || null,
       cbo_title: up(employee.cbo_title),
       department: up(safeData.department),
@@ -1151,7 +1131,6 @@ export default function EmployeeForm() {
                 employee={employee}
                 setEmployee={setEmployee}
                 stores={stores}
-                onOpenNewPosition={() => setNewPositionOpen(true)}
                 hideHeader
               />
             </AccordionContent>
@@ -1250,35 +1229,6 @@ export default function EmployeeForm() {
         </Button>
       </div>
 
-      <Dialog open={newPositionOpen} onOpenChange={setNewPositionOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Novo cargo</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label>Nome do cargo</Label>
-            <Input
-              value={newPositionName}
-              onChange={(e) => setNewPositionName(e.target.value)}
-              placeholder="Ex.: Auxiliar de Cozinha"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  createPosition();
-                }
-              }}
-            />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => setNewPositionOpen(false)}>Cancelar</Button>
-            <Button type="button" onClick={createPosition} disabled={savingPosition}>
-              {savingPosition && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Criar cargo
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </form>
   );
 }

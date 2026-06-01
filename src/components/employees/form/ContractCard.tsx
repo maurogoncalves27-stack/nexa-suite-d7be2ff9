@@ -7,8 +7,8 @@ import {
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Briefcase, Plus, ShieldAlert } from "lucide-react";
-import PositionCboCombobox from "@/components/employees/PositionCboCombobox";
+import { Briefcase, ShieldAlert } from "lucide-react";
+import PositionSelect from "@/components/employees/PositionSelect";
 import { Field, WorkScheduleField, type EmployeeState, type SetEmployee } from "./shared";
 import {
   ESOCIAL_CATEGORY_OPTIONS,
@@ -30,13 +30,13 @@ export default function ContractCard({
   employee,
   setEmployee,
   stores,
-  onOpenNewPosition,
   hideHeader,
 }: {
   employee: EmployeeState;
   setEmployee: SetEmployee;
   stores: Store[];
-  onOpenNewPosition: () => void;
+  /** @deprecated mantido por compatibilidade; cargos novos são criados em Configurações → Cargos */
+  onOpenNewPosition?: () => void;
   hideHeader?: boolean;
 }) {
   const [pendingTermination, setPendingTermination] = useState(false);
@@ -99,38 +99,26 @@ export default function ContractCard({
             </Select>
           </Field>
           <Field label="Cargo (CBO)">
-            <div className="flex items-center gap-2">
-              <div className="flex-1 min-w-0">
-                <PositionCboCombobox
-                  value={{
-                    name: employee.position || "",
-                    cboCode: employee.cbo_code || null,
-                    cboTitle: employee.cbo_title || null,
-                  }}
-                  onChange={(v) =>
-                    setEmployee({
-                      ...employee,
-                      position: v.name,
-                      cbo_code: v.cboCode ?? "",
-                      cbo_title: v.cboTitle ?? "",
-                    })
-                  }
-                />
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="shrink-0"
-                onClick={onOpenNewPosition}
-                title="Adicionar novo cargo (sem CBO)"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
+            <PositionSelect
+              value={{
+                positionId: employee.position_id || null,
+                name: employee.position || "",
+                cboCode: employee.cbo_code || null,
+                cboTitle: employee.cbo_title || null,
+              }}
+              onChange={(v) =>
+                setEmployee({
+                  ...employee,
+                  position_id: v.positionId,
+                  position: v.name,
+                  cbo_code: v.cboCode ?? "",
+                  cbo_title: v.cboTitle ?? "",
+                })
+              }
+            />
             {employee.position && !employee.cbo_code && (
               <p className="text-xs text-muted-foreground mt-1 italic">
-                Cargo livre — isento de CBO.
+                Cargo isento de CBO (estágio / trainee / freelancer).
               </p>
             )}
           </Field>
