@@ -442,6 +442,8 @@ export default function Dashboard() {
 
       {isStaff && <SupplierOffersCard />}
 
+      {isStaff && <ColdChamberStatusCard />}
+
       {isStaff && !prefs.hidden.includes("analytics-charts") && (
         <Suspense fallback={<Card><CardContent className="p-6 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-primary" /></CardContent></Card>}>
           <AnalyticsCharts />
