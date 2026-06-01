@@ -130,8 +130,6 @@ const PAGE_TITLES: PageMeta[] = [
   // PDV (mais específicas primeiro)
   { match: (p) => p.startsWith("/totem"), title: "Totem", group: "PDV" },
   { match: (p) => p.startsWith("/balcao"), title: "Modo Balcão", group: "PDV" },
-  { match: (p) => p.startsWith("/pdv-novo/simulador"), title: "Simulador iFood", group: "PDV" },
-  { match: (p) => p.startsWith("/pdv-novo/monitor"), title: "Monitor iFood", group: "PDV" },
   { match: (p) => p.startsWith("/pdv-novo"), title: "PDV", group: "PDV" },
   { match: (p) => p === "/loja", title: "Loja", group: "PDV" },
   { match: (p) => p.startsWith("/smartpos"), title: "Smart POS", group: "PDV" },

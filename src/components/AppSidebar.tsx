@@ -204,8 +204,6 @@ const pdvSections: Section[] = [
   { label: "Operação", items: [
     { title: "PDV (gestor)", url: "/pdv-novo", icon: ShoppingBag, staffOnly: true },
     { title: "Totem", url: "/totem", icon: Monitor, staffOnly: true },
-    { title: "Simulador iFood", url: "/pdv-novo/simulador", icon: Sparkles, staffOnly: true },
-    { title: "Monitor iFood", url: "/pdv-novo/monitor", icon: Activity, staffOnly: true },
   ]},
   { label: "Cardápio", items: [
     { title: "Cardápio", url: "/cardapio", icon: ScanText, staffOnly: true },
