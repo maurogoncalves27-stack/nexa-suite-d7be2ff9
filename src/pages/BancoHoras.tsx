@@ -313,14 +313,14 @@ export default function BancoHoras() {
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
-        <div className="flex items-center gap-3">
-          <Hourglass className="h-7 w-7 text-primary" />
-          <div>
-            <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">Banco de Horas</h1>
-            <p className="text-sm text-muted-foreground">Conversão 1:1 · Validade de 6 meses · Atrasos e saídas antec. abatem créditos</p>
-          </div>
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+            <Hourglass className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+            Banco de Horas
+          </h1>
+          <p className="text-muted-foreground">Conversão 1:1 · Validade de 6 meses · Atrasos e saídas antec. abatem créditos.</p>
         </div>
         {canManage && (
           <div className="flex gap-2">
@@ -334,6 +334,7 @@ export default function BancoHoras() {
           </div>
         )}
       </div>
+
 
       {/* Resumo geral */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
