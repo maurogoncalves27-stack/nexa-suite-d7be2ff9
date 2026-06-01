@@ -1,5 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Store, ShieldCheck, Handshake, Link2, Eye } from "lucide-react";
+import { Store, ShieldCheck, Handshake, Link2, Eye, Settings as SettingsIcon } from "lucide-react";
 import StoresPanel from "@/components/settings/StoresPanel";
 import AccessControlPanel from "@/components/settings/AccessControlPanel";
 import UserLinksPanel from "@/components/settings/UserLinksPanel";
@@ -10,7 +10,10 @@ const Settings = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">Configurações</h1>
+        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+          <SettingsIcon className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+          Configurações
+        </h1>
         <p className="text-muted-foreground">Centralize aqui as configurações do sistema.</p>
       </div>
 

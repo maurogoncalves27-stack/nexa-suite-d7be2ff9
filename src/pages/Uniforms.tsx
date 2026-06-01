@@ -43,9 +43,11 @@ export default function Uniforms() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Shirt className="h-7 w-7 text-primary" />
         <div>
-          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">Controle de Uniformes</h1>
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+            <Shirt className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+            Controle de Uniformes
+          </h1>
           <p className="text-muted-foreground">Catálogo, kits por cargo, estoque e entregas</p>
         </div>
       </div>
