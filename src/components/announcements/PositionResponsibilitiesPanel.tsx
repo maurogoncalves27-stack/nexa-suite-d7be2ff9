@@ -76,9 +76,14 @@ export default function PositionResponsibilitiesPanel() {
   const cboByPosition = useMemo(() => {
     const m = new Map<string, { code: string | null; title: string | null }>();
     positions.forEach((p) =>
-      m.set(p.name, { code: p.cbo_code ?? null, title: p.cbo_title ?? null }),
+      m.set(p.name.trim().toLowerCase(), {
+        code: p.cbo_code ?? null,
+        title: p.cbo_title ?? null,
+      }),
     );
-    return m;
+    return {
+      get: (name: string) => m.get((name ?? "").trim().toLowerCase()),
+    };
   }, [positions]);
 
   const filtered = useMemo(() => {
