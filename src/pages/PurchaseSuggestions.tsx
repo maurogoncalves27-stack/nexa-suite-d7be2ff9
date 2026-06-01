@@ -107,9 +107,11 @@ export default function PurchaseSuggestions() {
   const allChecked = filtered.length > 0 && filtered.every((r) => selected[r.product_id]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">Sugestão de compra</h1>
+        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+          <ShoppingCart className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Sugestão de compra
+        </h1>
         <p className="text-muted-foreground">
           Produtos cujo estoque total (soma de todas as lojas) está abaixo do mínimo configurado.
         </p>
