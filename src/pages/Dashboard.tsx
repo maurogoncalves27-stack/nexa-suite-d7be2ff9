@@ -22,6 +22,7 @@ import MetricsCard, { type Metric } from "@/components/dashboard/MetricsCard";
 import DashboardSection from "@/components/dashboard/DashboardSection";
 import ManagerQuickActions from "@/components/dashboard/ManagerQuickActions";
 import { SupplierOffersCard } from "@/components/dashboard/SupplierOffersCard";
+import ColdChamberStatusCard from "@/components/dashboard/ColdChamberStatusCard";
 const AnalyticsCharts = lazy(() => import("@/components/dashboard/AnalyticsCharts"));
 import MaintenanceSummaryCard from "@/components/dashboard/MaintenanceSummaryCard";
 import { useDashboardPrefs } from "@/hooks/useDashboardPrefs";
