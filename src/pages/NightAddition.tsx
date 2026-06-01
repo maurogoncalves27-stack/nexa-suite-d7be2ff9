@@ -166,6 +166,7 @@ export default function NightAddition() {
   };
 
   const updateAmount = (empId: string, value: string) => {
+    setDraftValues((prev) => ({ ...prev, [empId]: value }));
     setRows((prev) => ({
       ...prev,
       [empId]: {
