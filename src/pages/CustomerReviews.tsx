@@ -128,9 +128,17 @@ export default function CustomerReviews() {
   }, [reviews]);
 
   return (
-    <div className="space-y-4 p-3 sm:p-4">
+    <div className="space-y-6 p-3 sm:p-4">
+      <div>
+        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+          <Star className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+          Avaliações de clientes
+        </h1>
+        <p className="text-muted-foreground">Resenhas recebidas dos canais de venda — responda e acompanhe a média.</p>
+      </div>
       {/* Header KPIs */}
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
+
         <Card>
           <CardContent className="p-3">
             <div className="text-xs text-muted-foreground">Total</div>
