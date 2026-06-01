@@ -218,15 +218,16 @@ export default function FinancePricing() {
   const denomSaldoCheck = 1 - totalPctSum - parsePct(saldoAlvo);
 
   return (
-    <div className="space-y-4 p-4 sm:p-6 max-w-[1600px] mx-auto">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-bold flex items-center gap-2 md:text-2xl">
+    <div className="space-y-6 p-4 sm:p-6 max-w-[1600px] mx-auto">
+      <div>
+        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
           <Calculator className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Precificação
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground">
           Simule preços com base em CMV, custos variáveis e saldo desejado. Nada é gravado — só simulação.
         </p>
       </div>
+
 
       {/* Parâmetros */}
       <Card>
