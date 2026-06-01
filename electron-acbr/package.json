@@ -1,0 +1,53 @@
+{
+  "name": "nexa-acbr",
+  "productName": "NEXA ACBr Agent",
+  "version": "1.0.0",
+  "description": "Agente HTTP local que expõe ACBrLib (NFC-e + TEF) na porta 3030",
+  "main": "main.cjs",
+  "author": {
+    "name": "Aquela Parme",
+    "email": "contato@aquelaparme.com.br"
+  },
+  "scripts": {
+    "start": "electron .",
+    "start:console": "node main.cjs",
+    "clean:release": "node -e \"const fs=require('fs'); for (const dir of ['release','pack','dist-electron']) fs.rmSync(dir,{recursive:true,force:true});\"",
+    "dist:win": "npm run clean:release && electron-builder --win nsis --x64"
+  },
+  "dependencies": {
+    "koffi": "^2.10.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.aquelaparme.nexaacbr",
+    "productName": "NEXA ACBr Agent",
+    "files": [
+      "main.cjs",
+      "server.cjs",
+      "acbr-nfe.cjs",
+      "acbr-tefd.cjs",
+      "build/**"
+    ],
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "publisherName": "Aquela Parme"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "NEXA ACBr Agent",
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}
