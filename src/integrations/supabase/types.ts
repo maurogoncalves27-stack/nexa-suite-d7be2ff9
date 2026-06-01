@@ -13183,6 +13183,45 @@ export type Database = {
           },
         ]
       }
+      totem_assets: {
+        Row: {
+          brand_slug: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          image_url: string
+          is_active: boolean
+          kind: string
+          sort_order: number
+          storage_path: string | null
+          updated_at: string
+        }
+        Insert: {
+          brand_slug?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_url: string
+          is_active?: boolean
+          kind: string
+          sort_order?: number
+          storage_path?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brand_slug?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_url?: string
+          is_active?: boolean
+          kind?: string
+          sort_order?: number
+          storage_path?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       training_criteria: {
         Row: {
           created_at: string

@@ -159,6 +159,7 @@ const PAGE_TITLES: PageMeta[] = [
   { match: (p) => p.startsWith("/configuracoes/whatsapp-cliente"), title: "WhatsApp Cliente", group: "Configurações" },
   { match: (p) => p.startsWith("/configuracoes/entregas"), title: "Entregas (Motoboy)", group: "Configurações" },
   { match: (p) => p.startsWith("/configuracoes/whatsapp"), title: "Notificações WhatsApp", group: "Configurações" },
+  { match: (p) => p.startsWith("/configuracoes/totem"), title: "Configuração do Totem", group: "Configurações" },
   { match: (p) => p.startsWith("/configuracoes"), title: "Configurações" },
 ];
 

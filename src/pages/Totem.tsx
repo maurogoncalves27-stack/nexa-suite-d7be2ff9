@@ -50,7 +50,7 @@ const isValidCpf = (cpf: string): boolean => {
 type Step = "idle" | "store" | "type" | "menu" | "checkout" | "done";
 type OrderType = "eat_in" | "takeout";
 
-interface Brand { id: string; name: string }
+interface Brand { id: string; name: string; slug?: string }
 interface Store { id: string; name: string; brand_id: string | null; parent_store_id?: string | null; parent_store?: { name: string } | null }
 interface Category { id: string; name: string; sort_order: number; brand_id: string | null }
 interface MenuItem {
@@ -78,9 +78,14 @@ const TOTEM_THEME_STYLE = {
 const normalize = (value: string) =>
   value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
-const brandLogo = (name: string): { src: string; scale: number } | null => {
-  const n = normalize(name);
-  // scale compensa o "padding" interno de cada PNG para visualmente igualar tamanhos
+const buildBrandLogoResolver = (
+  customLogos: Record<string, string>,
+  brandSlugById: Record<string, string>,
+) => (brand: { id?: string; name: string }): { src: string; scale: number } | null => {
+  const slug = brand.id ? brandSlugById[brand.id] : undefined;
+  const custom = slug ? customLogos[slug] : undefined;
+  if (custom) return { src: custom, scale: 1 };
+  const n = normalize(brand.name);
   if (n.includes("box") || n.includes("caipira")) return { src: logoBoxCaipira, scale: 0.86 };
   if (n.includes("estrog")) return { src: logoEstrogonofe, scale: 0.78 };
   if (n.includes("parme")) return { src: logoAquelaParme, scale: 2.2 };
@@ -145,16 +150,24 @@ export default function Totem() {
   const [showNoteKb, setShowNoteKb] = useState(false);
   const [showCpfKb, setShowCpfKb] = useState(false);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
+  const [customBackgrounds, setCustomBackgrounds] = useState<string[]>([]);
+  const [customLogos, setCustomLogos] = useState<Record<string, string>>({});
 
-  // ----- carregar marcas/lojas
+  // ----- carregar marcas/lojas + assets do totem
   useEffect(() => {
     void (async () => {
-      const [b, s] = await Promise.all([
-        supabase.from("brands").select("id,name").eq("is_active", true).not("name", "ilike", "%fábrica%").not("name", "ilike", "%fabrica%").order("sort_order"),
+      const [b, s, ta] = await Promise.all([
+        supabase.from("brands").select("id,name,slug").eq("is_active", true).not("name", "ilike", "%fábrica%").not("name", "ilike", "%fabrica%").order("sort_order"),
         supabase.from("stores").select("id,name,brand_id,parent_store_id,parent_store:parent_store_id(name)").eq("is_virtual", true).order("name"),
+        (supabase as any).from("totem_assets").select("kind,brand_slug,image_url,sort_order,is_active").eq("is_active", true).order("sort_order"),
       ]);
       setBrands(((b.data ?? []) as Brand[]).filter(x => !/f[áa]brica/i.test(x.name)));
       setStores((s.data ?? []) as Store[]);
+      const assets = (ta.data ?? []) as Array<{ kind: string; brand_slug: string | null; image_url: string }>;
+      setCustomBackgrounds(assets.filter(a => a.kind === "background").map(a => a.image_url));
+      const logoMap: Record<string, string> = {};
+      assets.filter(a => a.kind === "logo" && a.brand_slug).forEach(a => { logoMap[a.brand_slug!] = a.image_url; });
+      setCustomLogos(logoMap);
     })();
   }, []);
 
@@ -231,9 +244,20 @@ export default function Totem() {
     if (!noteDialog) setShowNoteKb(false);
   }, [step, noteDialog]);
 
+  const brandSlugById = useMemo(() => {
+    const map: Record<string, string> = {};
+    brands.forEach((b) => { if (b.slug) map[b.id] = b.slug; });
+    return map;
+  }, [brands]);
+
+  const brandLogo = useMemo(
+    () => buildBrandLogoResolver(customLogos, brandSlugById),
+    [customLogos, brandSlugById]
+  );
+
   const displayedBrands = useMemo(
-    () => brands.filter((b) => !!brandLogo(b.name)),
-    [brands]
+    () => brands.filter((b) => !!brandLogo(b)),
+    [brands, brandLogo]
   );
 
   const storesForBrand = useMemo(
@@ -461,18 +485,21 @@ export default function Totem() {
             onClick={() => setStep("store")}
             className="absolute inset-0 w-full h-full overflow-hidden text-left"
           >
-            {/* slideshow de fundo */}
-            {[fakeParme, fakeBox, fakeEstrogonofe].map((src, i) => (
-              <img
-                key={i}
-                src={src}
-                alt=""
-                aria-hidden
-                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
-                  idleSlide % 3 === i ? "opacity-100" : "opacity-0"
-                }`}
-              />
-            ))}
+            {/* slideshow de fundo (usa imagens do banco se configuradas, senão fallback) */}
+            {(() => {
+              const slides = customBackgrounds.length > 0 ? customBackgrounds : [fakeParme, fakeBox, fakeEstrogonofe];
+              return slides.map((src, i) => (
+                <img
+                  key={`${src}-${i}`}
+                  src={src}
+                  alt=""
+                  aria-hidden
+                  className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+                    idleSlide % slides.length === i ? "opacity-100" : "opacity-0"
+                  }`}
+                />
+              ));
+            })()}
             <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/90" />
             <div className="relative h-full flex flex-col items-center justify-center text-white px-8 gap-12">
               <div className="text-center">
@@ -506,7 +533,7 @@ export default function Totem() {
           <div className="h-full overflow-auto p-8 flex items-center justify-center animate-fade-in">
             <div className="flex flex-col gap-12 w-full max-w-4xl mx-auto">
               {displayedBrands.map(b => {
-                const logo = brandLogo(b.name);
+                const logo = brandLogo(b);
                 return (
                   <button
                     key={b.id}
