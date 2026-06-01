@@ -291,16 +291,30 @@ export default function PositionResponsibilitiesPanel() {
               className="border rounded-lg bg-card overflow-hidden"
             >
               <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                <div className="flex items-center gap-2 min-w-0 flex-1 text-left">
+                <div className="flex items-center gap-2 min-w-0 flex-1 text-left flex-wrap">
                   <Briefcase className="h-5 w-5 text-primary shrink-0" />
                   <span className="font-semibold text-sm md:text-base truncate">
                     {position}
                   </span>
+                  {cboByPosition.get(position)?.code ? (
+                    <Badge
+                      variant="outline"
+                      className="font-mono text-[10px] shrink-0"
+                      title={cboByPosition.get(position)?.title ?? undefined}
+                    >
+                      CBO {cboByPosition.get(position)!.code}
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-[10px] shrink-0">
+                      isento de CBO
+                    </Badge>
+                  )}
                   <Badge variant="outline" className="ml-auto mr-2 shrink-0">
                     {list.length}
                   </Badge>
                 </div>
               </AccordionTrigger>
+
               <AccordionContent className="px-3 pb-3">
                 <ul className="space-y-2">
                   {list.map((r) => (
