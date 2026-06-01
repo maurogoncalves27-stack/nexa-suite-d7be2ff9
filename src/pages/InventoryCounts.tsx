@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Loader2, Search, ClipboardList, CheckCircle2, AlertTriangle, Lock, RotateCcw, X, Store as StoreIcon, History, Check, CalendarClock } from "lucide-react";
+import { Loader2, Search, ClipboardList, CheckCircle2, AlertTriangle, Lock, RotateCcw, X, Store as StoreIcon, History, Check, CalendarClock, Boxes } from "lucide-react";
 import CountItemLotsDialog from "@/components/inventory/CountItemLotsDialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
