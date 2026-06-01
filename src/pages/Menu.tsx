@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Pencil, Trash2, Loader2, FolderPlus, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, FolderPlus, Search, ScanText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -150,8 +150,11 @@ export default function Menu() {
     <div className="container mx-auto p-4 sm:p-6 space-y-4 max-w-6xl">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">Cardápio</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+            <ScanText className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+            Cardápio
+          </h1>
+          <p className="text-muted-foreground">
             {activeBrandObj ? `Marca: ${activeBrandObj.name}` : "Selecione uma marca"}
           </p>
         </div>
