@@ -60,6 +60,7 @@ export default function NightAddition() {
   const [savingApproval, setSavingApproval] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [draftValues, setDraftValues] = useState<Record<string, string>>({});
 
   // Manual add dialog
   const [openAdd, setOpenAdd] = useState(false);
@@ -165,6 +166,7 @@ export default function NightAddition() {
   };
 
   const updateAmount = (empId: string, value: string) => {
+    setDraftValues((prev) => ({ ...prev, [empId]: value }));
     setRows((prev) => ({
       ...prev,
       [empId]: {
@@ -175,24 +177,33 @@ export default function NightAddition() {
   };
 
   const saveRow = async (empId: string) => {
-    const r = rows[empId];
-    if (!r) return;
+    const draft = draftValues[empId];
+    const finalAmount = draft !== undefined
+      ? Number(draft.replace(",", ".")) || 0
+      : (rows[empId]?.amount ?? 0);
+    if (finalAmount <= 0) {
+      toast({ title: "Informe um valor válido", variant: "destructive" });
+      return;
+    }
     setSavingId(empId);
     try {
+      const r = rows[empId];
       const { error } = await (supabase as any)
         .from("payroll_night_addition")
         .upsert({
           employee_id: empId,
           reference_year: refYear,
           reference_month: refMonth,
-          amount: r.amount,
-          source: r.source ?? "manual",
-          notes: r.notes,
+          amount: finalAmount,
+          source: r?.source ?? "manual",
+          notes: r?.notes ?? null,
           created_by: user?.id ?? null,
         }, { onConflict: "employee_id,reference_year,reference_month" });
       if (error) throw error;
+      setDraftValues((prev) => { const n = { ...prev }; delete n[empId]; return n; });
       await invalidateApproval();
       toast({ title: "Salvo" });
+      load();
     } catch (e: any) {
       toast({ title: "Erro ao salvar", description: e?.message ?? String(e), variant: "destructive" });
     } finally {
@@ -446,7 +457,7 @@ export default function NightAddition() {
                         <Input
                           inputMode="decimal"
                           className="w-32 ml-auto text-right"
-                          value={value === 0 && !r ? "" : String(value).replace(".", ",")}
+                          value={draftValues[e.id] ?? (value === 0 && !r ? "" : String(value).replace(".", ","))}
                           onChange={(ev) => updateAmount(e.id, ev.target.value)}
                           placeholder="0,00"
                         />
@@ -498,7 +509,7 @@ export default function NightAddition() {
                     <Input
                       inputMode="decimal"
                       className="flex-1"
-                      value={value === 0 && !r ? "" : String(value).replace(".", ",")}
+                      value={draftValues[e.id] ?? (value === 0 && !r ? "" : String(value).replace(".", ","))}
                       onChange={(ev) => updateAmount(e.id, ev.target.value)}
                       placeholder="0,00"
                     />
