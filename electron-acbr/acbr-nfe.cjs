@@ -31,6 +31,15 @@ function load() {
   if (!fs.existsSync(INI_PATH)) {
     throw new Error(`ACBrLib.ini não encontrado em ${INI_PATH}.`);
   }
+  // Garante que as DLLs dependentes (libxml2, libxslt, libxmlsec, openssl etc.)
+  // sejam encontradas pelo loader do Windows: precisamos do ACBR_BASE no PATH
+  // E como cwd do processo (LoadLibrary busca primeiro no diretório atual).
+  try {
+    if (process.platform === "win32") {
+      process.env.PATH = `${ACBR_BASE};${process.env.PATH || ""}`;
+      try { process.chdir(ACBR_BASE); } catch { /* ignore */ }
+    }
+  } catch { /* ignore */ }
   lib = koffi.load(DLL_PATH);
 
   fn.Inicializar = lib.func("__stdcall", "NFE_Inicializar", "int", ["string", "string"]);
