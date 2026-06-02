@@ -286,6 +286,37 @@ export default function Contabilidade() {
         )}
       </div>
 
+      {/* Atalhos da contabilidade */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Acessos rápidos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {[
+              { to: "/folha", icon: FileText, label: "Folha de pagamento" },
+              { to: "/colaboradores", icon: Users, label: "Colaboradores" },
+              { to: "/pasta-colaborador", icon: FolderOpen, label: "Pasta do colaborador" },
+              { to: "/atestados", icon: Stethoscope, label: "Atestados" },
+              { to: "/infracoes", icon: ShieldAlert, label: "Advertências" },
+            ].map(({ to, icon: Icon, label }) => (
+              <Button
+                key={to}
+                asChild
+                variant="outline"
+                className="h-auto flex-col gap-2 py-4 px-2 text-center whitespace-normal"
+              >
+                <Link to={to}>
+                  <Icon className="h-6 w-6 text-primary" />
+                  <span className="text-xs md:text-sm font-medium leading-tight">{label}</span>
+                </Link>
+              </Button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+
       {/* Pendentes */}
       <Card>
         <CardHeader>
