@@ -434,7 +434,11 @@ Deno.serve(async (req: Request) => {
         const term = new Date(emp.termination_date);
         workedDays = Math.min(workedDays, term.getDate());
       }
-      const proportionalSalary = r2(baseSalary * workedDays / 30);
+      const hasPartialMonth = (admissionDate && admissionDate >= periodStart && admissionDate <= periodEnd) ||
+        (emp.termination_date && emp.termination_date >= periodStart && emp.termination_date <= periodEnd);
+      const proportionalSalary = hasPartialMonth
+        ? r2(baseSalary * workedDays / lastDay)
+        : baseSalary;
 
       // VT calculado mais abaixo (após apurar faltas/afastamentos),
       // pois o acerto cobre dias escalados sem batida (VT creditado e não usado).
