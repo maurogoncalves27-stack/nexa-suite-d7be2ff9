@@ -19,7 +19,11 @@ const ACBR_BASE = process.env.ACBR_BASE || "C:\\NexaACBr\\bin";
 const DLL_PATH = path.join(ACBR_BASE, "ACBrNFe64.dll");
 const INI_PATH = path.join(ACBR_BASE, "ACBrLib.ini");
 const LOG_PATH = path.join(path.dirname(ACBR_BASE), "logs");
-const SCHEMAS_PATH = path.join(ACBR_BASE, "Schemas");
+// Schemas ficam em C:\NexaACBr\Schemas\NFe (um nível acima de bin)
+const SCHEMAS_PATH = process.env.ACBR_SCHEMAS
+  || (fs.existsSync(path.join(ACBR_BASE, "Schemas"))
+      ? path.join(ACBR_BASE, "Schemas")
+      : path.join(path.dirname(ACBR_BASE), "Schemas"));
 const SCHEMAS_NFE_PATH = path.join(SCHEMAS_PATH, "NFe");
 
 let lib = null;
