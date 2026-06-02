@@ -20,6 +20,7 @@ const DLL_PATH = path.join(ACBR_BASE, "ACBrNFe64.dll");
 const INI_PATH = path.join(ACBR_BASE, "ACBrLib.ini");
 const LOG_PATH = path.join(path.dirname(ACBR_BASE), "logs");
 const SCHEMAS_PATH = path.join(ACBR_BASE, "Schemas");
+const SCHEMAS_NFE_PATH = path.join(SCHEMAS_PATH, "NFe");
 
 let lib = null;
 let initialized = false;
@@ -37,13 +38,15 @@ function diagnostics() {
 
   if (!fs.existsSync(DLL_PATH)) missing.push(DLL_PATH);
   if (!fs.existsSync(INI_PATH)) missing.push(INI_PATH);
-  if (!fs.existsSync(SCHEMAS_PATH)) missing.push(SCHEMAS_PATH);
+  const hasSchemas = fs.existsSync(SCHEMAS_PATH) || fs.existsSync(SCHEMAS_NFE_PATH);
+  if (!hasSchemas) missing.push(SCHEMAS_PATH);
   if (!fs.existsSync(LOG_PATH)) missing.push(LOG_PATH);
 
   return {
     dllExists: fs.existsSync(DLL_PATH),
     iniExists: fs.existsSync(INI_PATH),
-    schemasExists: fs.existsSync(SCHEMAS_PATH),
+    schemasExists: hasSchemas,
+    schemasNFePath: fs.existsSync(SCHEMAS_NFE_PATH) ? SCHEMAS_NFE_PATH : null,
     logsExists: fs.existsSync(LOG_PATH),
     iniSections,
     iniLooksMinimal: iniSections.length <= 1,
