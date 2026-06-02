@@ -48,6 +48,7 @@ function diagnostics() {
     iniSections,
     iniLooksMinimal: iniSections.length <= 1,
     missing,
+    missingExports: (lib && lib.__missingExports) || [],
     expected: {
       DLL_PATH,
       INI_PATH,
@@ -91,28 +92,45 @@ function load() {
   } catch { /* ignore */ }
   lib = koffi.load(DLL_PATH);
 
-  fn.Inicializar = lib.func("__stdcall", "NFE_Inicializar", "int", ["string", "string"]);
-  fn.Finalizar = lib.func("__stdcall", "NFE_Finalizar", "int", []);
-  fn.UltimoRetorno = lib.func("__stdcall", "NFE_UltimoRetorno", "int", ["_Out_ char*", "_Inout_ int*"]);
-  fn.Nome = lib.func("__stdcall", "NFE_Nome", "int", ["_Out_ char*", "_Inout_ int*"]);
-  fn.Versao = lib.func("__stdcall", "NFE_Versao", "int", ["_Out_ char*", "_Inout_ int*"]);
+  const missingExports = [];
+  const bind = (key, name, ret, args, required = false) => {
+    try {
+      fn[key] = lib.func("__stdcall", name, ret, args);
+    } catch (e) {
+      missingExports.push(name);
+      fn[key] = () => {
+        throw new Error(`Função '${name}' não existe na DLL ACBrNFe64.dll carregada (${DLL_PATH}). Atualize a ACBrLibNFe para uma versão que exporte este símbolo.`);
+      };
+      if (required) {
+        throw new Error(`DLL ACBrNFe64 incompatível: símbolo obrigatório '${name}' não encontrado em ${DLL_PATH}.`);
+      }
+    }
+  };
 
-  fn.StatusServico = lib.func("__stdcall", "NFE_StatusServico", "int", ["_Out_ char*", "_Inout_ int*"]);
-  fn.CarregarINI = lib.func("__stdcall", "NFE_CarregarINI", "int", ["string"]);
-  fn.LimparLista = lib.func("__stdcall", "NFE_LimparLista", "int", []);
-  fn.Assinar = lib.func("__stdcall", "NFE_Assinar", "int", []);
-  fn.Validar = lib.func("__stdcall", "NFE_Validar", "int", []);
-  fn.Enviar = lib.func("__stdcall", "NFE_Enviar", "int",
-    ["int", "bool", "bool", "bool", "_Out_ char*", "_Inout_ int*"]);
-  fn.CancelarNFe = lib.func("__stdcall", "NFE_CancelarNFe", "int",
+  bind("Inicializar", "NFE_Inicializar", "int", ["string", "string"], true);
+  bind("Finalizar", "NFE_Finalizar", "int", [], true);
+  bind("UltimoRetorno", "NFE_UltimoRetorno", "int", ["_Out_ char*", "_Inout_ int*"], true);
+  bind("Nome", "NFE_Nome", "int", ["_Out_ char*", "_Inout_ int*"]);
+  bind("Versao", "NFE_Versao", "int", ["_Out_ char*", "_Inout_ int*"]);
+
+  bind("StatusServico", "NFE_StatusServico", "int", ["_Out_ char*", "_Inout_ int*"]);
+  bind("CarregarINI", "NFE_CarregarINI", "int", ["string"], true);
+  bind("LimparLista", "NFE_LimparLista", "int", [], true);
+  bind("Assinar", "NFE_Assinar", "int", []);
+  bind("Validar", "NFE_Validar", "int", []);
+  bind("Enviar", "NFE_Enviar", "int",
+    ["int", "bool", "bool", "bool", "_Out_ char*", "_Inout_ int*"], true);
+  bind("CancelarNFe", "NFE_CancelarNFe", "int",
     ["string", "string", "string", "int", "_Out_ char*", "_Inout_ int*"]);
-  fn.Inutilizar = lib.func("__stdcall", "NFE_Inutilizar", "int",
+  bind("Inutilizar", "NFE_Inutilizar", "int",
     ["string", "string", "int", "int", "int", "int", "int", "_Out_ char*", "_Inout_ int*"]);
-  fn.ImprimirDANFePDF = lib.func("__stdcall", "NFE_ImprimirDANFePDF", "int", []);
-  fn.SalvarPDF = lib.func("__stdcall", "NFE_SalvarPDF", "int", ["_Out_ char*", "_Inout_ int*"]);
+  bind("ImprimirDANFePDF", "NFE_ImprimirDANFePDF", "int", []);
+  bind("SalvarPDF", "NFE_SalvarPDF", "int", ["_Out_ char*", "_Inout_ int*"]);
 
+  lib.__missingExports = missingExports;
   return lib;
 }
+
 
 // Helper: chama função (out char*, inout int*) com auto-resize
 function callStr(fnRef, ...args) {
