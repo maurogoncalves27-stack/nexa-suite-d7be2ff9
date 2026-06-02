@@ -287,10 +287,10 @@ const App = () => (
               <Route path="/documentos-personalizados" element={<Guarded staff><CustomDocuments /></Guarded>} />
               <Route path="/atribuicoes" element={<Guarded staff><Responsibilities /></Guarded>} />
               <Route path="/contratos" element={<Guarded staff><Contracts /></Guarded>} />
-              <Route path="/infracoes" element={<Guarded staff><Infractions /></Guarded>} />
+              <Route path="/infracoes" element={<Guarded staff accountant><Infractions /></Guarded>} />
               <Route path="/regras-automaticas" element={<Guarded staff><AutomationRules /></Guarded>} />
               <Route path="/bonus-cargo" element={<Guarded staff><PositionBonuses /></Guarded>} />
-              <Route path="/atestados" element={<Guarded staff><MedicalCertificates /></Guarded>} />
+              <Route path="/atestados" element={<Guarded staff accountant><MedicalCertificates /></Guarded>} />
               <Route path="/nutri-relatorios" element={<Guarded module="nutri_relatorios"><NutriReports /></Guarded>} />
               <Route path="/nutri-visita" element={<Guarded module="nutri_visita"><NutriVisit /></Guarded>} />
               <Route path="/colaboradores" element={<Guarded staff accountant><Employees /></Guarded>} />
