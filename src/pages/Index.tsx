@@ -36,8 +36,10 @@ const Index = () => {
   }
 
   if (isContabilidade && !isAdmin && !isManager) {
+    try { sessionStorage.removeItem("rh:viewMode"); } catch {}
     return <Navigate to="/contabilidade" replace />;
   }
+
 
   // Quantos perfis o usuário pode escolher?
   const canGestor = isAdmin || isManager || isSuperUser;

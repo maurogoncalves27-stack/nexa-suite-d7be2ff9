@@ -109,13 +109,17 @@ export const ProtectedRoute = ({ children, requireRoles, redirectTo = "/auth", r
 
   if (!user) return <Navigate to={redirectTo} replace state={{ from: location }} />;
 
-  // Contabilidade só pode acessar /contabilidade. Se a rota exigir essa role, libera.
-  if (isContabilidade && !isAdmin && !isManager) {
+  // Contabilidade: só pode acessar rotas que liberam essa role.
+  // Quando a rota libera, passa direto — ignora viewMode antigo (ex.: "colaborador")
+  // que ficou em sessionStorage e bloquearia o acesso logo abaixo.
+  if (isContabilidade && !isAdminRaw && !isManagerRaw) {
     const allowsContabilidade = requireRoles?.includes("contabilidade");
     if (!allowsContabilidade) {
       return <Navigate to="/contabilidade" replace />;
     }
+    return <>{children}</>;
   }
+
 
   // Modo "nutricionista": só permite rotas da nutricionista.
   if (viewMode === "nutricionista" && !isAdmin && !isManager) {
