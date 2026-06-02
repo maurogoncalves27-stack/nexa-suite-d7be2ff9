@@ -48,6 +48,7 @@ function diagnostics() {
     iniSections,
     iniLooksMinimal: iniSections.length <= 1,
     missing,
+    missingExports: (lib && lib.__missingExports) || [],
     expected: {
       DLL_PATH,
       INI_PATH,
