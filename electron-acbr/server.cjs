@@ -127,4 +127,20 @@ function stop() {
   try { tef.finalizar(); } catch { /* ignore */ }
 }
 
+if (require.main === module) {
+  const server = start();
+
+  const shutdown = () => {
+    stop();
+    try {
+      server.close(() => process.exit(0));
+    } catch {
+      process.exit(0);
+    }
+  };
+
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
+}
+
 module.exports = { start, stop, PORT };
