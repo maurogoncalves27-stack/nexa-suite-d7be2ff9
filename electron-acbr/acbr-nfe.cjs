@@ -18,10 +18,59 @@ const koffi = require("koffi");
 const ACBR_BASE = process.env.ACBR_BASE || "C:\\NexaACBr\\bin";
 const DLL_PATH = path.join(ACBR_BASE, "ACBrNFe64.dll");
 const INI_PATH = path.join(ACBR_BASE, "ACBrLib.ini");
+const LOG_PATH = path.join(path.dirname(ACBR_BASE), "logs");
+const SCHEMAS_PATH = path.join(ACBR_BASE, "Schemas");
 
 let lib = null;
 let initialized = false;
 let fn = {};
+
+function readIniSections() {
+  if (!fs.existsSync(INI_PATH)) return [];
+  const content = fs.readFileSync(INI_PATH, "utf-8");
+  return [...content.matchAll(/^\s*\[([^\]]+)\]\s*$/gm)].map((match) => match[1]);
+}
+
+function diagnostics() {
+  const iniSections = readIniSections();
+  const missing = [];
+
+  if (!fs.existsSync(DLL_PATH)) missing.push(DLL_PATH);
+  if (!fs.existsSync(INI_PATH)) missing.push(INI_PATH);
+  if (!fs.existsSync(SCHEMAS_PATH)) missing.push(SCHEMAS_PATH);
+  if (!fs.existsSync(LOG_PATH)) missing.push(LOG_PATH);
+
+  return {
+    dllExists: fs.existsSync(DLL_PATH),
+    iniExists: fs.existsSync(INI_PATH),
+    schemasExists: fs.existsSync(SCHEMAS_PATH),
+    logsExists: fs.existsSync(LOG_PATH),
+    iniSections,
+    iniLooksMinimal: iniSections.length <= 1,
+    missing,
+    expected: {
+      DLL_PATH,
+      INI_PATH,
+      SCHEMAS_PATH,
+      LOG_PATH,
+    },
+  };
+}
+
+function explainInitFailure(retCode, acbrMessage = "") {
+  const info = diagnostics();
+  const hints = [];
+
+  if (info.missing.length) {
+    hints.push(`itens ausentes: ${info.missing.join(", ")}`);
+  }
+  if (info.iniLooksMinimal) {
+    hints.push(`ACBrLib.ini parece mínimo demais (seções encontradas: ${info.iniSections.join(", ") || "nenhuma"})`);
+  }
+
+  const suffix = hints.length ? ` Diagnóstico: ${hints.join("; ")}.` : "";
+  return `NFE_Inicializar falhou (${retCode})${acbrMessage ? `: ${acbrMessage}` : ""}.${suffix}`;
+}
 
 function load() {
   if (lib) return lib;
@@ -92,7 +141,7 @@ function ensureInit() {
   const r = fn.Inicializar(INI_PATH, "");
   if (r !== 0) {
     const err = ultimoRetorno();
-    throw new Error(`NFE_Inicializar falhou (${r}): ${err}`);
+    throw new Error(explainInitFailure(r, err));
   }
   initialized = true;
 }
@@ -161,11 +210,12 @@ function cancelarNFe({ chave, justificativa, cnpj, seqEvento = 1 }) {
 module.exports = {
   ensureInit,
   finalizar,
+  diagnostics,
   nome,
   versao,
   statusServico,
   emitirNFCe,
   cancelarNFe,
   ultimoRetorno,
-  paths: { DLL_PATH, INI_PATH, ACBR_BASE },
+  paths: { DLL_PATH, INI_PATH, ACBR_BASE, SCHEMAS_PATH, LOG_PATH },
 };

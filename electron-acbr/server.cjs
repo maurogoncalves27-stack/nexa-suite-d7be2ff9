@@ -55,6 +55,7 @@ async function handle(req, res) {
       let nfceReady = false, nfceVersion = null, nfceError = null;
       try { nfceVersion = nfe.versao(); nfceReady = true; }
       catch (e) { nfceError = e.message; }
+      const nfceDiagnostics = nfe.diagnostics();
       return send(res, 200, {
         ok: true,
         agent: pkg.name,
@@ -62,6 +63,7 @@ async function handle(req, res) {
         nfceReady,
         nfceVersion,
         nfceError,
+        nfceDiagnostics,
         tefAvailable: tef.isAvailable(),
         paths: nfe.paths,
       });
