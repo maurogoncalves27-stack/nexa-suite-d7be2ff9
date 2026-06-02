@@ -581,7 +581,7 @@ Deno.serve(async (req: Request) => {
         const pct = Number.isFinite(parsedPct) ? Math.max(0, parsedPct) : defaultPct;
         const fullMaxLegal = r2(baseSalary * (pct / 100));
         const fullDiscount = Math.min(fullVoucher, fullMaxLegal);
-        const proportionFactor = workedDays / 30;
+        const proportionFactor = hasPartialMonth ? (workedDays / lastDay) : 1;
         transportVoucher = r2(fullVoucher * proportionFactor);
         transportDiscount = r2(fullDiscount * proportionFactor);
 
