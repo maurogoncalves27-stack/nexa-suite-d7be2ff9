@@ -100,16 +100,23 @@ function load() {
   lib = koffi.load(DLL_PATH);
 
   const missingExports = [];
-  const bind = (key, name, ret, args, required = false) => {
-    try {
-      fn[key] = lib.func("__stdcall", name, ret, args);
-    } catch (e) {
-      missingExports.push(name);
+  const bind = (key, names, ret, args, required = false) => {
+    const candidates = Array.isArray(names) ? names : [names];
+    let bound = false;
+    for (const name of candidates) {
+      try {
+        fn[key] = lib.func("__stdcall", name, ret, args);
+        bound = true;
+        break;
+      } catch { /* try next */ }
+    }
+    if (!bound) {
+      missingExports.push(candidates[0]);
       fn[key] = () => {
-        throw new Error(`Função '${name}' não existe na DLL ACBrNFe64.dll carregada (${DLL_PATH}). Atualize a ACBrLibNFe para uma versão que exporte este símbolo.`);
+        throw new Error(`Função '${candidates.join("|")}' não existe na DLL ACBrNFe64.dll carregada (${DLL_PATH}). Atualize a ACBrLibNFe para uma versão que exporte este símbolo.`);
       };
       if (required) {
-        throw new Error(`DLL ACBrNFe64 incompatível: símbolo obrigatório '${name}' não encontrado em ${DLL_PATH}.`);
+        throw new Error(`DLL ACBrNFe64 incompatível: símbolo obrigatório '${candidates[0]}' não encontrado em ${DLL_PATH}.`);
       }
     }
   };
@@ -127,12 +134,13 @@ function load() {
   bind("Validar", "NFE_Validar", "int", []);
   bind("Enviar", "NFE_Enviar", "int",
     ["int", "bool", "bool", "bool", "_Out_ char*", "_Inout_ int*"], true);
-  bind("CancelarNFe", "NFE_CancelarNFe", "int",
+  bind("CancelarNFe", ["NFE_CancelarNFe", "NFE_Cancelar"], "int",
     ["string", "string", "string", "int", "_Out_ char*", "_Inout_ int*"]);
   bind("Inutilizar", "NFE_Inutilizar", "int",
     ["string", "string", "int", "int", "int", "int", "int", "_Out_ char*", "_Inout_ int*"]);
-  bind("ImprimirDANFePDF", "NFE_ImprimirDANFePDF", "int", []);
+  bind("ImprimirDANFePDF", ["NFE_ImprimirDANFePDF", "NFE_ImprimirPDF"], "int", []);
   bind("SalvarPDF", "NFE_SalvarPDF", "int", ["_Out_ char*", "_Inout_ int*"]);
+
 
   lib.__missingExports = missingExports;
   return lib;
