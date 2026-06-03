@@ -779,8 +779,10 @@ export default function TransportVoucherPanel() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {groupedRows.flatMap(([label, items]) => [
-            <TableRow key={`grp-${label}`} className="bg-muted/40 hover:bg-muted/40">
+          {groupedRows.flatMap(([label, items]) => {
+            const tone = scheduleTone(label);
+            return [
+            <TableRow key={`grp-${label}`} className={tone.header}>
               <TableCell colSpan={8} className="py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {label} <span className="text-muted-foreground/70">({items.length})</span>
               </TableCell>
@@ -790,7 +792,7 @@ export default function TransportVoucherPanel() {
               const maxLegal = monthlyBaseSalary(e) * (pct / 100);
               const payrollDiscount = Math.min(total, maxLegal);
               return (
-            <TableRow key={e.id}>
+            <TableRow key={e.id} className={tone.row}>
               <TableCell className="font-medium">{e.full_name}</TableCell>
               <TableCell>
                 <Input
