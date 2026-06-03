@@ -415,6 +415,41 @@ Deno.serve(async (req: Request) => {
       if (j.reference_date) addJustified(j.employee_id, j.reference_date, j.reference_date);
     });
 
+    // Afastamentos NÃO remunerados (employee_leaves.is_paid=false): os dias
+    // devem ser descontados como falta na folha. Construímos um set por
+    // colaborador limitado ao período, e mais abaixo:
+    //   1) removemos esses dias do justifiedMap (caso o atestado tenha sido
+    //      aprovado em medical_certificates e marcado todo o intervalo como
+    //      justificado);
+    //   2) adicionamos ao absenceDateSet — mesmo se não houver escala no dia
+    //      (pois o usuário marcou explicitamente como não remunerado).
+    const unpaidLeaveMap = new Map<string, Set<string>>();
+    const addUnpaidLeave = (empId: string, startDate: string, endDate: string) => {
+      const set = unpaidLeaveMap.get(empId) ?? new Set<string>();
+      const start = new Date(`${startDate}T00:00:00`);
+      const end = new Date(`${endDate}T00:00:00`);
+      const periodStartD = new Date(`${periodStart}T00:00:00`);
+      const periodEndD = new Date(`${periodEnd}T00:00:00`);
+      const cur = new Date(Math.max(start.getTime(), periodStartD.getTime()));
+      const lim = new Date(Math.min(end.getTime(), periodEndD.getTime()));
+      while (cur <= lim) {
+        const y = cur.getFullYear(), m = String(cur.getMonth() + 1).padStart(2, "0"), d = String(cur.getDate()).padStart(2, "0");
+        set.add(`${y}-${m}-${d}`);
+        cur.setDate(cur.getDate() + 1);
+      }
+      unpaidLeaveMap.set(empId, set);
+    };
+    (unpaidLeavesRes.data ?? []).forEach((l: any) => {
+      if (l.start_date && l.end_date) addUnpaidLeave(l.employee_id, l.start_date, l.end_date);
+    });
+    // Remove dias não remunerados do justifiedMap
+    for (const [empId, unpaidSet] of unpaidLeaveMap.entries()) {
+      const just = justifiedMap.get(empId);
+      if (just) {
+        for (const d of unpaidSet) just.delete(d);
+      }
+    }
+
     const rows: any[] = [];
 
     for (const emp of employees ?? []) {
