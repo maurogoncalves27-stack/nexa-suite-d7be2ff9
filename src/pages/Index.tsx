@@ -27,6 +27,11 @@ const Index = () => {
     return <Navigate to="/totem" replace />;
   }
 
+  // Login fixo de PC de loja: vai direto para o balcão (PDV).
+  if (isStoreLogin) {
+    return <Navigate to="/pdv-novo" replace />;
+  }
+
   if (isSupplier) {
     return <Navigate to="/fornecedor/painel" replace />;
   }
