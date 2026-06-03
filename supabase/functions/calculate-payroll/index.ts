@@ -456,12 +456,12 @@ Deno.serve(async (req: Request) => {
       let productivity = r2(proportionalSalary * PRODUCTIVITY_RATE);
       const infractionDiscount = r2(infMap.get(emp.id) ?? 0);
 
-      // Salário-família — cota proporcional aos dias trabalhados em meses parciais
-      // (admissão/demissão no curso do mês). Base de limite usa o salário proporcional.
-      const familyAllowance =
-        proportionalSalary <= FAMILY_ALLOWANCE_LIMIT && deps.under14 > 0
-          ? r2(deps.under14 * FAMILY_ALLOWANCE_QUOTA * (hasPartialMonth ? workedDays / lastDay : 1))
-          : 0;
+      // Salário-família — cota proporcional aos dias efetivamente trabalhados no mês.
+      // Conta admissão/demissão no curso do mês (workedDays < lastDay) e também
+      // faltas injustificadas (descontadas mais abaixo). Base de limite usa o
+      // salário proporcional. Cálculo final feito após apurar absentDays.
+      // Placeholder — será sobrescrito mais adiante.
+      let familyAllowance = 0;
 
       // Flag: ponto deste colaborador impacta a folha?
       // Se false (ex.: supervisor de loja), ignora faltas/DSR/noturno/feriado
@@ -613,6 +613,14 @@ Deno.serve(async (req: Request) => {
       const healthPlan = existing?.health_plan != null && Number(existing.health_plan) > 0
         ? Number(existing.health_plan)
         : Number(emp.health_plan_copay ?? 0);
+
+      // Salário-família: proporcional aos dias efetivamente trabalhados
+      // (workedDays já considera admissão/demissão; subtrai faltas injustificadas).
+      const familyDaysWorked = Math.max(0, workedDays - absentDays);
+      familyAllowance =
+        proportionalSalary <= FAMILY_ALLOWANCE_LIMIT && deps.under14 > 0
+          ? r2(deps.under14 * FAMILY_ALLOWANCE_QUOTA * (familyDaysWorked / lastDay))
+          : 0;
 
       const inssBase = proportionalSalary + productivity + nightAddition + holidayPay + otherEarnings - absenceDiscount - dsrLossDiscount;
       const inss = calcINSS(Math.max(0, inssBase));
