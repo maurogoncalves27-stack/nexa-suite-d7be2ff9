@@ -614,6 +614,14 @@ Deno.serve(async (req: Request) => {
         ? Number(existing.health_plan)
         : Number(emp.health_plan_copay ?? 0);
 
+      // Salário-família: proporcional aos dias efetivamente trabalhados
+      // (workedDays já considera admissão/demissão; subtrai faltas injustificadas).
+      const familyDaysWorked = Math.max(0, workedDays - absentDays);
+      familyAllowance =
+        proportionalSalary <= FAMILY_ALLOWANCE_LIMIT && deps.under14 > 0
+          ? r2(deps.under14 * FAMILY_ALLOWANCE_QUOTA * (familyDaysWorked / lastDay))
+          : 0;
+
       const inssBase = proportionalSalary + productivity + nightAddition + holidayPay + otherEarnings - absenceDiscount - dsrLossDiscount;
       const inss = calcINSS(Math.max(0, inssBase));
       const irrf = calcIRRF(Math.max(0, inssBase), inss, deps.total);
