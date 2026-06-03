@@ -33,6 +33,11 @@ interface AuthContextValue {
   isPartner: boolean;
   /** True para usuárias com permissão especial total (acesso irrestrito). */
   isSuperUser: boolean;
+  /**
+   * True quando o login é um "PC de loja" (user_metadata.store_login = true).
+   * Esses logins ficam restritos ao /pdv-novo (balcão), independente das roles.
+   */
+  isStoreLogin: boolean;
   hasRole: (role: AppRole) => boolean;
   /** True quando esta árvore está visualizando como outro usuário (modo gestor). */
   isImpersonating: boolean;
