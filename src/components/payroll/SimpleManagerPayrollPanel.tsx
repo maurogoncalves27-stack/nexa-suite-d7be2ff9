@@ -402,6 +402,7 @@ export default function SimpleManagerPayrollPanel() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Colaborador</TableHead>
+                    <TableHead className="text-center">Dias</TableHead>
                     <TableHead className="text-right">Proventos</TableHead>
                     <TableHead className="text-right">Descontos</TableHead>
                     <TableHead className="text-right">Líquido</TableHead>
