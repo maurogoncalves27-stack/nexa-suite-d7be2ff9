@@ -105,16 +105,38 @@ Deno.serve(async (req) => {
 
     for (const path of paths) {
       try {
-        const dlUrl = `${SOURCE_URL}/storage/v1/object/${bucket}/${path}`;
-        const dl = await fetch(dlUrl, {
-          headers: { Authorization: `Bearer ${SOURCE_KEY}`, apikey: SOURCE_KEY },
-        });
+        // Detecta se o path foi gravado com prefixo de OUTRO bucket
+        // (ex: employee_documents.file_path = "payroll-receipts/<id>/file.pdf")
+        // — nesse caso o arquivo real mora no bucket prefixado.
+        let realBucket = bucket;
+        let realPath = path;
+        const firstSeg = path.split("/")[0];
+        if (BUCKETS_DEFAULT.includes(firstSeg) && firstSeg !== bucket) {
+          realBucket = firstSeg;
+          realPath = path.slice(firstSeg.length + 1);
+        }
+
+        // Tenta baixar do bucket "real". Se falhar, faz fallback pro bucket original com path inteiro.
+        const tryDownload = async (b: string, p: string) => {
+          const u = `${SOURCE_URL}/storage/v1/object/${b}/${p}`;
+          return await fetch(u, {
+            headers: { Authorization: `Bearer ${SOURCE_KEY}`, apikey: SOURCE_KEY },
+          });
+        };
+
+        let dl = await tryDownload(realBucket, realPath);
+        if (!dl.ok && realBucket !== bucket) {
+          dl = await tryDownload(bucket, path);
+          if (dl.ok) { realBucket = bucket; realPath = path; }
+        }
         if (!dl.ok) {
           errors.push({ path, error: `download ${dl.status}` });
           continue;
         }
         const buf = new Uint8Array(await dl.arrayBuffer());
         const ct = dl.headers.get("Content-Type") ?? "application/octet-stream";
+        // Sobe sempre no path EXATO que a tabela referencia, no bucket original
+        // (para o app continuar lendo do mesmo lugar).
         const { error: upErr } = await target.storage.from(bucket).upload(path, buf, {
           contentType: ct,
           upsert: true,
