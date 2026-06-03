@@ -130,7 +130,8 @@ Deno.serve(async (req) => {
           if (dl.ok) { realBucket = bucket; realPath = path; }
         }
         if (!dl.ok) {
-          errors.push({ path, error: `download ${dl.status}` });
+          const body = await dl.text().catch(() => "");
+          errors.push({ path, error: `download ${dl.status} from ${realBucket}/${realPath} :: ${body.slice(0, 200)}` });
           continue;
         }
         const buf = new Uint8Array(await dl.arrayBuffer());
