@@ -241,6 +241,8 @@ export default function SimpleManagerPayrollPanel() {
           total_earnings: Number(r.total_earnings ?? 0),
           total_discounts: Number(r.total_discounts ?? 0),
           net_amount: Number(r.net_pay ?? 0),
+          worked_days: r.worked_days != null ? Number(r.worked_days) : null,
+          admission_date: r.employees?.admission_date ?? null,
         })).sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? "")));
         const synth: Record<string, RubricRow[]> = {};
         list.forEach((r) => {
