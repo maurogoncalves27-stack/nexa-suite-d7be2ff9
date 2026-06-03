@@ -170,25 +170,24 @@ const UserLinksPanel = () => {
   const openLinkDialog = (profile: ProfileRow) => {
     setSelectedTargetId("");
     setTargetSearch("");
-    // sugestão automática por e-mail (preferindo employee)
-    const empSuggestion = availableEmployees.find((e) => e.email && profile.email && e.email.toLowerCase() === profile.email.toLowerCase());
+    const alreadyEmp = linkedEmployeeByUserId.has(profile.user_id);
+    const alreadyOut = linkedOutsourcedByUserId.has(profile.user_id);
+    const alreadyFree = linkedFreelancerByUserId.has(profile.user_id);
+    // sugestão automática por e-mail, preferindo kinds ainda não vinculados
+    const empSuggestion = !alreadyEmp ? availableEmployees.find((e) => e.email && profile.email && e.email.toLowerCase() === profile.email.toLowerCase()) : null;
+    const outSuggestion = !alreadyOut ? availableOutsourced.find((o) => o.email && profile.email && o.email.toLowerCase() === profile.email.toLowerCase()) : null;
+    const freeSuggestion = !alreadyFree ? availableFreelancers.find((f) => f.email && profile.email && f.email.toLowerCase() === profile.email.toLowerCase()) : null;
     if (empSuggestion) {
       setLinkKind("employee");
       setSelectedTargetId(empSuggestion.id);
+    } else if (outSuggestion) {
+      setLinkKind("outsourced");
+      setSelectedTargetId(outSuggestion.id);
+    } else if (freeSuggestion) {
+      setLinkKind("freelancer");
+      setSelectedTargetId(freeSuggestion.id);
     } else {
-      const outSuggestion = availableOutsourced.find((o) => o.email && profile.email && o.email.toLowerCase() === profile.email.toLowerCase());
-      if (outSuggestion) {
-        setLinkKind("outsourced");
-        setSelectedTargetId(outSuggestion.id);
-      } else {
-        const freelancerSuggestion = availableFreelancers.find((f) => f.email && profile.email && f.email.toLowerCase() === profile.email.toLowerCase());
-        if (freelancerSuggestion) {
-          setLinkKind("freelancer");
-          setSelectedTargetId(freelancerSuggestion.id);
-        } else {
-          setLinkKind("employee");
-        }
-      }
+      setLinkKind(!alreadyEmp ? "employee" : !alreadyOut ? "outsourced" : "freelancer");
     }
     setLinkDialog({ open: true, profile });
   };
@@ -367,31 +366,52 @@ const UserLinksPanel = () => {
                   const emp = linkedEmployeeByUserId.get(p.user_id);
                   const out = linkedOutsourcedByUserId.get(p.user_id);
                   const freelancer = linkedFreelancerByUserId.get(p.user_id);
-                  const target = emp ?? out ?? freelancer;
-                  const kindLabel = emp ? "Colaborador" : out ? "Terceirizado" : "Freelancer";
-                  const KindIcon = emp ? Users : out ? Briefcase : HandCoins;
+                  const hasAll = !!emp && !!out && !!freelancer;
                   return (
-                    <div key={p.user_id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg border bg-card">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
+                    <div key={p.user_id} className="flex flex-col gap-2 p-3 rounded-lg border bg-card">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="min-w-0 flex-1">
                           <span className="font-medium truncate">{p.full_name || "(sem nome)"}</span>
-                          <Badge variant="secondary" className="gap-1 text-xs">
-                            <KindIcon className="h-3 w-3" /> {kindLabel}: {target?.full_name}
-                          </Badge>
+                          <div className="text-xs text-muted-foreground truncate">login: {p.email}</div>
                         </div>
-                        <div className="text-xs text-muted-foreground truncate">
-                          login: {p.email} {target?.email && target.email !== p.email ? `• cadastro: ${target.email}` : ""}
-                        </div>
+                        {!hasAll && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openLinkDialog(p)}
+                            disabled={!isAdmin}
+                            className="gap-1 w-full sm:w-auto"
+                          >
+                            + Vincular também
+                          </Button>
+                        )}
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => emp ? unlinkEmployee(emp.id) : out ? unlinkOutsourced(out.id) : freelancer && unlinkFreelancer(freelancer.id)}
-                        disabled={!isAdmin}
-                        className="gap-1 w-full sm:w-auto"
-                      >
-                        <Link2Off className="h-4 w-4" /> Desvincular
-                      </Button>
+                      <div className="flex flex-col gap-1">
+                        {emp && (
+                          <div className="flex items-center justify-between gap-2 text-xs bg-muted/40 rounded px-2 py-1">
+                            <span className="flex items-center gap-1 truncate"><Users className="h-3 w-3" /> Colaborador: <strong className="truncate">{emp.full_name}</strong></span>
+                            <Button size="sm" variant="ghost" className="h-6 px-2 gap-1" onClick={() => unlinkEmployee(emp.id)} disabled={!isAdmin}>
+                              <Link2Off className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                        {freelancer && (
+                          <div className="flex items-center justify-between gap-2 text-xs bg-muted/40 rounded px-2 py-1">
+                            <span className="flex items-center gap-1 truncate"><HandCoins className="h-3 w-3" /> Freelancer: <strong className="truncate">{freelancer.full_name}</strong></span>
+                            <Button size="sm" variant="ghost" className="h-6 px-2 gap-1" onClick={() => unlinkFreelancer(freelancer.id)} disabled={!isAdmin}>
+                              <Link2Off className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                        {out && (
+                          <div className="flex items-center justify-between gap-2 text-xs bg-muted/40 rounded px-2 py-1">
+                            <span className="flex items-center gap-1 truncate"><Briefcase className="h-3 w-3" /> Terceirizado: <strong className="truncate">{out.full_name}</strong></span>
+                            <Button size="sm" variant="ghost" className="h-6 px-2 gap-1" onClick={() => unlinkOutsourced(out.id)} disabled={!isAdmin}>
+                              <Link2Off className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
