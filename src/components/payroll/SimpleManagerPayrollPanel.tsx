@@ -460,7 +460,7 @@ export default function SimpleManagerPayrollPanel() {
                         </TableRow>
                         {isOpen && (
                           <TableRow key={`${r.id}-detail`}>
-                            <TableCell colSpan={6} className="bg-muted/30">
+                            <TableCell colSpan={7} className="bg-muted/30">
                               <div className="rounded border bg-card my-2">
                                 <Table>
                                   <TableHeader>
