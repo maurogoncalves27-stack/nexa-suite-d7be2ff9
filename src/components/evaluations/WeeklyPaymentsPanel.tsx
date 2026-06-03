@@ -528,7 +528,7 @@ export default function WeeklyPaymentsPanel({ weekStart }: WeeklyPaymentsPanelPr
                   <div className="rounded bg-muted/50 p-1.5">
                     <div className="text-muted-foreground">Infrações</div>
                     <div className={r.count > 0 ? "text-destructive font-medium" : "text-muted-foreground"}>
-                      {r.count > 0 ? `${r.count} (- ${money(r.desconto)})` : "—"}
+                      {r.count > 0 ? `${r.count} (${r.percent}%)` : "—"}
                     </div>
                   </div>
                   <div className="rounded bg-muted/50 p-1.5">
