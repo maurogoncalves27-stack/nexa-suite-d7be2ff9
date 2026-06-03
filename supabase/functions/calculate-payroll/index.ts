@@ -576,6 +576,11 @@ Deno.serve(async (req: Request) => {
         if (justifiedDates.has(d)) continue;
         absenceDateSet.add(d);
       }
+      // Afastamento não remunerado: força como falta mesmo sem escala/ponto.
+      const unpaidDates = unpaidLeaveMap.get(emp.id);
+      if (unpaidDates) {
+        for (const d of unpaidDates) absenceDateSet.add(d);
+      }
       const absentDays = absenceDateSet.size;
 
       // DSR perdido: 1 DSR a cada semana (segunda a domingo) que tiver pelo menos
