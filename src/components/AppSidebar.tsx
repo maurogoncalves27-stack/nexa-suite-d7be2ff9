@@ -414,8 +414,8 @@ export function AppSidebar() {
           >
             <item.icon className="h-6 w-6 shrink-0" />
             {!collapsed && (
-              <span className="flex items-center gap-1.5 flex-1">
-                <span>{item.title}</span>
+              <span className="flex items-center gap-1.5 flex-1 min-w-0">
+                <span className="truncate">{item.title}</span>
                 {item.requiredForPayroll && (
                   <span
                     aria-label={approvalByUrl[item.url] ? "Aprovado para o mês atual" : "Obrigatório para gerar a folha"}
