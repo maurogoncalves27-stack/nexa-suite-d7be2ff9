@@ -593,7 +593,36 @@ export default function SimpleManagerPayrollPanel() {
                                             {rb.kind === "earning" ? "Provento" : rb.kind === "deduction" ? "Desconto" : "Informativo"}
                                           </Badge>
                                         </TableCell>
-                                        <TableCell className="text-right text-sm">{money(rb.value)}</TableCell>
+                                        <TableCell className="text-right text-sm">
+                                          {rb.kind === "informative" || isLocked ? (
+                                            <span className={isLocked ? "" : "text-muted-foreground"}>{money(rb.value)}</span>
+                                          ) : editingRubricId === rb.id ? (
+                                            <div className="flex items-center justify-end gap-1">
+                                              <Input
+                                                autoFocus
+                                                value={editValue}
+                                                onChange={(e) => setEditValue(e.target.value)}
+                                                onBlur={() => saveRubric(rb)}
+                                                onKeyDown={(e) => {
+                                                  if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); }
+                                                  if (e.key === "Escape") { setEditingRubricId(null); }
+                                                }}
+                                                className="h-7 w-28 text-right text-sm"
+                                                inputMode="decimal"
+                                              />
+                                              {savingRubricId === rb.id && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                                            </div>
+                                          ) : (
+                                            <button
+                                              type="button"
+                                              onClick={() => startEditRubric(rb)}
+                                              className="hover:bg-accent rounded px-2 py-0.5 transition-colors"
+                                              title="Clique para editar"
+                                            >
+                                              {money(rb.value)}
+                                            </button>
+                                          )}
+                                        </TableCell>
                                       </TableRow>
                                     ))}
                                   </TableBody>
