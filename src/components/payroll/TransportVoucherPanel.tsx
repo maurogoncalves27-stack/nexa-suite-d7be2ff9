@@ -81,6 +81,14 @@ const scheduleGroupLabel = (schedule: string | null | undefined): string => {
   return `Escala ${(schedule ?? "").trim()}`;
 };
 
+// Tom visual por tipo de escala (usa tokens do design system)
+const scheduleTone = (label: string): { header: string; row: string } => {
+  if (label.includes("12x36")) return { header: "bg-warning/15 hover:bg-warning/15", row: "border-l-2 border-l-warning" };
+  if (label.includes("6x1")) return { header: "bg-accent/40 hover:bg-accent/40", row: "border-l-2 border-l-accent" };
+  if (label.includes("5x2")) return { header: "bg-secondary/60 hover:bg-secondary/60", row: "border-l-2 border-l-secondary" };
+  return { header: "bg-muted/40 hover:bg-muted/40", row: "border-l-2 border-l-muted" };
+};
+
 interface VTRow {
   employee_id: string;
   daily_value: number;
