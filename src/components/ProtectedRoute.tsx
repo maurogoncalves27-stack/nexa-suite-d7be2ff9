@@ -83,7 +83,7 @@ const isNutritionistAllowedPath = (pathname: string) => matchPrefix(pathname, NU
 const isSupplierAllowedPath = (pathname: string) => matchPrefix(pathname, SUPPLIER_ALLOWED_PREFIXES);
 
 export const ProtectedRoute = ({ children, requireRoles, redirectTo = "/auth", requireModule }: Props) => {
-  const { user, loading, roles: rolesRaw, isExternalPartner, isAdmin: isAdminRaw, isManager: isManagerRaw, isContabilidade, isPartner: isPartnerRaw, isSuperUser } = useAuth();
+  const { user, loading, roles: rolesRaw, isExternalPartner, isAdmin: isAdminRaw, isManager: isManagerRaw, isContabilidade, isPartner: isPartnerRaw, isSuperUser, isStoreLogin } = useAuth();
   const { modules, loading: modLoading } = usePartnerPermissions();
   const { mode: viewMode } = useViewMode();
   const location = useLocation();
@@ -108,6 +108,13 @@ export const ProtectedRoute = ({ children, requireRoles, redirectTo = "/auth", r
   }
 
   if (!user) return <Navigate to={redirectTo} replace state={{ from: location }} />;
+
+  // Login fixo de PC de loja (store_login): só pode acessar o balcão (PDV).
+  if (isStoreLogin) {
+    const allowed = location.pathname === "/pdv-novo" || location.pathname.startsWith("/pdv-novo/");
+    if (!allowed) return <Navigate to="/pdv-novo" replace />;
+    return <>{children}</>;
+  }
 
   // Contabilidade: só pode acessar rotas que liberam essa role.
   // Quando a rota libera, passa direto — ignora viewMode antigo (ex.: "colaborador")
