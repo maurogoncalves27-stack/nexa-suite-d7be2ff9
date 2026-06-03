@@ -245,7 +245,7 @@ export default function WeeklyPaymentsPanel({ weekStart }: WeeklyPaymentsPanelPr
         store_id: e.store_id,
         bonus: bonusBase,
         points: inf.points,
-        percent,
+        percent: 0,
         count: inf.count,
         desconto,
         adjustment: adj,
