@@ -429,7 +429,7 @@ export default function Auth() {
                     {isPreviewDomain ? (
                       <p className="text-xs text-muted-foreground text-center leading-relaxed">
                         A biometria está vinculada ao domínio onde foi cadastrada
-                        (<span className="font-mono">rhplus.lovable.app</span>).
+                        (<span className="font-mono">nexasuite.aquelaparme.com.br</span>).
                         Acesse pelo app publicado para usar a digital.
                       </p>
                     ) : (
