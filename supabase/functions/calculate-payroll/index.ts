@@ -230,7 +230,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Pré-carregar dados auxiliares em batch
-    const [vtRes, depRes, infRes, existingRes, holRes, manualHolidayRes, punchRes, advRes, schedRes, certRes, vacRes, justRes] = await Promise.all([
+    const [vtRes, depRes, infRes, existingRes, holRes, manualHolidayRes, punchRes, advRes, schedRes, certRes, vacRes, justRes, unpaidLeavesRes] = await Promise.all([
       supabase.from("employee_transport_vouchers").select("*").in("employee_id", empIds),
       supabase.from("employee_dependents").select("employee_id, birth_date").in("employee_id", empIds),
       supabase.from("employee_infractions")
@@ -278,6 +278,12 @@ Deno.serve(async (req: Request) => {
         .gte("reference_date", periodStart)
         .lte("reference_date", periodEnd)
         .in("status", ["approved", "resolved"]),
+      supabase.from("employee_leaves")
+        .select("employee_id, start_date, end_date, is_paid")
+        .in("employee_id", empIds)
+        .eq("is_paid", false)
+        .lte("start_date", periodEnd)
+        .gte("end_date", periodStart),
     ]);
 
     // Override mensal de adicional noturno (página /adicional-noturno).
