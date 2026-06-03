@@ -312,7 +312,9 @@ export default function TransportVoucherPanel() {
   const allRows = useMemo(() => employees.map((e) => {
     const r = getRow(e);
     const total = r.daily_value * r.working_days_per_month;
-    const discount = monthlyBaseSalary(e) * (r.discount_percent / 100);
+    // CLT: desconto é o MENOR entre % do salário e o custo do VT
+    const percentDiscount = monthlyBaseSalary(e) * (r.discount_percent / 100);
+    const discount = Math.min(percentDiscount, total);
     const employerCost = Math.max(0, total - discount);
     return { e, r, total, discount, employerCost };
   }), [employees, vts]);
