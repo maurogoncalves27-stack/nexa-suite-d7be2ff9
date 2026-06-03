@@ -22,6 +22,8 @@ interface EmployeeRow {
   full_name: string;
   position: string | null;
   salary: number | null;
+  salary_type: string | null;
+  monthly_hours: number | null;
   work_schedule: string | null;
   pix_key: string | null;
   pix_key_type: string | null;
@@ -29,6 +31,16 @@ interface EmployeeRow {
   store_id: string | null;
   contracting_store?: { name: string } | null;
 }
+
+/** Salário-base mensal considerando horistas (salary × monthly_hours). */
+const monthlyBaseSalary = (e: { salary: number | null; salary_type: string | null; monthly_hours: number | null }) => {
+  const s = Number(e.salary) || 0;
+  if (e.salary_type === "horario" || e.salary_type === "hourly") {
+    return s * (Number(e.monthly_hours) || 220);
+  }
+  return s;
+};
+
 
 type PaymentFrequency = "weekly" | "biweekly" | "monthly";
 type PaymentMethod = "card" | "pix";
@@ -163,7 +175,7 @@ export default function TransportVoucherPanel() {
     const [{ data: emps, error: ee }, { data: rows, error: re }, { data: settings }] = await Promise.all([
       supabase
         .from("employees")
-        .select("id, full_name, position, salary, work_schedule, pix_key, pix_key_type, bank_name, store_id, contracting_store:stores!employees_store_id_fkey(name)")
+        .select("id, full_name, position, salary, salary_type, monthly_hours, work_schedule, pix_key, pix_key_type, bank_name, store_id, contracting_store:stores!employees_store_id_fkey(name)")
         .eq("status", "active")
         .order("full_name"),
       supabase.from("employee_transport_vouchers").select("*"),
@@ -300,7 +312,7 @@ export default function TransportVoucherPanel() {
   const allRows = useMemo(() => employees.map((e) => {
     const r = getRow(e);
     const total = r.daily_value * r.working_days_per_month;
-    const discount = (Number(e.salary) || 0) * (r.discount_percent / 100);
+    const discount = monthlyBaseSalary(e) * (r.discount_percent / 100);
     const employerCost = Math.max(0, total - discount);
     return { e, r, total, discount, employerCost };
   }), [employees, vts]);
@@ -700,7 +712,7 @@ export default function TransportVoucherPanel() {
               </div>
               {(() => {
                 const pct = Number(r.discount_percent) || 0;
-                const maxLegal = (Number(e.salary) || 0) * (pct / 100);
+                const maxLegal = monthlyBaseSalary(e) * (pct / 100);
                 const payrollDiscount = Math.min(total, maxLegal);
                 return (
                   <>
@@ -765,7 +777,7 @@ export default function TransportVoucherPanel() {
             </TableRow>,
             ...items.map(({ e, r, total }) => {
               const pct = Number(r.discount_percent) || 0;
-              const maxLegal = (Number(e.salary) || 0) * (pct / 100);
+              const maxLegal = monthlyBaseSalary(e) * (pct / 100);
               const payrollDiscount = Math.min(total, maxLegal);
               return (
             <TableRow key={e.id}>
