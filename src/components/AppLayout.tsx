@@ -331,7 +331,7 @@ export const AppLayout = ({ children }: { children?: ReactNode }) => {
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(true);
   const [paletteOpen, setPaletteOpen] = useCommandPalette();
-  const { isPartner, isAdmin, isManager, isSuperUser } = useAuth();
+  const { isPartner, isAdmin, isManager, isSuperUser, isStoreLogin } = useAuth();
   const { mode: viewMode } = useViewMode();
   const meta = PAGE_TITLES.find((p) => p.match(pathname));
   const currentTitle = meta?.title ?? "Sistema de RH";
