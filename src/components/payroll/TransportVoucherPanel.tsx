@@ -22,6 +22,8 @@ interface EmployeeRow {
   full_name: string;
   position: string | null;
   salary: number | null;
+  salary_type: string | null;
+  monthly_hours: number | null;
   work_schedule: string | null;
   pix_key: string | null;
   pix_key_type: string | null;
@@ -29,6 +31,16 @@ interface EmployeeRow {
   store_id: string | null;
   contracting_store?: { name: string } | null;
 }
+
+/** Salário-base mensal considerando horistas (salary × monthly_hours). */
+const monthlyBaseSalary = (e: { salary: number | null; salary_type: string | null; monthly_hours: number | null }) => {
+  const s = Number(e.salary) || 0;
+  if (e.salary_type === "horario" || e.salary_type === "hourly") {
+    return s * (Number(e.monthly_hours) || 220);
+  }
+  return s;
+};
+
 
 type PaymentFrequency = "weekly" | "biweekly" | "monthly";
 type PaymentMethod = "card" | "pix";
