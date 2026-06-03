@@ -27,6 +27,9 @@ export default function MigrateNexa() {
   const [plan, setPlan] = useState<PlanResult | null>(null);
   const [results, setResults] = useState<Record<string, TableResult>>({});
   const [progress, setProgress] = useState<{ done: number; total: number; current?: string } | null>(null);
+  const [storagePlan, setStoragePlan] = useState<Record<string, { total: number; missing: number }> | null>(null);
+  const [storageLog, setStorageLog] = useState<string[]>([]);
+  const [storageProgress, setStorageProgress] = useState<{ bucket: string; copied: number; total: number } | null>(null);
 
   if (loading) return null;
   if (!isSuperUser) return <Navigate to="/" replace />;
