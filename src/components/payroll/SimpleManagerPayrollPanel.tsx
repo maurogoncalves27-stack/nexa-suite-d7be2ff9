@@ -428,6 +428,9 @@ export default function SimpleManagerPayrollPanel() {
                               {r.position ?? "—"} · CPF {r.cpf ?? "—"}
                             </div>
                           </TableCell>
+                          <TableCell className="text-center">
+                            <div className="text-xs font-mono whitespace-nowrap">{fmtWorkedDays(r.worked_days, refYear, refMonth, r.admission_date)}</div>
+                          </TableCell>
                           <TableCell className="text-right">{money(r.total_earnings)}</TableCell>
                           <TableCell className="text-right text-destructive">{money(r.total_discounts)}</TableCell>
                           <TableCell className="text-right font-semibold">{money(r.net_amount)}</TableCell>
