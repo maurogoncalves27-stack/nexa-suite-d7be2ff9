@@ -81,6 +81,14 @@ const scheduleGroupLabel = (schedule: string | null | undefined): string => {
   return `Escala ${(schedule ?? "").trim()}`;
 };
 
+// Tom visual por tipo de escala (usa tokens do design system)
+const scheduleTone = (label: string): { header: string; row: string } => {
+  if (label.includes("12x36")) return { header: "bg-warning/15 hover:bg-warning/15", row: "border-l-2 border-l-warning" };
+  if (label.includes("6x1")) return { header: "bg-accent/40 hover:bg-accent/40", row: "border-l-2 border-l-accent" };
+  if (label.includes("5x2")) return { header: "bg-secondary/60 hover:bg-secondary/60", row: "border-l-2 border-l-secondary" };
+  return { header: "bg-muted/40 hover:bg-muted/40", row: "border-l-2 border-l-muted" };
+};
+
 interface VTRow {
   employee_id: string;
   daily_value: number;
@@ -771,8 +779,10 @@ export default function TransportVoucherPanel() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {groupedRows.flatMap(([label, items]) => [
-            <TableRow key={`grp-${label}`} className="bg-muted/40 hover:bg-muted/40">
+          {groupedRows.flatMap(([label, items]) => {
+            const tone = scheduleTone(label);
+            return [
+            <TableRow key={`grp-${label}`} className={tone.header}>
               <TableCell colSpan={8} className="py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {label} <span className="text-muted-foreground/70">({items.length})</span>
               </TableCell>
@@ -782,7 +792,7 @@ export default function TransportVoucherPanel() {
               const maxLegal = monthlyBaseSalary(e) * (pct / 100);
               const payrollDiscount = Math.min(total, maxLegal);
               return (
-            <TableRow key={e.id}>
+            <TableRow key={e.id} className={tone.row}>
               <TableCell className="font-medium">{e.full_name}</TableCell>
               <TableCell>
                 <Input
@@ -845,7 +855,8 @@ export default function TransportVoucherPanel() {
             </TableRow>
               );
             }),
-          ])}
+          ];
+          })}
         </TableBody>
       </Table>
       </div>
