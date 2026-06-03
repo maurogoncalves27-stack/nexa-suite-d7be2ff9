@@ -38,6 +38,8 @@ interface InfractionRow {
   suspension_start_date: string | null;
   suspension_end_date: string | null;
   suspension_revoked_at: string | null;
+  suspension_revoke_reason?: string | null;
+
 }
 
 const fmt = (d: string) => {
@@ -182,6 +184,22 @@ export default function InfractionsPanel({ cycles }: { cycles: Cycle[] }) {
     toast({ title: "Suspensão revogada" });
     load();
   };
+
+  const reactivateSuspension = async (it: InfractionRow) => {
+    if (!confirm("Reativar a suspensão desta ocorrência?")) return;
+    const { error } = await supabase
+      .from("employee_infractions")
+      .update({
+        suspension_revoked_at: null,
+        suspension_revoked_by: null,
+        suspension_revoke_reason: null,
+      })
+      .eq("id", it.id);
+    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Suspensão reativada" });
+    load();
+  };
+
 
   const activeTypes = types.filter((t) => t.is_active);
 
@@ -412,7 +430,9 @@ export default function InfractionsPanel({ cycles }: { cycles: Cycle[] }) {
                       <TableCell>
                         {it.suspension_weeks > 0 ? (
                           it.suspension_revoked_at ? (
-                            <span className="text-xs text-muted-foreground">Revogada</span>
+                            <Badge variant="outline" className="gap-1" title={it.suspension_revoke_reason ?? undefined}>
+                              Revogada
+                            </Badge>
                           ) : isActiveSusp ? (
                             <Badge variant="destructive" className="gap-1">
                               <ShieldAlert className="h-3 w-3" />
@@ -432,10 +452,16 @@ export default function InfractionsPanel({ cycles }: { cycles: Cycle[] }) {
                             <RotateCcw className="h-4 w-4" />
                           </Button>
                         )}
+                        {it.suspension_weeks > 0 && it.suspension_revoked_at && (
+                          <Button variant="ghost" size="icon" onClick={() => reactivateSuspension(it)} title="Reativar suspensão">
+                            <ShieldAlert className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
                         <Button variant="ghost" size="icon" onClick={() => remove(it)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </TableCell>
+
                     </TableRow>
                   );
                 })}
