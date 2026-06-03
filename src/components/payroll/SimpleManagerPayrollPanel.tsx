@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -93,6 +94,117 @@ export default function SimpleManagerPayrollPanel() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [okIds, setOkIds] = useState<Set<string>>(new Set());
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [editingRubricId, setEditingRubricId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState<string>("");
+  const [savingRubricId, setSavingRubricId] = useState<string | null>(null);
+
+  // Mapeamento "Descrição da rubrica sintética" -> coluna em payroll_calculated.
+  // Itens em calculation_details ficam em JSON e são tratados à parte.
+  const CALC_COLUMN_BY_DESC: Record<string, string> = {
+    "Salário proporcional": "proportional_salary",
+    "Produtividade 5%": "productivity",
+    "Salário Família": "family_allowance",
+    "Outros proventos": "other_earnings",
+    "Adiantamentos": "advance",
+    "Vale-transporte": "transport_discount",
+    "Plano de saúde": "health_plan",
+    "INSS": "inss",
+    "IRRF": "irrf",
+    "Infrações": "infraction_discount",
+    "Faltas": "absence_discount",
+    "DSR Falta": "dsr_loss_discount",
+    "Outros descontos": "other_discounts",
+  };
+  const CALC_JSON_BY_DESC: Record<string, string> = {
+    "Adicional Noturno": "night_addition",
+    "Feriados Trabalhados": "holiday_pay",
+  };
+
+  const parseMoneyInput = (s: string): number => {
+    const norm = s.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
+    const n = Number(norm);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const startEditRubric = (rb: RubricRow) => {
+    if (isLocked) { toast.error("Folha consolidada/aprovada — somente leitura"); return; }
+    setEditingRubricId(rb.id);
+    setEditValue(String(rb.value).replace(".", ","));
+  };
+
+  const recomputeTotalsLocal = (rowId: string, newRubs: RubricRow[]) => {
+    const earnings = newRubs.filter((x) => x.kind === "earning").reduce((s, x) => s + Number(x.value || 0), 0);
+    const discounts = newRubs.filter((x) => x.kind === "deduction").reduce((s, x) => s + Number(x.value || 0), 0);
+    const net = earnings - discounts;
+    setRows((prev) => prev.map((r) => r.id === rowId
+      ? { ...r, total_earnings: earnings, total_discounts: discounts, net_amount: net }
+      : r));
+    return { earnings, discounts, net };
+  };
+
+  const saveRubric = async (rb: RubricRow) => {
+    if (isLocked) { setEditingRubricId(null); return; }
+    const newVal = Math.max(0, parseMoneyInput(editValue));
+    if (Math.abs(newVal - Number(rb.value)) < 0.005) { setEditingRubricId(null); return; }
+    setSavingRubricId(rb.id);
+    try {
+      const updatedRubs = (rubricsByRow[rb.row_id] ?? []).map((x) =>
+        x.id === rb.id ? { ...x, value: newVal } : x
+      );
+      setRubricsByRow((prev) => ({ ...prev, [rb.row_id]: updatedRubs }));
+      const totals = recomputeTotalsLocal(rb.row_id, updatedRubs);
+
+      if (isFromCalc) {
+        const col = CALC_COLUMN_BY_DESC[rb.description ?? ""];
+        const jsonKey = CALC_JSON_BY_DESC[rb.description ?? ""];
+        const update: any = {
+          total_earnings: totals.earnings,
+          total_discounts: totals.discounts,
+          net_pay: totals.net,
+        };
+        if (col) {
+          update[col] = newVal;
+        } else if (jsonKey) {
+          const { data: cur } = await (supabase as any)
+            .from("payroll_calculated")
+            .select("calculation_details")
+            .eq("id", rb.row_id)
+            .maybeSingle();
+          const cd = { ...(cur?.calculation_details ?? {}), [jsonKey]: newVal };
+          update.calculation_details = cd;
+        }
+        const { error } = await (supabase as any)
+          .from("payroll_calculated")
+          .update(update)
+          .eq("id", rb.row_id);
+        if (error) throw error;
+      } else {
+        // payroll_import_rubrics (XML)
+        const { error: rErr } = await (supabase as any)
+          .from("payroll_import_rubrics")
+          .update({ value: newVal })
+          .eq("id", rb.id);
+        if (rErr) throw rErr;
+        const { error: rowErr } = await (supabase as any)
+          .from("payroll_import_rows")
+          .update({
+            total_earnings: totals.earnings,
+            total_discounts: totals.discounts,
+            net_amount: totals.net,
+          })
+          .eq("id", rb.row_id);
+        if (rowErr) throw rowErr;
+      }
+      toast.success("Valor atualizado");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao salvar");
+      void load();
+    } finally {
+      setSavingRubricId(null);
+      setEditingRubricId(null);
+    }
+  };
+
   
   const { toast: shadToast } = useToast();
   const editLock = usePayrollLock(refYear, refMonth);
@@ -481,7 +593,36 @@ export default function SimpleManagerPayrollPanel() {
                                             {rb.kind === "earning" ? "Provento" : rb.kind === "deduction" ? "Desconto" : "Informativo"}
                                           </Badge>
                                         </TableCell>
-                                        <TableCell className="text-right text-sm">{money(rb.value)}</TableCell>
+                                        <TableCell className="text-right text-sm">
+                                          {rb.kind === "informative" || isLocked ? (
+                                            <span className={isLocked ? "" : "text-muted-foreground"}>{money(rb.value)}</span>
+                                          ) : editingRubricId === rb.id ? (
+                                            <div className="flex items-center justify-end gap-1">
+                                              <Input
+                                                autoFocus
+                                                value={editValue}
+                                                onChange={(e) => setEditValue(e.target.value)}
+                                                onBlur={() => saveRubric(rb)}
+                                                onKeyDown={(e) => {
+                                                  if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); }
+                                                  if (e.key === "Escape") { setEditingRubricId(null); }
+                                                }}
+                                                className="h-7 w-28 text-right text-sm"
+                                                inputMode="decimal"
+                                              />
+                                              {savingRubricId === rb.id && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                                            </div>
+                                          ) : (
+                                            <button
+                                              type="button"
+                                              onClick={() => startEditRubric(rb)}
+                                              className="hover:bg-accent rounded px-2 py-0.5 transition-colors"
+                                              title="Clique para editar"
+                                            >
+                                              {money(rb.value)}
+                                            </button>
+                                          )}
+                                        </TableCell>
                                       </TableRow>
                                     ))}
                                   </TableBody>
