@@ -22,6 +22,8 @@ interface ImportRow {
   total_earnings: number;
   total_discounts: number;
   net_amount: number;
+  worked_days?: number | null;
+  admission_date?: string | null;
 }
 interface ImportMeta {
   id: string;
