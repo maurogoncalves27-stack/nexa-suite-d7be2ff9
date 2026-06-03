@@ -109,9 +109,12 @@ export const ProtectedRoute = ({ children, requireRoles, redirectTo = "/auth", r
 
   if (!user) return <Navigate to={redirectTo} replace state={{ from: location }} />;
 
-  // Login fixo de PC de loja (store_login): só pode acessar o balcão (PDV).
+  // Login fixo de PC de loja (store_login): balcão (PDV) + atalhos liberados.
   if (isStoreLogin) {
-    const allowed = location.pathname === "/pdv-novo" || location.pathname.startsWith("/pdv-novo/");
+    const STORE_LOGIN_PREFIXES = ["/pdv-novo", "/nutricontrol", "/ocorrencias", "/estoque"];
+    const allowed = STORE_LOGIN_PREFIXES.some(
+      (p) => location.pathname === p || location.pathname.startsWith(p + "/")
+    );
     if (!allowed) return <Navigate to="/pdv-novo" replace />;
     return <>{children}</>;
   }
