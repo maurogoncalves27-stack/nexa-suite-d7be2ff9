@@ -613,7 +613,7 @@ export default function WeeklyPaymentsPanel({ weekStart }: WeeklyPaymentsPanelPr
                   <TableCell className="text-right tabular-nums">{money(r.bonus)}</TableCell>
                   <TableCell className="text-right tabular-nums">
                     {r.count > 0 ? (
-                      <span className="text-destructive">{r.count} (-{r.percent.toFixed(0)}%)</span>
+                      <span className="text-destructive">{r.count} (- {money(r.desconto)})</span>
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
