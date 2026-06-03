@@ -399,6 +399,14 @@ export const AppLayout = ({ children }: { children?: ReactNode }) => {
     saveLastAppRoute(buildRouteSnapshot(pathname, search, hash));
   }, [pathname, search, hash]);
 
+  // Store login (PC de loja): renderiza só o PDV em tela cheia, sem sidebar/header
+  if (isStoreLogin) {
+    if (!pathname.startsWith("/pdv-novo")) {
+      return <Navigate to="/pdv-novo" replace />;
+    }
+    return <Outlet />;
+  }
+
   if (isEmployeeMode && !isEmployeeRouteAllowed) {
     return <Navigate to="/area-colaborador" replace />;
   }
