@@ -175,7 +175,7 @@ export default function TransportVoucherPanel() {
     const [{ data: emps, error: ee }, { data: rows, error: re }, { data: settings }] = await Promise.all([
       supabase
         .from("employees")
-        .select("id, full_name, position, salary, work_schedule, pix_key, pix_key_type, bank_name, store_id, contracting_store:stores!employees_store_id_fkey(name)")
+        .select("id, full_name, position, salary, salary_type, monthly_hours, work_schedule, pix_key, pix_key_type, bank_name, store_id, contracting_store:stores!employees_store_id_fkey(name)")
         .eq("status", "active")
         .order("full_name"),
       supabase.from("employee_transport_vouchers").select("*"),
