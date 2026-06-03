@@ -211,13 +211,13 @@ export default function SimpleManagerPayrollPanel() {
         const { data: calc } = await (supabase as any)
           .from("payroll_calculated")
           .select(`
-            id, employee_id,
+            id, employee_id, worked_days,
             base_salary, proportional_salary,
             advance, food_voucher, transport_discount, health_plan,
             inss, irrf, fgts, productivity, family_allowance,
             infraction_discount, absence_discount, dsr_loss_discount, other_earnings, other_discounts,
             total_earnings, total_discounts, net_pay, calculation_details,
-            employees:employee_id ( full_name, cpf, registration_number, position, contract_type, esocial_category )
+            employees:employee_id ( full_name, cpf, registration_number, position, admission_date, contract_type, esocial_category )
           `)
           .eq("reference_year", refYear)
           .eq("reference_month", refMonth);
