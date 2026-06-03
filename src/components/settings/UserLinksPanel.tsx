@@ -170,25 +170,24 @@ const UserLinksPanel = () => {
   const openLinkDialog = (profile: ProfileRow) => {
     setSelectedTargetId("");
     setTargetSearch("");
-    // sugestão automática por e-mail (preferindo employee)
-    const empSuggestion = availableEmployees.find((e) => e.email && profile.email && e.email.toLowerCase() === profile.email.toLowerCase());
+    const alreadyEmp = linkedEmployeeByUserId.has(profile.user_id);
+    const alreadyOut = linkedOutsourcedByUserId.has(profile.user_id);
+    const alreadyFree = linkedFreelancerByUserId.has(profile.user_id);
+    // sugestão automática por e-mail, preferindo kinds ainda não vinculados
+    const empSuggestion = !alreadyEmp ? availableEmployees.find((e) => e.email && profile.email && e.email.toLowerCase() === profile.email.toLowerCase()) : null;
+    const outSuggestion = !alreadyOut ? availableOutsourced.find((o) => o.email && profile.email && o.email.toLowerCase() === profile.email.toLowerCase()) : null;
+    const freeSuggestion = !alreadyFree ? availableFreelancers.find((f) => f.email && profile.email && f.email.toLowerCase() === profile.email.toLowerCase()) : null;
     if (empSuggestion) {
       setLinkKind("employee");
       setSelectedTargetId(empSuggestion.id);
+    } else if (outSuggestion) {
+      setLinkKind("outsourced");
+      setSelectedTargetId(outSuggestion.id);
+    } else if (freeSuggestion) {
+      setLinkKind("freelancer");
+      setSelectedTargetId(freeSuggestion.id);
     } else {
-      const outSuggestion = availableOutsourced.find((o) => o.email && profile.email && o.email.toLowerCase() === profile.email.toLowerCase());
-      if (outSuggestion) {
-        setLinkKind("outsourced");
-        setSelectedTargetId(outSuggestion.id);
-      } else {
-        const freelancerSuggestion = availableFreelancers.find((f) => f.email && profile.email && f.email.toLowerCase() === profile.email.toLowerCase());
-        if (freelancerSuggestion) {
-          setLinkKind("freelancer");
-          setSelectedTargetId(freelancerSuggestion.id);
-        } else {
-          setLinkKind("employee");
-        }
-      }
+      setLinkKind(!alreadyEmp ? "employee" : !alreadyOut ? "outsourced" : "freelancer");
     }
     setLinkDialog({ open: true, profile });
   };
