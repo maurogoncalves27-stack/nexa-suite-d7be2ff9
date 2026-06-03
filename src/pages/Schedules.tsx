@@ -384,6 +384,9 @@ export default function Schedules() {
               Escala de Horários
             </h1>
             <p className="text-muted-foreground">Defina horários e folgas por colaborador</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              💡 As escalas são geradas automaticamente no dia 25 de cada mês para o mês seguinte, com base no padrão do mês anterior. Você pode ajustar manualmente a qualquer momento.
+            </p>
           </div>
         </div>
         {tab === "grid" && (
