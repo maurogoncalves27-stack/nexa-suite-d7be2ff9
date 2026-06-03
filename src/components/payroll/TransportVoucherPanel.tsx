@@ -855,7 +855,8 @@ export default function TransportVoucherPanel() {
             </TableRow>
               );
             }),
-          ])}
+          ];
+          })}
         </TableBody>
       </Table>
       </div>
