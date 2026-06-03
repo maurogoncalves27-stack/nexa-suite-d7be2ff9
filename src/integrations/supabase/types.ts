@@ -12557,10 +12557,6 @@ export type Database = {
           manager_name: string | null
           name: string
           neighborhood: string | null
-          nfce_csc_id: string | null
-          nfce_csc_id_prod: string | null
-          nfce_csc_token: string | null
-          nfce_csc_token_prod: string | null
           nfce_environment: string | null
           nfce_next_number: number | null
           nfce_serie: number | null
@@ -12598,10 +12594,6 @@ export type Database = {
           manager_name?: string | null
           name: string
           neighborhood?: string | null
-          nfce_csc_id?: string | null
-          nfce_csc_id_prod?: string | null
-          nfce_csc_token?: string | null
-          nfce_csc_token_prod?: string | null
           nfce_environment?: string | null
           nfce_next_number?: number | null
           nfce_serie?: number | null
@@ -12639,10 +12631,6 @@ export type Database = {
           manager_name?: string | null
           name?: string
           neighborhood?: string | null
-          nfce_csc_id?: string | null
-          nfce_csc_id_prod?: string | null
-          nfce_csc_token?: string | null
-          nfce_csc_token_prod?: string | null
           nfce_environment?: string | null
           nfce_next_number?: number | null
           nfce_serie?: number | null
