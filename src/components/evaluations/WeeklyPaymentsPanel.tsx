@@ -65,7 +65,7 @@ interface WeeklyPaymentsPanelProps {
 }
 
 // Cada ponto de infração desconta 1% do bônus do cargo.
-const PERCENT_PER_POINT = 1;
+const REAIS_PER_POINT = 1;
 
 const money = (v: number) =>
   Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -231,8 +231,8 @@ export default function WeeklyPaymentsPanel({ weekStart }: WeeklyPaymentsPanelPr
 
       const inf = infractionsByEmp[e.id] ?? { points: 0, count: 0 };
       const susp = suspensionByEmp[e.id] ?? null;
-      const percent = Math.min(100, inf.points * PERCENT_PER_POINT);
-      const desconto = +(bonusBase * (percent / 100)).toFixed(2);
+      const descontoRaw = inf.points * REAIS_PER_POINT;
+      const desconto = +Math.min(bonusBase, descontoRaw).toFixed(2);
       const adj = Number(adjustments[e.id]?.amount ?? 0);
       const liquidoBase = Math.max(0, bonusBase - desconto + adj);
       const liquido = susp ? 0 : liquidoBase;
@@ -245,7 +245,7 @@ export default function WeeklyPaymentsPanel({ weekStart }: WeeklyPaymentsPanelPr
         store_id: e.store_id,
         bonus: bonusBase,
         points: inf.points,
-        percent,
+        percent: 0,
         count: inf.count,
         desconto,
         adjustment: adj,
@@ -527,7 +527,7 @@ export default function WeeklyPaymentsPanel({ weekStart }: WeeklyPaymentsPanelPr
                   <div className="rounded bg-muted/50 p-1.5">
                     <div className="text-muted-foreground">Infrações</div>
                     <div className={r.count > 0 ? "text-destructive font-medium" : "text-muted-foreground"}>
-                      {r.count > 0 ? `${r.count} (-${r.percent.toFixed(0)}%)` : "—"}
+                      {r.count > 0 ? `${r.count} (- ${money(r.desconto)})` : "—"}
                     </div>
                   </div>
                   <div className="rounded bg-muted/50 p-1.5">
@@ -613,7 +613,7 @@ export default function WeeklyPaymentsPanel({ weekStart }: WeeklyPaymentsPanelPr
                   <TableCell className="text-right tabular-nums">{money(r.bonus)}</TableCell>
                   <TableCell className="text-right tabular-nums">
                     {r.count > 0 ? (
-                      <span className="text-destructive">{r.count} (-{r.percent.toFixed(0)}%)</span>
+                      <span className="text-destructive">{r.count} (- {money(r.desconto)})</span>
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
