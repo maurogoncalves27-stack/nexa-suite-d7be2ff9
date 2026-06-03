@@ -231,8 +231,8 @@ export default function WeeklyPaymentsPanel({ weekStart }: WeeklyPaymentsPanelPr
 
       const inf = infractionsByEmp[e.id] ?? { points: 0, count: 0 };
       const susp = suspensionByEmp[e.id] ?? null;
-      const percent = Math.min(100, inf.points * PERCENT_PER_POINT);
-      const desconto = +(bonusBase * (percent / 100)).toFixed(2);
+      const descontoRaw = inf.points * REAIS_PER_POINT;
+      const desconto = +Math.min(bonusBase, descontoRaw).toFixed(2);
       const adj = Number(adjustments[e.id]?.amount ?? 0);
       const liquidoBase = Math.max(0, bonusBase - desconto + adj);
       const liquido = susp ? 0 : liquidoBase;
