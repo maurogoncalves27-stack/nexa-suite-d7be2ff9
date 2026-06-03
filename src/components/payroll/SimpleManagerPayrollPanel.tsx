@@ -46,6 +46,21 @@ const money = (v: number) =>
   Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtMonth = (y: number, m: number) =>
   new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+const daysInMonth = (y: number, m: number) => new Date(y, m, 0).getDate();
+const fmtWorkedDays = (wd: number | null | undefined, y: number, m: number, admission?: string | null) => {
+  if (wd == null) return "—";
+  const total = daysInMonth(y, m);
+  const parts: string[] = [`${wd}/${total} dias`];
+  if (admission) {
+    const d = new Date(admission);
+    const admY = d.getFullYear();
+    const admM = d.getMonth() + 1;
+    if (admY === y && admM === m) {
+      parts.push(`${d.getDate().toString().padStart(2, "0")}/${m.toString().padStart(2, "0")} – ${total.toString().padStart(2, "0")}/${m.toString().padStart(2, "0")}`);
+    }
+  }
+  return parts.join(" ");
+};
 const norm = (s: string) =>
   s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 const isInternshipEmployee = (e?: any) => {
