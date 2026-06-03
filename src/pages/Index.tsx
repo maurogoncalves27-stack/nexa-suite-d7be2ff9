@@ -7,7 +7,7 @@ import { isRestorableRouteSnapshot, readLastAppRoute } from "@/lib/pwaRouteState
 import { useViewMode } from "@/hooks/useViewMode";
 
 const Index = () => {
-  const { loading, user, isSupplier, isOutsourced, isContabilidade, isAdmin, isManager, isPartner, isSuperUser } = useAuth();
+  const { loading, user, isSupplier, isOutsourced, isContabilidade, isAdmin, isManager, isPartner, isSuperUser, isStoreLogin } = useAuth();
   const { mode } = useViewMode();
 
   // Apenas este usuário vê a tela de seleção de perfil (Gestor / Sócio / Colaborador).
