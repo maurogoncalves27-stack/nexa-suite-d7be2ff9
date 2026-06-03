@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
-import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -53,9 +52,6 @@ import {
   CalendarIcon,
   MessageCircle,
   Printer,
-  Stethoscope,
-  AlertOctagon,
-  Package,
 } from "lucide-react";
 
 import { toast } from "@/hooks/use-toast";
@@ -1040,34 +1036,6 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
           </div>
         </>
       )}
-
-      {/* Atalhos rápidos para módulos operacionais da loja */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        <Link
-          to="/nutricontrol"
-          className="flex flex-col items-center justify-center gap-1 rounded-lg p-3 sm:p-4 text-white font-semibold text-xs sm:text-sm shadow-sm transition hover:opacity-90 active:scale-[0.98]"
-          style={{ background: "hsl(142 71% 38%)" }}
-        >
-          <Stethoscope className="h-5 w-5 sm:h-6 sm:w-6" />
-          NutriControle
-        </Link>
-        <Link
-          to="/ocorrencias"
-          className="flex flex-col items-center justify-center gap-1 rounded-lg p-3 sm:p-4 text-white font-semibold text-xs sm:text-sm shadow-sm transition hover:opacity-90 active:scale-[0.98]"
-          style={{ background: "hsl(0 72% 51%)" }}
-        >
-          <AlertOctagon className="h-5 w-5 sm:h-6 sm:w-6" />
-          Ocorrências
-        </Link>
-        <Link
-          to="/estoque"
-          className="flex flex-col items-center justify-center gap-1 rounded-lg p-3 sm:p-4 text-white font-semibold text-xs sm:text-sm shadow-sm transition hover:opacity-90 active:scale-[0.98]"
-          style={{ background: "hsl(24 95% 53%)" }}
-        >
-          <Package className="h-5 w-5 sm:h-6 sm:w-6" />
-          Estoque
-        </Link>
-      </div>
 
       <Tabs defaultValue="operacao">
         <div className="flex flex-wrap items-center gap-2">

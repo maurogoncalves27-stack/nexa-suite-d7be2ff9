@@ -399,30 +399,12 @@ export const AppLayout = ({ children }: { children?: ReactNode }) => {
     saveLastAppRoute(buildRouteSnapshot(pathname, search, hash));
   }, [pathname, search, hash]);
 
-  // Store login (PC de loja): renderiza fullscreen (sem sidebar/header).
-  // Permite PDV + atalhos liberados (NutriControle, Ocorrências, Estoque).
+  // Store login (PC de loja): renderiza só o PDV em tela cheia, sem sidebar/header
   if (isStoreLogin) {
-    const STORE_LOGIN_PREFIXES = ["/pdv-novo", "/nutricontrol", "/ocorrencias", "/estoque"];
-    const allowed = STORE_LOGIN_PREFIXES.some(
-      (p) => pathname === p || pathname.startsWith(p + "/")
-    );
-    if (!allowed) return <Navigate to="/pdv-novo" replace />;
-    const showBack = !pathname.startsWith("/pdv-novo");
-    return (
-      <div className="min-h-screen flex flex-col bg-background">
-        {showBack && (
-          <div className="h-12 flex items-center px-3 border-b bg-card">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/pdv-novo")} className="gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Voltar ao PDV
-            </Button>
-          </div>
-        )}
-        <main className="flex-1 p-4 md:p-6 space-y-4 overflow-x-hidden">
-          <Outlet />
-        </main>
-      </div>
-    );
+    if (!pathname.startsWith("/pdv-novo")) {
+      return <Navigate to="/pdv-novo" replace />;
+    }
+    return <Outlet />;
   }
 
   if (isEmployeeMode && !isEmployeeRouteAllowed) {
