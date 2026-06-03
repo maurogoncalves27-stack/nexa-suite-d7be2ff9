@@ -281,7 +281,7 @@ export default function FreelancerJobs() {
 
   const isThisWeek = useMemo(() => sameISO(startOfWeek(new Date())) === sameISO(weekStart), [weekStart]);
 
-  const PUBLIC_BASE = "https://nexa.aquelaparme.com.br";
+  const PUBLIC_BASE = "https://nexasuite.aquelaparme.com.br";
   const publicUrl = `${PUBLIC_BASE}/freelancer/login`;
   const copyPublicLink = async () => {
     await navigator.clipboard.writeText(publicUrl);

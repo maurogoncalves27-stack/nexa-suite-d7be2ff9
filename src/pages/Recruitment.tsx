@@ -89,7 +89,7 @@ export default function Recruitment() {
     return <div className="flex justify-center p-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   }
 
-  const PUBLIC_BASE = "https://nexa.aquelaparme.com.br";
+  const PUBLIC_BASE = "https://nexasuite.aquelaparme.com.br";
   const publicUrl = `${PUBLIC_BASE}/vagas`;
   const copyPublicLink = async () => {
     await navigator.clipboard.writeText(publicUrl);

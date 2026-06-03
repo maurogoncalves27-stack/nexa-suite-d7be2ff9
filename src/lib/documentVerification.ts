@@ -12,7 +12,7 @@ export type VerifiableDocType =
 /** URL pública de verificação (usada no QR Code e impressa no rodapé) */
 export function getVerificationUrl(type: VerifiableDocType, id: string): string {
   // Sempre usa o domínio publicado pra estabilidade do QR (não o de preview)
-  const base = "https://rhplus.lovable.app";
+  const base = "https://nexasuite.aquelaparme.com.br";
   return `${base}/verificar/${type}/${id}`;
 }
 
