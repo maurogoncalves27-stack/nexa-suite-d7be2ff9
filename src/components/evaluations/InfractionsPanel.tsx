@@ -38,6 +38,8 @@ interface InfractionRow {
   suspension_start_date: string | null;
   suspension_end_date: string | null;
   suspension_revoked_at: string | null;
+  suspension_revoke_reason?: string | null;
+
 }
 
 const fmt = (d: string) => {
