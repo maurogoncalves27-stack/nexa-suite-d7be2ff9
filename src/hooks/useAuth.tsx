@@ -110,6 +110,7 @@ export const ImpersonationProvider = ({
     isContabilidade: effectiveRoles.includes("contabilidade"),
     isPartner: effectiveRoles.includes("partner"),
     isSuperUser: superUser,
+    isStoreLogin: false,
     hasRole: (r) => effectiveRoles.includes(r) || (superUser && (r === "admin" || r === "manager")),
     isImpersonating: true,
     realUserId: parent.user?.id ?? null,
