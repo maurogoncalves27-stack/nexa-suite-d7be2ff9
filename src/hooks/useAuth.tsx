@@ -187,6 +187,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const superUser = isSuperUserId(user?.id);
+  const storeLogin = Boolean((user?.user_metadata as { store_login?: boolean } | undefined)?.store_login) && !superUser;
 
   const value: AuthContextValue = {
     user,
@@ -202,6 +203,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isContabilidade: roles.includes("contabilidade"),
     isPartner: roles.includes("partner"),
     isSuperUser: superUser,
+    isStoreLogin: storeLogin,
     hasRole: (r) => roles.includes(r) || (superUser && (r === "admin" || r === "manager")),
     isImpersonating: false,
     realUserId: user?.id ?? null,
