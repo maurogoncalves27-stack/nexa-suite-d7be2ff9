@@ -65,7 +65,8 @@ interface WeeklyPaymentsPanelProps {
 }
 
 // Cada ponto de infração desconta 1% do bônus do cargo.
-const REAIS_PER_POINT = 1;
+// Cada ponto de infração desconta 1% do bônus do cargo (cap em 100%, nunca negativo).
+const PERCENT_PER_POINT = 1;
 
 const money = (v: number) =>
   Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
