@@ -621,6 +621,7 @@ Deno.serve(async (req: Request) => {
         proportionalSalary <= FAMILY_ALLOWANCE_LIMIT && deps.under14 > 0
           ? r2(deps.under14 * FAMILY_ALLOWANCE_QUOTA * (familyDaysWorked / lastDay))
           : 0;
+      console.log(`[family-debug] emp=${emp.id} wd=${workedDays} ab=${absentDays} ld=${lastDay} u14=${deps.under14} prop=${proportionalSalary} fam=${familyAllowance}`);
 
       const inssBase = proportionalSalary + productivity + nightAddition + holidayPay + otherEarnings - absenceDiscount - dsrLossDiscount;
       const inss = calcINSS(Math.max(0, inssBase));
