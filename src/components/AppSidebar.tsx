@@ -185,7 +185,7 @@ const pagamentosSections: Section[] = [
     { title: "Rescisões", url: "/rescisoes", icon: FileSignature, staffOnly: true },
   ]},
   { label: "Variáveis da folha", items: [
-    { title: "Acréscimos e descontos", url: "/adiantamentos", icon: Wallet, staffOnly: true, requiredForPayroll: true },
+    { title: "Acréscimos/descontos", url: "/adiantamentos", icon: Wallet, staffOnly: true, requiredForPayroll: true },
     { title: "Vale Transporte", url: "/vale-transporte", icon: Bus, staffOnly: true, requiredForPayroll: true },
     { title: "Adicional Noturno", url: "/adicional-noturno", icon: Hourglass, staffOnly: true, requiredForPayroll: true },
     { title: "Feriados trabalhados", url: "/feriados-trabalhados", icon: CalendarDays, staffOnly: true, requiredForPayroll: true },
