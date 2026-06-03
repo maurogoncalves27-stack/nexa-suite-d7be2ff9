@@ -53,6 +53,9 @@ import {
   CalendarIcon,
   MessageCircle,
   Printer,
+  Stethoscope,
+  AlertOctagon,
+  Package,
 } from "lucide-react";
 
 import { toast } from "@/hooks/use-toast";
