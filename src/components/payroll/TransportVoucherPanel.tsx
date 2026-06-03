@@ -312,7 +312,7 @@ export default function TransportVoucherPanel() {
   const allRows = useMemo(() => employees.map((e) => {
     const r = getRow(e);
     const total = r.daily_value * r.working_days_per_month;
-    const discount = (Number(e.salary) || 0) * (r.discount_percent / 100);
+    const discount = monthlyBaseSalary(e) * (r.discount_percent / 100);
     const employerCost = Math.max(0, total - discount);
     return { e, r, total, discount, employerCost };
   }), [employees, vts]);
@@ -712,7 +712,7 @@ export default function TransportVoucherPanel() {
               </div>
               {(() => {
                 const pct = Number(r.discount_percent) || 0;
-                const maxLegal = (Number(e.salary) || 0) * (pct / 100);
+                const maxLegal = monthlyBaseSalary(e) * (pct / 100);
                 const payrollDiscount = Math.min(total, maxLegal);
                 return (
                   <>
@@ -777,7 +777,7 @@ export default function TransportVoucherPanel() {
             </TableRow>,
             ...items.map(({ e, r, total }) => {
               const pct = Number(r.discount_percent) || 0;
-              const maxLegal = (Number(e.salary) || 0) * (pct / 100);
+              const maxLegal = monthlyBaseSalary(e) * (pct / 100);
               const payrollDiscount = Math.min(total, maxLegal);
               return (
             <TableRow key={e.id}>
