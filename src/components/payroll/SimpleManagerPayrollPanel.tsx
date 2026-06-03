@@ -22,6 +22,8 @@ interface ImportRow {
   total_earnings: number;
   total_discounts: number;
   net_amount: number;
+  worked_days?: number | null;
+  admission_date?: string | null;
 }
 interface ImportMeta {
   id: string;
@@ -44,6 +46,21 @@ const money = (v: number) =>
   Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtMonth = (y: number, m: number) =>
   new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+const daysInMonth = (y: number, m: number) => new Date(y, m, 0).getDate();
+const fmtWorkedDays = (wd: number | null | undefined, y: number, m: number, admission?: string | null) => {
+  if (wd == null) return "—";
+  const total = daysInMonth(y, m);
+  const parts: string[] = [`${wd}/${total} dias`];
+  if (admission) {
+    const d = new Date(admission);
+    const admY = d.getFullYear();
+    const admM = d.getMonth() + 1;
+    if (admY === y && admM === m) {
+      parts.push(`${d.getDate().toString().padStart(2, "0")}/${m.toString().padStart(2, "0")} – ${total.toString().padStart(2, "0")}/${m.toString().padStart(2, "0")}`);
+    }
+  }
+  return parts.join(" ");
+};
 const norm = (s: string) =>
   s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 const isInternshipEmployee = (e?: any) => {
@@ -209,13 +226,13 @@ export default function SimpleManagerPayrollPanel() {
         const { data: calc } = await (supabase as any)
           .from("payroll_calculated")
           .select(`
-            id, employee_id,
+            id, employee_id, worked_days,
             base_salary, proportional_salary,
             advance, food_voucher, transport_discount, health_plan,
             inss, irrf, fgts, productivity, family_allowance,
             infraction_discount, absence_discount, dsr_loss_discount, other_earnings, other_discounts,
             total_earnings, total_discounts, net_pay, calculation_details,
-            employees:employee_id ( full_name, cpf, registration_number, position, contract_type, esocial_category )
+            employees:employee_id ( full_name, cpf, registration_number, position, admission_date, contract_type, esocial_category )
           `)
           .eq("reference_year", refYear)
           .eq("reference_month", refMonth);
@@ -239,6 +256,8 @@ export default function SimpleManagerPayrollPanel() {
           total_earnings: Number(r.total_earnings ?? 0),
           total_discounts: Number(r.total_discounts ?? 0),
           net_amount: Number(r.net_pay ?? 0),
+          worked_days: r.worked_days != null ? Number(r.worked_days) : null,
+          admission_date: r.employees?.admission_date ?? null,
         })).sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? "")));
         const synth: Record<string, RubricRow[]> = {};
         list.forEach((r) => {
@@ -383,6 +402,7 @@ export default function SimpleManagerPayrollPanel() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Colaborador</TableHead>
+                    <TableHead className="text-center">Dias</TableHead>
                     <TableHead className="text-right">Proventos</TableHead>
                     <TableHead className="text-right">Descontos</TableHead>
                     <TableHead className="text-right">Líquido</TableHead>
@@ -407,6 +427,9 @@ export default function SimpleManagerPayrollPanel() {
                             <div className="text-xs text-muted-foreground">
                               {r.position ?? "—"} · CPF {r.cpf ?? "—"}
                             </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="text-xs font-mono whitespace-nowrap">{fmtWorkedDays(r.worked_days, refYear, refMonth, r.admission_date)}</div>
                           </TableCell>
                           <TableCell className="text-right">{money(r.total_earnings)}</TableCell>
                           <TableCell className="text-right text-destructive">{money(r.total_discounts)}</TableCell>
@@ -437,7 +460,7 @@ export default function SimpleManagerPayrollPanel() {
                         </TableRow>
                         {isOpen && (
                           <TableRow key={`${r.id}-detail`}>
-                            <TableCell colSpan={6} className="bg-muted/30">
+                            <TableCell colSpan={7} className="bg-muted/30">
                               <div className="rounded border bg-card my-2">
                                 <Table>
                                   <TableHeader>
