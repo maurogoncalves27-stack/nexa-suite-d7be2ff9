@@ -7,7 +7,7 @@ import { isRestorableRouteSnapshot, readLastAppRoute } from "@/lib/pwaRouteState
 import { useViewMode } from "@/hooks/useViewMode";
 
 const Index = () => {
-  const { loading, user, isSupplier, isOutsourced, isContabilidade, isAdmin, isManager, isPartner, isSuperUser } = useAuth();
+  const { loading, user, isSupplier, isOutsourced, isContabilidade, isAdmin, isManager, isPartner, isSuperUser, isStoreLogin } = useAuth();
   const { mode } = useViewMode();
 
   // Apenas este usuário vê a tela de seleção de perfil (Gestor / Sócio / Colaborador).
@@ -25,6 +25,11 @@ const Index = () => {
   // Quando rodando dentro do app Electron Totem, ir direto para /totem
   if (typeof window !== "undefined" && (window as any).electron?.isTotem) {
     return <Navigate to="/totem" replace />;
+  }
+
+  // Login fixo de PC de loja: vai direto para o balcão (PDV).
+  if (isStoreLogin) {
+    return <Navigate to="/pdv-novo" replace />;
   }
 
   if (isSupplier) {

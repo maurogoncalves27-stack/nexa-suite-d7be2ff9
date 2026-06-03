@@ -33,6 +33,11 @@ interface AuthContextValue {
   isPartner: boolean;
   /** True para usuárias com permissão especial total (acesso irrestrito). */
   isSuperUser: boolean;
+  /**
+   * True quando o login é um "PC de loja" (user_metadata.store_login = true).
+   * Esses logins ficam restritos ao /pdv-novo (balcão), independente das roles.
+   */
+  isStoreLogin: boolean;
   hasRole: (role: AppRole) => boolean;
   /** True quando esta árvore está visualizando como outro usuário (modo gestor). */
   isImpersonating: boolean;
@@ -105,6 +110,7 @@ export const ImpersonationProvider = ({
     isContabilidade: effectiveRoles.includes("contabilidade"),
     isPartner: effectiveRoles.includes("partner"),
     isSuperUser: superUser,
+    isStoreLogin: false,
     hasRole: (r) => effectiveRoles.includes(r) || (superUser && (r === "admin" || r === "manager")),
     isImpersonating: true,
     realUserId: parent.user?.id ?? null,
@@ -181,6 +187,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const superUser = isSuperUserId(user?.id);
+  const storeLogin = Boolean((user?.user_metadata as { store_login?: boolean } | undefined)?.store_login) && !superUser;
 
   const value: AuthContextValue = {
     user,
@@ -196,6 +203,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isContabilidade: roles.includes("contabilidade"),
     isPartner: roles.includes("partner"),
     isSuperUser: superUser,
+    isStoreLogin: storeLogin,
     hasRole: (r) => roles.includes(r) || (superUser && (r === "admin" || r === "manager")),
     isImpersonating: false,
     realUserId: user?.id ?? null,
