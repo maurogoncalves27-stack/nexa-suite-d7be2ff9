@@ -198,6 +198,113 @@ export default function MigrateNexa() {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>3. Copiar arquivos do Storage (pastas dos colaboradores)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            As linhas de <code>employee_documents</code> e afins já vieram do NEXA original, mas os arquivos PDF/imagens
+            ainda estão só no Storage de lá. Este passo baixa de lá e sobe pra cá, em lotes.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              disabled={!!running}
+              onClick={async () => {
+                setRunning("storage-plan");
+                try {
+                  const { data, error } = await supabase.functions.invoke("migrate-nexa-storage", {
+                    body: { mode: "plan" },
+                  });
+                  if (error) throw error;
+                  setStoragePlan((data as any).plan);
+                  toast.success("Plano de Storage carregado");
+                } catch (e: any) {
+                  toast.error(e?.message ?? String(e));
+                } finally {
+                  setRunning(null);
+                }
+              }}
+            >
+              {running === "storage-plan" && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Listar arquivos faltando
+            </Button>
+            {storagePlan &&
+              Object.entries(storagePlan)
+                .filter(([, v]) => v.missing > 0)
+                .map(([bucket, v]) => (
+                  <Button
+                    key={bucket}
+                    disabled={!!running}
+                    onClick={async () => {
+                      setRunning(`storage-${bucket}`);
+                      setStorageLog([]);
+                      setStorageProgress({ bucket, copied: 0, total: v.missing });
+                      try {
+                        let offset = 0;
+                        let copied = 0;
+                        while (true) {
+                          const { data, error } = await supabase.functions.invoke("migrate-nexa-storage", {
+                            body: { mode: "copy", bucket, offset: 0, limit: 25 },
+                          });
+                          if (error) throw error;
+                          const d = data as any;
+                          copied += d.copied ?? 0;
+                          setStorageProgress({ bucket, copied, total: v.missing });
+                          setStorageLog((prev) => [
+                            ...prev,
+                            `[${bucket}] +${d.copied}/${d.processed}${d.errors?.length ? ` — ${d.errors.length} erros` : ""}`,
+                            ...(d.errors ?? []).slice(0, 3).map((e: any) => `  · ${e.path}: ${e.error}`),
+                          ]);
+                          if (!d.processed || d.processed === 0) break;
+                          offset += d.processed;
+                          if (offset > v.missing + 50) break; // safety
+                        }
+                        toast.success(`${bucket}: ${copied} arquivos copiados`);
+                      } catch (e: any) {
+                        toast.error(e?.message ?? String(e));
+                      } finally {
+                        setRunning(null);
+                      }
+                    }}
+                  >
+                    {running === `storage-${bucket}` && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                    Copiar {bucket} ({v.missing})
+                  </Button>
+                ))}
+          </div>
+
+          {storagePlan && (
+            <div className="text-xs font-mono border rounded p-2 max-h-48 overflow-auto">
+              {Object.entries(storagePlan).map(([b, v]) => (
+                <div key={b} className="flex justify-between">
+                  <span>{b}</span>
+                  <span className="text-muted-foreground">
+                    {v.missing} faltando / {v.total} total
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {storageProgress && (
+            <div className="space-y-1">
+              <Progress value={(storageProgress.copied / Math.max(storageProgress.total, 1)) * 100} />
+              <p className="text-xs text-muted-foreground">
+                {storageProgress.bucket}: {storageProgress.copied} / {storageProgress.total}
+              </p>
+            </div>
+          )}
+
+          {storageLog.length > 0 && (
+            <div className="text-xs font-mono border rounded p-2 max-h-60 overflow-auto whitespace-pre-wrap">
+              {storageLog.join("\n")}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
