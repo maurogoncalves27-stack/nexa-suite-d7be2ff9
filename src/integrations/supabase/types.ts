@@ -15035,6 +15035,25 @@ export type Database = {
         Args: { p_enable: boolean }
         Returns: undefined
       }
+      _migration_storage_missing_count: {
+        Args: { p_bucket: string; p_col: string; p_table: string }
+        Returns: {
+          missing: number
+          total: number
+        }[]
+      }
+      _migration_storage_missing_paths: {
+        Args: {
+          p_bucket: string
+          p_col: string
+          p_limit: number
+          p_offset: number
+          p_table: string
+        }
+        Returns: {
+          path: string
+        }[]
+      }
       active_maintenance_for_employee: {
         Args: { _user_id: string }
         Returns: {
