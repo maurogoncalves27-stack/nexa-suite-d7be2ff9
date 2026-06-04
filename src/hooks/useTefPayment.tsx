@@ -4,6 +4,7 @@ import {
   loadTefConfig,
   logTefTransaction,
   type TefAdapter,
+  type TefConfig,
   type TefPaymentRequest,
   type TefPaymentResult,
   type TefStatus,
@@ -26,8 +27,8 @@ export function useTefPayment() {
     adapterRef.current = null;
   }, []);
 
-  const pay = useCallback(async (req: TefPaymentRequest): Promise<TefPaymentResult> => {
-    const config = await loadTefConfig(req.storeId);
+  const pay = useCallback(async (req: TefPaymentRequest, configOverride?: TefConfig): Promise<TefPaymentResult> => {
+    const config = configOverride ?? (await loadTefConfig(req.storeId));
     const adapter = createTefAdapter(config);
     adapterRef.current = adapter;
 
