@@ -14,7 +14,7 @@ import { toast } from "@/hooks/use-toast";
 import { checkSitefAgent } from "@/lib/tef/sitefAdapter";
 import { checkAcbrAgent } from "@/lib/tef/acbrAdapter";
 import { TefPaymentDialog } from "@/components/tef/TefPaymentDialog";
-import type { TefPaymentRequest } from "@/lib/tef";
+import type { TefConfig, TefPaymentRequest } from "@/lib/tef";
 
 interface Store { id: string; name: string }
 
