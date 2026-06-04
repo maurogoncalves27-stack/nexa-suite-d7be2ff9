@@ -1,0 +1,2 @@
+ALTER TABLE public.pdv_tef_config DROP CONSTRAINT IF EXISTS pdv_tef_config_provider_check;
+ALTER TABLE public.pdv_tef_config ADD CONSTRAINT pdv_tef_config_provider_check CHECK (provider = ANY (ARRAY['sitef'::text, 'paygo'::text, 'mock'::text, 'acbr'::text]));

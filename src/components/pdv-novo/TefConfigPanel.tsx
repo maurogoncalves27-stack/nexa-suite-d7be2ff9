@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { CreditCard, Loader2, Save, Wifi, WifiOff, PlayCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { checkSitefAgent } from "@/lib/tef/sitefAdapter";
+import { checkAcbrAgent } from "@/lib/tef/acbrAdapter";
 import { TefPaymentDialog } from "@/components/tef/TefPaymentDialog";
 import type { TefPaymentRequest } from "@/lib/tef";
 
@@ -20,13 +21,20 @@ interface Store { id: string; name: string }
 interface TefCfg {
   id?: string;
   store_id: string;
-  provider: "sitef" | "paygo" | "mock";
+  provider: "sitef" | "paygo" | "mock" | "acbr";
   agent_url: string;
   merchant_code: string | null;
   terminal_code: string | null;
   acquirer: string | null;
   is_active: boolean;
 }
+
+const DEFAULT_AGENT_URL: Record<TefCfg["provider"], string> = {
+  mock: "http://localhost:60906",
+  sitef: "http://localhost:60906",
+  paygo: "http://localhost:60906",
+  acbr: "http://localhost:3030",
+};
 
 const blank = (storeId: string): TefCfg => ({
   store_id: storeId,
@@ -52,13 +60,15 @@ export default function TefConfigPanel() {
     if (!cfg?.agent_url) return;
     let cancelled = false;
     const tick = async () => {
-      const r = await checkSitefAgent(cfg.agent_url);
+      const r = cfg.provider === "acbr"
+        ? await checkAcbrAgent(cfg.agent_url)
+        : await checkSitefAgent(cfg.agent_url);
       if (!cancelled) setAgent(r);
     };
     void tick();
     const id = setInterval(tick, 5000);
     return () => { cancelled = true; clearInterval(id); };
-  }, [cfg?.agent_url]);
+  }, [cfg?.agent_url, cfg?.provider]);
 
   useEffect(() => {
     void (async () => {
