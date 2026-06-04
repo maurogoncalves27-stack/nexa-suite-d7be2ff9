@@ -3,7 +3,7 @@
  * Adapters concretos: SiTef, PayGo, Mock.
  */
 
-export type TefProvider = "sitef" | "paygo" | "mock";
+export type TefProvider = "sitef" | "paygo" | "mock" | "acbr";
 
 export type TefStatus =
   | "idle"
