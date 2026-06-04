@@ -14,7 +14,7 @@ import { toast } from "@/hooks/use-toast";
 import { checkSitefAgent } from "@/lib/tef/sitefAdapter";
 import { checkAcbrAgent } from "@/lib/tef/acbrAdapter";
 import { TefPaymentDialog } from "@/components/tef/TefPaymentDialog";
-import type { TefPaymentRequest } from "@/lib/tef";
+import type { TefConfig, TefPaymentRequest } from "@/lib/tef";
 
 interface Store { id: string; name: string }
 
@@ -54,6 +54,7 @@ export default function TefConfigPanel() {
   const [saving, setSaving] = useState(false);
   const [agent, setAgent] = useState<{ ok: boolean; mode?: string; version?: string; error?: string }>({ ok: false });
   const [testReq, setTestReq] = useState<TefPaymentRequest | null>(null);
+  const [testConfig, setTestConfig] = useState<TefConfig | null>(null);
 
   // Polling de saúde do agente local (a cada 5s enquanto montado)
   useEffect(() => {
@@ -219,7 +220,16 @@ export default function TefConfigPanel() {
             <div className="md:col-span-2 flex flex-wrap justify-end gap-2">
               <Button
                 variant="outline"
-                onClick={() => setTestReq({ amount: 1, method: "credit", storeId: cfg.store_id, orderId: `test_${Date.now()}` })}
+                onClick={() => {
+                  setTestConfig({
+                    provider: cfg.provider,
+                    agentUrl: cfg.agent_url,
+                    merchantCode: cfg.merchant_code ?? undefined,
+                    terminalCode: cfg.terminal_code ?? undefined,
+                    acquirer: cfg.acquirer ?? undefined,
+                  });
+                  setTestReq({ amount: 1, method: "credit", storeId: cfg.store_id, orderId: `test_${Date.now()}` });
+                }}
                 disabled={!cfg.is_active}
               >
                 <PlayCircle className="h-4 w-4 mr-2" />
@@ -227,7 +237,16 @@ export default function TefConfigPanel() {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => setTestReq({ amount: 1, method: "pix", storeId: cfg.store_id, orderId: `test_${Date.now()}` })}
+                onClick={() => {
+                  setTestConfig({
+                    provider: cfg.provider,
+                    agentUrl: cfg.agent_url,
+                    merchantCode: cfg.merchant_code ?? undefined,
+                    terminalCode: cfg.terminal_code ?? undefined,
+                    acquirer: cfg.acquirer ?? undefined,
+                  });
+                  setTestReq({ amount: 1, method: "pix", storeId: cfg.store_id, orderId: `test_${Date.now()}` });
+                }}
                 disabled={!cfg.is_active}
               >
                 <PlayCircle className="h-4 w-4 mr-2" />
@@ -245,7 +264,8 @@ export default function TefConfigPanel() {
       <TefPaymentDialog
         open={!!testReq}
         request={testReq}
-        onClose={() => setTestReq(null)}
+        configOverride={testConfig}
+        onClose={() => { setTestReq(null); setTestConfig(null); }}
         onResult={(r) => {
           toast({
             title: r.status === "approved" ? "Teste aprovado" : `Teste: ${r.status}`,

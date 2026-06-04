@@ -11,24 +11,25 @@ const TEF_THEME_STYLE = {
 import { Button } from "@/components/ui/button";
 import { CreditCard, CheckCircle2, XCircle, Loader2, WifiOff, X } from "lucide-react";
 import { useTefPayment } from "@/hooks/useTefPayment";
-import type { TefPaymentRequest, TefPaymentResult } from "@/lib/tef";
+import type { TefConfig, TefPaymentRequest, TefPaymentResult } from "@/lib/tef";
 
 interface Props {
   open: boolean;
   request: TefPaymentRequest | null;
   onClose: () => void;
   onResult: (r: TefPaymentResult) => void;
+  configOverride?: TefConfig | null;
 }
 
 const fmt = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-export function TefPaymentDialog({ open, request, onClose, onResult }: Props) {
+export function TefPaymentDialog({ open, request, onClose, onResult, configOverride }: Props) {
   const { status, message, result, pay, cancel, reset } = useTefPayment();
 
   useEffect(() => {
     if (open && request) {
-      void pay(request).then(onResult);
+      void pay(request, configOverride ?? undefined).then(onResult);
     }
     if (!open) reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
