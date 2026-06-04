@@ -54,6 +54,7 @@ export default function TefConfigPanel() {
   const [saving, setSaving] = useState(false);
   const [agent, setAgent] = useState<{ ok: boolean; mode?: string; version?: string; error?: string }>({ ok: false });
   const [testReq, setTestReq] = useState<TefPaymentRequest | null>(null);
+  const [testConfig, setTestConfig] = useState<TefConfig | null>(null);
 
   // Polling de saúde do agente local (a cada 5s enquanto montado)
   useEffect(() => {
