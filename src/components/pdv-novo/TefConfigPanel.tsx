@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { CreditCard, Loader2, Save, Wifi, WifiOff, PlayCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { checkSitefAgent } from "@/lib/tef/sitefAdapter";
+import { checkAcbrAgent } from "@/lib/tef/acbrAdapter";
 import { TefPaymentDialog } from "@/components/tef/TefPaymentDialog";
 import type { TefPaymentRequest } from "@/lib/tef";
 
@@ -20,13 +21,20 @@ interface Store { id: string; name: string }
 interface TefCfg {
   id?: string;
   store_id: string;
-  provider: "sitef" | "paygo" | "mock";
+  provider: "sitef" | "paygo" | "mock" | "acbr";
   agent_url: string;
   merchant_code: string | null;
   terminal_code: string | null;
   acquirer: string | null;
   is_active: boolean;
 }
+
+const DEFAULT_AGENT_URL: Record<TefCfg["provider"], string> = {
+  mock: "http://localhost:60906",
+  sitef: "http://localhost:60906",
+  paygo: "http://localhost:60906",
+  acbr: "http://localhost:3030",
+};
 
 const blank = (storeId: string): TefCfg => ({
   store_id: storeId,
@@ -52,13 +60,15 @@ export default function TefConfigPanel() {
     if (!cfg?.agent_url) return;
     let cancelled = false;
     const tick = async () => {
-      const r = await checkSitefAgent(cfg.agent_url);
+      const r = cfg.provider === "acbr"
+        ? await checkAcbrAgent(cfg.agent_url)
+        : await checkSitefAgent(cfg.agent_url);
       if (!cancelled) setAgent(r);
     };
     void tick();
     const id = setInterval(tick, 5000);
     return () => { cancelled = true; clearInterval(id); };
-  }, [cfg?.agent_url]);
+  }, [cfg?.agent_url, cfg?.provider]);
 
   useEffect(() => {
     void (async () => {
@@ -137,15 +147,19 @@ export default function TefConfigPanel() {
             <div className="md:col-span-2 flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-3 py-2">
               {agent.ok ? (
                 <>
-                  <Wifi className="h-4 w-4 text-green-600" />
-                  <span className="text-sm">Agente SiTef online</span>
+                  <Wifi className="h-4 w-4 text-success" />
+                  <span className="text-sm">
+                    {cfg.provider === "acbr" ? "NEXA ACBr Agent online" : "Agente SiTef online"}
+                  </span>
                   {agent.mode && <Badge variant="secondary">modo: {agent.mode}</Badge>}
                   {agent.version && <Badge variant="outline">v{agent.version}</Badge>}
                 </>
               ) : (
                 <>
                   <WifiOff className="h-4 w-4 text-destructive" />
-                  <span className="text-sm">Agente SiTef offline</span>
+                  <span className="text-sm">
+                    {cfg.provider === "acbr" ? "NEXA ACBr Agent offline" : "Agente SiTef offline"}
+                  </span>
                   <span className="text-xs text-muted-foreground">{agent.error ?? "sem resposta em " + cfg.agent_url}</span>
                 </>
               )}
@@ -153,19 +167,36 @@ export default function TefConfigPanel() {
 
             <div>
               <Label>Provedor TEF</Label>
-              <Select value={cfg.provider} onValueChange={(v) => setCfg({ ...cfg, provider: v as TefCfg["provider"] })}>
+              <Select
+                value={cfg.provider}
+                onValueChange={(v) => {
+                  const provider = v as TefCfg["provider"];
+                  const currentIsDefault = Object.values(DEFAULT_AGENT_URL).includes(cfg.agent_url);
+                  setCfg({
+                    ...cfg,
+                    provider,
+                    agent_url: currentIsDefault ? DEFAULT_AGENT_URL[provider] : cfg.agent_url,
+                  });
+                }}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="mock">Mock (simulação)</SelectItem>
                   <SelectItem value="sitef">SiTef (Software Express)</SelectItem>
-                  <SelectItem value="paygo">PayGo (em breve)</SelectItem>
+                  <SelectItem value="acbr">ACBr (PayGo / C6)</SelectItem>
+                  <SelectItem value="paygo">PayGo direto (em breve)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label>URL do agente local</Label>
               <Input value={cfg.agent_url} onChange={e => setCfg({ ...cfg, agent_url: e.target.value })}
-                placeholder="http://localhost:60906" />
+                placeholder={DEFAULT_AGENT_URL[cfg.provider]} />
+              {cfg.provider === "acbr" && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Requer o <strong>NEXA ACBr Agent</strong> rodando na máquina do totem (porta 3030, ACBrLibTEFD + PayGo Integrado).
+                </p>
+              )}
             </div>
             <div>
               <Label>Código da loja (PV)</Label>

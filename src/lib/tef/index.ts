@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { TefAdapter, TefConfig } from "./types";
 import { createMockAdapter } from "./mockAdapter";
 import { createSitefAdapter } from "./sitefAdapter";
+import { createAcbrAdapter } from "./acbrAdapter";
 
 export * from "./types";
 
@@ -35,6 +36,8 @@ export const createTefAdapter = (config: TefConfig): TefAdapter => {
   switch (config.provider) {
     case "sitef":
       return createSitefAdapter(config);
+    case "acbr":
+      return createAcbrAdapter(config);
     case "paygo":
       // futuro: createPaygoAdapter(config). Por enquanto cai no mock.
       return createMockAdapter(config);
