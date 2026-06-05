@@ -558,9 +558,9 @@ Deno.serve(async (req: Request) => {
         : r2(calculatedNightAddition + manualNightAddition);
 
       // Feriados trabalhados: pagos em DOBRO conforme convenção coletiva.
-      // Lançamos 2× o valor da diária por feriado trabalhado (vai como provento,
-      // somando ao líquido).
-      const dailyRate = baseSalary / 30;
+      // Base de cálculo PROPORCIONAL aos dias do mês de referência (não 30 fixo).
+      // Lançamos 2× o valor da diária por feriado trabalhado.
+      const dailyRate = baseSalary / lastDay;
       const holidayPay = r2(holidayDaysWorked * dailyRate * 2);
 
       // ===== Faltas e DSR (a partir da escala vs ponto) =====
