@@ -231,8 +231,13 @@ Deno.serve(async (req: Request) => {
     }
 
     // Pré-carregar dados auxiliares em batch
-    const [vtRes, depRes, infRes, existingRes, holRes, manualHolidayRes, punchRes, advRes, schedRes, certRes, vacRes, justRes, unpaidLeavesRes] = await Promise.all([
+    const [vtRes, vtPaidRes, depRes, infRes, existingRes, holRes, manualHolidayRes, punchRes, advRes, schedRes, certRes, vacRes, justRes, unpaidLeavesRes] = await Promise.all([
       supabase.from("employee_transport_vouchers").select("*").in("employee_id", empIds),
+      supabase.from("transport_voucher_monthly_payments")
+        .select("employee_id, amount_paid, days_paid")
+        .in("employee_id", empIds)
+        .eq("reference_year", year)
+        .eq("reference_month", month),
       supabase.from("employee_dependents").select("employee_id, birth_date").in("employee_id", empIds),
       supabase.from("employee_infractions")
         .select("employee_id, occurred_on, applied_weight, infraction_types(financial_penalty)")
@@ -286,6 +291,15 @@ Deno.serve(async (req: Request) => {
         .lte("start_date", periodEnd)
         .gte("end_date", periodStart),
     ]);
+
+    // Valor de VT efetivamente pago no mês por colaborador (override do teórico).
+    const vtPaidMap = new Map<string, { amount: number; days: number | null }>();
+    (vtPaidRes.data ?? []).forEach((p: any) => {
+      vtPaidMap.set(p.employee_id, {
+        amount: Number(p.amount_paid ?? 0),
+        days: p.days_paid === null || p.days_paid === undefined ? null : Number(p.days_paid),
+      });
+    });
 
     // Override mensal de adicional noturno (página /adicional-noturno).
     // Quando existe registro para (emp, year, month), o valor da tabela substitui
@@ -633,20 +647,35 @@ Deno.serve(async (req: Request) => {
         // O acerto de "VT não utilizado" é rubrica SEPARADA.
         const fullDiscount = r2(baseSalary * (pct / 100));
         const proportionFactor = hasPartialMonth ? (workedDays / lastDay) : 1;
-        transportVoucher = r2(fullVoucher * proportionFactor);
+
+        // VT pago efetivamente no mês (recarga real informada em /vale-transporte).
+        // Quando há registro, ele substitui o cálculo teórico do provento e vira
+        // base do "VT não utilizado".
+        const paidInfo = vtPaidMap.get(emp.id);
+        const usePaid = !!paidInfo && paidInfo.amount > 0;
+        transportVoucher = usePaid ? r2(paidInfo!.amount) : r2(fullVoucher * proportionFactor);
         transportDiscount = r2(fullDiscount * proportionFactor);
 
-        // Acerto: dias escalados sem batida (qualquer motivo) — VT pago e não usado.
-        // NÃO soma em transport_discount: vai como rubrica separada no total.
+        // Acerto: VT pago e não utilizado.
+        // - Quando há valor pago real: nãoUtilizado = max(0, pago - diasComPonto×daily)
+        // - Caso contrário, fallback antigo (dias escalados sem batida × daily)
         if (timeClockImpactsPayroll && daily > 0) {
-          let unused = absentDays; // faltas injustificadas
-          for (const d of scheduledDates) {
-            if (workedDates.has(d)) continue;
-            if (absenceDateSet.has(d)) continue; // já contado
-            if (justifiedDates.has(d)) unused += 1; // afastamento em dia escalado
+          if (usePaid) {
+            const usedDays = workedDates.size; // dias efetivamente trabalhados (com ponto)
+            const usedValue = r2(usedDays * daily);
+            const unusedValue = Math.max(0, r2(paidInfo!.amount - usedValue));
+            vtUnusedDays = daily > 0 ? Math.round(unusedValue / daily) : 0;
+            vtUnusedAdjustment = unusedValue;
+          } else {
+            let unused = absentDays; // faltas injustificadas
+            for (const d of scheduledDates) {
+              if (workedDates.has(d)) continue;
+              if (absenceDateSet.has(d)) continue; // já contado
+              if (justifiedDates.has(d)) unused += 1; // afastamento em dia escalado
+            }
+            vtUnusedDays = unused;
+            vtUnusedAdjustment = r2(unused * daily);
           }
-          vtUnusedDays = unused;
-          vtUnusedAdjustment = r2(unused * daily);
         }
 
         if (transportDiscount < 0) {

@@ -108,7 +108,9 @@ export default function TransportVoucherPanel() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [employees, setEmployees] = useState<EmployeeRow[]>([]);
   const [vts, setVts] = useState<Record<string, VTRow>>({});
-  const [paymentFrequency, setPaymentFrequency] = useState<PaymentFrequency>("biweekly");
+  const [paidMap, setPaidMap] = useState<Record<string, number>>({});
+  const [savingPaid, setSavingPaid] = useState<string | null>(null);
+  const [paymentFrequency, setPaymentFrequency] = useState<PaymentFrequency>("monthly");
   const [methodFilter, setMethodFilter] = useState<"all" | PaymentMethod>("all");
   const [exporting, setExporting] = useState(false);
   const [launchingPayables, setLaunchingPayables] = useState(false);
@@ -127,16 +129,57 @@ export default function TransportVoucherPanel() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data } = await (supabase as any)
-        .from("payroll_vt_review")
-        .select("id")
-        .eq("reference_year", refYear)
-        .eq("reference_month", refMonth)
-        .maybeSingle();
-      if (!cancelled) setApproved(!!data);
+      const [{ data: appr }, { data: paid }] = await Promise.all([
+        (supabase as any)
+          .from("payroll_vt_review")
+          .select("id")
+          .eq("reference_year", refYear)
+          .eq("reference_month", refMonth)
+          .maybeSingle(),
+        (supabase as any)
+          .from("transport_voucher_monthly_payments")
+          .select("employee_id, amount_paid")
+          .eq("reference_year", refYear)
+          .eq("reference_month", refMonth),
+      ]);
+      if (cancelled) return;
+      setApproved(!!appr);
+      const map: Record<string, number> = {};
+      (paid ?? []).forEach((p: any) => { map[p.employee_id] = Number(p.amount_paid ?? 0); });
+      setPaidMap(map);
     })();
     return () => { cancelled = true; };
   }, [refYear, refMonth]);
+
+  const savePaid = async (employeeId: string, value: number) => {
+    const wasApproved = approved;
+    setSavingPaid(employeeId);
+    try {
+      const { error } = await (supabase as any)
+        .from("transport_voucher_monthly_payments")
+        .upsert({
+          employee_id: employeeId,
+          reference_year: refYear,
+          reference_month: refMonth,
+          amount_paid: value,
+          paid_at: new Date().toISOString(),
+          paid_by: user?.id ?? null,
+        }, { onConflict: "employee_id,reference_year,reference_month" });
+      if (error) {
+        toast({ title: "Erro ao salvar recarga", description: error.message, variant: "destructive" });
+        return;
+      }
+      setPaidMap((prev) => ({ ...prev, [employeeId]: value }));
+      await invalidateApproval();
+      if (wasApproved) {
+        showRecalculatePayrollNotice();
+        return;
+      }
+      toast({ title: "Recarga salva", description: `Valor pago no mês registrado.` });
+    } finally {
+      setSavingPaid(null);
+    }
+  };
 
   const handleApprove = async () => {
     const saved = await saveAll({ silent: true, keepApproval: true });
@@ -715,10 +758,25 @@ export default function TransportVoucherPanel() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="text-xs pt-1 border-t space-y-0.5">
+            <div className="text-xs pt-1 border-t space-y-1">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Total VT:</span>
+                <span className="text-muted-foreground">Total VT (teórico):</span>
                 <span className="font-medium">{money(total)}</span>
+              </div>
+              <div className="flex justify-between items-center gap-2">
+                <span className="text-muted-foreground whitespace-nowrap">Pago em {MONTHS[refMonth - 1].slice(0,3)}/{String(refYear).slice(2)}:</span>
+                <Input
+                  type="number" step="0.01" min="0"
+                  className="h-7 w-24 text-right text-xs"
+                  placeholder="0,00"
+                  defaultValue={paidMap[e.id] ?? ""}
+                  onBlur={(ev) => {
+                    const v = Number(ev.target.value) || 0;
+                    if (v !== (paidMap[e.id] ?? 0)) savePaid(e.id, v);
+                  }}
+                  disabled={savingPaid === e.id}
+                  key={`paid-m-${e.id}-${refYear}-${refMonth}-${paidMap[e.id] ?? ""}`}
+                />
               </div>
               {(() => {
                 const pct = Number(r.discount_percent) || 0;
@@ -772,7 +830,8 @@ export default function TransportVoucherPanel() {
             <TableHead className="w-32 text-right">Valor diário</TableHead>
             <TableHead className="w-24 text-right">Dias úteis</TableHead>
             <TableHead className="w-32">Forma pgto.</TableHead>
-            <TableHead className="w-32 text-right">Total VT</TableHead>
+            <TableHead className="w-32 text-right">Total VT (teórico)</TableHead>
+            <TableHead className="w-36 text-right" title={`Valor efetivamente recarregado/pago no mês de ${MONTHS[refMonth - 1]}/${refYear}`}>Pago em {MONTHS[refMonth - 1].slice(0, 3)}/{String(refYear).slice(2)}</TableHead>
             <TableHead className="w-24 text-right" title="% do salário descontada em folha (6% padrão CLT, 3% para escala 12x36)">% Desc.</TableHead>
             <TableHead className="w-32 text-right" title="Valor descontado na folha = min(Total VT, salário × %)">Desc. folha</TableHead>
             <TableHead className="w-36 text-right">Ação</TableHead>
@@ -783,7 +842,7 @@ export default function TransportVoucherPanel() {
             const tone = scheduleTone(label);
             return [
             <TableRow key={`grp-${label}`} className={tone.header}>
-              <TableCell colSpan={8} className="py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <TableCell colSpan={9} className="py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {label} <span className="text-muted-foreground/70">({items.length})</span>
               </TableCell>
             </TableRow>,
@@ -830,6 +889,21 @@ export default function TransportVoucherPanel() {
                     {money(total)} / {FREQ_LABEL[paymentFrequency].toLowerCase()}
                   </div>
                 )}
+              </TableCell>
+              <TableCell>
+                <Input
+                  type="number" step="0.01" min="0"
+                  className="h-8 text-right"
+                  placeholder="0,00"
+                  defaultValue={paidMap[e.id] ?? ""}
+                  onBlur={(ev) => {
+                    const v = Number(ev.target.value) || 0;
+                    if (v !== (paidMap[e.id] ?? 0)) savePaid(e.id, v);
+                  }}
+                  disabled={savingPaid === e.id}
+                  key={`paid-${e.id}-${refYear}-${refMonth}-${paidMap[e.id] ?? ""}`}
+                />
+                {savingPaid === e.id && <Loader2 className="inline h-3 w-3 animate-spin text-muted-foreground ml-1" />}
               </TableCell>
               <TableCell>
                 <Input
