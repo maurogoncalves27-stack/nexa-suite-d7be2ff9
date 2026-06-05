@@ -815,7 +815,8 @@ export default function TransportVoucherPanel() {
             <TableHead className="w-32 text-right">Valor diário</TableHead>
             <TableHead className="w-24 text-right">Dias úteis</TableHead>
             <TableHead className="w-32">Forma pgto.</TableHead>
-            <TableHead className="w-32 text-right">Total VT</TableHead>
+            <TableHead className="w-32 text-right">Total VT (teórico)</TableHead>
+            <TableHead className="w-36 text-right" title={`Valor efetivamente recarregado/pago no mês de ${MONTHS[refMonth - 1]}/${refYear}`}>Pago em {MONTHS[refMonth - 1].slice(0, 3)}/{String(refYear).slice(2)}</TableHead>
             <TableHead className="w-24 text-right" title="% do salário descontada em folha (6% padrão CLT, 3% para escala 12x36)">% Desc.</TableHead>
             <TableHead className="w-32 text-right" title="Valor descontado na folha = min(Total VT, salário × %)">Desc. folha</TableHead>
             <TableHead className="w-36 text-right">Ação</TableHead>
