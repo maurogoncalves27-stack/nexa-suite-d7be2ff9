@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { ENTRY_TYPE_LABEL, ENTRY_TYPE_ORDER, TimeClockEntryType } from "@/lib/timeClock";
 import { ScheduleVsPunchPanel } from "@/components/timeclock/ScheduleVsPunchPanel";
 import { sortStores } from "@/lib/storeSort";
+import { useEmployeesAtStore } from "@/hooks/useEmployeesAtStore";
 
 import JustificationsPanel from "@/components/timeclock/JustificationsPanel";
 import EmployeeLeavesPanel from "@/components/timeclock/EmployeeLeavesPanel";
@@ -54,6 +55,9 @@ export default function TimeClock() {
     const last = new Date(y, m, 0);
     return { from: format(first, "yyyy-MM-dd"), to: format(last, "yyyy-MM-dd") };
   }, [month]);
+
+  const punchedAtStore = useEmployeesAtStore(storeId, from, to);
+
 
   useEffect(() => { init(); }, []);
   useEffect(() => { load(); }, [storeId, employeeId, from, to]);
@@ -164,7 +168,7 @@ export default function TimeClock() {
                 <EmployeeCombobox
                   value={employeeId}
                   onChange={setEmployeeId}
-                  employees={employees.filter((e) => storeId === "all" || e.store_id === storeId)}
+                  employees={employees.filter((e) => storeId === "all" || e.store_id === storeId || punchedAtStore.has(e.id))}
                 />
               </div>
               <div>

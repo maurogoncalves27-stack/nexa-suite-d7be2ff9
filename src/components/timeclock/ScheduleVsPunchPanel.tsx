@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Download, AlertTriangle, CheckCircle2, XCircle, Clock4, CalendarOff, Plane } from "lucide-react";
 import { addDays, format, startOfWeek } from "date-fns";
 import { sortStores } from "@/lib/storeSort";
+import { useEmployeesAtStore } from "@/hooks/useEmployeesAtStore";
 
 interface Store { id: string; name: string }
 interface Employee { id: string; full_name: string; store_id: string; allocated_store_id: string | null; exempt_from_timeclock?: boolean }
@@ -159,8 +160,11 @@ export function ScheduleVsPunchPanel({ toleranceMinutes = 5 }: Props) {
     });
   };
 
+  const punchedAtStore = useEmployeesAtStore(storeId, from, to);
+
   useEffect(() => { init(); }, []);
-  useEffect(() => { load(); }, [storeId, employeeId, from, to]);
+  useEffect(() => { load(); }, [storeId, employeeId, from, to, punchedAtStore]);
+
 
   const init = async () => {
     const [{ data: sto }, { data: emp }] = await Promise.all([
@@ -197,10 +201,11 @@ export function ScheduleVsPunchPanel({ toleranceMinutes = 5 }: Props) {
       entryQ = entryQ.eq("employee_id", employeeId);
       leaveQ = leaveQ.eq("employee_id", employeeId);
     } else if (storeId !== "all") {
-      // Filtra colaboradores da loja (contratante OU alocação)
-      const ids = employees
-        .filter((e) => e.store_id === storeId || e.allocated_store_id === storeId)
-        .map((e) => e.id);
+      // Inclui contratantes/alocados E quem bateu ponto nessa loja no período
+      const ids = Array.from(new Set([
+        ...employees.filter((e) => e.store_id === storeId || e.allocated_store_id === storeId).map((e) => e.id),
+        ...punchedAtStore,
+      ]));
       if (ids.length === 0) {
         setSchedules([]);
         setEntries([]);
@@ -221,8 +226,8 @@ export function ScheduleVsPunchPanel({ toleranceMinutes = 5 }: Props) {
   const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
   const filteredEmployees = useMemo(() => {
     if (storeId === "all") return employees;
-    return employees.filter((e) => e.store_id === storeId || e.allocated_store_id === storeId);
-  }, [employees, storeId]);
+    return employees.filter((e) => e.store_id === storeId || e.allocated_store_id === storeId || punchedAtStore.has(e.id));
+  }, [employees, storeId, punchedAtStore]);
 
   const results: DayResult[] = useMemo(() => {
     // Agrupa por employee_id + date

@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { sortStores } from "@/lib/storeSort";
+import { useEmployeesAtStore } from "@/hooks/useEmployeesAtStore";
 
 type LeaveType =
   | "medical_certificate" | "paid_absence" | "unpaid_absence" | "day_off"
@@ -68,8 +69,10 @@ export function EmployeeLeavesPanel() {
   });
   const [saving, setSaving] = useState(false);
 
+  const punchedAtStore = useEmployeesAtStore(storeId, from, to);
+
   useEffect(() => { init(); }, []);
-  useEffect(() => { load(); }, [storeId, from, to]);
+  useEffect(() => { load(); }, [storeId, from, to, punchedAtStore]);
 
   const init = async () => {
     const [{ data: sto }, { data: emp }] = await Promise.all([
@@ -92,7 +95,10 @@ export function EmployeeLeavesPanel() {
       .limit(500);
     let list = (data ?? []) as Leave[];
     if (storeId !== "all") {
-      const allowed = new Set(employees.filter((e) => e.store_id === storeId).map((e) => e.id));
+      const allowed = new Set([
+        ...employees.filter((e) => e.store_id === storeId).map((e) => e.id),
+        ...punchedAtStore,
+      ]);
       list = list.filter((l) => allowed.has(l.employee_id));
     }
     setItems(list);
@@ -100,9 +106,10 @@ export function EmployeeLeavesPanel() {
 
   const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
   const filteredEmployees = useMemo(
-    () => storeId === "all" ? employees : employees.filter((e) => e.store_id === storeId),
-    [employees, storeId],
+    () => storeId === "all" ? employees : employees.filter((e) => e.store_id === storeId || punchedAtStore.has(e.id)),
+    [employees, storeId, punchedAtStore],
   );
+
 
   const openNew = () => {
     setEditing(null);
