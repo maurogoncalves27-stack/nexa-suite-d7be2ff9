@@ -108,7 +108,9 @@ export default function TransportVoucherPanel() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [employees, setEmployees] = useState<EmployeeRow[]>([]);
   const [vts, setVts] = useState<Record<string, VTRow>>({});
-  const [paymentFrequency, setPaymentFrequency] = useState<PaymentFrequency>("biweekly");
+  const [paidMap, setPaidMap] = useState<Record<string, number>>({});
+  const [savingPaid, setSavingPaid] = useState<string | null>(null);
+  const [paymentFrequency, setPaymentFrequency] = useState<PaymentFrequency>("monthly");
   const [methodFilter, setMethodFilter] = useState<"all" | PaymentMethod>("all");
   const [exporting, setExporting] = useState(false);
   const [launchingPayables, setLaunchingPayables] = useState(false);
