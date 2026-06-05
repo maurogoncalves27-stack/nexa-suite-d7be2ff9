@@ -47,6 +47,9 @@ interface Certificate {
   review_notes: string | null;
   leave_applied: boolean;
   infraction_id: string | null;
+  inss_referral: boolean;
+  inss_benefit_type: string | null;
+  inss_benefit_number: string | null;
 }
 
 interface FormState {
@@ -59,6 +62,9 @@ interface FormState {
   doctor_name: string;
   doctor_crm: string;
   notes: string;
+  inss_referral: boolean;
+  inss_benefit_type: string;
+  inss_benefit_number: string;
 }
 
 const EMPTY: FormState = {
@@ -71,6 +77,9 @@ const EMPTY: FormState = {
   doctor_name: "",
   doctor_crm: "",
   notes: "",
+  inss_referral: false,
+  inss_benefit_type: "B31",
+  inss_benefit_number: "",
 };
 
 const fileToBase64 = (file: File): Promise<string> =>
