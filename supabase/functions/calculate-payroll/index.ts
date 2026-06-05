@@ -534,9 +534,21 @@ Deno.serve(async (req: Request) => {
       }
       const hasPartialMonth = (admissionDate && admissionDate >= periodStart && admissionDate <= periodEnd) ||
         (emp.termination_date && emp.termination_date >= periodStart && emp.termination_date <= periodEnd);
-      const proportionalSalary = hasPartialMonth
-        ? r2(baseSalary * workedDays / lastDay)
+
+      // ===== Afastamento INSS — separa salário normal x rubrica 15 dias x suspensão =====
+      const inssEmployerDays = (inssEmployerDaysMap.get(emp.id)?.size ?? 0);
+      const inssSuspensionDays = (inssSuspensionDaysMap.get(emp.id)?.size ?? 0);
+      const inssTotalDays = inssEmployerDays + inssSuspensionDays;
+      // Dias pagos como salário normal: descontamos os dias de afastamento previdenciário
+      // (tanto os 15 do empregador quanto os de suspensão) — os primeiros viram rubrica
+      // própria, os outros não geram pagamento algum.
+      const salaryWorkedDays = Math.max(0, workedDays - inssTotalDays);
+      const dailyBase = baseSalary / lastDay;
+      const proportionalSalary = (hasPartialMonth || inssTotalDays > 0)
+        ? r2(dailyBase * salaryWorkedDays)
         : baseSalary;
+      const inssLeavePay = r2(dailyBase * inssEmployerDays);
+
 
       // VT calculado mais abaixo (após apurar faltas/afastamentos),
       // pois o acerto cobre dias escalados sem batida (VT creditado e não usado).
