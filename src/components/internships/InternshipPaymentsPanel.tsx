@@ -53,13 +53,18 @@ export default function InternshipPaymentsPanel() {
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Payment | null>(null);
+  const daysInRefMonth = new Date(refYear, refMonth + 1, 0).getDate();
   const [form, setForm] = useState({
     internship_id: "",
     amount: "",
     reference_date: format(today, "yyyy-MM-dd"),
     payment_date: format(today, "yyyy-MM-dd"),
     notes: "",
+    days_worked: "",
+    days_in_month: "",
+    base_salary: "",
   });
+
 
   useEffect(() => { init(); }, []);
   useEffect(() => { load(); }, [from, to]);
