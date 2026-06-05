@@ -91,22 +91,26 @@ export default function ShiftSwapCard({ employeeId, storeId, userId, fullName }:
   }, [userId]);
 
   const loadColleagues = async () => {
-    // Permite trocar com colegas de qualquer loja (não só a do solicitante)
-    const { data } = await supabase
-      .from("employees")
-      .select("id, full_name, user_id, position, store:stores!employees_store_id_fkey(name)")
-      .neq("id", employeeId)
-      .eq("status", "active")
-      .order("full_name");
-    setColleagues((data ?? [])
-      .filter((c: any) => !!c.user_id)
-      .map((c: any) => ({
-        id: c.id,
-        full_name: c.full_name,
-        user_id: c.user_id,
-        position: c.position ? `${c.position}${c.store?.name ? ` · ${c.store.name}` : ""}` : (c.store?.name ?? null),
-      })) as Colleague[]);
+    // Usa RPC SECURITY DEFINER porque colaboradores comuns não têm SELECT
+    // direto na tabela `employees` (só na própria linha via RLS).
+    const { data, error } = await supabase.rpc("list_shift_swap_candidates" as any, {
+      _requester_employee_id: employeeId,
+    });
+    if (error) {
+      console.error("Erro ao carregar colegas para troca:", error);
+      setColleagues([]);
+      return;
+    }
+    setColleagues(((data ?? []) as any[]).map((c) => ({
+      id: c.id,
+      full_name: c.full_name,
+      user_id: c.user_id,
+      position: c.position_name
+        ? `${c.position_name}${c.store_name ? ` · ${c.store_name}` : ""}`
+        : (c.store_name ?? null),
+    })) as Colleague[]);
   };
+
 
   const loadSchedules = async () => {
     const start = format(new Date(), "yyyy-MM-dd");
@@ -122,17 +126,18 @@ export default function ShiftSwapCard({ employeeId, storeId, userId, fullName }:
   };
 
   const loadPartnerSchedule = async (pid: string) => {
-    const start = format(new Date(), "yyyy-MM-dd");
-    const end = format(addDays(new Date(), 60), "yyyy-MM-dd");
-    const { data } = await supabase
-      .from("work_schedules")
-      .select("id, schedule_date, is_day_off, is_home_office, start_time, end_time")
-      .eq("employee_id", pid)
-      .gte("schedule_date", start)
-      .lte("schedule_date", end)
-      .order("schedule_date");
-    setPartnerSchedule((data ?? []) as ScheduleCell[]);
+    const { data, error } = await supabase.rpc("list_shift_swap_partner_schedule" as any, {
+      _requester_employee_id: employeeId,
+      _partner_employee_id: pid,
+    });
+    if (error) {
+      console.error("Erro ao carregar escala do colega:", error);
+      setPartnerSchedule([]);
+      return;
+    }
+    setPartnerSchedule(((data ?? []) as any[]) as ScheduleCell[]);
   };
+
 
   const onOpen = async () => {
     setOpen(true);
