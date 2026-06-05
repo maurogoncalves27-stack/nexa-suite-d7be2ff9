@@ -1,73 +1,87 @@
-## O que será feito
+# Afastamento previdenciário na folha (CLT art. 60 §3º)
 
-Permitir escolher o **período de experiência** (inicial + prorrogação opcional) no momento de gerar o contrato, com presets CLT e opção livre, validando o teto de 90 dias.
+Quando o colaborador é afastado por incapacidade, o empregador paga os **15 primeiros dias** como salário e, do **16º em diante**, o INSS assume e o contrato fica suspenso. Hoje a folha só gera "Salário mês civil" proporcional, sem separar as rubricas — vamos corrigir.
 
-### 1. Banco — `employees`
+## 1. Catálogo de rubricas (defaults)
 
-Adicionar duas colunas (manter a atual `experience_contract_days` como **período inicial**):
+Adicionar 2 rubricas-padrão no `payrollTables.ts`/cadastro:
 
-- `experience_initial_days` (int, alias semântico — backfill a partir de `experience_contract_days`)
-- `experience_extension_days` (int, nullable) — dias da prorrogação única
+| Código | Descrição | Tipo | Incidências | eSocial |
+|---|---|---|---|---|
+| `AFAST_PREV_15` | Afastamento previdenciário — 15 primeiros dias | Provento | INSS, FGTS, IRRF | `1003` |
+| `AFAST_PREV_INSS` | Afastamento pelo INSS (a partir do 16º dia) | Informativa | nenhuma | `9999` |
 
-> Para evitar quebra de código existente, mantemos `experience_contract_days` como sinônimo do período inicial (atualizamos os dois na gravação).
+Contabilidade pode trocar os códigos depois em **Configurações → Rubricas**.
 
-### 2. UI — `ContractsPanel` (`src/components/announcements/ContractsPanel.tsx`)
+## 2. Extensão de `/atestados`
 
-Novo bloco "Período de experiência" antes de "Gerar contrato":
+Atestado com **duração > 15 dias** ganha bloco extra:
 
-- Radio com presets:
-  - **14 + 30 dias** (44 no total) — escolha padrão pedida
-  - **30 + 60 dias** (90)
-  - **45 + 45 dias** (90)
-  - **30 + 30 dias** (60)
-  - **Período único, sem prorrogação** (campo dias 1–90)
-  - **Personalizado** (dois campos: inicial + prorrogação)
-- Validação client-side:
-  - inicial ≥ 1 e ≤ 90
-  - prorrogação ≥ 0 (0 = sem prorrogação) e ≤ 90 − inicial
-  - mensagem CLT: "Soma máxima 90 dias. Não é permitida segunda prorrogação (Súmula 188 TST)."
-- Ao clicar **Gerar contrato**: persiste `experience_initial_days` e `experience_extension_days` no `employees` do colaborador selecionado, antes do fluxo atual (invalidar assinaturas + criar aviso).
+- Toggle **"Encaminhar ao INSS (afastamento previdenciário)"**
+- Campos: tipo de benefício (B31 doença / B91 acidente / B80 maternidade), NB, CID já existe, **data início** = data do atestado, **data fim prevista** (editável conforme perícia)
+- Ao salvar, grava em `employees.current_leave_*` (3 colunas novas: `current_leave_start`, `current_leave_end`, `current_leave_type`) — sem nova tabela, conforme escolhido.
+- Anexo do atestado segue arquivado em `employee_documents` (pasta imutável).
 
-### 3. Template do contrato (`src/lib/contractTemplate.ts` + `src/lib/contractPdf.ts`)
+Quando o atestado é fechado (alta), grava `current_leave_end` real e limpa o "ativo".
 
-Reescrever a Cláusula 6ª para refletir as duas hipóteses:
+## 3. Cálculo da folha
 
-- **Com prorrogação:** "Período inicial de **{{periodo_experiencia_inicial}} dias** a partir de **{{data_admissao}}**, prorrogável uma única vez por mais **{{periodo_experiencia_prorrogacao}} dias**, totalizando **{{periodo_experiencia_total}} dias** (art. 445, parágrafo único da CLT). Findo o prazo final sem manifestação contrária, o contrato passará automaticamente a vigorar por prazo indeterminado."
-- **Sem prorrogação:** texto simples com `{{periodo_experiencia_inicial}}`.
+Para cada colaborador no mês de referência:
 
-Novos placeholders no `contractPdf.ts` (mantém `{{periodo_experiencia}}` por retrocompatibilidade = total):
-- `{{periodo_experiencia_inicial}}`
-- `{{periodo_experiencia_prorrogacao}}`
-- `{{periodo_experiencia_total}}`
+```text
+dias_mes        = dias do mês de referência (28/29/30/31)
+afast_inicio    = max(current_leave_start, dia 1 do mês)
+afast_fim       = min(current_leave_end, último dia do mês)
+dias_afast      = dias entre afast_inicio e afast_fim (0 se sem afastamento)
 
-A renderização escolhe um dos dois blocos conforme `extension_days > 0`.
+dias_15         = dias do afastamento que caem dentro dos 15 primeiros
+                  (relativo ao início real do afastamento, não do mês)
+dias_inss       = dias_afast - dias_15
+dias_trab       = dias_mes - dias_afast
+```
 
-### 4. Cadastro do colaborador (`ContractCard.tsx`)
+Rubricas geradas:
 
-Apenas exibir os dois campos como **leitura/edição opcional** (default permanece "definido na hora de gerar contrato"). Sem mudança de regra obrigatória.
+- **Salário mês civil** = `salario / dias_mes * dias_trab`
+- **AFAST_PREV_15** = `salario / dias_mes * dias_15` (só se `dias_15 > 0`)
+- **AFAST_PREV_INSS** (informativa, R$ 0,00, ref = `dias_inss`) — só se `dias_inss > 0`
+- **Base INSS/FGTS/IRRF** = `Salário mês civil + AFAST_PREV_15`
+- **VT/VA/produtividade/bonificação**: proporcionais a `dias_trab / dias_mes` (afastamento não zera produtividade — diferente de falta injustificada).
+
+## 4. UI da folha
+
+- Badge **🏥 Afastado INSS — desde dd/mm** ao lado do nome do colaborador na linha da folha quando houver afastamento ativo no período.
+- Tooltip mostra: dias trabalhados / dias 15-empregador / dias INSS.
+
+## 5. Exportação eSocial
+
+- `esocialS1200Export.ts` já lê rubricas do catálogo — só precisa dos códigos cadastrados.
+- **S-2230** (afastamento temporário) fica fora do escopo desta entrega (continua manual no portal do contador).
+
+## 6. Mayke / folha atual
+
+Conforme decidido: **não re-rubricar a folha atual**. A regra entra em vigor para a próxima referência.
 
 ---
 
-## Regras CLT aplicadas (resumo, art. 443 §2º "c", 445 parágrafo único, Súmula 188 TST)
+## Detalhes técnicos
 
-- Máximo **90 dias** somados.
-- **Uma única prorrogação** permitida.
-- Contrato escrito.
-- Rescisão antecipada segue arts. 479/480 (ou 481 se houver cláusula assecuratória).
-- Renovação de novo contrato de experiência com o mesmo empregador só após **6 meses** (art. 452).
-
-## Arquivos afetados
-
-```text
-supabase/migrations/<novo>.sql                              (add 2 colunas + backfill)
-src/components/announcements/ContractsPanel.tsx             (UI de seleção + persist)
-src/lib/contractTemplate.ts                                 (cláusula 6ª reescrita)
-src/lib/contractPdf.ts                                      (novos placeholders)
-src/components/employees/form/ContractCard.tsx              (mostra os 2 campos)
-src/pages/EmployeeForm.tsx                                  (schema + payload)
+**Migração:**
+```sql
+ALTER TABLE public.employees
+  ADD COLUMN current_leave_type text,
+  ADD COLUMN current_leave_start date,
+  ADD COLUMN current_leave_end date;
 ```
+(Sem alteração de RLS — campos pertencem ao mesmo escopo do registro do colaborador.)
 
-## Fora do escopo
+**Arquivos afetados:**
+- `supabase/migrations/...` — colunas em `employees` + seed de 2 rubricas-padrão.
+- `src/pages/MedicalCertificates.tsx` (+ form/dialog) — toggle e campos quando `dias > 15`.
+- `src/lib/payrollTables.ts` — defaults `AFAST_PREV_15` / `AFAST_PREV_INSS`.
+- `supabase/functions/payroll-generate/index.ts` (ou equivalente) — cálculo com `dias_15` / `dias_inss`.
+- `src/components/payroll/SimpleManagerPayrollPanel.tsx` — badge "Afastado INSS".
+- Nenhuma alteração em `c6Export.ts` nem no botão de exportação C6.
 
-- Não muda nada na folha/rescisão.
-- Não toca contratos de **estágio** (`InternshipContractCard`) nem em assinaturas já emitidas.
+**Fora de escopo:**
+- S-2230, novo módulo `/afastamentos`, recálculo retroativo do Mayke, suspensão de FGTS para B91 (regra continua igual à atual).
