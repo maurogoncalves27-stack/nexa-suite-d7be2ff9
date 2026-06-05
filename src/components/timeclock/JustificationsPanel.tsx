@@ -77,7 +77,7 @@ export function JustificationsPanel() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => { init(); }, []);
-  useEffect(() => { load(); }, [storeId, from, to, statusFilter]);
+  useEffect(() => { load(); }, [storeId, from, to, statusFilter, punchedAtStore]);
 
   const init = async () => {
     const [{ data: sto }, { data: emp }] = await Promise.all([
