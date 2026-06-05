@@ -424,7 +424,7 @@ export default function TrainingReceipts() {
                 </div>
 
                 <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-1">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Diária (sal÷30)</span><span>{fmtBRL(calc.daily || 0)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Diária (sal÷{calc.daysInMonth})</span><span>{fmtBRL(calc.daily || 0)}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Dias × diária</span><span>{calc.days} × {fmtBRL(calc.daily || 0)}</span></div>
                   <div className="flex justify-between border-t pt-1 font-semibold"><span>Total a pagar</span><span className="text-emerald-600">{fmtBRL(calc.total || 0)}</span></div>
                   {dueInfo && (
