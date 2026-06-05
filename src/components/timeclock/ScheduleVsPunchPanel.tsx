@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Download, AlertTriangle, CheckCircle2, XCircle, Clock4, CalendarOff, Plane } from "lucide-react";
 import { addDays, format, startOfWeek } from "date-fns";
 import { sortStores } from "@/lib/storeSort";
+import { useEmployeesAtStore } from "@/hooks/useEmployeesAtStore";
 
 interface Store { id: string; name: string }
 interface Employee { id: string; full_name: string; store_id: string; allocated_store_id: string | null; exempt_from_timeclock?: boolean }
