@@ -2,6 +2,7 @@
 // e grava em public.ems_sensor_readings.
 // Roda via pg_cron a cada 5 minutos.
 import { createClient } from "npm:@supabase/supabase-js@2.45.0";
+import { requireCronOrRole } from "../_shared/requireRole.ts";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -26,6 +27,9 @@ interface Reading {
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const auth = await requireCronOrRole(req, ["admin", "manager", "nutritionist"], corsHeaders);
+  if (!auth.ok) return auth.response!;
 
   try {
     const supabase = createClient(

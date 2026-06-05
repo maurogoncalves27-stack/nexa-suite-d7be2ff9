@@ -4,6 +4,7 @@
 // no mês alvo. Suporta { year, month } para backfill manual ou {} para o
 // próximo mês a partir de hoje (cron).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireCronOrRole } from "../_shared/requireRole.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -37,6 +38,9 @@ const daysBetween = (a: string, b: string) =>
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const auth = await requireCronOrRole(req, ["admin", "manager"], corsHeaders);
+  if (!auth.ok) return auth.response!;
 
   const sb = createClient(
     Deno.env.get("SUPABASE_URL")!,
