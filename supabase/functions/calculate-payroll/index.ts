@@ -627,13 +627,16 @@ Deno.serve(async (req: Request) => {
         const rawPct = vt.discount_percent;
         const parsedPct = rawPct === null || rawPct === undefined ? NaN : Number(rawPct);
         const pct = Number.isFinite(parsedPct) ? Math.max(0, parsedPct) : defaultPct;
-        const fullMaxLegal = r2(baseSalary * (pct / 100));
-        const fullDiscount = Math.min(fullVoucher, fullMaxLegal);
+        // Desconto regular SEMPRE = % cheio sobre o salário (CCT da empresa),
+        // mesmo que o valor do VT creditado seja menor (sem cap por fullVoucher).
+        // O acerto de "VT não utilizado" é rubrica SEPARADA.
+        const fullDiscount = r2(baseSalary * (pct / 100));
         const proportionFactor = hasPartialMonth ? (workedDays / lastDay) : 1;
         transportVoucher = r2(fullVoucher * proportionFactor);
         transportDiscount = r2(fullDiscount * proportionFactor);
 
         // Acerto: dias escalados sem batida (qualquer motivo) — VT pago e não usado.
+        // NÃO soma em transport_discount: vai como rubrica separada no total.
         if (timeClockImpactsPayroll && daily > 0) {
           let unused = absentDays; // faltas injustificadas
           for (const d of scheduledDates) {
@@ -643,12 +646,8 @@ Deno.serve(async (req: Request) => {
           }
           vtUnusedDays = unused;
           vtUnusedAdjustment = r2(unused * daily);
-          transportDiscount = r2(transportDiscount + vtUnusedAdjustment);
         }
 
-        // Regra interna: o desconto regular (3%/6% do salário, proporcional aos dias
-        // trabalhados) sempre se aplica, mesmo quando o VT do mês foi zerado por
-        // faltas/afastamentos. Apenas garantimos que o desconto não fique negativo.
         if (transportDiscount < 0) {
           transportDiscount = 0;
         }
@@ -686,7 +685,7 @@ Deno.serve(async (req: Request) => {
         proportionalSalary + productivity + nightAddition + holidayPay + familyAllowance + otherEarnings,
       );
       const totalDiscounts = r2(
-        inss + irrf + transportDiscount + advance + infractionDiscount + healthPlan + otherDiscounts + absenceDiscount + dsrLossDiscount,
+        inss + irrf + transportDiscount + vtUnusedAdjustment + advance + infractionDiscount + healthPlan + otherDiscounts + absenceDiscount + dsrLossDiscount,
       );
       const netPay = r2(totalEarnings - totalDiscounts);
 

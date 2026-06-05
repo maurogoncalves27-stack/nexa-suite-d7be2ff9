@@ -542,6 +542,7 @@ export default function PayrollSummaryPanel() {
         push("Falta", "deduction", Number(r.absence_discount ?? r.calculation_details?.absence_discount ?? 0));
         push("DSR Falta", "deduction", Number(r.dsr_loss_discount ?? r.calculation_details?.dsr_loss_discount ?? 0));
         push("Desc. VT", "deduction", r.transport_discount);
+        push("Desc. VT Não Utilizado", "deduction", Number(r.calculation_details?.vt_unused_adjustment ?? 0));
         push("Co-participacao em Plano de Saude", "deduction", r.health_plan);
         synth[r.id] = rubs;
       });

@@ -386,6 +386,7 @@ export default function SimpleManagerPayrollPanel() {
           push("Outros proventos", "earning", Number(r.other_earnings ?? 0));
           push("Adiantamentos", "deduction", Number(r.advance ?? 0));
           push("Vale-transporte", "deduction", Number(r.transport_discount ?? 0));
+          push("VT Não Utilizado", "deduction", Number(r.calculation_details?.vt_unused_adjustment ?? 0));
           push("Plano de saúde", "deduction", Number(r.health_plan ?? 0));
           push("INSS", "deduction", Number(r.inss ?? 0));
           push("IRRF", "deduction", Number(r.irrf ?? 0));
