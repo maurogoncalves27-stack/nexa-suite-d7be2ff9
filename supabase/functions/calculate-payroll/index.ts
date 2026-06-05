@@ -231,8 +231,13 @@ Deno.serve(async (req: Request) => {
     }
 
     // Pré-carregar dados auxiliares em batch
-    const [vtRes, depRes, infRes, existingRes, holRes, manualHolidayRes, punchRes, advRes, schedRes, certRes, vacRes, justRes, unpaidLeavesRes] = await Promise.all([
+    const [vtRes, vtPaidRes, depRes, infRes, existingRes, holRes, manualHolidayRes, punchRes, advRes, schedRes, certRes, vacRes, justRes, unpaidLeavesRes] = await Promise.all([
       supabase.from("employee_transport_vouchers").select("*").in("employee_id", empIds),
+      supabase.from("transport_voucher_monthly_payments")
+        .select("employee_id, amount_paid, days_paid")
+        .in("employee_id", empIds)
+        .eq("reference_year", year)
+        .eq("reference_month", month),
       supabase.from("employee_dependents").select("employee_id, birth_date").in("employee_id", empIds),
       supabase.from("employee_infractions")
         .select("employee_id, occurred_on, applied_weight, infraction_types(financial_penalty)")
@@ -286,6 +291,15 @@ Deno.serve(async (req: Request) => {
         .lte("start_date", periodEnd)
         .gte("end_date", periodStart),
     ]);
+
+    // Valor de VT efetivamente pago no mês por colaborador (override do teórico).
+    const vtPaidMap = new Map<string, { amount: number; days: number | null }>();
+    (vtPaidRes.data ?? []).forEach((p: any) => {
+      vtPaidMap.set(p.employee_id, {
+        amount: Number(p.amount_paid ?? 0),
+        days: p.days_paid === null || p.days_paid === undefined ? null : Number(p.days_paid),
+      });
+    });
 
     // Override mensal de adicional noturno (página /adicional-noturno).
     // Quando existe registro para (emp, year, month), o valor da tabela substitui
