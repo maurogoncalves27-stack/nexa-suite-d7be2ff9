@@ -270,6 +270,7 @@ export default function InternshipPaymentsPanel() {
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={openCreate}>Novo pagamento</Button>
             <Button variant="outline" onClick={generateMonth}>Gerar do mês</Button>
             <Button onClick={exportC6} disabled={items.length === 0}>
               <ArrowUp className="h-4 w-4 mr-2" /> Exportar C6
@@ -278,7 +279,7 @@ export default function InternshipPaymentsPanel() {
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Editar pagamento</DialogTitle>
+                <DialogTitle>{editing ? "Editar pagamento" : "Novo pagamento"}</DialogTitle>
               </DialogHeader>
               <div className="space-y-3">
                 <div>
