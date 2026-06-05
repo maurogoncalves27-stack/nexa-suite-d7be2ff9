@@ -279,7 +279,7 @@ export default function InternshipPaymentsPanel() {
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Editar pagamento</DialogTitle>
+                <DialogTitle>{editing ? "Editar pagamento" : "Novo pagamento"}</DialogTitle>
               </DialogHeader>
               <div className="space-y-3">
                 <div>
