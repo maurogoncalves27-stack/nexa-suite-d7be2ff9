@@ -181,6 +181,7 @@ export default function NfceTester() {
                 </Badge>
               )}
             </div>
+            <TerminalDialog agentUrl={agentUrl} />
           </div>
 
           {health.ok && (
