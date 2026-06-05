@@ -182,6 +182,7 @@ Deno.serve(async (req: Request) => {
     const periodStart = `${year}-${String(month).padStart(2, "0")}-01`;
     const lastDay = new Date(year, month, 0).getDate();
     const periodEnd = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+    console.log("[CALC-PAYROLL-START]", { year, month, lastDay, periodStart, periodEnd });
     const refDate = new Date(year, month - 1, 15);
 
     let empQ = supabase
