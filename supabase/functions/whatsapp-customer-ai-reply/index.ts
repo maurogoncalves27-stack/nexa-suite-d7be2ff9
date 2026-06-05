@@ -123,6 +123,15 @@ REGRAS CRÍTICAS:
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
+  // Only callable server-to-server with the service-role key (invoked by
+  // whatsapp-customer-webhook). Rejects any external caller.
+  const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '').trim();
+  if (!SERVICE_ROLE || token !== SERVICE_ROLE) {
+    return new Response(JSON.stringify({ error: 'unauthorized' }), {
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
     const { conversation_id } = await req.json();
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
