@@ -559,15 +559,10 @@ Deno.serve(async (req: Request) => {
         : r2(calculatedNightAddition + manualNightAddition);
 
       // Feriados trabalhados: pagos em DOBRO conforme convenção coletiva.
-      // Base de cálculo PROPORCIONAL aos dias do mês de referência (lastDay), NÃO 30 fixo.
+      // Base PROPORCIONAL aos dias do mês de referência (lastDay), NÃO 30 fixo.
       // Ex.: maio (31 dias) -> diária = salário/31; abril (30 dias) -> diária = salário/30.
-      // Lançamos 2× o valor da diária por feriado trabalhado.
       const holidayDailyRate = baseSalary / lastDay;
-      let holidayPay = r2(holidayDaysWorked * holidayDailyRate * 2);
-      if ((emp.full_name ?? "").toUpperCase().includes("DENIS")) {
-        console.error("[DENIS-HOLIDAY-DEBUG]", { lastDay, baseSalary, holidayDaysWorked, holidayDailyRate, holidayPay, year, month });
-        holidayPay = 99.99;
-      }
+      const holidayPay = r2(holidayDaysWorked * holidayDailyRate * 2);
 
       // ===== Faltas e DSR (a partir da escala vs ponto) =====
       // Só apura se o ponto deste colaborador impacta folha.
