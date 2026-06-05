@@ -267,7 +267,7 @@ Deno.serve(async (req: Request) => {
         .gte("schedule_date", periodStart)
         .lte("schedule_date", periodEnd),
       supabase.from("medical_certificates")
-        .select("employee_id, leave_start_date, leave_end_date, status, leave_applied")
+        .select("employee_id, leave_start_date, leave_end_date, status, leave_applied, inss_referral")
         .in("employee_id", empIds)
         .eq("status", "approved")
         .lte("leave_start_date", periodEnd)
