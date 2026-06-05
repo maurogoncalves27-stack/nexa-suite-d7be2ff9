@@ -116,6 +116,7 @@ const SmartPosLogin = lazy(() => import("./pages/SmartPosLogin.tsx"));
 const Garcom = lazy(() => import("./pages/Garcom.tsx"));
 const Totem = lazy(() => import("./pages/Totem.tsx"));
 const TotemConfig = lazy(() => import("./pages/TotemConfig.tsx"));
+const NfceTester = lazy(() => import("./pages/NfceTester.tsx"));
 const Balcao = lazy(() => import("./pages/Balcao.tsx"));
 const Menu = lazy(() => import("./pages/Menu.tsx"));
 const Occurrences = lazy(() => import("./pages/Occurrences.tsx"));
@@ -332,6 +333,7 @@ const App = () => (
               <Route path="/configuracoes/entregas" element={<Guarded staff><DeliverySettings /></Guarded>} />
               <Route path="/configuracoes/whatsapp" element={<Guarded staff><WhatsAppAdmin /></Guarded>} />
               <Route path="/configuracoes/totem" element={<Guarded staff><TotemConfig /></Guarded>} />
+              <Route path="/configuracoes/nfce-tester" element={<Guarded staff><NfceTester /></Guarded>} />
               <Route path="/recebimento" element={<Guarded><InventoryReceiving /></Guarded>} />
               <Route path="/nf-arquivadas" element={<Guarded><NfArchived /></Guarded>} />
               <Route path="/produtos" element={<Guarded><InventoryProducts /></Guarded>} />
