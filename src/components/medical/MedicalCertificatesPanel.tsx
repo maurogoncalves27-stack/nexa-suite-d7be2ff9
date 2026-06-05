@@ -409,6 +409,11 @@ export default function MedicalCertificatesPanel() {
           size_bytes: uploadFile.size,
           created_by: u.user?.id ?? null,
           status: "pending",
+          inss_referral: days > 15 ? form.inss_referral : false,
+          inss_benefit_type: days > 15 && form.inss_referral ? form.inss_benefit_type : null,
+          inss_benefit_number: days > 15 && form.inss_referral && form.inss_benefit_number
+            ? form.inss_benefit_number
+            : null,
         })
         .select("id")
         .single();
