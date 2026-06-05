@@ -60,6 +60,8 @@ export function JustificationsPanel() {
   const [from, setFrom] = useState(format(new Date(new Date().setDate(1)), "yyyy-MM-dd"));
   const [to, setTo] = useState(format(new Date(), "yyyy-MM-dd"));
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "resolved">("all");
+  const punchedAtStore = useEmployeesAtStore(storeId, from, to);
+
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Justification | null>(null);
