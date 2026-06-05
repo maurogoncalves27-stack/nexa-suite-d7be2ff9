@@ -113,10 +113,13 @@ export function generateTrainingReceiptPdf(data: TrainingReceiptData): jsPDF {
   const rgStr = data.employee_rg ? `, RG nº ${data.employee_rg}` : "";
   const cargoStr = data.position ? `, no cargo de ${data.position}` : "";
 
+  const refEnd = (() => { try { return parseISO(data.training_end); } catch { return new Date(); } })();
+  const daysInMonth = new Date(refEnd.getFullYear(), refEnd.getMonth() + 1, 0).getDate();
+
   const corpo =
 `Eu, ${data.employee_name}${cpfStr}${rgStr}${cargoStr}, declaro ter recebido da empresa acima identificada a importância de ${fmtBRL(data.total_amount)} (${numToExtenso(data.total_amount)}), referente a ${data.worked_days} dia(s) trabalhado(s) durante o período de treinamento, compreendido entre ${fmtDate(data.training_start)} e ${fmtDate(data.training_end)}.
 
-O cálculo foi efetuado com base no salário mensal contratual de ${fmtBRL(data.monthly_salary)}, equivalente a uma diária de ${fmtBRL(data.daily_rate)} (salário ÷ 30 dias), multiplicada pelos dias efetivamente trabalhados no período de treinamento.
+O cálculo foi efetuado com base no salário mensal contratual de ${fmtBRL(data.monthly_salary)}, equivalente a uma diária de ${fmtBRL(data.daily_rate)} (salário ÷ ${daysInMonth} dias do mês de referência), multiplicada pelos dias efetivamente trabalhados no período de treinamento.
 
 Por ser verdade e expressão da pura realidade, dou plena, geral, rasa e irrevogável quitação da importância recebida, para nada mais reclamar a qualquer tempo e a que título for.`;
 
@@ -131,7 +134,7 @@ Por ser verdade e expressão da pura realidade, dou plena, geral, rasa e irrevog
   doc.setFont("helvetica", "normal");
   const linhasCalc = [
     [`Salário mensal contratual:`, fmtBRL(data.monthly_salary)],
-    [`Diária (salário ÷ 30):`, fmtBRL(data.daily_rate)],
+    [`Diária (salário ÷ ${daysInMonth}):`, fmtBRL(data.daily_rate)],
     [`Dias trabalhados em treinamento:`, String(data.worked_days)],
     [`Total a pagar:`, fmtBRL(data.total_amount)],
   ];
