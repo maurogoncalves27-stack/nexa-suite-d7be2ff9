@@ -808,6 +808,51 @@ export default function MedicalCertificatesPanel() {
                 <Label>Observações</Label>
                 <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
               </div>
+
+              {parseInt(form.days_off, 10) > 15 && (
+                <div className="md:col-span-2 rounded-md border border-warning/40 bg-warning/5 p-3 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <Label className="text-sm font-semibold">Encaminhar ao INSS</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Atestado &gt; 15 dias. Empregador paga apenas os 15 primeiros dias; do 16º em diante, contrato suspenso e INSS assume (CLT art. 60 §3º).
+                      </p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      className="h-5 w-5 mt-1 accent-primary"
+                      checked={form.inss_referral}
+                      onChange={(e) => setForm({ ...form, inss_referral: e.target.checked })}
+                    />
+                  </div>
+                  {form.inss_referral && (
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div>
+                        <Label>Tipo de benefício</Label>
+                        <Select
+                          value={form.inss_benefit_type}
+                          onValueChange={(v) => setForm({ ...form, inss_benefit_type: v })}
+                        >
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="B31">B31 — Auxílio por incapacidade temporária</SelectItem>
+                            <SelectItem value="B91">B91 — Acidente de trabalho</SelectItem>
+                            <SelectItem value="B80">B80 — Salário-maternidade</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>NB (Número do Benefício)</Label>
+                        <Input
+                          value={form.inss_benefit_number}
+                          onChange={(e) => setForm({ ...form, inss_benefit_number: e.target.value })}
+                          placeholder="Opcional — preencher após perícia"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>
