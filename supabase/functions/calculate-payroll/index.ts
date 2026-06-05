@@ -563,6 +563,9 @@ Deno.serve(async (req: Request) => {
       // Lançamos 2× o valor da diária por feriado trabalhado.
       const holidayDailyRate = baseSalary / lastDay;
       const holidayPay = r2(holidayDaysWorked * holidayDailyRate * 2);
+      if (holidayDaysWorked > 0 && (emp.full_name ?? "").toUpperCase().includes("DENIS")) {
+        console.log("[DENIS-HOLIDAY-DEBUG]", { lastDay, baseSalary, holidayDaysWorked, holidayDailyRate, holidayPay, year, month });
+      }
 
       // ===== Faltas e DSR (a partir da escala vs ponto) =====
       // Só apura se o ponto deste colaborador impacta folha.
