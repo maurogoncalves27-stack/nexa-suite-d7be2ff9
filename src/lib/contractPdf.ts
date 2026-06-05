@@ -238,7 +238,7 @@ export async function buildContract(
       const prorrog = Number(employee.experience_extension_days ?? 0) || 0;
       const total = inicial + prorrog;
       const clausula = prorrog > 0
-        ? `O presente contrato terá período inicial de experiência de ${inicial} (${numberToWords(inicial).replace(/\s*reais?$/, "").trim() || inicial}) dias, contados a partir de ${formatDate(admissionDate)}, podendo ser prorrogado, uma única vez, por mais ${prorrog} dias, totalizando ${total} dias (art. 445, parágrafo único, da CLT; Súmula 188 do TST). Durante esse prazo, qualquer das partes poderá rescindir o contrato nos termos da legislação trabalhista. Findo o prazo final sem manifestação em contrário, o contrato passará automaticamente a vigorar por prazo indeterminado.`
+        ? `O presente contrato terá período inicial de experiência de ${inicial} dias, contados a partir de ${formatDate(admissionDate)}, podendo ser prorrogado, uma única vez, por mais ${prorrog} dias, totalizando ${total} dias (art. 445, parágrafo único, da CLT; Súmula 188 do TST). Durante esse prazo, qualquer das partes poderá rescindir o contrato nos termos da legislação trabalhista. Findo o prazo final sem manifestação em contrário, o contrato passará automaticamente a vigorar por prazo indeterminado.`
         : `O presente contrato terá período de experiência de ${inicial} dias, contados a partir de ${formatDate(admissionDate)}, durante o qual qualquer das partes poderá rescindi-lo nos termos da legislação trabalhista. Findo esse prazo sem manifestação em contrário, o contrato passará automaticamente a vigorar por prazo indeterminado.`;
       return {
         "{{periodo_experiencia}}": String(total || inicial),
