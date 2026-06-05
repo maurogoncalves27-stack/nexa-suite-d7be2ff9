@@ -129,6 +129,8 @@ A base já existe: `/garcom`, tabelas `pdv_tables` / `pdv_table_sessions` / `pdv
 ```text
 TEF ACBr ──┬──> PDV NEXA Asa Sul ──┬──> Estoque real ──> Compras automáticas
            │                       │
+           │                       ├──> NEXA Garçom GPOS780 (Asa Norte)
+           │                       │
            │                       └──> Rollout 3 lojas ──> Desligar Saipos
            │
            └──> WhatsApp vendas (precisa também: cardápio + Pix C6 + Lalamove)
@@ -145,13 +147,14 @@ RH ──> Contínuo (independente)
 
 | Integração | Status | Prazo estimado | Bloqueia |
 |---|---|---|---|
-| PayGo (homologação) | Pronto pra rodar planilha | 1-5 dias após envio | Fase 1-4 |
-| iFood reviews/chat | Aguardando solicitação | 30 dias | Fase 5.3 |
-| Google Business OAuth | Solicitado | ~15 dias | Fase 6 |
-| C6 API extrato | Não solicitado | a definir | Fase 8 |
-| C6 Pix dinâmico | Não solicitado | a definir | Fase 7.3 |
-| Lalamove API | Não solicitado | ~7 dias | Fase 7.4 |
-| Uber Direct API | Não solicitado | ~14 dias | Fase 7.5 |
+| PayGo (homologação) | Pronto pra rodar planilha | 1-5 dias após envio | Fase 1-5 |
+| PayGo integrado GPOS780 | Confirmar SDK Android | a definir | Fase 4.4 |
+| iFood reviews/chat | Aguardando solicitação | 30 dias | Fase 6.3 |
+| Google Business OAuth | Solicitado | ~15 dias | Fase 7 |
+| C6 API extrato | Não solicitado | a definir | Fase 9 |
+| C6 Pix dinâmico | Não solicitado | a definir | Fase 8.3 |
+| Lalamove API | Não solicitado | ~7 dias | Fase 8.4 |
+| Uber Direct API | Não solicitado | ~14 dias | Fase 8.5 |
 
 ## O que NÃO vamos fazer
 
