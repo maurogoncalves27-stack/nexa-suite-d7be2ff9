@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { generateTimesheetClosurePdf, type TimesheetClosureRow, type TimesheetClosureEntry } from "@/lib/timesheetPdf";
 import { sortStores } from "@/lib/storeSort";
+import { useEmployeesAtStore } from "@/hooks/useEmployeesAtStore";
 
 interface Employee { id: string; full_name: string; store_id: string; position: string | null; exempt_from_timeclock: boolean | null }
 interface Store { id: string; name: string }
