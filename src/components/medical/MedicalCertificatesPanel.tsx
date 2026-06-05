@@ -261,6 +261,11 @@ export default function MedicalCertificatesPanel() {
           mime_type: mimeType,
           infraction_id: null,
           leave_applied: false,
+          inss_referral: days > 15 ? form.inss_referral : false,
+          inss_benefit_type: days > 15 && form.inss_referral ? form.inss_benefit_type : null,
+          inss_benefit_number: days > 15 && form.inss_referral && form.inss_benefit_number
+            ? form.inss_benefit_number
+            : null,
         })
         .eq("id", editingId);
       if (updErr) throw updErr;
