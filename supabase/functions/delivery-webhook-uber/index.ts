@@ -18,11 +18,26 @@ const STATUS_MAP: Record<string, string> = {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  // Shared-secret check (interim until full HMAC X-Postmates-Signature). If
+  // UBER_DIRECT_WEBHOOK_SECRET is not configured, endpoint stays closed (503).
+  const expectedSecret = Deno.env.get('UBER_DIRECT_WEBHOOK_SECRET');
+  if (!expectedSecret) {
+    return new Response(JSON.stringify({ error: 'webhook secret not configured' }), {
+      status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+  const provided = req.headers.get('x-webhook-secret') ?? req.headers.get('x-postmates-signature') ?? '';
+  if (provided !== expectedSecret) {
+    return new Response(JSON.stringify({ error: 'unauthorized' }), {
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
     const payload = await req.json();
     console.log('[uber-webhook]', JSON.stringify(payload).slice(0, 500));
 
-    // TODO Fase 2: validar X-Postmates-Signature com UBER_DIRECT_WEBHOOK_SECRET
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
     const providerOrderId = payload?.data?.id ?? payload?.delivery_id ?? payload?.id;
