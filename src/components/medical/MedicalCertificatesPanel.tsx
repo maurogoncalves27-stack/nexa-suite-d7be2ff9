@@ -173,6 +173,9 @@ export default function MedicalCertificatesPanel() {
       doctor_name: c.doctor_name ?? "",
       doctor_crm: c.doctor_crm ?? "",
       notes: c.notes ?? "",
+      inss_referral: !!c.inss_referral,
+      inss_benefit_type: c.inss_benefit_type ?? "B31",
+      inss_benefit_number: c.inss_benefit_number ?? "",
     });
     setFile(null);
     setOpen(true);
