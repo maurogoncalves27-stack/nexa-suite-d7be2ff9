@@ -465,6 +465,48 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // ===== Afastamento previdenciário (INSS) — CLT art. 60 §3º =====
+    // Atestado encaminhado ao INSS:
+    //   • Dias 1 a 15 desde o início do afastamento => empregador paga como
+    //     rubrica "Afastamento previdenciário (15 primeiros dias)" (provento,
+    //     incide INSS/FGTS/IRRF). Não conta como falta, não conta como salário
+    //     normal proporcional.
+    //   • Dia 16 em diante => INSS assume; contrato suspenso; empregador NÃO
+    //     paga; informativo apenas.
+    // Aqui montamos, por colaborador, os conjuntos de datas (interseção com o
+    // mês) classificadas em "15 primeiros" e "suspensão INSS".
+    const inssEmployerDaysMap = new Map<string, Set<string>>();
+    const inssSuspensionDaysMap = new Map<string, Set<string>>();
+    const inssDayKey = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${dd}`;
+    };
+    (certRes.data ?? []).forEach((c: any) => {
+      if (!c.inss_referral || !c.leave_start_date || !c.leave_end_date) return;
+      const leaveStart = new Date(`${c.leave_start_date}T00:00:00`);
+      const leaveEnd = new Date(`${c.leave_end_date}T00:00:00`);
+      const periodStartD = new Date(`${periodStart}T00:00:00`);
+      const periodEndD = new Date(`${periodEnd}T00:00:00`);
+      const cursor = new Date(Math.max(leaveStart.getTime(), periodStartD.getTime()));
+      const stop = new Date(Math.min(leaveEnd.getTime(), periodEndD.getTime()));
+      const employerSet = inssEmployerDaysMap.get(c.employee_id) ?? new Set<string>();
+      const suspensionSet = inssSuspensionDaysMap.get(c.employee_id) ?? new Set<string>();
+      while (cursor <= stop) {
+        const dayIndex = Math.floor(
+          (cursor.getTime() - leaveStart.getTime()) / 86400000,
+        ); // 0-indexed (dia 0 = primeiro dia)
+        const key = inssDayKey(cursor);
+        if (dayIndex < 15) employerSet.add(key);
+        else suspensionSet.add(key);
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      inssEmployerDaysMap.set(c.employee_id, employerSet);
+      inssSuspensionDaysMap.set(c.employee_id, suspensionSet);
+    });
+
+
     const rows: any[] = [];
 
     for (const emp of employees ?? []) {
