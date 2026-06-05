@@ -379,7 +379,7 @@ export default function TransportVoucherPanel() {
 
   const groupedRows = useMemo(() => {
     const groups = new Map<string, typeof rows>();
-    const order = ["Escala 12x36", "Escala 6x1", "Escala 5x2"];
+    const order = ["Escala 12x36", "Escala 6x1", "Escala 5x2", "Escala Híbrida"];
     rows.forEach((row) => {
       const label = scheduleGroupLabel(row.e.work_schedule);
       if (!groups.has(label)) groups.set(label, [] as typeof rows);
