@@ -267,7 +267,7 @@ Deno.serve(async (req: Request) => {
         .gte("schedule_date", periodStart)
         .lte("schedule_date", periodEnd),
       supabase.from("medical_certificates")
-        .select("employee_id, leave_start_date, leave_end_date, status, leave_applied")
+        .select("employee_id, leave_start_date, leave_end_date, status, leave_applied, inss_referral")
         .in("employee_id", empIds)
         .eq("status", "approved")
         .lte("leave_start_date", periodEnd)
@@ -465,6 +465,48 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // ===== Afastamento previdenciário (INSS) — CLT art. 60 §3º =====
+    // Atestado encaminhado ao INSS:
+    //   • Dias 1 a 15 desde o início do afastamento => empregador paga como
+    //     rubrica "Afastamento previdenciário (15 primeiros dias)" (provento,
+    //     incide INSS/FGTS/IRRF). Não conta como falta, não conta como salário
+    //     normal proporcional.
+    //   • Dia 16 em diante => INSS assume; contrato suspenso; empregador NÃO
+    //     paga; informativo apenas.
+    // Aqui montamos, por colaborador, os conjuntos de datas (interseção com o
+    // mês) classificadas em "15 primeiros" e "suspensão INSS".
+    const inssEmployerDaysMap = new Map<string, Set<string>>();
+    const inssSuspensionDaysMap = new Map<string, Set<string>>();
+    const inssDayKey = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${dd}`;
+    };
+    (certRes.data ?? []).forEach((c: any) => {
+      if (!c.inss_referral || !c.leave_start_date || !c.leave_end_date) return;
+      const leaveStart = new Date(`${c.leave_start_date}T00:00:00`);
+      const leaveEnd = new Date(`${c.leave_end_date}T00:00:00`);
+      const periodStartD = new Date(`${periodStart}T00:00:00`);
+      const periodEndD = new Date(`${periodEnd}T00:00:00`);
+      const cursor = new Date(Math.max(leaveStart.getTime(), periodStartD.getTime()));
+      const stop = new Date(Math.min(leaveEnd.getTime(), periodEndD.getTime()));
+      const employerSet = inssEmployerDaysMap.get(c.employee_id) ?? new Set<string>();
+      const suspensionSet = inssSuspensionDaysMap.get(c.employee_id) ?? new Set<string>();
+      while (cursor <= stop) {
+        const dayIndex = Math.floor(
+          (cursor.getTime() - leaveStart.getTime()) / 86400000,
+        ); // 0-indexed (dia 0 = primeiro dia)
+        const key = inssDayKey(cursor);
+        if (dayIndex < 15) employerSet.add(key);
+        else suspensionSet.add(key);
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      inssEmployerDaysMap.set(c.employee_id, employerSet);
+      inssSuspensionDaysMap.set(c.employee_id, suspensionSet);
+    });
+
+
     const rows: any[] = [];
 
     for (const emp of employees ?? []) {
@@ -492,9 +534,21 @@ Deno.serve(async (req: Request) => {
       }
       const hasPartialMonth = (admissionDate && admissionDate >= periodStart && admissionDate <= periodEnd) ||
         (emp.termination_date && emp.termination_date >= periodStart && emp.termination_date <= periodEnd);
-      const proportionalSalary = hasPartialMonth
-        ? r2(baseSalary * workedDays / lastDay)
+
+      // ===== Afastamento INSS — separa salário normal x rubrica 15 dias x suspensão =====
+      const inssEmployerDays = (inssEmployerDaysMap.get(emp.id)?.size ?? 0);
+      const inssSuspensionDays = (inssSuspensionDaysMap.get(emp.id)?.size ?? 0);
+      const inssTotalDays = inssEmployerDays + inssSuspensionDays;
+      // Dias pagos como salário normal: descontamos os dias de afastamento previdenciário
+      // (tanto os 15 do empregador quanto os de suspensão) — os primeiros viram rubrica
+      // própria, os outros não geram pagamento algum.
+      const salaryWorkedDays = Math.max(0, workedDays - inssTotalDays);
+      const dailyBase = baseSalary / lastDay;
+      const proportionalSalary = (hasPartialMonth || inssTotalDays > 0)
+        ? r2(dailyBase * salaryWorkedDays)
         : baseSalary;
+      const inssLeavePay = r2(dailyBase * inssEmployerDays);
+
 
       // VT calculado mais abaixo (após apurar faltas/afastamentos),
       // pois o acerto cobre dias escalados sem batida (VT creditado e não usado).
@@ -706,13 +760,13 @@ Deno.serve(async (req: Request) => {
           : 0;
       
 
-      const inssBase = proportionalSalary + productivity + nightAddition + holidayPay + otherEarnings - absenceDiscount - dsrLossDiscount;
+      const inssBase = proportionalSalary + inssLeavePay + productivity + nightAddition + holidayPay + otherEarnings - absenceDiscount - dsrLossDiscount;
       const inss = calcINSS(Math.max(0, inssBase));
       const irrf = calcIRRF(Math.max(0, inssBase), inss, deps.total);
       const fgts = r2(Math.max(0, inssBase) * 0.08);
 
       const totalEarnings = r2(
-        proportionalSalary + productivity + nightAddition + holidayPay + familyAllowance + otherEarnings,
+        proportionalSalary + inssLeavePay + productivity + nightAddition + holidayPay + familyAllowance + otherEarnings,
       );
       const totalDiscounts = r2(
         inss + irrf + transportDiscount + vtUnusedAdjustment + advance + infractionDiscount + healthPlan + otherDiscounts + absenceDiscount + dsrLossDiscount,
@@ -724,7 +778,7 @@ Deno.serve(async (req: Request) => {
         reference_year: year,
         reference_month: month,
         base_salary: baseSalary,
-        worked_days: workedDays,
+        worked_days: salaryWorkedDays,
         absent_days: absentDays,
         overtime_hours: 0,
         overtime_amount: 0,
@@ -741,6 +795,9 @@ Deno.serve(async (req: Request) => {
         dsr_loss_discount: dsrLossDiscount,
         other_earnings: otherEarnings,
         other_discounts: otherDiscounts,
+        inss_leave_days: inssEmployerDays,
+        inss_leave_pay: inssLeavePay,
+        inss_suspension_days: inssSuspensionDays,
         inss,
         irrf,
         fgts,
@@ -770,6 +827,9 @@ Deno.serve(async (req: Request) => {
           dsr_loss_discount: dsrLossDiscount,
           vt_unused_days: vtUnusedDays,
           vt_unused_adjustment: vtUnusedAdjustment,
+          inss_leave_days: inssEmployerDays,
+          inss_leave_pay: inssLeavePay,
+          inss_suspension_days: inssSuspensionDays,
           tables_version: "2026-04",
         },
         calculated_at: new Date().toISOString(),

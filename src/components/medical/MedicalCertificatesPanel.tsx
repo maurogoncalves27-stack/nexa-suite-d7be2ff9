@@ -47,6 +47,9 @@ interface Certificate {
   review_notes: string | null;
   leave_applied: boolean;
   infraction_id: string | null;
+  inss_referral: boolean;
+  inss_benefit_type: string | null;
+  inss_benefit_number: string | null;
 }
 
 interface FormState {
@@ -59,6 +62,9 @@ interface FormState {
   doctor_name: string;
   doctor_crm: string;
   notes: string;
+  inss_referral: boolean;
+  inss_benefit_type: string;
+  inss_benefit_number: string;
 }
 
 const EMPTY: FormState = {
@@ -71,6 +77,9 @@ const EMPTY: FormState = {
   doctor_name: "",
   doctor_crm: "",
   notes: "",
+  inss_referral: false,
+  inss_benefit_type: "B31",
+  inss_benefit_number: "",
 };
 
 const fileToBase64 = (file: File): Promise<string> =>
@@ -164,6 +173,9 @@ export default function MedicalCertificatesPanel() {
       doctor_name: c.doctor_name ?? "",
       doctor_crm: c.doctor_crm ?? "",
       notes: c.notes ?? "",
+      inss_referral: !!c.inss_referral,
+      inss_benefit_type: c.inss_benefit_type ?? "B31",
+      inss_benefit_number: c.inss_benefit_number ?? "",
     });
     setFile(null);
     setOpen(true);
@@ -249,6 +261,11 @@ export default function MedicalCertificatesPanel() {
           mime_type: mimeType,
           infraction_id: null,
           leave_applied: false,
+          inss_referral: days > 15 ? form.inss_referral : false,
+          inss_benefit_type: days > 15 && form.inss_referral ? form.inss_benefit_type : null,
+          inss_benefit_number: days > 15 && form.inss_referral && form.inss_benefit_number
+            ? form.inss_benefit_number
+            : null,
         })
         .eq("id", editingId);
       if (updErr) throw updErr;
@@ -392,6 +409,11 @@ export default function MedicalCertificatesPanel() {
           size_bytes: uploadFile.size,
           created_by: u.user?.id ?? null,
           status: "pending",
+          inss_referral: days > 15 ? form.inss_referral : false,
+          inss_benefit_type: days > 15 && form.inss_referral ? form.inss_benefit_type : null,
+          inss_benefit_number: days > 15 && form.inss_referral && form.inss_benefit_number
+            ? form.inss_benefit_number
+            : null,
         })
         .select("id")
         .single();
@@ -628,6 +650,11 @@ export default function MedicalCertificatesPanel() {
                           {statusBadge}
                           {c.cid_code && <Badge variant="secondary" className="text-[10px]">{c.cid_code}</Badge>}
                           <Badge variant="outline" className="text-[10px]">{c.days_off} {c.days_off === 1 ? "dia" : "dias"}</Badge>
+                          {c.inss_referral && (
+                            <Badge variant="default" className="text-[10px] bg-warning/15 text-warning border-warning/40 hover:bg-warning/20">
+                              INSS{c.inss_benefit_type ? ` · ${c.inss_benefit_type}` : ""}
+                            </Badge>
+                          )}
                         </div>
                         {c.cid_description && (
                           <p className="text-sm text-muted-foreground mt-0.5">{c.cid_description}</p>
@@ -786,6 +813,51 @@ export default function MedicalCertificatesPanel() {
                 <Label>Observações</Label>
                 <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
               </div>
+
+              {parseInt(form.days_off, 10) > 15 && (
+                <div className="md:col-span-2 rounded-md border border-warning/40 bg-warning/5 p-3 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <Label className="text-sm font-semibold">Encaminhar ao INSS</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Atestado &gt; 15 dias. Empregador paga apenas os 15 primeiros dias; do 16º em diante, contrato suspenso e INSS assume (CLT art. 60 §3º).
+                      </p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      className="h-5 w-5 mt-1 accent-primary"
+                      checked={form.inss_referral}
+                      onChange={(e) => setForm({ ...form, inss_referral: e.target.checked })}
+                    />
+                  </div>
+                  {form.inss_referral && (
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div>
+                        <Label>Tipo de benefício</Label>
+                        <Select
+                          value={form.inss_benefit_type}
+                          onValueChange={(v) => setForm({ ...form, inss_benefit_type: v })}
+                        >
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="B31">B31 — Auxílio por incapacidade temporária</SelectItem>
+                            <SelectItem value="B91">B91 — Acidente de trabalho</SelectItem>
+                            <SelectItem value="B80">B80 — Salário-maternidade</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>NB (Número do Benefício)</Label>
+                        <Input
+                          value={form.inss_benefit_number}
+                          onChange={(e) => setForm({ ...form, inss_benefit_number: e.target.value })}
+                          placeholder="Opcional — preencher após perícia"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>
