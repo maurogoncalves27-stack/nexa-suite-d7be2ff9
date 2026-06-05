@@ -645,11 +645,11 @@ Deno.serve(async (req: Request) => {
           transportDiscount = r2(transportDiscount + vtUnusedAdjustment);
         }
 
-        // Cap legal: o desconto do VT não pode ultrapassar o VT efetivamente
-        // creditado no mês. Se o colaborador não recebe VT (faltas/afastamentos
-        // zeraram o benefício), também não cabe descontar os 6%/3%.
-        if (transportDiscount > transportVoucher) {
-          transportDiscount = transportVoucher;
+        // Regra interna: o desconto regular (3%/6% do salário, proporcional aos dias
+        // trabalhados) sempre se aplica, mesmo quando o VT do mês foi zerado por
+        // faltas/afastamentos. Apenas garantimos que o desconto não fique negativo.
+        if (transportDiscount < 0) {
+          transportDiscount = 0;
         }
       }
 
