@@ -17,18 +17,22 @@ Deno.serve(async (req) => {
   // Shared-secret check — Z-API can be configured to send a custom header on
   // every webhook delivery. If ZAPI_WEBHOOK_SECRET is set, require a match.
   const expectedSecret = Deno.env.get('ZAPI_WEBHOOK_SECRET');
-  if (expectedSecret) {
-    const url = new URL(req.url);
-    const provided = req.headers.get('x-webhook-token')
-      ?? req.headers.get('x-zapi-token')
-      ?? url.searchParams.get('token')
-      ?? '';
-    if (provided !== expectedSecret) {
-      return new Response(JSON.stringify({ error: 'unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+  if (!expectedSecret) {
+    return new Response(JSON.stringify({ error: 'webhook not configured' }), {
+      status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
+  const url = new URL(req.url);
+  const provided = req.headers.get('x-webhook-token')
+    ?? req.headers.get('x-zapi-token')
+    ?? url.searchParams.get('token')
+    ?? '';
+  if (provided !== expectedSecret) {
+    return new Response(JSON.stringify({ error: 'unauthorized' }), {
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
 
   try {
     const body = await req.json().catch(() => ({}));

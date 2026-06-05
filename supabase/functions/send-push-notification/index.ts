@@ -2,6 +2,8 @@
 // Usa biblioteca web-push via npm specifier (Deno suportado)
 import webpush from "npm:web-push@3.6.7";
 import { createClient } from "npm:@supabase/supabase-js@2.45.0";
+import { requireCronOrRole } from "../_shared/requireRole.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
