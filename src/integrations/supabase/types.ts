@@ -15487,6 +15487,17 @@ export type Database = {
           user_id: string
         }[]
       }
+      list_shift_swap_partner_schedule: {
+        Args: { _partner_employee_id: string; _requester_employee_id: string }
+        Returns: {
+          end_time: string
+          id: string
+          is_day_off: boolean
+          is_home_office: boolean
+          schedule_date: string
+          start_time: string
+        }[]
+      }
       list_store_birthdays: {
         Args: { _store_ids: string[] }
         Returns: {
