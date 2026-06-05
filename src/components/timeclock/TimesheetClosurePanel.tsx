@@ -75,15 +75,17 @@ export function TimesheetClosurePanel() {
     setClosures((data ?? []) as Closure[]);
   };
 
+  const periodStart = `${year}-${pad(month)}-01`;
+  const periodEnd = `${year}-${pad(month)}-${pad(new Date(year, month, 0).getDate())}`;
+  const punchedAtStore = useEmployeesAtStore(storeId, periodStart, periodEnd);
+
   const filteredEmployees = useMemo(
-    () => storeId === "all" ? employees : employees.filter((e) => e.store_id === storeId),
-    [employees, storeId],
+    () => storeId === "all" ? employees : employees.filter((e) => e.store_id === storeId || punchedAtStore.has(e.id)),
+    [employees, storeId, punchedAtStore],
   );
 
   const closuresByEmp = useMemo(() => Object.fromEntries(closures.map((c) => [c.employee_id, c])), [closures]);
 
-  const periodStart = `${year}-${pad(month)}-01`;
-  const periodEnd = `${year}-${pad(month)}-${pad(new Date(year, month, 0).getDate())}`;
 
   const computeSummary = async (employeeId: string) => {
     const [{ data: entries }, { data: schedules }, { data: leaves }] = await Promise.all([
