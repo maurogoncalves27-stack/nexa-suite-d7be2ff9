@@ -109,10 +109,15 @@ export const ProtectedRoute = ({ children, requireRoles, redirectTo = "/auth", r
 
   if (!user) return <Navigate to={redirectTo} replace state={{ from: location }} />;
 
-  // Login fixo de PC de loja (store_login): só pode acessar o balcão (PDV).
+  // Login fixo de PC de loja (store_login): só pode acessar o balcão/loja (StoreHome) e o PDV.
   if (isStoreLogin) {
-    const allowed = location.pathname === "/pdv-novo" || location.pathname.startsWith("/pdv-novo/");
-    if (!allowed) return <Navigate to="/pdv-novo" replace />;
+    const p = location.pathname;
+    const allowed =
+      p === "/balcao" || p.startsWith("/balcao/") ||
+      p === "/loja" || p.startsWith("/loja/") ||
+      p === "/pdv-novo" || p.startsWith("/pdv-novo/") ||
+      p === "/pdv" || p.startsWith("/pdv/");
+    if (!allowed) return <Navigate to="/balcao" replace />;
     return <>{children}</>;
   }
 
