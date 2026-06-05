@@ -182,6 +182,7 @@ Deno.serve(async (req: Request) => {
     const periodStart = `${year}-${String(month).padStart(2, "0")}-01`;
     const lastDay = new Date(year, month, 0).getDate();
     const periodEnd = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+    
     const refDate = new Date(year, month - 1, 15);
 
     let empQ = supabase
@@ -558,10 +559,10 @@ Deno.serve(async (req: Request) => {
         : r2(calculatedNightAddition + manualNightAddition);
 
       // Feriados trabalhados: pagos em DOBRO conforme convenção coletiva.
-      // Base de cálculo PROPORCIONAL aos dias do mês de referência (não 30 fixo).
-      // Lançamos 2× o valor da diária por feriado trabalhado.
-      const dailyRate = baseSalary / lastDay;
-      const holidayPay = r2(holidayDaysWorked * dailyRate * 2);
+      // Base PROPORCIONAL aos dias do mês de referência (lastDay), NÃO 30 fixo.
+      // Ex.: maio (31 dias) -> diária = salário/31; abril (30 dias) -> diária = salário/30.
+      const holidayDailyRate = baseSalary / lastDay;
+      const holidayPay = r2(holidayDaysWorked * holidayDailyRate * 2);
 
       // ===== Faltas e DSR (a partir da escala vs ponto) =====
       // Só apura se o ponto deste colaborador impacta folha.
