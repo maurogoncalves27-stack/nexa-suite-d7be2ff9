@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { sortStores } from "@/lib/storeSort";
+import { useEmployeesAtStore } from "@/hooks/useEmployeesAtStore";
 
 type LeaveType =
   | "medical_certificate" | "paid_absence" | "unpaid_absence" | "day_off"
