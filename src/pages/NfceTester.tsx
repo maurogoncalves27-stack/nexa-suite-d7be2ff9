@@ -9,9 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
-import { FileCheck, Wifi, WifiOff, Loader2, Send, Activity, FlaskConical } from "lucide-react";
+import { FileCheck, Wifi, WifiOff, Loader2, Send, Activity, FlaskConical, Terminal, Copy } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { buildHomologacaoIni, type StoreNfceCfg } from "@/lib/acbr/nfceIniBuilder";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger,
+} from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface Health {
   ok: boolean;
@@ -177,6 +181,7 @@ export default function NfceTester() {
                 </Badge>
               )}
             </div>
+            <TerminalDialog agentUrl={agentUrl} />
           </div>
 
           {health.ok && (
@@ -297,5 +302,107 @@ export default function NfceTester() {
         </Card>
       )}
     </div>
+  );
+}
+
+function TerminalDialog({ agentUrl }: { agentUrl: string }) {
+  const copy = (txt: string) => {
+    navigator.clipboard.writeText(txt);
+    toast({ title: "Copiado!", description: "Cole no terminal do PC do agente." });
+  };
+
+  const curlHealth = `curl ${agentUrl}/health`;
+  const curlStatus = `curl ${agentUrl}/nfce/status`;
+  const psHealth = `Invoke-RestMethod ${agentUrl}/health | ConvertTo-Json -Depth 10`;
+  const psStatus = `Invoke-RestMethod ${agentUrl}/nfce/status | ConvertTo-Json -Depth 10`;
+  const browser = `${agentUrl}/health`;
+  const browser2 = `${agentUrl}/nfce/status`;
+
+  const Block = ({ code }: { code: string }) => (
+    <div className="relative">
+      <pre className="bg-muted rounded-md p-3 pr-10 text-xs font-mono whitespace-pre-wrap break-all">{code}</pre>
+      <Button
+        size="icon"
+        variant="ghost"
+        className="absolute top-1 right-1 h-7 w-7"
+        onClick={() => copy(code)}
+      >
+        <Copy className="h-3.5 w-3.5" />
+      </Button>
+    </div>
+  );
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1">
+          <Terminal className="h-4 w-4" /> Testar via terminal
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Terminal className="h-5 w-5 text-primary" /> Validar agente direto no PC
+          </DialogTitle>
+          <DialogDescription>
+            Execute estes comandos <strong>no PC onde o NEXA-ACBr está rodando</strong>.
+            Aqui no preview da Lovable o navegador bloqueia (mixed content / loopback).
+          </DialogDescription>
+        </DialogHeader>
+
+        <Tabs defaultValue="powershell" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="powershell">PowerShell</TabsTrigger>
+            <TabsTrigger value="curl">curl (cmd)</TabsTrigger>
+            <TabsTrigger value="browser">Navegador</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="powershell" className="space-y-3 mt-3">
+            <div>
+              <Label className="text-xs">1. Health do agente</Label>
+              <Block code={psHealth} />
+              <p className="text-xs text-muted-foreground mt-1">
+                Esperado: <code>ok: True</code> e <code>nfceReady: True</code>.
+              </p>
+            </div>
+            <div>
+              <Label className="text-xs">2. StatusServico SEFAZ</Label>
+              <Block code={psStatus} />
+              <p className="text-xs text-muted-foreground mt-1">
+                Esperado: <code>cStat: 107</code> (Serviço em Operação).
+              </p>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="curl" className="space-y-3 mt-3">
+            <div>
+              <Label className="text-xs">1. Health do agente</Label>
+              <Block code={curlHealth} />
+            </div>
+            <div>
+              <Label className="text-xs">2. StatusServico SEFAZ</Label>
+              <Block code={curlStatus} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              No Windows 10/11 já vem <code>curl.exe</code> nativo no cmd e PowerShell.
+            </p>
+          </TabsContent>
+
+          <TabsContent value="browser" className="space-y-3 mt-3">
+            <div>
+              <Label className="text-xs">1. Health (cole no Chrome do PC)</Label>
+              <Block code={browser} />
+            </div>
+            <div>
+              <Label className="text-xs">2. StatusServico</Label>
+              <Block code={browser2} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Funciona porque a página fica em <code>http://</code> (sem mixed content).
+            </p>
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
   );
 }
