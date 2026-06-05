@@ -152,10 +152,12 @@ export default function TrainingReceipts() {
   const calc = useMemo(() => {
     const sal = Number(String(salary).replace(",", ".")) || 0;
     const days = Number(workedDays) || 0;
-    const daily = sal / 30;
+    const ref = trainingEnd ? parseISO(trainingEnd) : (trainingStart ? parseISO(trainingStart) : new Date());
+    const daysInMonth = new Date(ref.getFullYear(), ref.getMonth() + 1, 0).getDate();
+    const daily = sal / daysInMonth;
     const total = +(daily * days).toFixed(2);
-    return { sal, days, daily, total };
-  }, [salary, workedDays]);
+    return { sal, days, daily, total, daysInMonth };
+  }, [salary, workedDays, trainingEnd, trainingStart]);
 
   const dueInfo = useMemo(() => {
     if (!trainingEnd) return null;
