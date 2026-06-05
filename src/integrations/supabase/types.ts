@@ -13514,6 +13514,63 @@ export type Database = {
           },
         ]
       }
+      transport_voucher_monthly_payments: {
+        Row: {
+          amount_paid: number
+          created_at: string
+          days_paid: number | null
+          employee_id: string
+          id: string
+          notes: string | null
+          paid_at: string | null
+          paid_by: string | null
+          reference_month: number
+          reference_year: number
+          updated_at: string
+        }
+        Insert: {
+          amount_paid?: number
+          created_at?: string
+          days_paid?: number | null
+          employee_id: string
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          reference_month: number
+          reference_year: number
+          updated_at?: string
+        }
+        Update: {
+          amount_paid?: number
+          created_at?: string
+          days_paid?: number | null
+          employee_id?: string
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          reference_month?: number
+          reference_year?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transport_voucher_monthly_payments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transport_voucher_monthly_payments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transport_voucher_settings: {
         Row: {
           id: boolean
