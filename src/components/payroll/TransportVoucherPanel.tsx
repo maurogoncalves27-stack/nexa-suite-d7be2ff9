@@ -129,16 +129,57 @@ export default function TransportVoucherPanel() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data } = await (supabase as any)
-        .from("payroll_vt_review")
-        .select("id")
-        .eq("reference_year", refYear)
-        .eq("reference_month", refMonth)
-        .maybeSingle();
-      if (!cancelled) setApproved(!!data);
+      const [{ data: appr }, { data: paid }] = await Promise.all([
+        (supabase as any)
+          .from("payroll_vt_review")
+          .select("id")
+          .eq("reference_year", refYear)
+          .eq("reference_month", refMonth)
+          .maybeSingle(),
+        (supabase as any)
+          .from("transport_voucher_monthly_payments")
+          .select("employee_id, amount_paid")
+          .eq("reference_year", refYear)
+          .eq("reference_month", refMonth),
+      ]);
+      if (cancelled) return;
+      setApproved(!!appr);
+      const map: Record<string, number> = {};
+      (paid ?? []).forEach((p: any) => { map[p.employee_id] = Number(p.amount_paid ?? 0); });
+      setPaidMap(map);
     })();
     return () => { cancelled = true; };
   }, [refYear, refMonth]);
+
+  const savePaid = async (employeeId: string, value: number) => {
+    const wasApproved = approved;
+    setSavingPaid(employeeId);
+    try {
+      const { error } = await (supabase as any)
+        .from("transport_voucher_monthly_payments")
+        .upsert({
+          employee_id: employeeId,
+          reference_year: refYear,
+          reference_month: refMonth,
+          amount_paid: value,
+          paid_at: new Date().toISOString(),
+          paid_by: user?.id ?? null,
+        }, { onConflict: "employee_id,reference_year,reference_month" });
+      if (error) {
+        toast({ title: "Erro ao salvar recarga", description: error.message, variant: "destructive" });
+        return;
+      }
+      setPaidMap((prev) => ({ ...prev, [employeeId]: value }));
+      await invalidateApproval();
+      if (wasApproved) {
+        showRecalculatePayrollNotice();
+        return;
+      }
+      toast({ title: "Recarga salva", description: `Valor pago no mês registrado.` });
+    } finally {
+      setSavingPaid(null);
+    }
+  };
 
   const handleApprove = async () => {
     const saved = await saveAll({ silent: true, keepApproval: true });
