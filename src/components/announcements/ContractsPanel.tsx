@@ -37,6 +37,35 @@ export default function ContractsPanel() {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [generating, setGenerating] = useState(false);
 
+  // Período de experiência (CLT art. 445, parágrafo único — máx 90 dias, 1 prorrogação)
+  const PRESETS: { id: string; label: string; initial: number; extension: number }[] = [
+    { id: "14_30", label: "14 + 30 dias (44 no total)", initial: 14, extension: 30 },
+    { id: "30_60", label: "30 + 60 dias (90)", initial: 30, extension: 60 },
+    { id: "45_45", label: "45 + 45 dias (90)", initial: 45, extension: 45 },
+    { id: "30_30", label: "30 + 30 dias (60)", initial: 30, extension: 30 },
+    { id: "90_0", label: "90 dias, sem prorrogação", initial: 90, extension: 0 },
+    { id: "custom", label: "Personalizado", initial: 30, extension: 0 },
+  ];
+  const [presetId, setPresetId] = useState<string>("14_30");
+  const [initialDays, setInitialDays] = useState<number>(14);
+  const [extensionDays, setExtensionDays] = useState<number>(30);
+
+  const applyPreset = (id: string) => {
+    setPresetId(id);
+    const p = PRESETS.find((x) => x.id === id);
+    if (p && id !== "custom") {
+      setInitialDays(p.initial);
+      setExtensionDays(p.extension);
+    }
+  };
+
+  const totalDays = (Number(initialDays) || 0) + (Number(extensionDays) || 0);
+  const periodValid =
+    Number.isFinite(initialDays) && initialDays >= 1 && initialDays <= 90 &&
+    Number.isFinite(extensionDays) && extensionDays >= 0 && extensionDays <= 90 &&
+    totalDays >= 1 && totalDays <= 90;
+
+
   const load = async () => {
     setLoading(true);
     const [{ data: tpl }, { data: emps }] = await Promise.all([
