@@ -21,7 +21,7 @@ CLÁUSULA 5ª — DO LOCAL DE TRABALHO
 A prestação dos serviços ocorrerá em {{loja_alocacao}}, podendo a EMPREGADORA, dentro do seu poder diretivo e por necessidade do serviço, transferir o(a) EMPREGADO(A) para outra unidade, observado o disposto no art. 469 da CLT.
 
 CLÁUSULA 6ª — DO PERÍODO DE EXPERIÊNCIA
-O presente contrato terá período inicial de experiência de {{periodo_experiencia}} dias, contados a partir de {{data_admissao}}, durante o qual qualquer das partes poderá rescindi-lo nos termos da legislação trabalhista. Findo esse prazo sem manifestação em contrário, o contrato passará automaticamente a vigorar por prazo indeterminado.
+{{clausula_experiencia}}
 
 CLÁUSULA 7ª — DOS BENEFÍCIOS
 O(A) EMPREGADO(A) fará jus aos benefícios legais e àqueles eventualmente concedidos pela EMPREGADORA, incluindo, quando aplicável, vale-transporte (com desconto legal de até 6% do salário-base), conforme políticas internas vigentes, as quais poderão ser alteradas a qualquer tempo no exercício do poder diretivo do empregador.
