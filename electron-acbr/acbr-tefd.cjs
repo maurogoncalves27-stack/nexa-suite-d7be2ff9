@@ -12,7 +12,9 @@ const koffi = require("koffi");
 
 const ACBR_BASE = process.env.ACBR_BASE || "C:\\NexaACBr\\bin";
 const DLL_PATH = path.join(ACBR_BASE, "ACBrTEFD64.dll");
-const INI_PATH = path.join(ACBR_BASE, "ACBrLib.ini");
+// INI dedicado do TEF para não conflitar com o ACBrLib.ini da NFC-e.
+// Pode ser sobrescrito com a env ACBR_TEFD_INI.
+const INI_PATH = process.env.ACBR_TEFD_INI || path.join(ACBR_BASE, "ACBrLibTEFD.ini");
 
 let lib = null;
 let initialized = false;
