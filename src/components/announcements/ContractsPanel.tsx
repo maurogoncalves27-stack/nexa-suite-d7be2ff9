@@ -267,6 +267,73 @@ export default function ContractsPanel() {
 
         <div className="space-y-3 border-t pt-4">
           <div>
+            <Label className="text-base font-semibold">Período de experiência</Label>
+            <p className="text-sm text-muted-foreground mt-1">
+              Conforme CLT (art. 445, parágrafo único) e Súmula 188 do TST: máximo de <strong>90 dias</strong> no total, admitida <strong>uma única prorrogação</strong>.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => applyPreset(p.id)}
+                className={`text-left text-sm rounded-md border px-3 py-2 transition-colors ${
+                  presetId === p.id
+                    ? "border-primary bg-primary/10 text-foreground"
+                    : "border-border bg-background hover:bg-muted"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <Label className="text-xs text-muted-foreground">Período inicial (dias)</Label>
+              <Input
+                type="number"
+                min={1}
+                max={90}
+                value={initialDays}
+                onChange={(e) => {
+                  setPresetId("custom");
+                  setInitialDays(Number(e.target.value) || 0);
+                }}
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Prorrogação (dias, 0 = sem)</Label>
+              <Input
+                type="number"
+                min={0}
+                max={90}
+                value={extensionDays}
+                onChange={(e) => {
+                  setPresetId("custom");
+                  setExtensionDays(Number(e.target.value) || 0);
+                }}
+              />
+            </div>
+            <div className="flex flex-col justify-end">
+              <Label className="text-xs text-muted-foreground">Total</Label>
+              <div
+                className={`h-10 flex items-center px-3 rounded-md border text-sm font-medium ${
+                  periodValid ? "border-success/40 bg-success/10" : "border-destructive/50 bg-destructive/10 text-destructive"
+                }`}
+              >
+                {totalDays} dia{totalDays === 1 ? "" : "s"}
+                {!periodValid && " — excede 90 dias"}
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+        <div className="space-y-3 border-t pt-4">
+          <div>
             <Label className="text-base font-semibold">Cláusulas do contrato (parte editável)</Label>
             <p className="text-sm text-muted-foreground mt-1 mb-2">
               Edite apenas as cláusulas customizáveis abaixo o contrato será gerado automaticamente pelo sistema e não podem ser alterados aqui.
