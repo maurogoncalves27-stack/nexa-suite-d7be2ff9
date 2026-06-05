@@ -148,11 +148,35 @@ export default function ContractsPanel() {
       toast({ title: "Selecione um colaborador", variant: "destructive" });
       return;
     }
+    if (!periodValid) {
+      toast({
+        title: "Período de experiência inválido",
+        description: "A soma de inicial + prorrogação deve estar entre 1 e 90 dias (CLT art. 445).",
+        variant: "destructive",
+      });
+      return;
+    }
     setGenerating(true);
     try {
+      // Persiste período de experiência escolhido no colaborador
+      const { error: empUpdErr } = await supabase
+        .from("employees")
+        .update({
+          experience_initial_days: initialDays,
+          experience_extension_days: extensionDays || null,
+          experience_contract_days: initialDays, // retrocompat
+        } as any)
+        .eq("id", selectedEmployeeId);
+      if (empUpdErr) {
+        setGenerating(false);
+        toast({ title: "Erro ao salvar período", description: empUpdErr.message, variant: "destructive" });
+        return;
+      }
+
       // Garante que o template ativo no banco reflete o conteúdo atual
       const tpl = await saveTemplate();
       if (!tpl) return;
+
 
       const { data: emp, error } = await supabase
         .from("employees")
