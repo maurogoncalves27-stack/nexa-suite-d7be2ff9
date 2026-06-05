@@ -78,14 +78,16 @@ const scheduleGroupLabel = (schedule: string | null | undefined): string => {
   if (s.includes("12x36")) return "Escala 12x36";
   if (s.includes("6x1")) return "Escala 6x1";
   if (s.includes("5x2")) return "Escala 5x2";
+  if (s.includes("hibrid") || s.includes("híbrid") || s.includes("home office")) return "Escala Híbrida";
   return `Escala ${(schedule ?? "").trim()}`;
 };
 
 // Tom visual por tipo de escala (usa tokens do design system)
 const scheduleTone = (label: string): { header: string; row: string } => {
-  if (label.includes("12x36")) return { header: "bg-warning/15 hover:bg-warning/15", row: "border-l-2 border-l-warning" };
-  if (label.includes("6x1")) return { header: "bg-accent/40 hover:bg-accent/40", row: "border-l-2 border-l-accent" };
-  if (label.includes("5x2")) return { header: "bg-secondary/60 hover:bg-secondary/60", row: "border-l-2 border-l-secondary" };
+  if (label.includes("12x36")) return { header: "bg-warning/20 hover:bg-warning/20", row: "border-l-2 border-l-warning" };
+  if (label.includes("6x1")) return { header: "bg-success/20 hover:bg-success/20", row: "border-l-2 border-l-success" };
+  if (label.includes("5x2")) return { header: "bg-primary/15 hover:bg-primary/15", row: "border-l-2 border-l-primary" };
+  if (label.includes("Híbrida")) return { header: "bg-accent/60 hover:bg-accent/60", row: "border-l-2 border-l-accent" };
   return { header: "bg-muted/40 hover:bg-muted/40", row: "border-l-2 border-l-muted" };
 };
 
