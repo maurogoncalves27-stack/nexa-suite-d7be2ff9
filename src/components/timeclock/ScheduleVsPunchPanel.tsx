@@ -201,10 +201,11 @@ export function ScheduleVsPunchPanel({ toleranceMinutes = 5 }: Props) {
       entryQ = entryQ.eq("employee_id", employeeId);
       leaveQ = leaveQ.eq("employee_id", employeeId);
     } else if (storeId !== "all") {
-      // Filtra colaboradores da loja (contratante OU alocação)
-      const ids = employees
-        .filter((e) => e.store_id === storeId || e.allocated_store_id === storeId)
-        .map((e) => e.id);
+      // Inclui contratantes/alocados E quem bateu ponto nessa loja no período
+      const ids = Array.from(new Set([
+        ...employees.filter((e) => e.store_id === storeId || e.allocated_store_id === storeId).map((e) => e.id),
+        ...punchedAtStore,
+      ]));
       if (ids.length === 0) {
         setSchedules([]);
         setEntries([]);
@@ -225,8 +226,8 @@ export function ScheduleVsPunchPanel({ toleranceMinutes = 5 }: Props) {
   const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
   const filteredEmployees = useMemo(() => {
     if (storeId === "all") return employees;
-    return employees.filter((e) => e.store_id === storeId || e.allocated_store_id === storeId);
-  }, [employees, storeId]);
+    return employees.filter((e) => e.store_id === storeId || e.allocated_store_id === storeId || punchedAtStore.has(e.id));
+  }, [employees, storeId, punchedAtStore]);
 
   const results: DayResult[] = useMemo(() => {
     // Agrupa por employee_id + date
