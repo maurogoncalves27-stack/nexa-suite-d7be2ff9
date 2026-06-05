@@ -165,7 +165,7 @@ export default function TimeClock() {
                 <EmployeeCombobox
                   value={employeeId}
                   onChange={setEmployeeId}
-                  employees={employees.filter((e) => storeId === "all" || e.store_id === storeId)}
+                  employees={employees.filter((e) => storeId === "all" || e.store_id === storeId || punchedAtStore.has(e.id))}
                 />
               </div>
               <div>
