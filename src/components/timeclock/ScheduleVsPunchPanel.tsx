@@ -160,8 +160,11 @@ export function ScheduleVsPunchPanel({ toleranceMinutes = 5 }: Props) {
     });
   };
 
+  const punchedAtStore = useEmployeesAtStore(storeId, from, to);
+
   useEffect(() => { init(); }, []);
-  useEffect(() => { load(); }, [storeId, employeeId, from, to]);
+  useEffect(() => { load(); }, [storeId, employeeId, from, to, punchedAtStore]);
+
 
   const init = async () => {
     const [{ data: sto }, { data: emp }] = await Promise.all([
