@@ -758,10 +758,25 @@ export default function TransportVoucherPanel() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="text-xs pt-1 border-t space-y-0.5">
+            <div className="text-xs pt-1 border-t space-y-1">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Total VT:</span>
+                <span className="text-muted-foreground">Total VT (teórico):</span>
                 <span className="font-medium">{money(total)}</span>
+              </div>
+              <div className="flex justify-between items-center gap-2">
+                <span className="text-muted-foreground whitespace-nowrap">Pago em {MONTHS[refMonth - 1].slice(0,3)}/{String(refYear).slice(2)}:</span>
+                <Input
+                  type="number" step="0.01" min="0"
+                  className="h-7 w-24 text-right text-xs"
+                  placeholder="0,00"
+                  defaultValue={paidMap[e.id] ?? ""}
+                  onBlur={(ev) => {
+                    const v = Number(ev.target.value) || 0;
+                    if (v !== (paidMap[e.id] ?? 0)) savePaid(e.id, v);
+                  }}
+                  disabled={savingPaid === e.id}
+                  key={`paid-m-${e.id}-${refYear}-${refMonth}-${paidMap[e.id] ?? ""}`}
+                />
               </div>
               {(() => {
                 const pct = Number(r.discount_percent) || 0;
