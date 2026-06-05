@@ -10,7 +10,7 @@
 //   ponto reais (time_clock_entries) com pares clock_in / clock_out por dia.
 // - Feriados trabalhados: detecta pares clock_in/clock_out em datas presentes
 //   na tabela holidays (escopo nacional ou da loja do colaborador) e paga em
-//   dobro: (salário/30) por dia trabalhado em feriado.
+//   dobro: (salário/diasDoMês) por dia trabalhado em feriado.
 // - Salário-família: mantido (R$ 65,00 / dependente <14, salário ≤ R$ 1.906,04).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
