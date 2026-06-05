@@ -650,6 +650,11 @@ export default function MedicalCertificatesPanel() {
                           {statusBadge}
                           {c.cid_code && <Badge variant="secondary" className="text-[10px]">{c.cid_code}</Badge>}
                           <Badge variant="outline" className="text-[10px]">{c.days_off} {c.days_off === 1 ? "dia" : "dias"}</Badge>
+                          {c.inss_referral && (
+                            <Badge variant="default" className="text-[10px] bg-warning/15 text-warning border-warning/40 hover:bg-warning/20">
+                              INSS{c.inss_benefit_type ? ` · ${c.inss_benefit_type}` : ""}
+                            </Badge>
+                          )}
                         </div>
                         {c.cid_description && (
                           <p className="text-sm text-muted-foreground mt-0.5">{c.cid_description}</p>
