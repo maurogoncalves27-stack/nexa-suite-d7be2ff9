@@ -65,12 +65,28 @@ Objetivo: substituir Saipos e Anota Aí, destravar canal WhatsApp, fechar concil
 
 **Saída**: estoque confiável → compras automáticas funcionando.
 
-### FASE 4 — Rollout PDV/TEF nas outras 3 lojas
+### FASE 4 — NEXA Garçom no Smart POS (Asa Norte)
 
-4.1. Asa Norte (maior volume, deixar por último entre as 3).
-4.2. Águas Claras.
-4.3. Lago Sul.
-4.4. **Desligar Saipos definitivamente** + arquivar tabelas `pos_*`.
+> Pré-requisito: TEF ACBr homologado (Fase 1) + PDV NEXA validado em 1 loja (Fase 2). Só Asa Norte tem salão hoje, então é a única loja-alvo nesta fase.
+
+A base já existe: `/garcom`, tabelas `pdv_tables` / `pdv_table_sessions` / `pdv_table_rounds`, role `waiter`. Falta colocar no hardware real (Gertec GPOS780 Multi com PayGo integrado).
+
+4.1. Revisar fluxo `/garcom` no navegador desktop: abertura de mesa, rodadas, transferência, divisão de conta, fechamento.
+4.2. Adaptar UI para tela do GPOS780 (~5", touch) — fontes maiores, botões 44px+, sem hover.
+4.3. Empacotar como **PWA instalável** no GPOS780 (mais simples que Electron Android nessa primeira versão).
+4.4. Trocar adapter TEF do `/garcom` de `mock` para `acbr` (reutiliza o agente local da Fase 1 — no GPOS780 o PayGo é integrado, então o adapter ACBr fala direto com a lib embarcada via Intent Android; validar com PayGo qual é o caminho exato no GPOS780).
+4.5. Cadastrar mesas físicas da Asa Norte em `pdv_tables`.
+4.6. Treinar 2 garçons → rodar 1 turno piloto em paralelo com comanda manual.
+4.7. Virar 100% Garçom NEXA na Asa Norte.
+
+**Saída**: salão Asa Norte operando 100% no GPOS780, comanda → cozinha (KDS futuro) → TEF → NFC-e tudo integrado.
+
+### FASE 5 — Rollout PDV/TEF nas outras 3 lojas
+
+5.1. Asa Norte (maior volume, deixar por último entre as 3).
+5.2. Águas Claras.
+5.3. Lago Sul.
+5.4. **Desligar Saipos definitivamente** + arquivar tabelas `pos_*`.
 
 ### FASE 5 — iFood: fechar pendências (em paralelo desde já)
 
