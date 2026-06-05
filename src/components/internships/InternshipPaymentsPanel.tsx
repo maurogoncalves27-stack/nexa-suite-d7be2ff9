@@ -292,6 +292,23 @@ export default function InternshipPaymentsPanel() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <Label className="text-xs">Bolsa cheia (R$)</Label>
+                    <Input type="number" step="0.01" min="0" value={form.base_salary}
+                      onChange={(e) => recalcByDays({ base_salary: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Dias trab.</Label>
+                    <Input type="number" step="1" min="0" max="31" value={form.days_worked}
+                      onChange={(e) => recalcByDays({ days_worked: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Dias do mês</Label>
+                    <Input type="number" step="1" min="28" max="31" value={form.days_in_month}
+                      onChange={(e) => recalcByDays({ days_in_month: e.target.value })} />
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label>Valor (R$)</Label>
