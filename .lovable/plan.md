@@ -162,7 +162,7 @@ RH ──> Contínuo (independente)
 - Não mexer no Focus NFe (funciona; ACBrLibNFe fica pra depois).
 - Não usar Anota Aí como ponte (você descartou).
 - Não mexer em exportação C6 da folha, pasta do colaborador, regras CLT.
-- Não iniciar Fase 7 (WhatsApp) antes do PDV NEXA virar em pelo menos 1 loja.
+- Não iniciar Fase 8 (WhatsApp) antes do PDV NEXA virar em pelo menos 1 loja.
 
 ## Próximo passo imediato
 
