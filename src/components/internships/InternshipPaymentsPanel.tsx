@@ -53,13 +53,18 @@ export default function InternshipPaymentsPanel() {
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Payment | null>(null);
+  const daysInRefMonth = new Date(refYear, refMonth + 1, 0).getDate();
   const [form, setForm] = useState({
     internship_id: "",
     amount: "",
     reference_date: format(today, "yyyy-MM-dd"),
     payment_date: format(today, "yyyy-MM-dd"),
     notes: "",
+    days_worked: "",
+    days_in_month: "",
+    base_salary: "",
   });
+
 
   useEffect(() => { init(); }, []);
   useEffect(() => { load(); }, [from, to]);
@@ -97,6 +102,9 @@ export default function InternshipPaymentsPanel() {
       reference_date: format(today, "yyyy-MM-dd"),
       payment_date: format(today, "yyyy-MM-dd"),
       notes: "",
+      days_worked: String(daysInRefMonth),
+      days_in_month: String(daysInRefMonth),
+      base_salary: "",
     });
     setOpen(true);
   };
@@ -104,20 +112,47 @@ export default function InternshipPaymentsPanel() {
   const onSelectInternship = (v: string) => {
     const it = intMap[v];
     const sal = it ? Number(empMap[it.employee_id]?.salary ?? 0) : 0;
-    setForm((f) => ({ ...f, internship_id: v, amount: sal > 0 ? String(sal) : f.amount }));
+    setForm((f) => {
+      const dm = Number(f.days_in_month) || daysInRefMonth;
+      const dw = Number(f.days_worked) || dm;
+      const amt = sal > 0 ? (sal / dm) * dw : Number(f.amount) || 0;
+      return {
+        ...f,
+        internship_id: v,
+        base_salary: sal > 0 ? String(sal) : f.base_salary,
+        amount: sal > 0 ? amt.toFixed(2) : f.amount,
+      };
+    });
+  };
+
+  const recalcByDays = (next: { days_worked?: string; days_in_month?: string; base_salary?: string }) => {
+    setForm((f) => {
+      const merged = { ...f, ...next };
+      const sal = Number(merged.base_salary) || 0;
+      const dm = Number(merged.days_in_month) || daysInRefMonth;
+      const dw = Number(merged.days_worked) || 0;
+      const amt = sal > 0 && dm > 0 ? (sal / dm) * dw : Number(merged.amount) || 0;
+      return { ...merged, amount: amt > 0 ? amt.toFixed(2) : merged.amount };
+    });
   };
 
   const openEdit = (p: Payment) => {
     setEditing(p);
+    const emp = empMap[p.employee_id];
+    const sal = Number(emp?.salary ?? 0);
     setForm({
       internship_id: p.internship_id,
       amount: String(p.amount),
       reference_date: p.reference_date,
       payment_date: p.payment_date ?? format(today, "yyyy-MM-dd"),
       notes: p.notes ?? "",
+      days_worked: String(daysInRefMonth),
+      days_in_month: String(daysInRefMonth),
+      base_salary: sal > 0 ? String(sal) : "",
     });
     setOpen(true);
   };
+
 
   const generateMonth = async () => {
     if (internships.length === 0) { toast.error("Nenhum estagiário ativo."); return; }
@@ -256,6 +291,23 @@ export default function InternshipPaymentsPanel() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <Label className="text-xs">Bolsa cheia (R$)</Label>
+                    <Input type="number" step="0.01" min="0" value={form.base_salary}
+                      onChange={(e) => recalcByDays({ base_salary: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Dias trab.</Label>
+                    <Input type="number" step="1" min="0" max="31" value={form.days_worked}
+                      onChange={(e) => recalcByDays({ days_worked: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Dias do mês</Label>
+                    <Input type="number" step="1" min="28" max="31" value={form.days_in_month}
+                      onChange={(e) => recalcByDays({ days_in_month: e.target.value })} />
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
