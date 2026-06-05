@@ -827,7 +827,7 @@ export default function TransportVoucherPanel() {
             const tone = scheduleTone(label);
             return [
             <TableRow key={`grp-${label}`} className={tone.header}>
-              <TableCell colSpan={8} className="py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <TableCell colSpan={9} className="py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {label} <span className="text-muted-foreground/70">({items.length})</span>
               </TableCell>
             </TableRow>,
