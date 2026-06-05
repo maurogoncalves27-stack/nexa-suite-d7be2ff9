@@ -2,6 +2,8 @@
 // Usa biblioteca web-push via npm specifier (Deno suportado)
 import webpush from "npm:web-push@3.6.7";
 import { createClient } from "npm:@supabase/supabase-js@2.45.0";
+import { requireCronOrRole } from "../_shared/requireRole.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,6 +36,11 @@ interface Body {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const auth = await requireCronOrRole(req, ['admin', 'manager', 'hr'], corsHeaders);
+  if (!auth.ok) return auth.response!;
+
+
 
   try {
     const body = (await req.json()) as Body;

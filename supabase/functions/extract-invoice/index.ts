@@ -3,6 +3,8 @@
 // Retorna o JSON estruturado da nota + lista de boletos.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireRole } from "../_shared/requireRole.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -80,6 +82,11 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const roleCheck = await requireRole(req, ['admin', 'manager', 'hr'], corsHeaders);
+  if (!roleCheck.ok) return roleCheck.response!;
+
+
+
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -136,6 +143,12 @@ Deno.serve(async (req) => {
         failures.push("arquivo sem URL");
         continue;
       }
+      // SSRF guard: only allow fetching from this project's Supabase Storage
+      if (typeof f.url !== "string" || !f.url.startsWith(supabaseUrl + "/storage/v1/")) {
+        failures.push("URL não permitida");
+        continue;
+      }
+
       try {
         console.log("[extract-invoice] baixando", f.url.slice(0, 120));
         const resp = await fetch(f.url);

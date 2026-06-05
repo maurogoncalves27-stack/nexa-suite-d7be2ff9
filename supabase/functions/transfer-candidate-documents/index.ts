@@ -2,6 +2,8 @@
 // candidate_document_uploads) para a pasta do colaborador
 // (bucket employee-documents + tabela employee_documents).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireRole } from "../_shared/requireRole.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,6 +15,11 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const authCheck = await requireRole(req, ['admin', 'manager', 'hr'], corsHeaders);
+  if (!authCheck.ok) return authCheck.response!;
+
+
 
   try {
     const { candidate_id, employee_id } = await req.json();

@@ -74,37 +74,40 @@ Deno.serve(async (req) => {
   // Validação de assinatura: iFood envia HMAC-SHA256(rawBody, secret) em hex
   // no header x-ifood-signature. Aceitamos também comparação direta (fallback).
   const expected = Deno.env.get("IFOOD_WEBHOOK_SECRET");
+  if (!expected) {
+    return new Response(JSON.stringify({ ok: false, error: "webhook not configured" }), {
+      status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
   const received = req.headers.get("x-ifood-signature") ?? req.headers.get("x-ifood-hmac-sha256");
   let signatureValid: boolean | null = null;
-  if (expected) {
-    if (!received) {
-      // "Testar conexão" do portal às vezes manda sem header — aceita se body vazio/teste
-      signatureValid = null;
-    } else {
-      // Calcula HMAC-SHA256 hex
-      const key = await crypto.subtle.importKey(
-        "raw",
-        new TextEncoder().encode(expected),
-        { name: "HMAC", hash: "SHA-256" },
-        false,
-        ["sign"],
-      );
-      const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(rawBody));
-      const hex = Array.from(new Uint8Array(sig))
-        .map((b) => b.toString(16).padStart(2, "0")).join("");
-      signatureValid = received.toLowerCase() === hex.toLowerCase() || received === expected;
-      if (!signatureValid) {
-        await sb.from("pdv_ifood_webhook_log").insert({
-          signature_valid: false,
-          event_count: 0,
-          error: "invalid_signature",
-        });
-        return new Response(JSON.stringify({ ok: false, error: "invalid signature" }), {
-          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+  if (!received) {
+    // "Testar conexão" do portal às vezes manda sem header — aceita se body vazio/teste
+    signatureValid = null;
+  } else {
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(expected),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+    const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(rawBody));
+    const hex = Array.from(new Uint8Array(sig))
+      .map((b) => b.toString(16).padStart(2, "0")).join("");
+    signatureValid = received.toLowerCase() === hex.toLowerCase() || received === expected;
+    if (!signatureValid) {
+      await sb.from("pdv_ifood_webhook_log").insert({
+        signature_valid: false,
+        event_count: 0,
+        error: "invalid_signature",
+      });
+      return new Response(JSON.stringify({ ok: false, error: "invalid signature" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
   }
+
 
   let body: unknown;
   try {
