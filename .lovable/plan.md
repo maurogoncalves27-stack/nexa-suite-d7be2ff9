@@ -17,6 +17,7 @@ Objetivo: substituir Saipos e Anota Aí, destravar canal WhatsApp, fechar concil
 ```text
 [BLOQUEADOR]   TEF ACBr/PayGo em produção           → libera tudo abaixo
 [BLOQUEADOR]   PDV NEXA piloto 1 loja               → libera baixa de estoque
+[DEPENDENTE]   NEXA Garçom (Smart POS GPOS780)      → reaproveita TEF ACBr da Fase 1
 [DEPENDENTE]   Estoque ponta-a-ponta                → libera compras/sugestões
 [DEPENDENTE]   WhatsApp vendas + entrega            → precisa cardápio + PDV
 [PARALELO]     iFood cancelamento + reviews         → independente
