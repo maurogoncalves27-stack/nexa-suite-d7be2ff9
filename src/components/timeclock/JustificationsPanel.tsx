@@ -101,7 +101,10 @@ export function JustificationsPanel() {
     const { data } = await q;
     let list = (data ?? []) as Justification[];
     if (storeId !== "all") {
-      const allowed = new Set(employees.filter((e) => e.store_id === storeId).map((e) => e.id));
+      const allowed = new Set([
+        ...employees.filter((e) => e.store_id === storeId || e.allocated_store_id === storeId).map((e) => e.id),
+        ...punchedAtStore,
+      ]);
       list = list.filter((j) => allowed.has(j.employee_id));
     }
     setItems(list);
@@ -110,8 +113,8 @@ export function JustificationsPanel() {
   const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
   const filteredEmployees = useMemo(() => {
     if (storeId === "all") return employees;
-    return employees.filter((e) => e.store_id === storeId || e.allocated_store_id === storeId);
-  }, [employees, storeId]);
+    return employees.filter((e) => e.store_id === storeId || e.allocated_store_id === storeId || punchedAtStore.has(e.id));
+  }, [employees, storeId, punchedAtStore]);
 
   const openNew = () => {
     setEditing(null);
