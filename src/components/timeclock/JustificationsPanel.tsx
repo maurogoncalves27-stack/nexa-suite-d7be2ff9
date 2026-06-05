@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { TimeClockEntryType, ENTRY_TYPE_LABEL } from "@/lib/timeClock";
 import { sortStores } from "@/lib/storeSort";
+import { useEmployeesAtStore } from "@/hooks/useEmployeesAtStore";
 
 type JustType = "forgotten_punch" | "late_arrival" | "early_leave" | "absence" | "other";
 
