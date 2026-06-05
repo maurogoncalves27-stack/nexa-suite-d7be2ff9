@@ -3,6 +3,8 @@
 // Retorna o JSON estruturado da nota + lista de boletos.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireRole } from "../_shared/requireRole.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -79,6 +81,11 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const roleCheck = await requireRole(req, ['admin', 'manager', 'hr'], corsHeaders);
+  if (!roleCheck.ok) return roleCheck.response!;
+
+
 
   try {
     const authHeader = req.headers.get("Authorization");
