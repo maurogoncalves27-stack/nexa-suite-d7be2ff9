@@ -1,40 +1,151 @@
-## Objetivo
-Permitir que o totem dispare pagamentos TEF via pinpad usando o **NEXA ACBr Agent** (já instalado e validado com a demo SiTef/PayGo C6), sem mexer no fluxo SiTef atual nem no iFood.
 
-## Mudanças
+# Plano mestre — finalização NEXA Suite
 
-### 1. Camada TEF do app (frontend)
-- `src/lib/tef/types.ts` — adicionar `"acbr"` em `TefProvider`.
-- `src/lib/tef/acbrAdapter.ts` (novo) — implementa `TefAdapter`:
-  - `processPayment`: `POST {agentUrl}/tef/iniciar` com `{ valor, tipo: "credito"|"debito"|"pix"|"voucher", parcelas, financiamento }`.
-  - Simula transições `connecting → waiting_card → processing` (agente é síncrono) e finaliza com `approved/declined` conforme resposta.
-  - Parser do bloco `Resposta=` (INI da ACBrLibTEFD) para extrair `NSU`, `CodigoAutorizacao`, `RedeAdquirente`, `Bandeira`, `UltimosDigitos`, `Parcelas`.
-  - `cancel`: `POST {agentUrl}/tef/cancelar`.
-  - Helper `checkAcbrAgent(url)` usando `GET /health` (lê `tefAvailable`).
-- `src/lib/tef/index.ts` — factory passa a retornar `createAcbrAdapter` quando `provider === "acbr"`.
+Objetivo: substituir Saipos e Anota Aí, destravar canal WhatsApp, fechar conciliação C6 e homologar iFood. Uma microtarefa por vez, sem mexer no que já está em produção (iFood atual, Focus NFe, RH, exportação C6 da folha).
 
-### 2. Painel de configuração TEF por loja
-- `src/components/pdv-novo/TefConfigPanel.tsx`:
-  - Novo item no Select: **"ACBr (PayGo / C6)"**.
-  - Quando provider = `acbr`, default de `agent_url` = `http://localhost:3030` e health-check chama `checkAcbrAgent`.
-  - Texto auxiliar: "Requer NEXA ACBr Agent rodando na máquina do totem (porta 3030)".
+## Correções ao seu diagnóstico
 
-### 3. Configuração da loja do totem
-- Sem migration. O admin abre Configurações → TEF da loja do totem em uso, escolhe `ACBr (PayGo / C6)`, URL `http://localhost:3030`, salva (grava em `pdv_tef_config`).
+1. **PDV próprio NEXA já existe** (`/pdv-novo` + `pdv_*`) e a camada TEF é multi-adapter (`mock`, `sitef`, `acbr`). O adapter ACBr já está implementado e o agente Electron (`electron-acbr/`) já foi validado com a demo PayGo C6. **Não é projeto novo — é ligar o cabo.**
+2. **Saipos só sai do ar quando o PDV NEXA estiver operando nas 4 lojas com TEF real.** Não dá pra "eliminar Saipos antes do TEF" sem o plano B (Anota Aí), que você descartou. Então a ordem obrigatória é: TEF → piloto 1 loja → rollout → desligar Saipos.
+3. **Estoque depende do PDV em produção** (correto). Mas a parte de *entrada* (recebimento, transferências, contagem) pode ser fechada e testada **antes** do PDV virar, usando dados manuais — assim ganhamos tempo.
+4. **iFood já está em produção pré-homologado** e os 50/60 cenários já passaram. Falta só o cenário "Pedido Cancelado". Isso é tarefa pequena, não bloqueia nada — fica em paralelo.
+5. **Google Reviews + iFood reviews unificados** depende de credenciais OAuth Google (já solicitadas, prazo ~15 dias). Não é desenvolvimento grande, é integração + tela.
+6. **Cardápio**: o iFood já tem API de catálogo que podemos puxar; o Anota Aí não tem API pública estável. Recomendação: **puxar do iFood como master inicial** + reestruturar manualmente o que faltar.
 
-## O que NÃO muda
-- `electron-totem/sitef-agent.cjs` e `sitef-real.cjs` — preservados.
-- `electron-acbr/` (agente que você já validou) — sem alterações de código.
-- Fluxo iFood — intocado.
-- TefPaymentDialog, useTefPayment — sem alteração (já são agnósticos ao provider).
+## Gargalos reais (ordem de impacto)
 
-## Detalhes técnicos
-- Mapeamento método → tipo ACBr: `credit→credito` (parcelas>1 vira parcelado), `debit→debito`, `pix→pix`, `voucher→voucher`.
-- O agente atual já valida `tefAvailable` em `/health` e responde 503 quando a `ACBrTEFD64.dll` não está disponível — o adapter trata esse caso retornando `status: "error"` com mensagem clara.
-- Parser INI tolerante a chaves em maiúsculas/minúsculas (ACBrLibTEFD pode variar). Em caso de campos ausentes, devolve apenas `mensagem` e `raw`.
-- Sem SSE no agente ACBr — UI usa estados simulados curtos antes do fetch para o usuário ver "Aproxime o cartão" no totem.
+```text
+[BLOQUEADOR]   TEF ACBr/PayGo em produção           → libera tudo abaixo
+[BLOQUEADOR]   PDV NEXA piloto 1 loja               → libera baixa de estoque
+[DEPENDENTE]   Estoque ponta-a-ponta                → libera compras/sugestões
+[DEPENDENTE]   WhatsApp vendas + entrega            → precisa cardápio + PDV
+[PARALELO]     iFood cancelamento + reviews         → independente
+[PARALELO]     C6 conciliação API                   → independente, melhoria
+[PARALELO]     RH ajustes pontuais                  → contínuo
+```
 
-## Ordem de implementação
-1. `types.ts` + `acbrAdapter.ts` + `index.ts`.
-2. `TefConfigPanel.tsx` (novo item + default URL + health-check).
-3. QA manual: abrir painel TEF da loja do totem, escolher ACBr, salvar, abrir totem, fazer uma venda de teste contra o NEXA ACBr Agent local.
+## Fases (microtarefa por vez)
+
+### FASE 1 — TEF ACBr/PayGo em produção (BLOQUEADOR PRINCIPAL)
+
+> Caminho escolhido: **ACBr + PayGo**. SiTef parqueado como plano B.
+
+1.1. Checklist de homologação PayGo (planilha oficial) — mapear cenários obrigatórios vs. o que o adapter ACBr já faz.
+1.2. Subir pasta `docs/paygo-demo` no repo (você está fazendo agora).
+1.3. Revisar `electron-acbr/acbr-tefd.cjs` contra a planilha: confirmar que cobre crédito à vista, parcelado, débito, voucher, PIX, cancelamento, reimpressão de comprovante.
+1.4. Adicionar o que faltar (provavelmente: reimpressão e relatório do dia).
+1.5. Empacotar release do NEXA ACBr Agent (Electron) instalável no totem.
+1.6. Configurar 1 loja piloto (sugestão: **Asa Sul**, menor volume) em `pdv_tef_config` com provider `acbr`.
+1.7. Teste em bancada: pinpad PayGo real + agente local + `/pdv-novo` numa máquina de teste.
+1.8. Rodar planilha de homologação completa → enviar pra PayGo.
+1.9. Aguardar liberação PayGo (1-5 dias úteis após envio).
+
+**Saída**: 1 loja com TEF ACBr homologado e funcionando.
+
+### FASE 2 — Piloto PDV NEXA na loja Asa Sul
+
+2.1. Importar cardápio do iFood (1x, via API) pra dentro do NEXA — usar `ifood-catalog-import` (já existe base).
+2.2. Conferir e ajustar manualmente o que vier torto (preços, modificadores, fotos).
+2.3. Configurar impressoras NFC-e (Gertec G250) e impressoras de cozinha da loja.
+2.4. Treinar 1 colaborador da loja → rodar 1 dia em paralelo com Saipos (vendas duplicadas, só pra validar).
+2.5. Corrigir bugs encontrados (parquear TEF se necessário).
+2.6. Virar 100% para NEXA na Asa Sul, desligar Saipos só dessa loja.
+
+**Saída**: 1 loja 100% NEXA (PDV + Totem + TEF + NFC-e via Focus).
+
+### FASE 3 — Estoque ponta-a-ponta (em paralelo à Fase 2)
+
+3.1. Validar fluxo de **recebimento** (`/recebimento` + `inventory_lots`) com 1 NF real de fornecedor.
+3.2. Validar **transferências** entre lojas e fábrica.
+3.3. Validar **contagem cíclica** (snapshot atual + ajustes).
+3.4. Garantir que a venda no PDV NEXA (Fase 2) gera movimento de saída via ficha técnica.
+3.5. Ligar **sugestões de compra** (`/sugestoes-compra`) baseadas em consumo real.
+3.6. Validar CMV em `/financeiro/cmv` com 1 mês de dados reais.
+
+**Saída**: estoque confiável → compras automáticas funcionando.
+
+### FASE 4 — Rollout PDV/TEF nas outras 3 lojas
+
+4.1. Asa Norte (maior volume, deixar por último entre as 3).
+4.2. Águas Claras.
+4.3. Lago Sul.
+4.4. **Desligar Saipos definitivamente** + arquivar tabelas `pos_*`.
+
+### FASE 5 — iFood: fechar pendências (em paralelo desde já)
+
+5.1. Rodar cenário "Pedido Cancelado" novamente, debugar com logs (memória `ifood-proxima-rodada-cancelamento`).
+5.2. Submeter homologação final → aguardar selo definitivo.
+5.3. Solicitar credenciais expandidas: **chat com cliente** + **reviews**.
+5.4. Construir tela unificada de reviews (iFood + Google) → painel `/avaliacoes` com métricas.
+
+### FASE 6 — Google Reviews
+
+6.1. Aguardar credencial OAuth Google (em andamento, ~15d).
+6.2. Implementar puxada de reviews por loja (Google Business Profile API).
+6.3. Unificar com iFood na tela `/avaliacoes` (Fase 5.4).
+6.4. Permitir resposta diretamente pela plataforma + IA de sugestão de resposta.
+
+### FASE 7 — WhatsApp vendas + multi-cotação entrega
+
+> Pré-requisito: cardápio NEXA estável (Fase 2.1-2.2) + PDV operando (Fase 4).
+
+7.1. Reaproveitar instância Z-API do WhatsApp Cliente (já existe — `whatsapp-cliente-sac`).
+7.2. Estender bot IA com tools de **vendas** (criar pedido, sugerir combo, calcular total).
+7.3. Pagamento via Pix C6 (gerar QR Code dinâmico — pedir liberação ao C6).
+7.4. Integração **Lalamove** (cotação + criação de entrega + tracking).
+7.5. Integração **Uber Direct** (mesmo contrato — em 2º plano).
+7.6. Componente de multi-cotação: cota nos dois, pega o melhor.
+7.7. Tela operacional `/whatsapp-pedidos` (acompanhar pedidos do canal).
+
+### FASE 8 — C6 conciliação bancária (melhoria, em paralelo)
+
+8.1. Solicitar credencial API C6 (extrato + pagamento de títulos).
+8.2. Substituir upload OFX/XLS por puxada automática diária.
+8.3. Pagamento de títulos direto da tela `/financeiro` sem export.
+
+### FASE 9 — RH (contínuo, em paralelo a tudo)
+
+- Ajustes pontuais conforme aparecerem. Sem mexer em: exportação C6 da folha, pasta do colaborador, regras CLT calculadas. Tudo o resto pode ser tocado.
+
+## Dependências críticas (mapa)
+
+```text
+TEF ACBr ──┬──> PDV NEXA Asa Sul ──┬──> Estoque real ──> Compras automáticas
+           │                       │
+           │                       └──> Rollout 3 lojas ──> Desligar Saipos
+           │
+           └──> WhatsApp vendas (precisa também: cardápio + Pix C6 + Lalamove)
+
+iFood cancelamento ──> Homologação final ──> Credenciais reviews/chat ──┐
+                                                                        ├──> Tela /avaliacoes unificada
+Google OAuth (aguardando) ─────────────────────────────────────────────┘
+
+C6 API ──> Conciliação automática (independente)
+RH ──> Contínuo (independente)
+```
+
+## Integrações que precisam ser solicitadas/aguardadas
+
+| Integração | Status | Prazo estimado | Bloqueia |
+|---|---|---|---|
+| PayGo (homologação) | Pronto pra rodar planilha | 1-5 dias após envio | Fase 1-4 |
+| iFood reviews/chat | Aguardando solicitação | 30 dias | Fase 5.3 |
+| Google Business OAuth | Solicitado | ~15 dias | Fase 6 |
+| C6 API extrato | Não solicitado | a definir | Fase 8 |
+| C6 Pix dinâmico | Não solicitado | a definir | Fase 7.3 |
+| Lalamove API | Não solicitado | ~7 dias | Fase 7.4 |
+| Uber Direct API | Não solicitado | ~14 dias | Fase 7.5 |
+
+## O que NÃO vamos fazer
+
+- Não tocar no código iFood atual (está em produção).
+- Não mexer no Focus NFe (funciona; ACBrLibNFe fica pra depois).
+- Não usar Anota Aí como ponte (você descartou).
+- Não mexer em exportação C6 da folha, pasta do colaborador, regras CLT.
+- Não iniciar Fase 7 (WhatsApp) antes do PDV NEXA virar em pelo menos 1 loja.
+
+## Próximo passo imediato
+
+**Fase 1.1**: pegar a planilha oficial de homologação PayGo e fazer o checklist contra o `acbr-tefd.cjs` atual pra ver exatamente o que falta implementar. É 1 hora de trabalho e destrava tudo.
+
+Quer que eu comece por aí assim que aprovar este plano?
