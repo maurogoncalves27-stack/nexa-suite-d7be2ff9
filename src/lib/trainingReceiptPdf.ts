@@ -14,7 +14,7 @@ export interface TrainingReceiptData {
   training_end: string;   // YYYY-MM-DD
   worked_days: number;
   monthly_salary: number;
-  daily_rate: number;     // salary / 30
+  daily_rate: number;     // salary / dias do mês de referência
   total_amount: number;
   issued_at?: string;     // ISO
   city?: string;
