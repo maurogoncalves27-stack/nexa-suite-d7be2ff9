@@ -56,6 +56,9 @@ export default function TimeClock() {
     return { from: format(first, "yyyy-MM-dd"), to: format(last, "yyyy-MM-dd") };
   }, [month]);
 
+  const punchedAtStore = useEmployeesAtStore(storeId, from, to);
+
+
   useEffect(() => { init(); }, []);
   useEffect(() => { load(); }, [storeId, employeeId, from, to]);
 
