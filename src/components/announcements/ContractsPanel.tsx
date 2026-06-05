@@ -352,7 +352,7 @@ export default function ContractsPanel() {
             <RotateCcw className="h-4 w-4 mr-2" />
             Restaurar modelo padrão
           </Button>
-          <Button onClick={generateForEmployee} disabled={generating || saving || !selectedEmployeeId}>
+          <Button onClick={generateForEmployee} disabled={generating || saving || !selectedEmployeeId || !periodValid}>
             {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
             Gerar contrato
           </Button>
