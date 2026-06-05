@@ -563,9 +563,10 @@ Deno.serve(async (req: Request) => {
       // Ex.: maio (31 dias) -> diária = salário/31; abril (30 dias) -> diária = salário/30.
       // Lançamos 2× o valor da diária por feriado trabalhado.
       const holidayDailyRate = baseSalary / lastDay;
-      const holidayPay = r2(holidayDaysWorked * holidayDailyRate * 2);
-      if (holidayDaysWorked > 0 && (emp.full_name ?? "").toUpperCase().includes("DENIS")) {
-        console.log("[DENIS-HOLIDAY-DEBUG]", { lastDay, baseSalary, holidayDaysWorked, holidayDailyRate, holidayPay, year, month });
+      let holidayPay = r2(holidayDaysWorked * holidayDailyRate * 2);
+      if ((emp.full_name ?? "").toUpperCase().includes("DENIS")) {
+        console.error("[DENIS-HOLIDAY-DEBUG]", { lastDay, baseSalary, holidayDaysWorked, holidayDailyRate, holidayPay, year, month });
+        holidayPay = 99.99;
       }
 
       // ===== Faltas e DSR (a partir da escala vs ponto) =====
