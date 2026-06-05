@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { ENTRY_TYPE_LABEL, ENTRY_TYPE_ORDER, TimeClockEntryType } from "@/lib/timeClock";
 import { ScheduleVsPunchPanel } from "@/components/timeclock/ScheduleVsPunchPanel";
 import { sortStores } from "@/lib/storeSort";
+import { useEmployeesAtStore } from "@/hooks/useEmployeesAtStore";
 
 import JustificationsPanel from "@/components/timeclock/JustificationsPanel";
 import EmployeeLeavesPanel from "@/components/timeclock/EmployeeLeavesPanel";
