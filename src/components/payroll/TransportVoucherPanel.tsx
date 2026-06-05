@@ -877,6 +877,21 @@ export default function TransportVoucherPanel() {
               </TableCell>
               <TableCell>
                 <Input
+                  type="number" step="0.01" min="0"
+                  className="h-8 text-right"
+                  placeholder="0,00"
+                  defaultValue={paidMap[e.id] ?? ""}
+                  onBlur={(ev) => {
+                    const v = Number(ev.target.value) || 0;
+                    if (v !== (paidMap[e.id] ?? 0)) savePaid(e.id, v);
+                  }}
+                  disabled={savingPaid === e.id}
+                  key={`paid-${e.id}-${refYear}-${refMonth}-${paidMap[e.id] ?? ""}`}
+                />
+                {savingPaid === e.id && <Loader2 className="inline h-3 w-3 animate-spin text-muted-foreground ml-1" />}
+              </TableCell>
+              <TableCell>
+                <Input
                   type="number" step="0.01" min="0" max="100"
                   className="h-8 text-right"
                   value={r.discount_percent}
