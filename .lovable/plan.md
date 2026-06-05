@@ -88,39 +88,39 @@ A base já existe: `/garcom`, tabelas `pdv_tables` / `pdv_table_sessions` / `pdv
 5.3. Lago Sul.
 5.4. **Desligar Saipos definitivamente** + arquivar tabelas `pos_*`.
 
-### FASE 5 — iFood: fechar pendências (em paralelo desde já)
+### FASE 6 — iFood: fechar pendências (em paralelo desde já)
 
-5.1. Rodar cenário "Pedido Cancelado" novamente, debugar com logs (memória `ifood-proxima-rodada-cancelamento`).
-5.2. Submeter homologação final → aguardar selo definitivo.
-5.3. Solicitar credenciais expandidas: **chat com cliente** + **reviews**.
-5.4. Construir tela unificada de reviews (iFood + Google) → painel `/avaliacoes` com métricas.
+6.1. Rodar cenário "Pedido Cancelado" novamente, debugar com logs (memória `ifood-proxima-rodada-cancelamento`).
+6.2. Submeter homologação final → aguardar selo definitivo.
+6.3. Solicitar credenciais expandidas: **chat com cliente** + **reviews**.
+6.4. Construir tela unificada de reviews (iFood + Google) → painel `/avaliacoes` com métricas.
 
-### FASE 6 — Google Reviews
+### FASE 7 — Google Reviews
 
-6.1. Aguardar credencial OAuth Google (em andamento, ~15d).
-6.2. Implementar puxada de reviews por loja (Google Business Profile API).
-6.3. Unificar com iFood na tela `/avaliacoes` (Fase 5.4).
-6.4. Permitir resposta diretamente pela plataforma + IA de sugestão de resposta.
+7.1. Aguardar credencial OAuth Google (em andamento, ~15d).
+7.2. Implementar puxada de reviews por loja (Google Business Profile API).
+7.3. Unificar com iFood na tela `/avaliacoes` (Fase 6.4).
+7.4. Permitir resposta diretamente pela plataforma + IA de sugestão de resposta.
 
-### FASE 7 — WhatsApp vendas + multi-cotação entrega
+### FASE 8 — WhatsApp vendas + multi-cotação entrega
 
-> Pré-requisito: cardápio NEXA estável (Fase 2.1-2.2) + PDV operando (Fase 4).
+> Pré-requisito: cardápio NEXA estável (Fase 2.1-2.2) + PDV operando (Fase 5).
 
-7.1. Reaproveitar instância Z-API do WhatsApp Cliente (já existe — `whatsapp-cliente-sac`).
-7.2. Estender bot IA com tools de **vendas** (criar pedido, sugerir combo, calcular total).
-7.3. Pagamento via Pix C6 (gerar QR Code dinâmico — pedir liberação ao C6).
-7.4. Integração **Lalamove** (cotação + criação de entrega + tracking).
-7.5. Integração **Uber Direct** (mesmo contrato — em 2º plano).
-7.6. Componente de multi-cotação: cota nos dois, pega o melhor.
-7.7. Tela operacional `/whatsapp-pedidos` (acompanhar pedidos do canal).
+8.1. Reaproveitar instância Z-API do WhatsApp Cliente (já existe — `whatsapp-cliente-sac`).
+8.2. Estender bot IA com tools de **vendas** (criar pedido, sugerir combo, calcular total).
+8.3. Pagamento via Pix C6 (gerar QR Code dinâmico — pedir liberação ao C6).
+8.4. Integração **Lalamove** (cotação + criação de entrega + tracking).
+8.5. Integração **Uber Direct** (mesmo contrato — em 2º plano).
+8.6. Componente de multi-cotação: cota nos dois, pega o melhor.
+8.7. Tela operacional `/whatsapp-pedidos` (acompanhar pedidos do canal).
 
-### FASE 8 — C6 conciliação bancária (melhoria, em paralelo)
+### FASE 9 — C6 conciliação bancária (melhoria, em paralelo)
 
-8.1. Solicitar credencial API C6 (extrato + pagamento de títulos).
-8.2. Substituir upload OFX/XLS por puxada automática diária.
-8.3. Pagamento de títulos direto da tela `/financeiro` sem export.
+9.1. Solicitar credencial API C6 (extrato + pagamento de títulos).
+9.2. Substituir upload OFX/XLS por puxada automática diária.
+9.3. Pagamento de títulos direto da tela `/financeiro` sem export.
 
-### FASE 9 — RH (contínuo, em paralelo a tudo)
+### FASE 10 — RH (contínuo, em paralelo a tudo)
 
 - Ajustes pontuais conforme aparecerem. Sem mexer em: exportação C6 da folha, pasta do colaborador, regras CLT calculadas. Tudo o resto pode ser tocado.
 
