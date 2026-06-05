@@ -21,6 +21,8 @@ export interface ContractEmployeeData {
   work_schedule?: string | null;
   contract_type?: string | null;
   experience_contract_days?: number | null;
+  experience_initial_days?: number | null;
+  experience_extension_days?: number | null;
   store_id: string;
   allocated_store_id?: string | null;
 }
@@ -154,6 +156,10 @@ export const EDITABLE_PLACEHOLDERS = [
   "{{tipo_contrato}}",
   "{{data_admissao}}",
   "{{periodo_experiencia}}",
+  "{{periodo_experiencia_inicial}}",
+  "{{periodo_experiencia_prorrogacao}}",
+  "{{periodo_experiencia_total}}",
+  "{{clausula_experiencia}}",
   "{{responsabilidades}}",
 ] as const;
 
@@ -227,7 +233,21 @@ export async function buildContract(
     "{{jornada}}": employee.work_schedule || "44 (quarenta e quatro) horas semanais",
     "{{tipo_contrato}}": employee.contract_type || "CLT",
     "{{data_admissao}}": formatDate(admissionDate),
-    "{{periodo_experiencia}}": String(employee.experience_contract_days ?? 90),
+    ...(() => {
+      const inicial = Number(employee.experience_initial_days ?? employee.experience_contract_days ?? 90) || 0;
+      const prorrog = Number(employee.experience_extension_days ?? 0) || 0;
+      const total = inicial + prorrog;
+      const clausula = prorrog > 0
+        ? `O presente contrato terá período inicial de experiência de ${inicial} dias, contados a partir de ${formatDate(admissionDate)}, podendo ser prorrogado, uma única vez, por mais ${prorrog} dias, totalizando ${total} dias (art. 445, parágrafo único, da CLT; Súmula 188 do TST). Durante esse prazo, qualquer das partes poderá rescindir o contrato nos termos da legislação trabalhista. Findo o prazo final sem manifestação em contrário, o contrato passará automaticamente a vigorar por prazo indeterminado.`
+        : `O presente contrato terá período de experiência de ${inicial} dias, contados a partir de ${formatDate(admissionDate)}, durante o qual qualquer das partes poderá rescindi-lo nos termos da legislação trabalhista. Findo esse prazo sem manifestação em contrário, o contrato passará automaticamente a vigorar por prazo indeterminado.`;
+      return {
+        "{{periodo_experiencia}}": String(total || inicial),
+        "{{periodo_experiencia_inicial}}": String(inicial),
+        "{{periodo_experiencia_prorrogacao}}": String(prorrog),
+        "{{periodo_experiencia_total}}": String(total || inicial),
+        "{{clausula_experiencia}}": clausula,
+      };
+    })(),
     "{{responsabilidades}}": responsibilitiesText,
   };
 

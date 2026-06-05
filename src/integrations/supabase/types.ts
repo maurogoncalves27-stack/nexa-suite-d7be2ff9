@@ -3291,6 +3291,8 @@ export type Database = {
           ethnicity: string | null
           exempt_from_timeclock: boolean
           experience_contract_days: number | null
+          experience_extension_days: number | null
+          experience_initial_days: number | null
           father_name: string | null
           first_job: boolean | null
           foreigner_arrival_date: string | null
@@ -3386,6 +3388,8 @@ export type Database = {
           ethnicity?: string | null
           exempt_from_timeclock?: boolean
           experience_contract_days?: number | null
+          experience_extension_days?: number | null
+          experience_initial_days?: number | null
           father_name?: string | null
           first_job?: boolean | null
           foreigner_arrival_date?: string | null
@@ -3481,6 +3485,8 @@ export type Database = {
           ethnicity?: string | null
           exempt_from_timeclock?: boolean
           experience_contract_days?: number | null
+          experience_extension_days?: number | null
+          experience_initial_days?: number | null
           father_name?: string | null
           first_job?: boolean | null
           foreigner_arrival_date?: string | null

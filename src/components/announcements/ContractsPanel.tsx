@@ -37,6 +37,35 @@ export default function ContractsPanel() {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [generating, setGenerating] = useState(false);
 
+  // Período de experiência (CLT art. 445, parágrafo único — máx 90 dias, 1 prorrogação)
+  const PRESETS: { id: string; label: string; initial: number; extension: number }[] = [
+    { id: "14_30", label: "14 + 30 dias (44 no total)", initial: 14, extension: 30 },
+    { id: "30_60", label: "30 + 60 dias (90)", initial: 30, extension: 60 },
+    { id: "45_45", label: "45 + 45 dias (90)", initial: 45, extension: 45 },
+    { id: "30_30", label: "30 + 30 dias (60)", initial: 30, extension: 30 },
+    { id: "90_0", label: "90 dias, sem prorrogação", initial: 90, extension: 0 },
+    { id: "custom", label: "Personalizado", initial: 30, extension: 0 },
+  ];
+  const [presetId, setPresetId] = useState<string>("14_30");
+  const [initialDays, setInitialDays] = useState<number>(14);
+  const [extensionDays, setExtensionDays] = useState<number>(30);
+
+  const applyPreset = (id: string) => {
+    setPresetId(id);
+    const p = PRESETS.find((x) => x.id === id);
+    if (p && id !== "custom") {
+      setInitialDays(p.initial);
+      setExtensionDays(p.extension);
+    }
+  };
+
+  const totalDays = (Number(initialDays) || 0) + (Number(extensionDays) || 0);
+  const periodValid =
+    Number.isFinite(initialDays) && initialDays >= 1 && initialDays <= 90 &&
+    Number.isFinite(extensionDays) && extensionDays >= 0 && extensionDays <= 90 &&
+    totalDays >= 1 && totalDays <= 90;
+
+
   const load = async () => {
     setLoading(true);
     const [{ data: tpl }, { data: emps }] = await Promise.all([
@@ -119,11 +148,35 @@ export default function ContractsPanel() {
       toast({ title: "Selecione um colaborador", variant: "destructive" });
       return;
     }
+    if (!periodValid) {
+      toast({
+        title: "Período de experiência inválido",
+        description: "A soma de inicial + prorrogação deve estar entre 1 e 90 dias (CLT art. 445).",
+        variant: "destructive",
+      });
+      return;
+    }
     setGenerating(true);
     try {
+      // Persiste período de experiência escolhido no colaborador
+      const { error: empUpdErr } = await supabase
+        .from("employees")
+        .update({
+          experience_initial_days: initialDays,
+          experience_extension_days: extensionDays || null,
+          experience_contract_days: initialDays, // retrocompat
+        } as any)
+        .eq("id", selectedEmployeeId);
+      if (empUpdErr) {
+        setGenerating(false);
+        toast({ title: "Erro ao salvar período", description: empUpdErr.message, variant: "destructive" });
+        return;
+      }
+
       // Garante que o template ativo no banco reflete o conteúdo atual
       const tpl = await saveTemplate();
       if (!tpl) return;
+
 
       const { data: emp, error } = await supabase
         .from("employees")
@@ -214,6 +267,73 @@ export default function ContractsPanel() {
 
         <div className="space-y-3 border-t pt-4">
           <div>
+            <Label className="text-base font-semibold">Período de experiência</Label>
+            <p className="text-sm text-muted-foreground mt-1">
+              Conforme CLT (art. 445, parágrafo único) e Súmula 188 do TST: máximo de <strong>90 dias</strong> no total, admitida <strong>uma única prorrogação</strong>.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => applyPreset(p.id)}
+                className={`text-left text-sm rounded-md border px-3 py-2 transition-colors ${
+                  presetId === p.id
+                    ? "border-primary bg-primary/10 text-foreground"
+                    : "border-border bg-background hover:bg-muted"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <Label className="text-xs text-muted-foreground">Período inicial (dias)</Label>
+              <Input
+                type="number"
+                min={1}
+                max={90}
+                value={initialDays}
+                onChange={(e) => {
+                  setPresetId("custom");
+                  setInitialDays(Number(e.target.value) || 0);
+                }}
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Prorrogação (dias, 0 = sem)</Label>
+              <Input
+                type="number"
+                min={0}
+                max={90}
+                value={extensionDays}
+                onChange={(e) => {
+                  setPresetId("custom");
+                  setExtensionDays(Number(e.target.value) || 0);
+                }}
+              />
+            </div>
+            <div className="flex flex-col justify-end">
+              <Label className="text-xs text-muted-foreground">Total</Label>
+              <div
+                className={`h-10 flex items-center px-3 rounded-md border text-sm font-medium ${
+                  periodValid ? "border-success/40 bg-success/10" : "border-destructive/50 bg-destructive/10 text-destructive"
+                }`}
+              >
+                {totalDays} dia{totalDays === 1 ? "" : "s"}
+                {!periodValid && " — excede 90 dias"}
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+        <div className="space-y-3 border-t pt-4">
+          <div>
             <Label className="text-base font-semibold">Cláusulas do contrato (parte editável)</Label>
             <p className="text-sm text-muted-foreground mt-1 mb-2">
               Edite apenas as cláusulas customizáveis abaixo o contrato será gerado automaticamente pelo sistema e não podem ser alterados aqui.
@@ -232,7 +352,7 @@ export default function ContractsPanel() {
             <RotateCcw className="h-4 w-4 mr-2" />
             Restaurar modelo padrão
           </Button>
-          <Button onClick={generateForEmployee} disabled={generating || saving || !selectedEmployeeId}>
+          <Button onClick={generateForEmployee} disabled={generating || saving || !selectedEmployeeId || !periodValid}>
             {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
             Gerar contrato
           </Button>
