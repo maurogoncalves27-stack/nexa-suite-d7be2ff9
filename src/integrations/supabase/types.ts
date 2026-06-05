@@ -6954,6 +6954,9 @@ export type Database = {
           file_path: string | null
           id: string
           infraction_id: string | null
+          inss_benefit_number: string | null
+          inss_benefit_type: string | null
+          inss_referral: boolean
           leave_applied: boolean
           leave_end_date: string | null
           leave_start_date: string | null
@@ -6980,6 +6983,9 @@ export type Database = {
           file_path?: string | null
           id?: string
           infraction_id?: string | null
+          inss_benefit_number?: string | null
+          inss_benefit_type?: string | null
+          inss_referral?: boolean
           leave_applied?: boolean
           leave_end_date?: string | null
           leave_start_date?: string | null
@@ -7006,6 +7012,9 @@ export type Database = {
           file_path?: string | null
           id?: string
           infraction_id?: string | null
+          inss_benefit_number?: string | null
+          inss_benefit_type?: string | null
+          inss_referral?: boolean
           leave_applied?: boolean
           leave_end_date?: string | null
           leave_start_date?: string | null
@@ -8768,6 +8777,9 @@ export type Database = {
           id: string
           infraction_discount: number
           inss: number
+          inss_leave_days: number
+          inss_leave_pay: number
+          inss_suspension_days: number
           irrf: number
           net_pay: number
           other_discounts: number
@@ -8804,6 +8816,9 @@ export type Database = {
           id?: string
           infraction_discount?: number
           inss?: number
+          inss_leave_days?: number
+          inss_leave_pay?: number
+          inss_suspension_days?: number
           irrf?: number
           net_pay?: number
           other_discounts?: number
@@ -8840,6 +8855,9 @@ export type Database = {
           id?: string
           infraction_discount?: number
           inss?: number
+          inss_leave_days?: number
+          inss_leave_pay?: number
+          inss_suspension_days?: number
           irrf?: number
           net_pay?: number
           other_discounts?: number
