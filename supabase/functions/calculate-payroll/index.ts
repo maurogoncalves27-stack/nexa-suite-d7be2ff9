@@ -599,7 +599,8 @@ Deno.serve(async (req: Request) => {
       }
       const dsrLossDays = weeksWithAbsence.size;
 
-      const dailyRateAbs = baseSalary / 30;
+      // Base diária proporcional aos dias do mês de referência (lastDay), NÃO 30 fixo.
+      const dailyRateAbs = baseSalary / lastDay;
       const absenceDiscount = r2(absentDays * dailyRateAbs);
       const dsrLossDiscount = r2(dsrLossDays * dailyRateAbs);
 
