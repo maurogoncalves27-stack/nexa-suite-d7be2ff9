@@ -760,13 +760,13 @@ Deno.serve(async (req: Request) => {
           : 0;
       
 
-      const inssBase = proportionalSalary + productivity + nightAddition + holidayPay + otherEarnings - absenceDiscount - dsrLossDiscount;
+      const inssBase = proportionalSalary + inssLeavePay + productivity + nightAddition + holidayPay + otherEarnings - absenceDiscount - dsrLossDiscount;
       const inss = calcINSS(Math.max(0, inssBase));
       const irrf = calcIRRF(Math.max(0, inssBase), inss, deps.total);
       const fgts = r2(Math.max(0, inssBase) * 0.08);
 
       const totalEarnings = r2(
-        proportionalSalary + productivity + nightAddition + holidayPay + familyAllowance + otherEarnings,
+        proportionalSalary + inssLeavePay + productivity + nightAddition + holidayPay + familyAllowance + otherEarnings,
       );
       const totalDiscounts = r2(
         inss + irrf + transportDiscount + vtUnusedAdjustment + advance + infractionDiscount + healthPlan + otherDiscounts + absenceDiscount + dsrLossDiscount,
@@ -778,7 +778,7 @@ Deno.serve(async (req: Request) => {
         reference_year: year,
         reference_month: month,
         base_salary: baseSalary,
-        worked_days: workedDays,
+        worked_days: salaryWorkedDays,
         absent_days: absentDays,
         overtime_hours: 0,
         overtime_amount: 0,
@@ -795,6 +795,9 @@ Deno.serve(async (req: Request) => {
         dsr_loss_discount: dsrLossDiscount,
         other_earnings: otherEarnings,
         other_discounts: otherDiscounts,
+        inss_leave_days: inssEmployerDays,
+        inss_leave_pay: inssLeavePay,
+        inss_suspension_days: inssSuspensionDays,
         inss,
         irrf,
         fgts,
