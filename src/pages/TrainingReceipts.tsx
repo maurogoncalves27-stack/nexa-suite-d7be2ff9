@@ -152,10 +152,12 @@ export default function TrainingReceipts() {
   const calc = useMemo(() => {
     const sal = Number(String(salary).replace(",", ".")) || 0;
     const days = Number(workedDays) || 0;
-    const daily = sal / 30;
+    const ref = trainingEnd ? parseISO(trainingEnd) : (trainingStart ? parseISO(trainingStart) : new Date());
+    const daysInMonth = new Date(ref.getFullYear(), ref.getMonth() + 1, 0).getDate();
+    const daily = sal / daysInMonth;
     const total = +(daily * days).toFixed(2);
-    return { sal, days, daily, total };
-  }, [salary, workedDays]);
+    return { sal, days, daily, total, daysInMonth };
+  }, [salary, workedDays, trainingEnd, trainingStart]);
 
   const dueInfo = useMemo(() => {
     if (!trainingEnd) return null;
@@ -422,7 +424,7 @@ export default function TrainingReceipts() {
                 </div>
 
                 <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-1">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Diária (sal÷30)</span><span>{fmtBRL(calc.daily || 0)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Diária (sal÷{calc.daysInMonth})</span><span>{fmtBRL(calc.daily || 0)}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Dias × diária</span><span>{calc.days} × {fmtBRL(calc.daily || 0)}</span></div>
                   <div className="flex justify-between border-t pt-1 font-semibold"><span>Total a pagar</span><span className="text-emerald-600">{fmtBRL(calc.total || 0)}</span></div>
                   {dueInfo && (
