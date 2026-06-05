@@ -9,9 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
-import { FileCheck, Wifi, WifiOff, Loader2, Send, Activity, FlaskConical } from "lucide-react";
+import { FileCheck, Wifi, WifiOff, Loader2, Send, Activity, FlaskConical, Terminal, Copy } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { buildHomologacaoIni, type StoreNfceCfg } from "@/lib/acbr/nfceIniBuilder";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger,
+} from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface Health {
   ok: boolean;
