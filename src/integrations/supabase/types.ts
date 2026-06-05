@@ -15477,6 +15477,16 @@ export type Database = {
         }
         Returns: Json
       }
+      list_shift_swap_candidates: {
+        Args: { _requester_employee_id: string }
+        Returns: {
+          full_name: string
+          id: string
+          position_name: string
+          store_name: string
+          user_id: string
+        }[]
+      }
       list_store_birthdays: {
         Args: { _store_ids: string[] }
         Returns: {
