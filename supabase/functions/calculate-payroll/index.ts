@@ -685,7 +685,7 @@ Deno.serve(async (req: Request) => {
         proportionalSalary + productivity + nightAddition + holidayPay + familyAllowance + otherEarnings,
       );
       const totalDiscounts = r2(
-        inss + irrf + transportDiscount + advance + infractionDiscount + healthPlan + otherDiscounts + absenceDiscount + dsrLossDiscount,
+        inss + irrf + transportDiscount + vtUnusedAdjustment + advance + infractionDiscount + healthPlan + otherDiscounts + absenceDiscount + dsrLossDiscount,
       );
       const netPay = r2(totalEarnings - totalDiscounts);
 
