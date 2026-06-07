@@ -404,10 +404,12 @@ export default function Balcao() {
     void load(storeId);
   };
 
-  const reprint = (o: Order) => {
+  const reprint = (o: Order, target: "customer" | "kitchen" | "both" = "both") => {
     void routePrintOrder({
       storeId,
       storeName: currentStore?.name ?? "",
+      manual: true,
+      target,
       order: {
         id: o.id,
         order_number: o.order_number,
@@ -422,7 +424,10 @@ export default function Balcao() {
         items: items[o.id] ?? [],
       },
     });
-    toast({ title: "Reimprimindo cupom" });
+    const label = target === "customer" ? "cupom do cliente"
+      : target === "kitchen" ? "comanda da cozinha"
+      : "cupom e comanda";
+    toast({ title: `Reimprimindo ${label}` });
   };
 
   const goFullscreen = () => {
