@@ -164,7 +164,7 @@ export default function PdvCancellations() {
     setLoadingItems(true);
     const { data } = await supabase
       .from("pdv_order_items")
-      .select("name,quantity,unit_price,total_price,notes")
+      .select("name,quantity,unit_price,total,notes")
       .eq("order_id", r.id)
       .order("created_at");
     setLoadingItems(false);
