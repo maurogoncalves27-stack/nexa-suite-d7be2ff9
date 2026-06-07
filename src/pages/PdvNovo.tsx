@@ -1614,13 +1614,21 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                 )}
 
                 <DialogFooter className="flex-col-reverse gap-2 sm:flex-col-reverse sm:items-stretch">
-                  {!["concluded", "cancelled"].includes(selectedOrder.status) && (
-                    <div className="flex justify-center">
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button size="sm" variant="outline" className="h-8 px-3 text-xs" disabled={busy}
+                      onClick={() => void reprintOrder(selectedOrder.id, selectedOrder.store_id, "kitchen")}>
+                      <Printer className="h-3.5 w-3.5 mr-1.5" />Reimprimir comanda
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-8 px-3 text-xs" disabled={busy}
+                      onClick={() => void reprintOrder(selectedOrder.id, selectedOrder.store_id, "customer")}>
+                      <Printer className="h-3.5 w-3.5 mr-1.5" />Reimprimir cupom
+                    </Button>
+                    {!["concluded", "cancelled"].includes(selectedOrder.status) && (
                       <Button size="sm" variant="outline" className="text-destructive border-destructive/40 hover:bg-destructive/10 h-8 px-3 text-xs" disabled={busy} onClick={() => setCancelOpen(true)}>
                         <AlertCircle className="h-3.5 w-3.5 mr-1.5" />Cancelar pedido
                       </Button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                   {closeable && (
                     <Button variant="secondary" disabled={busy} onClick={() => advanceStatus(selectedOrder, "concluded", "PICKED_UP")}>
                       <CheckCircle2 className="h-4 w-4 mr-2" />Cliente retirou
