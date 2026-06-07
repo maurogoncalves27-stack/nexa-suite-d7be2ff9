@@ -8,14 +8,15 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MessageCircle, RefreshCw, AlertCircle } from "lucide-react";
+import { MessageCircle, RefreshCw, AlertCircle, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 
 type Store = { id: string; name: string };
 type Conv = { id: string; phone: string; customer_name: string | null; status: string; last_message_at: string; store_id: string | null };
 type Msg = { id: string; role: string; content: string | null; tool_name: string | null; created_at: string };
 type Complaint = { id: string; phone: string; message: string; status: string; created_at: string };
-type Cfg = { id?: string; store_id: string; enabled: boolean; system_prompt: string | null; opening_hours: string | null; off_hours_message: string | null };
+type Cfg = { id?: string; store_id: string; enabled: boolean; system_prompt: string | null; opening_hours: string | null; off_hours_message: string | null; sales_enabled: boolean; sales_off_message: string | null };
+type WaOrder = { id: string; status: string; total: number; customer_name: string | null; customer_phone: string | null; created_at: string; order_number: string | null };
 
 export default function WhatsAppCustomerAdmin() {
   const [stores, setStores] = useState<Store[]>([]);
