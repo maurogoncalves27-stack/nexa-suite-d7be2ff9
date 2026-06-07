@@ -39,8 +39,20 @@ interface PrinterRow {
   is_active: boolean;
 }
 
+interface StoreLayout {
+  header_text?: string;
+  footer_text?: string;
+  show_address?: boolean;
+  kitchen_show_prices?: boolean;
+  kitchen_double_size?: boolean;
+  kitchen_show_time?: boolean;
+  print_customer_copy?: boolean;
+  print_kitchen_copy?: boolean;
+}
+
 // Cache simples por loja (5s) pra não consultar o banco a cada pedido novo.
 const cache = new Map<string, { at: number; rows: PrinterRow[] }>();
+const layoutCache = new Map<string, { at: number; layout: StoreLayout }>();
 const TTL = 5000;
 
 async function getPrinters(storeId: string): Promise<PrinterRow[]> {
@@ -56,8 +68,25 @@ async function getPrinters(storeId: string): Promise<PrinterRow[]> {
   return rows;
 }
 
+async function getLayout(storeId: string): Promise<StoreLayout> {
+  const hit = layoutCache.get(storeId);
+  if (hit && Date.now() - hit.at < TTL) return hit.layout;
+  const { data } = await supabase
+    .from("stores")
+    .select("pdv_print_layout")
+    .eq("id", storeId)
+    .maybeSingle();
+  const layout = (((data as any)?.pdv_print_layout) ?? {}) as StoreLayout;
+  layoutCache.set(storeId, { at: Date.now(), layout });
+  return layout;
+}
+
 export function invalidatePrintersCache(storeId?: string) {
   if (storeId) cache.delete(storeId); else cache.clear();
+}
+
+export function invalidateLayoutCache(storeId?: string) {
+  if (storeId) layoutCache.delete(storeId); else layoutCache.clear();
 }
 
 function toPayload(p: PrinterRow, content: PrintPayload["content"]): PrintPayload {
@@ -84,21 +113,30 @@ function mapItems(items: OrderItemLite[]) {
  * Roteia a impressão do pedido:
  * - Se Electron + impressoras cadastradas: envia ESC/POS para cada impressora ativa
  *   (cliente → role customer/both, cozinha → role kitchen/both).
-  * - Caso contrário: não chama window.print(), para não abrir diálogo manual.
+ * - target: "customer" só cupom, "kitchen" só comanda, "both" (default) ambos.
+ * - manual=true ignora flags print_customer_copy/print_kitchen_copy da loja
+ *   (usado em reimpressões a partir de botão).
+ * - Caso contrário: não chama window.print(), para não abrir diálogo manual.
  */
 export async function routePrintOrder(opts: {
   storeId: string;
   storeName: string;
   order: OrderForPrint;
+  target?: "customer" | "kitchen" | "both";
+  manual?: boolean;
 }) {
-  const { storeId, storeName, order } = opts;
+  const { storeId, storeName, order, target = "both", manual = false } = opts;
 
   if (!isElectron()) {
     console.warn("[route-print] impressão automática ignorada fora do app desktop", { orderId: order.id });
     return;
   }
 
-  const printers = await getPrinters(storeId);
+  const [printers, layout] = await Promise.all([
+    getPrinters(storeId),
+    getLayout(storeId),
+  ]);
+
   if (printers.length === 0) {
     console.warn("[route-print] nenhuma impressora cadastrada para a loja", { storeId, orderId: order.id });
     return;
@@ -111,10 +149,31 @@ export async function routePrintOrder(opts: {
      order.order_type === "pickup" ? "RETIRADA" :
      order.order_type === "counter" ? "BALCÃO" : "");
 
-  const customerPrinters = printers.filter((p) => p.print_role === "customer" || p.print_role === "both");
-  const kitchenPrinters  = printers.filter((p) => p.print_role === "kitchen"  || p.print_role === "both");
+  const wantCustomer = target === "customer" || target === "both";
+  const wantKitchen  = target === "kitchen"  || target === "both";
+
+  // Em impressão automática, respeita as flags da loja. Em manual, ignora.
+  const allowCustomer = manual || layout.print_customer_copy !== false;
+  const allowKitchen  = manual || layout.print_kitchen_copy  !== false;
+
+  const customerPrinters = wantCustomer && allowCustomer
+    ? printers.filter((p) => p.print_role === "customer" || p.print_role === "both")
+    : [];
+  const kitchenPrinters  = wantKitchen && allowKitchen
+    ? printers.filter((p) => p.print_role === "kitchen"  || p.print_role === "both")
+    : [];
 
   const items = mapItems(order.items);
+
+  // Endereço (string curta) opcional no cupom do cliente
+  let address: string | undefined;
+  if (layout.show_address !== false && order.delivery_address) {
+    const a = order.delivery_address;
+    if (typeof a === "string") address = a;
+    else if (typeof a === "object") {
+      address = [a.street, a.number, a.neighborhood, a.city].filter(Boolean).join(", ");
+    }
+  }
 
   // Cliente
   await Promise.all(customerPrinters.map((p) =>
@@ -127,7 +186,12 @@ export async function routePrintOrder(opts: {
         items,
         total: order.total,
         paymentMethod: undefined,
-      },
+        address,
+        layout: {
+          header_text: layout.header_text,
+          footer_text: layout.footer_text,
+        },
+      } as any,
     }))
   ));
 
@@ -139,7 +203,12 @@ export async function routePrintOrder(opts: {
         orderNumber,
         tableOrChannel: channelOrType,
         items,
-      },
+        layout: {
+          show_prices: !!layout.kitchen_show_prices,
+          double_size: layout.kitchen_double_size !== false,
+          show_time: layout.kitchen_show_time !== false,
+        },
+      } as any,
     }))
   ));
 }
