@@ -37,7 +37,7 @@ interface CancelRow {
 
 interface ChannelLite { id: string; name: string; store_id: string; }
 
-interface ItemLite { name: string; quantity: number; unit_price: number; total_price: number; notes: string | null; }
+interface ItemLite { name: string; quantity: number; unit_price: number; total: number; notes: string | null; }
 
 interface UserLite { id: string; name: string; }
 
