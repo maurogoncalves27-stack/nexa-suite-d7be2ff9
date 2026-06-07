@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   ArrowLeft, Maximize2, Bike, ChefHat, Hand,
-  Clock, Package, RefreshCw, Loader2, X, MapPin, Phone, Settings, MoreVertical, Printer, CheckCircle2,
+  Clock, Package, RefreshCw, Loader2, X, MapPin, Phone, Settings, MoreVertical, Printer, CheckCircle2, Receipt,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -40,6 +40,7 @@ import { sortStores } from "@/lib/storeSort";
 import { printOrderReceipt } from "@/lib/printOrder";
 import { routePrintOrder } from "@/lib/routePrint";
 import { PrintersPanel } from "@/components/pdv-novo/PrintersPanel";
+import { PrintLayoutPanel } from "@/components/pdv-novo/PrintLayoutPanel";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n ?? 0);
@@ -403,10 +404,12 @@ export default function Balcao() {
     void load(storeId);
   };
 
-  const reprint = (o: Order) => {
+  const reprint = (o: Order, target: "customer" | "kitchen" | "both" = "both") => {
     void routePrintOrder({
       storeId,
       storeName: currentStore?.name ?? "",
+      manual: true,
+      target,
       order: {
         id: o.id,
         order_number: o.order_number,
@@ -421,7 +424,10 @@ export default function Balcao() {
         items: items[o.id] ?? [],
       },
     });
-    toast({ title: "Reimprimindo cupom" });
+    const label = target === "customer" ? "cupom do cliente"
+      : target === "kitchen" ? "comanda da cozinha"
+      : "cupom e comanda";
+    toast({ title: `Reimprimindo ${label}` });
   };
 
   const goFullscreen = () => {
@@ -520,7 +526,7 @@ export default function Balcao() {
                 isLate={lateOrders.some((l) => l.id === o.id)}
                 onClick={() => setSelected(o)} onAdvance={() => advance(o)}
                 onCancel={() => { setSelected(o); setCancelDialog(true); }}
-                onReprint={() => reprint(o)} compact />
+                onReprint={(t) => reprint(o, t ?? "both")} compact />
             ))}
           </div>
 
@@ -545,7 +551,7 @@ export default function Balcao() {
                         isLate={lateOrders.some((l) => l.id === o.id)}
                         onClick={() => setSelected(o)} onAdvance={() => advance(o)}
                         onCancel={() => { setSelected(o); setCancelDialog(true); }}
-                        onReprint={() => reprint(o)} />
+                        onReprint={(t) => reprint(o, t ?? "both")} />
                     ))}
                   </div>
                 </div>
@@ -629,8 +635,11 @@ export default function Balcao() {
                 </div>
 
                 <DialogFooter className="flex-col sm:flex-row gap-2">
-                  <Button variant="outline" onClick={() => reprint(selected)} disabled={busy}>
-                    <Printer className="h-4 w-4 mr-1" /> Reimprimir
+                  <Button variant="outline" onClick={() => reprint(selected, "kitchen")} disabled={busy}>
+                    <ChefHat className="h-4 w-4 mr-1" /> Comanda
+                  </Button>
+                  <Button variant="outline" onClick={() => reprint(selected, "customer")} disabled={busy}>
+                    <Receipt className="h-4 w-4 mr-1" /> Cupom
                   </Button>
                   {next && (
                     <Button onClick={() => advance(selected)} disabled={busy} className="h-12 text-base font-semibold">
@@ -753,6 +762,13 @@ export default function Balcao() {
                 <PrintersPanel storeId={storeId} storeName={currentStore.name} />
               )}
             </div>
+
+            <div className="space-y-2 pt-2 border-t">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Printer className="h-4 w-4" /> Layout de impressão
+              </h3>
+              {storeId && <PrintLayoutPanel storeId={storeId} />}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSettingsOpen(false)}>Fechar</Button>
@@ -777,7 +793,7 @@ function OrderCard({
 }: {
   order: Order; channelName: string;
   onClick: () => void; onAdvance: () => void;
-  onCancel: () => void; onReprint: () => void;
+  onCancel: () => void; onReprint: (target?: "customer" | "kitchen" | "both") => void;
   compact?: boolean; isLate?: boolean;
 }) {
   // Status visual: pedidos "ready" de retirada usam o mock "pickup" (visual cyan).
@@ -828,8 +844,14 @@ function OrderCard({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-            <DropdownMenuItem onClick={onReprint}>
-              <Printer className="h-4 w-4 mr-2" /> Reimprimir cupom
+            <DropdownMenuItem onClick={() => onReprint("kitchen")}>
+              <ChefHat className="h-4 w-4 mr-2" /> Reimprimir comanda
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onReprint("customer")}>
+              <Receipt className="h-4 w-4 mr-2" /> Reimprimir cupom
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onReprint("both")}>
+              <Printer className="h-4 w-4 mr-2" /> Reimprimir ambos
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onCancel} className="text-destructive focus:text-destructive">

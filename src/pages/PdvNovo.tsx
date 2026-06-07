@@ -61,6 +61,7 @@ import NfceSection from "@/components/pdv-novo/NfceSection";
 import TefConfigPanel from "@/components/pdv-novo/TefConfigPanel";
 import StockShortagesPanel from "@/components/pdv-novo/StockShortagesPanel";
 import { PrintersPanel } from "@/components/pdv-novo/PrintersPanel";
+import { PrintLayoutPanel } from "@/components/pdv-novo/PrintLayoutPanel";
 import { routePrintOrder } from "@/lib/routePrint";
 
 
@@ -741,7 +742,12 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   }, [orders, storeId]);
 
   // Imprime comanda + cupom de um pedido recém-chegado
-  const printNewOrder = useCallback(async (orderId: string, orderStoreId: string) => {
+  const printNewOrder = useCallback(async (
+    orderId: string,
+    orderStoreId: string,
+    target: "customer" | "kitchen" | "both" = "both",
+    manual = false,
+  ) => {
     try {
       const [ordRes, itemsRes, chRes, stRes] = await Promise.all([
         supabase.from("pdv_orders")
@@ -757,20 +763,24 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
       if (!ord) return;
       const chName = (chRes.data ?? []).find((c: any) => c.id === ord.channel_id)?.name ?? "";
       const sName = (stRes.data as any)?.name ?? "";
-      // sino curto
-      try {
-        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        [0, 180, 360].forEach((delay) => setTimeout(() => {
-          const osc = ctx.createOscillator(); const g = ctx.createGain();
-          osc.type = "sine"; osc.connect(g); g.connect(ctx.destination);
-          osc.frequency.value = 1480; g.gain.value = 0.18;
-          osc.start(); setTimeout(() => osc.stop(), 140);
-        }, delay));
-        setTimeout(() => ctx.close(), 1200);
-      } catch {}
+      // sino curto (só em chegada nova)
+      if (!manual) {
+        try {
+          const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+          [0, 180, 360].forEach((delay) => setTimeout(() => {
+            const osc = ctx.createOscillator(); const g = ctx.createGain();
+            osc.type = "sine"; osc.connect(g); g.connect(ctx.destination);
+            osc.frequency.value = 1480; g.gain.value = 0.18;
+            osc.start(); setTimeout(() => osc.stop(), 140);
+          }, delay));
+          setTimeout(() => ctx.close(), 1200);
+        } catch {}
+      }
       await routePrintOrder({
         storeId: orderStoreId,
         storeName: sName,
+        target,
+        manual,
         order: {
           id: ord.id,
           order_number: ord.external_display_id ?? ord.order_number,
@@ -792,9 +802,21 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
         },
       });
     } catch (e) {
-      console.warn("[pdv-novo] falha ao imprimir comanda automática", e);
+      console.warn("[pdv-novo] falha ao imprimir comanda", e);
     }
   }, []);
+
+  const reprintOrder = useCallback(async (
+    orderId: string,
+    orderStoreId: string,
+    target: "customer" | "kitchen" | "both",
+  ) => {
+    const label = target === "customer" ? "cupom do cliente"
+      : target === "kitchen" ? "comanda da cozinha"
+      : "cupom e comanda";
+    toast({ title: `Reimprimindo ${label}` });
+    await printNewOrder(orderId, orderStoreId, target, true);
+  }, [printNewOrder]);
 
   useEffect(() => {
     if (!storeId) return;
@@ -1492,11 +1514,19 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
 
             <TabsContent value="impressoras" className="mt-4">
               {storeId && selectedStore ? (
-                <div className="space-y-2">
-                  <h3 className="text-sm font-semibold flex items-center gap-2">
-                    <Printer className="h-4 w-4 text-primary" /> Impressoras desta loja
-                  </h3>
-                  <PrintersPanel storeId={storeId} storeName={selectedStore.name} />
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold flex items-center gap-2">
+                      <Printer className="h-4 w-4 text-primary" /> Impressoras desta loja
+                    </h3>
+                    <PrintersPanel storeId={storeId} storeName={selectedStore.name} />
+                  </div>
+                  <div className="space-y-2 pt-2 border-t">
+                    <h3 className="text-sm font-semibold flex items-center gap-2">
+                      <Printer className="h-4 w-4 text-primary" /> Layout de impressão
+                    </h3>
+                    <PrintLayoutPanel storeId={storeId} />
+                  </div>
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground py-4 text-center">Selecione uma loja para configurar impressoras.</p>
@@ -1584,13 +1614,21 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                 )}
 
                 <DialogFooter className="flex-col-reverse gap-2 sm:flex-col-reverse sm:items-stretch">
-                  {!["concluded", "cancelled"].includes(selectedOrder.status) && (
-                    <div className="flex justify-center">
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button size="sm" variant="outline" className="h-8 px-3 text-xs" disabled={busy}
+                      onClick={() => void reprintOrder(selectedOrder.id, selectedOrder.store_id, "kitchen")}>
+                      <Printer className="h-3.5 w-3.5 mr-1.5" />Reimprimir comanda
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-8 px-3 text-xs" disabled={busy}
+                      onClick={() => void reprintOrder(selectedOrder.id, selectedOrder.store_id, "customer")}>
+                      <Printer className="h-3.5 w-3.5 mr-1.5" />Reimprimir cupom
+                    </Button>
+                    {!["concluded", "cancelled"].includes(selectedOrder.status) && (
                       <Button size="sm" variant="outline" className="text-destructive border-destructive/40 hover:bg-destructive/10 h-8 px-3 text-xs" disabled={busy} onClick={() => setCancelOpen(true)}>
                         <AlertCircle className="h-3.5 w-3.5 mr-1.5" />Cancelar pedido
                       </Button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                   {closeable && (
                     <Button variant="secondary" disabled={busy} onClick={() => advanceStatus(selectedOrder, "concluded", "PICKED_UP")}>
                       <CheckCircle2 className="h-4 w-4 mr-2" />Cliente retirou

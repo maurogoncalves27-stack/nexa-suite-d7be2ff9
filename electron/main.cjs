@@ -237,10 +237,14 @@ function renderContent(printer, content) {
 
   if (type === "customer") {
     // Cupom do cliente (resumo do pedido)
+    const layout = data?.layout || {};
     printer.alignCenter();
     printer.bold(true); printer.setTextSize(1, 1);
     printer.println(data?.storeName ?? "Nexa");
     printer.bold(false); printer.setTextNormal();
+    if (layout.header_text) {
+      String(layout.header_text).split(/\r?\n/).forEach((ln) => printer.println(ln));
+    }
     if (data?.address) printer.println(data.address);
     printer.drawLine();
     printer.alignLeft();
@@ -266,12 +270,16 @@ function renderContent(printer, content) {
     if (data?.paymentMethod) printer.println(`Pagamento: ${data.paymentMethod}`);
     printer.newLine();
     printer.alignCenter();
-    printer.println("Obrigado pela preferencia!");
+    printer.println(layout.footer_text ?? "Obrigado pela preferencia!");
     return;
   }
 
   if (type === "kitchen") {
-    // Comanda da cozinha - texto grande, sem preço
+    // Comanda da cozinha - texto grande por padrão, sem preço
+    const layout = data?.layout || {};
+    const doubleSize = layout.double_size !== false;
+    const showPrices = !!layout.show_prices;
+    const showTime = layout.show_time !== false;
     printer.alignCenter();
     printer.bold(true); printer.setTextSize(2, 2);
     printer.println("COZINHA");
@@ -282,12 +290,15 @@ function renderContent(printer, content) {
     printer.bold(true);
     printer.println(`Pedido #${data?.orderNumber ?? "-"}`);
     printer.bold(false);
-    printer.println(new Date().toLocaleTimeString("pt-BR"));
+    if (showTime) printer.println(new Date().toLocaleTimeString("pt-BR"));
     if (data?.tableOrChannel) printer.println(data.tableOrChannel);
     printer.drawLine();
     (data?.items ?? []).forEach((it) => {
-      printer.setTextSize(1, 1);
+      if (doubleSize) printer.setTextSize(1, 1);
       printer.println(`${it.qty}x ${it.name}`);
+      if (showPrices && it.unitPrice != null) {
+        printer.println(`   R$ ${(it.qty * it.unitPrice).toFixed(2)}`);
+      }
       printer.setTextNormal();
       if (it.note) printer.println(`   >> ${it.note}`);
     });
