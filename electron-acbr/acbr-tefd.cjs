@@ -41,8 +41,13 @@ function load() {
     ["double", "int", "int", "int", "_Out_ char*", "_Inout_ int*"]);
   fn.CancelarTransacaoEmAndamento = lib.func("__stdcall", "TEFD_CancelarTransacaoEmAndamento", "int", []);
   fn.FinalizarTransacao = lib.func("__stdcall", "TEFD_FinalizarTransacao", "int", []);
+  // Cancelamento de venda já aprovada (rede, NSU, data DDMMAAAA, valor)
   fn.CancelarTransacao = lib.func("__stdcall", "TEFD_CancelarTransacao", "int",
-    ["string", "double", "string", "string"]);
+    ["string", "string", "string", "double", "_Out_ char*", "_Inout_ int*"]);
+  // Menu administrativo. operacao: 0 = abre menu / outras = códigos específicos
+  // 1 = teste comunicação, 4 = relatório sintético, 5 = detalhado, 6 = resumido (varia por adquirente)
+  fn.Administrativo = lib.func("__stdcall", "TEFD_Administrativo", "int",
+    ["int", "_Out_ char*", "_Inout_ int*"]);
 
   available = true;
   return lib;
@@ -118,6 +123,33 @@ function cancelarEmAndamento() {
   try { fn.CancelarTransacaoEmAndamento(); } catch { /* ignore */ }
 }
 
+/**
+ * Cancelamento de uma venda já aprovada.
+ * @param {object} req { rede, nsu, data (DDMMAAAA), valor }
+ */
+function cancelarVenda({ rede = "", nsu, data, valor }) {
+  ensureInit();
+  if (!nsu) throw new Error("nsu obrigatório");
+  if (!data) throw new Error("data obrigatória (DDMMAAAA)");
+  if (!valor || valor <= 0) throw new Error("valor obrigatório");
+  const { ret, msg } = callStr(fn.CancelarTransacao, String(rede), String(nsu), String(data), Number(valor));
+  if (ret !== 0) throw new Error(`TEFD_CancelarTransacao (${ret}): ${ultimoRetorno()}\n${msg}`);
+  try { fn.FinalizarTransacao(); } catch { /* ignore */ }
+  return msg;
+}
+
+/**
+ * Operação administrativa.
+ * @param {number} operacao 0 = abre menu; 1 = teste comunicação; 4/5/6 = relatórios
+ */
+function administrativo(operacao = 0) {
+  ensureInit();
+  const { ret, msg } = callStr(fn.Administrativo, Number(operacao) || 0);
+  if (ret !== 0) throw new Error(`TEFD_Administrativo (${ret}): ${ultimoRetorno()}\n${msg}`);
+  try { fn.FinalizarTransacao(); } catch { /* ignore */ }
+  return msg;
+}
+
 module.exports = {
   isAvailable,
   ensureInit,
@@ -125,6 +157,8 @@ module.exports = {
   versao,
   efetuarPagamento,
   cancelarEmAndamento,
+  cancelarVenda,
+  administrativo,
   ultimoRetorno,
   paths: { DLL_PATH, INI_PATH, ACBR_BASE },
 };
