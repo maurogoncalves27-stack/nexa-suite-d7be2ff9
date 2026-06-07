@@ -526,7 +526,7 @@ export default function Balcao() {
                 isLate={lateOrders.some((l) => l.id === o.id)}
                 onClick={() => setSelected(o)} onAdvance={() => advance(o)}
                 onCancel={() => { setSelected(o); setCancelDialog(true); }}
-                onReprint={() => reprint(o)} compact />
+                onReprint={(t) => reprint(o, t ?? "both")} compact />
             ))}
           </div>
 
