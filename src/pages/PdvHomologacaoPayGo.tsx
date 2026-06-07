@@ -26,9 +26,8 @@ import {
   HOMOLOGATION_STEPS, type HomologationStep,
 } from "@/lib/tef/homologation/steps";
 import { exportHomologationXlsx, type StepResultRow } from "@/lib/tef/homologation/exporter";
-import {
-  createAcbrAdapter, loadTefConfig, type TefConfig,
-} from "@/lib/tef";
+import { loadTefConfig, type TefConfig } from "@/lib/tef";
+import { createAcbrAdapter } from "@/lib/tef/acbrAdapter";
 
 interface Store { id: string; name: string; }
 interface RunRow {
