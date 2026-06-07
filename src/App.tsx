@@ -110,6 +110,7 @@ const Suppliers = lazy(() => import("./pages/Suppliers.tsx"));
 const Quotations = lazy(() => import("./pages/Quotations.tsx"));
 const Pdv = lazy(() => import("./pages/Pdv.tsx"));
 const PdvNovo = lazy(() => import("./pages/PdvNovo.tsx"));
+const PdvCancellations = lazy(() => import("./pages/PdvCancellations.tsx"));
 const StoreHome = lazy(() => import("./pages/StoreHome.tsx"));
 const SmartPos = lazy(() => import("./pages/SmartPos.tsx"));
 const SmartPosLogin = lazy(() => import("./pages/SmartPosLogin.tsx"));
@@ -367,6 +368,8 @@ const App = () => (
               <Route path="/cotacoes" element={<Guarded staff><Quotations /></Guarded>} />
               <Route path="/pdv" element={<Guarded staff><Pdv /></Guarded>} />
               <Route path="/pdv-novo" element={<Guarded staff><PdvNovo /></Guarded>} />
+              <Route path="/pdv-cancelamentos" element={<Guarded staff><PdvCancellations /></Guarded>} />
+
               {/* /loja movido para fora do AppLayout (fullscreen) */}
               <Route path="/cardapio" element={<Guarded staff><Menu /></Guarded>} />
               <Route path="/ocorrencias" element={<Guarded><Occurrences /></Guarded>} />

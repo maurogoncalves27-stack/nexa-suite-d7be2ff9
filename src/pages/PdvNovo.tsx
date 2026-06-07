@@ -676,6 +676,11 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
       toast({ title: "Erro ao cancelar", description: error.message, variant: "destructive" });
       return;
     }
+    // Carimba quem cancelou (best-effort, não bloqueia se falhar)
+    const uid = (await supabase.auth.getUser()).data.user?.id;
+    if (uid) {
+      void supabase.from("pdv_orders").update({ cancelled_by: uid } as never).eq("id", selectedOrder.id);
+    }
     toast({ title: "Pedido cancelado" });
     setCancelOpen(false);
     setSelectedOrder(null);

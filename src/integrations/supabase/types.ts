@@ -10083,6 +10083,7 @@ export type Database = {
           cancellation_reason_code: string | null
           cancellation_reason_text: string | null
           cancelled_at: string | null
+          cancelled_by: string | null
           cash_session_id: string | null
           channel_id: string
           closed_at: string | null
@@ -10130,6 +10131,7 @@ export type Database = {
           cancellation_reason_code?: string | null
           cancellation_reason_text?: string | null
           cancelled_at?: string | null
+          cancelled_by?: string | null
           cash_session_id?: string | null
           channel_id: string
           closed_at?: string | null
@@ -10177,6 +10179,7 @@ export type Database = {
           cancellation_reason_code?: string | null
           cancellation_reason_text?: string | null
           cancelled_at?: string | null
+          cancelled_by?: string | null
           cash_session_id?: string | null
           channel_id?: string
           closed_at?: string | null
@@ -15678,6 +15681,7 @@ export type Database = {
           cancellation_reason_code: string | null
           cancellation_reason_text: string | null
           cancelled_at: string | null
+          cancelled_by: string | null
           cash_session_id: string | null
           channel_id: string
           closed_at: string | null
