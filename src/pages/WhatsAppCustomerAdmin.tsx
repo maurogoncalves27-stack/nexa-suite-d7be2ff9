@@ -155,6 +155,57 @@ export default function WhatsAppCustomerAdmin() {
         </Card>
       )}
 
+      {/* Vendas via WhatsApp */}
+      {cfg && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><ShoppingCart className="h-5 w-5 text-primary" />Vendas via WhatsApp</CardTitle>
+            <CardDescription>Permite que a IA monte o pedido e gere link de pagamento Mercado Pago.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Aceitar pedidos pelo WhatsApp</Label>
+                <p className="text-xs text-muted-foreground">Quando ligado, a IA pode usar carrinho, endereço e checkout com link de pagamento.</p>
+              </div>
+              <Switch checked={cfg.sales_enabled} onCheckedChange={(v) => setCfg({ ...cfg, sales_enabled: v })} />
+            </div>
+            <div>
+              <Label>Mensagem quando vendas estão desligadas</Label>
+              <Textarea value={cfg.sales_off_message || ""} onChange={(e) => setCfg({ ...cfg, sales_off_message: e.target.value })}
+                placeholder="Ex.: No momento só recebemos pedidos pelo iFood. Pelo telefone também." rows={2} />
+            </div>
+            <Button onClick={saveConfig}>Salvar</Button>
+
+            <div className="pt-2">
+              <Label className="text-sm">Últimos pedidos pelo WhatsApp</Label>
+              {waOrders.length === 0 ? (
+                <p className="text-sm text-muted-foreground mt-2">Nenhum pedido ainda.</p>
+              ) : (
+                <div className="space-y-2 mt-2 max-h-72 overflow-auto">
+                  {waOrders.map((o) => (
+                    <div key={o.id} className="p-2 rounded-md border flex items-center justify-between text-sm">
+                      <div>
+                        <div className="font-medium">{o.customer_name || o.customer_phone || "—"}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {o.order_number ? `#${o.order_number} · ` : ""}{new Date(o.created_at).toLocaleString("pt-BR")}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <Badge variant={o.status === "confirmed" || o.status === "concluded" ? "default" : o.status === "pending_payment" ? "outline" : "destructive"}>
+                          {o.status}
+                        </Badge>
+                        <div className="text-xs mt-1">R$ {Number(o.total).toFixed(2)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid md:grid-cols-2 gap-4">
         {/* Conversas */}
         <Card>
