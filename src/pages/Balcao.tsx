@@ -40,6 +40,7 @@ import { sortStores } from "@/lib/storeSort";
 import { printOrderReceipt } from "@/lib/printOrder";
 import { routePrintOrder } from "@/lib/routePrint";
 import { PrintersPanel } from "@/components/pdv-novo/PrintersPanel";
+import { PrintLayoutPanel } from "@/components/pdv-novo/PrintLayoutPanel";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n ?? 0);
