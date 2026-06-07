@@ -102,6 +102,23 @@ async function handle(req, res) {
       return send(res, 200, { ok: true });
     }
 
+    if (req.method === "POST" && path === "/tef/cancelar-venda") {
+      if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "ACBrTEFD64.dll não disponível" });
+      const body = await readBody(req);
+      if (!body.nsu || !body.data || !body.valor) {
+        return send(res, 400, { ok: false, error: "nsu, data (DDMMAAAA) e valor obrigatórios" });
+      }
+      const retorno = tef.cancelarVenda(body);
+      return send(res, 200, { ok: true, retorno });
+    }
+
+    if (req.method === "POST" && path === "/tef/admin") {
+      if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "ACBrTEFD64.dll não disponível" });
+      const body = await readBody(req);
+      const retorno = tef.administrativo(body.operacao ?? 0);
+      return send(res, 200, { ok: true, retorno });
+    }
+
     return send(res, 404, { ok: false, error: "Rota não encontrada", path });
   } catch (e) {
     console.error("[ACBr Agent] erro:", e);

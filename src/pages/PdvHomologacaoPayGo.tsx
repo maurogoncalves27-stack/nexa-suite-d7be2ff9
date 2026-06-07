@@ -27,7 +27,17 @@ import {
 } from "@/lib/tef/homologation/steps";
 import { exportHomologationXlsx, type StepResultRow } from "@/lib/tef/homologation/exporter";
 import { loadTefConfig, type TefConfig } from "@/lib/tef";
-import { createAcbrAdapter } from "@/lib/tef/acbrAdapter";
+import { createAcbrAdapter, acbrCancelarVenda, acbrAdministrativo } from "@/lib/tef/acbrAdapter";
+
+const ACBR_AGENT_URL = "http://localhost:3030";
+
+/** Converte ISO timestamp em DDMMAAAA usado pelo ACBr. */
+const toAcbrDate = (iso: string | null | undefined): string => {
+  const d = iso ? new Date(iso) : new Date();
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  return `${dd}${mm}${d.getFullYear()}`;
+};
 
 interface Store { id: string; name: string; }
 interface RunRow {
@@ -210,9 +220,58 @@ export default function PdvHomologacaoPayGo() {
           status = "fail";
           obs = res.message ?? "Falha no fluxo TEF";
         }
+      } else if (step.kind === "admin") {
+        const res = await acbrAdministrativo(ACBR_AGENT_URL, step.adminCode ?? 0);
+        if (!res.ok) {
+          status = "fail";
+          obs = res.error ?? "Falha na operação administrativa";
+        } else {
+          obs = res.parsed["mensagem"] ?? res.parsed["mensagemresultado"] ?? "Operação administrativa concluída.";
+        }
+        raw = res;
+      } else if (step.kind === "cancel-prev") {
+        // Procura a venda base no banco
+        let baseNsu: string | null = null;
+        let baseAmount: number | null = null;
+        let baseDate: string | null = null;
+        if (step.cancelsStep) {
+          const base = steps.find((s) => s.step_number === step.cancelsStep);
+          baseNsu = base?.nsu ?? null;
+          baseAmount = base?.amount ?? null;
+          baseDate = base?.executed_at ?? null;
+        }
+        // Permite override pelo campo NSU já preenchido manualmente nesta linha
+        const row = stepByNumber(step.number);
+        baseNsu = row?.nsu || baseNsu;
+        baseAmount = row?.amount ?? baseAmount;
+
+        if (!baseNsu || !baseAmount) {
+          toast({
+            title: "Dados insuficientes",
+            description: `Preencha NSU e valor da venda original (passo ${step.cancelsStep ?? "?"}) antes de cancelar.`,
+            variant: "destructive",
+          });
+          setBusyStep(null);
+          return;
+        }
+        const res = await acbrCancelarVenda(ACBR_AGENT_URL, {
+          nsu: baseNsu,
+          valor: baseAmount,
+          data: toAcbrDate(baseDate),
+        });
+        if (!res.ok) {
+          status = "fail";
+          obs = res.error ?? "Falha no cancelamento";
+        } else {
+          nsu = res.parsed["nsu"] ?? res.parsed["nsuhost"] ?? baseNsu;
+          auth = res.parsed["codigoautorizacao"] ?? null;
+          amount = baseAmount;
+          obs = res.parsed["mensagem"] ?? res.parsed["mensagemresultado"] ?? `Cancelada venda NSU ${baseNsu}`;
+        }
+        raw = res;
       } else {
-        // manual / admin / power-cut / generic-input / pending / cancel-prev
-        // Fase 1: marcamos como pendente — execução manual via UI no Fase 2.
+        // manual / power-cut / generic-input / pending
+        // Operador executa no PdC/pinpad e usa os botões "Marcar" desta linha.
         toast({
           title: "Execução manual",
           description: `Passo ${step.number} (${step.name}): execute no PdC/pinpad e use 'Marcar' nas ações desta linha.`,
@@ -379,7 +438,7 @@ export default function PdvHomologacaoPayGo() {
             const row = stepByNumber(s.number);
             const status = row?.status ?? "pending";
             const busy = busyStep === s.number;
-            const isManual = s.kind !== "sale" && s.kind !== "sale-cancel" && s.kind !== "controlpay-na";
+            const isManual = s.kind === "manual" || s.kind === "power-cut" || s.kind === "generic-input" || s.kind === "pending";
             return (
               <Card key={s.number} className="p-4 space-y-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">

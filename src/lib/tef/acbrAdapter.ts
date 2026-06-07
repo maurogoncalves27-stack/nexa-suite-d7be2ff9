@@ -177,3 +177,44 @@ export const checkAcbrAgent = async (
     return { ok: false, error: e instanceof Error ? e.message : "offline" };
   }
 };
+
+/** Cancela uma venda já aprovada (NSU + data DDMMAAAA + valor). */
+export const acbrCancelarVenda = async (
+  agentUrl: string,
+  body: { rede?: string; nsu: string; data: string; valor: number },
+): Promise<{ ok: boolean; retorno?: string; parsed: Record<string, string>; error?: string }> => {
+  try {
+    const r = await fetch(`${agentUrl}/tef/cancelar-venda`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) return { ok: false, parsed: {}, error: data?.error ?? `HTTP ${r.status}` };
+    return { ok: true, retorno: data.retorno, parsed: parseIni(data.retorno) };
+  } catch (e) {
+    return { ok: false, parsed: {}, error: e instanceof Error ? e.message : "offline" };
+  }
+};
+
+/** Operação administrativa: 0=menu, 1=teste com., 4/5/6=relatórios. */
+export const acbrAdministrativo = async (
+  agentUrl: string,
+  operacao = 0,
+): Promise<{ ok: boolean; retorno?: string; parsed: Record<string, string>; error?: string }> => {
+  try {
+    const r = await fetch(`${agentUrl}/tef/admin`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ operacao }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) return { ok: false, parsed: {}, error: data?.error ?? `HTTP ${r.status}` };
+    return { ok: true, retorno: data.retorno, parsed: parseIni(data.retorno) };
+  } catch (e) {
+    return { ok: false, parsed: {}, error: e instanceof Error ? e.message : "offline" };
+  }
+};
+
+/** Helpers exportados para uso fora do adapter (ex.: tela de homologação). */
+export { parseIni as parseAcbrIni, pick as pickAcbrField };

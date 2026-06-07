@@ -24,6 +24,10 @@ export interface HomologationStep {
   kind: StepKind;
   /** Parâmetros sugeridos quando aplicável (venda). */
   sale?: Partial<TefPaymentRequest> & { acquirer?: string };
+  /** Para `cancel-prev`: número do passo de venda que será cancelado. */
+  cancelsStep?: number;
+  /** Para `admin`: código da operação ACBr (0=menu, 1=teste com., 4/5/6=relatórios). */
+  adminCode?: number;
   /** Resultado esperado pra orientar o operador. */
   expected: string;
 }
@@ -82,15 +86,15 @@ export const HOMOLOGATION_STEPS: HomologationStep[] = [
     sale: { amount: 1, method: "pix", acquirer: "PIX C6 BANK" },
     expected: "QR exibido e aprovação automática." },
 
-  { number: 12, name: "Teste de comunicação", mandatory: true, kind: "admin",
+  { number: 12, name: "Teste de comunicação", mandatory: true, kind: "admin", adminCode: 1,
     description: "Executar teste de comunicação no menu administrativo.",
     expected: "Sucesso, sem recibo." },
 
-  { number: 13, name: "Relatório sintético", mandatory: false, kind: "admin",
+  { number: 13, name: "Relatório sintético", mandatory: false, kind: "admin", adminCode: 4,
     description: "Emitir relatório sintético no menu administrativo.", expected: "Relatório impresso." },
-  { number: 14, name: "Relatório detalhado", mandatory: false, kind: "admin",
+  { number: 14, name: "Relatório detalhado", mandatory: false, kind: "admin", adminCode: 5,
     description: "Emitir relatório detalhado.", expected: "Relatório impresso." },
-  { number: 15, name: "Relatório resumido", mandatory: false, kind: "admin",
+  { number: 15, name: "Relatório resumido", mandatory: false, kind: "admin", adminCode: 6,
     description: "Emitir relatório resumido.", expected: "Relatório impresso." },
 
   { number: 16, name: "Operação cancelada (menu adm)", mandatory: true, kind: "manual",
@@ -107,14 +111,15 @@ export const HOMOLOGATION_STEPS: HomologationStep[] = [
     description: "Venda DEMO crédito que será cancelada no passo 21.",
     sale: { amount: 7, method: "credit", acquirer: "DEMO" }, expected: "Aprovada, anotar NSU." },
 
-  { number: 20, name: "Cancelamento #1", mandatory: false, kind: "cancel-prev",
+  { number: 20, name: "Cancelamento #1", mandatory: false, kind: "cancel-prev", cancelsStep: 17,
     description: "Cancelar a venda do passo 17.", expected: "Cancelamento aprovado, recibo impresso." },
-  { number: 21, name: "Cancelamento #2", mandatory: true, kind: "cancel-prev",
+  { number: 21, name: "Cancelamento #2", mandatory: true, kind: "cancel-prev", cancelsStep: 19,
     description: "Cancelar a venda do passo 19.", expected: "Cancelamento aprovado, recibo impresso." },
-  { number: 22, name: "Cancelamento #3", mandatory: false, kind: "cancel-prev",
+  { number: 22, name: "Cancelamento #3", mandatory: false, kind: "cancel-prev", cancelsStep: 18,
     description: "Cancelar a venda do passo 18.", expected: "Cancelamento aprovado." },
   { number: 23, name: "Cancelamento #4", mandatory: false, kind: "cancel-prev",
-    description: "Cancelamento adicional opcional.", expected: "Cancelamento aprovado." },
+    description: "Cancelamento adicional opcional (informe NSU/valor/data no campo abaixo).",
+    expected: "Cancelamento aprovado." },
 
   { number: 24, name: "Queda de energia durante venda", mandatory: true, kind: "power-cut",
     description: "Iniciar venda, derrubar energia, religar e validar tratamento de pendência.",
