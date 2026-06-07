@@ -10743,6 +10743,66 @@ export type Database = {
           },
         ]
       }
+      pdv_whatsapp_carts: {
+        Row: {
+          created_at: string
+          customer_name: string | null
+          delivery_address: Json | null
+          expires_at: string
+          id: string
+          items: Json
+          payment_method: string | null
+          pdv_order_id: string | null
+          phone: string
+          status: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_name?: string | null
+          delivery_address?: Json | null
+          expires_at?: string
+          id?: string
+          items?: Json
+          payment_method?: string | null
+          pdv_order_id?: string | null
+          phone: string
+          status?: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_name?: string | null
+          delivery_address?: Json | null
+          expires_at?: string
+          id?: string
+          items?: Json
+          payment_method?: string | null
+          pdv_order_id?: string | null
+          phone?: string
+          status?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdv_whatsapp_carts_pdv_order_id_fkey"
+            columns: ["pdv_order_id"]
+            isOneToOne: false
+            referencedRelation: "pdv_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdv_whatsapp_carts_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       petty_cash_accounts: {
         Row: {
           balance: number
@@ -14647,6 +14707,8 @@ export type Database = {
           id: string
           off_hours_message: string | null
           opening_hours: string | null
+          sales_enabled: boolean
+          sales_off_message: string | null
           store_id: string
           system_prompt: string | null
           updated_at: string
@@ -14657,6 +14719,8 @@ export type Database = {
           id?: string
           off_hours_message?: string | null
           opening_hours?: string | null
+          sales_enabled?: boolean
+          sales_off_message?: string | null
           store_id: string
           system_prompt?: string | null
           updated_at?: string
@@ -14667,6 +14731,8 @@ export type Database = {
           id?: string
           off_hours_message?: string | null
           opening_hours?: string | null
+          sales_enabled?: boolean
+          sales_off_message?: string | null
           store_id?: string
           system_prompt?: string | null
           updated_at?: string
