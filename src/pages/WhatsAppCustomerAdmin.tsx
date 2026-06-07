@@ -26,6 +26,7 @@ export default function WhatsAppCustomerAdmin() {
   const [selectedConv, setSelectedConv] = useState<Conv | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const [waOrders, setWaOrders] = useState<WaOrder[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Carrega lojas
