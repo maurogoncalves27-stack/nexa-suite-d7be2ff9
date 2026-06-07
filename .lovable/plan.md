@@ -1,87 +1,90 @@
-# Afastamento previdenciário na folha (CLT art. 60 §3º)
+# Vendas pelo WhatsApp com link de pagamento
 
-Quando o colaborador é afastado por incapacidade, o empregador paga os **15 primeiros dias** como salário e, do **16º em diante**, o INSS assume e o contrato fica suspenso. Hoje a folha só gera "Salário mês civil" proporcional, sem separar as rubricas — vamos corrigir.
+## Recomendação de gateway: **Mercado Pago**
 
-## 1. Catálogo de rubricas (defaults)
+Por quê (vs Asaas / Stripe / C6):
+- **PIX nativo** com QR + link copia-e-cola, taxa ~0,99%, cai no ato.
+- **Cartão** com link de checkout pronto (`preferences` API), sem precisar montar tela.
+- **Webhook** confiável e simples (`payment.updated`), igual ao padrão que já usamos no iFood.
+- Conta MP é grátis, abertura em minutos, e o dinheiro pode ser sacado direto para o C6 (não conflita com a regra de "C6 centralizado" — continua sendo a conta-mãe, MP é só meio de captura).
+- Asaas é parecido mas o ecossistema MP/WhatsApp já é mais maduro no Brasil.
+- C6 Pay/Stripe ficariam mais lentos (3+ dias de integração, contratos), Stripe não tem PIX nativo brasileiro.
 
-Adicionar 2 rubricas-padrão no `payrollTables.ts`/cadastro:
+> Se você preferir Asaas, o plano abaixo muda só o adapter — o resto é igual.
 
-| Código | Descrição | Tipo | Incidências | eSocial |
-|---|---|---|---|---|
-| `AFAST_PREV_15` | Afastamento previdenciário — 15 primeiros dias | Provento | INSS, FGTS, IRRF | `1003` |
-| `AFAST_PREV_INSS` | Afastamento pelo INSS (a partir do 16º dia) | Informativa | nenhuma | `9999` |
+## O que **já temos** pronto
+- `whatsapp-customer-webhook` recebe mensagens da Z-API (instância CLIENTE já configurada).
+- `whatsapp-customer-ai-reply` com Gemini 3 Flash + tools (`search_menu`, `get_store_info`, `register_complaint`).
+- Tabelas `pdv_orders`, `pdv_order_items`, `pdv_payments`, `pdv_channels`, `pdv_order_events` — mesmo pipeline do iFood.
+- Página admin `/configuracoes/whatsapp-cliente`.
 
-Contabilidade pode trocar os códigos depois em **Configurações → Rubricas**.
+## O que **falta** (6 entregas)
 
-## 2. Extensão de `/atestados`
+### 1. Conta + credenciais Mercado Pago
+Você precisa:
+1. Criar/usar conta MP do CNPJ Aquela Parmê.
+2. Em **Suas integrações → Criar aplicação** (tipo "Pagamentos online"), gerar credenciais de **produção**.
+3. Me passar via secrets:
+   - `MERCADOPAGO_ACCESS_TOKEN` (chave secreta — APP_USR-…)
+   - `MERCADOPAGO_WEBHOOK_SECRET` (assinatura do webhook, opcional mas recomendado).
 
-Atestado com **duração > 15 dias** ganha bloco extra:
+### 2. Canal "WhatsApp" no PDV
+- Inserir registro em `pdv_channels` (code=`whatsapp`, name=`WhatsApp`, color do design system).
+- Adicionar `whatsapp` ao enum/lista de canais aceitos por `pdv_orders.channel`.
+- Nova tabela leve `pdv_whatsapp_carts` (sessão de carrinho por telefone, com TTL 24h) para a IA manter contexto entre mensagens — chaves: `phone`, `store_id`, `items jsonb`, `customer_name`, `delivery_address`, `status`, `expires_at`.
 
-- Toggle **"Encaminhar ao INSS (afastamento previdenciário)"**
-- Campos: tipo de benefício (B31 doença / B91 acidente / B80 maternidade), NB, CID já existe, **data início** = data do atestado, **data fim prevista** (editável conforme perícia)
-- Ao salvar, grava em `employees.current_leave_*` (3 colunas novas: `current_leave_start`, `current_leave_end`, `current_leave_type`) — sem nova tabela, conforme escolhido.
-- Anexo do atestado segue arquivado em `employee_documents` (pasta imutável).
+### 3. Novas tools da IA (em `whatsapp-customer-ai-reply`)
+Adicionar 4 tools, **preservando** as 3 atuais:
+- `add_to_cart(item_id, qty, notes?)` → insere/atualiza carrinho da sessão.
+- `view_cart()` → retorna itens + total formatado.
+- `set_delivery(name, address, payment_method)` → consolida dados do cliente.
+- `checkout()` → cria `pdv_order` (status `pending_payment`, canal `whatsapp`, loja Asa Sul no piloto), chama edge `mercadopago-create-link`, devolve URL + QR PIX para a IA enviar ao cliente.
 
-Quando o atestado é fechado (alta), grava `current_leave_end` real e limpa o "ativo".
+### 4. Nova edge function `mercadopago-create-link`
+- Input: `pdv_order_id`.
+- Cria `preference` no MP com `external_reference = pdv_order.id`, `notification_url` apontando para nossa webhook, `payment_methods` = PIX + cartão.
+- Salva `pdv_payments` (status `pending`, gateway `mercadopago`, link, qr_code_base64).
+- Retorna `init_point` (link) + `qr_code` (string copia-e-cola) + `qr_code_base64` (imagem).
 
-## 3. Cálculo da folha
+### 5. Nova edge function `mercadopago-webhook`
+- Recebe notificação `payment.updated`.
+- Busca pagamento na API MP (sempre re-consulta, nunca confia no body).
+- Se `status=approved`: atualiza `pdv_payments.status=paid`, atualiza `pdv_orders.status=confirmed`, dispara evento em `pdv_order_events`, e o pedido entra no **mesmo fluxo do iFood** (KDS, impressora, baixa de estoque).
+- Envia mensagem de confirmação no WhatsApp do cliente via `send-whatsapp` (usando instância CLIENTE).
 
-Para cada colaborador no mês de referência:
+### 6. Painel + piloto Asa Sul
+- Em `/configuracoes/whatsapp-cliente`, nova aba **"Vendas"**:
+  - Toggle "Aceitar pedidos via WhatsApp" por loja (no piloto, só Asa Sul fica ON).
+  - Lista dos últimos pedidos WhatsApp com status (pending_payment / paid / cancelled).
+  - Link para abrir o pedido no `/pedidos`.
+- Cardápio usado é o mesmo do iFood/Totem (tabela `menu_items` já existe).
+- Endereço: pedimos manualmente na conversa (sem geolocalização nessa Fase 1).
 
+## Fluxo final (visão do cliente)
 ```text
-dias_mes        = dias do mês de referência (28/29/30/31)
-afast_inicio    = max(current_leave_start, dia 1 do mês)
-afast_fim       = min(current_leave_end, último dia do mês)
-dias_afast      = dias entre afast_inicio e afast_fim (0 se sem afastamento)
-
-dias_15         = dias do afastamento que caem dentro dos 15 primeiros
-                  (relativo ao início real do afastamento, não do mês)
-dias_inss       = dias_afast - dias_15
-dias_trab       = dias_mes - dias_afast
+Cliente   →  "quero 1 parmegiana grande"
+IA        →  busca menu, mostra opções e preço, pede confirmação
+Cliente   →  "sim, entrega rua tal nº 10"
+IA        →  cria pedido + link MP, envia:
+             "Total R$ 79,90. Pague no PIX:
+              [QR-code.png]  ou link: https://mpago.la/abc"
+Cliente   →  paga
+MP webhook → confirma pedido → vai para KDS Asa Sul
+IA        →  "Pagamento confirmado! Pedido #1234 saiu pra preparo 🍽️"
 ```
-
-Rubricas geradas:
-
-- **Salário mês civil** = `salario / dias_mes * dias_trab`
-- **AFAST_PREV_15** = `salario / dias_mes * dias_15` (só se `dias_15 > 0`)
-- **AFAST_PREV_INSS** (informativa, R$ 0,00, ref = `dias_inss`) — só se `dias_inss > 0`
-- **Base INSS/FGTS/IRRF** = `Salário mês civil + AFAST_PREV_15`
-- **VT/VA/produtividade/bonificação**: proporcionais a `dias_trab / dias_mes` (afastamento não zera produtividade — diferente de falta injustificada).
-
-## 4. UI da folha
-
-- Badge **🏥 Afastado INSS — desde dd/mm** ao lado do nome do colaborador na linha da folha quando houver afastamento ativo no período.
-- Tooltip mostra: dias trabalhados / dias 15-empregador / dias INSS.
-
-## 5. Exportação eSocial
-
-- `esocialS1200Export.ts` já lê rubricas do catálogo — só precisa dos códigos cadastrados.
-- **S-2230** (afastamento temporário) fica fora do escopo desta entrega (continua manual no portal do contador).
-
-## 6. Mayke / folha atual
-
-Conforme decidido: **não re-rubricar a folha atual**. A regra entra em vigor para a próxima referência.
-
----
 
 ## Detalhes técnicos
+- **Stack:** edge functions Deno + Mercado Pago SDK via `npm:mercadopago@2`.
+- **Idempotência:** `external_reference` = `pdv_order.id` (UUID), webhook é seguro reprocessar.
+- **Segurança webhook:** valida header `x-signature` com `MERCADOPAGO_WEBHOOK_SECRET`; retorna 503 se secret faltar (mesmo padrão que aplicamos no iFood/Z-API).
+- **RLS:** `pdv_whatsapp_carts` — apenas service_role grava; UI lê via função SECURITY DEFINER se necessário.
+- **Não toca em:** TEF/ACBr, iFood (em produção), C6 Pay, fluxo do Totem.
+- **Memória a atualizar após approvar:** ajustar a Core sobre C6 para "recebimento físico via TEF/PIX no pinpad; recebimento online via Mercado Pago para canal WhatsApp" — sem ferir o resto.
 
-**Migração:**
-```sql
-ALTER TABLE public.employees
-  ADD COLUMN current_leave_type text,
-  ADD COLUMN current_leave_start date,
-  ADD COLUMN current_leave_end date;
-```
-(Sem alteração de RLS — campos pertencem ao mesmo escopo do registro do colaborador.)
+## Fora deste plano (entram em fases seguintes)
+- Roteamento automático entre as 4 lojas pelo endereço.
+- Cupom de desconto / programa de fidelidade.
+- Envio de catálogo nativo do WhatsApp (cards interativos) — exige Meta Cloud API, não tem na Z-API.
+- Pagamento recorrente / assinatura.
 
-**Arquivos afetados:**
-- `supabase/migrations/...` — colunas em `employees` + seed de 2 rubricas-padrão.
-- `src/pages/MedicalCertificates.tsx` (+ form/dialog) — toggle e campos quando `dias > 15`.
-- `src/lib/payrollTables.ts` — defaults `AFAST_PREV_15` / `AFAST_PREV_INSS`.
-- `supabase/functions/payroll-generate/index.ts` (ou equivalente) — cálculo com `dias_15` / `dias_inss`.
-- `src/components/payroll/SimpleManagerPayrollPanel.tsx` — badge "Afastado INSS".
-- Nenhuma alteração em `c6Export.ts` nem no botão de exportação C6.
-
-**Fora de escopo:**
-- S-2230, novo módulo `/afastamentos`, recálculo retroativo do Mayke, suspensão de FGTS para B91 (regra continua igual à atual).
+Pronto para implementar quando você aprovar — a primeira coisa que vou pedir são as credenciais do Mercado Pago.
