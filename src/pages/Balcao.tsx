@@ -393,10 +393,12 @@ export default function Balcao() {
   const cancel = async () => {
     if (!selected) return;
     setBusy(true);
+    const uid = (await supabase.auth.getUser()).data.user?.id ?? null;
     const { error } = await supabase.from("pdv_orders").update({
       status: "cancelled", cancelled_at: new Date().toISOString(),
       cancellation_reason_text: cancelReason || "Cancelado no balcão",
-    }).eq("id", selected.id);
+      cancelled_by: uid,
+    } as never).eq("id", selected.id);
     setBusy(false);
     if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Pedido cancelado" });
