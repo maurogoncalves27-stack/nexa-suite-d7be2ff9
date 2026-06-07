@@ -1,90 +1,90 @@
-# Vendas pelo WhatsApp com link de pagamento
+## Objetivo
 
-## Recomendação de gateway: **Mercado Pago**
+Construir, dentro de `/pdv-novo`, um painel **"Homologação PayGo"** que espelha os **54 passos** do roteiro `v20241216` da Setis, executa cada cenário via NEXA ACBr Agent, captura o **NSU (PWINFO_REQNUM)** + status + observações e gera no final um **XLSX idêntico ao template `Planilha_de_testes_v20240306`** pronto pra responder o Mateus por email.
 
-Por quê (vs Asaas / Stripe / C6):
-- **PIX nativo** com QR + link copia-e-cola, taxa ~0,99%, cai no ato.
-- **Cartão** com link de checkout pronto (`preferences` API), sem precisar montar tela.
-- **Webhook** confiável e simples (`payment.updated`), igual ao padrão que já usamos no iFood.
-- Conta MP é grátis, abertura em minutos, e o dinheiro pode ser sacado direto para o C6 (não conflita com a regra de "C6 centralizado" — continua sendo a conta-mãe, MP é só meio de captura).
-- Asaas é parecido mas o ecossistema MP/WhatsApp já é mais maduro no Brasil.
-- C6 Pay/Stripe ficariam mais lentos (3+ dias de integração, contratos), Stripe não tem PIX nativo brasileiro.
+Tipo de integração: **"Biblioteca Windows"** (ACBr usa as mesmas DLLs da PGWebLib).
 
-> Se você preferir Asaas, o plano abaixo muda só o adapter — o resto é igual.
+---
 
-## O que **já temos** pronto
-- `whatsapp-customer-webhook` recebe mensagens da Z-API (instância CLIENTE já configurada).
-- `whatsapp-customer-ai-reply` com Gemini 3 Flash + tools (`search_menu`, `get_store_info`, `register_complaint`).
-- Tabelas `pdv_orders`, `pdv_order_items`, `pdv_payments`, `pdv_channels`, `pdv_order_events` — mesmo pipeline do iFood.
-- Página admin `/configuracoes/whatsapp-cliente`.
+## Escopo de cenários (do PDF)
 
-## O que **falta** (6 entregas)
+Os 54 passos se agrupam em famílias que precisamos automatizar/semi-automatizar:
 
-### 1. Conta + credenciais Mercado Pago
-Você precisa:
-1. Criar/usar conta MP do CNPJ Aquela Parmê.
-2. Em **Suas integrações → Criar aplicação** (tipo "Pagamentos online"), gerar credenciais de **produção**.
-3. Me passar via secrets:
-   - `MERCADOPAGO_ACCESS_TOKEN` (chave secreta — APP_USR-…)
-   - `MERCADOPAGO_WEBHOOK_SECRET` (assinatura do webhook, opcional mas recomendado).
+| Grupo | Passos | Como executa |
+|---|---|---|
+| Instalação / setup | 1 | Manual no PdC, marcar OK |
+| Vendas (valor, pré-seleção, negada, crédito/débito, parcelado, QR PIX C6, contactless, msg longa) | 2, 3, 4, 6, 7, 8, 11, 30, 45, 46 | Botão dispara `acbrAdapter.processPayment` com parâmetros do passo |
+| Operação cancelada / rede desconhecida | 5, 16 | Operador aborta no pinpad — capturamos retorno |
+| Recibos diferenciados | 9, 10 | Venda + checkbox manual conferindo via |
+| Teste de comunicação + relatórios | 12, 13, 14, 15 | Novo endpoint `/tef/admin` no agente ACBr |
+| Vendas-base p/ cancelamento + cancelamentos (várias modalidades, referência local/externa) | 17–23, 41–44 | Venda → guardamos NSU → botão "Cancelar este passo" no painel |
+| Queda de energia (durante venda / adm / após aprovação) | 24, 25, 51 | Semi-manual: app marca "iniciado", operador desliga, na volta validamos pendência |
+| Dado genérico digitado/seleção | 26–29 | Coletor de campos genéricos no overlay TEF |
+| Transação pendente / confirmação / desfazimento | 31–38 | Endpoints ACBr `ConfirmaTransacao` / `DesfazTransacao` |
+| Desfazimento por falha na liberação (autoatendimento) | 39, 40 | Simulamos falha no fluxo do totem |
+| ControlPay (REST) | 47–50 | Marcados como **N/A** — não usamos ControlPay nessa rodada |
+| QR Code extras | 52–54 | Mesma rotina do passo 11 com variações |
 
-### 2. Canal "WhatsApp" no PDV
-- Inserir registro em `pdv_channels` (code=`whatsapp`, name=`WhatsApp`, color do design system).
-- Adicionar `whatsapp` ao enum/lista de canais aceitos por `pdv_orders.channel`.
-- Nova tabela leve `pdv_whatsapp_carts` (sessão de carrinho por telefone, com TTL 24h) para a IA manter contexto entre mensagens — chaves: `phone`, `store_id`, `items jsonb`, `customer_name`, `delivery_address`, `status`, `expires_at`.
+Passos **OPCIONAL** ficam marcados, mas executáveis.
 
-### 3. Novas tools da IA (em `whatsapp-customer-ai-reply`)
-Adicionar 4 tools, **preservando** as 3 atuais:
-- `add_to_cart(item_id, qty, notes?)` → insere/atualiza carrinho da sessão.
-- `view_cart()` → retorna itens + total formatado.
-- `set_delivery(name, address, payment_method)` → consolida dados do cliente.
-- `checkout()` → cria `pdv_order` (status `pending_payment`, canal `whatsapp`, loja Asa Sul no piloto), chama edge `mercadopago-create-link`, devolve URL + QR PIX para a IA enviar ao cliente.
+---
 
-### 4. Nova edge function `mercadopago-create-link`
-- Input: `pdv_order_id`.
-- Cria `preference` no MP com `external_reference = pdv_order.id`, `notification_url` apontando para nossa webhook, `payment_methods` = PIX + cartão.
-- Salva `pdv_payments` (status `pending`, gateway `mercadopago`, link, qr_code_base64).
-- Retorna `init_point` (link) + `qr_code` (string copia-e-cola) + `qr_code_base64` (imagem).
+## Mudanças
 
-### 5. Nova edge function `mercadopago-webhook`
-- Recebe notificação `payment.updated`.
-- Busca pagamento na API MP (sempre re-consulta, nunca confia no body).
-- Se `status=approved`: atualiza `pdv_payments.status=paid`, atualiza `pdv_orders.status=confirmed`, dispara evento em `pdv_order_events`, e o pedido entra no **mesmo fluxo do iFood** (KDS, impressora, baixa de estoque).
-- Envia mensagem de confirmação no WhatsApp do cliente via `send-whatsapp` (usando instância CLIENTE).
+### Banco
 
-### 6. Painel + piloto Asa Sul
-- Em `/configuracoes/whatsapp-cliente`, nova aba **"Vendas"**:
-  - Toggle "Aceitar pedidos via WhatsApp" por loja (no piloto, só Asa Sul fica ON).
-  - Lista dos últimos pedidos WhatsApp com status (pending_payment / paid / cancelled).
-  - Link para abrir o pedido no `/pedidos`.
-- Cardápio usado é o mesmo do iFood/Totem (tabela `menu_items` já existe).
-- Endereço: pedimos manualmente na conversa (sem geolocalização nessa Fase 1).
+`pdv_tef_homologation_runs`
+- id, store_id, started_at, finished_at, pdc_code, host_url, acquirer, integration_type, version_lib, operator_id, notes
 
-## Fluxo final (visão do cliente)
-```text
-Cliente   →  "quero 1 parmegiana grande"
-IA        →  busca menu, mostra opções e preço, pede confirmação
-Cliente   →  "sim, entrega rua tal nº 10"
-IA        →  cria pedido + link MP, envia:
-             "Total R$ 79,90. Pague no PIX:
-              [QR-code.png]  ou link: https://mpago.la/abc"
-Cliente   →  paga
-MP webhook → confirma pedido → vai para KDS Asa Sul
-IA        →  "Pagamento confirmado! Pedido #1234 saiu pra preparo 🍽️"
-```
+`pdv_tef_homologation_steps`
+- id, run_id, step_number (1–54), step_name, mandatory bool, status (`pending`/`ok`/`fail`/`skipped`/`na`), nsu, requnum, authorization_code, card_brand, amount, raw_response jsonb, observations, executed_at
 
-## Detalhes técnicos
-- **Stack:** edge functions Deno + Mercado Pago SDK via `npm:mercadopago@2`.
-- **Idempotência:** `external_reference` = `pdv_order.id` (UUID), webhook é seguro reprocessar.
-- **Segurança webhook:** valida header `x-signature` com `MERCADOPAGO_WEBHOOK_SECRET`; retorna 503 se secret faltar (mesmo padrão que aplicamos no iFood/Z-API).
-- **RLS:** `pdv_whatsapp_carts` — apenas service_role grava; UI lê via função SECURITY DEFINER se necessário.
-- **Não toca em:** TEF/ACBr, iFood (em produção), C6 Pay, fluxo do Totem.
-- **Memória a atualizar após approvar:** ajustar a Core sobre C6 para "recebimento físico via TEF/PIX no pinpad; recebimento online via Mercado Pago para canal WhatsApp" — sem ferir o resto.
+GRANTs + RLS por loja (super-user + papéis admin/manager).
 
-## Fora deste plano (entram em fases seguintes)
-- Roteamento automático entre as 4 lojas pelo endereço.
-- Cupom de desconto / programa de fidelidade.
-- Envio de catálogo nativo do WhatsApp (cards interativos) — exige Meta Cloud API, não tem na Z-API.
-- Pagamento recorrente / assinatura.
+### Front
 
-Pronto para implementar quando você aprovar — a primeira coisa que vou pedir são as credenciais do Mercado Pago.
+`src/pages/PdvHomologacaoPayGo.tsx` (rota `/pdv-novo/homologacao-paygo`, item em `AppSidebar` no grupo PDV, atualizar `PAGE_TITLES`).
+
+Layout:
+- Header padrão com ícone `ClipboardCheck text-primary`.
+- Card "Sessão atual": loja + PdC 111476 + host sandbox + botão "Nova rodada".
+- Tabela / cards mobile com os 54 passos: status badge, "▶ Executar", "📝 Observação", "Cancelar venda gerada" (quando aplicável), retorno NSU.
+- Botão flutuante **"Exportar XLSX para Setis"** → gera planilha idêntica ao template (mesmas colunas: N° teste / Obrigatoriedade / Retorno do teste / Observações / Teste).
+
+`src/lib/tef/homologation/`
+- `steps.ts` — catálogo dos 54 passos (number, name, mandatory, expectedFlow, executor).
+- `runner.ts` — orquestra a execução chamando `acbrAdapter` e persistindo.
+- `exporter.ts` — gera XLSX via SheetJS (já no projeto).
+
+### Agente ACBr (opcional, só se faltar endpoint)
+
+Avaliar adicionar 2 endpoints no `electron-acbr/server.cjs`:
+- `POST /tef/cancelar-venda` (cancelamento de transação já aprovada por NSU/data)
+- `POST /tef/admin` (menu administrativo: teste comunicação, relatórios, desfazimento)
+
+Sem alterar nada do iFood nem do PDV ativo.
+
+---
+
+## Entregáveis por fase
+
+1. **Fase 1 (este loop)**: migração + página com catálogo dos 54 passos + execução das vendas simples (passos 1–12) + export XLSX preenchendo o que já foi rodado.
+2. **Fase 2**: cancelamentos (17–23, 41–44) + endpoints novos no agente ACBr.
+3. **Fase 3**: queda de energia, transação pendente, desfazimento, dado genérico (24–40).
+4. **Fase 4**: QR extras (52–54) e revisão final do XLSX.
+
+---
+
+## Fora de escopo agora
+
+- Passos 47–50 (ControlPay REST) — marcar N/A no XLSX.
+- Trocar `acbrAdapter` por PGWebLib.
+- Mexer em `/pdv`, `pos_*`, iFood ou loja "iFood Homologação".
+
+---
+
+## Confirmações antes de começar
+
+1. Pode prosseguir com a **Fase 1** (banco + página + execução dos passos básicos + export XLSX) já?
+2. Loja piloto da homologação: **Asa Sul** ok? (uso pra criar registro em `pdv_tef_config` apontando pro PdC 111476 / sandbox).
+3. Posso adicionar os 2 endpoints novos (`/tef/cancelar-venda`, `/tef/admin`) no `electron-acbr` na Fase 2, ou prefere validar a Fase 1 antes?

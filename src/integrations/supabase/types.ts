@@ -10665,6 +10665,127 @@ export type Database = {
           },
         ]
       }
+      pdv_tef_homologation_runs: {
+        Row: {
+          acquirer: string | null
+          created_at: string
+          finished_at: string | null
+          host_url: string | null
+          id: string
+          integration_type: string
+          lib_version: string | null
+          notes: string | null
+          operator_id: string | null
+          pdc_code: string | null
+          started_at: string
+          store_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          acquirer?: string | null
+          created_at?: string
+          finished_at?: string | null
+          host_url?: string | null
+          id?: string
+          integration_type?: string
+          lib_version?: string | null
+          notes?: string | null
+          operator_id?: string | null
+          pdc_code?: string | null
+          started_at?: string
+          store_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          acquirer?: string | null
+          created_at?: string
+          finished_at?: string | null
+          host_url?: string | null
+          id?: string
+          integration_type?: string
+          lib_version?: string | null
+          notes?: string | null
+          operator_id?: string | null
+          pdc_code?: string | null
+          started_at?: string
+          store_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdv_tef_homologation_runs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pdv_tef_homologation_steps: {
+        Row: {
+          amount: number | null
+          authorization_code: string | null
+          card_brand: string | null
+          created_at: string
+          executed_at: string | null
+          id: string
+          mandatory: boolean
+          nsu: string | null
+          observations: string | null
+          raw_response: Json | null
+          requnum: string | null
+          run_id: string
+          status: string
+          step_name: string
+          step_number: number
+          updated_at: string
+        }
+        Insert: {
+          amount?: number | null
+          authorization_code?: string | null
+          card_brand?: string | null
+          created_at?: string
+          executed_at?: string | null
+          id?: string
+          mandatory?: boolean
+          nsu?: string | null
+          observations?: string | null
+          raw_response?: Json | null
+          requnum?: string | null
+          run_id: string
+          status?: string
+          step_name: string
+          step_number: number
+          updated_at?: string
+        }
+        Update: {
+          amount?: number | null
+          authorization_code?: string | null
+          card_brand?: string | null
+          created_at?: string
+          executed_at?: string | null
+          id?: string
+          mandatory?: boolean
+          nsu?: string | null
+          observations?: string | null
+          raw_response?: Json | null
+          requnum?: string | null
+          run_id?: string
+          status?: string
+          step_name?: string
+          step_number?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdv_tef_homologation_steps_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "pdv_tef_homologation_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pdv_tef_transactions: {
         Row: {
           acquirer: string | null
