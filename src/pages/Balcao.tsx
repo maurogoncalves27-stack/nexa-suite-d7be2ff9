@@ -753,6 +753,13 @@ export default function Balcao() {
                 <PrintersPanel storeId={storeId} storeName={currentStore.name} />
               )}
             </div>
+
+            <div className="space-y-2 pt-2 border-t">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Printer className="h-4 w-4" /> Layout de impressão
+              </h3>
+              {storeId && <PrintLayoutPanel storeId={storeId} />}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSettingsOpen(false)}>Fechar</Button>
