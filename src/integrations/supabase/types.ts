@@ -12646,6 +12646,7 @@ export type Database = {
           nfce_serie: number | null
           number: string | null
           parent_store_id: string | null
+          pdv_print_layout: Json
           pdv_sla_minutes: number
           phone: string | null
           regime_tributario: number | null
@@ -12683,6 +12684,7 @@ export type Database = {
           nfce_serie?: number | null
           number?: string | null
           parent_store_id?: string | null
+          pdv_print_layout?: Json
           pdv_sla_minutes?: number
           phone?: string | null
           regime_tributario?: number | null
@@ -12720,6 +12722,7 @@ export type Database = {
           nfce_serie?: number | null
           number?: string | null
           parent_store_id?: string | null
+          pdv_print_layout?: Json
           pdv_sla_minutes?: number
           phone?: string | null
           regime_tributario?: number | null
