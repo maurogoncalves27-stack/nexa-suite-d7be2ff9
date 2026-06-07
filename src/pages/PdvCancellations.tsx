@@ -418,7 +418,7 @@ export default function PdvCancellations() {
                     {(selectedItems ?? []).map((it, i) => (
                       <li key={i} className="flex items-center justify-between gap-2 text-sm">
                         <span className="truncate">{it.quantity}× {it.name}</span>
-                        <span className="text-muted-foreground shrink-0">{fmtBRL(it.total_price)}</span>
+                        <span className="text-muted-foreground shrink-0">{fmtBRL(it.total)}</span>
                       </li>
                     ))}
                   </ul>
