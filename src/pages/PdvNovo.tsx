@@ -1493,11 +1493,19 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
 
             <TabsContent value="impressoras" className="mt-4">
               {storeId && selectedStore ? (
-                <div className="space-y-2">
-                  <h3 className="text-sm font-semibold flex items-center gap-2">
-                    <Printer className="h-4 w-4 text-primary" /> Impressoras desta loja
-                  </h3>
-                  <PrintersPanel storeId={storeId} storeName={selectedStore.name} />
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold flex items-center gap-2">
+                      <Printer className="h-4 w-4 text-primary" /> Impressoras desta loja
+                    </h3>
+                    <PrintersPanel storeId={storeId} storeName={selectedStore.name} />
+                  </div>
+                  <div className="space-y-2 pt-2 border-t">
+                    <h3 className="text-sm font-semibold flex items-center gap-2">
+                      <Printer className="h-4 w-4 text-primary" /> Layout de impressão
+                    </h3>
+                    <PrintLayoutPanel storeId={storeId} />
+                  </div>
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground py-4 text-center">Selecione uma loja para configurar impressoras.</p>
