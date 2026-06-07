@@ -844,8 +844,14 @@ function OrderCard({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-            <DropdownMenuItem onClick={onReprint}>
-              <Printer className="h-4 w-4 mr-2" /> Reimprimir cupom
+            <DropdownMenuItem onClick={() => onReprint("kitchen")}>
+              <ChefHat className="h-4 w-4 mr-2" /> Reimprimir comanda
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onReprint("customer")}>
+              <Receipt className="h-4 w-4 mr-2" /> Reimprimir cupom
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onReprint("both")}>
+              <Printer className="h-4 w-4 mr-2" /> Reimprimir ambos
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onCancel} className="text-destructive focus:text-destructive">
