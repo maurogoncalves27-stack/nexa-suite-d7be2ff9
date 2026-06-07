@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   ArrowLeft, Maximize2, Bike, ChefHat, Hand,
-  Clock, Package, RefreshCw, Loader2, X, MapPin, Phone, Settings, MoreVertical, Printer, CheckCircle2,
+  Clock, Package, RefreshCw, Loader2, X, MapPin, Phone, Settings, MoreVertical, Printer, CheckCircle2, Receipt,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
