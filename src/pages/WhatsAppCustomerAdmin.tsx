@@ -8,14 +8,15 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MessageCircle, RefreshCw, AlertCircle } from "lucide-react";
+import { MessageCircle, RefreshCw, AlertCircle, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 
 type Store = { id: string; name: string };
 type Conv = { id: string; phone: string; customer_name: string | null; status: string; last_message_at: string; store_id: string | null };
 type Msg = { id: string; role: string; content: string | null; tool_name: string | null; created_at: string };
 type Complaint = { id: string; phone: string; message: string; status: string; created_at: string };
-type Cfg = { id?: string; store_id: string; enabled: boolean; system_prompt: string | null; opening_hours: string | null; off_hours_message: string | null };
+type Cfg = { id?: string; store_id: string; enabled: boolean; system_prompt: string | null; opening_hours: string | null; off_hours_message: string | null; sales_enabled: boolean; sales_off_message: string | null };
+type WaOrder = { id: string; status: string; total: number; customer_name: string | null; customer_phone: string | null; created_at: string; order_number: string | null };
 
 export default function WhatsAppCustomerAdmin() {
   const [stores, setStores] = useState<Store[]>([]);
@@ -25,6 +26,7 @@ export default function WhatsAppCustomerAdmin() {
   const [selectedConv, setSelectedConv] = useState<Conv | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const [waOrders, setWaOrders] = useState<WaOrder[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Carrega lojas
@@ -54,9 +56,16 @@ export default function WhatsAppCustomerAdmin() {
       supabase.from("whatsapp_customer_conversations").select("*").eq("store_id", storeId).order("last_message_at", { ascending: false }).limit(50),
       supabase.from("whatsapp_customer_complaints").select("*").eq("store_id", storeId).order("created_at", { ascending: false }).limit(30),
     ]);
-    setCfg(cfgRes.data || { store_id: storeId, enabled: false, system_prompt: "", opening_hours: "", off_hours_message: "" });
+    setCfg((cfgRes.data as any) || { store_id: storeId, enabled: false, system_prompt: "", opening_hours: "", off_hours_message: "", sales_enabled: false, sales_off_message: "" });
     setConversations(convRes.data || []);
     setComplaints(compRes.data || []);
+    const { data: ordersData } = await supabase
+      .from("pdv_orders")
+      .select("id, status, total, customer_name, customer_phone, created_at, order_number, channel_id, pdv_channels:channel_id(code)")
+      .eq("store_id", storeId)
+      .order("created_at", { ascending: false })
+      .limit(30);
+    setWaOrders(((ordersData || []) as any[]).filter((o) => o.pdv_channels?.code === "whatsapp"));
     setLoading(false);
   }
 
@@ -78,6 +87,8 @@ export default function WhatsAppCustomerAdmin() {
       system_prompt: cfg.system_prompt,
       opening_hours: cfg.opening_hours,
       off_hours_message: cfg.off_hours_message,
+      sales_enabled: cfg.sales_enabled,
+      sales_off_message: cfg.sales_off_message,
     };
     const { error } = await supabase.from("whatsapp_customer_config").upsert(payload, { onConflict: "store_id" });
     if (error) toast.error("Erro ao salvar: " + error.message);
@@ -140,6 +151,57 @@ export default function WhatsAppCustomerAdmin() {
                 placeholder="Deixe em branco para usar o prompt padrão da NEXA." rows={6} />
             </div>
             <Button onClick={saveConfig}>Salvar</Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Vendas via WhatsApp */}
+      {cfg && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><ShoppingCart className="h-5 w-5 text-primary" />Vendas via WhatsApp</CardTitle>
+            <CardDescription>Permite que a IA monte o pedido e gere link de pagamento Mercado Pago.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Aceitar pedidos pelo WhatsApp</Label>
+                <p className="text-xs text-muted-foreground">Quando ligado, a IA pode usar carrinho, endereço e checkout com link de pagamento.</p>
+              </div>
+              <Switch checked={cfg.sales_enabled} onCheckedChange={(v) => setCfg({ ...cfg, sales_enabled: v })} />
+            </div>
+            <div>
+              <Label>Mensagem quando vendas estão desligadas</Label>
+              <Textarea value={cfg.sales_off_message || ""} onChange={(e) => setCfg({ ...cfg, sales_off_message: e.target.value })}
+                placeholder="Ex.: No momento só recebemos pedidos pelo iFood. Pelo telefone também." rows={2} />
+            </div>
+            <Button onClick={saveConfig}>Salvar</Button>
+
+            <div className="pt-2">
+              <Label className="text-sm">Últimos pedidos pelo WhatsApp</Label>
+              {waOrders.length === 0 ? (
+                <p className="text-sm text-muted-foreground mt-2">Nenhum pedido ainda.</p>
+              ) : (
+                <div className="space-y-2 mt-2 max-h-72 overflow-auto">
+                  {waOrders.map((o) => (
+                    <div key={o.id} className="p-2 rounded-md border flex items-center justify-between text-sm">
+                      <div>
+                        <div className="font-medium">{o.customer_name || o.customer_phone || "—"}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {o.order_number ? `#${o.order_number} · ` : ""}{new Date(o.created_at).toLocaleString("pt-BR")}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <Badge variant={o.status === "confirmed" || o.status === "concluded" ? "default" : o.status === "pending_payment" ? "outline" : "destructive"}>
+                          {o.status}
+                        </Badge>
+                        <div className="text-xs mt-1">R$ {Number(o.total).toFixed(2)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
