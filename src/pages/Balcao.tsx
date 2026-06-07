@@ -793,7 +793,7 @@ function OrderCard({
 }: {
   order: Order; channelName: string;
   onClick: () => void; onAdvance: () => void;
-  onCancel: () => void; onReprint: () => void;
+  onCancel: () => void; onReprint: (target?: "customer" | "kitchen" | "both") => void;
   compact?: boolean; isLate?: boolean;
 }) {
   // Status visual: pedidos "ready" de retirada usam o mock "pickup" (visual cyan).
