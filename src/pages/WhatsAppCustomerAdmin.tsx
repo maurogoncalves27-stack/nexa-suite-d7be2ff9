@@ -55,9 +55,16 @@ export default function WhatsAppCustomerAdmin() {
       supabase.from("whatsapp_customer_conversations").select("*").eq("store_id", storeId).order("last_message_at", { ascending: false }).limit(50),
       supabase.from("whatsapp_customer_complaints").select("*").eq("store_id", storeId).order("created_at", { ascending: false }).limit(30),
     ]);
-    setCfg(cfgRes.data || { store_id: storeId, enabled: false, system_prompt: "", opening_hours: "", off_hours_message: "" });
+    setCfg((cfgRes.data as any) || { store_id: storeId, enabled: false, system_prompt: "", opening_hours: "", off_hours_message: "", sales_enabled: false, sales_off_message: "" });
     setConversations(convRes.data || []);
     setComplaints(compRes.data || []);
+    const { data: ordersData } = await supabase
+      .from("pdv_orders")
+      .select("id, status, total, customer_name, customer_phone, created_at, order_number, channel_id, pdv_channels:channel_id(code)")
+      .eq("store_id", storeId)
+      .order("created_at", { ascending: false })
+      .limit(30);
+    setWaOrders(((ordersData || []) as any[]).filter((o) => o.pdv_channels?.code === "whatsapp"));
     setLoading(false);
   }
 
