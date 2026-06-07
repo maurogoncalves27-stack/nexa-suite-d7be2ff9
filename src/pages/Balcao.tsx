@@ -635,8 +635,11 @@ export default function Balcao() {
                 </div>
 
                 <DialogFooter className="flex-col sm:flex-row gap-2">
-                  <Button variant="outline" onClick={() => reprint(selected)} disabled={busy}>
-                    <Printer className="h-4 w-4 mr-1" /> Reimprimir
+                  <Button variant="outline" onClick={() => reprint(selected, "kitchen")} disabled={busy}>
+                    <ChefHat className="h-4 w-4 mr-1" /> Comanda
+                  </Button>
+                  <Button variant="outline" onClick={() => reprint(selected, "customer")} disabled={busy}>
+                    <Receipt className="h-4 w-4 mr-1" /> Cupom
                   </Button>
                   {next && (
                     <Button onClick={() => advance(selected)} disabled={busy} className="h-12 text-base font-semibold">
