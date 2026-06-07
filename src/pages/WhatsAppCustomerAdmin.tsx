@@ -87,6 +87,8 @@ export default function WhatsAppCustomerAdmin() {
       system_prompt: cfg.system_prompt,
       opening_hours: cfg.opening_hours,
       off_hours_message: cfg.off_hours_message,
+      sales_enabled: cfg.sales_enabled,
+      sales_off_message: cfg.sales_off_message,
     };
     const { error } = await supabase.from("whatsapp_customer_config").upsert(payload, { onConflict: "store_id" });
     if (error) toast.error("Erro ao salvar: " + error.message);
