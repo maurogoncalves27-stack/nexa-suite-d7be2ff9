@@ -19,7 +19,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
 import {
-  ClipboardCheck, Play, CheckCircle2, XCircle, MinusCircle, Loader2,
+  ScrollText, Play, CheckCircle2, XCircle, MinusCircle, Loader2,
   Download, RefreshCw, Plus, FileText,
 } from "lucide-react";
 import {
