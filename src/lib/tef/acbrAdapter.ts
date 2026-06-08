@@ -30,6 +30,13 @@ interface AcbrResponse {
   error?: string;
 }
 
+interface AcbrActionResponse {
+  ok: boolean;
+  retorno?: string;
+  parsed: Record<string, string>;
+  error?: string;
+}
+
 const METHOD_MAP: Record<NonNullable<TefPaymentRequest["method"]>, AcbrIniciarPayload["tipo"]> = {
   credit: "credito",
   debit: "debito",
@@ -168,13 +175,30 @@ export const checkAcbrAgent = async (
     if (!r.ok) return { ok: false, error: `HTTP ${r.status}` };
     const data = await r.json();
     return {
-      ok: !!data?.tefAvailable,
-      mode: data?.tefAvailable ? "acbr-tefd" : "sem DLL TEF",
+      ok: !!data?.tefReady,
+      mode: data?.tefReady ? "acbr-tefd" : "tef não inicializado",
       version: data?.version,
-      error: data?.tefAvailable ? undefined : "ACBrTEFD64.dll não disponível",
+      error: data?.tefReady ? undefined : (data?.tefError ?? "PGWebLib não inicializada"),
     };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "offline" };
+  }
+};
+
+export const acbrInstalarPdc = async (
+  agentUrl: string,
+): Promise<AcbrActionResponse> => {
+  try {
+    const r = await fetch(`${agentUrl}/tef/install`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) return { ok: false, parsed: {}, error: data?.error ?? `HTTP ${r.status}` };
+    return { ok: true, retorno: data.retorno, parsed: parseIni(data.retorno) };
+  } catch (e) {
+    return { ok: false, parsed: {}, error: e instanceof Error ? e.message : "offline" };
   }
 };
 
@@ -182,7 +206,7 @@ export const checkAcbrAgent = async (
 export const acbrCancelarVenda = async (
   agentUrl: string,
   body: { rede?: string; nsu: string; data: string; valor: number },
-): Promise<{ ok: boolean; retorno?: string; parsed: Record<string, string>; error?: string }> => {
+): Promise<AcbrActionResponse> => {
   try {
     const r = await fetch(`${agentUrl}/tef/cancelar-venda`, {
       method: "POST",
@@ -201,7 +225,7 @@ export const acbrCancelarVenda = async (
 export const acbrAdministrativo = async (
   agentUrl: string,
   operacao = 0,
-): Promise<{ ok: boolean; retorno?: string; parsed: Record<string, string>; error?: string }> => {
+): Promise<AcbrActionResponse> => {
   try {
     const r = await fetch(`${agentUrl}/tef/admin`, {
       method: "POST",
