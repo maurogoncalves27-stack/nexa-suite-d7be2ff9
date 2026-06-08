@@ -532,7 +532,7 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
 
         {/* Data e responsável ocultos — data = hoje, responsável = usuário logado */}
 
-        </div>
+
 
 
         {checklistItems.length > 0 && (
