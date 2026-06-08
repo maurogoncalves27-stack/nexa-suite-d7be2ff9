@@ -450,8 +450,7 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
                 </Button>
               </div>
             </form>
-          </div>
-          <Accordion type="single" collapsible>
+            <Accordion type="single" collapsible>
             <AccordionItem value="list" className="border-none">
               <AccordionTrigger className="px-3 py-2 hover:no-underline">
                 <span className="text-xs text-muted-foreground font-normal">
