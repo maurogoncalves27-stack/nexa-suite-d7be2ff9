@@ -24,6 +24,12 @@ const DEFAULT_BASES = [
   "C:\\Program Files\\PayGo\\PGWebLib",
 ].filter(Boolean);
 
+const DEFAULT_WORK_DIR = path.join(
+  process.env.ProgramData || "C:\\ProgramData",
+  "PayGo",
+  "PGWebLib",
+);
+
 function resolveBase() {
   for (const b of DEFAULT_BASES) {
     try { if (fs.existsSync(path.join(b, "PGWebLib.dll"))) return b; } catch { /* ignore */ }
@@ -33,7 +39,7 @@ function resolveBase() {
 
 const PAYGO_BASE = resolveBase();
 const DLL_PATH = path.join(PAYGO_BASE, "PGWebLib.dll");
-const WORK_DIR = process.env.PAYGO_WORKDIR || PAYGO_BASE;
+const WORK_DIR = process.env.PAYGO_WORKDIR || DEFAULT_WORK_DIR;
 
 // PayGo return codes (parcial — só o que importa pro fluxo)
 const PWRET = {
@@ -55,11 +61,21 @@ const PWRET = {
 
 // PWINFO codes (entrada/saída)
 const PWINFO = {
+  AUTNAME: 21,
+  AUTVER: 22,
+  AUTDEV: 23,
+  AUTCAP: 36,
   TOTAMNT: 515,      // valor total em centavos (string)
   CURRENCY: 514,     // 986 = BRL
+  CURREXP: 39,       // 2 = centavos
   PAYMTYPE: 517,     // 1 credito, 2 debito, 4 voucher, 5 outros, M menu, P PIX
   INSTALLMENTS: 522, // qtd parcelas
   FINTYPE: 524,      // 1 a vista, 2 parc emissor, 3 parc estab
+  REQNUM: 50,
+  VIRTMERCH: 54,
+  RESULTMSG: 66,
+  AUTLOCREF: 68,
+  AUTEXTREF: 69,
   HOSTNSU: 132,
   AUTHCODE: 134,
   AUTHSYST: 138,     // nome da rede
@@ -72,9 +88,17 @@ const PWINFO = {
 };
 
 const PWOPER = {
+  INSTALL: 0x01,
   ADMIN: 0x20,
   SALE: 0x21,
   SALEVOID: 0x22,
+};
+
+const AUTOMATION_INFO = {
+  name: "NEXA Suite",
+  version: process.env.npm_package_version || "1.0.0",
+  developer: "NEXA Gestao Inteligente",
+  capabilities: "28",
 };
 
 let lib = null;
@@ -127,6 +151,7 @@ function load() {
 
   // PayGo Integrado usa __stdcall em Windows (WINAPI).
   fn.Init = lib.func("__stdcall", "PW_iInit", "short", ["string"]);
+  try { fn.SetEnvironment = lib.func("__stdcall", "PW_iSetEnvironment", "short", ["short"]); } catch { fn.SetEnvironment = null; }
   fn.NewTransac = lib.func("__stdcall", "PW_iNewTransac", "short", ["short"]);
   fn.AddParam = lib.func("__stdcall", "PW_iAddParam", "short", ["short", "string"]);
   fn.ExecTransac = lib.func("__stdcall", "PW_iExecTransac", "short", ["void *", "_Inout_ short*"]);
@@ -149,9 +174,35 @@ function getResult(code, bufSize = 1024) {
   return buf.slice(0, sizeRef[0]).toString("latin1").replace(/\0+$/, "");
 }
 
-function ensureInit() {
+function getResultAny(codes, bufSize = 1024) {
+  for (const code of codes) {
+    const value = getResult(code, bufSize);
+    if (value) return value;
+  }
+  return null;
+}
+
+function addMandatoryAutomationParams() {
+  fn.AddParam(PWINFO.AUTNAME, AUTOMATION_INFO.name);
+  fn.AddParam(PWINFO.AUTVER, AUTOMATION_INFO.version);
+  fn.AddParam(PWINFO.AUTDEV, AUTOMATION_INFO.developer);
+  fn.AddParam(PWINFO.AUTCAP, AUTOMATION_INFO.capabilities);
+}
+
+function ensureInit({ environment } = {}) {
   if (initialized) return;
   load();
+
+  fs.mkdirSync(WORK_DIR, { recursive: true });
+
+  if (environment === "demo" && fn.SetEnvironment) {
+    const envRet = normalizeRet(fn.SetEnvironment(1));
+    if (envRet !== PWRET.OK) {
+      lastInitError = `PW_iSetEnvironment ret=${envRet}`;
+      throw new Error(`PW_iSetEnvironment falhou (${envRet})${explainRet(envRet) ? ` — ${explainRet(envRet)}` : ""}`);
+    }
+  }
+
   const r = normalizeRet(fn.Init(WORK_DIR));
   if (r !== PWRET.OK) {
     lastInitError = `PW_iInit ret=${r}`;
@@ -161,21 +212,21 @@ function ensureInit() {
   lastInitError = null;
 }
 
-function startTransaction(op, label) {
-  ensureInit();
+function startTransaction(op, label, options = {}) {
+  ensureInit(options);
   let r = normalizeRet(fn.NewTransac(op));
 
-  if (r === PWRET.NOTINST) {
-    // Em alguns cenários o operador acabou de ativar/reinstalar o PDC no PayGo,
-    // mas a sessão atual da DLL ficou stale. Reinicializa e tenta 1x novamente.
-    finalizar();
-    ensureInit();
-    r = normalizeRet(fn.NewTransac(op));
+  if (r !== PWRET.OK) {
+    const detail = getResultAny([PWINFO.RESULTMSG], 2048);
+    throw new Error(
+      `PW_iNewTransac(${label}) ret=${r}` +
+      `${explainRet(r) ? ` — ${explainRet(r)}` : ""}` +
+      `${detail ? ` — detalhe=${detail}` : ""}` +
+      ` — workdir=${WORK_DIR}`,
+    );
   }
 
-  if (r !== PWRET.OK) {
-    throw new Error(`PW_iNewTransac(${label}) ret=${r}${explainRet(r) ? ` — ${explainRet(r)}` : ""}`);
-  }
+  addMandatoryAutomationParams();
 }
 
 function isAvailable() {
