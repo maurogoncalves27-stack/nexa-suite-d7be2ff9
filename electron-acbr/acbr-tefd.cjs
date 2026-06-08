@@ -21,6 +21,27 @@ let initialized = false;
 let fn = {};
 let available = null; // true/false após primeira tentativa
 
+function readIniSections(filePath) {
+  if (!fs.existsSync(filePath)) return [];
+  const content = fs.readFileSync(filePath, "utf-8");
+  return [...content.matchAll(/^\s*\[([^\]]+)\]\s*$/gm)].map((m) => m[1]);
+}
+
+function diagnostics() {
+  const iniSections = readIniSections(INI_PATH);
+  const missing = [];
+  if (!fs.existsSync(DLL_PATH)) missing.push(DLL_PATH);
+  if (!fs.existsSync(INI_PATH)) missing.push(INI_PATH);
+  return {
+    dllExists: fs.existsSync(DLL_PATH),
+    iniExists: fs.existsSync(INI_PATH),
+    iniSections,
+    iniLooksMinimal: iniSections.length === 0,
+    missing,
+    expected: { DLL_PATH, INI_PATH },
+  };
+}
+
 function load() {
   if (lib) return lib;
   if (!fs.existsSync(DLL_PATH)) {
@@ -160,5 +181,6 @@ module.exports = {
   cancelarVenda,
   administrativo,
   ultimoRetorno,
+  diagnostics,
   paths: { DLL_PATH, INI_PATH, ACBR_BASE },
 };
