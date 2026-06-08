@@ -137,6 +137,20 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
     fetchData();
   }, [fetchData]);
 
+  // Auto-preencher nome da nutricionista a partir do login
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const name = (data?.full_name || user.email || "").trim();
+      if (name) setVisitorName(name);
+    })();
+  }, [user]);
+
   const toggleConform = (itemId: string) => {
     setResponses((prev) => ({
       ...prev,
@@ -227,7 +241,7 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
       }
     }
 
-    setVisitorName("");
+  // Não limpamos visitorName: continua = nome do logado para o próximo registro
     setGeneralNotes("");
     setStoreResponsible("");
     sigRef.current?.clear();
