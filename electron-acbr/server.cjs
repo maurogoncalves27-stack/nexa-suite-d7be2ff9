@@ -63,7 +63,7 @@ async function handle(req, res) {
         try { tefVersion = tef.versao(); tefReady = true; }
         catch (e) { tefError = e.message; }
       } else {
-        tefError = "ACBrTEFD64.dll não disponível";
+        tefError = "PGWebLib.dll não disponível";
       }
       const tefDiagnostics = tef.diagnostics();
 
@@ -103,12 +103,12 @@ async function handle(req, res) {
       return send(res, 200, { ok: true, retorno });
     }
 
-    // -------- TEF --------
+    // -------- TEF (PayGo Integrado / PGWebLib.dll) --------
     if (req.method === "POST" && path === "/tef/iniciar") {
-      if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "ACBrTEFD64.dll não disponível" });
+      if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "PGWebLib.dll não disponível" });
       const body = await readBody(req);
       if (!body.valor || body.valor <= 0) return send(res, 400, { ok: false, error: "valor obrigatório" });
-      const retorno = tef.efetuarPagamento(body);
+      const retorno = tef.efetuarPagamento({ ...body, onDisplay: (m) => console.log("[TEF display]", m) });
       return send(res, 200, { ok: true, retorno });
     }
 
@@ -118,19 +118,15 @@ async function handle(req, res) {
     }
 
     if (req.method === "POST" && path === "/tef/cancelar-venda") {
-      if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "ACBrTEFD64.dll não disponível" });
+      if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "PGWebLib.dll não disponível" });
       const body = await readBody(req);
-      if (!body.nsu || !body.data || !body.valor) {
-        return send(res, 400, { ok: false, error: "nsu, data (DDMMAAAA) e valor obrigatórios" });
-      }
-      const retorno = tef.cancelarVenda(body);
+      const retorno = tef.cancelarVenda({ ...body, onDisplay: (m) => console.log("[TEF display]", m) });
       return send(res, 200, { ok: true, retorno });
     }
 
     if (req.method === "POST" && path === "/tef/admin") {
-      if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "ACBrTEFD64.dll não disponível" });
-      const body = await readBody(req);
-      const retorno = tef.administrativo(body.operacao ?? 0);
+      if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "PGWebLib.dll não disponível" });
+      const retorno = tef.administrativo({ onDisplay: (m) => console.log("[TEF display]", m) });
       return send(res, 200, { ok: true, retorno });
     }
 
