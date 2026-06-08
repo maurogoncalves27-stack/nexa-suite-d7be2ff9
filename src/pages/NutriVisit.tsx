@@ -13,29 +13,33 @@ export default function NutriVisit() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2 min-w-0 flex-1">
+      <div className="flex items-center gap-2 flex-wrap">
+        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2 min-w-0">
           <Stethoscope className="h-6 w-6 md:h-7 md:w-7 text-primary shrink-0" />
           <span className="truncate">Visita técnica</span>
         </h1>
-        <Button asChild variant="outline" size="icon" className="h-9 w-9 shrink-0">
-          <Link to="/nutri-visita/historico" title="Histórico">
-            <History className="h-4 w-4" />
-          </Link>
-        </Button>
-        {isAdmin && (
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-9 w-9 shrink-0"
-            title="Gerenciar itens do checklist"
-            onClick={() => setShowManager(true)}
-          >
-            <Settings className="h-4 w-4" />
+        <div className="flex items-center gap-2 ml-auto min-w-0">
+          <div className="w-[160px] sm:w-[220px] min-w-0">
+            <NutriStoreSelector value={storeId} onChange={setStoreId} />
+          </div>
+          <Button asChild variant="outline" size="icon" className="h-9 w-9 shrink-0">
+            <Link to="/nutri-visita/historico" title="Histórico">
+              <History className="h-4 w-4" />
+            </Link>
           </Button>
-        )}
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9 shrink-0"
+              title="Gerenciar itens do checklist"
+              onClick={() => setShowManager(true)}
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
-      <NutriStoreSelector value={storeId} onChange={setStoreId} />
       <NutriVisitReportPanel
         hideHistory
         managerOpen={showManager}
