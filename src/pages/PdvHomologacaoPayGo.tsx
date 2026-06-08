@@ -27,7 +27,7 @@ import {
 } from "@/lib/tef/homologation/steps";
 import { exportHomologationXlsx, type StepResultRow } from "@/lib/tef/homologation/exporter";
 import { loadTefConfig, type TefConfig } from "@/lib/tef";
-import { createAcbrAdapter, acbrCancelarVenda, acbrAdministrativo } from "@/lib/tef/acbrAdapter";
+import { createAcbrAdapter, acbrCancelarVenda, acbrAdministrativo, acbrInstalarPdc, checkAcbrAgent } from "@/lib/tef/acbrAdapter";
 
 const ACBR_AGENT_URL = "https://127.0.0.1:3031";
 
@@ -89,6 +89,8 @@ export default function PdvHomologacaoPayGo() {
   const [busyStep, setBusyStep] = useState<number | null>(null);
   const [pdcCode, setPdcCode] = useState(DEFAULT_PDC);
   const [hostUrl, setHostUrl] = useState(DEFAULT_HOST);
+  const [installingPdc, setInstallingPdc] = useState(false);
+  const [agentHealth, setAgentHealth] = useState<{ ok: boolean; mode?: string; version?: string; error?: string } | null>(null);
 
   // --- Lojas elegíveis (físicas, sem iFood Homologação) -------------------
   useEffect(() => {
@@ -130,6 +132,10 @@ export default function PdvHomologacaoPayGo() {
   };
 
   useEffect(() => { if (storeId) void loadActiveRun(storeId); }, [storeId]);
+
+  useEffect(() => {
+    void checkAcbrAgent(ACBR_AGENT_URL).then(setAgentHealth);
+  }, []);
 
   const loadSteps = async (runId: string) => {
     const { data } = await supabase
@@ -333,6 +339,24 @@ export default function PdvHomologacaoPayGo() {
     await loadActiveRun(storeId);
   };
 
+  const installPdc = async () => {
+    setInstallingPdc(true);
+    try {
+      const res = await acbrInstalarPdc(ACBR_AGENT_URL);
+      if (!res.ok) {
+        toast({ title: "Falha na instalação do PdC", description: res.error, variant: "destructive" });
+        return;
+      }
+      toast({
+        title: "Instalação do PdC concluída",
+        description: res.parsed["mensagem"] ?? res.parsed["mensagemresultado"] ?? "Finalize no PayGo Windows se houver prompts adicionais.",
+      });
+    } finally {
+      setInstallingPdc(false);
+      void checkAcbrAgent(ACBR_AGENT_URL).then(setAgentHealth);
+    }
+  };
+
   // --- Export XLSX ---------------------------------------------------------
   const handleExport = () => {
     if (!run) return;
@@ -402,6 +426,10 @@ export default function PdvHomologacaoPayGo() {
               <Plus className="h-4 w-4 mr-1" /> Iniciar nova rodada
             </Button>
           )}
+          <Button variant="outline" onClick={installPdc} disabled={installingPdc}>
+            {installingPdc ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Play className="h-4 w-4 mr-1" />}
+            Instalar PdC
+          </Button>
           {run && (
             <>
               <Button variant="outline" onClick={() => loadSteps(run.id)}>
@@ -423,6 +451,17 @@ export default function PdvHomologacaoPayGo() {
             <span>Progresso: {progress.done}/{progress.total} ({progress.ok} OK)</span>
           </div>
         )}
+
+        <div className="text-sm text-muted-foreground space-y-1">
+          <p>
+            Status do agente: <strong>{agentHealth?.ok ? "pronto" : "pendente"}</strong>
+            {agentHealth?.error ? ` — ${agentHealth.error}` : agentHealth?.version ? ` — ${agentHealth.version}` : ""}
+          </p>
+          <p>
+            Ponto de Captura e host acima são referência da rodada. A PGWebLib usa a instalação local do PayGo Windows
+            e o diretório de trabalho da máquina; se houver <code>-2498</code>, rode <strong>Instalar PdC</strong> primeiro.
+          </p>
+        </div>
       </Card>
 
       {loading ? (
