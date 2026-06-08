@@ -18,7 +18,7 @@ export const loadTefConfig = async (storeId?: string | null): Promise<TefConfig>
   if (!storeId) return DEFAULT_CONFIG;
   const { data } = await supabase
     .from("pdv_tef_config")
-    .select("provider, agent_url, merchant_code, terminal_code, acquirer")
+    .select("provider, agent_url, merchant_code, terminal_code, acquirer, environment")
     .eq("store_id", storeId)
     .eq("is_active", true)
     .maybeSingle();
@@ -29,6 +29,7 @@ export const loadTefConfig = async (storeId?: string | null): Promise<TefConfig>
     merchantCode: data.merchant_code ?? undefined,
     terminalCode: data.terminal_code ?? undefined,
     acquirer: data.acquirer ?? undefined,
+    environment: ((data as { environment?: string }).environment as TefConfig["environment"]) ?? "demo",
   };
 };
 
