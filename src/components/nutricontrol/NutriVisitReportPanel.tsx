@@ -537,7 +537,7 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
 
         {checklistItems.length > 0 && (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="w-full justify-start h-auto flex-nowrap overflow-x-auto p-1 gap-1">
+            <TabsList className="w-full justify-start h-auto flex-wrap p-1 gap-1">
               {[...SECTIONS, OTHER_SECTION].map((sec) => {
                 const secItems = checklistItems.filter((i) => (i.section ?? OTHER_SECTION) === sec);
                 if (secItems.length === 0) return null;
