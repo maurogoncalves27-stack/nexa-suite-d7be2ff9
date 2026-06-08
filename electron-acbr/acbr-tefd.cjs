@@ -6,8 +6,8 @@
 // PayGo (PayGoLauncher já configura o PersonalizacaoConjunto.txt).
 //
 // Caminhos padrão (Windows):
-//   x86 (instalador padrão): C:\Arquivos de Programas (x86)\PayGo\PGWebLib\PGWebLib.dll
-//   x64 (raro):              C:\Program Files\PayGo\PGWebLib\PGWebLib.dll
+//   x86 (instalador padrão): C:\Arquivos de Programas (x86)\PayGo\PGWebLib\x86\PGWebLib.dll
+//   x64 (comum no Windows 64-bit): C:\Program Files (x86)\PayGo\PGWebLib\x64\PGWebLib.dll
 // Pode sobrescrever com:
 //   PAYGO_BASE      -> diretório onde está a PGWebLib.dll
 //   PAYGO_WORKDIR   -> working dir passado para PW_iInit (default = PAYGO_BASE)
@@ -19,6 +19,12 @@ const koffi = require("koffi");
 
 const DEFAULT_BASES = [
   process.env.PAYGO_BASE,
+  "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib\\x64",
+  "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib\\x86",
+  "C:\\Program Files (x86)\\PayGo\\PGWebLib\\x64",
+  "C:\\Program Files (x86)\\PayGo\\PGWebLib\\x86",
+  "C:\\Program Files\\PayGo\\PGWebLib\\x64",
+  "C:\\Program Files\\PayGo\\PGWebLib\\x86",
   "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib",
   "C:\\Program Files (x86)\\PayGo\\PGWebLib",
   "C:\\Program Files\\PayGo\\PGWebLib",
@@ -34,7 +40,7 @@ function resolveBase() {
   for (const b of DEFAULT_BASES) {
     try { if (fs.existsSync(path.join(b, "PGWebLib.dll"))) return b; } catch { /* ignore */ }
   }
-  return DEFAULT_BASES[0] || "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib";
+  return DEFAULT_BASES[0] || "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib\\x64";
 }
 
 const PAYGO_BASE = resolveBase();
