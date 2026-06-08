@@ -530,7 +530,15 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
           Nova visita técnica
         </h4>
 
+        {!currentStoreId && (
+          <div className="bg-accent/50 border border-accent rounded-md p-3 text-center">
+            <p className="text-sm font-medium text-foreground">Selecione uma loja para iniciar o checklist</p>
+          </div>
+        )}
+
+        <div className={!currentStoreId ? "pointer-events-none opacity-50 select-none" : ""} aria-hidden={!currentStoreId ? true : undefined}>
         {/* Data e responsável ocultos — data = hoje, responsável = usuário logado */}
+
 
 
 
@@ -648,6 +656,7 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
         <Button onClick={saveReport} size="sm" className="w-full" disabled={saving || !currentStoreId}>
           {saving ? "Salvando..." : "Salvar registro de visita"}
         </Button>
+        </div>
       </div>
       )}
 
