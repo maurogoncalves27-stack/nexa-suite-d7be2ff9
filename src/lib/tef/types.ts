@@ -38,12 +38,15 @@ export interface TefPaymentResult {
   raw?: unknown;
 }
 
+export type TefEnvironment = "demo" | "producao";
+
 export interface TefConfig {
   provider: TefProvider;
   agentUrl: string;          // ex: http://localhost:60906
   merchantCode?: string;     // código da loja no provedor
   terminalCode?: string;
   acquirer?: string;
+  environment?: TefEnvironment; // demo (sandbox PayGo roxo) ou produção
 }
 
 export interface TefAdapter {
