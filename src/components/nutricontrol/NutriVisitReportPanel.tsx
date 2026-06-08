@@ -54,7 +54,12 @@ interface VisitReportWithResponses extends VisitReport {
   responses: { checklist_item_id: string; is_conform: boolean; observation: string }[];
 }
 
-export default function NutriVisitReportPanel() {
+interface NutriVisitReportPanelProps {
+  hideHistory?: boolean;
+  hideForm?: boolean;
+}
+
+export default function NutriVisitReportPanel({ hideHistory = false, hideForm = false }: NutriVisitReportPanelProps = {}) {
   const { user, isAdmin } = useAuth();
   const sigRef = useRef<SignatureCanvas | null>(null);
 
@@ -376,7 +381,7 @@ export default function NutriVisitReportPanel() {
         <NutriStoreSelector value={currentStoreId} onChange={setCurrentStoreId} />
       </div>
 
-      {isAdmin && (
+      {isAdmin && !hideForm && (
         <div className="bg-card border border-border rounded-lg">
           <div className="px-3 py-3 space-y-3">
             <div className="flex items-center gap-2">
@@ -465,6 +470,7 @@ export default function NutriVisitReportPanel() {
         </div>
       )}
 
+      {!hideForm && (
       <div className="bg-card border border-border rounded-lg p-3 space-y-4">
         <h4 className="text-sm font-semibold flex items-center gap-2">
           <ClipboardCheck className="h-4 w-4 text-primary" />
@@ -594,8 +600,9 @@ export default function NutriVisitReportPanel() {
           {saving ? "Salvando..." : "Salvar registro de visita"}
         </Button>
       </div>
+      )}
 
-      {loading ? (
+      {!hideHistory && (loading ? (
         <p className="text-center text-muted-foreground py-6 text-sm">Carregando histórico...</p>
       ) : reports.length > 0 ? (
         <div className="space-y-2">
@@ -623,7 +630,9 @@ export default function NutriVisitReportPanel() {
             );
           })}
         </div>
-      ) : null}
+      ) : (
+        <p className="text-center text-muted-foreground py-6 text-sm">Nenhuma visita registrada ainda.</p>
+      ))}
     </div>
   );
 }
