@@ -38,17 +38,17 @@ const WORK_DIR = process.env.PAYGO_WORKDIR || PAYGO_BASE;
 // PayGo return codes (parcial — só o que importa pro fluxo)
 const PWRET = {
   OK: 0,
-  NOTHING: 1,
-  MOREDATA: 2,
-  CANCEL: 9,
-  TIMEOUT: 11,
-  DISPLAY: 23,
-  OPERATION_REQUEST: 31,
-  COMMERROR: 18,
-  FROMHOST: 24,
-  FROMHOSTINIT: 25,
-  CARDDIRECT: 32,
-  PINPAD_INIT_FAIL: 16,
+  FROMHOST: -2596,
+  COMMERROR: -2553,
+  NOTINST: -2498,
+  MOREDATA: -2497,
+  DISPLAY: -2495,
+  NOTHING: -2493,
+  CANCEL: -2491,
+  TIMEOUT: -2490,
+  TRNNOTINIT: -2488,
+  DLLNOTINIT: -2487,
+  NOMANDATORY: -2483,
 };
 
 // PWINFO codes (entrada/saída)
@@ -81,6 +81,29 @@ let initialized = false;
 let available = null;
 let lastInitError = null;
 
+function normalizeRet(ret) {
+  return ret > 32767 ? ret - 65536 : ret;
+}
+
+function explainRet(ret) {
+  const code = normalizeRet(ret);
+  switch (code) {
+    case PWRET.NOTINST:
+      return "PWRET_NOTINST: ponto de captura não instalado; faça a Instalação no PayGo antes da venda";
+    case PWRET.DLLNOTINIT:
+      return "PWRET_DLLNOTINIT: PW_iInit não foi executado";
+    case PWRET.TRNNOTINIT:
+      return "PWRET_TRNNOTINIT: PW_iNewTransac não foi executado";
+    case PWRET.NOMANDATORY:
+      return "PWRET_NOMANDATORY: faltam parâmetros obrigatórios da transação";
+    case PWRET.COMMERROR:
+    case PWRET.FROMHOST:
+      return "erro de comunicação/host PayGo";
+    default:
+      return null;
+  }
+}
+
 function diagnostics() {
   return {
     dllExists: fs.existsSync(DLL_PATH),
@@ -101,15 +124,15 @@ function load() {
   lib = koffi.load(DLL_PATH);
 
   // PayGo Integrado usa __stdcall em Windows (WINAPI).
-  fn.Init = lib.func("__stdcall", "PW_iInit", "int", ["string"]);
-  fn.NewTransac = lib.func("__stdcall", "PW_iNewTransac", "int", ["short"]);
-  fn.AddParam = lib.func("__stdcall", "PW_iAddParam", "int", ["short", "string"]);
-  fn.ExecTransac = lib.func("__stdcall", "PW_iExecTransac", "int", ["void *", "_Inout_ short*"]);
-  fn.GetResult = lib.func("__stdcall", "PW_iGetResult", "int", ["short", "_Out_ char*", "_Inout_ short*"]);
-  fn.Confirmation = lib.func("__stdcall", "PW_iConfirmation", "int", ["short", "string"]);
-  fn.PPEventLoop = lib.func("__stdcall", "PW_iPPEventLoop", "int", ["_Out_ char*", "_Inout_ short*"]);
+  fn.Init = lib.func("__stdcall", "PW_iInit", "short", ["string"]);
+  fn.NewTransac = lib.func("__stdcall", "PW_iNewTransac", "short", ["short"]);
+  fn.AddParam = lib.func("__stdcall", "PW_iAddParam", "short", ["short", "string"]);
+  fn.ExecTransac = lib.func("__stdcall", "PW_iExecTransac", "short", ["void *", "_Inout_ short*"]);
+  fn.GetResult = lib.func("__stdcall", "PW_iGetResult", "short", ["short", "_Out_ char*", "_Inout_ short*"]);
+  fn.Confirmation = lib.func("__stdcall", "PW_iConfirmation", "short", ["short", "string"]);
+  fn.PPEventLoop = lib.func("__stdcall", "PW_iPPEventLoop", "short", ["_Out_ char*", "_Inout_ short*"]);
   // Não há PW_iVersion oficial em todas as builds; usamos a leitura do INFO se faltar.
-  try { fn.Version = lib.func("__stdcall", "PW_iVersion", "int", ["_Out_ char*", "_Inout_ short*"]); } catch { fn.Version = null; }
+  try { fn.Version = lib.func("__stdcall", "PW_iVersion", "short", ["_Out_ char*", "_Inout_ short*"]); } catch { fn.Version = null; }
 
   available = true;
   return lib;
