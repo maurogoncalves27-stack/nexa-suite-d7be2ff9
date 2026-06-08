@@ -447,15 +447,18 @@ export const AppLayout = ({ children }: { children?: ReactNode }) => {
             }`}
           >
             {showNutritionistBack && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate("/nutricionista/painel")}
-                className="gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Voltar ao painel
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/nutricionista/painel")}
+                  className="gap-2"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Voltar ao painel
+                </Button>
+                <div id="nutri-header-slot" className="flex items-center gap-2 ml-auto min-w-0" />
+              </div>
             )}
             <EnsureUserSignature />
             <WarningSignatureDialog />
