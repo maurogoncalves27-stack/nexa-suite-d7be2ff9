@@ -656,6 +656,7 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
         <Button onClick={saveReport} size="sm" className="w-full" disabled={saving || !currentStoreId}>
           {saving ? "Salvando..." : "Salvar registro de visita"}
         </Button>
+        </div>
       </div>
       )}
 
