@@ -10623,6 +10623,7 @@ export type Database = {
           acquirer: string | null
           agent_url: string
           created_at: string
+          environment: string
           id: string
           is_active: boolean
           merchant_code: string | null
@@ -10636,6 +10637,7 @@ export type Database = {
           acquirer?: string | null
           agent_url?: string
           created_at?: string
+          environment?: string
           id?: string
           is_active?: boolean
           merchant_code?: string | null
@@ -10649,6 +10651,7 @@ export type Database = {
           acquirer?: string | null
           agent_url?: string
           created_at?: string
+          environment?: string
           id?: string
           is_active?: boolean
           merchant_code?: string | null
