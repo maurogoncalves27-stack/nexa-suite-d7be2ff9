@@ -195,12 +195,12 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
       return;
     }
     if (!storeResponsible.trim()) {
-      setActiveTab("finalizar");
+      setStepIndex(Number.MAX_SAFE_INTEGER);
       toast({ title: "Informe o nome do responsável pela loja", variant: "destructive" });
       return;
     }
     if (sigRef.current?.isEmpty()) {
-      setActiveTab("finalizar");
+      setStepIndex(Number.MAX_SAFE_INTEGER);
       toast({ title: "Assinatura é obrigatória", variant: "destructive" });
       return;
     }
