@@ -59,13 +59,20 @@ interface VisitReportWithResponses extends VisitReport {
 interface NutriVisitReportPanelProps {
   hideHistory?: boolean;
   hideForm?: boolean;
+  managerOpen?: boolean;
+  onManagerChange?: (open: boolean) => void;
+  externalStoreId?: string | null;
+  hideStoreSelector?: boolean;
 }
 
-export default function NutriVisitReportPanel({ hideHistory = false, hideForm = false }: NutriVisitReportPanelProps = {}) {
+export default function NutriVisitReportPanel({ hideHistory = false, hideForm = false, managerOpen, onManagerChange, externalStoreId, hideStoreSelector = false }: NutriVisitReportPanelProps = {}) {
   const { user, isAdmin } = useAuth();
   const sigRef = useRef<SignatureCanvas | null>(null);
 
-  const [currentStoreId, setCurrentStoreId] = useState<string | null>(null);
+  const [internalStoreId, setInternalStoreId] = useState<string | null>(null);
+  const currentStoreId = externalStoreId !== undefined ? externalStoreId : internalStoreId;
+  const setCurrentStoreId = setInternalStoreId;
+
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [reports, setReports] = useState<VisitReportWithResponses[]>([]);
   const [loading, setLoading] = useState(true);
