@@ -65,26 +65,28 @@ const PWINFO = {
   AUTVER: 22,
   AUTDEV: 23,
   AUTCAP: 36,
-  TOTAMNT: 515,      // valor total em centavos (string)
-  CURRENCY: 514,     // 986 = BRL
+  TOTAMNT: 37,       // valor total em centavos (string)
+  CURRENCY: 38,      // 986 = BRL
   CURREXP: 39,       // 2 = centavos
-  PAYMTYPE: 517,     // 1 credito, 2 debito, 4 voucher, 5 outros, M menu, P PIX
-  INSTALLMENTS: 522, // qtd parcelas
-  FINTYPE: 524,      // 1 a vista, 2 parc emissor, 3 parc estab
+  CARDTYPE: 41,      // 1 credito, 2 debito, 4 voucher
+  FINTYPE: 59,       // 1 a vista, 2 parc emissor, 4 parc estab
+  INSTALLMENTS: 60,  // qtd parcelas
   REQNUM: 50,
+  AUTHSYST: 53,      // nome da rede/provedor
   VIRTMERCH: 54,
   RESULTMSG: 66,
+  CNFREQ: 67,        // se 1, exige confirmação
   AUTLOCREF: 68,
   AUTEXTREF: 69,
-  HOSTNSU: 132,
-  AUTHCODE: 134,
-  AUTHSYST: 138,     // nome da rede
-  CNFREQ: 121,       // se 1, exige confirmação
-  RCPTPRN: 129,      // via cliente
-  RCPTMERCH: 130,    // via estabelecimento
-  RCPTCHOLDER: 131,  // via portador
-  TRNDATE: 136,
-  TRNTIME: 137,
+  AUTHCODE: 70,
+  RCPTMERCH: 83,     // via estabelecimento
+  RCPTCHOLDER: 84,   // via cliente
+  TRNORIGDATE: 87,
+  TRNORIGNSU: 88,
+  TRNORIGAMNT: 96,
+  TRNORIGAUTH: 98,
+  TRNORIGTIME: 115,
+  DATETIME: 49,
 };
 
 const PWOPER = {
@@ -151,12 +153,11 @@ function load() {
 
   // PayGo Integrado usa __stdcall em Windows (WINAPI).
   fn.Init = lib.func("__stdcall", "PW_iInit", "short", ["string"]);
-  try { fn.SetEnvironment = lib.func("__stdcall", "PW_iSetEnvironment", "short", ["short"]); } catch { fn.SetEnvironment = null; }
   fn.NewTransac = lib.func("__stdcall", "PW_iNewTransac", "short", ["short"]);
   fn.AddParam = lib.func("__stdcall", "PW_iAddParam", "short", ["short", "string"]);
   fn.ExecTransac = lib.func("__stdcall", "PW_iExecTransac", "short", ["void *", "_Inout_ short*"]);
   fn.GetResult = lib.func("__stdcall", "PW_iGetResult", "short", ["short", "_Out_ char*", "_Inout_ short*"]);
-  fn.Confirmation = lib.func("__stdcall", "PW_iConfirmation", "short", ["short", "string"]);
+  fn.Confirmation = lib.func("__stdcall", "PW_iConfirmation", "short", ["short", "string", "string", "string", "string", "string"]);
   fn.PPEventLoop = lib.func("__stdcall", "PW_iPPEventLoop", "short", ["_Out_ char*", "_Inout_ short*"]);
   // Não há PW_iVersion oficial em todas as builds; usamos a leitura do INFO se faltar.
   try { fn.Version = lib.func("__stdcall", "PW_iVersion", "short", ["_Out_ char*", "_Inout_ short*"]); } catch { fn.Version = null; }
@@ -189,19 +190,11 @@ function addMandatoryAutomationParams() {
   fn.AddParam(PWINFO.AUTCAP, AUTOMATION_INFO.capabilities);
 }
 
-function ensureInit({ environment } = {}) {
+function ensureInit() {
   if (initialized) return;
   load();
 
   fs.mkdirSync(WORK_DIR, { recursive: true });
-
-  if (environment === "demo" && fn.SetEnvironment) {
-    const envRet = normalizeRet(fn.SetEnvironment(1));
-    if (envRet !== PWRET.OK) {
-      lastInitError = `PW_iSetEnvironment ret=${envRet}`;
-      throw new Error(`PW_iSetEnvironment falhou (${envRet})${explainRet(envRet) ? ` — ${explainRet(envRet)}` : ""}`);
-    }
-  }
 
   const r = normalizeRet(fn.Init(WORK_DIR));
   if (r !== PWRET.OK) {
@@ -212,8 +205,8 @@ function ensureInit({ environment } = {}) {
   lastInitError = null;
 }
 
-function startTransaction(op, label, options = {}) {
-  ensureInit(options);
+function startTransaction(op, label) {
+  ensureInit();
   let r = normalizeRet(fn.NewTransac(op));
 
   if (r !== PWRET.OK) {
