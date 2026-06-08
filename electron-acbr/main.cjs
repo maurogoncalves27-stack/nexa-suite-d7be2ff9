@@ -128,7 +128,8 @@ if (!gotLock) {
 
   app.on("before-quit", () => {
     app.isQuiting = true;
-    try { httpServer?.close(); } catch { /* ignore */ }
+    try { httpServer?.httpServer?.close(); } catch { /* ignore */ }
+    try { httpServer?.httpsServer?.close(); } catch { /* ignore */ }
     server.stop();
   });
 }
