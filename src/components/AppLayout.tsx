@@ -173,12 +173,14 @@ const HeaderBar = ({
   pathname,
   onOpenPalette,
   partnerOnly,
+  hideBreadcrumb,
 }: {
   title: string;
   group?: string;
   pathname: string;
   onOpenPalette: () => void;
   partnerOnly?: boolean;
+  hideBreadcrumb?: boolean;
 }) => {
   const { toggleSidebar, isMobile } = useSidebar();
   const { isAdmin, isManager, signOut } = useAuth();
