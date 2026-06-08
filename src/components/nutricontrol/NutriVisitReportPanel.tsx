@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { format } from "date-fns";
-import { Trash2, Plus, Pencil, Eye, ClipboardCheck, Calendar as CalendarIcon } from "lucide-react";
+import { Trash2, Plus, Pencil, Eye, ClipboardCheck, Calendar as CalendarIcon, Settings } from "lucide-react";
 import SignatureCanvas from "react-signature-canvas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NutriStoreSelector } from "@/components/nutricontrol/NutriStoreSelector";
 
@@ -84,6 +86,10 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
 
   // View report
   const [viewingReport, setViewingReport] = useState<string | null>(null);
+
+  // Manager dialog
+  const [showManager, setShowManager] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>(SECTIONS[0]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
