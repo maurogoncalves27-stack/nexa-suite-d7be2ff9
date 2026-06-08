@@ -536,7 +536,7 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
           </div>
         )}
 
-        <div className={!currentStoreId ? "pointer-events-none opacity-50 select-none" : ""} inert={!currentStoreId ? "" : undefined}>
+        <div className={!currentStoreId ? "pointer-events-none opacity-50 select-none" : ""} aria-hidden={!currentStoreId ? true : undefined}>
         {/* Data e responsável ocultos — data = hoje, responsável = usuário logado */}
 
 
