@@ -27,6 +27,7 @@ interface TefCfg {
   terminal_code: string | null;
   acquirer: string | null;
   is_active: boolean;
+  environment: "demo" | "producao";
 }
 
 const DEFAULT_AGENT_URL: Record<TefCfg["provider"], string> = {
@@ -44,6 +45,7 @@ const blank = (storeId: string): TefCfg => ({
   terminal_code: "",
   acquirer: "",
   is_active: true,
+  environment: "demo",
 });
 
 export default function TefConfigPanel() {
