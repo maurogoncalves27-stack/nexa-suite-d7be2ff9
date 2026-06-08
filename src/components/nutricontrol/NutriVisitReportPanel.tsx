@@ -59,13 +59,20 @@ interface VisitReportWithResponses extends VisitReport {
 interface NutriVisitReportPanelProps {
   hideHistory?: boolean;
   hideForm?: boolean;
+  managerOpen?: boolean;
+  onManagerChange?: (open: boolean) => void;
+  externalStoreId?: string | null;
+  hideStoreSelector?: boolean;
 }
 
-export default function NutriVisitReportPanel({ hideHistory = false, hideForm = false }: NutriVisitReportPanelProps = {}) {
+export default function NutriVisitReportPanel({ hideHistory = false, hideForm = false, managerOpen, onManagerChange, externalStoreId, hideStoreSelector = false }: NutriVisitReportPanelProps = {}) {
   const { user, isAdmin } = useAuth();
   const sigRef = useRef<SignatureCanvas | null>(null);
 
-  const [currentStoreId, setCurrentStoreId] = useState<string | null>(null);
+  const [internalStoreId, setInternalStoreId] = useState<string | null>(null);
+  const currentStoreId = externalStoreId !== undefined ? externalStoreId : internalStoreId;
+  const setCurrentStoreId = setInternalStoreId;
+
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [reports, setReports] = useState<VisitReportWithResponses[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,8 +95,14 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
   const [viewingReport, setViewingReport] = useState<string | null>(null);
 
   // Manager dialog
-  const [showManager, setShowManager] = useState(false);
+  const [showManagerInternal, setShowManagerInternal] = useState(false);
+  const showManager = managerOpen !== undefined ? managerOpen : showManagerInternal;
+  const setShowManager = (open: boolean) => {
+    if (managerOpen === undefined) setShowManagerInternal(open);
+    onManagerChange?.(open);
+  };
   const [activeTab, setActiveTab] = useState<string>(SECTIONS[0]);
+
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -397,22 +410,25 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <div className="flex-1 min-w-0">
-          <NutriStoreSelector value={currentStoreId} onChange={setCurrentStoreId} />
+      {!hideStoreSelector && (
+        <div className="flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <NutriStoreSelector value={currentStoreId} onChange={setCurrentStoreId} />
+          </div>
+          {isAdmin && !hideForm && managerOpen === undefined && (
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9 shrink-0"
+              title="Gerenciar itens do checklist"
+              onClick={() => setShowManager(true)}
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          )}
         </div>
-        {isAdmin && !hideForm && (
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-9 w-9 shrink-0"
-            title="Gerenciar itens do checklist"
-            onClick={() => setShowManager(true)}
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
+      )}
+
 
       {isAdmin && !hideForm && (
         <Dialog open={showManager} onOpenChange={setShowManager}>
@@ -514,18 +530,9 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
           Nova visita técnica
         </h4>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Data da visita</label>
-            <Input type="date" value={visitDate} onChange={(e) => setVisitDate(e.target.value)} className="h-9 text-sm" />
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Responsável pela visita</label>
-            <div className="h-9 px-3 text-sm rounded-md border border-border bg-muted/40 flex items-center text-foreground truncate">
-              {visitorName || "—"}
-            </div>
-          </div>
-        </div>
+        {/* Data e responsável ocultos — data = hoje, responsável = usuário logado */}
+
+
 
 
         {checklistItems.length > 0 && (
