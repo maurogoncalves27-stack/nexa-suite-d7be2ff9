@@ -397,17 +397,33 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <NutriStoreSelector value={currentStoreId} onChange={setCurrentStoreId} />
+      <div className="flex items-center gap-2">
+        <div className="flex-1 min-w-0">
+          <NutriStoreSelector value={currentStoreId} onChange={setCurrentStoreId} />
+        </div>
+        {isAdmin && !hideForm && (
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 shrink-0"
+            title="Gerenciar itens do checklist"
+            onClick={() => setShowManager(true)}
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       {isAdmin && !hideForm && (
-        <div className="bg-card border border-border rounded-lg">
-          <div className="px-3 py-3 space-y-3">
-            <div className="flex items-center gap-2">
-              <ClipboardCheck className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold">Gerenciar itens do checklist</span>
-            </div>
+        <Dialog open={showManager} onOpenChange={setShowManager}>
+          <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-base">
+                <ClipboardCheck className="h-4 w-4 text-primary" />
+                Gerenciar itens do checklist
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
             <form
               onSubmit={(e) => { e.preventDefault(); addChecklistItem(); }}
               className="space-y-2"
