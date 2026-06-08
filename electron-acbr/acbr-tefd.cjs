@@ -69,6 +69,12 @@ const PWINFO = {
   TRNTIME: 137,
 };
 
+const PWOPER = {
+  ADMIN: 0x20,
+  SALE: 0x21,
+  SALEVOID: 0x22,
+};
+
 let lib = null;
 let fn = {};
 let initialized = false;
@@ -210,8 +216,7 @@ function efetuarPagamento({ valor, tipo = "credito", parcelas = 1, financiamento
   ensureInit();
   if (!valor || valor <= 0) throw new Error("valor obrigatório");
 
-  // OPER 0 = SALE (CRT/DBT/VOUCHER/PIX dependem do PAYMTYPE)
-  let r = fn.NewTransac(0);
+  let r = fn.NewTransac(PWOPER.SALE);
   if (r !== PWRET.OK) throw new Error(`PW_iNewTransac ret=${r}`);
 
   const centavos = Math.round(Number(valor) * 100).toString();
@@ -248,8 +253,7 @@ function cancelarEmAndamento() {
  */
 function cancelarVenda({ valor, nsu, data, onDisplay } = {}) {
   ensureInit();
-  // OPER 5 = REFUND/CANCEL no PayGo
-  const r = fn.NewTransac(5);
+  const r = fn.NewTransac(PWOPER.SALEVOID);
   if (r !== PWRET.OK) throw new Error(`PW_iNewTransac(refund) ret=${r}`);
 
   fn.AddParam(PWINFO.CURRENCY, "986");
@@ -270,8 +274,7 @@ function cancelarVenda({ valor, nsu, data, onDisplay } = {}) {
  */
 function administrativo({ onDisplay } = {}) {
   ensureInit();
-  // OPER 4 = ADMIN
-  const r = fn.NewTransac(4);
+  const r = fn.NewTransac(PWOPER.ADMIN);
   if (r !== PWRET.OK) throw new Error(`PW_iNewTransac(admin) ret=${r}`);
   runExecLoop({ onDisplay });
   return collectReceipts();
