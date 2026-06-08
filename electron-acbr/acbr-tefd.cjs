@@ -144,6 +144,7 @@ function diagnostics() {
     workdirExists: fs.existsSync(WORK_DIR),
     missing: [DLL_PATH, WORK_DIR].filter((p) => !fs.existsSync(p)),
     expected: { DLL_PATH, WORK_DIR, PAYGO_BASE },
+    searchedBases: DEFAULT_BASES,
     arch: process.arch, // x64/ia32 — precisa casar com a DLL!
     lastInitError,
   };
