@@ -72,7 +72,7 @@ export const NutriStoreSelector = ({ value, onChange }: Props) => {
       >
         <SelectTrigger className="h-9 w-[220px] text-sm">
           <SelectValue
-            placeholder={loading ? "Carregando..." : stores.length === 0 ? "Sem loja vinculada" : "Selecione a loja"}
+            placeholder={loading ? "Carregando..." : stores.length === 0 ? "Sem loja vinculada" : "Loja"}
           />
         </SelectTrigger>
         <SelectContent>
