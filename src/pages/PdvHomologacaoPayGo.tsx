@@ -195,7 +195,7 @@ export default function PdvHomologacaoPayGo() {
         const cfg: TefConfig = {
           ...(await loadTefConfig(storeId)),
           provider: "acbr",
-          agentUrl: "https://127.0.0.1:3031",
+          agentUrl: ACBR_AGENT_URL,
           acquirer: step.sale?.acquirer,
         };
         const adapter = createAcbrAdapter(cfg);
