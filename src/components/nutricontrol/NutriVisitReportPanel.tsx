@@ -410,22 +410,25 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <div className="flex-1 min-w-0">
-          <NutriStoreSelector value={currentStoreId} onChange={setCurrentStoreId} />
+      {!hideStoreSelector && (
+        <div className="flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <NutriStoreSelector value={currentStoreId} onChange={setCurrentStoreId} />
+          </div>
+          {isAdmin && !hideForm && managerOpen === undefined && (
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9 shrink-0"
+              title="Gerenciar itens do checklist"
+              onClick={() => setShowManager(true)}
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          )}
         </div>
-        {isAdmin && !hideForm && (
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-9 w-9 shrink-0"
-            title="Gerenciar itens do checklist"
-            onClick={() => setShowManager(true)}
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
+      )}
+
 
       {isAdmin && !hideForm && (
         <Dialog open={showManager} onOpenChange={setShowManager}>
