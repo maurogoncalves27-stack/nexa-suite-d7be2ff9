@@ -8012,6 +8012,7 @@ export type Database = {
           created_by: string
           id: string
           name: string
+          section: string | null
           sort_order: number
         }
         Insert: {
@@ -8019,6 +8020,7 @@ export type Database = {
           created_by: string
           id?: string
           name: string
+          section?: string | null
           sort_order?: number
         }
         Update: {
@@ -8026,6 +8028,7 @@ export type Database = {
           created_by?: string
           id?: string
           name?: string
+          section?: string | null
           sort_order?: number
         }
         Relationships: []

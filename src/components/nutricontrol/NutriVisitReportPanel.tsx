@@ -9,12 +9,27 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NutriStoreSelector } from "@/components/nutricontrol/NutriStoreSelector";
+
+const SECTIONS = [
+  "1. Documentação e Requisitos Legais",
+  "2. Higiene e Comportamento dos Manipuladores",
+  "3. Recebimento e Armazenamento de Mercadorias",
+  "4. Áreas de Frio (Geladeiras, Freezers e Câmaras)",
+  "5. Pré-Preparo e Preparo dos Alimentos",
+  "6. Distribuição e Exposição do Alimento Pronto",
+  "7. Higienização de Instalações, Equipamentos e Utensílios",
+  "8. Gestão de Resíduos e Controle de Pragas",
+] as const;
+
+const OTHER_SECTION = "Outros";
 
 interface ChecklistItem {
   id: string;
   name: string;
   sort_order: number;
+  section: string | null;
 }
 
 interface ChecklistResponse {
@@ -58,6 +73,7 @@ export default function NutriVisitReportPanel() {
 
   // Admin: manage checklist items
   const [newItemName, setNewItemName] = useState("");
+  const [newItemSection, setNewItemSection] = useState<string>(SECTIONS[0]);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
 
@@ -237,6 +253,7 @@ export default function NutriVisitReportPanel() {
     const maxOrder = checklistItems.reduce((max, i) => Math.max(max, i.sort_order), 0);
     const { error } = await supabase.from("nutri_visit_checklist_items").insert({
       name: newItemName.trim(),
+      section: newItemSection,
       sort_order: maxOrder + 1,
       created_by: user.id,
     });
@@ -293,23 +310,35 @@ export default function NutriVisitReportPanel() {
 
           <div className="space-y-2">
             <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Check-list</h4>
-            {viewedReport.responses.map((resp) => {
-              const item = checklistItems.find((i) => i.id === resp.checklist_item_id);
+            {[...SECTIONS, OTHER_SECTION].map((sec) => {
+              const secResponses = viewedReport.responses.filter((r) => {
+                const item = checklistItems.find((i) => i.id === r.checklist_item_id);
+                return (item?.section ?? OTHER_SECTION) === sec;
+              });
+              if (secResponses.length === 0) return null;
               return (
-                <div key={resp.checklist_item_id} className="border border-border rounded-md p-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                      resp.is_conform
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-destructive text-destructive-foreground"
-                    }`}>
-                      {resp.is_conform ? "C" : "NC"}
-                    </span>
-                    <span className="text-sm text-foreground">{item?.name ?? "Item removido"}</span>
-                  </div>
-                  {resp.observation && (
-                    <p className="text-xs text-muted-foreground mt-1 ml-8 italic">"{resp.observation}"</p>
-                  )}
+                <div key={sec} className="space-y-1.5">
+                  <p className="text-[11px] font-semibold text-primary uppercase tracking-wide">{sec}</p>
+                  {secResponses.map((resp) => {
+                    const item = checklistItems.find((i) => i.id === resp.checklist_item_id);
+                    return (
+                      <div key={resp.checklist_item_id} className="border border-border rounded-md p-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            resp.is_conform
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-destructive text-destructive-foreground"
+                          }`}>
+                            {resp.is_conform ? "C" : "NC"}
+                          </span>
+                          <span className="text-sm text-foreground">{item?.name ?? "Item removido"}</span>
+                        </div>
+                        {resp.observation && (
+                          <p className="text-xs text-muted-foreground mt-1 ml-8 italic">"{resp.observation}"</p>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}
@@ -356,17 +385,29 @@ export default function NutriVisitReportPanel() {
             </div>
             <form
               onSubmit={(e) => { e.preventDefault(); addChecklistItem(); }}
-              className="flex gap-2"
+              className="space-y-2"
             >
-              <Input
-                placeholder="Novo item..."
-                value={newItemName}
-                onChange={(e) => setNewItemName(e.target.value)}
-                className="flex-1 h-9 text-sm"
-              />
-              <Button type="submit" size="icon" className="h-9 w-9" disabled={!newItemName.trim()}>
-                <Plus className="h-4 w-4" />
-              </Button>
+              <Select value={newItemSection} onValueChange={setNewItemSection}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="Seção" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SECTIONS.map((s) => (
+                    <SelectItem key={s} value={s} className="text-sm">{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Novo item..."
+                  value={newItemName}
+                  onChange={(e) => setNewItemName(e.target.value)}
+                  className="flex-1 h-9 text-sm"
+                />
+                <Button type="submit" size="icon" className="h-9 w-9" disabled={!newItemName.trim()}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </form>
           </div>
           <Accordion type="single" collapsible>
@@ -376,36 +417,45 @@ export default function NutriVisitReportPanel() {
                   Ver itens cadastrados ({checklistItems.length})
                 </span>
               </AccordionTrigger>
-              <AccordionContent className="px-3 pb-3 space-y-2">
-                {checklistItems.map((item) => (
-                  <div key={item.id} className="flex items-center gap-2">
-                    {editingItemId === item.id ? (
-                      <form
-                        onSubmit={(e) => { e.preventDefault(); updateChecklistItem(item.id); }}
-                        className="flex-1 flex gap-2"
-                      >
-                        <Input
-                          value={editingName}
-                          onChange={(e) => setEditingName(e.target.value)}
-                          className="h-7 text-sm"
-                          autoFocus
-                        />
-                        <Button type="submit" size="sm" className="h-7 text-xs">Salvar</Button>
-                        <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setEditingItemId(null)}>Cancelar</Button>
-                      </form>
-                    ) : (
-                      <>
-                        <span className="flex-1 text-sm text-foreground">{item.name}</span>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingItemId(item.id); setEditingName(item.name); }}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteChecklistItem(item.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                ))}
+              <AccordionContent className="px-3 pb-3 space-y-3">
+                {[...SECTIONS, OTHER_SECTION].map((sec) => {
+                  const secItems = checklistItems.filter((i) => (i.section ?? OTHER_SECTION) === sec);
+                  if (secItems.length === 0) return null;
+                  return (
+                    <div key={sec} className="space-y-1.5">
+                      <p className="text-[11px] font-semibold text-primary uppercase tracking-wide">{sec}</p>
+                      {secItems.map((item) => (
+                        <div key={item.id} className="flex items-center gap-2 pl-2">
+                          {editingItemId === item.id ? (
+                            <form
+                              onSubmit={(e) => { e.preventDefault(); updateChecklistItem(item.id); }}
+                              className="flex-1 flex gap-2"
+                            >
+                              <Input
+                                value={editingName}
+                                onChange={(e) => setEditingName(e.target.value)}
+                                className="h-7 text-sm"
+                                autoFocus
+                              />
+                              <Button type="submit" size="sm" className="h-7 text-xs">Salvar</Button>
+                              <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setEditingItemId(null)}>Cancelar</Button>
+                            </form>
+                          ) : (
+                            <>
+                              <span className="flex-1 text-sm text-foreground">{item.name}</span>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingItemId(item.id); setEditingName(item.name); }}>
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteChecklistItem(item.id)}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
                 {checklistItems.length === 0 && (
                   <p className="text-xs text-muted-foreground text-center py-2">Nenhum item cadastrado.</p>
                 )}
@@ -439,38 +489,63 @@ export default function NutriVisitReportPanel() {
         </div>
 
         {checklistItems.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Check-list</h4>
-            {checklistItems.map((item) => {
-              const resp = responses[item.id];
-              if (!resp) return null;
+          <Accordion
+            type="multiple"
+            defaultValue={[...SECTIONS, OTHER_SECTION]}
+            className="space-y-2"
+          >
+            {[...SECTIONS, OTHER_SECTION].map((sec) => {
+              const secItems = checklistItems.filter((i) => (i.section ?? OTHER_SECTION) === sec);
+              if (secItems.length === 0) return null;
+              const ncCount = secItems.filter((i) => responses[i.id] && !responses[i.id].is_conform).length;
               return (
-                <div key={item.id} className="border border-border rounded-lg p-3 space-y-2">
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => toggleConform(item.id)}
-                      className={`px-2.5 py-0.5 rounded-full text-xs font-semibold transition-colors shrink-0 ${
-                        resp.is_conform
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-destructive text-destructive-foreground"
-                      }`}
-                    >
-                      {resp.is_conform ? "C" : "NC"}
-                    </button>
-                    <span className="text-sm text-foreground flex-1">{item.name}</span>
-                  </div>
-                  <Textarea
-                    placeholder="Observação do item (opcional)..."
-                    value={resp.observation}
-                    onChange={(e) => setObservation(item.id, e.target.value)}
-                    className="text-sm min-h-[50px] resize-none"
-                    maxLength={500}
-                  />
-                </div>
+                <AccordionItem key={sec} value={sec} className="border border-border rounded-lg">
+                  <AccordionTrigger className="px-3 py-2 hover:no-underline">
+                    <div className="flex items-center gap-2 text-left">
+                      <span className="text-sm font-semibold text-primary">{sec}</span>
+                      <span className="text-[11px] text-muted-foreground">({secItems.length})</span>
+                      {ncCount > 0 && (
+                        <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-destructive text-destructive-foreground font-semibold">
+                          {ncCount} NC
+                        </span>
+                      )}
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-3 pb-3 space-y-2">
+                    {secItems.map((item) => {
+                      const resp = responses[item.id];
+                      if (!resp) return null;
+                      return (
+                        <div key={item.id} className="border border-border rounded-lg p-3 space-y-2">
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => toggleConform(item.id)}
+                              className={`px-2.5 py-0.5 rounded-full text-xs font-semibold transition-colors shrink-0 ${
+                                resp.is_conform
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-destructive text-destructive-foreground"
+                              }`}
+                            >
+                              {resp.is_conform ? "C" : "NC"}
+                            </button>
+                            <span className="text-sm text-foreground flex-1">{item.name}</span>
+                          </div>
+                          <Textarea
+                            placeholder="Observação do item (opcional)..."
+                            value={resp.observation}
+                            onChange={(e) => setObservation(item.id, e.target.value)}
+                            className="text-sm min-h-[50px] resize-none"
+                            maxLength={500}
+                          />
+                        </div>
+                      );
+                    })}
+                  </AccordionContent>
+                </AccordionItem>
               );
             })}
-          </div>
+          </Accordion>
         )}
 
         {checklistItems.length === 0 && (

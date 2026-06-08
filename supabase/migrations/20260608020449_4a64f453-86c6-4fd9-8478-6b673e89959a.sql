@@ -1,0 +1,1 @@
+ALTER TABLE public.nutri_visit_checklist_items ADD COLUMN IF NOT EXISTS section text;
