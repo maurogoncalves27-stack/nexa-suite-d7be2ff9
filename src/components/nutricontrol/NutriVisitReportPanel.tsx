@@ -373,17 +373,29 @@ export default function NutriVisitReportPanel() {
             </div>
             <form
               onSubmit={(e) => { e.preventDefault(); addChecklistItem(); }}
-              className="flex gap-2"
+              className="space-y-2"
             >
-              <Input
-                placeholder="Novo item..."
-                value={newItemName}
-                onChange={(e) => setNewItemName(e.target.value)}
-                className="flex-1 h-9 text-sm"
-              />
-              <Button type="submit" size="icon" className="h-9 w-9" disabled={!newItemName.trim()}>
-                <Plus className="h-4 w-4" />
-              </Button>
+              <Select value={newItemSection} onValueChange={setNewItemSection}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="Seção" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SECTIONS.map((s) => (
+                    <SelectItem key={s} value={s} className="text-sm">{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Novo item..."
+                  value={newItemName}
+                  onChange={(e) => setNewItemName(e.target.value)}
+                  className="flex-1 h-9 text-sm"
+                />
+                <Button type="submit" size="icon" className="h-9 w-9" disabled={!newItemName.trim()}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </form>
           </div>
           <Accordion type="single" collapsible>
@@ -393,36 +405,45 @@ export default function NutriVisitReportPanel() {
                   Ver itens cadastrados ({checklistItems.length})
                 </span>
               </AccordionTrigger>
-              <AccordionContent className="px-3 pb-3 space-y-2">
-                {checklistItems.map((item) => (
-                  <div key={item.id} className="flex items-center gap-2">
-                    {editingItemId === item.id ? (
-                      <form
-                        onSubmit={(e) => { e.preventDefault(); updateChecklistItem(item.id); }}
-                        className="flex-1 flex gap-2"
-                      >
-                        <Input
-                          value={editingName}
-                          onChange={(e) => setEditingName(e.target.value)}
-                          className="h-7 text-sm"
-                          autoFocus
-                        />
-                        <Button type="submit" size="sm" className="h-7 text-xs">Salvar</Button>
-                        <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setEditingItemId(null)}>Cancelar</Button>
-                      </form>
-                    ) : (
-                      <>
-                        <span className="flex-1 text-sm text-foreground">{item.name}</span>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingItemId(item.id); setEditingName(item.name); }}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteChecklistItem(item.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                ))}
+              <AccordionContent className="px-3 pb-3 space-y-3">
+                {[...SECTIONS, OTHER_SECTION].map((sec) => {
+                  const secItems = checklistItems.filter((i) => (i.section ?? OTHER_SECTION) === sec);
+                  if (secItems.length === 0) return null;
+                  return (
+                    <div key={sec} className="space-y-1.5">
+                      <p className="text-[11px] font-semibold text-primary uppercase tracking-wide">{sec}</p>
+                      {secItems.map((item) => (
+                        <div key={item.id} className="flex items-center gap-2 pl-2">
+                          {editingItemId === item.id ? (
+                            <form
+                              onSubmit={(e) => { e.preventDefault(); updateChecklistItem(item.id); }}
+                              className="flex-1 flex gap-2"
+                            >
+                              <Input
+                                value={editingName}
+                                onChange={(e) => setEditingName(e.target.value)}
+                                className="h-7 text-sm"
+                                autoFocus
+                              />
+                              <Button type="submit" size="sm" className="h-7 text-xs">Salvar</Button>
+                              <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setEditingItemId(null)}>Cancelar</Button>
+                            </form>
+                          ) : (
+                            <>
+                              <span className="flex-1 text-sm text-foreground">{item.name}</span>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingItemId(item.id); setEditingName(item.name); }}>
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteChecklistItem(item.id)}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
                 {checklistItems.length === 0 && (
                   <p className="text-xs text-muted-foreground text-center py-2">Nenhum item cadastrado.</p>
                 )}
