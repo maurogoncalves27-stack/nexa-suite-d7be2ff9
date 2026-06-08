@@ -162,8 +162,9 @@ async function handle(req, res) {
       let tefReady = false, tefVersion = null, tefError = null;
       const tefAvailable = tef.isAvailable();
       if (tefAvailable) {
-        try { tefVersion = tef.versao(); tefReady = true; }
-        catch (e) { tefError = e.message; }
+        const tefDiagnostics = tef.diagnostics();
+        tefReady = !!tefDiagnostics.initialized;
+        tefVersion = tefReady ? "PGWebLib inicializada" : "PGWebLib carregada";
       } else {
         tefError = "PGWebLib.dll não disponível";
       }
@@ -236,7 +237,7 @@ async function handle(req, res) {
     if (req.method === "POST" && path === "/tef/install") {
       if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "PGWebLib.dll não disponível" });
       const body = await readBody(req);
-      const retorno = tef.instalarPdc({ ...body, onDisplay: (m) => console.log("[TEF display]", m) });
+      const retorno = tef.instalarPdc({ ...body, environment: body.environment, onDisplay: (m) => console.log("[TEF display]", m) });
       return send(res, 200, { ok: true, retorno });
     }
 

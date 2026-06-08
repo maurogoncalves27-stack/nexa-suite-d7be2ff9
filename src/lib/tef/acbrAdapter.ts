@@ -192,7 +192,7 @@ export const acbrInstalarPdc = async (
     const r = await fetch(`${agentUrl}/tef/install`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ environment: "homologation" }),
     });
     const data = await r.json().catch(() => ({}));
     if (!r.ok) return { ok: false, parsed: {}, error: data?.error ?? `HTTP ${r.status}` };
