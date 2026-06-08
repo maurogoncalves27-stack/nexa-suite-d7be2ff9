@@ -271,6 +271,7 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
       reset[item.id] = { checklist_item_id: item.id, is_conform: true, observation: "" };
     });
     setResponses(reset);
+    setStepIndex(0);
 
     toast({ title: "Visita registrada com sucesso" });
     setSaving(false);
