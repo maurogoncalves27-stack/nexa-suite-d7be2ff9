@@ -17,8 +17,15 @@ const path = require("path");
 const fs = require("fs");
 const koffi = require("koffi");
 
+function normalizeBaseCandidate(value) {
+  if (!value) return null;
+  return /\.dll$/i.test(value) ? path.dirname(value) : value;
+}
+
 const DEFAULT_BASES = [
-  process.env.PAYGO_BASE,
+  normalizeBaseCandidate(process.env.PAYGO_BASE),
+  normalizeBaseCandidate(process.env.PathPGWebLib_x64),
+  normalizeBaseCandidate(process.env.PathPGWebLib),
   "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib\\x64",
   "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib\\x86",
   "C:\\Program Files (x86)\\PayGo\\PGWebLib\\x64",
