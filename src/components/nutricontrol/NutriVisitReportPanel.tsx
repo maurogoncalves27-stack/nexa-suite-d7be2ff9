@@ -477,38 +477,63 @@ export default function NutriVisitReportPanel() {
         </div>
 
         {checklistItems.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Check-list</h4>
-            {checklistItems.map((item) => {
-              const resp = responses[item.id];
-              if (!resp) return null;
+          <Accordion
+            type="multiple"
+            defaultValue={[...SECTIONS, OTHER_SECTION]}
+            className="space-y-2"
+          >
+            {[...SECTIONS, OTHER_SECTION].map((sec) => {
+              const secItems = checklistItems.filter((i) => (i.section ?? OTHER_SECTION) === sec);
+              if (secItems.length === 0) return null;
+              const ncCount = secItems.filter((i) => responses[i.id] && !responses[i.id].is_conform).length;
               return (
-                <div key={item.id} className="border border-border rounded-lg p-3 space-y-2">
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => toggleConform(item.id)}
-                      className={`px-2.5 py-0.5 rounded-full text-xs font-semibold transition-colors shrink-0 ${
-                        resp.is_conform
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-destructive text-destructive-foreground"
-                      }`}
-                    >
-                      {resp.is_conform ? "C" : "NC"}
-                    </button>
-                    <span className="text-sm text-foreground flex-1">{item.name}</span>
-                  </div>
-                  <Textarea
-                    placeholder="Observação do item (opcional)..."
-                    value={resp.observation}
-                    onChange={(e) => setObservation(item.id, e.target.value)}
-                    className="text-sm min-h-[50px] resize-none"
-                    maxLength={500}
-                  />
-                </div>
+                <AccordionItem key={sec} value={sec} className="border border-border rounded-lg">
+                  <AccordionTrigger className="px-3 py-2 hover:no-underline">
+                    <div className="flex items-center gap-2 text-left">
+                      <span className="text-sm font-semibold text-primary">{sec}</span>
+                      <span className="text-[11px] text-muted-foreground">({secItems.length})</span>
+                      {ncCount > 0 && (
+                        <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-destructive text-destructive-foreground font-semibold">
+                          {ncCount} NC
+                        </span>
+                      )}
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-3 pb-3 space-y-2">
+                    {secItems.map((item) => {
+                      const resp = responses[item.id];
+                      if (!resp) return null;
+                      return (
+                        <div key={item.id} className="border border-border rounded-lg p-3 space-y-2">
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => toggleConform(item.id)}
+                              className={`px-2.5 py-0.5 rounded-full text-xs font-semibold transition-colors shrink-0 ${
+                                resp.is_conform
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-destructive text-destructive-foreground"
+                              }`}
+                            >
+                              {resp.is_conform ? "C" : "NC"}
+                            </button>
+                            <span className="text-sm text-foreground flex-1">{item.name}</span>
+                          </div>
+                          <Textarea
+                            placeholder="Observação do item (opcional)..."
+                            value={resp.observation}
+                            onChange={(e) => setObservation(item.id, e.target.value)}
+                            className="text-sm min-h-[50px] resize-none"
+                            maxLength={500}
+                          />
+                        </div>
+                      );
+                    })}
+                  </AccordionContent>
+                </AccordionItem>
               );
             })}
-          </div>
+          </Accordion>
         )}
 
         {checklistItems.length === 0 && (
