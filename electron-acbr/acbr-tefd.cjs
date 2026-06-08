@@ -116,6 +116,11 @@ const AUTOMATION_INFO = {
   capabilities: "28",
 };
 
+const PAYGO_ENV = {
+  PRODUCTION: 0,
+  HOMOLOGATION: 1,
+};
+
 let lib = null;
 let fn = {};
 let initialized = false;
@@ -145,6 +150,13 @@ function explainRet(ret) {
   }
 }
 
+function resolveEnvironment(value) {
+  if (value === undefined || value === null || value === "") return null;
+  if (value === true || value === 1 || /^1|homolog/i.test(String(value))) return PAYGO_ENV.HOMOLOGATION;
+  if (value === false || value === 0 || /^0|prod/i.test(String(value))) return PAYGO_ENV.PRODUCTION;
+  return null;
+}
+
 function diagnostics() {
   return {
     dllExists: fs.existsSync(DLL_PATH),
@@ -153,6 +165,7 @@ function diagnostics() {
     expected: { DLL_PATH, WORK_DIR, PAYGO_BASE },
     searchedBases: DEFAULT_BASES,
     arch: process.arch, // x64/ia32 — precisa casar com a DLL!
+    initialized,
     lastInitError,
   };
 }
@@ -175,6 +188,7 @@ function load() {
   fn.PPEventLoop = lib.func("__stdcall", "PW_iPPEventLoop", "short", ["_Out_ char*", "_Inout_ short*"]);
   // Não há PW_iVersion oficial em todas as builds; usamos a leitura do INFO se faltar.
   try { fn.Version = lib.func("__stdcall", "PW_iVersion", "short", ["_Out_ char*", "_Inout_ short*"]); } catch { fn.Version = null; }
+  try { fn.SetEnvironment = lib.func("__stdcall", "PW_iSetEnvironment", "short", ["short"]); } catch { fn.SetEnvironment = null; }
 
   available = true;
   return lib;
@@ -204,9 +218,28 @@ function addMandatoryAutomationParams() {
   fn.AddParam(PWINFO.AUTCAP, AUTOMATION_INFO.capabilities);
 }
 
-function ensureInit() {
+function configureEnvironment(environment) {
+  const env = resolveEnvironment(environment ?? process.env.PAYGO_ENV);
+  if (env === null || !fn.SetEnvironment) return;
+  if (initialized) {
+    throw new Error(
+      `PW_iSetEnvironment(${env}) exige PGWebLib ainda não inicializada neste processo; reinicie o agente local antes de instalar o PdC em ${env === PAYGO_ENV.HOMOLOGATION ? "homologação" : "produção"}`,
+    );
+  }
+
+  const r = normalizeRet(fn.SetEnvironment(env));
+  if (r !== PWRET.OK) {
+    const detail = getResultAny([PWINFO.RESULTMSG], 2048);
+    throw new Error(
+      `PW_iSetEnvironment(${env}) falhou (${r})${explainRet(r) ? ` — ${explainRet(r)}` : ""}${detail ? ` — detalhe=${detail}` : ""}`,
+    );
+  }
+}
+
+function ensureInit({ environment } = {}) {
   if (initialized) return;
   load();
+  configureEnvironment(environment);
 
   fs.mkdirSync(WORK_DIR, { recursive: true });
 
@@ -219,8 +252,8 @@ function ensureInit() {
   lastInitError = null;
 }
 
-function startTransaction(op, label) {
-  ensureInit();
+function startTransaction(op, label, { environment } = {}) {
+  ensureInit({ environment });
   let r = normalizeRet(fn.NewTransac(op));
 
   if (r !== PWRET.OK) {
@@ -382,8 +415,8 @@ function administrativo({ onDisplay } = {}) {
   return collectReceipts();
 }
 
-function instalarPdc({ onDisplay } = {}) {
-  startTransaction(PWOPER.INSTALL, "install");
+function instalarPdc({ onDisplay, environment } = {}) {
+  startTransaction(PWOPER.INSTALL, "install", { environment });
   runExecLoop({ onDisplay, timeoutMs: 180000 });
   return collectReceipts();
 }
