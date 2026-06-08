@@ -249,7 +249,11 @@ const HeaderBar = ({
         </Button>
       )}
       <div className="flex items-center min-w-0 flex-1">
-        {isEmployeeArea ? (
+        {hideBreadcrumb ? (
+          <span className="text-sm md:text-base font-semibold text-foreground truncate">
+            {title}
+          </span>
+        ) : isEmployeeArea ? (
           <span className="text-sm md:text-base font-semibold text-foreground truncate">
             {effectiveLabel}
           </span>
