@@ -56,6 +56,17 @@ async function handle(req, res) {
       try { nfceVersion = nfe.versao(); nfceReady = true; }
       catch (e) { nfceError = e.message; }
       const nfceDiagnostics = nfe.diagnostics();
+
+      let tefReady = false, tefVersion = null, tefError = null;
+      const tefAvailable = tef.isAvailable();
+      if (tefAvailable) {
+        try { tefVersion = tef.versao(); tefReady = true; }
+        catch (e) { tefError = e.message; }
+      } else {
+        tefError = "ACBrTEFD64.dll não disponível";
+      }
+      const tefDiagnostics = tef.diagnostics();
+
       return send(res, 200, {
         ok: true,
         agent: pkg.name,
@@ -64,7 +75,11 @@ async function handle(req, res) {
         nfceVersion,
         nfceError,
         nfceDiagnostics,
-        tefAvailable: tef.isAvailable(),
+        tefAvailable,
+        tefReady,
+        tefVersion,
+        tefError,
+        tefDiagnostics,
         paths: nfe.paths,
       });
     }
