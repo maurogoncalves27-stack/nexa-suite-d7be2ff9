@@ -439,6 +439,7 @@ export const AppLayout = ({ children }: { children?: ReactNode }) => {
             pathname={pathname}
             onOpenPalette={() => setPaletteOpen(true)}
             partnerOnly={showPartnerBanner}
+            hideBreadcrumb={isNutritionistMode}
           />
           <main
             className={`flex-1 p-4 md:p-6 space-y-4 min-w-0 overflow-x-hidden ${
