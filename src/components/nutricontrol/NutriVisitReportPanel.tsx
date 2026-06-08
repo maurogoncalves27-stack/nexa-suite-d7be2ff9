@@ -570,6 +570,14 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
                   </TabsTrigger>
                 );
               })}
+              <TabsTrigger
+                value="finalizar"
+                title="Finalizar visita"
+                className="shrink-0 text-xs gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                <span>Finalizar</span>
+              </TabsTrigger>
             </TabsList>
 
             {[...SECTIONS, OTHER_SECTION].map((sec) => {
