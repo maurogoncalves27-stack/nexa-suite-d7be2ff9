@@ -24,6 +24,12 @@ const DEFAULT_BASES = [
   "C:\\Program Files\\PayGo\\PGWebLib",
 ].filter(Boolean);
 
+const DEFAULT_WORK_DIR = path.join(
+  process.env.ProgramData || "C:\\ProgramData",
+  "PayGo",
+  "PGWebLib",
+);
+
 function resolveBase() {
   for (const b of DEFAULT_BASES) {
     try { if (fs.existsSync(path.join(b, "PGWebLib.dll"))) return b; } catch { /* ignore */ }
@@ -33,7 +39,7 @@ function resolveBase() {
 
 const PAYGO_BASE = resolveBase();
 const DLL_PATH = path.join(PAYGO_BASE, "PGWebLib.dll");
-const WORK_DIR = process.env.PAYGO_WORKDIR || PAYGO_BASE;
+const WORK_DIR = process.env.PAYGO_WORKDIR || DEFAULT_WORK_DIR;
 
 // PayGo return codes (parcial — só o que importa pro fluxo)
 const PWRET = {
@@ -55,26 +61,46 @@ const PWRET = {
 
 // PWINFO codes (entrada/saída)
 const PWINFO = {
-  TOTAMNT: 515,      // valor total em centavos (string)
-  CURRENCY: 514,     // 986 = BRL
-  PAYMTYPE: 517,     // 1 credito, 2 debito, 4 voucher, 5 outros, M menu, P PIX
-  INSTALLMENTS: 522, // qtd parcelas
-  FINTYPE: 524,      // 1 a vista, 2 parc emissor, 3 parc estab
-  HOSTNSU: 132,
-  AUTHCODE: 134,
-  AUTHSYST: 138,     // nome da rede
-  CNFREQ: 121,       // se 1, exige confirmação
-  RCPTPRN: 129,      // via cliente
-  RCPTMERCH: 130,    // via estabelecimento
-  RCPTCHOLDER: 131,  // via portador
-  TRNDATE: 136,
-  TRNTIME: 137,
+  AUTNAME: 21,
+  AUTVER: 22,
+  AUTDEV: 23,
+  AUTCAP: 36,
+  TOTAMNT: 37,       // valor total em centavos (string)
+  CURRENCY: 38,      // 986 = BRL
+  CURREXP: 39,       // 2 = centavos
+  CARDTYPE: 41,      // 1 credito, 2 debito, 4 voucher
+  FINTYPE: 59,       // 1 a vista, 2 parc emissor, 4 parc estab
+  INSTALLMENTS: 60,  // qtd parcelas
+  REQNUM: 50,
+  AUTHSYST: 53,      // nome da rede/provedor
+  VIRTMERCH: 54,
+  RESULTMSG: 66,
+  CNFREQ: 67,        // se 1, exige confirmação
+  AUTLOCREF: 68,
+  AUTEXTREF: 69,
+  AUTHCODE: 70,
+  RCPTMERCH: 83,     // via estabelecimento
+  RCPTCHOLDER: 84,   // via cliente
+  TRNORIGDATE: 87,
+  TRNORIGNSU: 88,
+  TRNORIGAMNT: 96,
+  TRNORIGAUTH: 98,
+  TRNORIGTIME: 115,
+  DATETIME: 49,
 };
 
 const PWOPER = {
+  INSTALL: 0x01,
   ADMIN: 0x20,
   SALE: 0x21,
   SALEVOID: 0x22,
+};
+
+const AUTOMATION_INFO = {
+  name: "NEXA Suite",
+  version: process.env.npm_package_version || "1.0.0",
+  developer: "NEXA Gestao Inteligente",
+  capabilities: "28",
 };
 
 let lib = null;
@@ -131,7 +157,7 @@ function load() {
   fn.AddParam = lib.func("__stdcall", "PW_iAddParam", "short", ["short", "string"]);
   fn.ExecTransac = lib.func("__stdcall", "PW_iExecTransac", "short", ["void *", "_Inout_ short*"]);
   fn.GetResult = lib.func("__stdcall", "PW_iGetResult", "short", ["short", "_Out_ char*", "_Inout_ short*"]);
-  fn.Confirmation = lib.func("__stdcall", "PW_iConfirmation", "short", ["short", "string"]);
+  fn.Confirmation = lib.func("__stdcall", "PW_iConfirmation", "short", ["short", "string", "string", "string", "string", "string"]);
   fn.PPEventLoop = lib.func("__stdcall", "PW_iPPEventLoop", "short", ["_Out_ char*", "_Inout_ short*"]);
   // Não há PW_iVersion oficial em todas as builds; usamos a leitura do INFO se faltar.
   try { fn.Version = lib.func("__stdcall", "PW_iVersion", "short", ["_Out_ char*", "_Inout_ short*"]); } catch { fn.Version = null; }
@@ -149,9 +175,27 @@ function getResult(code, bufSize = 1024) {
   return buf.slice(0, sizeRef[0]).toString("latin1").replace(/\0+$/, "");
 }
 
+function getResultAny(codes, bufSize = 1024) {
+  for (const code of codes) {
+    const value = getResult(code, bufSize);
+    if (value) return value;
+  }
+  return null;
+}
+
+function addMandatoryAutomationParams() {
+  fn.AddParam(PWINFO.AUTNAME, AUTOMATION_INFO.name);
+  fn.AddParam(PWINFO.AUTVER, AUTOMATION_INFO.version);
+  fn.AddParam(PWINFO.AUTDEV, AUTOMATION_INFO.developer);
+  fn.AddParam(PWINFO.AUTCAP, AUTOMATION_INFO.capabilities);
+}
+
 function ensureInit() {
   if (initialized) return;
   load();
+
+  fs.mkdirSync(WORK_DIR, { recursive: true });
+
   const r = normalizeRet(fn.Init(WORK_DIR));
   if (r !== PWRET.OK) {
     lastInitError = `PW_iInit ret=${r}`;
@@ -165,17 +209,17 @@ function startTransaction(op, label) {
   ensureInit();
   let r = normalizeRet(fn.NewTransac(op));
 
-  if (r === PWRET.NOTINST) {
-    // Em alguns cenários o operador acabou de ativar/reinstalar o PDC no PayGo,
-    // mas a sessão atual da DLL ficou stale. Reinicializa e tenta 1x novamente.
-    finalizar();
-    ensureInit();
-    r = normalizeRet(fn.NewTransac(op));
+  if (r !== PWRET.OK) {
+    const detail = getResultAny([PWINFO.RESULTMSG], 2048);
+    throw new Error(
+      `PW_iNewTransac(${label}) ret=${r}` +
+      `${explainRet(r) ? ` — ${explainRet(r)}` : ""}` +
+      `${detail ? ` — detalhe=${detail}` : ""}` +
+      ` — workdir=${WORK_DIR}`,
+    );
   }
 
-  if (r !== PWRET.OK) {
-    throw new Error(`PW_iNewTransac(${label}) ret=${r}${explainRet(r) ? ` — ${explainRet(r)}` : ""}`);
-  }
+  addMandatoryAutomationParams();
 }
 
 function isAvailable() {
@@ -209,7 +253,7 @@ function runExecLoop({ onDisplay, timeoutMs = 120000 } = {}) {
     if (Date.now() - start > timeoutMs) throw new Error("Timeout transação TEF");
 
     const sizeRef = [0];
-    const ret = fn.ExecTransac(null, sizeRef);
+    const ret = normalizeRet(fn.ExecTransac(null, sizeRef));
 
     if (ret === PWRET.OK) return { ret };
     if (ret === PWRET.CANCEL) throw new Error("Transação cancelada (operador/pinpad)");
@@ -237,15 +281,18 @@ function runExecLoop({ onDisplay, timeoutMs = 120000 } = {}) {
 
 function collectReceipts() {
   return {
-    nsu: getResult(PWINFO.HOSTNSU),
+    reqnum: getResult(PWINFO.REQNUM),
+    nsu: getResult(PWINFO.AUTEXTREF),
     autorizacao: getResult(PWINFO.AUTHCODE),
     rede: getResult(PWINFO.AUTHSYST),
-    data: getResult(PWINFO.TRNDATE),
-    hora: getResult(PWINFO.TRNTIME),
+    resultado: getResult(PWINFO.RESULTMSG, 2048),
+    locRef: getResult(PWINFO.AUTLOCREF),
+    extRef: getResult(PWINFO.AUTEXTREF),
+    virtMerch: getResult(PWINFO.VIRTMERCH),
+    dataHora: getResult(PWINFO.DATETIME),
     requerConfirmacao: getResult(PWINFO.CNFREQ) === "1",
-    viaCliente: getResult(PWINFO.RCPTPRN, 4096),
     viaEstabelecimento: getResult(PWINFO.RCPTMERCH, 4096),
-    viaPortador: getResult(PWINFO.RCPTCHOLDER, 4096),
+    viaCliente: getResult(PWINFO.RCPTCHOLDER, 4096),
   };
 }
 
@@ -259,15 +306,16 @@ function efetuarPagamento({ valor, tipo = "credito", parcelas = 1, financiamento
   startTransaction(PWOPER.SALE, "sale");
 
   const centavos = Math.round(Number(valor) * 100).toString();
-  const paymTypeMap = { credito: "1", debito: "2", voucher: "4", pix: "P" };
-  const paymType = paymTypeMap[tipo] || "M"; // M = menu, deixa pinpad decidir
+  const cardTypeMap = { credito: "1", debito: "2", voucher: "4" };
+  const cardType = cardTypeMap[tipo] || null;
 
   fn.AddParam(PWINFO.TOTAMNT, centavos);
   fn.AddParam(PWINFO.CURRENCY, "986");
-  fn.AddParam(PWINFO.PAYMTYPE, paymType);
+  fn.AddParam(PWINFO.CURREXP, "2");
+  if (cardType) fn.AddParam(PWINFO.CARDTYPE, cardType);
   if (tipo === "credito" && parcelas > 1) {
     fn.AddParam(PWINFO.INSTALLMENTS, String(parcelas));
-    fn.AddParam(PWINFO.FINTYPE, String(financiamento || 2));
+    fn.AddParam(PWINFO.FINTYPE, String(financiamento || 4));
   }
 
   runExecLoop({ onDisplay });
@@ -275,7 +323,9 @@ function efetuarPagamento({ valor, tipo = "credito", parcelas = 1, financiamento
 
   // Confirmação se exigido
   if (receipts.requerConfirmacao) {
-    try { fn.Confirmation(0 /* CNF_CONF */, receipts.nsu || ""); } catch { /* ignore */ }
+    try {
+      fn.Confirmation(0, receipts.reqnum || "", receipts.locRef || "", receipts.extRef || "", receipts.virtMerch || "", receipts.rede || "");
+    } catch { /* ignore */ }
   }
   return receipts;
 }
@@ -294,14 +344,17 @@ function cancelarVenda({ valor, nsu, data, onDisplay } = {}) {
   startTransaction(PWOPER.SALEVOID, "refund");
 
   fn.AddParam(PWINFO.CURRENCY, "986");
-  if (valor) fn.AddParam(PWINFO.TOTAMNT, Math.round(Number(valor) * 100).toString());
-  if (nsu) fn.AddParam(PWINFO.HOSTNSU, String(nsu));
-  if (data) fn.AddParam(PWINFO.TRNDATE, String(data));
+  fn.AddParam(PWINFO.CURREXP, "2");
+  if (valor) fn.AddParam(PWINFO.TRNORIGAMNT, Math.round(Number(valor) * 100).toString());
+  if (nsu) fn.AddParam(PWINFO.TRNORIGNSU, String(nsu));
+  if (data) fn.AddParam(PWINFO.TRNORIGDATE, String(data).slice(0, 6));
 
   runExecLoop({ onDisplay });
   const receipts = collectReceipts();
   if (receipts.requerConfirmacao) {
-    try { fn.Confirmation(0, receipts.nsu || ""); } catch { /* ignore */ }
+    try {
+      fn.Confirmation(0, receipts.reqnum || "", receipts.locRef || "", receipts.extRef || "", receipts.virtMerch || "", receipts.rede || "");
+    } catch { /* ignore */ }
   }
   return receipts;
 }
@@ -315,6 +368,12 @@ function administrativo({ onDisplay } = {}) {
   return collectReceipts();
 }
 
+function instalarPdc({ onDisplay } = {}) {
+  startTransaction(PWOPER.INSTALL, "install");
+  runExecLoop({ onDisplay, timeoutMs: 180000 });
+  return collectReceipts();
+}
+
 module.exports = {
   isAvailable,
   ensureInit,
@@ -324,6 +383,7 @@ module.exports = {
   cancelarEmAndamento,
   cancelarVenda,
   administrativo,
+  instalarPdc,
   diagnostics,
   paths: { DLL_PATH, WORK_DIR, PAYGO_BASE },
 };

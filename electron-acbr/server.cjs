@@ -228,7 +228,15 @@ async function handle(req, res) {
 
     if (req.method === "POST" && path === "/tef/admin") {
       if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "PGWebLib.dll não disponível" });
-      const retorno = tef.administrativo({ onDisplay: (m) => console.log("[TEF display]", m) });
+      const body = await readBody(req);
+      const retorno = tef.administrativo({ ...body, onDisplay: (m) => console.log("[TEF display]", m) });
+      return send(res, 200, { ok: true, retorno });
+    }
+
+    if (req.method === "POST" && path === "/tef/install") {
+      if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "PGWebLib.dll não disponível" });
+      const body = await readBody(req);
+      const retorno = tef.instalarPdc({ ...body, onDisplay: (m) => console.log("[TEF display]", m) });
       return send(res, 200, { ok: true, retorno });
     }
 
