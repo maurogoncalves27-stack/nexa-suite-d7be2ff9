@@ -9,12 +9,27 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NutriStoreSelector } from "@/components/nutricontrol/NutriStoreSelector";
+
+const SECTIONS = [
+  "1. Documentação e Requisitos Legais",
+  "2. Higiene e Comportamento dos Manipuladores",
+  "3. Recebimento e Armazenamento de Mercadorias",
+  "4. Áreas de Frio (Geladeiras, Freezers e Câmaras)",
+  "5. Pré-Preparo e Preparo dos Alimentos",
+  "6. Distribuição e Exposição do Alimento Pronto",
+  "7. Higienização de Instalações, Equipamentos e Utensílios",
+  "8. Gestão de Resíduos e Controle de Pragas",
+] as const;
+
+const OTHER_SECTION = "Outros";
 
 interface ChecklistItem {
   id: string;
   name: string;
   sort_order: number;
+  section: string | null;
 }
 
 interface ChecklistResponse {
