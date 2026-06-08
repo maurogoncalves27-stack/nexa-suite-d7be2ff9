@@ -503,7 +503,9 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
               </AccordionContent>
             </AccordionItem>
           </Accordion>
-        </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {!hideForm && (
