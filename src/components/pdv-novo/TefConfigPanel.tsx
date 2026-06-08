@@ -101,6 +101,16 @@ export default function TefConfigPanel() {
   const save = async () => {
     if (!cfg) return;
     setSaving(true);
+    const isProd = cfg.environment === "producao";
+    if (isProd && (!cfg.merchant_code || !cfg.terminal_code)) {
+      setSaving(false);
+      toast({
+        title: "Credenciais obrigatórias em Produção",
+        description: "Informe o código da loja (PV) e do terminal antes de salvar em modo Produção.",
+        variant: "destructive",
+      });
+      return;
+    }
     const payload = {
       store_id: cfg.store_id,
       provider: cfg.provider,
@@ -109,6 +119,7 @@ export default function TefConfigPanel() {
       terminal_code: cfg.terminal_code || null,
       acquirer: cfg.acquirer || null,
       is_active: cfg.is_active,
+      environment: cfg.environment,
     };
     const { error } = cfg.id
       ? await supabase.from("pdv_tef_config").update(payload).eq("id", cfg.id)
