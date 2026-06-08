@@ -29,7 +29,7 @@ import { exportHomologationXlsx, type StepResultRow } from "@/lib/tef/homologati
 import { loadTefConfig, type TefConfig } from "@/lib/tef";
 import { createAcbrAdapter, acbrCancelarVenda, acbrAdministrativo } from "@/lib/tef/acbrAdapter";
 
-const ACBR_AGENT_URL = "http://localhost:3030";
+const ACBR_AGENT_URL = "https://127.0.0.1:3031";
 
 /** Converte ISO timestamp em DDMMAAAA usado pelo ACBr. */
 const toAcbrDate = (iso: string | null | undefined): string => {
@@ -195,7 +195,7 @@ export default function PdvHomologacaoPayGo() {
         const cfg: TefConfig = {
           ...(await loadTefConfig(storeId)),
           provider: "acbr",
-          agentUrl: "http://localhost:3030",
+          agentUrl: "https://127.0.0.1:3031",
           acquirer: step.sale?.acquirer,
         };
         const adapter = createAcbrAdapter(cfg);

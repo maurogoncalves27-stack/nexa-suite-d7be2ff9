@@ -1,22 +1,124 @@
 // ============================================================
-// Servidor HTTP local — porta 3030
+// Servidor local — HTTP (3030) + HTTPS (3031)
 // ============================================================
-// Endpoints:
-//   GET  /health            -> { ok, version, nfceReady, tefAvailable }
-//   GET  /nfce/status       -> StatusServico SEFAZ
-//   POST /nfce/emitir       -> { iniContent, imprimir? } -> XML/retorno bruto
-//   POST /nfce/cancelar     -> { chave, justificativa, cnpj, seqEvento? }
-//   POST /tef/iniciar       -> { valor, tipo, parcelas?, financiamento? }
-//   POST /tef/cancelar      -> aborta transação em andamento
+// HTTPS é OBRIGATÓRIO para chamadas vindas do app em produção
+// (a UI roda em https://*.lovable.app e o Chrome bloqueia
+// mixed-content para http://localhost).
+//
+// Na primeira execução o agente:
+//   1) gera um certificado auto-assinado (CN=localhost, SAN=127.0.0.1)
+//   2) salva em %APPDATA%\nexa-acbr-agent\certs\
+//   3) tenta importar para o "Trusted Root" do usuário atual via
+//      `certutil -user -addstore -f Root <cert.pem>` (silencioso)
+//
+// Endpoints idênticos nos dois transportes.
 // ============================================================
 
 const http = require("http");
+const https = require("https");
+const fs = require("fs");
+const path = require("path");
+const os = require("os");
+const { spawnSync } = require("child_process");
+
 const nfe = require("./acbr-nfe.cjs");
 const tef = require("./acbr-tefd.cjs");
 const pkg = require("./package.json");
 
-const PORT = parseInt(process.env.ACBR_AGENT_PORT || "3030", 10);
+const HTTP_PORT = parseInt(process.env.ACBR_AGENT_PORT || "3030", 10);
+const HTTPS_PORT = parseInt(process.env.ACBR_AGENT_HTTPS_PORT || "3031", 10);
 
+// ---------- certificado auto-assinado ----------
+function certDir() {
+  const base = process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming");
+  const dir = path.join(base, "nexa-acbr-agent", "certs");
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function loadOrCreateCert() {
+  const dir = certDir();
+  const certPath = path.join(dir, "agent.pem");
+  const keyPath = path.join(dir, "agent.key");
+
+  if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+    return {
+      cert: fs.readFileSync(certPath),
+      key: fs.readFileSync(keyPath),
+      certPath,
+      keyPath,
+      generated: false,
+    };
+  }
+
+  console.log("[NEXA ACBr Agent] Gerando certificado auto-assinado em", dir);
+  let selfsigned;
+  try {
+    selfsigned = require("selfsigned");
+  } catch (e) {
+    console.error("[NEXA ACBr Agent] Pacote 'selfsigned' não instalado. HTTPS desabilitado.");
+    return null;
+  }
+
+  const attrs = [{ name: "commonName", value: "localhost" }];
+  const extensions = [
+    {
+      name: "subjectAltName",
+      altNames: [
+        { type: 2, value: "localhost" },
+        { type: 7, ip: "127.0.0.1" },
+      ],
+    },
+    { name: "basicConstraints", cA: true },
+    {
+      name: "keyUsage",
+      digitalSignature: true,
+      keyEncipherment: true,
+      keyCertSign: true,
+    },
+    {
+      name: "extKeyUsage",
+      serverAuth: true,
+      clientAuth: true,
+    },
+  ];
+  const pems = selfsigned.generate(attrs, {
+    algorithm: "sha256",
+    days: 3650,
+    keySize: 2048,
+    extensions,
+  });
+
+  fs.writeFileSync(certPath, pems.cert);
+  fs.writeFileSync(keyPath, pems.private);
+
+  // Tenta importar para o Trusted Root do usuário (não exige admin).
+  try {
+    const r = spawnSync("certutil", ["-user", "-addstore", "-f", "Root", certPath], {
+      windowsHide: true,
+    });
+    if (r.status === 0) {
+      console.log("[NEXA ACBr Agent] Certificado importado no Trusted Root do usuário.");
+    } else {
+      console.warn(
+        "[NEXA ACBr Agent] Não foi possível importar o certificado automaticamente. " +
+          "Importe manualmente: " + certPath
+      );
+    }
+  } catch (e) {
+    console.warn("[NEXA ACBr Agent] certutil indisponível:", e.message);
+  }
+
+  return {
+    cert: pems.cert,
+    key: pems.private,
+    certPath,
+    keyPath,
+    generated: true,
+  };
+}
+
+// ---------- helpers ----------
 function send(res, status, body, headers = {}) {
   const json = typeof body === "string" ? body : JSON.stringify(body);
   res.writeHead(status, {
@@ -46,7 +148,7 @@ async function readBody(req) {
 async function handle(req, res) {
   if (req.method === "OPTIONS") return send(res, 204, "");
 
-  const url = new URL(req.url, `http://localhost:${PORT}`);
+  const url = new URL(req.url, `http://localhost`);
   const path = url.pathname;
 
   try {
@@ -138,18 +240,39 @@ async function handle(req, res) {
 }
 
 function start() {
-  const server = http.createServer(handle);
-  server.listen(PORT, "127.0.0.1", () => {
-    console.log(`[NEXA ACBr Agent] v${pkg.version} ouvindo em http://127.0.0.1:${PORT}`);
+  // HTTP (compatibilidade com Electron local)
+  const httpServer = http.createServer(handle);
+  httpServer.listen(HTTP_PORT, "127.0.0.1", () => {
+    console.log(`[NEXA ACBr Agent] v${pkg.version} HTTP  em http://127.0.0.1:${HTTP_PORT}`);
     console.log(`[NEXA ACBr Agent] ACBR_BASE = ${nfe.paths.ACBR_BASE}`);
   });
-  server.on("error", (e) => {
-    console.error("[NEXA ACBr Agent] erro no servidor:", e);
-    if (e.code === "EADDRINUSE") {
-      console.error(`Porta ${PORT} já em uso. Outro processo está rodando o agente?`);
-    }
+  httpServer.on("error", (e) => {
+    console.error("[NEXA ACBr Agent] erro HTTP:", e);
+    if (e.code === "EADDRINUSE") console.error(`Porta ${HTTP_PORT} já em uso.`);
   });
-  return server;
+
+  // HTTPS (para chamadas vindas de páginas https://*)
+  let httpsServer = null;
+  const certInfo = loadOrCreateCert();
+  if (certInfo) {
+    try {
+      httpsServer = https.createServer({ cert: certInfo.cert, key: certInfo.key }, handle);
+      httpsServer.listen(HTTPS_PORT, "127.0.0.1", () => {
+        console.log(`[NEXA ACBr Agent] v${pkg.version} HTTPS em https://127.0.0.1:${HTTPS_PORT}`);
+        console.log(`[NEXA ACBr Agent] cert: ${certInfo.certPath}`);
+      });
+      httpsServer.on("error", (e) => {
+        console.error("[NEXA ACBr Agent] erro HTTPS:", e);
+        if (e.code === "EADDRINUSE") console.error(`Porta ${HTTPS_PORT} já em uso.`);
+      });
+    } catch (e) {
+      console.error("[NEXA ACBr Agent] falha ao iniciar HTTPS:", e.message);
+    }
+  } else {
+    console.warn("[NEXA ACBr Agent] HTTPS desabilitado (sem certificado).");
+  }
+
+  return { httpServer, httpsServer };
 }
 
 function stop() {
@@ -158,19 +281,17 @@ function stop() {
 }
 
 if (require.main === module) {
-  const server = start();
+  const servers = start();
 
   const shutdown = () => {
     stop();
-    try {
-      server.close(() => process.exit(0));
-    } catch {
-      process.exit(0);
-    }
+    try { servers.httpServer?.close(); } catch { /* ignore */ }
+    try { servers.httpsServer?.close(); } catch { /* ignore */ }
+    setTimeout(() => process.exit(0), 200);
   };
 
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
 }
 
-module.exports = { start, stop, PORT };
+module.exports = { start, stop, HTTP_PORT, HTTPS_PORT };

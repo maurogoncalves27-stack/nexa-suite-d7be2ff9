@@ -1,0 +1,1 @@
+UPDATE public.pdv_tef_config SET agent_url = 'https://127.0.0.1:3031', updated_at = now() WHERE provider = 'acbr' AND agent_url LIKE '%3030%';

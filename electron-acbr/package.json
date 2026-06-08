@@ -1,7 +1,7 @@
 {
   "name": "nexa-acbr",
   "productName": "NEXA ACBr Agent",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Agente HTTP local que expõe ACBrLib (NFC-e + TEF) na porta 3030",
   "main": "main.cjs",
   "author": {
@@ -15,7 +15,8 @@
     "dist:win": "npm run clean:release && electron-builder --win nsis --x64"
   },
   "dependencies": {
-    "koffi": "^2.10.0"
+    "koffi": "^2.10.0",
+    "selfsigned": "^2.4.1"
   },
   "devDependencies": {
     "electron": "^33.0.0",
