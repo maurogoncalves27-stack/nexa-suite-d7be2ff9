@@ -101,7 +101,7 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
     if (managerOpen === undefined) setShowManagerInternal(open);
     onManagerChange?.(open);
   };
-  const [activeTab, setActiveTab] = useState<string>(SECTIONS[0]);
+  const [stepIndex, setStepIndex] = useState<number>(0);
 
 
   const fetchData = useCallback(async () => {
