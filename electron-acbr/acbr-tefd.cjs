@@ -142,7 +142,7 @@ function getResult(code, bufSize = 1024) {
   let size = bufSize;
   const buf = Buffer.alloc(size);
   const sizeRef = [size];
-  const ret = fn.GetResult(code, buf, sizeRef);
+  const ret = normalizeRet(fn.GetResult(code, buf, sizeRef));
   if (ret !== PWRET.OK) return null;
   return buf.slice(0, sizeRef[0]).toString("latin1").replace(/\0+$/, "");
 }
@@ -150,10 +150,10 @@ function getResult(code, bufSize = 1024) {
 function ensureInit() {
   if (initialized) return;
   load();
-  const r = fn.Init(WORK_DIR);
+  const r = normalizeRet(fn.Init(WORK_DIR));
   if (r !== PWRET.OK) {
     lastInitError = `PW_iInit ret=${r}`;
-    throw new Error(`PW_iInit falhou (${r}) — workdir=${WORK_DIR}`);
+    throw new Error(`PW_iInit falhou (${r})${explainRet(r) ? ` — ${explainRet(r)}` : ""} — workdir=${WORK_DIR}`);
   }
   initialized = true;
   lastInitError = null;
@@ -203,7 +203,7 @@ function runExecLoop({ onDisplay, timeoutMs = 120000 } = {}) {
       const buf = Buffer.alloc(512);
       const dsr = [512];
       try {
-        const r2 = fn.PPEventLoop(buf, dsr);
+        const r2 = normalizeRet(fn.PPEventLoop(buf, dsr));
         if (r2 === PWRET.OK && dsr[0] > 0 && onDisplay) {
           onDisplay(buf.slice(0, dsr[0]).toString("latin1").replace(/\0+$/, ""));
         }
@@ -212,7 +212,7 @@ function runExecLoop({ onDisplay, timeoutMs = 120000 } = {}) {
     }
 
     // Qualquer outro retorno não esperado: aborta com info.
-    throw new Error(`PW_iExecTransac ret=${ret}`);
+    throw new Error(`PW_iExecTransac ret=${ret}${explainRet(ret) ? ` — ${explainRet(ret)}` : ""}`);
   }
 }
 
@@ -239,8 +239,8 @@ function efetuarPagamento({ valor, tipo = "credito", parcelas = 1, financiamento
   ensureInit();
   if (!valor || valor <= 0) throw new Error("valor obrigatório");
 
-  let r = fn.NewTransac(PWOPER.SALE);
-  if (r !== PWRET.OK) throw new Error(`PW_iNewTransac ret=${r}`);
+  let r = normalizeRet(fn.NewTransac(PWOPER.SALE));
+  if (r !== PWRET.OK) throw new Error(`PW_iNewTransac ret=${r}${explainRet(r) ? ` — ${explainRet(r)}` : ""}`);
 
   const centavos = Math.round(Number(valor) * 100).toString();
   const paymTypeMap = { credito: "1", debito: "2", voucher: "4", pix: "P" };
@@ -276,8 +276,8 @@ function cancelarEmAndamento() {
  */
 function cancelarVenda({ valor, nsu, data, onDisplay } = {}) {
   ensureInit();
-  const r = fn.NewTransac(PWOPER.SALEVOID);
-  if (r !== PWRET.OK) throw new Error(`PW_iNewTransac(refund) ret=${r}`);
+  const r = normalizeRet(fn.NewTransac(PWOPER.SALEVOID));
+  if (r !== PWRET.OK) throw new Error(`PW_iNewTransac(refund) ret=${r}${explainRet(r) ? ` — ${explainRet(r)}` : ""}`);
 
   fn.AddParam(PWINFO.CURRENCY, "986");
   if (valor) fn.AddParam(PWINFO.TOTAMNT, Math.round(Number(valor) * 100).toString());
@@ -297,8 +297,8 @@ function cancelarVenda({ valor, nsu, data, onDisplay } = {}) {
  */
 function administrativo({ onDisplay } = {}) {
   ensureInit();
-  const r = fn.NewTransac(PWOPER.ADMIN);
-  if (r !== PWRET.OK) throw new Error(`PW_iNewTransac(admin) ret=${r}`);
+  const r = normalizeRet(fn.NewTransac(PWOPER.ADMIN));
+  if (r !== PWRET.OK) throw new Error(`PW_iNewTransac(admin) ret=${r}${explainRet(r) ? ` — ${explainRet(r)}` : ""}`);
   runExecLoop({ onDisplay });
   return collectReceipts();
 }
