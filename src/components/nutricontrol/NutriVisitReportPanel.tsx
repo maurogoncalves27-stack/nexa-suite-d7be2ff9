@@ -528,10 +528,6 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
 
       {!hideForm && (
       <div className="bg-card border border-border rounded-lg p-3 space-y-4">
-        <h4 className="text-sm font-semibold flex items-center gap-2">
-          <ClipboardCheck className="h-4 w-4 text-primary" />
-          Nova visita técnica
-        </h4>
 
         {!currentStoreId && (
           <div className="bg-accent/50 border border-accent rounded-md p-3 text-center">
