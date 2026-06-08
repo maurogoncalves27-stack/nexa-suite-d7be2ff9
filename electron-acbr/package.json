@@ -15,7 +15,8 @@
     "dist:win": "npm run clean:release && electron-builder --win nsis --x64"
   },
   "dependencies": {
-    "koffi": "^2.10.0"
+    "koffi": "^2.10.0",
+    "selfsigned": "^2.4.1"
   },
   "devDependencies": {
     "electron": "^33.0.0",
