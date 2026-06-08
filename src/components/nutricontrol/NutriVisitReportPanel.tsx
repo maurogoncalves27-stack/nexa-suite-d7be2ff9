@@ -310,23 +310,35 @@ export default function NutriVisitReportPanel() {
 
           <div className="space-y-2">
             <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Check-list</h4>
-            {viewedReport.responses.map((resp) => {
-              const item = checklistItems.find((i) => i.id === resp.checklist_item_id);
+            {[...SECTIONS, OTHER_SECTION].map((sec) => {
+              const secResponses = viewedReport.responses.filter((r) => {
+                const item = checklistItems.find((i) => i.id === r.checklist_item_id);
+                return (item?.section ?? OTHER_SECTION) === sec;
+              });
+              if (secResponses.length === 0) return null;
               return (
-                <div key={resp.checklist_item_id} className="border border-border rounded-md p-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                      resp.is_conform
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-destructive text-destructive-foreground"
-                    }`}>
-                      {resp.is_conform ? "C" : "NC"}
-                    </span>
-                    <span className="text-sm text-foreground">{item?.name ?? "Item removido"}</span>
-                  </div>
-                  {resp.observation && (
-                    <p className="text-xs text-muted-foreground mt-1 ml-8 italic">"{resp.observation}"</p>
-                  )}
+                <div key={sec} className="space-y-1.5">
+                  <p className="text-[11px] font-semibold text-primary uppercase tracking-wide">{sec}</p>
+                  {secResponses.map((resp) => {
+                    const item = checklistItems.find((i) => i.id === resp.checklist_item_id);
+                    return (
+                      <div key={resp.checklist_item_id} className="border border-border rounded-md p-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            resp.is_conform
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-destructive text-destructive-foreground"
+                          }`}>
+                            {resp.is_conform ? "C" : "NC"}
+                          </span>
+                          <span className="text-sm text-foreground">{item?.name ?? "Item removido"}</span>
+                        </div>
+                        {resp.observation && (
+                          <p className="text-xs text-muted-foreground mt-1 ml-8 italic">"{resp.observation}"</p>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}
