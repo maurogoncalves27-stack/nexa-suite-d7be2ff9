@@ -253,6 +253,7 @@ export default function NutriVisitReportPanel() {
     const maxOrder = checklistItems.reduce((max, i) => Math.max(max, i.sort_order), 0);
     const { error } = await supabase.from("nutri_visit_checklist_items").insert({
       name: newItemName.trim(),
+      section: newItemSection,
       sort_order: maxOrder + 1,
       created_by: user.id,
     });
