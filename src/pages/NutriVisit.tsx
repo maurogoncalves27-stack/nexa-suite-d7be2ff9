@@ -12,14 +12,27 @@ export default function NutriVisit() {
   const [showManager, setShowManager] = useState(false);
   const [storeId, setStoreId] = useState<string | null>(null);
   const [slot, setSlot] = useState<HTMLElement | null>(null);
+  const [slotChecked, setSlotChecked] = useState(false);
 
   useLayoutEffect(() => {
+    let cancelled = false;
+    let tries = 0;
     const find = () => {
+      if (cancelled) return;
       const el = document.getElementById("nutri-header-slot");
-      if (el) setSlot(el);
-      else requestAnimationFrame(find);
+      if (el) {
+        setSlot(el);
+        setSlotChecked(true);
+      } else if (tries++ < 30) {
+        requestAnimationFrame(find);
+      } else {
+        setSlotChecked(true);
+      }
     };
     find();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const headerContent = (
@@ -46,6 +59,8 @@ export default function NutriVisit() {
     </>
   );
 
+  const inlineFallback = slotChecked && !slot;
+
   return (
     <div className="space-y-4">
       {slot && createPortal(headerContent, slot)}
@@ -53,6 +68,9 @@ export default function NutriVisit() {
         <Stethoscope className="h-6 w-6 md:h-7 md:w-7 text-primary shrink-0" />
         <span className="truncate">Visita técnica</span>
       </h1>
+      {inlineFallback && (
+        <div className="flex items-center gap-2 flex-wrap">{headerContent}</div>
+      )}
       <NutriVisitReportPanel
         hideHistory
         managerOpen={showManager}
