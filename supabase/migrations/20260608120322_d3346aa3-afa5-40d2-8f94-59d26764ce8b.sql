@@ -1,0 +1,1 @@
+ALTER TABLE public.pdv_tef_config ADD COLUMN IF NOT EXISTS environment text NOT NULL DEFAULT 'demo' CHECK (environment IN ('demo','producao'));

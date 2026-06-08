@@ -27,6 +27,7 @@ interface TefCfg {
   terminal_code: string | null;
   acquirer: string | null;
   is_active: boolean;
+  environment: "demo" | "producao";
 }
 
 const DEFAULT_AGENT_URL: Record<TefCfg["provider"], string> = {
@@ -44,6 +45,7 @@ const blank = (storeId: string): TefCfg => ({
   terminal_code: "",
   acquirer: "",
   is_active: true,
+  environment: "demo",
 });
 
 export default function TefConfigPanel() {
@@ -99,6 +101,16 @@ export default function TefConfigPanel() {
   const save = async () => {
     if (!cfg) return;
     setSaving(true);
+    const isProd = cfg.environment === "producao";
+    if (isProd && (!cfg.merchant_code || !cfg.terminal_code)) {
+      setSaving(false);
+      toast({
+        title: "Credenciais obrigatórias em Produção",
+        description: "Informe o código da loja (PV) e do terminal antes de salvar em modo Produção.",
+        variant: "destructive",
+      });
+      return;
+    }
     const payload = {
       store_id: cfg.store_id,
       provider: cfg.provider,
@@ -107,6 +119,7 @@ export default function TefConfigPanel() {
       terminal_code: cfg.terminal_code || null,
       acquirer: cfg.acquirer || null,
       is_active: cfg.is_active,
+      environment: cfg.environment,
     };
     const { error } = cfg.id
       ? await supabase.from("pdv_tef_config").update(payload).eq("id", cfg.id)
@@ -166,6 +179,26 @@ export default function TefConfigPanel() {
               )}
             </div>
 
+            <div className="md:col-span-2 flex flex-wrap items-center justify-between gap-3 rounded-md border px-3 py-2">
+              <div className="flex items-center gap-2">
+                <Label className="text-sm">Ambiente</Label>
+                <Badge variant={cfg.environment === "producao" ? "default" : "secondary"}>
+                  {cfg.environment === "producao" ? "Produção" : "Demo (sandbox)"}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted-foreground">Demo</span>
+                <Switch
+                  checked={cfg.environment === "producao"}
+                  onCheckedChange={(v) => setCfg({ ...cfg, environment: v ? "producao" : "demo" })}
+                />
+                <span className="text-xs text-muted-foreground">Produção</span>
+              </div>
+              <p className="basis-full text-xs text-muted-foreground">
+                Em <strong>Demo</strong>, o PayGo deve estar em modo sandbox (tela roxa via Ativação → ambiente <code>demo</code>). Não exige CNPJ/PV/senha reais — use para homologação.
+              </p>
+            </div>
+
             <div>
               <Label>Provedor TEF</Label>
               <Select
@@ -200,12 +233,20 @@ export default function TefConfigPanel() {
               )}
             </div>
             <div>
-              <Label>Código da loja (PV)</Label>
-              <Input value={cfg.merchant_code ?? ""} onChange={e => setCfg({ ...cfg, merchant_code: e.target.value })} />
+              <Label>
+                Código da loja (PV){" "}
+                {cfg.environment === "demo" && <span className="text-xs text-muted-foreground">(opcional em demo)</span>}
+              </Label>
+              <Input value={cfg.merchant_code ?? ""} onChange={e => setCfg({ ...cfg, merchant_code: e.target.value })}
+                placeholder={cfg.environment === "demo" ? "Não obrigatório no sandbox" : ""} />
             </div>
             <div>
-              <Label>Código do terminal</Label>
-              <Input value={cfg.terminal_code ?? ""} onChange={e => setCfg({ ...cfg, terminal_code: e.target.value })} />
+              <Label>
+                Código do terminal{" "}
+                {cfg.environment === "demo" && <span className="text-xs text-muted-foreground">(opcional em demo)</span>}
+              </Label>
+              <Input value={cfg.terminal_code ?? ""} onChange={e => setCfg({ ...cfg, terminal_code: e.target.value })}
+                placeholder={cfg.environment === "demo" ? "Não obrigatório no sandbox" : ""} />
             </div>
             <div>
               <Label>Adquirente principal</Label>
