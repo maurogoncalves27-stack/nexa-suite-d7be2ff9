@@ -282,19 +282,17 @@ function runExecLoop({ onDisplay, timeoutMs = 120000 } = {}) {
 function collectReceipts() {
   return {
     reqnum: getResult(PWINFO.REQNUM),
-    nsu: getResult(PWINFO.HOSTNSU) || getResult(PWINFO.AUTEXTREF),
+    nsu: getResult(PWINFO.AUTEXTREF),
     autorizacao: getResult(PWINFO.AUTHCODE),
     rede: getResult(PWINFO.AUTHSYST),
     resultado: getResult(PWINFO.RESULTMSG, 2048),
     locRef: getResult(PWINFO.AUTLOCREF),
     extRef: getResult(PWINFO.AUTEXTREF),
     virtMerch: getResult(PWINFO.VIRTMERCH),
-    data: getResult(PWINFO.TRNDATE),
-    hora: getResult(PWINFO.TRNTIME),
+    dataHora: getResult(PWINFO.DATETIME),
     requerConfirmacao: getResult(PWINFO.CNFREQ) === "1",
-    viaCliente: getResult(PWINFO.RCPTPRN, 4096),
     viaEstabelecimento: getResult(PWINFO.RCPTMERCH, 4096),
-    viaPortador: getResult(PWINFO.RCPTCHOLDER, 4096),
+    viaCliente: getResult(PWINFO.RCPTCHOLDER, 4096),
   };
 }
 
@@ -305,19 +303,19 @@ function collectReceipts() {
  */
 function efetuarPagamento({ valor, tipo = "credito", parcelas = 1, financiamento = 1, onDisplay } = {}) {
   if (!valor || valor <= 0) throw new Error("valor obrigatório");
-  startTransaction(PWOPER.SALE, "sale", { environment: "demo" });
+  startTransaction(PWOPER.SALE, "sale");
 
   const centavos = Math.round(Number(valor) * 100).toString();
-  const paymTypeMap = { credito: "1", debito: "2", voucher: "4", pix: "P" };
-  const paymType = paymTypeMap[tipo] || "M"; // M = menu, deixa pinpad decidir
+  const cardTypeMap = { credito: "1", debito: "2", voucher: "4" };
+  const cardType = cardTypeMap[tipo] || null;
 
   fn.AddParam(PWINFO.TOTAMNT, centavos);
   fn.AddParam(PWINFO.CURRENCY, "986");
   fn.AddParam(PWINFO.CURREXP, "2");
-  fn.AddParam(PWINFO.PAYMTYPE, paymType);
+  if (cardType) fn.AddParam(PWINFO.CARDTYPE, cardType);
   if (tipo === "credito" && parcelas > 1) {
     fn.AddParam(PWINFO.INSTALLMENTS, String(parcelas));
-    fn.AddParam(PWINFO.FINTYPE, String(financiamento || 2));
+    fn.AddParam(PWINFO.FINTYPE, String(financiamento || 4));
   }
 
   runExecLoop({ onDisplay });
@@ -343,13 +341,13 @@ function cancelarEmAndamento() {
  * @param {object} req { valor, nsu, data (DDMMAAAA) } — opcional, abre menu se vazio
  */
 function cancelarVenda({ valor, nsu, data, onDisplay } = {}) {
-  startTransaction(PWOPER.SALEVOID, "refund", { environment: "demo" });
+  startTransaction(PWOPER.SALEVOID, "refund");
 
   fn.AddParam(PWINFO.CURRENCY, "986");
   fn.AddParam(PWINFO.CURREXP, "2");
-  if (valor) fn.AddParam(PWINFO.TOTAMNT, Math.round(Number(valor) * 100).toString());
-  if (nsu) fn.AddParam(PWINFO.HOSTNSU, String(nsu));
-  if (data) fn.AddParam(PWINFO.TRNDATE, String(data));
+  if (valor) fn.AddParam(PWINFO.TRNORIGAMNT, Math.round(Number(valor) * 100).toString());
+  if (nsu) fn.AddParam(PWINFO.TRNORIGNSU, String(nsu));
+  if (data) fn.AddParam(PWINFO.TRNORIGDATE, String(data).slice(0, 6));
 
   runExecLoop({ onDisplay });
   const receipts = collectReceipts();
@@ -365,13 +363,13 @@ function cancelarVenda({ valor, nsu, data, onDisplay } = {}) {
  * Operação administrativa do pinpad (relatórios, teste comunicação).
  */
 function administrativo({ onDisplay } = {}) {
-  startTransaction(PWOPER.ADMIN, "admin", { environment: "demo" });
+  startTransaction(PWOPER.ADMIN, "admin");
   runExecLoop({ onDisplay });
   return collectReceipts();
 }
 
 function instalarPdc({ onDisplay } = {}) {
-  startTransaction(PWOPER.INSTALL, "install", { environment: "demo" });
+  startTransaction(PWOPER.INSTALL, "install");
   runExecLoop({ onDisplay, timeoutMs: 180000 });
   return collectReceipts();
 }
