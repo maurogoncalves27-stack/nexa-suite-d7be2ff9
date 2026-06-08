@@ -260,7 +260,7 @@ function runExecLoop({ onDisplay, timeoutMs = 120000 } = {}) {
     if (Date.now() - start > timeoutMs) throw new Error("Timeout transação TEF");
 
     const sizeRef = [0];
-    const ret = fn.ExecTransac(null, sizeRef);
+    const ret = normalizeRet(fn.ExecTransac(null, sizeRef));
 
     if (ret === PWRET.OK) return { ret };
     if (ret === PWRET.CANCEL) throw new Error("Transação cancelada (operador/pinpad)");
@@ -288,9 +288,14 @@ function runExecLoop({ onDisplay, timeoutMs = 120000 } = {}) {
 
 function collectReceipts() {
   return {
-    nsu: getResult(PWINFO.HOSTNSU),
+    reqnum: getResult(PWINFO.REQNUM),
+    nsu: getResult(PWINFO.HOSTNSU) || getResult(PWINFO.AUTEXTREF),
     autorizacao: getResult(PWINFO.AUTHCODE),
     rede: getResult(PWINFO.AUTHSYST),
+    resultado: getResult(PWINFO.RESULTMSG, 2048),
+    locRef: getResult(PWINFO.AUTLOCREF),
+    extRef: getResult(PWINFO.AUTEXTREF),
+    virtMerch: getResult(PWINFO.VIRTMERCH),
     data: getResult(PWINFO.TRNDATE),
     hora: getResult(PWINFO.TRNTIME),
     requerConfirmacao: getResult(PWINFO.CNFREQ) === "1",
@@ -307,7 +312,7 @@ function collectReceipts() {
  */
 function efetuarPagamento({ valor, tipo = "credito", parcelas = 1, financiamento = 1, onDisplay } = {}) {
   if (!valor || valor <= 0) throw new Error("valor obrigatório");
-  startTransaction(PWOPER.SALE, "sale");
+  startTransaction(PWOPER.SALE, "sale", { environment: "demo" });
 
   const centavos = Math.round(Number(valor) * 100).toString();
   const paymTypeMap = { credito: "1", debito: "2", voucher: "4", pix: "P" };
@@ -315,6 +320,7 @@ function efetuarPagamento({ valor, tipo = "credito", parcelas = 1, financiamento
 
   fn.AddParam(PWINFO.TOTAMNT, centavos);
   fn.AddParam(PWINFO.CURRENCY, "986");
+  fn.AddParam(PWINFO.CURREXP, "2");
   fn.AddParam(PWINFO.PAYMTYPE, paymType);
   if (tipo === "credito" && parcelas > 1) {
     fn.AddParam(PWINFO.INSTALLMENTS, String(parcelas));
@@ -326,7 +332,9 @@ function efetuarPagamento({ valor, tipo = "credito", parcelas = 1, financiamento
 
   // Confirmação se exigido
   if (receipts.requerConfirmacao) {
-    try { fn.Confirmation(0 /* CNF_CONF */, receipts.nsu || ""); } catch { /* ignore */ }
+    try {
+      fn.Confirmation(0, receipts.reqnum || "", receipts.locRef || "", receipts.extRef || "", receipts.virtMerch || "", receipts.rede || "");
+    } catch { /* ignore */ }
   }
   return receipts;
 }
@@ -342,9 +350,10 @@ function cancelarEmAndamento() {
  * @param {object} req { valor, nsu, data (DDMMAAAA) } — opcional, abre menu se vazio
  */
 function cancelarVenda({ valor, nsu, data, onDisplay } = {}) {
-  startTransaction(PWOPER.SALEVOID, "refund");
+  startTransaction(PWOPER.SALEVOID, "refund", { environment: "demo" });
 
   fn.AddParam(PWINFO.CURRENCY, "986");
+  fn.AddParam(PWINFO.CURREXP, "2");
   if (valor) fn.AddParam(PWINFO.TOTAMNT, Math.round(Number(valor) * 100).toString());
   if (nsu) fn.AddParam(PWINFO.HOSTNSU, String(nsu));
   if (data) fn.AddParam(PWINFO.TRNDATE, String(data));
@@ -352,7 +361,9 @@ function cancelarVenda({ valor, nsu, data, onDisplay } = {}) {
   runExecLoop({ onDisplay });
   const receipts = collectReceipts();
   if (receipts.requerConfirmacao) {
-    try { fn.Confirmation(0, receipts.nsu || ""); } catch { /* ignore */ }
+    try {
+      fn.Confirmation(0, receipts.reqnum || "", receipts.locRef || "", receipts.extRef || "", receipts.virtMerch || "", receipts.rede || "");
+    } catch { /* ignore */ }
   }
   return receipts;
 }
@@ -361,8 +372,14 @@ function cancelarVenda({ valor, nsu, data, onDisplay } = {}) {
  * Operação administrativa do pinpad (relatórios, teste comunicação).
  */
 function administrativo({ onDisplay } = {}) {
-  startTransaction(PWOPER.ADMIN, "admin");
+  startTransaction(PWOPER.ADMIN, "admin", { environment: "demo" });
   runExecLoop({ onDisplay });
+  return collectReceipts();
+}
+
+function instalarPdc({ onDisplay } = {}) {
+  startTransaction(PWOPER.INSTALL, "install", { environment: "demo" });
+  runExecLoop({ onDisplay, timeoutMs: 180000 });
   return collectReceipts();
 }
 
@@ -375,6 +392,7 @@ module.exports = {
   cancelarEmAndamento,
   cancelarVenda,
   administrativo,
+  instalarPdc,
   diagnostics,
   paths: { DLL_PATH, WORK_DIR, PAYGO_BASE },
 };
