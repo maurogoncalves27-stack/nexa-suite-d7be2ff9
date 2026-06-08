@@ -177,7 +177,7 @@ export const checkAcbrAgent = async (
     return {
       ok: !!data?.tefReady,
       mode: data?.tefReady ? "acbr-tefd" : "tef não inicializado",
-      version: data?.version,
+      version: data?.tefVersion ?? data?.version,
       error: data?.tefReady ? undefined : (data?.tefError ?? "PGWebLib não inicializada"),
     };
   } catch (e) {
