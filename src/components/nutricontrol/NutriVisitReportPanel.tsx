@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { format } from "date-fns";
-import { Trash2, Plus, Pencil, Eye, ClipboardCheck, Calendar as CalendarIcon, Settings } from "lucide-react";
+import { Trash2, Plus, Pencil, Eye, ClipboardCheck, Calendar as CalendarIcon, Settings, CheckCircle2 } from "lucide-react";
 import SignatureCanvas from "react-signature-canvas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
