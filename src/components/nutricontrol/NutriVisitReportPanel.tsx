@@ -498,15 +498,12 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
           </div>
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Responsável pela visita</label>
-            <Input
-              placeholder="Nome da nutricionista"
-              value={visitorName}
-              onChange={(e) => setVisitorName(e.target.value)}
-              className="h-9 text-sm"
-              maxLength={120}
-            />
+            <div className="h-9 px-3 text-sm rounded-md border border-border bg-muted/40 flex items-center text-foreground truncate">
+              {visitorName || "—"}
+            </div>
           </div>
         </div>
+
 
         {checklistItems.length > 0 && (
           <Accordion
