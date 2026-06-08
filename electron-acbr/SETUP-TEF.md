@@ -19,7 +19,7 @@ Independente da NFC-e (que usa `ACBrLibNFe` + `ACBrLib.ini`).
    <https://setis.com.br/filevista/public/j563/paygodev/20260422-integracao-setuppaygowindows-v5-1-50-2.zip>
 2. Extrair o ZIP.
 3. Executar `SetupPayGo_full_v5.1.47.2.exe` (ou superior).
-4. Instalação padrão (ele cria `C:\PGWebLib\` automaticamente).
+4. Instalação padrão — instala em `C:\Program Files (x86)\PayGo\`.
 
 ---
 
