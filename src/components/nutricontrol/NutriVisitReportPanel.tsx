@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { format } from "date-fns";
-import { Trash2, Plus, Pencil, Eye, ClipboardCheck, Calendar as CalendarIcon, Settings } from "lucide-react";
+import { Trash2, Plus, Pencil, Eye, ClipboardCheck, Calendar as CalendarIcon, Settings, CheckCircle2 } from "lucide-react";
 import SignatureCanvas from "react-signature-canvas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -195,10 +195,12 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
       return;
     }
     if (!storeResponsible.trim()) {
+      setActiveTab("finalizar");
       toast({ title: "Informe o nome do responsável pela loja", variant: "destructive" });
       return;
     }
     if (sigRef.current?.isEmpty()) {
+      setActiveTab("finalizar");
       toast({ title: "Assinatura é obrigatória", variant: "destructive" });
       return;
     }
@@ -568,6 +570,14 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
                   </TabsTrigger>
                 );
               })}
+              <TabsTrigger
+                value="finalizar"
+                title="Finalizar visita"
+                className="shrink-0 text-xs gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                <span>Finalizar</span>
+              </TabsTrigger>
             </TabsList>
 
             {[...SECTIONS, OTHER_SECTION].map((sec) => {
@@ -608,6 +618,67 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
                 </TabsContent>
               );
             })}
+            <TabsContent value="finalizar" className="space-y-3 mt-3">
+              {(() => {
+                const all = Object.values(responses);
+                const conf = all.filter((r) => r.is_conform).length;
+                const nc = all.filter((r) => !r.is_conform).length;
+                return (
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                      Resumo da visita
+                    </p>
+                    <p className="text-sm text-foreground">
+                      <span className="font-semibold text-primary">{conf}</span> conformes ·{" "}
+                      <span className="font-semibold text-destructive">{nc}</span> não conformes
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Os campos abaixo valem para a visita inteira.
+                    </p>
+                  </div>
+                );
+              })()}
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Observações gerais</label>
+                <Textarea
+                  placeholder="Observações gerais da visita..."
+                  value={generalNotes}
+                  onChange={(e) => setGeneralNotes(e.target.value)}
+                  className="text-sm min-h-[80px] resize-none"
+                  maxLength={1000}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Nome do responsável pela loja</label>
+                <Input
+                  placeholder="Nome completo"
+                  value={storeResponsible}
+                  onChange={(e) => setStoreResponsible(e.target.value)}
+                  className="h-9 text-sm"
+                  maxLength={120}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Assinatura do responsável pela loja</label>
+                <div className="border border-border rounded-md bg-white overflow-hidden">
+                  <SignatureCanvas
+                    ref={sigRef}
+                    penColor="black"
+                    canvasProps={{ className: "w-full h-32" }}
+                  />
+                </div>
+                <Button variant="ghost" size="sm" className="text-xs mt-1" onClick={() => sigRef.current?.clear()}>
+                  Limpar assinatura
+                </Button>
+              </div>
+
+              <Button onClick={saveReport} size="sm" className="w-full" disabled={saving || !currentStoreId}>
+                {saving ? "Salvando..." : "Salvar registro de visita"}
+              </Button>
+            </TabsContent>
           </Tabs>
         )}
 
@@ -616,46 +687,6 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
             {isAdmin ? "Adicione itens ao checklist acima." : "Nenhum item no checklist. Peça ao administrador para configurar."}
           </p>
         )}
-
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Observações gerais</label>
-          <Textarea
-            placeholder="Observações gerais da visita..."
-            value={generalNotes}
-            onChange={(e) => setGeneralNotes(e.target.value)}
-            className="text-sm min-h-[80px] resize-none"
-            maxLength={1000}
-          />
-        </div>
-
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Nome do responsável pela loja</label>
-          <Input
-            placeholder="Nome completo"
-            value={storeResponsible}
-            onChange={(e) => setStoreResponsible(e.target.value)}
-            className="h-9 text-sm"
-            maxLength={120}
-          />
-        </div>
-
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Assinatura do responsável pela loja</label>
-          <div className="border border-border rounded-md bg-white overflow-hidden">
-            <SignatureCanvas
-              ref={sigRef}
-              penColor="black"
-              canvasProps={{ className: "w-full h-32" }}
-            />
-          </div>
-          <Button variant="ghost" size="sm" className="text-xs mt-1" onClick={() => sigRef.current?.clear()}>
-            Limpar assinatura
-          </Button>
-        </div>
-
-        <Button onClick={saveReport} size="sm" className="w-full" disabled={saving || !currentStoreId}>
-          {saving ? "Salvando..." : "Salvar registro de visita"}
-        </Button>
         </div>
       </div>
       )}
