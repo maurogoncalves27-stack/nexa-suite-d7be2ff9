@@ -161,6 +161,23 @@ function ensureInit() {
   lastInitError = null;
 }
 
+function startTransaction(op, label) {
+  ensureInit();
+  let r = normalizeRet(fn.NewTransac(op));
+
+  if (r === PWRET.NOTINST) {
+    // Em alguns cenários o operador acabou de ativar/reinstalar o PDC no PayGo,
+    // mas a sessão atual da DLL ficou stale. Reinicializa e tenta 1x novamente.
+    finalizar();
+    ensureInit();
+    r = normalizeRet(fn.NewTransac(op));
+  }
+
+  if (r !== PWRET.OK) {
+    throw new Error(`PW_iNewTransac(${label}) ret=${r}${explainRet(r) ? ` — ${explainRet(r)}` : ""}`);
+  }
+}
+
 function isAvailable() {
   if (available !== null) return available;
   try { load(); return true; } catch { return false; }
@@ -238,11 +255,8 @@ function collectReceipts() {
  *   tipo: 'credito' | 'debito' | 'voucher' | 'pix'
  */
 function efetuarPagamento({ valor, tipo = "credito", parcelas = 1, financiamento = 1, onDisplay } = {}) {
-  ensureInit();
   if (!valor || valor <= 0) throw new Error("valor obrigatório");
-
-  let r = normalizeRet(fn.NewTransac(PWOPER.SALE));
-  if (r !== PWRET.OK) throw new Error(`PW_iNewTransac ret=${r}${explainRet(r) ? ` — ${explainRet(r)}` : ""}`);
+  startTransaction(PWOPER.SALE, "sale");
 
   const centavos = Math.round(Number(valor) * 100).toString();
   const paymTypeMap = { credito: "1", debito: "2", voucher: "4", pix: "P" };
@@ -277,9 +291,7 @@ function cancelarEmAndamento() {
  * @param {object} req { valor, nsu, data (DDMMAAAA) } — opcional, abre menu se vazio
  */
 function cancelarVenda({ valor, nsu, data, onDisplay } = {}) {
-  ensureInit();
-  const r = normalizeRet(fn.NewTransac(PWOPER.SALEVOID));
-  if (r !== PWRET.OK) throw new Error(`PW_iNewTransac(refund) ret=${r}${explainRet(r) ? ` — ${explainRet(r)}` : ""}`);
+  startTransaction(PWOPER.SALEVOID, "refund");
 
   fn.AddParam(PWINFO.CURRENCY, "986");
   if (valor) fn.AddParam(PWINFO.TOTAMNT, Math.round(Number(valor) * 100).toString());
@@ -298,9 +310,7 @@ function cancelarVenda({ valor, nsu, data, onDisplay } = {}) {
  * Operação administrativa do pinpad (relatórios, teste comunicação).
  */
 function administrativo({ onDisplay } = {}) {
-  ensureInit();
-  const r = normalizeRet(fn.NewTransac(PWOPER.ADMIN));
-  if (r !== PWRET.OK) throw new Error(`PW_iNewTransac(admin) ret=${r}${explainRet(r) ? ` — ${explainRet(r)}` : ""}`);
+  startTransaction(PWOPER.ADMIN, "admin");
   runExecLoop({ onDisplay });
   return collectReceipts();
 }
