@@ -73,6 +73,7 @@ export default function NutriVisitReportPanel() {
 
   // Admin: manage checklist items
   const [newItemName, setNewItemName] = useState("");
+  const [newItemSection, setNewItemSection] = useState<string>(SECTIONS[0]);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
 
