@@ -530,17 +530,8 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
           Nova visita técnica
         </h4>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Data da visita</label>
-            <Input type="date" value={visitDate} onChange={(e) => setVisitDate(e.target.value)} className="h-9 text-sm" />
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Responsável pela visita</label>
-            <div className="h-9 px-3 text-sm rounded-md border border-border bg-muted/40 flex items-center text-foreground truncate">
-              {visitorName || "—"}
-            </div>
-          </div>
+        {/* Data e responsável ocultos — data = hoje, responsável = usuário logado */}
+
         </div>
 
 
