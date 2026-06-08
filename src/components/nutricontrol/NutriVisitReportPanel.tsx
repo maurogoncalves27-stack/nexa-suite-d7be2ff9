@@ -546,48 +546,48 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
 
 
 
-        {checklistItems.length > 0 && (
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="w-full justify-start h-auto flex-wrap p-1 gap-1">
-              {[...SECTIONS, OTHER_SECTION].map((sec) => {
-                const secItems = checklistItems.filter((i) => (i.section ?? OTHER_SECTION) === sec);
-                if (secItems.length === 0) return null;
-                const ncCount = secItems.filter((i) => responses[i.id] && !responses[i.id].is_conform).length;
-                // Short label: number + first word(s), full label as tooltip
-                const shortLabel = sec.replace(/^(\d+)\.\s*(\S+).*/, "$1. $2");
-                return (
-                  <TabsTrigger
-                    key={sec}
-                    value={sec}
-                    title={sec}
-                    className="shrink-0 text-xs gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                  >
-                    <span>{shortLabel}</span>
-                    {ncCount > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive text-destructive-foreground font-semibold">
-                        {ncCount}
-                      </span>
-                    )}
-                  </TabsTrigger>
-                );
-              })}
-              <TabsTrigger
-                value="finalizar"
-                title="Finalizar visita"
-                className="shrink-0 text-xs gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-              >
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                <span>Finalizar</span>
-              </TabsTrigger>
-            </TabsList>
-
-            {[...SECTIONS, OTHER_SECTION].map((sec) => {
+        {checklistItems.length > 0 && (() => {
+          const sectionSteps = [...SECTIONS, OTHER_SECTION]
+            .map((sec) => {
               const secItems = checklistItems.filter((i) => (i.section ?? OTHER_SECTION) === sec);
-              if (secItems.length === 0) return null;
-              return (
-                <TabsContent key={sec} value={sec} className="space-y-2 mt-3">
-                  <p className="text-[11px] font-semibold text-primary uppercase tracking-wide px-1">{sec}</p>
-                  {secItems.map((item) => {
+              return secItems.length > 0 ? { kind: "section" as const, label: sec, items: secItems } : null;
+            })
+            .filter((s): s is { kind: "section"; label: string; items: ChecklistItem[] } => s !== null);
+          const steps = [...sectionSteps, { kind: "finalizar" as const, label: "Finalizar", items: [] }];
+          const total = steps.length;
+          const safeIndex = Math.min(Math.max(stepIndex, 0), total - 1);
+          const current = steps[safeIndex];
+          const progressPct = Math.round(((safeIndex + 1) / total) * 100);
+          const isLast = safeIndex === total - 1;
+          const allResp = Object.values(responses);
+          const totalConf = allResp.filter((r) => r.is_conform).length;
+          const totalNc = allResp.filter((r) => !r.is_conform).length;
+
+          return (
+            <div className="space-y-3">
+              {/* Barra de progresso */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  <span className="font-semibold text-foreground truncate">
+                    Etapa {safeIndex + 1} de {total} · {current.label}
+                  </span>
+                  <span className="text-muted-foreground shrink-0">{progressPct}%</span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full bg-primary transition-all"
+                    style={{ width: `${progressPct}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Conteúdo da etapa */}
+              {current.kind === "section" ? (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold text-primary uppercase tracking-wide px-1">
+                    {current.label}
+                  </p>
+                  {current.items.map((item) => {
                     const resp = responses[item.id];
                     if (!resp) return null;
                     return (
@@ -616,72 +616,92 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
                       </div>
                     );
                   })}
-                </TabsContent>
-              );
-            })}
-            <TabsContent value="finalizar" className="space-y-3 mt-3">
-              {(() => {
-                const all = Object.values(responses);
-                const conf = all.filter((r) => r.is_conform).length;
-                const nc = all.filter((r) => !r.is_conform).length;
-                return (
+                </div>
+              ) : (
+                <div className="space-y-3">
                   <div className="rounded-lg border border-border bg-muted/30 p-3">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
                       Resumo da visita
                     </p>
                     <p className="text-sm text-foreground">
-                      <span className="font-semibold text-primary">{conf}</span> conformes ·{" "}
-                      <span className="font-semibold text-destructive">{nc}</span> não conformes
+                      <span className="font-semibold text-primary">{totalConf}</span> conformes ·{" "}
+                      <span className="font-semibold text-destructive">{totalNc}</span> não conformes
                     </p>
                     <p className="text-[11px] text-muted-foreground mt-1">
                       Os campos abaixo valem para a visita inteira.
                     </p>
                   </div>
-                );
-              })()}
 
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Observações gerais</label>
-                <Textarea
-                  placeholder="Observações gerais da visita..."
-                  value={generalNotes}
-                  onChange={(e) => setGeneralNotes(e.target.value)}
-                  className="text-sm min-h-[80px] resize-none"
-                  maxLength={1000}
-                />
-              </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Observações gerais</label>
+                    <Textarea
+                      placeholder="Observações gerais da visita..."
+                      value={generalNotes}
+                      onChange={(e) => setGeneralNotes(e.target.value)}
+                      className="text-sm min-h-[80px] resize-none"
+                      maxLength={1000}
+                    />
+                  </div>
 
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Nome do responsável pela loja</label>
-                <Input
-                  placeholder="Nome completo"
-                  value={storeResponsible}
-                  onChange={(e) => setStoreResponsible(e.target.value)}
-                  className="h-9 text-sm"
-                  maxLength={120}
-                />
-              </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Nome do responsável pela loja</label>
+                    <Input
+                      placeholder="Nome completo"
+                      value={storeResponsible}
+                      onChange={(e) => setStoreResponsible(e.target.value)}
+                      className="h-9 text-sm"
+                      maxLength={120}
+                    />
+                  </div>
 
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Assinatura do responsável pela loja</label>
-                <div className="border border-border rounded-md bg-white overflow-hidden">
-                  <SignatureCanvas
-                    ref={sigRef}
-                    penColor="black"
-                    canvasProps={{ className: "w-full h-32" }}
-                  />
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Assinatura do responsável pela loja</label>
+                    <div className="border border-border rounded-md bg-white overflow-hidden">
+                      <SignatureCanvas
+                        ref={sigRef}
+                        penColor="black"
+                        canvasProps={{ className: "w-full h-32" }}
+                      />
+                    </div>
+                    <Button variant="ghost" size="sm" className="text-xs mt-1" onClick={() => sigRef.current?.clear()}>
+                      Limpar assinatura
+                    </Button>
+                  </div>
+
+                  <Button onClick={saveReport} size="sm" className="w-full" disabled={saving || !currentStoreId}>
+                    {saving ? "Salvando..." : "Salvar registro de visita"}
+                  </Button>
                 </div>
-                <Button variant="ghost" size="sm" className="text-xs mt-1" onClick={() => sigRef.current?.clear()}>
-                  Limpar assinatura
+              )}
+
+              {/* Navegação Voltar / Avançar */}
+              <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setStepIndex((i) => Math.max(0, Math.min(i, total - 1) - 1))}
+                  disabled={safeIndex === 0}
+                  className="gap-1"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Voltar
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  {safeIndex + 1} / {total}
+                </span>
+                <Button
+                  size="sm"
+                  onClick={() => setStepIndex((i) => Math.min(total - 1, i + 1))}
+                  disabled={isLast}
+                  className="gap-1"
+                >
+                  Avançar
+                  <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
-
-              <Button onClick={saveReport} size="sm" className="w-full" disabled={saving || !currentStoreId}>
-                {saving ? "Salvando..." : "Salvar registro de visita"}
-              </Button>
-            </TabsContent>
-          </Tabs>
-        )}
+            </div>
+          );
+        })()}
 
         {checklistItems.length === 0 && (
           <p className="text-sm text-muted-foreground text-center py-4">
