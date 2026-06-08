@@ -6,8 +6,8 @@
 // PayGo (PayGoLauncher já configura o PersonalizacaoConjunto.txt).
 //
 // Caminhos padrão (Windows):
-//   x86 (instalador padrão): C:\Arquivos de Programas (x86)\PayGo\PGWebLib\PGWebLib.dll
-//   x64 (raro):              C:\Program Files\PayGo\PGWebLib\PGWebLib.dll
+//   x86 (instalador padrão): C:\Arquivos de Programas (x86)\PayGo\PGWebLib\x86\PGWebLib.dll
+//   x64 (comum no Windows 64-bit): C:\Program Files (x86)\PayGo\PGWebLib\x64\PGWebLib.dll
 // Pode sobrescrever com:
 //   PAYGO_BASE      -> diretório onde está a PGWebLib.dll
 //   PAYGO_WORKDIR   -> working dir passado para PW_iInit (default = PAYGO_BASE)
@@ -17,8 +17,21 @@ const path = require("path");
 const fs = require("fs");
 const koffi = require("koffi");
 
+function normalizeBaseCandidate(value) {
+  if (!value) return null;
+  return /\.dll$/i.test(value) ? path.dirname(value) : value;
+}
+
 const DEFAULT_BASES = [
-  process.env.PAYGO_BASE,
+  normalizeBaseCandidate(process.env.PAYGO_BASE),
+  normalizeBaseCandidate(process.env.PathPGWebLib_x64),
+  normalizeBaseCandidate(process.env.PathPGWebLib),
+  "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib\\x64",
+  "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib\\x86",
+  "C:\\Program Files (x86)\\PayGo\\PGWebLib\\x64",
+  "C:\\Program Files (x86)\\PayGo\\PGWebLib\\x86",
+  "C:\\Program Files\\PayGo\\PGWebLib\\x64",
+  "C:\\Program Files\\PayGo\\PGWebLib\\x86",
   "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib",
   "C:\\Program Files (x86)\\PayGo\\PGWebLib",
   "C:\\Program Files\\PayGo\\PGWebLib",
@@ -34,7 +47,7 @@ function resolveBase() {
   for (const b of DEFAULT_BASES) {
     try { if (fs.existsSync(path.join(b, "PGWebLib.dll"))) return b; } catch { /* ignore */ }
   }
-  return DEFAULT_BASES[0] || "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib";
+  return DEFAULT_BASES[0] || "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib\\x64";
 }
 
 const PAYGO_BASE = resolveBase();
@@ -138,6 +151,7 @@ function diagnostics() {
     workdirExists: fs.existsSync(WORK_DIR),
     missing: [DLL_PATH, WORK_DIR].filter((p) => !fs.existsSync(p)),
     expected: { DLL_PATH, WORK_DIR, PAYGO_BASE },
+    searchedBases: DEFAULT_BASES,
     arch: process.arch, // x64/ia32 — precisa casar com a DLL!
     lastInitError,
   };
