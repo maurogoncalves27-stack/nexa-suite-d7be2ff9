@@ -38,8 +38,10 @@ const WORK_DIR = process.env.PAYGO_WORKDIR || PAYGO_BASE;
 // PayGo return codes (parcial — só o que importa pro fluxo)
 const PWRET = {
   OK: 0,
+  FROMHOSTINIT: -2554,
   FROMHOST: -2596,
   COMMERROR: -2553,
+  CARDDIRECT: -2543,
   NOTINST: -2498,
   MOREDATA: -2497,
   DISPLAY: -2495,
