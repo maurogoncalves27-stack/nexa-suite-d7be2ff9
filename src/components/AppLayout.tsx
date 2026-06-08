@@ -173,12 +173,14 @@ const HeaderBar = ({
   pathname,
   onOpenPalette,
   partnerOnly,
+  hideBreadcrumb,
 }: {
   title: string;
   group?: string;
   pathname: string;
   onOpenPalette: () => void;
   partnerOnly?: boolean;
+  hideBreadcrumb?: boolean;
 }) => {
   const { toggleSidebar, isMobile } = useSidebar();
   const { isAdmin, isManager, signOut } = useAuth();
@@ -247,7 +249,11 @@ const HeaderBar = ({
         </Button>
       )}
       <div className="flex items-center min-w-0 flex-1">
-        {isEmployeeArea ? (
+        {hideBreadcrumb ? (
+          <span className="text-sm md:text-base font-semibold text-foreground truncate">
+            {title}
+          </span>
+        ) : isEmployeeArea ? (
           <span className="text-sm md:text-base font-semibold text-foreground truncate">
             {effectiveLabel}
           </span>
@@ -433,6 +439,7 @@ export const AppLayout = ({ children }: { children?: ReactNode }) => {
             pathname={pathname}
             onOpenPalette={() => setPaletteOpen(true)}
             partnerOnly={showPartnerBanner}
+            hideBreadcrumb={isNutritionistMode}
           />
           <main
             className={`flex-1 p-4 md:p-6 space-y-4 min-w-0 overflow-x-hidden ${
