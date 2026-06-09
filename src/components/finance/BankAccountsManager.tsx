@@ -82,11 +82,7 @@ export default function BankAccountsManager({ onChanged }: Props) {
   return (
     <Card>
       <CardContent className="pt-6 space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h3 className="font-semibold flex items-center gap-2"><Landmark className="h-4 w-4" /> Contas bancárias</h3>
-            <p className="text-sm text-muted-foreground">Cadastre as contas onde os extratos OFX serão importados.</p>
-          </div>
+        <div className="flex items-center justify-end gap-3">
           <Button size="sm" onClick={() => setEditing({ is_active: true, account_type: "checking", initial_balance: 0 })}>
             <Plus className="h-4 w-4 mr-1" /> Nova conta
           </Button>
