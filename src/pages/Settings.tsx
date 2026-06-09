@@ -19,12 +19,20 @@ const Settings = () => {
           </h1>
           <p className="text-muted-foreground">Centralize aqui as configurações do sistema.</p>
         </div>
-        <Button asChild variant="outline" size="sm" className="gap-2">
-          <Link to="/configuracoes/nfce-tester">
-            <FlaskConical className="h-4 w-4" />
-            Teste NFC-e (ACBr)
-          </Link>
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button asChild variant="outline" size="sm" className="gap-2">
+            <Link to="/configuracoes/tef-paygo">
+              <CreditCard className="h-4 w-4" />
+              TEF PayGo
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm" className="gap-2">
+            <Link to="/configuracoes/nfce-tester">
+              <FlaskConical className="h-4 w-4" />
+              Teste NFC-e (ACBr)
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="stores" className="w-full">
