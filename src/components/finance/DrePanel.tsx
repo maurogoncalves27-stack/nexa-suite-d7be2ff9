@@ -234,12 +234,10 @@ export default function DrePanel() {
   return (
     <Card>
       <CardContent className="pt-4 sm:pt-6 space-y-4">
-        <div>
-          <h3 className="font-semibold flex items-center gap-2 text-base sm:text-lg"><FileBarChart className="h-4 w-4" /> DRE Gerencial</h3>
-          <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-            Receita pela data da venda no PDV. Despesas e receitas extras pelas contas a pagar/receber pagas (data de pagamento).
-          </p>
-        </div>
+        <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
+          Receita pela data da venda no PDV. Despesas e receitas extras pelas contas a pagar/receber pagas (data de pagamento).
+        </p>
+
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
           <TabsList className="flex-wrap h-auto w-full justify-start overflow-x-auto">
