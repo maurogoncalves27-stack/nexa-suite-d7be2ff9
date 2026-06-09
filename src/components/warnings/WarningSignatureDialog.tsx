@@ -55,9 +55,10 @@ export default function WarningSignatureDialog() {
     if (empErr) console.error("[Warnings] employee lookup error", empErr);
     if (!emp) {
       console.log("[Warnings] no employee linked to user", user.id);
-      setPending([]); setCurrent(null);
+      setPending([]); setCurrent(null); setEmployeeId(null);
       return;
     }
+    setEmployeeId(emp.id);
     const { data, error } = await supabase
       .from("employee_warnings")
       .select("id, title, content, issued_at")
