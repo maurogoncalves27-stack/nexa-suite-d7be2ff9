@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
-import { Trash2, Plus, FileText, AlertTriangle } from "lucide-react";
+import { Trash2, Plus, FileText, AlertTriangle, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { MaintenancePhotoCaptureButton } from "@/components/nutricontrol/MaintenancePhotoCaptureButton";
 
 interface PestService {
   id: string;
@@ -173,12 +174,26 @@ export const NutriPestControl = ({ currentDate, storeId }: Props) => {
           </div>
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Certificado (foto ou PDF)</label>
-            <Input
-              type="file"
-              accept="image/*,application/pdf"
-              onChange={(e) => setCertFile(e.target.files?.[0] ?? null)}
-              className="h-9 text-sm"
-            />
+            <div className="flex flex-wrap gap-2 items-center">
+              <MaintenancePhotoCaptureButton onCapture={(f) => setCertFile(f)} />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => document.getElementById("pest-cert-file-input")?.click()}
+              >
+                <Upload className="h-4 w-4" />
+                Arquivo
+              </Button>
+              <input
+                id="pest-cert-file-input"
+                type="file"
+                accept="image/*,application/pdf"
+                className="hidden"
+                onChange={(e) => setCertFile(e.target.files?.[0] ?? null)}
+              />
+            </div>
             {certFile && (
               <p className="text-[11px] text-muted-foreground mt-1 truncate">{certFile.name}</p>
             )}
