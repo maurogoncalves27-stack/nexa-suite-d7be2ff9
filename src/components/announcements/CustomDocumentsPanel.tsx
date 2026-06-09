@@ -252,7 +252,12 @@ export default function CustomDocumentsPanel() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-6 space-y-4">
+          <div className="flex justify-end">
+            <Button onClick={openNew}>
+              <Plus className="h-4 w-4 mr-2" /> Novo documento
+            </Button>
+          </div>
           {loading ? (
             <div className="flex justify-center p-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
           ) : docs.length === 0 ? (
