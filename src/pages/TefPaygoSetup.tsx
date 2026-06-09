@@ -95,10 +95,16 @@ const TefPaygoSetup = () => {
     (async () => {
       const { data } = await supabase
         .from("pdv_tef_config")
-        .select("store_id,cnpj,pdc,host")
+        .select("store_id,merchant_code,terminal_code,agent_url")
         .eq("store_id", storeId)
         .maybeSingle();
-      setCfg((data as TefRow | null) ?? null);
+      if (!data) { setCfg(null); return; }
+      setCfg({
+        store_id: data.store_id,
+        cnpj: data.merchant_code,
+        pdc: data.terminal_code,
+        host: data.agent_url,
+      });
     })();
   }, [storeId]);
 
