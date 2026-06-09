@@ -117,7 +117,7 @@ export default function WarningSignatureDialog() {
     setSubmitting(true);
     try {
       const blob = dataUrlToBlob(signatureDataUrl);
-      const path = `${user.id}/${current.id}-${Date.now()}.png`;
+      const path = `${employeeId ?? user.id}/${current.id}-${Date.now()}.png`;
       const { error: upErr } = await supabase.storage
         .from("warning-signatures").upload(path, blob, { contentType: "image/png", upsert: true });
       if (upErr) throw upErr;
