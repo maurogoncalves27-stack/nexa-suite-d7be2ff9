@@ -112,6 +112,7 @@ const Quotations = lazy(() => import("./pages/Quotations.tsx"));
 const Pdv = lazy(() => import("./pages/Pdv.tsx"));
 const PdvNovo = lazy(() => import("./pages/PdvNovo.tsx"));
 const PdvHomologacaoPayGo = lazy(() => import("./pages/PdvHomologacaoPayGo.tsx"));
+const TefPaygoSetup = lazy(() => import("./pages/TefPaygoSetup.tsx"));
 const PdvCancellations = lazy(() => import("./pages/PdvCancellations.tsx"));
 const StoreHome = lazy(() => import("./pages/StoreHome.tsx"));
 const SmartPos = lazy(() => import("./pages/SmartPos.tsx"));
@@ -338,6 +339,7 @@ const App = () => (
               <Route path="/configuracoes/whatsapp" element={<Guarded staff><WhatsAppAdmin /></Guarded>} />
               <Route path="/configuracoes/totem" element={<Guarded staff><TotemConfig /></Guarded>} />
               <Route path="/configuracoes/nfce-tester" element={<Guarded staff><NfceTester /></Guarded>} />
+              <Route path="/configuracoes/tef-paygo" element={<Guarded staff><TefPaygoSetup /></Guarded>} />
               <Route path="/recebimento" element={<Guarded><InventoryReceiving /></Guarded>} />
               <Route path="/nf-arquivadas" element={<Guarded><NfArchived /></Guarded>} />
               <Route path="/produtos" element={<Guarded><InventoryProducts /></Guarded>} />

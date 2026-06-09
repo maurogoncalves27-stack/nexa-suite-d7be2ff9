@@ -1,5 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Store, ShieldCheck, Handshake, Link2, Eye, Settings as SettingsIcon, FlaskConical } from "lucide-react";
+import { Store, ShieldCheck, Handshake, Link2, Eye, Settings as SettingsIcon, FlaskConical, CreditCard } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import StoresPanel from "@/components/settings/StoresPanel";
@@ -19,12 +19,20 @@ const Settings = () => {
           </h1>
           <p className="text-muted-foreground">Centralize aqui as configurações do sistema.</p>
         </div>
-        <Button asChild variant="outline" size="sm" className="gap-2">
-          <Link to="/configuracoes/nfce-tester">
-            <FlaskConical className="h-4 w-4" />
-            Teste NFC-e (ACBr)
-          </Link>
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button asChild variant="outline" size="sm" className="gap-2">
+            <Link to="/configuracoes/tef-paygo">
+              <CreditCard className="h-4 w-4" />
+              TEF PayGo
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm" className="gap-2">
+            <Link to="/configuracoes/nfce-tester">
+              <FlaskConical className="h-4 w-4" />
+              Teste NFC-e (ACBr)
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="stores" className="w-full">
