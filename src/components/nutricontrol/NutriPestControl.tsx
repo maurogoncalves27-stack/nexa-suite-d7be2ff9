@@ -176,7 +176,6 @@ export const NutriPestControl = ({ currentDate, storeId }: Props) => {
             <Input
               type="file"
               accept="image/*,application/pdf"
-              capture="environment"
               onChange={(e) => setCertFile(e.target.files?.[0] ?? null)}
               className="h-9 text-sm"
             />
