@@ -1,16 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Camera, Loader2 } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Camera, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 interface MaintenancePhotoCaptureButtonProps {
   disabled?: boolean;
@@ -32,11 +25,7 @@ export function MaintenancePhotoCaptureButton({
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     if (videoRef.current) {
-      try {
-        videoRef.current.pause();
-      } catch {
-        /* noop */
-      }
+      try { videoRef.current.pause(); } catch { /* noop */ }
       videoRef.current.srcObject = null;
     }
     setVideoReady(false);
@@ -48,11 +37,7 @@ export function MaintenancePhotoCaptureButton({
     const video = videoRef.current;
     if (!video) return;
     video.srcObject = stream;
-    try {
-      await video.play();
-    } catch {
-      /* autoplay pode falhar silenciosamente — onCanPlay/onLoadedMetadata cobrem o resto */
-    }
+    try { await video.play(); } catch { /* noop */ }
   }, []);
 
   const startCameraStream = useCallback(async () => {
@@ -70,11 +55,7 @@ export function MaintenancePhotoCaptureButton({
       let stream: MediaStream;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: "environment" },
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
+          video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
           audio: false,
         });
       } catch {
@@ -86,15 +67,12 @@ export function MaintenancePhotoCaptureButton({
       streamRef.current = stream;
       await attachStream(stream);
     } catch (error: any) {
-      console.error("Falha ao abrir câmera da manutenção:", error);
+      console.error("Falha ao abrir câmera:", error);
       const msg =
-        error?.name === "NotAllowedError"
-          ? "Permita o acesso à câmera nas configurações do navegador."
-          : error?.name === "NotFoundError"
-            ? "Nenhuma câmera encontrada neste aparelho."
-            : error?.name === "NotReadableError"
-              ? "A câmera está sendo usada por outro app. Feche-o e tente novamente."
-              : (error?.message ?? "Não foi possível abrir a câmera.");
+        error?.name === "NotAllowedError" ? "Permita o acesso à câmera nas configurações do navegador."
+        : error?.name === "NotFoundError" ? "Nenhuma câmera encontrada neste aparelho."
+        : error?.name === "NotReadableError" ? "A câmera está sendo usada por outro app."
+        : (error?.message ?? "Não foi possível abrir a câmera.");
       toast.error(msg);
       stopCamera();
       setOpen(false);
@@ -103,7 +81,6 @@ export function MaintenancePhotoCaptureButton({
     }
   }, [attachStream, stopCamera]);
 
-  // Callback ref garante iniciar a câmera assim que o <video> entra no DOM
   const handleVideoMount = useCallback(
     (node: HTMLVideoElement | null) => {
       videoRef.current = node;
@@ -117,50 +94,40 @@ export function MaintenancePhotoCaptureButton({
     [attachStream, startCameraStream],
   );
 
-  const handleOpenChange = (next: boolean) => {
-    if (!next) {
-      stopCamera();
-    }
-    setOpen(next);
-  };
+  const closeAll = useCallback(() => {
+    stopCamera();
+    setOpen(false);
+  }, [stopCamera]);
 
-  const capturePhoto = async () => {
+  const capturePhoto = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
     const video = videoRef.current;
     if (!video || !video.videoWidth || !video.videoHeight) {
       toast.error("A câmera ainda está iniciando. Tente novamente.");
       return;
     }
-
     setCapturing(true);
     try {
       const canvas = document.createElement("canvas");
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        toast.error("Não foi possível preparar a foto.");
-        return;
-      }
+      if (!ctx) { toast.error("Não foi possível preparar a foto."); return; }
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const blob = await new Promise<Blob | null>((resolve) =>
         canvas.toBlob((b) => resolve(b), "image/jpeg", 0.88),
       );
-      canvas.width = 0;
-      canvas.height = 0;
-      if (!blob) {
-        toast.error("Não foi possível capturar a foto.");
-        return;
-      }
-      onCapture(
-        new File([blob], `manutencao-${Date.now()}.jpg`, {
-          type: "image/jpeg",
-          lastModified: Date.now(),
-        }),
-      );
-      stopCamera();
-      setOpen(false);
+      canvas.width = 0; canvas.height = 0;
+      if (!blob) { toast.error("Não foi possível capturar a foto."); return; }
+      const file = new File([blob], `foto-${Date.now()}.jpg`, {
+        type: "image/jpeg",
+        lastModified: Date.now(),
+      });
+      onCapture(file);
+      closeAll();
     } catch (error: any) {
-      console.error("Falha ao capturar foto da manutenção:", error);
+      console.error("Falha ao capturar foto:", error);
       toast.error(error?.message ?? "Não foi possível capturar a foto.");
     } finally {
       setCapturing(false);
@@ -173,7 +140,7 @@ export function MaintenancePhotoCaptureButton({
         type="button"
         variant="outline"
         size="sm"
-        onClick={() => setOpen(true)}
+        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
         disabled={disabled}
         className="gap-1.5"
       >
@@ -181,16 +148,22 @@ export function MaintenancePhotoCaptureButton({
         Tirar foto
       </Button>
 
-      <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Confirmar foto</DialogTitle>
-            <DialogDescription>
-              Tire a foto sem sair da tela para evitar o retorno à home no mobile.
-            </DialogDescription>
-          </DialogHeader>
+      {open && createPortal(
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center p-4"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); closeAll(); }}
+            className="absolute top-4 right-4 text-white p-2 rounded-full bg-white/10 hover:bg-white/20"
+            aria-label="Fechar"
+          >
+            <X className="h-5 w-5" />
+          </button>
 
-          <div className="relative overflow-hidden rounded-md border border-border bg-muted aspect-[3/4]">
+          <div className="relative w-full max-w-sm aspect-[3/4] rounded-lg overflow-hidden bg-black border border-white/20">
             <video
               ref={handleVideoMount}
               className="h-full w-full object-cover"
@@ -201,23 +174,32 @@ export function MaintenancePhotoCaptureButton({
               onCanPlay={() => setVideoReady(true)}
             />
             {!videoReady && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted/80 text-xs text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin" />
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-xs text-white/80">
+                <Loader2 className="h-6 w-6 animate-spin" />
                 Iniciando câmera...
               </div>
             )}
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+          <div className="flex gap-3 mt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={(e) => { e.stopPropagation(); closeAll(); }}
+            >
               Cancelar
             </Button>
-            <Button type="button" onClick={capturePhoto} disabled={capturing || !videoReady}>
+            <Button
+              type="button"
+              onClick={capturePhoto}
+              disabled={capturing || !videoReady}
+            >
               {capturing ? "Confirmando..." : "Confirmar"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </div>,
+        document.body,
+      )}
     </>
   );
 }
