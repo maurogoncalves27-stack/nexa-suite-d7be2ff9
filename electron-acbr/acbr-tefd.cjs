@@ -44,8 +44,14 @@ const DEFAULT_WORK_DIR = path.join(
 );
 
 function resolveBase() {
+  // Para cada candidato, tenta o próprio diretório e também subpastas x64/x86.
+  // Necessário porque o instalador PayGo costuma setar PathPGWebLib apontando
+  // para a pasta base (sem x64/x86), mas a DLL real fica numa das subpastas.
   for (const b of DEFAULT_BASES) {
-    try { if (fs.existsSync(path.join(b, "PGWebLib.dll"))) return b; } catch { /* ignore */ }
+    const tries = [b, path.join(b, "x64"), path.join(b, "x86")];
+    for (const t of tries) {
+      try { if (fs.existsSync(path.join(t, "PGWebLib.dll"))) return t; } catch { /* ignore */ }
+    }
   }
   return DEFAULT_BASES[0] || "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib\\x64";
 }
