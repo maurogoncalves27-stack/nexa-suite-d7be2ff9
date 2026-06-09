@@ -1,37 +1,62 @@
-## Objetivo
-Trocar as abas do checklist por um **pipeline linear** (Voltar / Avançar) com barra de progresso simples no topo, sem bloqueios de validação — o usuário é guiado a passar por todas as etapas naturalmente.
+# Automatizar build/release do NEXA ACBr Agent
 
-## Mudanças em `NutriVisitReportPanel.tsx`
+Hoje, toda mudança em `electron-acbr/acbr-tefd.cjs` ou `server.cjs` exige passos manuais (bump de versão, `npm install`, `npm run dist`, desinstalar antigo, instalar novo). O plano cria um único comando `npm run release` que faz tudo e deixa o `.exe` pronto pra entregar.
 
-### 1. Remover `Tabs/TabsList/TabsTrigger/TabsContent`
-- Apagar imports e blocos relacionados.
-- Substituir por estado próprio: `stepIndex` (número) e array `steps` montado dinamicamente — uma entrada por seção que tenha itens (`SECTIONS + "Outros"`) + uma última entrada `{ kind: "finalizar" }`.
+## O que será criado
 
-### 2. Topo do pipeline (barra de progresso)
-- Linha 1: `Etapa X de N · NomeDaEtapa` (texto pequeno) com badge de NCs da etapa atual se houver.
-- Linha 2: barra `h-2 rounded-full bg-muted` com preenchimento `bg-primary` proporcional a `(stepIndex + 1) / steps.length`. Tokens do design system (sem cor hardcoded).
+1. **`electron-acbr/scripts/release.cjs`** — script Node que orquestra o release:
+   - Lê a versão atual de `package.json`.
+   - Faz bump automático (`patch` por padrão; `--minor` ou `--major` opcionais).
+   - Roda `npm install` (idempotente).
+   - Roda o build do instalador (`electron-builder --win nsis` — já é o que o `npm run dist` chama).
+   - Copia o `.exe` final pra `electron-acbr/releases/NEXA-ACBr-Agent-Setup-<versão>.exe` (pasta versionada, não sobrescreve histórico).
+   - Gera/atualiza `electron-acbr/releases/latest.json` com `{ version, file, sha256, releasedAt }` — base pra auto-update futuro.
+   - Imprime no console um checklist final (URL `https://127.0.0.1:3031/health` pra validar versão depois da reinstalação).
 
-### 3. Conteúdo da etapa
-- Se etapa do tipo "section": renderiza os mesmos cards de item (botão C/NC + nome + textarea de observação) já existentes, apenas filtrando pela seção da etapa atual.
-- Se etapa do tipo "finalizar": renderiza o bloco atual da aba Finalizar (resumo conformes/NCs + observações gerais + responsável + assinatura + botão Salvar).
+2. **`electron-acbr/package.json`** — adicionar scripts:
+   ```json
+   "release": "node scripts/release.cjs",
+   "release:minor": "node scripts/release.cjs --minor",
+   "release:major": "node scripts/release.cjs --major"
+   ```
 
-### 4. Rodapé com navegação
-- Bloco `flex items-center justify-between gap-2 pt-2`:
-  - Botão `Voltar` (variant outline, desabilitado em `stepIndex === 0`).
-  - Texto central `Etapa X / N` (some no mobile pequeno).
-  - Botão `Avançar` (primary, desabilitado em `stepIndex === steps.length - 1`).
-- Etapa "finalizar" oculta o `Avançar`; o botão `Salvar registro de visita` continua dentro do conteúdo.
+3. **`electron-acbr/releases/.gitignore`** — ignorar `*.exe` (binários não vão pro repo) mas manter `latest.json` versionado.
 
-### 5. Validação ao salvar
-- Mantém os toasts atuais. Quando faltar responsável/assinatura, em vez de `setActiveTab("finalizar")`, faz `setStepIndex(steps.length - 1)`.
+4. **`electron-acbr/RELEASE.md`** — guia curto: como rodar, onde sai o `.exe`, como o lojista reinstala, como validar.
 
-### 6. Reset
-- Após salvar com sucesso (no `saveReport` existente, onde `responses`/assinatura são limpos), `setStepIndex(0)` pra voltar à primeira etapa.
+## Fluxo de uso
 
-### 7. Limpeza
-- Remover import de `Tabs*` e `CheckCircle2` se não usados em mais nada.
-- Manter a banner de "Selecione uma loja" e o wrapper de `pointer-events-none opacity-50` quando `!currentStoreId`.
+```
+cd electron-acbr
+npm run release           # patch (1.3.3 → 1.3.4)
+npm run release:minor     # 1.3.x → 1.4.0
+```
 
-## Fora de escopo
-- Schema do banco, gerenciador de itens, histórico, telas externas (`NutriVisit.tsx`).
-- Bloqueios de avanço — o usuário escolheu "só visual, sem bloqueio".
+Saída esperada:
+```
+✓ Versão: 1.3.3 → 1.3.4
+✓ Dependências OK
+✓ Build concluído (38s)
+✓ Instalador: releases/NEXA-ACBr-Agent-Setup-1.3.4.exe (94 MB)
+✓ SHA-256: a1b2c3...
+✓ latest.json atualizado
+→ Próximos passos:
+   1) Desinstalar NEXA ACBr Agent antigo no PC
+   2) Rodar releases/NEXA-ACBr-Agent-Setup-1.3.4.exe
+   3) Abrir https://127.0.0.1:3031/health e conferir "version":"1.3.4"
+```
+
+## O que NÃO faz parte deste plano
+
+- Auto-update real (download + troca de binário em runtime) — fica pra um segundo passo, mas o `latest.json` já prepara o terreno.
+- Assinatura digital do `.exe` (precisa de certificado pago).
+- Upload automático pro servidor de distribuição — por ora o arquivo fica local pra você baixar/enviar.
+
+## Detalhes técnicos
+
+- O script é `.cjs` porque `package.json` do agente provavelmente já está em CommonJS (consistente com `acbr-tefd.cjs`/`server.cjs`).
+- Bump de versão é manual via `fs` + regex no `package.json` (sem `npm version`, pra não criar tag git automaticamente).
+- SHA-256 calculado com `crypto.createHash('sha256')` lendo o `.exe` em stream.
+- O caminho do `.exe` gerado pelo electron-builder normalmente é `electron-acbr/dist/NEXA ACBr Agent Setup <versão>.exe` — o script localiza pelo padrão e renomeia/copia.
+
+Quando você aprovar, eu implemento.

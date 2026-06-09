@@ -12,7 +12,11 @@
     "start": "electron .",
     "start:console": "node main.cjs",
     "clean:release": "node -e \"const fs=require('fs'); for (const dir of ['release','pack','dist-electron']) fs.rmSync(dir,{recursive:true,force:true});\"",
-    "dist:win": "npm run clean:release && electron-builder --win nsis --x64"
+    "dist:win": "npm run clean:release && electron-builder --win nsis --x64",
+    "release": "node scripts/release.cjs",
+    "release:keep": "node scripts/release.cjs --keep",
+    "release:minor": "node scripts/release.cjs --minor",
+    "release:major": "node scripts/release.cjs --major"
   },
   "dependencies": {
     "koffi": "^2.10.0",
