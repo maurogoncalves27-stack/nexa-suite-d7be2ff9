@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, FileText, Save, RotateCcw, Send } from "lucide-react";
+import { Loader2, Save, RotateCcw, Send } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { EDITABLE_PLACEHOLDERS } from "@/lib/contractPdf";
 import { DEFAULT_CONTRACT_TEMPLATE } from "@/lib/contractTemplate";

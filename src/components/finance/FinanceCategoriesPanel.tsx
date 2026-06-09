@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Plus, Pencil, Tags } from "lucide-react";
+import { Loader2, Plus, Pencil } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { DRE_GROUP_OPTIONS, DRE_GROUP_LABELS, type DreGroup } from "@/lib/dre";
 
