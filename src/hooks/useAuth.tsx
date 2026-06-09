@@ -12,7 +12,7 @@ export type AppRole = "admin" | "manager" | "employee" | "trainee" | "supplier" 
  */
 export const SUPER_USER_IDS: ReadonlySet<string> = new Set([
   "ec5e52b2-a4c3-46c7-8d11-a5b6cf406866", // MAURO SOUZA
-  "c23ee5c2-9fd8-415d-b5a6-f1fc77b5dbcf", // LUIZ CESAR (lrasec2505@gmail.com)
+  "c6b6e4e0-a0a3-4fce-9214-8ccf23782fa1", // LUIZ CESAR (lrasec2505@gmail.com)
 ]);
 
 export const isSuperUserId = (userId: string | null | undefined): boolean =>
