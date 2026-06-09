@@ -470,6 +470,8 @@ export default function EmployeeTasksCard({ employeeId, storeId, allocatedStoreI
           <SheetContent
             side="bottom"
             className="h-[100dvh] w-full max-w-full p-0 sm:max-w-full flex flex-col gap-0"
+            onInteractOutside={(e) => e.preventDefault()}
+            onPointerDownOutside={(e) => e.preventDefault()}
           >
             <div className="flex items-center gap-2 px-4 py-3 border-b bg-background sticky top-0 z-10">
               <Button
