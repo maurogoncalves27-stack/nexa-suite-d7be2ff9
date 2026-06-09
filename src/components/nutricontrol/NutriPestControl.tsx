@@ -174,12 +174,26 @@ export const NutriPestControl = ({ currentDate, storeId }: Props) => {
           </div>
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Certificado (foto ou PDF)</label>
-            <Input
-              type="file"
-              accept="image/*,application/pdf"
-              onChange={(e) => setCertFile(e.target.files?.[0] ?? null)}
-              className="h-9 text-sm"
-            />
+            <div className="flex flex-wrap gap-2 items-center">
+              <MaintenancePhotoCaptureButton onCapture={(f) => setCertFile(f)} />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => document.getElementById("pest-cert-file-input")?.click()}
+              >
+                <Upload className="h-4 w-4" />
+                Arquivo
+              </Button>
+              <input
+                id="pest-cert-file-input"
+                type="file"
+                accept="image/*,application/pdf"
+                className="hidden"
+                onChange={(e) => setCertFile(e.target.files?.[0] ?? null)}
+              />
+            </div>
             {certFile && (
               <p className="text-[11px] text-muted-foreground mt-1 truncate">{certFile.name}</p>
             )}
