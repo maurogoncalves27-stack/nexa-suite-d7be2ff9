@@ -234,7 +234,7 @@ async function handle(req, res) {
       return send(res, 200, { ok: true, retorno });
     }
 
-    if (req.method === "POST" && path === "/tef/install") {
+    if (req.method === "POST" && (path === "/tef/install" || path === "/tef/instalar")) {
       if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "PGWebLib.dll não disponível" });
       const body = await readBody(req);
       const retorno = tef.instalarPdc({ ...body, environment: body.environment, onDisplay: (m) => console.log("[TEF display]", m) });
