@@ -32,11 +32,73 @@ export default function OfxImportDialog({ accounts, open, onOpenChange, onImport
       return;
     }
     setSubmitting(true);
+    let createdStatementId: string | null = null;
+    let inserted = 0;
     try {
       const text = await file.text();
       const parsed = parseOfx(text);
       if (parsed.transactions.length === 0) {
         throw new Error("Nenhuma transação encontrada no arquivo OFX");
+      }
+
+      const fileDuplicatesByFitId = new Set<string>();
+      const uniqueRowsMap = new Map<string, {
+        bank_account_id: string;
+        fit_id: string;
+        posted_at: string;
+        amount: number;
+        trn_type: string | null;
+        memo: string | null;
+        check_number: string | null;
+        payee: string | null;
+      }>();
+
+      for (const t of parsed.transactions) {
+        const key = t.fitId.trim();
+        if (!key) continue;
+        if (uniqueRowsMap.has(key)) {
+          fileDuplicatesByFitId.add(key);
+          continue;
+        }
+        uniqueRowsMap.set(key, {
+          bank_account_id: accountId,
+          fit_id: key,
+          posted_at: t.postedAt,
+          amount: t.amount,
+          trn_type: t.trnType || null,
+          memo: t.memo || null,
+          check_number: t.checkNumber,
+          payee: t.payee,
+        });
+      }
+
+      const uniqueRows = Array.from(uniqueRowsMap.values());
+      const existingFitIds = new Set<string>();
+      for (let i = 0; i < uniqueRows.length; i += 500) {
+        const fitIds = uniqueRows.slice(i, i + 500).map((row) => row.fit_id);
+        const { data, error } = await supabase
+          .from("bank_transactions")
+          .select("fit_id")
+          .eq("bank_account_id", accountId)
+          .in("fit_id", fitIds);
+        if (error) throw error;
+        for (const item of data ?? []) {
+          if (item.fit_id) existingFitIds.add(item.fit_id);
+        }
+      }
+
+      const rowsToInsert = uniqueRows.filter((row) => !existingFitIds.has(row.fit_id));
+      const duplicatesInDatabase = uniqueRows.length - rowsToInsert.length;
+
+      if (rowsToInsert.length === 0) {
+        toast({
+          title: "Arquivo já importado",
+          description:
+            `Nenhuma transação nova encontrada.` +
+            `${duplicatesInDatabase > 0 ? ` ${duplicatesInDatabase} já existiam na conta.` : ""}` +
+            `${fileDuplicatesByFitId.size > 0 ? ` ${fileDuplicatesByFitId.size} duplicadas no próprio OFX foram ignoradas.` : ""}`,
+        });
+        return;
       }
 
       const { data: stmt, error: stmtErr } = await supabase
@@ -54,34 +116,22 @@ export default function OfxImportDialog({ accounts, open, onOpenChange, onImport
         .select("id")
         .single();
       if (stmtErr) throw stmtErr;
+      createdStatementId = stmt.id;
 
-      // Insere todas as transações; conflitos por (bank_account_id, fit_id) são ignorados
-      const rows = parsed.transactions.map((t) => ({
-        statement_id: stmt!.id,
-        bank_account_id: accountId,
-        fit_id: t.fitId,
-        posted_at: t.postedAt,
-        amount: t.amount,
-        trn_type: t.trnType || null,
-        memo: t.memo || null,
-        check_number: t.checkNumber,
-        payee: t.payee,
-      }));
-
-      // Chunk de 500 para evitar payload muito grande
-      let inserted = 0;
-      let duplicates = 0;
-      for (let i = 0; i < rows.length; i += 500) {
-        const chunk = rows.slice(i, i + 500);
+      for (let i = 0; i < rowsToInsert.length; i += 500) {
+        const chunk = rowsToInsert.slice(i, i + 500).map((row) => ({
+          ...row,
+          statement_id: stmt.id,
+        }));
         const { data, error } = await supabase
           .from("bank_transactions")
           .upsert(chunk, { onConflict: "bank_account_id,fit_id", ignoreDuplicates: true })
           .select("id");
         if (error) throw error;
-        const ins = data?.length ?? 0;
-        inserted += ins;
-        duplicates += chunk.length - ins;
+        inserted += data?.length ?? 0;
       }
+
+      const duplicates = duplicatesInDatabase + fileDuplicatesByFitId.size + (rowsToInsert.length - inserted);
 
       toast({
         title: "Extrato importado",
@@ -91,6 +141,9 @@ export default function OfxImportDialog({ accounts, open, onOpenChange, onImport
       onOpenChange(false);
       onImported?.();
     } catch (err: any) {
+      if (createdStatementId && inserted === 0) {
+        await supabase.from("bank_statements").delete().eq("id", createdStatementId);
+      }
       console.error("[OFX import] erro:", err);
       const description =
         err?.message ||
