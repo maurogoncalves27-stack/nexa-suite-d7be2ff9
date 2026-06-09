@@ -421,6 +421,11 @@ function administrativo({ onDisplay } = {}) {
   return collectReceipts();
 }
 
+/**
+ * @deprecated A instalação/ativação do PdC agora é feita pela UI do PayGo Windows
+ * (modo DEMO), conforme fluxo oficial Setis — ver /configuracoes/tef-paygo no app.
+ * Função mantida apenas como fallback; não deve ser chamada em produção.
+ */
 function instalarPdc({ onDisplay, environment } = {}) {
   startTransaction(PWOPER.INSTALL, "install", { environment });
   runExecLoop({ onDisplay, timeoutMs: 180000 });
