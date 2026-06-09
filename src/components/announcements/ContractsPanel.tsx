@@ -241,16 +241,7 @@ export default function ContractsPanel() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5 text-primary" />
-          Contrato Individual de Trabalho
-        </CardTitle>
-        <CardDescription>
-          Selecione um colaborador, ajuste o modelo se necessário, o contrato será disponibilizado na Área do Colaborador para leitura e assinatura eletrônica.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 pt-6">
         <div>
           <Label>Colaborador</Label>
           <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>

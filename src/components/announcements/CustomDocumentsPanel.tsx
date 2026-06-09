@@ -252,21 +252,7 @@ export default function CustomDocumentsPanel() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <FileSignature className="h-5 w-5 text-primary" />
-              Documentos para assinatura
-            </CardTitle>
-            <CardDescription>
-              Crie documentos genéricos (estilo regimento interno) para colaboradores assinarem digitalmente. Edições geram nova versão e exigem reassinatura.
-            </CardDescription>
-          </div>
-          <Button onClick={openNew}>
-            <Plus className="h-4 w-4 mr-2" /> Novo documento
-          </Button>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           {loading ? (
             <div className="flex justify-center p-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
           ) : docs.length === 0 ? (
