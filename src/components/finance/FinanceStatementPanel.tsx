@@ -137,12 +137,35 @@ export default function FinanceStatementPanel({
 }: Props) {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<StatementRow[]>([]);
+  const [viewTab, setViewTab] = useState<ViewTab>("lancamentos");
   const [kindFilter, setKindFilter] = useState<"all" | Kind>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "open" | "settled" | "overdue">("all");
   const [search, setSearch] = useState("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [dateField, setDateField] = useState<DateField>("due");
+  const todayIso = new Date().toISOString().slice(0, 7);
+  const [monthCursor, setMonthCursor] = useState<string>(todayIso); // YYYY-MM
+  const [monthOpen, setMonthOpen] = useState(false);
   const [editing, setEditing] = useState<{ kind: EditableKind; raw: any } | null>(null);
+
+  const monthRange = useMemo(() => {
+    const [y, m] = monthCursor.split("-").map(Number);
+    const start = new Date(y, m - 1, 1);
+    const end = new Date(y, m, 0);
+    const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return { from: iso(start), to: iso(end) };
+  }, [monthCursor]);
+
+  const monthLabelText = useMemo(() => {
+    const [y, m] = monthCursor.split("-").map(Number);
+    const txt = new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+    return txt.charAt(0).toUpperCase() + txt.slice(1);
+  }, [monthCursor]);
+
+  const shiftMonth = (delta: number) => {
+    const [y, m] = monthCursor.split("-").map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    setMonthCursor(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  };
 
   const load = async () => {
     setLoading(true);
