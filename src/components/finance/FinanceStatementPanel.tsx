@@ -321,10 +321,16 @@ export default function FinanceStatementPanel({
   const filtered = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const pickDate = (r: StatementRow): string | null => {
+      if (dateField === "due") return r.due_date || r.paid_date || r.competence_date;
+      if (dateField === "paid") return r.paid_date || r.due_date;
+      return r.competence_date || r.due_date || r.paid_date;
+    };
     return rows.filter((r) => {
+      if (viewTab === "corrente" && r.kind !== "bank" && r.kind !== "transfer") return false;
       if (kindFilter !== "all" && r.kind !== kindFilter) return false;
-      if (from && r.sort_date < from) return false;
-      if (to && r.sort_date > to) return false;
+      const d = pickDate(r) ?? r.sort_date;
+      if (d < monthRange.from || d > monthRange.to) return false;
       if (statusFilter === "open") {
         if (!(r.status === "open" || r.status === "pending" || r.status === "unreconciled")) return false;
       } else if (statusFilter === "settled") {
@@ -358,7 +364,7 @@ export default function FinanceStatementPanel({
       }
       return true;
     });
-  }, [rows, kindFilter, statusFilter, search, from, to]);
+  }, [rows, viewTab, kindFilter, statusFilter, search, dateField, monthRange]);
 
   const totals = useMemo(() => {
     let income = 0,
