@@ -1,62 +1,63 @@
-# Automatizar build/release do NEXA ACBr Agent
 
-Hoje, toda mudança em `electron-acbr/acbr-tefd.cjs` ou `server.cjs` exige passos manuais (bump de versão, `npm install`, `npm run dist`, desinstalar antigo, instalar novo). O plano cria um único comando `npm run release` que faz tudo e deixa o `.exe` pronto pra entregar.
+# Plano — Migrar TEF PayGo para o fluxo oficial Setis
 
-## O que será criado
+## Contexto
 
-1. **`electron-acbr/scripts/release.cjs`** — script Node que orquestra o release:
-   - Lê a versão atual de `package.json`.
-   - Faz bump automático (`patch` por padrão; `--minor` ou `--major` opcionais).
-   - Roda `npm install` (idempotente).
-   - Roda o build do instalador (`electron-builder --win nsis` — já é o que o `npm run dist` chama).
-   - Copia o `.exe` final pra `electron-acbr/releases/NEXA-ACBr-Agent-Setup-<versão>.exe` (pasta versionada, não sobrescreve histórico).
-   - Gera/atualiza `electron-acbr/releases/latest.json` com `{ version, file, sha256, releasedAt }` — base pra auto-update futuro.
-   - Imprime no console um checklist final (URL `https://127.0.0.1:3031/health` pra validar versão depois da reinstalação).
+A documentação oficial ([paygodev — Kit de atualização v5.1.50.2](https://paygodev.readme.io/docs/kit-para-atualiza%C3%A7%C3%A3o-da-documenta%C3%A7%C3%A3o)) deixa claro que o caminho suportado é:
 
-2. **`electron-acbr/package.json`** — adicionar scripts:
-   ```json
-   "release": "node scripts/release.cjs",
-   "release:minor": "node scripts/release.cjs --minor",
-   "release:major": "node scripts/release.cjs --major"
-   ```
+1. Baixar e instalar o **PayGo Windows** (`SetupPayGo_full_v5.1.47.2.exe`) que vem no kit.
+2. Ativar o **modo DEMO** pela UI do PayGo Windows (3 cliques no logo → digitar `demo` → app fica roxo).
+3. Habilitar "modo instalação da DLL" e informar **CNPJ + Ponto de Captura** pela UI.
+4. A partir daí, a **PGWebLib.dll** já está pronta — nossa aplicação só faz transações (`PW_iNewTransac` com `PWOPER_SALE`, `PWOPER_REFUND`, etc.), **sem** mais precisar do `PWOPER_INSTALL`.
 
-3. **`electron-acbr/releases/.gitignore`** — ignorar `*.exe` (binários não vão pro repo) mas manter `latest.json` versionado.
+Isso descarta o caminho atual (agente chamando `PWOPER_INSTALL` direto), que era a causa da Setis pedir o `TSTKEY` e travar nosso atendimento.
 
-4. **`electron-acbr/RELEASE.md`** — guia curto: como rodar, onde sai o `.exe`, como o lojista reinstala, como validar.
+## O que muda
 
-## Fluxo de uso
+- **Instalação/ativação:** deixa de ser código nosso, vira procedimento operacional manual feito 1x por loja.
+- **Agente Electron (`electron-acbr/acbr-tefd.cjs`):** remove fluxo de install, mantém só transação/cancelamento/reimpressão/administrativa.
+- **Configuração por loja:** CNPJ + PdC continuam em `pdv_tef_config`, mas viram **informativos** (a UI do PayGo Windows é a fonte de verdade do que está ativo na máquina).
+- **Comunicação com Setis:** não precisa mais do chamado pedindo "liberação de cenários" via PWOPER_INSTALL — a Setis já libera no momento em que o operador ativa o modo DEMO na UI.
 
-```
-cd electron-acbr
-npm run release           # patch (1.3.3 → 1.3.4)
-npm run release:minor     # 1.3.x → 1.4.0
-```
+## Passos
 
-Saída esperada:
-```
-✓ Versão: 1.3.3 → 1.3.4
-✓ Dependências OK
-✓ Build concluído (38s)
-✓ Instalador: releases/NEXA-ACBr-Agent-Setup-1.3.4.exe (94 MB)
-✓ SHA-256: a1b2c3...
-✓ latest.json atualizado
-→ Próximos passos:
-   1) Desinstalar NEXA ACBr Agent antigo no PC
-   2) Rodar releases/NEXA-ACBr-Agent-Setup-1.3.4.exe
-   3) Abrir https://127.0.0.1:3031/health e conferir "version":"1.3.4"
-```
+### 1. Documentação operacional (no app)
+- Nova página interna **/configuracoes/tef-paygo** (ou seção dentro de `/configuracoes`) com:
+  - Botão de download do kit oficial (link Setis).
+  - Passo-a-passo com os prints da doc (3 cliques no logo, digitar `demo`, etc.).
+  - Campos informativos: CNPJ, PdC, host (lidos de `pdv_tef_config` da loja selecionada).
+  - Checklist de validação ("PayGo Windows instalado?", "Modo DEMO ativado (app roxo)?", "PdC informado?").
+- Cabeçalho padrão NEXA + tokens de design + mobile-first (memórias core).
 
-## O que NÃO faz parte deste plano
+### 2. Agente Electron (`electron-acbr/acbr-tefd.cjs`)
+- **Remover:** qualquer chamada `PW_iNewTransac` com `PWOPER_INSTALL` e a lógica de leitura de `TSTKEY`/instalação.
+- **Manter/garantir:** `PWOPER_SALE`, `PWOPER_REFUND` (cancelamento), `PWOPER_REPRINT`, `PWOPER_ADMIN`, confirmação (`PW_iConfirmation`).
+- **Pré-flight:** ao subir o agente, fazer um `PW_iInit` simples e logar a versão; se a DLL responder erro de "não instalado", retornar uma mensagem clara dizendo "execute o PayGo Windows e ative o modo DEMO".
 
-- Auto-update real (download + troca de binário em runtime) — fica pra um segundo passo, mas o `latest.json` já prepara o terreno.
-- Assinatura digital do `.exe` (precisa de certificado pago).
-- Upload automático pro servidor de distribuição — por ora o arquivo fica local pra você baixar/enviar.
+### 3. Adapter TEF (lado React/PDV)
+- Em `pdv_tef_config`: tornar campos `cnpj` / `pdc` / `host` **somente leitura** na UI (informativos), já que a ativação real é externa.
+- Mensagens de erro do adapter: se o agente disser "PayGo não inicializado", mostrar toast com link para a página /configuracoes/tef-paygo.
+
+### 4. Memórias a atualizar
+- `mem://features/tef-paygo-sandbox`: trocar "credenciais DEMO Setis via INI" por "fluxo oficial PayGo Windows + modo DEMO (UI)".
+- `mem://features/prioridade-tef-acbr`: já está como "PGWebLib direto"; só reforçar que **instalação é via PayGo Windows, não programática**.
+- Core: ajustar a linha de prioridade absoluta de TEF mencionando que a instalação é via PayGo Windows.
+
+### 5. O que **NÃO** vamos fazer
+- Não mexer em iFood (preservado, memória core).
+- Não mexer em /pdv legado, pos_*, saipos-sync.
+- Não tocar em export C6 da folha, totem print config, "iFood Homologação" etc.
+- Não vamos mais perseguir Setis pelo `TSTKEY` / `PWOPER_INSTALL` — esse chamado pode ser fechado/abandonado.
 
 ## Detalhes técnicos
 
-- O script é `.cjs` porque `package.json` do agente provavelmente já está em CommonJS (consistente com `acbr-tefd.cjs`/`server.cjs`).
-- Bump de versão é manual via `fs` + regex no `package.json` (sem `npm version`, pra não criar tag git automaticamente).
-- SHA-256 calculado com `crypto.createHash('sha256')` lendo o `.exe` em stream.
-- O caminho do `.exe` gerado pelo electron-builder normalmente é `electron-acbr/dist/NEXA ACBr Agent Setup <versão>.exe` — o script localiza pelo padrão e renomeia/copia.
+- Kit oficial: `https://setis.com.br/filevista/public/j563/paygodev/20260422-integracao-setuppaygowindows-v5-1-50-2.zip`
+- Adquirentes sandbox disponíveis: **DEMO** (sub-adquirente), **REDE** (só valores inteiros), **PIX C6 BANK** (QrCode, aprovação automática).
+- PIN-Pad: cabo USB original, porta COM ≤ 32, preferir COM mais baixa.
+- A `PGWebLib.dll` continua sendo chamada pelo nosso agente Electron via FFI — nada muda no contrato de transação, só some o passo de install.
 
-Quando você aprovar, eu implemento.
+## Perguntas antes de implementar
+
+1. Quer que eu já **remova fisicamente** o código de `PWOPER_INSTALL` do agente nesta rodada, ou só **desabilito/comento** mantendo como fallback até validarmos o PayGo Windows instalado de verdade?
+2. A página de instruções deve ficar em **/configuracoes/tef-paygo** (item novo no sidebar) ou como uma **aba dentro de /configuracoes** já existente?
+3. Você quer que eu monte também uma **mensagem curta encerrando** o chamado pendente com a Setis (algo tipo "vamos seguir pelo fluxo do PayGo Windows, podem desconsiderar a solicitação do TSTKEY")?
