@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Loader2,
   Search,
@@ -21,10 +23,18 @@ import {
   Pencil,
   Trash2,
   ShoppingBasket,
+  CalendarDays,
+  FileSpreadsheet,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import EditStatementRowDialog, { type EditableKind } from "./EditStatementRowDialog";
+import * as XLSX from "xlsx";
+
+type DateField = "due" | "competence" | "paid";
+type ViewTab = "lancamentos" | "corrente";
 
 type Kind = "payable" | "receivable" | "transfer" | "bank";
 
@@ -127,12 +137,35 @@ export default function FinanceStatementPanel({
 }: Props) {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<StatementRow[]>([]);
+  const [viewTab, setViewTab] = useState<ViewTab>("lancamentos");
   const [kindFilter, setKindFilter] = useState<"all" | Kind>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "open" | "settled" | "overdue">("all");
   const [search, setSearch] = useState("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [dateField, setDateField] = useState<DateField>("due");
+  const todayIso = new Date().toISOString().slice(0, 7);
+  const [monthCursor, setMonthCursor] = useState<string>(todayIso); // YYYY-MM
+  const [monthOpen, setMonthOpen] = useState(false);
   const [editing, setEditing] = useState<{ kind: EditableKind; raw: any } | null>(null);
+
+  const monthRange = useMemo(() => {
+    const [y, m] = monthCursor.split("-").map(Number);
+    const start = new Date(y, m - 1, 1);
+    const end = new Date(y, m, 0);
+    const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return { from: iso(start), to: iso(end) };
+  }, [monthCursor]);
+
+  const monthLabelText = useMemo(() => {
+    const [y, m] = monthCursor.split("-").map(Number);
+    const txt = new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+    return txt.charAt(0).toUpperCase() + txt.slice(1);
+  }, [monthCursor]);
+
+  const shiftMonth = (delta: number) => {
+    const [y, m] = monthCursor.split("-").map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    setMonthCursor(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -288,10 +321,16 @@ export default function FinanceStatementPanel({
   const filtered = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const pickDate = (r: StatementRow): string | null => {
+      if (dateField === "due") return r.due_date || r.paid_date || r.competence_date;
+      if (dateField === "paid") return r.paid_date || r.due_date;
+      return r.competence_date || r.due_date || r.paid_date;
+    };
     return rows.filter((r) => {
+      if (viewTab === "corrente" && r.kind !== "bank" && r.kind !== "transfer") return false;
       if (kindFilter !== "all" && r.kind !== kindFilter) return false;
-      if (from && r.sort_date < from) return false;
-      if (to && r.sort_date > to) return false;
+      const d = pickDate(r) ?? r.sort_date;
+      if (d < monthRange.from || d > monthRange.to) return false;
       if (statusFilter === "open") {
         if (!(r.status === "open" || r.status === "pending" || r.status === "unreconciled")) return false;
       } else if (statusFilter === "settled") {
@@ -325,7 +364,7 @@ export default function FinanceStatementPanel({
       }
       return true;
     });
-  }, [rows, kindFilter, statusFilter, search, from, to]);
+  }, [rows, viewTab, kindFilter, statusFilter, search, dateField, monthRange]);
 
   const totals = useMemo(() => {
     let income = 0,
@@ -463,6 +502,24 @@ export default function FinanceStatementPanel({
     }
   };
 
+  const exportXlsx = () => {
+    const data = filtered.map((r) => ({
+      Vencimento: fmtDate(r.due_date),
+      Pagamento: fmtDate(r.paid_date),
+      Tipo: r.kind === "payable" ? "A pagar" : r.kind === "receivable" ? "A receber" : r.kind === "transfer" ? "Transferência" : "Banco",
+      Loja: r.store ?? "",
+      Fornecedor: r.party ?? "",
+      Descrição: r.description,
+      Categoria: r.category ?? "",
+      Valor: r.amount,
+      Status: r.status,
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Extrato");
+    XLSX.writeFile(wb, `extrato-${monthCursor}.xlsx`);
+  };
+
   return (
     <div className="space-y-4">
       {/* KPI cards */}
@@ -596,17 +653,24 @@ export default function FinanceStatementPanel({
         </Card>
       </div>
 
+      <Tabs value={viewTab} onValueChange={(v) => setViewTab(v as ViewTab)}>
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
+          <TabsTrigger value="corrente">Corrente</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       <Card>
         <CardContent className="pt-6 space-y-3">
           {/* Filters + actions */}
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-            <div className="grid gap-2 grid-cols-2 sm:grid-cols-4 lg:flex lg:flex-wrap">
-              <div className="relative col-span-2 sm:col-span-2 lg:w-64">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-wrap lg:items-center">
+              <div className="relative col-span-2 sm:col-span-3 lg:w-64">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Buscar..."
+                  placeholder="Buscar (descrição, fornecedor, nº lanç.)"
                   className="pl-8"
                 />
               </div>
@@ -629,10 +693,71 @@ export default function FinanceStatementPanel({
                   <SelectItem value="settled">Liquidados</SelectItem>
                 </SelectContent>
               </Select>
-              <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="lg:w-40" />
-              <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="lg:w-40" />
+              <Select value={dateField} onValueChange={(v) => setDateField(v as DateField)}>
+                <SelectTrigger className="lg:w-48"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="due">Data de vencimento</SelectItem>
+                  <SelectItem value="paid">Data de pagamento</SelectItem>
+                  <SelectItem value="competence">Data de competência</SelectItem>
+                </SelectContent>
+              </Select>
+              <Popover open={monthOpen} onOpenChange={setMonthOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2 h-10 lg:w-40 justify-start">
+                    <CalendarDays className="h-4 w-4" />
+                    {monthLabelText}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-3" align="start">
+                  <div className="flex items-center justify-between mb-2">
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => shiftMonth(-12)}>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm font-semibold">{monthCursor.split("-")[0]}</span>
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => shiftMonth(12)}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1">
+                    {Array.from({ length: 12 }).map((_, i) => {
+                      const year = Number(monthCursor.split("-")[0]);
+                      const mKey = `${year}-${String(i + 1).padStart(2, "0")}`;
+                      const label = new Date(year, i, 1).toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");
+                      const isActive = mKey === monthCursor;
+                      return (
+                        <Button
+                          key={i}
+                          size="sm"
+                          variant={isActive ? "default" : "ghost"}
+                          className="h-8 text-xs capitalize"
+                          onClick={() => {
+                            setMonthCursor(mKey);
+                            setMonthOpen(false);
+                          }}
+                        >
+                          {label}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-2 flex justify-between gap-1">
+                    <Button size="sm" variant="outline" className="flex-1 h-7 text-xs" onClick={() => { setMonthCursor(todayIso); setMonthOpen(false); }}>
+                      Mês atual
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => shiftMonth(-1)}>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => shiftMonth(1)}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={() => exportXlsx()} className="gap-1">
+                <FileSpreadsheet className="h-3.5 w-3.5" /> Exportar XLSX
+              </Button>
               <Button size="sm" variant="outline" onClick={load} disabled={loading} className="gap-1">
                 <Loader2 className={`h-3.5 w-3.5 ${loading ? "animate-spin" : "hidden"}`} />
                 Atualizar
@@ -672,7 +797,7 @@ export default function FinanceStatementPanel({
                   ? "Nenhum lançamento encontrado com os filtros atuais."
                   : "Nenhum lançamento cadastrado ainda."}
               </p>
-              {(from || to || search || kindFilter !== "all" || statusFilter !== "all") && (
+              {(search || kindFilter !== "all" || statusFilter !== "all") && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -680,8 +805,8 @@ export default function FinanceStatementPanel({
                     setSearch("");
                     setKindFilter("all");
                     setStatusFilter("all");
-                    setFrom("");
-                    setTo("");
+                    setMonthCursor(todayIso);
+                    setDateField("due");
                   }}
                 >
                   Limpar filtros
