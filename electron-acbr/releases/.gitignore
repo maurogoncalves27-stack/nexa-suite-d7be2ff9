@@ -1,0 +1,4 @@
+# ignora os instaladores gerados; mantém apenas latest.json no repo
+*.exe
+*.blockmap
+!latest.json
