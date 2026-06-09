@@ -22,9 +22,8 @@ export function MaintenancePhotoCaptureButton({
   const [videoReady, setVideoReady] = useState(false);
   const [capturing, setCapturing] = useState(false);
 
-  const stopEvent = (e: { stopPropagation: () => void; preventDefault?: () => void }) => {
+  const stopEvent = (e: { stopPropagation: () => void }) => {
     e.stopPropagation();
-    e.preventDefault?.();
   };
 
   const clearReadyCheck = useCallback(() => {
@@ -134,11 +133,9 @@ export function MaintenancePhotoCaptureButton({
       if (!node) return;
       if (streamRef.current) {
         void attachStream(streamRef.current);
-      } else {
-        void startCameraStream();
       }
     },
-    [attachStream, startCameraStream],
+    [attachStream],
   );
 
   const closeAll = useCallback(() => {
@@ -186,7 +183,11 @@ export function MaintenancePhotoCaptureButton({
         type="button"
         variant="outline"
         size="sm"
-        onClick={(e) => { stopEvent(e); setOpen(true); }}
+        onClick={(e) => {
+          stopEvent(e);
+          setOpen(true);
+          void startCameraStream();
+        }}
         onPointerDown={stopEvent}
         disabled={disabled}
         className="gap-1.5"
@@ -200,11 +201,6 @@ export function MaintenancePhotoCaptureButton({
           className="fixed inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center p-4"
           onClick={stopEvent}
           onPointerDown={stopEvent}
-          onPointerUp={stopEvent}
-          onTouchStart={stopEvent}
-          onTouchEnd={stopEvent}
-          onMouseDown={stopEvent}
-          onMouseUp={stopEvent}
         >
           <button
             type="button"
