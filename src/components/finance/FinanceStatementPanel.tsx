@@ -502,6 +502,24 @@ export default function FinanceStatementPanel({
     }
   };
 
+  const exportXlsx = () => {
+    const data = filtered.map((r) => ({
+      Vencimento: fmtDate(r.due_date),
+      Pagamento: fmtDate(r.paid_date),
+      Tipo: r.kind === "payable" ? "A pagar" : r.kind === "receivable" ? "A receber" : r.kind === "transfer" ? "Transferência" : "Banco",
+      Loja: r.store ?? "",
+      Fornecedor: r.party ?? "",
+      Descrição: r.description,
+      Categoria: r.category ?? "",
+      Valor: r.amount,
+      Status: r.status,
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Extrato");
+    XLSX.writeFile(wb, `extrato-${monthCursor}.xlsx`);
+  };
+
   return (
     <div className="space-y-4">
       {/* KPI cards */}
