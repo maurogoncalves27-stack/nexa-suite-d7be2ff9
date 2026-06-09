@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
-import { Trash2, Plus, FileText, AlertTriangle } from "lucide-react";
+import { Trash2, Plus, FileText, AlertTriangle, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { MaintenancePhotoCaptureButton } from "@/components/nutricontrol/MaintenancePhotoCaptureButton";
 
 interface PestService {
   id: string;
