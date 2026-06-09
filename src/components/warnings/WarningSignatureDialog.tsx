@@ -39,6 +39,7 @@ export default function WarningSignatureDialog() {
   const { user } = useAuth();
   const [pending, setPending] = useState<PendingWarning[]>([]);
   const [current, setCurrent] = useState<PendingWarning | null>(null);
+  const [employeeId, setEmployeeId] = useState<string | null>(null);
   const [mode, setMode] = useState<"view" | "refuse">("view");
   const [refusalReason, setRefusalReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
