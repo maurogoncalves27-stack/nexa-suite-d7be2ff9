@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Loader2,
   Search,
@@ -21,10 +23,18 @@ import {
   Pencil,
   Trash2,
   ShoppingBasket,
+  CalendarDays,
+  FileSpreadsheet,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import EditStatementRowDialog, { type EditableKind } from "./EditStatementRowDialog";
+import * as XLSX from "xlsx";
+
+type DateField = "due" | "competence" | "paid";
+type ViewTab = "lancamentos" | "corrente";
 
 type Kind = "payable" | "receivable" | "transfer" | "bank";
 
