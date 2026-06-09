@@ -21,6 +21,11 @@ export function MaintenancePhotoCaptureButton({
   const [videoReady, setVideoReady] = useState(false);
   const [capturing, setCapturing] = useState(false);
 
+  const stopEvent = (e: { stopPropagation: () => void; preventDefault?: () => void }) => {
+    e.stopPropagation();
+    e.preventDefault?.();
+  };
+
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
@@ -100,8 +105,7 @@ export function MaintenancePhotoCaptureButton({
   }, [stopCamera]);
 
   const capturePhoto = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
+    stopEvent(e);
     const video = videoRef.current;
     if (!video || !video.videoWidth || !video.videoHeight) {
       toast.error("A câmera ainda está iniciando. Tente novamente.");
@@ -125,7 +129,7 @@ export function MaintenancePhotoCaptureButton({
         lastModified: Date.now(),
       });
       onCapture(file);
-      closeAll();
+      requestAnimationFrame(() => closeAll());
     } catch (error: any) {
       console.error("Falha ao capturar foto:", error);
       toast.error(error?.message ?? "Não foi possível capturar a foto.");
@@ -140,7 +144,8 @@ export function MaintenancePhotoCaptureButton({
         type="button"
         variant="outline"
         size="sm"
-        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+        onClick={(e) => { stopEvent(e); setOpen(true); }}
+        onPointerDown={stopEvent}
         disabled={disabled}
         className="gap-1.5"
       >
@@ -151,12 +156,18 @@ export function MaintenancePhotoCaptureButton({
       {open && createPortal(
         <div
           className="fixed inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center p-4"
-          onClick={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
+          onClick={stopEvent}
+          onPointerDown={stopEvent}
+          onPointerUp={stopEvent}
+          onTouchStart={stopEvent}
+          onTouchEnd={stopEvent}
+          onMouseDown={stopEvent}
+          onMouseUp={stopEvent}
         >
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); closeAll(); }}
+            onClick={(e) => { stopEvent(e); closeAll(); }}
+            onPointerDown={stopEvent}
             className="absolute top-4 right-4 text-white p-2 rounded-full bg-white/10 hover:bg-white/20"
             aria-label="Fechar"
           >
@@ -185,13 +196,15 @@ export function MaintenancePhotoCaptureButton({
             <Button
               type="button"
               variant="outline"
-              onClick={(e) => { e.stopPropagation(); closeAll(); }}
+              onClick={(e) => { stopEvent(e); closeAll(); }}
+              onPointerDown={stopEvent}
             >
               Cancelar
             </Button>
             <Button
               type="button"
               onClick={capturePhoto}
+              onPointerDown={stopEvent}
               disabled={capturing || !videoReady}
             >
               {capturing ? "Confirmando..." : "Confirmar"}
