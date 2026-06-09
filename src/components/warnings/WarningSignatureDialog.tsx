@@ -39,6 +39,7 @@ export default function WarningSignatureDialog() {
   const { user } = useAuth();
   const [pending, setPending] = useState<PendingWarning[]>([]);
   const [current, setCurrent] = useState<PendingWarning | null>(null);
+  const [employeeId, setEmployeeId] = useState<string | null>(null);
   const [mode, setMode] = useState<"view" | "refuse">("view");
   const [refusalReason, setRefusalReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -54,9 +55,10 @@ export default function WarningSignatureDialog() {
     if (empErr) console.error("[Warnings] employee lookup error", empErr);
     if (!emp) {
       console.log("[Warnings] no employee linked to user", user.id);
-      setPending([]); setCurrent(null);
+      setPending([]); setCurrent(null); setEmployeeId(null);
       return;
     }
+    setEmployeeId(emp.id);
     const { data, error } = await supabase
       .from("employee_warnings")
       .select("id, title, content, issued_at")
@@ -115,7 +117,7 @@ export default function WarningSignatureDialog() {
     setSubmitting(true);
     try {
       const blob = dataUrlToBlob(signatureDataUrl);
-      const path = `${user.id}/${current.id}-${Date.now()}.png`;
+      const path = `${employeeId ?? user.id}/${current.id}-${Date.now()}.png`;
       const { error: upErr } = await supabase.storage
         .from("warning-signatures").upload(path, blob, { contentType: "image/png", upsert: true });
       if (upErr) throw upErr;
