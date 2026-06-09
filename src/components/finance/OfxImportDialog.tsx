@@ -90,10 +90,17 @@ export default function OfxImportDialog({ accounts, open, onOpenChange, onImport
       reset();
       onOpenChange(false);
       onImported?.();
-    } catch (err) {
+    } catch (err: any) {
+      console.error("[OFX import] erro:", err);
+      const description =
+        err?.message ||
+        err?.error_description ||
+        err?.hint ||
+        err?.details ||
+        (typeof err === "string" ? err : JSON.stringify(err));
       toast({
         title: "Erro ao importar",
-        description: err instanceof Error ? err.message : "Erro desconhecido",
+        description,
         variant: "destructive",
       });
     } finally {
