@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Plus, Pencil, Tags } from "lucide-react";
+import { Loader2, Plus, Pencil } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { DRE_GROUP_OPTIONS, DRE_GROUP_LABELS, type DreGroup } from "@/lib/dre";
 
@@ -83,11 +83,7 @@ export default function FinanceCategoriesPanel({ onChanged }: Props) {
   return (
     <Card>
       <CardContent className="pt-6 space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h3 className="font-semibold flex items-center gap-2"><Tags className="h-4 w-4" /> Categorias</h3>
-            <p className="text-sm text-muted-foreground">Categorize despesas e receitas para relatórios consistentes.</p>
-          </div>
+        <div className="flex items-center justify-end gap-3">
           <Button size="sm" onClick={() => setEditing({ kind: "expense", is_active: true, sort_order: 0 })}>
             <Plus className="h-4 w-4 mr-1" /> Nova categoria
           </Button>

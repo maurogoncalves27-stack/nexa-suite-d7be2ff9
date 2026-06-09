@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, FileText, Save, RotateCcw, Send } from "lucide-react";
+import { Loader2, Save, RotateCcw, Send } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { EDITABLE_PLACEHOLDERS } from "@/lib/contractPdf";
 import { DEFAULT_CONTRACT_TEMPLATE } from "@/lib/contractTemplate";
@@ -241,16 +241,7 @@ export default function ContractsPanel() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5 text-primary" />
-          Contrato Individual de Trabalho
-        </CardTitle>
-        <CardDescription>
-          Selecione um colaborador, ajuste o modelo se necessário, o contrato será disponibilizado na Área do Colaborador para leitura e assinatura eletrônica.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 pt-6">
         <div>
           <Label>Colaborador</Label>
           <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
