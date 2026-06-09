@@ -188,15 +188,28 @@ export const checkAcbrAgent = async (
 export const acbrInstalarPdc = async (
   agentUrl: string,
 ): Promise<AcbrActionResponse> => {
+  const endpoints = ["/tef/install", "/tef/instalar"];
+
   try {
-    const r = await fetch(`${agentUrl}/tef/install`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ environment: "homologation" }),
-    });
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) return { ok: false, parsed: {}, error: data?.error ?? `HTTP ${r.status}` };
-    return { ok: true, retorno: data.retorno, parsed: parseIni(data.retorno) };
+    let lastError = "offline";
+
+    for (const endpoint of endpoints) {
+      const r = await fetch(`${agentUrl}${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ environment: "homologation" }),
+      });
+
+      const data = await r.json().catch(() => ({}));
+      if (r.ok) return { ok: true, retorno: data.retorno, parsed: parseIni(data.retorno) };
+
+      lastError = data?.error ?? `HTTP ${r.status}`;
+      if (r.status !== 404) {
+        return { ok: false, parsed: {}, error: lastError };
+      }
+    }
+
+    return { ok: false, parsed: {}, error: lastError };
   } catch (e) {
     return { ok: false, parsed: {}, error: e instanceof Error ? e.message : "offline" };
   }
