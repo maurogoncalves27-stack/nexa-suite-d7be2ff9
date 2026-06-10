@@ -261,10 +261,6 @@ export function MaintenancePhotoCaptureButton({
     stopCamera();
   };
 
-  const retakeSnapshot = async () => {
-    await openInlineCamera();
-  };
-
   const confirmSnapshot = async () => {
     if (!previewBlob) return;
 
