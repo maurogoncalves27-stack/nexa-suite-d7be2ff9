@@ -2,7 +2,7 @@
  * Adapter SiTef (Software Express).
  *
  * Arquitetura: o totem (Electron) sobe um agente HTTP local em
- * http://localhost:60906 (electron/sitef-agent.cjs). Esse agente:
+ * http://127.0.0.1:3030 (electron/sitef-agent.cjs). Esse agente:
  *  - em modo "stub" (padrão): simula o fluxo do pinpad, útil pra QA;
  *  - em modo "real": carrega CliSiTef.dll via FFI quando o credenciamento
  *    SiTef + C6 Pay estiver concluído.
