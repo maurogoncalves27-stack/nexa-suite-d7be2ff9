@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Usb, Loader2, Wifi, Settings2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { loadTefConfig, paygoAdministrativo } from "@/lib/tef";
+import { loadTefConfig } from "@/lib/tef";
+import { paygoAdministrativo } from "@/lib/tef/paygoAdapter";
 
 const ASA_SUL_ID = "fcf435c2-c382-444c-b499-4d95f07b2633";
 
