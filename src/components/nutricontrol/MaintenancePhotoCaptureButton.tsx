@@ -29,7 +29,7 @@ interface MaintenancePhotoCaptureButtonProps {
 export function MaintenancePhotoCaptureButton({
   disabled = false,
   onCapture,
-  captureMode = false,
+  captureMode = "environment",
   onOpenIntent,
 }: MaintenancePhotoCaptureButtonProps) {
   const id = useId();
@@ -74,6 +74,7 @@ export function MaintenancePhotoCaptureButton({
       <Label
         htmlFor={id}
         onPointerDown={() => onOpenIntent?.()}
+        onClick={() => onOpenIntent?.()}
         className={cn(
           buttonVariants({ variant: "outline", size: "sm" }),
           "gap-1.5 cursor-pointer select-none",
