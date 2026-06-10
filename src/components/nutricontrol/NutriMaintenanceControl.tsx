@@ -240,7 +240,12 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
 
   // Mantém a loja do contexto pré-selecionada no formulário quando ela mudar
   useEffect(() => {
-    setReqStoreId(storeId);
+    if (storeId) {
+      setReqStoreId(storeId);
+      return;
+    }
+
+    setReqStoreId((current) => current ?? storeId);
   }, [storeId]);
 
   // Qualquer usuário autenticado pode solicitar manutenção em qualquer loja.
@@ -601,19 +606,23 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
                     e.target.value = "";
                     if (!file) {
                       setReqPhoto(null);
+                      persistDraft({ reqPhotoName: null });
                       return;
                     }
                     if (!file.type.startsWith("image/")) {
                       toast.error("Selecione uma imagem válida.");
                       setReqPhoto(null);
+                      persistDraft({ reqPhotoName: null });
                       return;
                     }
                     if (file.size > 10 * 1024 * 1024) {
                       toast.error("A foto deve ter no máximo 10MB.");
                       setReqPhoto(null);
+                      persistDraft({ reqPhotoName: null });
                       return;
                     }
                     setReqPhoto(file);
+                    persistDraft({ reqPhotoName: file.name });
                   }}
                   className="h-9 text-sm"
                 />
