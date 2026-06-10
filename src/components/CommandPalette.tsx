@@ -90,7 +90,7 @@ const NAV_ITEMS: Item[] = [
   { title: "Garantias de equipamentos", url: "/garantias", icon: ShieldCheck, group: "Estoque" },
   { title: "Patrimônio", url: "/patrimonio", icon: Landmark, group: "Estoque", staffOnly: true, keywords: "mobiliario equipamentos utensilhos inventario ativo" },
   { title: "PDV", url: "/pdv-novo", icon: ReceiptText, group: "PDV", staffOnly: true, keywords: "pdv vendas balcao ifood" },
-  { title: "Vendas (Saipos – arquivado)", url: "/pdv", icon: ReceiptText, group: "PDV", staffOnly: true, keywords: "saipos historico arquivo" },
+  
   { title: "Cardápio", url: "/cardapio", icon: ScanText, group: "PDV", staffOnly: true },
 
   // Compras
