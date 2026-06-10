@@ -27,7 +27,7 @@ import {
 } from "@/lib/tef/homologation/steps";
 import { exportHomologationXlsx, type StepResultRow } from "@/lib/tef/homologation/exporter";
 import { loadTefConfig, type TefConfig } from "@/lib/tef";
-import { createAcbrAdapter, acbrCancelarVenda, acbrAdministrativo, acbrInstalarPdc, checkAcbrAgent } from "@/lib/tef/acbrAdapter";
+import { createAcbrAdapter, acbrCancelarVenda, acbrAdministrativo, checkAcbrAgent } from "@/lib/tef/acbrAdapter";
 
 const ACBR_AGENT_URL = "https://127.0.0.1:3031";
 
