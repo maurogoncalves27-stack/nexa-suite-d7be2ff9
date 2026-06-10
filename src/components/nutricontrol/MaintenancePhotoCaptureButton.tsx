@@ -1,8 +1,9 @@
-import { useRef, useState, type ChangeEvent } from "react";
+import { useId, useRef, useState, type ChangeEvent } from "react";
 import { Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface MaintenancePhotoCaptureButtonProps {
   disabled?: boolean;
@@ -13,6 +14,7 @@ export function MaintenancePhotoCaptureButton({
   disabled = false,
   onCapture,
 }: MaintenancePhotoCaptureButtonProps) {
+  const inputId = useId();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [capturing, setCapturing] = useState(false);
 
@@ -44,30 +46,31 @@ export function MaintenancePhotoCaptureButton({
   return (
     <>
       <input
+        id={inputId}
         ref={inputRef}
         type="file"
         accept="image/*"
         capture="environment"
-        className="hidden"
+        className="sr-only"
         onChange={handleFileChange}
         disabled={disabled || capturing}
       />
 
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={(e) => {
-          stopEvent(e);
-          inputRef.current?.click();
-        }}
+      <label
+        htmlFor={inputId}
+        role="button"
+        aria-disabled={disabled || capturing}
         onPointerDown={stopEvent}
-        disabled={disabled || capturing}
-        className="gap-1.5"
+        onClick={stopEvent}
+        className={cn(
+          buttonVariants({ variant: "outline", size: "sm" }),
+          "gap-1.5",
+          (disabled || capturing) && "pointer-events-none opacity-50",
+        )}
       >
         {capturing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
         {capturing ? "Processando..." : "Tirar foto"}
-      </Button>
+      </label>
     </>
   );
 }
