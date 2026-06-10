@@ -19,8 +19,9 @@ import {
 } from "@/components/ui/select";
 import {
   CreditCard, Download, Check, ExternalLink, Usb, Info,
-  MousePointerClick, KeyRound, ShieldCheck, Copy,
+  MousePointerClick, KeyRound, ShieldCheck, Copy, Pencil, Save, X,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import TefTestSaleCard from "@/components/tef-paygo/TefTestSaleCard";
 import TefPinpadSetupCard from "@/components/tef-paygo/TefPinpadSetupCard";
@@ -80,6 +81,9 @@ const TefPaygoSetup = () => {
   const [stores, setStores] = useState<Store[]>([]);
   const [storeId, setStoreId] = useState<string>("");
   const [cfg, setCfg] = useState<TefRow | null>(null);
+  const [editingPdc, setEditingPdc] = useState(false);
+  const [pdcDraft, setPdcDraft] = useState("");
+  const [savingPdc, setSavingPdc] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -171,7 +175,80 @@ const TefPaygoSetup = () => {
         </div>
         <div className="grid gap-2 sm:grid-cols-3 pt-2">
           <Field label="CNPJ" value={cnpj} />
-          <Field label="Ponto de Captura (PdC)" value={pdc} />
+          <div className="rounded-md border bg-muted/30 p-2.5 space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-xs text-muted-foreground">Ponto de Captura (PdC)</div>
+              {!editingPdc ? (
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => copy(pdc, "Ponto de Captura")} className="h-7 w-7 p-0">
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={!storeId}
+                    onClick={() => { setPdcDraft(pdc); setEditingPdc(true); }}
+                    className="h-7 w-7 p-0"
+                    title={storeId ? "Editar PdC" : "Selecione uma loja primeiro"}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={savingPdc}
+                    onClick={async () => {
+                      if (!storeId) return;
+                      const trimmed = pdcDraft.trim();
+                      if (!trimmed) {
+                        toast({ title: "PdC inválido", description: "Informe um Ponto de Captura.", variant: "destructive" });
+                        return;
+                      }
+                      setSavingPdc(true);
+                      const { error } = await supabase
+                        .from("pdv_tef_config")
+                        .update({ terminal_code: trimmed })
+                        .eq("store_id", storeId);
+                      setSavingPdc(false);
+                      if (error) {
+                        toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+                        return;
+                      }
+                      setCfg(prev => prev ? { ...prev, pdc: trimmed } : prev);
+                      setEditingPdc(false);
+                      toast({ title: "PdC atualizado", description: `Ponto de Captura: ${trimmed}` });
+                    }}
+                    className="h-7 w-7 p-0"
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={savingPdc}
+                    onClick={() => setEditingPdc(false)}
+                    className="h-7 w-7 p-0"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
+            </div>
+            {editingPdc ? (
+              <Input
+                autoFocus
+                value={pdcDraft}
+                onChange={(e) => setPdcDraft(e.target.value)}
+                className="h-7 font-mono text-sm"
+                placeholder="Ex.: 111476"
+              />
+            ) : (
+              <div className="text-sm font-mono truncate">{pdc}</div>
+            )}
+          </div>
           <Field label="Host (sandbox)" value={host} />
         </div>
       </Card>
