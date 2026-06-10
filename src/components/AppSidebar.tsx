@@ -206,6 +206,7 @@ const pdvSections: Section[] = [
     { title: "Cancelamentos", url: "/pdv-cancelamentos", icon: XCircle, staffOnly: true },
     { title: "Homologação PayGo", url: "/pdv-novo/homologacao-paygo", icon: ScrollText, staffOnly: true },
     { title: "Totem", url: "/configuracoes/totem", icon: Monitor, staffOnly: true },
+    { title: "WhatsApp", url: "/whatsapp", icon: MessageCircle, staffOnly: true },
   ]},
   { label: "Cardápio", items: [
     { title: "Cardápio", url: "/cardapio", icon: ScanText, staffOnly: true },
