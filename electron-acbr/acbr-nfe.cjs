@@ -16,7 +16,9 @@ const fs = require("fs");
 const koffi = require("koffi");
 
 const ACBR_BASE = process.env.ACBR_BASE || "C:\\NexaACBr\\bin";
-const DLL_PATH = path.join(ACBR_BASE, "ACBrNFe64.dll");
+const IS_32BIT = process.arch === "ia32";
+const DLL_NAME = IS_32BIT ? "ACBrNFe32.dll" : "ACBrNFe64.dll";
+const DLL_PATH = path.join(ACBR_BASE, DLL_NAME);
 const INI_PATH = path.join(ACBR_BASE, "ACBrLib.ini");
 const LOG_PATH = path.join(path.dirname(ACBR_BASE), "logs");
 // Schemas ficam em C:\NexaACBr\Schemas\NFe (um nível acima de bin)
