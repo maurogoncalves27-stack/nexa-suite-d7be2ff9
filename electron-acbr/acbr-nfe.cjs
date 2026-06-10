@@ -85,7 +85,7 @@ function explainInitFailure(retCode, acbrMessage = "") {
 function load() {
   if (lib) return lib;
   if (!fs.existsSync(DLL_PATH)) {
-    throw new Error(`ACBrNFe64.dll não encontrada em ${DLL_PATH}. Confira ACBR_BASE.`);
+    throw new Error(`${DLL_NAME} não encontrada em ${DLL_PATH}. Confira ACBR_BASE.`);
   }
   if (!fs.existsSync(INI_PATH)) {
     throw new Error(`ACBrLib.ini não encontrado em ${INI_PATH}.`);
