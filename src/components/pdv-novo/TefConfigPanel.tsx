@@ -40,7 +40,7 @@ const DEFAULT_AGENT_URL: Record<TefCfg["provider"], string> = {
 const blank = (storeId: string): TefCfg => ({
   store_id: storeId,
   provider: "mock",
-  agent_url: "http://localhost:60906",
+  agent_url: "http://127.0.0.1:3030",
   merchant_code: "",
   terminal_code: "",
   acquirer: "",
