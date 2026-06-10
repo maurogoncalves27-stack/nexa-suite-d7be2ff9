@@ -22,6 +22,7 @@ import {
   MousePointerClick, KeyRound, ShieldCheck, Copy,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import TefTestSaleCard from "@/components/tef-paygo/TefTestSaleCard";
 
 const KIT_URL =
   "https://setis.com.br/filevista/public/j563/paygodev/20260422-integracao-setuppaygowindows-v5-1-50-2.zip";
@@ -173,6 +174,8 @@ const TefPaygoSetup = () => {
           <Field label="Host (sandbox)" value={host} />
         </div>
       </Card>
+
+      <TefTestSaleCard />
 
       <Card className="p-4 sm:p-6 space-y-6">
         <h2 className="font-semibold flex items-center gap-2">
