@@ -28,7 +28,7 @@ interface Health {
   error?: string;
 }
 
-const DEFAULT_URL = "http://127.0.0.1:3030";
+const DEFAULT_URL = "https://127.0.0.1:3031";
 
 export default function NfceTester() {
   const [agentUrl, setAgentUrl] = useState(DEFAULT_URL);
