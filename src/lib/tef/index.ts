@@ -12,7 +12,7 @@ export * from "./types";
 
 const DEFAULT_CONFIG: TefConfig = {
   provider: "mock",
-  agentUrl: "http://localhost:60906",
+  agentUrl: "http://127.0.0.1:3030",
 };
 
 export const loadTefConfig = async (storeId?: string | null): Promise<TefConfig> => {
