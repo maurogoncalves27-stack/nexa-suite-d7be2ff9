@@ -27,9 +27,9 @@ const Index = () => {
     return <Navigate to="/totem" replace />;
   }
 
-  // Login fixo de PC de loja: vai direto para o balcão (sidebar próprio, sem sidebar do sistema).
+  // Login fixo de PC de loja: vai direto para /loja (sidebar próprio, sem sidebar do sistema).
   if (isStoreLogin) {
-    return <Navigate to="/balcao" replace />;
+    return <Navigate to="/loja" replace />;
   }
 
   if (isSupplier) {
