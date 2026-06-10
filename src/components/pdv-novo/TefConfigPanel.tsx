@@ -111,10 +111,15 @@ export default function TefConfigPanel() {
       });
       return;
     }
+    // Normaliza URL: agente local é sempre HTTP (sem TLS) e porta default 3030
+    const normalizedUrl = (cfg.agent_url || "")
+      .trim()
+      .replace(/^https:\/\//i, "http://")
+      .replace(/^(?!https?:\/\/)/, "http://");
     const payload = {
       store_id: cfg.store_id,
       provider: cfg.provider,
-      agent_url: cfg.agent_url,
+      agent_url: normalizedUrl,
       merchant_code: cfg.merchant_code || null,
       terminal_code: cfg.terminal_code || null,
       acquirer: cfg.acquirer || null,
