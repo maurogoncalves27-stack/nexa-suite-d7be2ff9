@@ -506,11 +506,16 @@ export default function PublicJobDetail() {
               )}
             </section>
 
-            <Button onClick={submit} disabled={submitting} className="w-full h-12 text-base gap-2">
+            <Button
+              onClick={submit}
+              disabled={submitting}
+              className="w-full h-12 text-base gap-2 ap-sans font-semibold rounded-full border-0"
+              style={{ background: "hsl(var(--ap-red))", color: "hsl(var(--ap-cream))" }}
+            >
               {(submitting || uploadingResume) && <Loader2 className="h-4 w-4 animate-spin" />}
               {uploadingResume ? "Enviando currículo..." : "Enviar candidatura"}
             </Button>
-            <p className="text-xs text-muted-foreground text-center">
+            <p className="ap-sans text-xs text-center" style={{ color: "hsl(var(--ap-brown))" }}>
               Ao enviar, você concorda com o uso dos seus dados para o processo seletivo.
             </p>
           </CardContent>
