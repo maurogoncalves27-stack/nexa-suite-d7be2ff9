@@ -19,8 +19,9 @@ import {
 } from "@/components/ui/select";
 import {
   CreditCard, Download, Check, ExternalLink, Usb, Info,
-  MousePointerClick, KeyRound, ShieldCheck, Copy,
+  MousePointerClick, KeyRound, ShieldCheck, Copy, Pencil, Save, X,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import TefTestSaleCard from "@/components/tef-paygo/TefTestSaleCard";
 import TefPinpadSetupCard from "@/components/tef-paygo/TefPinpadSetupCard";
