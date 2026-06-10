@@ -442,7 +442,8 @@ export default function PdvHomologacaoPayGo() {
           </p>
           <p>
             Ponto de Captura e host acima são referência da rodada. A PGWebLib usa a instalação local do PayGo Windows
-            e o diretório de trabalho da máquina; se houver <code>-2498</code>, rode <strong>Instalar PdC</strong> primeiro.
+            e o diretório de trabalho da máquina. A ativação/instalação do PdC é feita pela UI do PayGo Windows em
+            modo DEMO — veja <strong>Configurações → TEF PayGo (Instalação)</strong>.
           </p>
         </div>
       </Card>
