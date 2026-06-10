@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import TefTestSaleCard from "@/components/tef-paygo/TefTestSaleCard";
+import TefPinpadSetupCard from "@/components/tef-paygo/TefPinpadSetupCard";
 
 const KIT_URL =
   "https://setis.com.br/filevista/public/j563/paygodev/20260422-integracao-setuppaygowindows-v5-1-50-2.zip";
@@ -174,6 +175,8 @@ const TefPaygoSetup = () => {
           <Field label="Host (sandbox)" value={host} />
         </div>
       </Card>
+
+      <TefPinpadSetupCard storeId={storeId} />
 
       <TefTestSaleCard />
 
