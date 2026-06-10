@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState, type ChangeEvent } from "react";
-import { Camera, Check, Loader2, RefreshCw, X } from "lucide-react";
+import { Camera, Check, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button, buttonVariants } from "@/components/ui/button";
