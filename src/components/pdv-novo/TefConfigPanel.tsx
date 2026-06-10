@@ -31,16 +31,17 @@ interface TefCfg {
 }
 
 const DEFAULT_AGENT_URL: Record<TefCfg["provider"], string> = {
-  mock: "http://127.0.0.1:3030",
-  sitef: "http://127.0.0.1:3030",
-  paygo: "http://127.0.0.1:3030",
-  acbr: "http://127.0.0.1:3030",
+  mock: "https://127.0.0.1:3031",
+  sitef: "https://127.0.0.1:3031",
+  paygo: "https://127.0.0.1:3031",
+  acbr: "https://127.0.0.1:3031",
+
 };
 
 const blank = (storeId: string): TefCfg => ({
   store_id: storeId,
   provider: "mock",
-  agent_url: "http://127.0.0.1:3030",
+  agent_url: "https://127.0.0.1:3031",
   merchant_code: "",
   terminal_code: "",
   acquirer: "",
@@ -111,11 +112,14 @@ export default function TefConfigPanel() {
       });
       return;
     }
-    // Normaliza URL: agente local é sempre HTTP (sem TLS) e porta default 3030
-    const normalizedUrl = (cfg.agent_url || "")
-      .trim()
-      .replace(/^https:\/\//i, "http://")
-      .replace(/^(?!https?:\/\/)/, "http://");
+    // Normaliza URL: agente local roda em HTTPS (3031) com certificado self-signed
+    // para evitar mixed content quando o app é servido via HTTPS.
+    let normalizedUrl = (cfg.agent_url || "").trim();
+    if (!/^https?:\/\//i.test(normalizedUrl)) normalizedUrl = "https://" + normalizedUrl;
+    // Se o app está em https, força agente em https também (mixed content)
+    if (typeof window !== "undefined" && window.location.protocol === "https:") {
+      normalizedUrl = normalizedUrl.replace(/^http:\/\//i, "https://");
+    }
     const payload = {
       store_id: cfg.store_id,
       provider: cfg.provider,
