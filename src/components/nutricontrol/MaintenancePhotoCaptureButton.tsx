@@ -96,9 +96,9 @@ export function MaintenancePhotoCaptureButton({
     setProcessing(true);
     try {
       await onCapture(file);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Falha ao processar foto:", error);
-      toast.error(error?.message ?? "Não foi possível usar a foto.");
+      toast.error(error instanceof Error ? error.message : "Não foi possível usar a foto.");
       throw error;
     } finally {
       setProcessing(false);
@@ -140,7 +140,7 @@ export function MaintenancePhotoCaptureButton({
       stopCamera();
       streamRef.current = stream;
       setDialogOpen(true);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Falha ao abrir câmera inline:", error);
       toast.error("Não foi possível abrir a câmera. Você pode escolher uma imagem do aparelho.");
       openFallbackPicker(false);
