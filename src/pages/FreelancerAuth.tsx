@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, HandCoins } from "lucide-react";
+import { Loader2, HandCoins, Eye, EyeOff } from "lucide-react";
 import { useFreelancerSelf } from "@/hooks/useFreelancerSelf";
 import { NexaLogoCard } from "@/components/auth/NexaLogoCard";
 import { AuthRolePill } from "@/components/auth/AuthRolePill";
@@ -23,6 +23,7 @@ export default function FreelancerAuth() {
   const [tab, setTab] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [freelancerId, setFreelancerId] = useState("");
   const [options, setOptions] = useState<{ id: string; full_name: string }[]>([]);
   const [loadingList, setLoadingList] = useState(false);
@@ -120,7 +121,17 @@ export default function FreelancerAuth() {
                 </div>
                 <div className="space-y-2">
                   <Label>Senha</Label>
-                  <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
+                  <div className="relative">
+                    <Input type={showPassword ? "text" : "password"} required value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" className="pr-10" />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Entrar
@@ -156,7 +167,17 @@ export default function FreelancerAuth() {
                 </div>
                 <div className="space-y-2">
                   <Label>Senha</Label>
-                  <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} />
+                  <div className="relative">
+                    <Input type={showPassword ? "text" : "password"} required value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} className="pr-10" />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Criar conta
