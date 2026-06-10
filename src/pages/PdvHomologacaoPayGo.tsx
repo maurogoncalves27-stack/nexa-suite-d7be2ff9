@@ -89,7 +89,7 @@ export default function PdvHomologacaoPayGo() {
   const [busyStep, setBusyStep] = useState<number | null>(null);
   const [pdcCode, setPdcCode] = useState(DEFAULT_PDC);
   const [hostUrl, setHostUrl] = useState(DEFAULT_HOST);
-  const [installingPdc, setInstallingPdc] = useState(false);
+  // installingPdc removido — instalação do PdC é feita pela UI do PayGo Windows (modo DEMO)
   const [agentHealth, setAgentHealth] = useState<{ ok: boolean; mode?: string; version?: string; error?: string } | null>(null);
 
   // --- Lojas elegíveis (físicas, sem iFood Homologação) -------------------
