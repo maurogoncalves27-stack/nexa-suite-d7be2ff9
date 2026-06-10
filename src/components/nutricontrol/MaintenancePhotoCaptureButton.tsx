@@ -43,13 +43,13 @@ export function MaintenancePhotoCaptureButton({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!dialogOpen || !streamRef.current || !videoRef.current) return;
+    if (!dialogOpen || previewBlob || !streamRef.current || !videoRef.current) return;
 
     videoRef.current.srcObject = streamRef.current;
     videoRef.current
       .play()
       .catch((error) => console.error("Falha ao iniciar preview da câmera:", error));
-  }, [dialogOpen]);
+  }, [dialogOpen, previewBlob]);
 
   useEffect(() => {
     if (!previewBlob) {
@@ -105,8 +105,8 @@ export function MaintenancePhotoCaptureButton({
     }
   };
 
-  const openFallbackPicker = () => {
-    onOpenIntent?.();
+  const openFallbackPicker = (notifyIntent = true) => {
+    if (notifyIntent) onOpenIntent?.();
     inputRef.current?.click();
   };
 
@@ -120,7 +120,7 @@ export function MaintenancePhotoCaptureButton({
       !!navigator.mediaDevices?.getUserMedia;
 
     if (!canUseInlineCamera) {
-      openFallbackPicker();
+      openFallbackPicker(false);
       return;
     }
 
@@ -143,7 +143,7 @@ export function MaintenancePhotoCaptureButton({
     } catch (error: any) {
       console.error("Falha ao abrir câmera inline:", error);
       toast.error("Não foi possível abrir a câmera. Você pode escolher uma imagem do aparelho.");
-      openFallbackPicker();
+      openFallbackPicker(false);
     } finally {
       setOpeningCamera(false);
     }
