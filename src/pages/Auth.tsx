@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Fingerprint, Lock, KeyRound, UserPlus, Briefcase } from "lucide-react";
+import { Loader2, Fingerprint, Lock, KeyRound, UserPlus, Briefcase, Eye, EyeOff } from "lucide-react";
 import { NexaLogoCard } from "@/components/auth/NexaLogoCard";
 import { AuthRolePill } from "@/components/auth/AuthRolePill";
 import { AuthSwitchLinks } from "@/components/auth/AuthSwitchLinks";
@@ -84,6 +84,7 @@ export default function Auth() {
   const [bioPrefEnabled, setBioPrefEnabled] = useState(false);
   const [bioBusy, setBioBusy] = useState(false);
   const [autoTried, setAutoTried] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [resetOpen, setResetOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
@@ -362,14 +363,25 @@ export default function Auth() {
                   <Label htmlFor="password" className="flex items-center gap-1.5">
                     <Lock className="h-3.5 w-3.5" /> Senha
                   </Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    required
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      required
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <Button type="submit" className="w-full" disabled={busy}>
@@ -511,15 +523,26 @@ export default function Auth() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password-su">Senha</Label>
-                  <Input
-                    id="password-su"
-                    type="password"
-                    required
-                    autoComplete="new-password"
-                    minLength={6}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password-su"
+                      type={showPassword ? "text" : "password"}
+                      required
+                      autoComplete="new-password"
+                      minLength={6}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
                 <div className="flex items-start gap-2 rounded-md border p-3 bg-muted/30">
                   <Checkbox id="lgpd-accept" checked={acceptedTerms}
