@@ -415,7 +415,7 @@ export default function PublicJobDetail() {
             </section>
 
             <section className="space-y-3">
-              <h3 className="font-semibold text-sm text-muted-foreground uppercase">Experiência</h3>
+              <h3 className="ap-sans font-semibold text-sm uppercase tracking-wide" style={{ color: "hsl(var(--ap-brown))" }}>Experiência</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="space-y-1.5"><Label>Anos de experiência *</Label><Input type="number" min={0} step="0.5" value={form.experience_years} onChange={(e) => setForm({ ...form, experience_years: e.target.value })} /></div>
                 <div className="space-y-1.5"><Label>Último cargo *</Label><Input value={form.last_job} onChange={(e) => setForm({ ...form, last_job: e.target.value })} /></div>
@@ -424,7 +424,7 @@ export default function PublicJobDetail() {
             </section>
 
             <section className="space-y-3">
-              <h3 className="font-semibold text-sm text-muted-foreground uppercase">Currículo *</h3>
+              <h3 className="ap-sans font-semibold text-sm uppercase tracking-wide" style={{ color: "hsl(var(--ap-brown))" }}>Currículo *</h3>
               {resumeFile ? (
                 <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/40">
                   <FileText className="h-5 w-5 text-primary shrink-0" />
@@ -452,7 +452,7 @@ export default function PublicJobDetail() {
             </section>
 
             <section className="space-y-3">
-              <h3 className="font-semibold text-sm text-muted-foreground uppercase">Conte sobre você *</h3>
+              <h3 className="ap-sans font-semibold text-sm uppercase tracking-wide" style={{ color: "hsl(var(--ap-brown))" }}>Conte sobre você *</h3>
               {BEHAVIORAL_QUESTIONS.map((q) => (
                 <div key={q} className="space-y-1.5">
                   <Label>{q} *</Label>
@@ -462,7 +462,7 @@ export default function PublicJobDetail() {
             </section>
 
             <section className="space-y-3">
-              <h3 className="font-semibold text-sm text-muted-foreground uppercase flex items-center gap-2">
+              <h3 className="ap-sans font-semibold text-sm uppercase tracking-wide flex items-center gap-2" style={{ color: "hsl(var(--ap-brown))" }}>
                 <CalendarClock className="h-4 w-4" /> Escolha um horário para a entrevista *
               </h3>
               {slots.length === 0 ? (
