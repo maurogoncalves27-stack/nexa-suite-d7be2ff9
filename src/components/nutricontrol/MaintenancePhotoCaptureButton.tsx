@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type ChangeEvent } from "react";
+import { useId, useState, type ChangeEvent } from "react";
 import { Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -15,7 +15,6 @@ export function MaintenancePhotoCaptureButton({
   onCapture,
 }: MaintenancePhotoCaptureButtonProps) {
   const inputId = useId();
-  const inputRef = useRef<HTMLInputElement | null>(null);
   const [capturing, setCapturing] = useState(false);
 
   const stopEvent = (e: { stopPropagation: () => void }) => {
@@ -47,7 +46,6 @@ export function MaintenancePhotoCaptureButton({
     <>
       <input
         id={inputId}
-        ref={inputRef}
         type="file"
         accept="image/*"
         capture="environment"
