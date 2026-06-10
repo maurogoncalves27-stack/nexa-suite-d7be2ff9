@@ -42,7 +42,7 @@ export type TefEnvironment = "demo" | "producao";
 
 export interface TefConfig {
   provider: TefProvider;
-  agentUrl: string;          // ex: http://localhost:60906
+  agentUrl: string;          // ex: http://127.0.0.1:3030
   merchantCode?: string;     // código da loja no provedor
   terminalCode?: string;
   acquirer?: string;
