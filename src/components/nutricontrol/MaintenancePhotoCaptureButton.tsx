@@ -6,6 +6,36 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
+const CAMERA_READY_TIMEOUT_MS = 4000;
+
+async function waitForVideoReady(video: HTMLVideoElement): Promise<void> {
+  if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) return;
+
+  await new Promise<void>((resolve, reject) => {
+    const cleanup = () => {
+      video.removeEventListener("loadeddata", onReady);
+      video.removeEventListener("canplay", onReady);
+      window.clearTimeout(timeoutId);
+    };
+
+    const onReady = () => {
+      if (video.videoWidth > 0 && video.videoHeight > 0) {
+        cleanup();
+        resolve();
+      }
+    };
+
+    const timeoutId = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("A câmera demorou para ficar pronta. Tente novamente."));
+    }, CAMERA_READY_TIMEOUT_MS);
+
+    video.addEventListener("loadeddata", onReady);
+    video.addEventListener("canplay", onReady);
+    onReady();
+  });
+}
+
 interface MaintenancePhotoCaptureButtonProps {
   disabled?: boolean;
   onCapture: (file: File) => void | Promise<void>;
@@ -39,16 +69,51 @@ export function MaintenancePhotoCaptureButton({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [openingCamera, setOpeningCamera] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!dialogOpen || previewBlob || !streamRef.current || !videoRef.current) return;
+    if (!dialogOpen || previewBlob || !streamRef.current) return;
 
-    videoRef.current.srcObject = streamRef.current;
-    videoRef.current
-      .play()
-      .catch((error) => console.error("Falha ao iniciar preview da câmera:", error));
+    let cancelled = false;
+    let retryTimeoutId: number | null = null;
+
+    const attachPreview = async (attempt = 0) => {
+      if (cancelled) return;
+
+      const video = videoRef.current;
+      if (!video) {
+        if (attempt < 20) {
+          retryTimeoutId = window.setTimeout(() => {
+            void attachPreview(attempt + 1);
+          }, 50);
+        }
+        return;
+      }
+
+      try {
+        setCameraReady(false);
+        video.srcObject = streamRef.current;
+        video.muted = true;
+        video.playsInline = true;
+        await video.play().catch(() => undefined);
+        await waitForVideoReady(video);
+        if (!cancelled) setCameraReady(true);
+      } catch (error) {
+        if (cancelled) return;
+        console.error("Falha ao iniciar preview da câmera:", error);
+        toast.error("Não foi possível iniciar a câmera. Tente novamente.");
+        resetDialogState();
+      }
+    };
+
+    void attachPreview();
+
+    return () => {
+      cancelled = true;
+      if (retryTimeoutId) window.clearTimeout(retryTimeoutId);
+    };
   }, [dialogOpen, previewBlob]);
 
   useEffect(() => {
@@ -77,6 +142,7 @@ export function MaintenancePhotoCaptureButton({
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
+    setCameraReady(false);
   };
 
   const resetDialogState = () => {
@@ -125,6 +191,7 @@ export function MaintenancePhotoCaptureButton({
     }
 
     setOpeningCamera(true);
+    setCameraReady(false);
     setPreviewBlob(null);
 
     try {
@@ -165,8 +232,7 @@ export function MaintenancePhotoCaptureButton({
 
   const takeSnapshot = async () => {
     const video = videoRef.current;
-    if (!video || !video.videoWidth || !video.videoHeight) {
-      toast.error("A câmera ainda não está pronta.");
+    if (!cameraReady || !video || !video.videoWidth || !video.videoHeight) {
       return;
     }
 
@@ -258,7 +324,15 @@ export function MaintenancePhotoCaptureButton({
               {previewUrl ? (
                 <img src={previewUrl} alt="Pré-visualização da foto" className="h-full w-full object-cover" />
               ) : (
-                <video ref={videoRef} className="h-full w-full object-cover" playsInline muted autoPlay />
+                <div className="relative h-full w-full">
+                  <video ref={videoRef} className="h-full w-full object-cover" playsInline muted autoPlay />
+                  {!cameraReady && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted text-muted-foreground">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span className="text-sm">Preparando câmera...</span>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
@@ -280,9 +354,9 @@ export function MaintenancePhotoCaptureButton({
                   </Button>
                 </>
               ) : (
-                <Button type="button" onClick={takeSnapshot} disabled={openingCamera || processing}>
-                  <Camera className="h-4 w-4" />
-                  Capturar
+                <Button type="button" onClick={takeSnapshot} disabled={!cameraReady || openingCamera || processing}>
+                  {cameraReady ? <Camera className="h-4 w-4" /> : <Loader2 className="h-4 w-4 animate-spin" />}
+                  {cameraReady ? "Capturar" : "Preparando..."}
                 </Button>
               )}
             </DialogFooter>
