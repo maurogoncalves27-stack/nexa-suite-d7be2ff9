@@ -17,6 +17,7 @@ import { NutriPestControl } from "@/components/nutricontrol/NutriPestControl";
 import { NutriMaintenanceControl } from "@/components/nutricontrol/NutriMaintenanceControl";
 
 const Nutricontrol = () => {
+  const STORAGE_KEY = "nutricontrol:context";
   const [currentDate, setCurrentDate] = useState(new Date());
   const [storeId, setStoreId] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -30,6 +31,40 @@ const Nutricontrol = () => {
     if (t && validTabs.includes(t) && t !== activeTab) setActiveTab(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as { storeId?: string | null; activeTab?: string; currentDate?: string };
+      if (!storeId && saved.storeId) setStoreId(saved.storeId);
+      if (saved.activeTab && validTabs.includes(saved.activeTab) && saved.activeTab !== activeTab) {
+        setActiveTab(saved.activeTab);
+      }
+      if (saved.currentDate) {
+        const restoredDate = new Date(saved.currentDate);
+        if (!Number.isNaN(restoredDate.getTime())) setCurrentDate(restoredDate);
+      }
+    } catch {
+      // noop
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          storeId,
+          activeTab,
+          currentDate: currentDate.toISOString(),
+        }),
+      );
+    } catch {
+      // noop
+    }
+  }, [storeId, activeTab, currentDate]);
 
   const handleTabChange = (v: string) => {
     setActiveTab(v);
