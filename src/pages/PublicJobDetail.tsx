@@ -404,12 +404,21 @@ export default function PublicJobDetail() {
               <div className="space-y-2">
                 <Label>Disponibilidade (marque tudo que se aplica)</Label>
                 <div className="flex flex-wrap gap-2">
-                  {AVAILABILITY_OPTIONS.map((o) => (
-                    <label key={o} className={`flex items-center gap-2 px-3 py-1.5 rounded-md border cursor-pointer transition-colors ${availability.includes(o) ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted"}`}>
-                      <Checkbox checked={availability.includes(o)} onCheckedChange={() => toggleAvail(o)} className="hidden" />
-                      <span className="text-sm">{o}</span>
-                    </label>
-                  ))}
+                  {AVAILABILITY_OPTIONS.map((o) => {
+                    const on = availability.includes(o);
+                    return (
+                      <label
+                        key={o}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-full border cursor-pointer transition-colors ap-sans text-sm"
+                        style={on
+                          ? { background: "hsl(var(--ap-red))", color: "hsl(var(--ap-cream))", borderColor: "hsl(var(--ap-red))" }
+                          : { background: "transparent", color: "hsl(var(--ap-ink))", borderColor: "hsl(var(--ap-brown) / 0.3)" }}
+                      >
+                        <Checkbox checked={on} onCheckedChange={() => toggleAvail(o)} className="hidden" />
+                        <span>{o}</span>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
             </section>
