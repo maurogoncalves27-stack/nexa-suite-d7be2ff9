@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 interface MaintenancePhotoCaptureButtonProps {
   disabled?: boolean;
   onCapture: (file: File) => void | Promise<void>;
+  captureMode?: "environment" | "user" | false;
+  onOpenIntent?: () => void;
 }
 
 /**
@@ -27,6 +29,8 @@ interface MaintenancePhotoCaptureButtonProps {
 export function MaintenancePhotoCaptureButton({
   disabled = false,
   onCapture,
+  captureMode = false,
+  onOpenIntent,
 }: MaintenancePhotoCaptureButtonProps) {
   const id = useId();
   const [capturing, setCapturing] = useState(false);
@@ -61,7 +65,7 @@ export function MaintenancePhotoCaptureButton({
         id={id}
         type="file"
         accept="image/*"
-        capture="environment"
+        capture={captureMode === false ? undefined : captureMode}
         className="sr-only"
         onChange={handleFileChange}
         disabled={disabled || capturing}
@@ -69,6 +73,7 @@ export function MaintenancePhotoCaptureButton({
 
       <Label
         htmlFor={id}
+        onPointerDown={() => onOpenIntent?.()}
         className={cn(
           buttonVariants({ variant: "outline", size: "sm" }),
           "gap-1.5 cursor-pointer select-none",
