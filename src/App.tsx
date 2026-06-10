@@ -110,7 +110,7 @@ const SupplierPending = lazy(() => import("./pages/SupplierPending.tsx"));
 const SupplierDashboard = lazy(() => import("./pages/SupplierDashboard.tsx"));
 const Suppliers = lazy(() => import("./pages/Suppliers.tsx"));
 const Quotations = lazy(() => import("./pages/Quotations.tsx"));
-const Pdv = lazy(() => import("./pages/Pdv.tsx"));
+
 const PdvNovo = lazy(() => import("./pages/PdvNovo.tsx"));
 const PdvHomologacaoPayGo = lazy(() => import("./pages/PdvHomologacaoPayGo.tsx"));
 const TefPaygoSetup = lazy(() => import("./pages/TefPaygoSetup.tsx"));
@@ -373,7 +373,7 @@ const App = () => (
               <Route path="/financeiro/vale-gas/dashboard" element={<Guarded staff><FinanceGasVouchersDashboard /></Guarded>} />
               <Route path="/fornecedores" element={<Guarded staff><Suppliers /></Guarded>} />
               <Route path="/cotacoes" element={<Guarded staff><Quotations /></Guarded>} />
-              <Route path="/pdv" element={<Guarded staff><Pdv /></Guarded>} />
+              
               <Route path="/pdv-novo" element={<Guarded staff><PdvNovo /></Guarded>} />
               <Route path="/pdv-cancelamentos" element={<Guarded staff><PdvCancellations /></Guarded>} />
               <Route path="/pdv-novo/homologacao-paygo" element={<Guarded staff><PdvHomologacaoPayGo /></Guarded>} />
