@@ -6,6 +6,7 @@ import type { TefAdapter, TefConfig } from "./types";
 import { createMockAdapter } from "./mockAdapter";
 import { createSitefAdapter } from "./sitefAdapter";
 import { createAcbrAdapter } from "./acbrAdapter";
+import { createPaygoAdapter } from "./paygoAdapter";
 
 export * from "./types";
 
@@ -40,8 +41,7 @@ export const createTefAdapter = (config: TefConfig): TefAdapter => {
     case "acbr":
       return createAcbrAdapter(config);
     case "paygo":
-      // futuro: createPaygoAdapter(config). Por enquanto cai no mock.
-      return createMockAdapter(config);
+      return createPaygoAdapter(config);
     case "mock":
     default:
       return createMockAdapter(config);
