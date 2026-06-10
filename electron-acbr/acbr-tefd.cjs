@@ -22,16 +22,20 @@ function normalizeBaseCandidate(value) {
   return /\.dll$/i.test(value) ? path.dirname(value) : value;
 }
 
+// IMPORTANTE: a partir do agente v1.3.5 estamos rodando Electron ia32 (32-bit)
+// para casar com a PGWebLib.dll x86 — ela é a única que a Setis distribui
+// sempre instalada por padrão. Por isso a busca prioriza x86 antes de x64.
 const DEFAULT_BASES = [
   normalizeBaseCandidate(process.env.PAYGO_BASE),
-  normalizeBaseCandidate(process.env.PathPGWebLib_x64),
+  normalizeBaseCandidate(process.env.PathPGWebLib_x86),
   normalizeBaseCandidate(process.env.PathPGWebLib),
-  "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib\\x64",
+  normalizeBaseCandidate(process.env.PathPGWebLib_x64),
   "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib\\x86",
-  "C:\\Program Files (x86)\\PayGo\\PGWebLib\\x64",
   "C:\\Program Files (x86)\\PayGo\\PGWebLib\\x86",
-  "C:\\Program Files\\PayGo\\PGWebLib\\x64",
   "C:\\Program Files\\PayGo\\PGWebLib\\x86",
+  "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib\\x64",
+  "C:\\Program Files (x86)\\PayGo\\PGWebLib\\x64",
+  "C:\\Program Files\\PayGo\\PGWebLib\\x64",
   "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib",
   "C:\\Program Files (x86)\\PayGo\\PGWebLib",
   "C:\\Program Files\\PayGo\\PGWebLib",
@@ -44,16 +48,15 @@ const DEFAULT_WORK_DIR = path.join(
 );
 
 function resolveBase() {
-  // Para cada candidato, tenta o próprio diretório e também subpastas x64/x86.
-  // Necessário porque o instalador PayGo costuma setar PathPGWebLib apontando
-  // para a pasta base (sem x64/x86), mas a DLL real fica numa das subpastas.
+  // Para cada candidato, tenta o próprio diretório e também subpastas x86/x64.
+  // Prioriza x86 porque o agente roda em ia32 (precisa casar com a DLL).
   for (const b of DEFAULT_BASES) {
-    const tries = [b, path.join(b, "x64"), path.join(b, "x86")];
+    const tries = [b, path.join(b, "x86"), path.join(b, "x64")];
     for (const t of tries) {
       try { if (fs.existsSync(path.join(t, "PGWebLib.dll"))) return t; } catch { /* ignore */ }
     }
   }
-  return DEFAULT_BASES[0] || "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib\\x64";
+  return DEFAULT_BASES[0] || "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib\\x86";
 }
 
 const PAYGO_BASE = resolveBase();
