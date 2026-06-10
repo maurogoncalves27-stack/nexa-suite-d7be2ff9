@@ -49,6 +49,7 @@ export default function WhatsAppOptOutCard() {
   };
 
   if (loading || !employeeId) return null;
+  if (enabled && phone) return null;
 
   return (
     <Card>
