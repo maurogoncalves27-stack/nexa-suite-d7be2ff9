@@ -76,6 +76,7 @@ const URGENCY_OPTIONS = [
 ];
 
 const PHOTO_BUCKET = "nutri-maintenance-photos";
+const MAINTENANCE_DRAFT_STORAGE_KEY = "nutricontrol:maintenance-request-draft";
 
 export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
   const { user, isAdmin, isManager } = useAuth();
@@ -112,6 +113,65 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
   const [companies, setCompanies] = useState<OutsourcedCompany[]>([]);
 
   const dateKey = format(currentDate, "yyyy-MM-dd");
+
+  const persistDraft = useCallback((draft?: {
+    reqEquipment?: string;
+    reqDescription?: string;
+    reqUrgency?: "baixa" | "media" | "alta";
+    reqStoreId?: string | null;
+    reqPhotoName?: string | null;
+  }) => {
+    try {
+      sessionStorage.setItem(
+        MAINTENANCE_DRAFT_STORAGE_KEY,
+        JSON.stringify({
+          reqEquipment,
+          reqDescription,
+          reqUrgency,
+          reqStoreId,
+          reqPhotoName: reqPhoto?.name ?? null,
+          ...draft,
+        }),
+      );
+    } catch {
+      // noop
+    }
+  }, [reqDescription, reqEquipment, reqPhoto?.name, reqStoreId, reqUrgency]);
+
+  const clearDraft = useCallback(() => {
+    try {
+      sessionStorage.removeItem(MAINTENANCE_DRAFT_STORAGE_KEY);
+    } catch {
+      // noop
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(MAINTENANCE_DRAFT_STORAGE_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as {
+        reqEquipment?: string;
+        reqDescription?: string;
+        reqUrgency?: "baixa" | "media" | "alta";
+        reqStoreId?: string | null;
+        reqPhotoName?: string | null;
+      };
+      if (saved.reqEquipment) setReqEquipment(saved.reqEquipment);
+      if (saved.reqDescription) setReqDescription(saved.reqDescription);
+      if (saved.reqUrgency) setReqUrgency(saved.reqUrgency);
+      if (saved.reqStoreId) setReqStoreId(saved.reqStoreId);
+      if (saved.reqPhotoName) {
+        toast.info(`Rascunho restaurado. Se necessário, selecione a foto novamente (${saved.reqPhotoName}).`);
+      }
+    } catch {
+      // noop
+    }
+  }, []);
+
+  useEffect(() => {
+    persistDraft();
+  }, [persistDraft]);
 
   const fetchAll = useCallback(async () => {
     if (!user) {
@@ -180,7 +240,12 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
 
   // Mantém a loja do contexto pré-selecionada no formulário quando ela mudar
   useEffect(() => {
-    setReqStoreId(storeId);
+    if (storeId) {
+      setReqStoreId(storeId);
+      return;
+    }
+
+    setReqStoreId((current) => current ?? storeId);
   }, [storeId]);
 
   // Qualquer usuário autenticado pode solicitar manutenção em qualquer loja.
@@ -271,6 +336,7 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
         setReqUrgency("media");
         setReqPhoto(null);
         setReqStoreId(storeId);
+        clearDraft();
         fetchAll();
       }
     } catch (err: any) {
@@ -524,8 +590,11 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
               <div className="space-y-2">
                 <MaintenancePhotoCaptureButton
                   disabled={submitting}
+                  captureMode="environment"
+                  onOpenIntent={() => persistDraft()}
                   onCapture={(file) => {
                     setReqPhoto(file);
+                    persistDraft({ reqPhotoName: file.name });
                     toast.success("Foto confirmada.");
                   }}
                 />
@@ -537,19 +606,23 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
                     e.target.value = "";
                     if (!file) {
                       setReqPhoto(null);
+                      persistDraft({ reqPhotoName: null });
                       return;
                     }
                     if (!file.type.startsWith("image/")) {
                       toast.error("Selecione uma imagem válida.");
                       setReqPhoto(null);
+                      persistDraft({ reqPhotoName: null });
                       return;
                     }
                     if (file.size > 10 * 1024 * 1024) {
                       toast.error("A foto deve ter no máximo 10MB.");
                       setReqPhoto(null);
+                      persistDraft({ reqPhotoName: null });
                       return;
                     }
                     setReqPhoto(file);
+                    persistDraft({ reqPhotoName: file.name });
                   }}
                   className="h-9 text-sm"
                 />
