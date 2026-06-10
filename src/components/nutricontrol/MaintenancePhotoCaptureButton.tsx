@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ChangeEvent } from "react";
 import { Camera, Check, Loader2, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -74,6 +74,43 @@ export function MaintenancePhotoCaptureButton({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!previewBlob) {
+      setPreviewUrl((current) => {
+        if (current) URL.revokeObjectURL(current);
+        return null;
+      });
+      return;
+    }
+
+    const nextUrl = URL.createObjectURL(previewBlob);
+    setPreviewUrl((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return nextUrl;
+    });
+
+    return () => URL.revokeObjectURL(nextUrl);
+  }, [previewBlob]);
+
+  useEffect(() => () => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
+
+  const stopCamera = useCallback(() => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+    setCameraReady(false);
+  }, []);
+
+  const resetDialogState = useCallback(() => {
+    stopCamera();
+    setPreviewBlob(null);
+    setDialogOpen(false);
+    setOpeningCamera(false);
+    setProcessing(false);
+  }, [stopCamera]);
+
+  useEffect(() => {
     if (!dialogOpen || previewBlob || !streamRef.current) return;
 
     let cancelled = false;
@@ -114,44 +151,7 @@ export function MaintenancePhotoCaptureButton({
       cancelled = true;
       if (retryTimeoutId) window.clearTimeout(retryTimeoutId);
     };
-  }, [dialogOpen, previewBlob]);
-
-  useEffect(() => {
-    if (!previewBlob) {
-      setPreviewUrl((current) => {
-        if (current) URL.revokeObjectURL(current);
-        return null;
-      });
-      return;
-    }
-
-    const nextUrl = URL.createObjectURL(previewBlob);
-    setPreviewUrl((current) => {
-      if (current) URL.revokeObjectURL(current);
-      return nextUrl;
-    });
-
-    return () => URL.revokeObjectURL(nextUrl);
-  }, [previewBlob]);
-
-  useEffect(() => () => {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-  }, []);
-
-  const stopCamera = () => {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-    if (videoRef.current) videoRef.current.srcObject = null;
-    setCameraReady(false);
-  };
-
-  const resetDialogState = () => {
-    stopCamera();
-    setPreviewBlob(null);
-    setDialogOpen(false);
-    setOpeningCamera(false);
-    setProcessing(false);
-  };
+  }, [dialogOpen, previewBlob, resetDialogState]);
 
   const runCaptureHandler = async (file: File) => {
     if (!file.type.startsWith("image/")) {
