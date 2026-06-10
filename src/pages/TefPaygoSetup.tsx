@@ -22,6 +22,7 @@ import {
   MousePointerClick, KeyRound, ShieldCheck, Copy,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import TefTestSaleCard from "@/components/tef-paygo/TefTestSaleCard";
 
 const KIT_URL =
   "https://setis.com.br/filevista/public/j563/paygodev/20260422-integracao-setuppaygowindows-v5-1-50-2.zip";
