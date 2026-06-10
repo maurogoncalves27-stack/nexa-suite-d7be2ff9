@@ -377,11 +377,15 @@ export default function PublicJobDetail() {
         )}
 
         {/* Form */}
-        <Card className="border-2 border-primary/40">
-          <CardHeader><CardTitle className="flex items-center gap-2"><Briefcase className="h-5 w-5 text-primary" />Candidate-se agora</CardTitle></CardHeader>
+        <Card className="ap-card border-2" style={{ borderColor: "hsl(var(--ap-red) / 0.45)" }}>
+          <CardHeader>
+            <CardTitle className="ap-display text-3xl md:text-4xl flex items-center gap-2" style={{ color: "hsl(var(--ap-red))" }}>
+              <Briefcase className="h-6 w-6" style={{ color: "hsl(var(--ap-red))" }} />Candidate-se agora
+            </CardTitle>
+          </CardHeader>
           <CardContent className="space-y-5">
             <section className="space-y-3">
-              <h3 className="font-semibold text-sm text-muted-foreground uppercase">Seus dados</h3>
+              <h3 className="ap-sans font-semibold text-sm uppercase tracking-wide" style={{ color: "hsl(var(--ap-brown))" }}>Seus dados</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1.5"><Label>Nome completo *</Label><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
                 <div className="space-y-1.5"><Label>Telefone (WhatsApp) *</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="(11) 99999-9999" /></div>
@@ -400,18 +404,27 @@ export default function PublicJobDetail() {
               <div className="space-y-2">
                 <Label>Disponibilidade (marque tudo que se aplica)</Label>
                 <div className="flex flex-wrap gap-2">
-                  {AVAILABILITY_OPTIONS.map((o) => (
-                    <label key={o} className={`flex items-center gap-2 px-3 py-1.5 rounded-md border cursor-pointer transition-colors ${availability.includes(o) ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted"}`}>
-                      <Checkbox checked={availability.includes(o)} onCheckedChange={() => toggleAvail(o)} className="hidden" />
-                      <span className="text-sm">{o}</span>
-                    </label>
-                  ))}
+                  {AVAILABILITY_OPTIONS.map((o) => {
+                    const on = availability.includes(o);
+                    return (
+                      <label
+                        key={o}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-full border cursor-pointer transition-colors ap-sans text-sm"
+                        style={on
+                          ? { background: "hsl(var(--ap-red))", color: "hsl(var(--ap-cream))", borderColor: "hsl(var(--ap-red))" }
+                          : { background: "transparent", color: "hsl(var(--ap-ink))", borderColor: "hsl(var(--ap-brown) / 0.3)" }}
+                      >
+                        <Checkbox checked={on} onCheckedChange={() => toggleAvail(o)} className="hidden" />
+                        <span>{o}</span>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
             </section>
 
             <section className="space-y-3">
-              <h3 className="font-semibold text-sm text-muted-foreground uppercase">Experiência</h3>
+              <h3 className="ap-sans font-semibold text-sm uppercase tracking-wide" style={{ color: "hsl(var(--ap-brown))" }}>Experiência</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="space-y-1.5"><Label>Anos de experiência *</Label><Input type="number" min={0} step="0.5" value={form.experience_years} onChange={(e) => setForm({ ...form, experience_years: e.target.value })} /></div>
                 <div className="space-y-1.5"><Label>Último cargo *</Label><Input value={form.last_job} onChange={(e) => setForm({ ...form, last_job: e.target.value })} /></div>
@@ -420,7 +433,7 @@ export default function PublicJobDetail() {
             </section>
 
             <section className="space-y-3">
-              <h3 className="font-semibold text-sm text-muted-foreground uppercase">Currículo *</h3>
+              <h3 className="ap-sans font-semibold text-sm uppercase tracking-wide" style={{ color: "hsl(var(--ap-brown))" }}>Currículo *</h3>
               {resumeFile ? (
                 <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/40">
                   <FileText className="h-5 w-5 text-primary shrink-0" />
@@ -448,7 +461,7 @@ export default function PublicJobDetail() {
             </section>
 
             <section className="space-y-3">
-              <h3 className="font-semibold text-sm text-muted-foreground uppercase">Conte sobre você *</h3>
+              <h3 className="ap-sans font-semibold text-sm uppercase tracking-wide" style={{ color: "hsl(var(--ap-brown))" }}>Conte sobre você *</h3>
               {BEHAVIORAL_QUESTIONS.map((q) => (
                 <div key={q} className="space-y-1.5">
                   <Label>{q} *</Label>
@@ -458,7 +471,7 @@ export default function PublicJobDetail() {
             </section>
 
             <section className="space-y-3">
-              <h3 className="font-semibold text-sm text-muted-foreground uppercase flex items-center gap-2">
+              <h3 className="ap-sans font-semibold text-sm uppercase tracking-wide flex items-center gap-2" style={{ color: "hsl(var(--ap-brown))" }}>
                 <CalendarClock className="h-4 w-4" /> Escolha um horário para a entrevista *
               </h3>
               {slots.length === 0 ? (
@@ -478,7 +491,10 @@ export default function PublicJobDetail() {
                           key={s.id}
                           type="button"
                           onClick={() => setForm({ ...form, selected_slot_id: sel ? "" : s.id })}
-                          className={`px-3 py-2 rounded-md border text-sm transition-all text-left ${sel ? "bg-primary text-primary-foreground border-primary shadow-md" : "hover:border-primary/50 hover:bg-muted"}`}
+                          className="px-3 py-2 rounded-md border text-sm transition-all text-left ap-sans"
+                          style={sel
+                            ? { background: "hsl(var(--ap-red))", color: "hsl(var(--ap-cream))", borderColor: "hsl(var(--ap-red))", boxShadow: "0 6px 16px -8px hsl(var(--ap-red) / 0.6)" }
+                            : { background: "transparent", color: "hsl(var(--ap-ink))", borderColor: "hsl(var(--ap-brown) / 0.3)" }}
                         >
                           <div className="font-semibold capitalize">{day}</div>
                           <div className="text-xs opacity-90">{time}{s.location ? ` · ${s.location}` : ""}</div>
@@ -490,11 +506,16 @@ export default function PublicJobDetail() {
               )}
             </section>
 
-            <Button onClick={submit} disabled={submitting} className="w-full h-12 text-base gap-2">
+            <Button
+              onClick={submit}
+              disabled={submitting}
+              className="w-full h-12 text-base gap-2 ap-sans font-semibold rounded-full border-0"
+              style={{ background: "hsl(var(--ap-red))", color: "hsl(var(--ap-cream))" }}
+            >
               {(submitting || uploadingResume) && <Loader2 className="h-4 w-4 animate-spin" />}
               {uploadingResume ? "Enviando currículo..." : "Enviar candidatura"}
             </Button>
-            <p className="text-xs text-muted-foreground text-center">
+            <p className="ap-sans text-xs text-center" style={{ color: "hsl(var(--ap-brown))" }}>
               Ao enviar, você concorda com o uso dos seus dados para o processo seletivo.
             </p>
           </CardContent>
