@@ -264,7 +264,6 @@ export function AppSidebar() {
     return false;
   };
   const [securityOpen, setSecurityOpen] = useState(false);
-  const [pdvOpen, setPdvOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   type FocusMode = "rh" | "pagamentos" | "estoque" | "compras" | "financeiro" | "operacao" | "pdv" | "fabrica" | "docs";
   const FOCUS_MODES: FocusMode[] = ["rh", "pagamentos", "estoque", "compras", "financeiro", "operacao", "pdv", "fabrica", "docs"];
