@@ -31,16 +31,16 @@ interface TefCfg {
 }
 
 const DEFAULT_AGENT_URL: Record<TefCfg["provider"], string> = {
-  mock: "http://localhost:60906",
-  sitef: "http://localhost:60906",
-  paygo: "http://localhost:60906",
+  mock: "http://127.0.0.1:3030",
+  sitef: "http://127.0.0.1:3030",
+  paygo: "http://127.0.0.1:3030",
   acbr: "http://127.0.0.1:3030",
 };
 
 const blank = (storeId: string): TefCfg => ({
   store_id: storeId,
   provider: "mock",
-  agent_url: "http://localhost:60906",
+  agent_url: "http://127.0.0.1:3030",
   merchant_code: "",
   terminal_code: "",
   acquirer: "",
