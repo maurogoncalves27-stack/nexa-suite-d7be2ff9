@@ -206,6 +206,7 @@ const pdvSections: Section[] = [
     { title: "Cancelamentos", url: "/pdv-cancelamentos", icon: XCircle, staffOnly: true },
     { title: "Homologação PayGo", url: "/pdv-novo/homologacao-paygo", icon: ScrollText, staffOnly: true },
     { title: "Totem", url: "/configuracoes/totem", icon: Monitor, staffOnly: true },
+    { title: "WhatsApp", url: "/whatsapp", icon: MessageCircle, staffOnly: true },
   ]},
   { label: "Cardápio", items: [
     { title: "Cardápio", url: "/cardapio", icon: ScanText, staffOnly: true },
@@ -263,7 +264,6 @@ export function AppSidebar() {
     return false;
   };
   const [securityOpen, setSecurityOpen] = useState(false);
-  const [pdvOpen, setPdvOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   type FocusMode = "rh" | "pagamentos" | "estoque" | "compras" | "financeiro" | "operacao" | "pdv" | "fabrica" | "docs";
   const FOCUS_MODES: FocusMode[] = ["rh", "pagamentos", "estoque", "compras", "financeiro", "operacao", "pdv", "fabrica", "docs"];
@@ -714,13 +714,11 @@ export function AppSidebar() {
           { kind: "mode", mode: "financeiro", label: "Financeiro", icon: Landmark },
           { kind: "mode", mode: "estoque", label: "Estoque", icon: Package },
           { kind: "mode", mode: "compras", label: "Compras", icon: ShoppingCart },
+          { kind: "mode", mode: "pdv", label: "PDV", icon: Monitor },
           { kind: "mode", mode: "fabrica", label: "Fábrica", icon: Factory },
           { kind: "mode", mode: "operacao", label: "Operação", icon: ChefHat },
           { kind: "mode", mode: "docs", label: "Docs", icon: FolderOpen },
         ];
-
-        const pdvActive = activeGridButton === "mode:pdv";
-        const whatsappActive = activeGridButton === "link:/whatsapp";
 
         if (collapsed) {
           return (
@@ -758,35 +756,6 @@ export function AppSidebar() {
                     </SidebarMenuItem>
                   );
                 })}
-                {/* PDV group — collapsed */}
-                <SidebarMenuItem>
-                  <Collapsible open={pdvOpen} onOpenChange={setPdvOpen}>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuButton isActive={pdvActive || whatsappActive} className="py-5" title="PDV">
-                        <Monitor className="h-5 w-5 shrink-0" />
-                      </SidebarMenuButton>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <SidebarMenuSub>
-                        <SidebarMenuSubItem>
-                          <SidebarMenuSubButton asChild isActive={pdvActive}>
-                            <NavLink to="/pdv-novo" end onClick={() => { setFocus("pdv"); closeSidebar(); }}>
-                              <span>PDV</span>
-                            </NavLink>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                        <SidebarMenuSubItem>
-                          <SidebarMenuSubButton asChild isActive={whatsappActive}>
-                            <NavLink to="/whatsapp" end onClick={() => { setActiveGrid("link:/whatsapp"); closeSidebar(); }}>
-                              <MessageCircle className="h-4 w-4" />
-                              <span>WhatsApp</span>
-                            </NavLink>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      </SidebarMenuSub>
-                    </CollapsibleContent>
-                  </Collapsible>
-                </SidebarMenuItem>
               </SidebarMenu>
             </div>
           );
@@ -850,51 +819,6 @@ export function AppSidebar() {
                   </button>
                 );
               })}
-              {/* PDV group — expanded grid */}
-              <Collapsible open={pdvOpen} onOpenChange={setPdvOpen} className="col-span-1">
-                <CollapsibleTrigger asChild>
-                  <button
-                    type="button"
-                    title="Mostrar PDV"
-                    className={`w-full flex flex-col items-center justify-center gap-0.5 rounded-md py-2 px-1 transition-colors font-medium text-[11px] text-center leading-tight min-h-[56px] border break-words hyphens-auto ${
-                      pdvActive || whatsappActive
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground border-sidebar-primary"
-                        : "bg-sidebar-accent/60 text-sidebar-foreground border-sidebar-border hover:bg-sidebar-accent"
-                    }`}
-                  >
-                    <Monitor className="h-5 w-5" />
-                    <span>PDV</span>
-                  </button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="mt-1 space-y-1">
-                    <button
-                      type="button"
-                      onClick={() => setFocus("pdv")}
-                      className={`w-full flex items-center justify-center gap-1 rounded-md py-1.5 px-1 transition-colors font-medium text-[11px] border ${
-                        pdvActive
-                          ? "bg-sidebar-primary text-sidebar-primary-foreground border-sidebar-primary"
-                          : "bg-sidebar-accent/40 text-sidebar-foreground border-sidebar-border/60 hover:bg-sidebar-accent/70"
-                      }`}
-                    >
-                      <span>PDV</span>
-                    </button>
-                    <NavLink
-                      to="/whatsapp"
-                      end
-                      onClick={() => { setActiveGrid("link:/whatsapp"); closeSidebar(); }}
-                      className={`w-full flex items-center justify-center gap-1 rounded-md py-1.5 px-1 transition-colors font-medium text-[11px] border ${
-                        whatsappActive
-                          ? "bg-sidebar-primary text-sidebar-primary-foreground border-sidebar-primary"
-                          : "bg-sidebar-accent/40 text-sidebar-foreground border-sidebar-border/60 hover:bg-sidebar-accent/70"
-                      }`}
-                    >
-                      <MessageCircle className="h-4 w-4" />
-                      <span>WhatsApp</span>
-                    </NavLink>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
             </div>
           </div>
         );
