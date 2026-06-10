@@ -335,20 +335,14 @@ export function MaintenancePhotoCaptureButton({
             <DialogFooter className="flex-row items-center justify-end gap-2 sm:justify-end">
               <Button type="button" variant="ghost" onClick={resetDialogState} disabled={processing}>
                 <X className="h-4 w-4" />
-                Fechar
+                Cancelar
               </Button>
 
               {previewUrl ? (
-                <>
-                  <Button type="button" variant="outline" onClick={retakeSnapshot} disabled={processing}>
-                    <RefreshCw className="h-4 w-4" />
-                    Refazer
-                  </Button>
-                  <Button type="button" onClick={confirmSnapshot} disabled={processing}>
-                    {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                    Confirmar
-                  </Button>
-                </>
+                <Button type="button" onClick={confirmSnapshot} disabled={processing}>
+                  {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  Confirmar
+                </Button>
               ) : (
                 <Button type="button" onClick={takeSnapshot} disabled={!cameraReady || openingCamera || processing}>
                   {cameraReady ? <Camera className="h-4 w-4" /> : <Loader2 className="h-4 w-4 animate-spin" />}
