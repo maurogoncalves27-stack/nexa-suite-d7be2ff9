@@ -339,23 +339,10 @@ export default function PdvHomologacaoPayGo() {
     await loadActiveRun(storeId);
   };
 
-  const installPdc = async () => {
-    setInstallingPdc(true);
-    try {
-      const res = await acbrInstalarPdc(ACBR_AGENT_URL);
-      if (!res.ok) {
-        toast({ title: "Falha na instalação do PdC", description: res.error, variant: "destructive" });
-        return;
-      }
-      toast({
-        title: "Instalação do PdC concluída",
-        description: res.parsed["mensagem"] ?? res.parsed["mensagemresultado"] ?? "Finalize no PayGo Windows se houver prompts adicionais.",
-      });
-    } finally {
-      setInstallingPdc(false);
-      void checkAcbrAgent(ACBR_AGENT_URL).then(setAgentHealth);
-    }
-  };
+  // Instalação programática do PdC foi removida — siga o fluxo oficial Setis
+  // (UI do PayGo Windows em modo DEMO, página /configuracoes/tef-paygo).
+
+
 
   // --- Export XLSX ---------------------------------------------------------
   const handleExport = () => {
