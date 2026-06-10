@@ -122,7 +122,7 @@ const Garcom = lazy(() => import("./pages/Garcom.tsx"));
 const Totem = lazy(() => import("./pages/Totem.tsx"));
 const TotemConfig = lazy(() => import("./pages/TotemConfig.tsx"));
 const NfceTester = lazy(() => import("./pages/NfceTester.tsx"));
-const Balcao = lazy(() => import("./pages/Balcao.tsx"));
+
 const Menu = lazy(() => import("./pages/Menu.tsx"));
 const Occurrences = lazy(() => import("./pages/Occurrences.tsx"));
 const OccurrencesReport = lazy(() => import("./pages/OccurrencesReport.tsx"));
@@ -247,10 +247,8 @@ const App = () => (
             <Route path="/selecionar-acesso" element={<ProtectedRoute><SelectAccess /></ProtectedRoute>} />
             <Route path="/nutricionista/painel" element={<ProtectedRoute><NutritionistPanel /></ProtectedRoute>} />
 
-            {/* Modo Balcão — replica /loja com lock de loja por login (asasul/asanorte/aguasclaras/lagosul) */}
-            <Route path="/balcao" element={
-              <ProtectedRoute requireRoles={[...STAFF]}><StoreHome /></ProtectedRoute>
-            } />
+            {/* /balcao foi unificado em /loja */}
+            <Route path="/balcao" element={<Navigate to="/loja" replace />} />
             {/* Totem fullscreen kiosk - fora do AppLayout */}
             <Route path="/totem" element={
               <ProtectedRoute requireRoles={[...STAFF]}><Totem /></ProtectedRoute>
