@@ -413,10 +413,6 @@ export default function PdvHomologacaoPayGo() {
               <Plus className="h-4 w-4 mr-1" /> Iniciar nova rodada
             </Button>
           )}
-          <Button variant="outline" onClick={installPdc} disabled={installingPdc}>
-            {installingPdc ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Play className="h-4 w-4 mr-1" />}
-            Instalar PdC
-          </Button>
           {run && (
             <>
               <Button variant="outline" onClick={() => loadSteps(run.id)}>
