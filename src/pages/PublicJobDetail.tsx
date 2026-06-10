@@ -377,11 +377,15 @@ export default function PublicJobDetail() {
         )}
 
         {/* Form */}
-        <Card className="border-2 border-primary/40">
-          <CardHeader><CardTitle className="flex items-center gap-2"><Briefcase className="h-5 w-5 text-primary" />Candidate-se agora</CardTitle></CardHeader>
+        <Card className="ap-card border-2" style={{ borderColor: "hsl(var(--ap-red) / 0.45)" }}>
+          <CardHeader>
+            <CardTitle className="ap-display text-3xl md:text-4xl flex items-center gap-2" style={{ color: "hsl(var(--ap-red))" }}>
+              <Briefcase className="h-6 w-6" style={{ color: "hsl(var(--ap-red))" }} />Candidate-se agora
+            </CardTitle>
+          </CardHeader>
           <CardContent className="space-y-5">
             <section className="space-y-3">
-              <h3 className="font-semibold text-sm text-muted-foreground uppercase">Seus dados</h3>
+              <h3 className="ap-sans font-semibold text-sm uppercase tracking-wide" style={{ color: "hsl(var(--ap-brown))" }}>Seus dados</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1.5"><Label>Nome completo *</Label><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
                 <div className="space-y-1.5"><Label>Telefone (WhatsApp) *</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="(11) 99999-9999" /></div>
