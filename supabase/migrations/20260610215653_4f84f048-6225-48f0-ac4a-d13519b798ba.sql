@@ -1,0 +1,1 @@
+UPDATE public.pdv_tef_config SET provider='paygo' WHERE store_id='fcf435c2-c382-444c-b499-4d95f07b2633';
