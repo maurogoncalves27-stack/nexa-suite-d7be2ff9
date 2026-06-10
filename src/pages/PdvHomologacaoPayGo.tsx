@@ -27,7 +27,7 @@ import {
 } from "@/lib/tef/homologation/steps";
 import { exportHomologationXlsx, type StepResultRow } from "@/lib/tef/homologation/exporter";
 import { loadTefConfig, type TefConfig } from "@/lib/tef";
-import { createAcbrAdapter, acbrCancelarVenda, acbrAdministrativo, acbrInstalarPdc, checkAcbrAgent } from "@/lib/tef/acbrAdapter";
+import { createAcbrAdapter, acbrCancelarVenda, acbrAdministrativo, checkAcbrAgent } from "@/lib/tef/acbrAdapter";
 
 const ACBR_AGENT_URL = "https://127.0.0.1:3031";
 
@@ -89,7 +89,7 @@ export default function PdvHomologacaoPayGo() {
   const [busyStep, setBusyStep] = useState<number | null>(null);
   const [pdcCode, setPdcCode] = useState(DEFAULT_PDC);
   const [hostUrl, setHostUrl] = useState(DEFAULT_HOST);
-  const [installingPdc, setInstallingPdc] = useState(false);
+  // installingPdc removido — instalação do PdC é feita pela UI do PayGo Windows (modo DEMO)
   const [agentHealth, setAgentHealth] = useState<{ ok: boolean; mode?: string; version?: string; error?: string } | null>(null);
 
   // --- Lojas elegíveis (físicas, sem iFood Homologação) -------------------
@@ -339,23 +339,10 @@ export default function PdvHomologacaoPayGo() {
     await loadActiveRun(storeId);
   };
 
-  const installPdc = async () => {
-    setInstallingPdc(true);
-    try {
-      const res = await acbrInstalarPdc(ACBR_AGENT_URL);
-      if (!res.ok) {
-        toast({ title: "Falha na instalação do PdC", description: res.error, variant: "destructive" });
-        return;
-      }
-      toast({
-        title: "Instalação do PdC concluída",
-        description: res.parsed["mensagem"] ?? res.parsed["mensagemresultado"] ?? "Finalize no PayGo Windows se houver prompts adicionais.",
-      });
-    } finally {
-      setInstallingPdc(false);
-      void checkAcbrAgent(ACBR_AGENT_URL).then(setAgentHealth);
-    }
-  };
+  // Instalação programática do PdC foi removida — siga o fluxo oficial Setis
+  // (UI do PayGo Windows em modo DEMO, página /configuracoes/tef-paygo).
+
+
 
   // --- Export XLSX ---------------------------------------------------------
   const handleExport = () => {
@@ -426,10 +413,6 @@ export default function PdvHomologacaoPayGo() {
               <Plus className="h-4 w-4 mr-1" /> Iniciar nova rodada
             </Button>
           )}
-          <Button variant="outline" onClick={installPdc} disabled={installingPdc}>
-            {installingPdc ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Play className="h-4 w-4 mr-1" />}
-            Instalar PdC
-          </Button>
           {run && (
             <>
               <Button variant="outline" onClick={() => loadSteps(run.id)}>
@@ -459,7 +442,8 @@ export default function PdvHomologacaoPayGo() {
           </p>
           <p>
             Ponto de Captura e host acima são referência da rodada. A PGWebLib usa a instalação local do PayGo Windows
-            e o diretório de trabalho da máquina; se houver <code>-2498</code>, rode <strong>Instalar PdC</strong> primeiro.
+            e o diretório de trabalho da máquina. A ativação/instalação do PdC é feita pela UI do PayGo Windows em
+            modo DEMO — veja <strong>Configurações → TEF PayGo (Instalação)</strong>.
           </p>
         </div>
       </Card>
