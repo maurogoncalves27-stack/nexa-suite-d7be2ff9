@@ -491,7 +491,10 @@ export default function PublicJobDetail() {
                           key={s.id}
                           type="button"
                           onClick={() => setForm({ ...form, selected_slot_id: sel ? "" : s.id })}
-                          className={`px-3 py-2 rounded-md border text-sm transition-all text-left ${sel ? "bg-primary text-primary-foreground border-primary shadow-md" : "hover:border-primary/50 hover:bg-muted"}`}
+                          className="px-3 py-2 rounded-md border text-sm transition-all text-left ap-sans"
+                          style={sel
+                            ? { background: "hsl(var(--ap-red))", color: "hsl(var(--ap-cream))", borderColor: "hsl(var(--ap-red))", boxShadow: "0 6px 16px -8px hsl(var(--ap-red) / 0.6)" }
+                            : { background: "transparent", color: "hsl(var(--ap-ink))", borderColor: "hsl(var(--ap-brown) / 0.3)" }}
                         >
                           <div className="font-semibold capitalize">{day}</div>
                           <div className="text-xs opacity-90">{time}{s.location ? ` · ${s.location}` : ""}</div>
