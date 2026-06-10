@@ -1,8 +1,9 @@
-import { useId, useState, type ChangeEvent } from "react";
+import { useState, useId, type ChangeEvent } from "react";
 import { Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { buttonVariants } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 interface MaintenancePhotoCaptureButtonProps {
@@ -10,22 +11,34 @@ interface MaintenancePhotoCaptureButtonProps {
   onCapture: (file: File) => void | Promise<void>;
 }
 
+/**
+ * Componente compartilhado para captura de fotos em dispositivos móveis.
+ * 
+ * Correção técnica:
+ * Mobile Safari e outros navegadores possuem restrições de segurança para disparo de
+ * input file via .click() programático (especialmente se o input estiver hidden ou houver
+ * manipulação de propagação de eventos).
+ * 
+ * Solução robusta:
+ * 1. Usa <Label htmlFor={id}> nativo para disparar o input.
+ * 2. Mantém o input acessível ao navegador com 'sr-only' em vez de 'hidden' (display: none).
+ * 3. Remove stopPropagation que quebra a cadeia de confiança do gesto do usuário no mobile.
+ */
 export function MaintenancePhotoCaptureButton({
   disabled = false,
   onCapture,
 }: MaintenancePhotoCaptureButtonProps) {
-  const inputId = useId();
+  const id = useId();
   const [capturing, setCapturing] = useState(false);
-
-  const stopEvent = (e: { stopPropagation: () => void }) => {
-    e.stopPropagation();
-  };
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
+    
+    // Reseta o valor para permitir capturar a mesma foto novamente se necessário
     event.target.value = "";
 
     if (!file) return;
+    
     if (!file.type.startsWith("image/")) {
       toast.error("Selecione uma imagem válida.");
       return;
@@ -43,9 +56,9 @@ export function MaintenancePhotoCaptureButton({
   };
 
   return (
-    <>
+    <div className="inline-block">
       <input
-        id={inputId}
+        id={id}
         type="file"
         accept="image/*"
         capture="environment"
@@ -54,21 +67,21 @@ export function MaintenancePhotoCaptureButton({
         disabled={disabled || capturing}
       />
 
-      <label
-        htmlFor={inputId}
-        role="button"
-        aria-disabled={disabled || capturing}
-        onPointerDown={stopEvent}
-        onClick={stopEvent}
+      <Label
+        htmlFor={id}
         className={cn(
           buttonVariants({ variant: "outline", size: "sm" }),
-          "gap-1.5",
-          (disabled || capturing) && "pointer-events-none opacity-50",
+          "gap-1.5 cursor-pointer select-none",
+          (disabled || capturing) && "opacity-50 pointer-events-none"
         )}
       >
-        {capturing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+        {capturing ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Camera className="h-4 w-4" />
+        )}
         {capturing ? "Processando..." : "Tirar foto"}
-      </label>
-    </>
+      </Label>
+    </div>
   );
 }
