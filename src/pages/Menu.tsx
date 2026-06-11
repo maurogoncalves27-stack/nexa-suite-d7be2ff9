@@ -199,16 +199,31 @@ export default function Menu() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-          <ScanText className="h-6 w-6 md:h-7 md:w-7 text-primary" />
-          Cardápio
-        </h1>
-        <p className="text-muted-foreground">
-          {activeStoreObj && activeBrandObj
-            ? `${activeStoreObj.name} • ${activeBrandObj.name}`
-            : "Selecione uma loja e marca"}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+            <ScanText className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+            Cardápio
+          </h1>
+          <p className="text-muted-foreground">
+            {activeStoreObj && activeBrandObj
+              ? `${activeStoreObj.name} • ${activeBrandObj.name}`
+              : "Selecione uma loja e marca"}
+          </p>
+        </div>
+        {stores.length > 0 && (
+          <div className="flex items-center gap-2 sm:justify-end">
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Loja</Label>
+            <Select value={activeStore} onValueChange={setActiveStore}>
+              <SelectTrigger className="w-full sm:w-64"><SelectValue placeholder="Selecione a loja" /></SelectTrigger>
+              <SelectContent>
+                {stores.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -225,19 +240,6 @@ export default function Menu() {
         </Button>
       </div>
 
-      {stores.length > 0 && (
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-          <Label className="text-xs uppercase tracking-wide text-muted-foreground sm:w-16">Loja</Label>
-          <Select value={activeStore} onValueChange={setActiveStore}>
-            <SelectTrigger className="sm:w-72"><SelectValue placeholder="Selecione a loja" /></SelectTrigger>
-            <SelectContent>
-              {stores.map((s) => (
-                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
 
       {brands.length > 0 && (
         <Tabs value={activeBrand} onValueChange={setActiveBrand} className="w-full">
