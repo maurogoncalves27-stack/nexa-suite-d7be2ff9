@@ -366,6 +366,46 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
             ) : (
               <div className="space-y-3">
                 <div className="space-y-1">
+                  <Label>Foto do prato</Label>
+                  <div className="flex items-center gap-3">
+                    {photoUrl ? (
+                      <img src={photoUrl} alt={form.name} className="h-20 w-20 rounded object-cover border" />
+                    ) : (
+                      <div className="h-20 w-20 rounded border bg-muted flex items-center justify-center text-muted-foreground">
+                        <ImageIcon className="h-6 w-6" />
+                      </div>
+                    )}
+                    <div className="flex flex-col gap-1.5">
+                      <label>
+                        <Button asChild size="sm" variant="outline" disabled={uploadingPhoto || isNew}>
+                          <span className="cursor-pointer gap-1">
+                            {uploadingPhoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                            {photoPath ? "Trocar foto" : "Enviar foto"}
+                          </span>
+                        </Button>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) void handlePhotoUpload(f);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                      {photoPath && !isNew && (
+                        <Button size="sm" variant="ghost" className="text-destructive gap-1" onClick={handlePhotoRemove}>
+                          <Trash2 className="h-4 w-4" /> Remover
+                        </Button>
+                      )}
+                      {isNew && (
+                        <p className="text-[11px] text-muted-foreground">Salve a ficha para enviar uma foto.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-1">
                   <Label>Nome *</Label>
                   <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
                 </div>
