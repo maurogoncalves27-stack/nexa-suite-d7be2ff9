@@ -25,6 +25,8 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import TefTestSaleCard from "@/components/tef-paygo/TefTestSaleCard";
 import TefPinpadSetupCard from "@/components/tef-paygo/TefPinpadSetupCard";
+import TefHomologationChecklist from "@/components/tef-paygo/TefHomologationChecklist";
+import TefRecnumExtractor from "@/components/tef-paygo/TefRecnumExtractor";
 
 const KIT_URL =
   "https://setis.com.br/filevista/public/j563/paygodev/20260422-integracao-setuppaygowindows-v5-1-50-2.zip";
