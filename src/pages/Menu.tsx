@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { Plus, Pencil, Trash2, Loader2, FolderPlus, Search, ScanText, Layers } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Plus, Pencil, Trash2, Loader2, FolderPlus, Search, ScanText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import MenuItemEditorDialog from "@/components/menu/MenuItemEditorDialog";
 import { fmt } from "@/lib/saiposMenu";
 
 interface Brand { id: string; name: string; sort_order: number; }
-interface Category { id: string; name: string; sort_order: number; brand_id: string | null; }
+interface Category { id: string; name: string; sort_order: number; }
 interface MenuItem {
   id: string;
   name: string;
@@ -40,18 +40,18 @@ export default function Menu() {
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
-  const [itemBrands, setItemBrands] = useState<Record<string, string[]>>({}); // item_id -> brand_ids[]
+  const [itemBrands, setItemBrands] = useState<Record<string, string[]>>({});
 
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState<string>("all");
 
   const [catOpen, setCatOpen] = useState(false);
   const [catName, setCatName] = useState("");
+  const [catBrands, setCatBrands] = useState<string[]>([]);
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Load brands once
   useEffect(() => {
     (async () => {
       const { data } = await supabase.from("brands").select("*").eq("is_active", true).order("sort_order");
@@ -70,15 +70,21 @@ export default function Menu() {
   async function load() {
     if (!activeBrand) return;
     setLoading(true);
-    const [cats, mibs] = await Promise.all([
-      supabase.from("menu_categories").select("*").eq("brand_id", activeBrand).order("sort_order").order("name"),
-      supabase.from("menu_item_brands").select("menu_item_id, brand_id"),
-    ]);
-    const cat = (cats.data ?? []) as Category[];
+    // categorias da marca ativa via M2M
+    const { data: catLinks } = await (supabase as any)
+      .from("menu_category_brands").select("category_id").eq("brand_id", activeBrand);
+    const catIds = ((catLinks ?? []) as any[]).map((r) => r.category_id);
+    let cat: Category[] = [];
+    if (catIds.length) {
+      const { data } = await supabase.from("menu_categories")
+        .select("id,name,sort_order").in("id", catIds).order("sort_order").order("name");
+      cat = (data ?? []) as Category[];
+    }
     setCategories(cat);
 
+    const { data: mibs } = await supabase.from("menu_item_brands").select("menu_item_id, brand_id");
     const map: Record<string, string[]> = {};
-    for (const r of (mibs.data ?? []) as any[]) {
+    for (const r of (mibs ?? []) as any[]) {
       (map[r.menu_item_id] ||= []).push(r.brand_id);
     }
     setItemBrands(map);
@@ -96,14 +102,27 @@ export default function Menu() {
 
   useEffect(() => { load(); }, [activeBrand]);
 
+  function openNewCategory() {
+    setCatName("");
+    setCatBrands(activeBrand ? [activeBrand] : []);
+    setCatOpen(true);
+  }
+
   async function saveCategory() {
     const name = catName.trim();
-    if (!name || !activeBrand) return;
-    const { error } = await supabase.from("menu_categories").insert({
-      name, sort_order: categories.length, brand_id: activeBrand,
-    });
+    if (!name) return;
+    if (catBrands.length === 0) {
+      toast({ title: "Selecione ao menos uma marca", variant: "destructive" });
+      return;
+    }
+    const { data: cat, error } = await supabase.from("menu_categories").insert({
+      name, sort_order: categories.length,
+    }).select("id").single();
     if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
-    setCatName(""); setCatOpen(false);
+    const links = catBrands.map((b) => ({ category_id: cat.id, brand_id: b }));
+    const { error: e2 } = await (supabase as any).from("menu_category_brands").insert(links);
+    if (e2) { toast({ title: "Erro nos vínculos", description: e2.message, variant: "destructive" }); return; }
+    setCatOpen(false);
     toast({ title: "Categoria criada" });
     load();
   }
@@ -159,7 +178,12 @@ export default function Menu() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => setCatOpen(true)} className="gap-2" disabled={!activeBrand}>
+          <Link to="/cardapio/complementos">
+            <Button variant="outline" size="sm" className="gap-2">
+              <Layers className="h-4 w-4" /> Complementos
+            </Button>
+          </Link>
+          <Button variant="outline" size="sm" onClick={openNewCategory} className="gap-2" disabled={!activeBrand}>
             <FolderPlus className="h-4 w-4" /> Categoria
           </Button>
           <Button size="sm" onClick={() => { setEditingId(null); setEditorOpen(true); }} className="gap-2" disabled={!activeBrand}>
@@ -168,7 +192,6 @@ export default function Menu() {
         </div>
       </div>
 
-      {/* Brand selector */}
       {brands.length > 0 && (
         <Tabs value={activeBrand} onValueChange={setActiveBrand} className="w-full">
           <TabsList className="w-full sm:w-auto flex-wrap h-auto">
@@ -266,6 +289,9 @@ export default function Menu() {
         onOpenChange={setCatOpen}
         value={catName}
         onChange={setCatName}
+        brands={brands}
+        selectedBrands={catBrands}
+        onSelectedBrandsChange={setCatBrands}
         onSave={saveCategory}
       />
 
