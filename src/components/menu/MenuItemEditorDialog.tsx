@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, Plus, Trash2, Link2, Layers } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -19,33 +19,32 @@ import { fmt } from "@/lib/saiposMenu";
 interface Category { id: string; name: string; }
 interface RecipeOpt { id: string; name: string; }
 interface ItemOpt { id: string; name: string; price: number; }
+interface Brand { id: string; name: string; }
 
 interface Component {
   id?: string;
   child_item_id: string;
   quantity: number;
-  // ui only
-  _name?: string;
-  _price?: number;
 }
 
-interface ComplementOption {
-  id?: string;
+interface CatalogOption {
+  id: string;
+  group_id: string;
   name: string;
   extra_price: number;
   linked_item_id: string | null;
+  is_active: boolean;
+  sort_order: number;
 }
-interface ComplementGroup {
-  id?: string;
+interface CatalogGroup {
+  id: string;
   name: string;
   is_required: boolean;
   min_choices: number;
   max_choices: number;
-  options: ComplementOption[];
-  _open?: boolean;
+  is_active: boolean;
+  sort_order: number;
 }
-
-interface Brand { id: string; name: string; }
 
 interface Props {
   open: boolean;
@@ -73,23 +72,34 @@ export default function MenuItemEditorDialog({
   const [isActive, setIsActive] = useState(true);
 
   const [components, setComponents] = useState<Component[]>([]);
-  const [groups, setGroups] = useState<ComplementGroup[]>([]);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+  const [linkedGroupIds, setLinkedGroupIds] = useState<string[]>([]);
 
   const [recipes, setRecipes] = useState<RecipeOpt[]>([]);
   const [allItems, setAllItems] = useState<ItemOpt[]>([]);
+  const [catalogGroups, setCatalogGroups] = useState<CatalogGroup[]>([]);
+  const [catalogOptions, setCatalogOptions] = useState<CatalogOption[]>([]);
 
-  // Reset / load
+  const [linkerOpen, setLinkerOpen] = useState(false);
+  const [linkerSearch, setLinkerSearch] = useState("");
+
+  const [newGroupOpen, setNewGroupOpen] = useState(false);
+  const [newGroupForm, setNewGroupForm] = useState({ name: "", min: 0, max: 1, required: false });
+
   useEffect(() => {
     if (!open) return;
     (async () => {
       setLoading(true);
-      const [recRes, itRes] = await Promise.all([
+      const [recRes, itRes, gRes, oRes] = await Promise.all([
         supabase.from("recipes").select("id,name").eq("is_active", true).order("name"),
         supabase.from("menu_items").select("id,name,price").order("name"),
+        (supabase as any).from("complement_groups").select("*").order("name"),
+        (supabase as any).from("complement_options").select("*").order("sort_order"),
       ]);
       setRecipes((recRes.data ?? []) as RecipeOpt[]);
       setAllItems(((itRes.data ?? []) as any[]).map((r) => ({ id: r.id, name: r.name, price: Number(r.price) })));
+      setCatalogGroups((gRes.data ?? []) as CatalogGroup[]);
+      setCatalogOptions((oRes.data ?? []) as CatalogOption[]);
 
       if (itemId) {
         const { data: it } = await supabase.from("menu_items").select("*").eq("id", itemId).maybeSingle();
@@ -102,66 +112,55 @@ export default function MenuItemEditorDialog({
           setIsCombo(!!it.is_combo);
           setIsActive(!!it.is_active);
         }
-        const [compRes, grpRes, brRes] = await Promise.all([
+        const [compRes, brRes, linksRes] = await Promise.all([
           supabase.from("menu_item_components").select("*").eq("parent_item_id", itemId).order("sort_order"),
-          supabase.from("menu_item_complement_groups").select("*").eq("menu_item_id", itemId).order("sort_order"),
           supabase.from("menu_item_brands").select("brand_id").eq("menu_item_id", itemId),
+          (supabase as any).from("menu_item_complement_links").select("group_id, sort_order")
+            .eq("menu_item_id", itemId).order("sort_order"),
         ]);
-        const comps: Component[] = (compRes.data ?? []).map((c: any) => ({
+        setComponents((compRes.data ?? []).map((c: any) => ({
           id: c.id, child_item_id: c.child_item_id, quantity: Number(c.quantity),
-        }));
-        setComponents(comps);
-        setSelectedBrands(((brRes.data ?? []) as any[]).map((r) => r.brand_id));
-
-        const grpIds = (grpRes.data ?? []).map((g: any) => g.id);
-        let opts: any[] = [];
-        if (grpIds.length) {
-          const { data } = await supabase.from("menu_item_complement_options")
-            .select("*").in("group_id", grpIds).order("sort_order");
-          opts = data ?? [];
-        }
-        setGroups((grpRes.data ?? []).map((g: any) => ({
-          id: g.id,
-          name: g.name,
-          is_required: g.is_required,
-          min_choices: g.min_choices,
-          max_choices: g.max_choices,
-          _open: false,
-          options: opts.filter((o) => o.group_id === g.id).map((o) => ({
-            id: o.id, name: o.name, extra_price: Number(o.extra_price), linked_item_id: o.linked_item_id,
-          })),
         })));
+        setSelectedBrands(((brRes.data ?? []) as any[]).map((r) => r.brand_id));
+        setLinkedGroupIds(((linksRes.data ?? []) as any[]).map((r) => r.group_id));
       } else {
         setName(""); setDescription(""); setCategoryId("__none__"); setRecipeId("__none__");
         setPrice("0"); setIsCombo(false); setIsActive(true);
-        setComponents([]); setGroups([]);
+        setComponents([]); setLinkedGroupIds([]);
         setSelectedBrands(defaultBrandId ? [defaultBrandId] : []);
       }
       setLoading(false);
     })();
   }, [open, itemId, defaultBrandId]);
 
-  const componentSum = useMemo(() => {
-    return components.reduce((sum, c) => {
-      const it = allItems.find((x) => x.id === c.child_item_id);
-      return sum + (it ? it.price * c.quantity : 0);
-    }, 0);
-  }, [components, allItems]);
+  const componentSum = useMemo(() => components.reduce((sum, c) => {
+    const it = allItems.find((x) => x.id === c.child_item_id);
+    return sum + (it ? it.price * c.quantity : 0);
+  }, 0), [components, allItems]);
 
-  function addComponent() {
-    setComponents((p) => [...p, { child_item_id: "", quantity: 1 }]);
-  }
+  function addComponent() { setComponents((p) => [...p, { child_item_id: "", quantity: 1 }]); }
   function applySumToPrice() { setPrice(componentSum.toFixed(2)); }
 
-  function addGroup() {
-    setGroups((p) => [...p, {
-      name: "Novo grupo", is_required: false, min_choices: 0, max_choices: 1, options: [], _open: true,
-    }]);
-  }
-  function addOption(gi: number) {
-    setGroups((p) => p.map((g, i) => i === gi
-      ? { ...g, options: [...g.options, { name: "", extra_price: 0, linked_item_id: null }] }
-      : g));
+  const linkedGroups = useMemo(
+    () => linkedGroupIds.map((id) => catalogGroups.find((g) => g.id === id)).filter(Boolean) as CatalogGroup[],
+    [linkedGroupIds, catalogGroups],
+  );
+
+  async function createNewGroup() {
+    const n = newGroupForm.name.trim();
+    if (!n) { toast({ title: "Informe o nome", variant: "destructive" }); return; }
+    const { data, error } = await (supabase as any).from("complement_groups").insert({
+      name: n,
+      min_choices: Number(newGroupForm.min) || 0,
+      max_choices: Number(newGroupForm.max) || 1,
+      is_required: newGroupForm.required,
+    }).select("*").single();
+    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+    setCatalogGroups((p) => [...p, data as CatalogGroup]);
+    setLinkedGroupIds((p) => [...p, data.id]);
+    setNewGroupOpen(false);
+    setNewGroupForm({ name: "", min: 0, max: 1, required: false });
+    toast({ title: "Grupo criado e vinculado", description: "Edite as opções na página Complementos." });
   }
 
   async function save() {
@@ -189,16 +188,13 @@ export default function MenuItemEditorDialog({
         id = data.id;
       }
 
-      // Components: replace all
+      // Componentes do combo
       await supabase.from("menu_item_components").delete().eq("parent_item_id", id!);
       if (isCombo && components.length) {
         const rows = components
           .filter((c) => c.child_item_id && c.child_item_id !== id)
           .map((c, idx) => ({
-            parent_item_id: id!,
-            child_item_id: c.child_item_id,
-            quantity: c.quantity,
-            sort_order: idx,
+            parent_item_id: id!, child_item_id: c.child_item_id, quantity: c.quantity, sort_order: idx,
           }));
         if (rows.length) {
           const { error } = await supabase.from("menu_item_components").insert(rows);
@@ -206,40 +202,49 @@ export default function MenuItemEditorDialog({
         }
       }
 
-      // Groups: replace all (cascade deletes options)
+      // Links de grupos (novo modelo)
+      await (supabase as any).from("menu_item_complement_links").delete().eq("menu_item_id", id!);
+      if (linkedGroupIds.length) {
+        const linkRows = linkedGroupIds.map((gid, idx) => ({
+          menu_item_id: id!, group_id: gid, sort_order: idx,
+        }));
+        const { error } = await (supabase as any).from("menu_item_complement_links").insert(linkRows);
+        if (error) throw error;
+      }
+
+      // Mirror para tabelas legadas (consumido por PDV/Totem/Garçom até Fase 4)
       await supabase.from("menu_item_complement_groups").delete().eq("menu_item_id", id!);
-      for (let gi = 0; gi < groups.length; gi++) {
-        const g = groups[gi];
+      for (let i = 0; i < linkedGroupIds.length; i++) {
+        const gid = linkedGroupIds[i];
+        const g = catalogGroups.find((x) => x.id === gid);
+        if (!g) continue;
         const { data: gIns, error: gErr } = await supabase
           .from("menu_item_complement_groups")
           .insert({
             menu_item_id: id!,
-            name: g.name.trim() || "Grupo",
+            name: g.name,
             is_required: g.is_required,
             min_choices: g.min_choices,
             max_choices: g.max_choices,
-            sort_order: gi,
+            sort_order: i,
           })
           .select("id").single();
         if (gErr) throw gErr;
-        if (g.options.length) {
-          const optRows = g.options
-            .filter((o) => o.name.trim())
-            .map((o, oi) => ({
-              group_id: gIns.id,
-              name: o.name.trim(),
-              extra_price: Number(o.extra_price) || 0,
-              linked_item_id: o.linked_item_id || null,
-              sort_order: oi,
-            }));
-          if (optRows.length) {
-            const { error } = await supabase.from("menu_item_complement_options").insert(optRows);
-            if (error) throw error;
-          }
+        const opts = catalogOptions.filter((o) => o.group_id === gid && o.is_active);
+        if (opts.length) {
+          const rows = opts.map((o, oi) => ({
+            group_id: gIns.id,
+            name: o.name,
+            extra_price: Number(o.extra_price) || 0,
+            linked_item_id: o.linked_item_id || null,
+            sort_order: oi,
+          }));
+          const { error } = await supabase.from("menu_item_complement_options").insert(rows);
+          if (error) throw error;
         }
       }
 
-      // Brands: replace all
+      // Marcas
       await supabase.from("menu_item_brands").delete().eq("menu_item_id", id!);
       if (selectedBrands.length) {
         const brandRows = selectedBrands.map((b) => ({ menu_item_id: id!, brand_id: b }));
@@ -257,13 +262,20 @@ export default function MenuItemEditorDialog({
     }
   }
 
+  const availableGroups = useMemo(() => {
+    const s = linkerSearch.trim().toLowerCase();
+    return catalogGroups
+      .filter((g) => !linkedGroupIds.includes(g.id))
+      .filter((g) => !s || g.name.toLowerCase().includes(s));
+  }, [catalogGroups, linkedGroupIds, linkerSearch]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{itemId ? "Editar item" : "Novo item"}</DialogTitle>
           <DialogDescription>
-            Defina nome, categoria, preço, componentes do combo e grupos de complementos.
+            Defina nome, marcas, preço, combo e grupos de complementos (catálogo reutilizável).
           </DialogDescription>
         </DialogHeader>
 
@@ -281,15 +293,11 @@ export default function MenuItemEditorDialog({
                     const checked = selectedBrands.includes(b.id);
                     return (
                       <button
-                        type="button"
-                        key={b.id}
+                        type="button" key={b.id}
                         onClick={() => setSelectedBrands((p) =>
-                          checked ? p.filter((x) => x !== b.id) : [...p, b.id]
-                        )}
+                          checked ? p.filter((x) => x !== b.id) : [...p, b.id])}
                         className={`px-3 py-1.5 rounded-md border text-xs sm:text-sm transition-colors ${
-                          checked
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-background hover:bg-muted"
+                          checked ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"
                         }`}
                       >
                         {b.name}
@@ -304,12 +312,7 @@ export default function MenuItemEditorDialog({
               </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <Label>Descrição</Label>
-                <Textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Opcional"
-                  rows={2}
-                />
+                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Opcional" rows={2} />
               </div>
               <div className="space-y-1.5">
                 <Label>Categoria</Label>
@@ -373,8 +376,7 @@ export default function MenuItemEditorDialog({
                       </SelectContent>
                     </Select>
                     <Input
-                      type="number" step="0.001" min="0.001"
-                      className="sm:w-24"
+                      type="number" step="0.001" min="0.001" className="sm:w-24"
                       value={c.quantity}
                       onChange={(e) => setComponents((p) => p.map((x, idx) => idx === i ? { ...x, quantity: Number(e.target.value) || 1 } : x))}
                     />
@@ -395,104 +397,51 @@ export default function MenuItemEditorDialog({
               </div>
             )}
 
-            {/* Complement groups */}
+            {/* Grupos de complementos vinculados do catálogo */}
             <div className="border rounded-md p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold">Grupos de complementos</h4>
-                <Button size="sm" variant="outline" onClick={addGroup} className="gap-1">
-                  <Plus className="h-3 w-3" /> Grupo
-                </Button>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <h4 className="text-sm font-semibold flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-primary" /> Grupos de complementos
+                </h4>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setLinkerOpen(true)} className="gap-1">
+                    <Link2 className="h-3 w-3" /> Vincular existente
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setNewGroupOpen(true)} className="gap-1">
+                    <Plus className="h-3 w-3" /> Criar novo
+                  </Button>
+                </div>
               </div>
-              {groups.length === 0 && (
-                <p className="text-xs text-muted-foreground">Ex: "Escolha 1 bebida", "Adicionais (até 3)".</p>
-              )}
-              {groups.map((g, gi) => (
-                <div key={gi} className="border rounded-md p-2 space-y-2 bg-muted/30">
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="icon" variant="ghost"
-                      onClick={() => setGroups((p) => p.map((x, i) => i === gi ? { ...x, _open: !x._open } : x))}
-                    >
-                      {g._open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </Button>
-                    <Input
-                      value={g.name}
-                      onChange={(e) => setGroups((p) => p.map((x, i) => i === gi ? { ...x, name: e.target.value } : x))}
-                      className="flex-1"
-                    />
-                    <Badge variant="outline" className="text-[10px] hidden sm:inline">{g.options.length} opções</Badge>
-                    <Button size="icon" variant="ghost" onClick={() => setGroups((p) => p.filter((_, i) => i !== gi))}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                  {g._open && (
-                    <div className="space-y-2 pl-2">
-                      <div className="flex flex-wrap gap-3 items-center text-xs">
-                        <label className="flex items-center gap-1">
-                          <Switch
-                            checked={g.is_required}
-                            onCheckedChange={(v) => setGroups((p) => p.map((x, i) => i === gi ? { ...x, is_required: v } : x))}
-                          />
-                          Obrigatório
-                        </label>
-                        <label className="flex items-center gap-1">Min
-                          <Input
-                            type="number" min="0" className="h-7 w-16"
-                            value={g.min_choices}
-                            onChange={(e) => setGroups((p) => p.map((x, i) => i === gi ? { ...x, min_choices: Number(e.target.value) || 0 } : x))}
-                          />
-                        </label>
-                        <label className="flex items-center gap-1">Max
-                          <Input
-                            type="number" min="1" className="h-7 w-16"
-                            value={g.max_choices}
-                            onChange={(e) => setGroups((p) => p.map((x, i) => i === gi ? { ...x, max_choices: Number(e.target.value) || 1 } : x))}
-                          />
-                        </label>
-                        <Button size="sm" variant="outline" className="gap-1 ml-auto" onClick={() => addOption(gi)}>
-                          <Plus className="h-3 w-3" /> Opção
+              <p className="text-xs text-muted-foreground">
+                Grupos vêm do catálogo. Editar um grupo afeta TODOS os pratos que usam.
+                Gerencie opções em <span className="font-medium">Cardápio → Complementos</span>.
+              </p>
+              {linkedGroups.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Nenhum grupo vinculado.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {linkedGroups.map((g, idx) => {
+                    const optCount = catalogOptions.filter((o) => o.group_id === g.id).length;
+                    return (
+                      <div key={g.id} className="flex items-center gap-2 p-2 rounded-md border bg-card">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-medium text-sm truncate">{g.name}</span>
+                            {g.is_required && <Badge variant="secondary" className="text-[10px]">Obrigatório</Badge>}
+                            <Badge variant="outline" className="text-[10px]">{g.min_choices}–{g.max_choices}</Badge>
+                            <Badge variant="outline" className="text-[10px]">{optCount} opções</Badge>
+                            {!g.is_active && <Badge variant="outline" className="text-[10px]">Pausado</Badge>}
+                          </div>
+                        </div>
+                        <Button size="icon" variant="ghost" onClick={() => setLinkedGroupIds((p) => p.filter((x) => x !== g.id))}
+                          title="Desvincular (não apaga do catálogo)">
+                          <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
-                      {g.options.map((o, oi) => (
-                        <div key={oi} className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
-                          <Input
-                            placeholder="Nome da opção"
-                            value={o.name}
-                            onChange={(e) => setGroups((p) => p.map((x, i) => i === gi
-                              ? { ...x, options: x.options.map((y, j) => j === oi ? { ...y, name: e.target.value } : y) } : x))}
-                            className="flex-1"
-                          />
-                          <Select
-                            value={o.linked_item_id ?? "__none__"}
-                            onValueChange={(v) => setGroups((p) => p.map((x, i) => i === gi
-                              ? { ...x, options: x.options.map((y, j) => j === oi ? { ...y, linked_item_id: v === "__none__" ? null : v } : y) } : x))}
-                          >
-                            <SelectTrigger className="sm:w-48"><SelectValue placeholder="Vincular a item" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__none__">Sem vínculo</SelectItem>
-                              {allItems.filter((x) => x.id !== itemId).map((x) => (
-                                <SelectItem key={x.id} value={x.id}>{x.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Input
-                            type="number" step="0.01"
-                            placeholder="+R$"
-                            className="sm:w-24"
-                            value={o.extra_price}
-                            onChange={(e) => setGroups((p) => p.map((x, i) => i === gi
-                              ? { ...x, options: x.options.map((y, j) => j === oi ? { ...y, extra_price: Number(e.target.value) || 0 } : y) } : x))}
-                          />
-                          <Button size="icon" variant="ghost" onClick={() => setGroups((p) => p.map((x, i) => i === gi
-                            ? { ...x, options: x.options.filter((_, j) => j !== oi) } : x))}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                    );
+                  })}
                 </div>
-              ))}
+              )}
             </div>
           </div>
         )}
@@ -503,6 +452,88 @@ export default function MenuItemEditorDialog({
             {saving && <Loader2 className="h-4 w-4 animate-spin" />} Salvar
           </Button>
         </DialogFooter>
+
+        {/* Linker sub-dialog */}
+        <Dialog open={linkerOpen} onOpenChange={setLinkerOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle>Vincular grupo do catálogo</DialogTitle></DialogHeader>
+            <Input
+              placeholder="Buscar grupo..."
+              value={linkerSearch}
+              onChange={(e) => setLinkerSearch(e.target.value)}
+              autoFocus
+            />
+            <div className="max-h-72 overflow-y-auto space-y-1 mt-2">
+              {availableGroups.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  Nenhum grupo disponível. Crie um novo.
+                </p>
+              ) : availableGroups.map((g) => {
+                const optCount = catalogOptions.filter((o) => o.group_id === g.id).length;
+                return (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => {
+                      setLinkedGroupIds((p) => [...p, g.id]);
+                      setLinkerOpen(false);
+                      setLinkerSearch("");
+                    }}
+                    className="w-full text-left p-2 rounded-md border bg-card hover:bg-muted transition-colors"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium text-sm">{g.name}</span>
+                      <Badge variant="outline" className="text-[10px]">{optCount} opções</Badge>
+                      {!g.is_active && <Badge variant="outline" className="text-[10px]">Pausado</Badge>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* New group sub-dialog */}
+        <Dialog open={newGroupOpen} onOpenChange={setNewGroupOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader><DialogTitle>Novo grupo de complementos</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label>Nome</Label>
+                <Input
+                  value={newGroupForm.name}
+                  onChange={(e) => setNewGroupForm({ ...newGroupForm, name: e.target.value })}
+                  placeholder="Ex: Acompanhamentos"
+                  autoFocus
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1.5">
+                  <Label>Mínimo</Label>
+                  <Input type="number" min="0" value={newGroupForm.min}
+                    onChange={(e) => setNewGroupForm({ ...newGroupForm, min: Number(e.target.value) || 0 })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Máximo</Label>
+                  <Input type="number" min="1" value={newGroupForm.max}
+                    onChange={(e) => setNewGroupForm({ ...newGroupForm, max: Number(e.target.value) || 1 })} />
+                </div>
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <Switch checked={newGroupForm.required}
+                  onCheckedChange={(v) => setNewGroupForm({ ...newGroupForm, required: v })} />
+                Obrigatório escolher
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Adicione as opções depois em Cardápio → Complementos.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setNewGroupOpen(false)}>Cancelar</Button>
+              <Button onClick={createNewGroup}>Criar e vincular</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );

@@ -124,6 +124,7 @@ const TotemConfig = lazy(() => import("./pages/TotemConfig.tsx"));
 const NfceTester = lazy(() => import("./pages/NfceTester.tsx"));
 
 const Menu = lazy(() => import("./pages/Menu.tsx"));
+const ComplementsCatalog = lazy(() => import("./pages/ComplementsCatalog.tsx"));
 const Occurrences = lazy(() => import("./pages/Occurrences.tsx"));
 const OccurrencesReport = lazy(() => import("./pages/OccurrencesReport.tsx"));
 
@@ -378,6 +379,7 @@ const App = () => (
 
               {/* /loja movido para fora do AppLayout (fullscreen) */}
               <Route path="/cardapio" element={<Guarded staff><Menu /></Guarded>} />
+              <Route path="/cardapio/complementos" element={<Guarded staff><ComplementsCatalog /></Guarded>} />
               <Route path="/ocorrencias" element={<Guarded><Occurrences /></Guarded>} />
               <Route path="/ocorrencias/relatorio" element={<Guarded staff partner><OccurrencesReport /></Guarded>} />
               

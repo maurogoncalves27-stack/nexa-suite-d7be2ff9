@@ -138,6 +138,7 @@ const PAGE_TITLES: PageMeta[] = [
   { match: (p) => p.startsWith("/smartpos"), title: "Smart POS", group: "PDV" },
   { match: (p) => p.startsWith("/garcom"), title: "Garçom", group: "PDV" },
   
+  { match: (p) => p.startsWith("/cardapio/complementos"), title: "Complementos", group: "PDV" },
   { match: (p) => p.startsWith("/cardapio"), title: "Cardápio", group: "PDV" },
   
 
