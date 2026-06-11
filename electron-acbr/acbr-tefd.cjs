@@ -46,16 +46,18 @@ const DEFAULT_WORK_DIR = path.join(
 );
 
 function resolveBase() {
-  // Tenta apenas o próprio diretório e a subpasta x86. NUNCA x64
-  // (a DLL x64 não casa com nosso processo ia32 e ainda tenta criar
-  // a pasta dentro de Program Files, gerando EPERM).
+  // A PGWebLib.dll (32-bit) fica direto em
+  // C:\Arquivos de Programas (x86)\PayGo\PGWebLib\PGWebLib.dll
+  // (a subpasta x64 ao lado é a versão 64-bit, que NÃO usamos).
+  // Tentamos: o próprio diretório, subpasta x86 (instalações antigas)
+  // e o diretório pai (caso a env aponte para .../x86 inexistente).
   for (const b of DEFAULT_BASES) {
-    const tries = [b, path.join(b, "x86")];
+    const tries = [b, path.join(b, "x86"), path.dirname(b)];
     for (const t of tries) {
       try { if (fs.existsSync(path.join(t, "PGWebLib.dll"))) return t; } catch { /* ignore */ }
     }
   }
-  return DEFAULT_BASES[0] || "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib\\x86";
+  return DEFAULT_BASES[0] || "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib";
 }
 
 const PAYGO_BASE = resolveBase();
