@@ -20,6 +20,7 @@ interface Category { id: string; name: string; }
 interface RecipeOpt { id: string; name: string; }
 interface ItemOpt { id: string; name: string; price: number; }
 interface Brand { id: string; name: string; }
+interface Store { id: string; name: string; }
 
 interface Component {
   id?: string;
