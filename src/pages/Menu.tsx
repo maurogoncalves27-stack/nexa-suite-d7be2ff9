@@ -16,6 +16,7 @@ import MenuItemEditorDialog from "@/components/menu/MenuItemEditorDialog";
 import { fmt } from "@/lib/saiposMenu";
 
 interface Brand { id: string; name: string; sort_order: number; }
+interface Store { id: string; name: string; }
 interface Category { id: string; name: string; sort_order: number; }
 interface MenuItem {
   id: string;
@@ -30,6 +31,8 @@ interface MenuItem {
 }
 
 const ACTIVE_BRAND_KEY = "menu.activeBrand";
+const ACTIVE_STORE_KEY = "menu.activeStore";
+const STORE_NAMES = ["ASA SUL", "ASA NORTE", "ÁGUAS CLARAS", "LAGO SUL"];
 
 export default function Menu() {
   const { toast } = useToast();
