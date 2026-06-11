@@ -67,7 +67,12 @@ const Recipes = () => {
       supabase.from("recipe_brands").select("recipe_id, brand_id"),
     ]);
     setRecipes((recs as unknown as RecipeRow[]) ?? []);
-    setBrands((brs as Brand[]) ?? []);
+    const HIDDEN_BRAND_SLUGS = new Set(["totem", "salao", "salão", "site"]);
+    const filteredBrands = ((brs as Brand[]) ?? []).filter(
+      (b) => !HIDDEN_BRAND_SLUGS.has((b.slug ?? "").toLowerCase()) &&
+             !HIDDEN_BRAND_SLUGS.has((b.name ?? "").toLowerCase())
+    );
+    setBrands(filteredBrands);
     const map: Record<string, Set<string>> = {};
     (links ?? []).forEach((l: any) => {
       if (!map[l.recipe_id]) map[l.recipe_id] = new Set();
