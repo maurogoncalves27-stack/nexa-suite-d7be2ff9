@@ -16,6 +16,7 @@ import type {
   TefPaymentResult,
   TefStatus,
 } from "./types";
+import { joinAgentUrl } from "./agentUrl";
 
 interface AcbrIniciarPayload {
   valor: number;
@@ -104,7 +105,7 @@ export const createAcbrAdapter = (config: TefConfig): TefAdapter => {
       );
 
       try {
-        const resp = await fetch(`${config.agentUrl}/tef/iniciar`, {
+        const resp = await fetch(joinAgentUrl(config.agentUrl, "/tef/iniciar"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -169,19 +170,20 @@ export const createAcbrAdapter = (config: TefConfig): TefAdapter => {
 /** Health-check do NEXA ACBr Agent. */
 export const checkAcbrAgent = async (
   agentUrl: string,
-): Promise<{ ok: boolean; mode?: string; version?: string; error?: string }> => {
+): Promise<{ ok: boolean; online?: boolean; mode?: string; version?: string; error?: string }> => {
   try {
-    const r = await fetch(`${agentUrl}/health`, { signal: AbortSignal.timeout(2500) });
+    const r = await fetch(joinAgentUrl(agentUrl, "/health"), { signal: AbortSignal.timeout(2500) });
     if (!r.ok) return { ok: false, error: `HTTP ${r.status}` };
     const data = await r.json();
     return {
+      online: true,
       ok: !!data?.tefReady,
       mode: data?.tefReady ? "acbr-tefd" : "tef não inicializado",
-      version: data?.tefVersion ?? data?.version,
+      version: data?.version,
       error: data?.tefReady ? undefined : (data?.tefError ?? "PGWebLib não inicializada"),
     };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "offline" };
+    return { ok: false, online: false, error: e instanceof Error ? e.message : "offline" };
   }
 };
 
@@ -194,7 +196,7 @@ export const acbrInstalarPdc = async (
     let lastError = "offline";
 
     for (const endpoint of endpoints) {
-      const r = await fetch(`${agentUrl}${endpoint}`, {
+      const r = await fetch(joinAgentUrl(agentUrl, endpoint), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ environment: "homologation" }),
@@ -221,7 +223,7 @@ export const acbrCancelarVenda = async (
   body: { rede?: string; nsu: string; data: string; valor: number },
 ): Promise<AcbrActionResponse> => {
   try {
-    const r = await fetch(`${agentUrl}/tef/cancelar-venda`, {
+      const r = await fetch(joinAgentUrl(agentUrl, "/tef/cancelar-venda"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -240,7 +242,7 @@ export const acbrAdministrativo = async (
   operacao = 0,
 ): Promise<AcbrActionResponse> => {
   try {
-    const r = await fetch(`${agentUrl}/tef/admin`, {
+    const r = await fetch(joinAgentUrl(agentUrl, "/tef/admin"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ operacao }),
