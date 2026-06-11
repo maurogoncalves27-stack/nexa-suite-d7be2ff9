@@ -21,6 +21,7 @@ import type {
   TefPaymentResult,
   TefStatus,
 } from "./types";
+import { joinAgentUrl } from "./agentUrl";
 
 interface PaygoReceipts {
   reqnum?: string | null;
@@ -79,7 +80,7 @@ export const createPaygoAdapter = (config: TefConfig): TefAdapter => {
       );
 
       try {
-        const resp = await fetch(`${config.agentUrl}/tef/iniciar`, {
+        const resp = await fetch(joinAgentUrl(config.agentUrl, "/tef/iniciar"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -127,7 +128,7 @@ export const createPaygoAdapter = (config: TefConfig): TefAdapter => {
     async cancel() {
       abortController?.abort();
       try {
-        await fetch(`${config.agentUrl}/tef/cancelar`, { method: "POST" });
+        await fetch(joinAgentUrl(config.agentUrl, "/tef/cancelar"), { method: "POST" });
       } catch {
         /* ignore */
       }
@@ -138,20 +139,21 @@ export const createPaygoAdapter = (config: TefConfig): TefAdapter => {
 /** Health-check do agente PayGo. */
 export const checkPaygoAgent = async (
   agentUrl: string,
-): Promise<{ ok: boolean; mode?: string; version?: string; error?: string; diagnostics?: unknown }> => {
+): Promise<{ ok: boolean; online?: boolean; mode?: string; version?: string; error?: string; diagnostics?: unknown }> => {
   try {
-    const r = await fetch(`${agentUrl}/health`, { signal: AbortSignal.timeout(2500) });
+    const r = await fetch(joinAgentUrl(agentUrl, "/health"), { signal: AbortSignal.timeout(2500) });
     if (!r.ok) return { ok: false, error: `HTTP ${r.status}` };
     const data = await r.json();
     return {
+      online: true,
       ok: !!data?.tefReady,
       mode: data?.tefReady ? "PayGo Integrado" : "PGWebLib não inicializada",
-      version: data?.tefVersion,
+      version: data?.version,
       error: data?.tefReady ? undefined : (data?.tefError ?? "PGWebLib não inicializada"),
       diagnostics: data?.tefDiagnostics,
     };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "offline" };
+    return { ok: false, online: false, error: e instanceof Error ? e.message : "offline" };
   }
 };
 
@@ -160,12 +162,18 @@ export const paygoInit = async (
   agentUrl: string,
 ): Promise<PaygoAgentResponse & { retorno?: { initialized?: boolean; version?: string } }> => {
   try {
-    const r = await fetch(`${agentUrl}/tef/init`, {
+    const r = await fetch(joinAgentUrl(agentUrl, "/tef/init"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
     });
     const data = (await r.json().catch(() => ({}))) as PaygoAgentResponse;
+    if (r.status === 404) {
+      return {
+        ok: false,
+        error: "O agente respondeu, mas a rota /tef/init não existe. Remova a barra final da URL do agente ou atualize/reinstale o NEXA ACBr Agent.",
+      };
+    }
     if (!r.ok) return { ok: false, error: data?.error ?? `HTTP ${r.status}` };
     return data;
   } catch (e) {
@@ -179,7 +187,7 @@ export const paygoCancelarVenda = async (
   body: { nsu: string; data: string; valor: number },
 ): Promise<PaygoAgentResponse> => {
   try {
-    const r = await fetch(`${agentUrl}/tef/cancelar-venda`, {
+    const r = await fetch(joinAgentUrl(agentUrl, "/tef/cancelar-venda"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -197,7 +205,7 @@ export const paygoAdministrativo = async (
   agentUrl: string,
 ): Promise<PaygoAgentResponse> => {
   try {
-    const r = await fetch(`${agentUrl}/tef/admin`, {
+    const r = await fetch(joinAgentUrl(agentUrl, "/tef/admin"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
