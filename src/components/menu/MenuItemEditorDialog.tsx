@@ -304,6 +304,26 @@ export default function MenuItemEditorDialog({
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5 sm:col-span-2">
+                <Label>Lojas (onde o item é vendido)</Label>
+                <div className="flex flex-wrap gap-2">
+                  {stores.map((s) => {
+                    const checked = selectedStores.includes(s.id);
+                    return (
+                      <button
+                        type="button" key={s.id}
+                        onClick={() => setSelectedStores((p) =>
+                          checked ? p.filter((x) => x !== s.id) : [...p, s.id])}
+                        className={`px-3 py-1.5 rounded-md border text-xs sm:text-sm transition-colors ${
+                          checked ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"
+                        }`}
+                      >
+                        {s.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label>Marcas (em quais cardápios aparece)</Label>
                 <div className="flex flex-wrap gap-2">
                   {brands.map((b) => {
