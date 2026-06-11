@@ -168,6 +168,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
   useEffect(() => {
     if (!recipeId) {
       setForm(emptyForm);
+      setPhotoPath(null);
       setSelectedBrands(initialBrandId ? new Set([initialBrandId]) : new Set());
       return;
     }
@@ -193,6 +194,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
           unidade_comercial: (r as any).unidade_comercial ?? "UN",
           ean: (r as any).ean ?? "",
         });
+        setPhotoPath((r as any).photo_path ?? null);
       }
       setSelectedBrands(new Set((rb ?? []).map((x: any) => x.brand_id)));
       setLoading(false);
