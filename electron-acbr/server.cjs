@@ -207,6 +207,18 @@ async function handle(req, res) {
     }
 
     // -------- TEF (PayGo Integrado / PGWebLib.dll) --------
+    if (req.method === "POST" && path === "/tef/init") {
+      if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "PGWebLib.dll não disponível" });
+      const body = await readBody(req).catch(() => ({}));
+      try {
+        tef.ensureInit({ environment: body?.environment });
+        const version = tef.versao();
+        return send(res, 200, { ok: true, retorno: { initialized: true, version } });
+      } catch (e) {
+        return send(res, 500, { ok: false, error: e.message });
+      }
+    }
+
     if (req.method === "POST" && path === "/tef/iniciar") {
       if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "PGWebLib.dll não disponível" });
       const body = await readBody(req);
