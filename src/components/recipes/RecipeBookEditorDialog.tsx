@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, Upload, Trash2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,6 @@ interface Props {
 const RecipeBookEditorDialog = ({ open, onOpenChange, recipeBookId, onSaved }: Props) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [data, setData] = useState<RecipeBookRow>({
     id: "",
     title: "",
@@ -61,29 +60,6 @@ const RecipeBookEditorDialog = ({ open, onOpenChange, recipeBookId, onSaved }: P
   const photoUrl = data.photo_path
     ? supabase.storage.from("recipe-book-photos").getPublicUrl(data.photo_path).data.publicUrl
     : null;
-
-  const handleUpload = async (file: File) => {
-    setUploading(true);
-    const ext = file.name.split(".").pop() || "jpg";
-    const path = `${crypto.randomUUID()}.${ext}`;
-    const { error } = await supabase.storage.from("recipe-book-photos").upload(path, file, { upsert: false });
-    if (error) {
-      toast.error(error.message);
-    } else {
-      // remove a anterior, se existir
-      if (data.photo_path) {
-        await supabase.storage.from("recipe-book-photos").remove([data.photo_path]);
-      }
-      setData((d) => ({ ...d, photo_path: path }));
-    }
-    setUploading(false);
-  };
-
-  const removePhoto = async () => {
-    if (!data.photo_path) return;
-    await supabase.storage.from("recipe-book-photos").remove([data.photo_path]);
-    setData((d) => ({ ...d, photo_path: null }));
-  };
 
   const save = async () => {
     if (!data.title.trim()) {
