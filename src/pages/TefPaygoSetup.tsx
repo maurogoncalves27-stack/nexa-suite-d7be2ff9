@@ -254,7 +254,80 @@ const TefPaygoSetup = () => {
               <div className="text-sm font-mono truncate">{pdc}</div>
             )}
           </div>
-          <Field label="Host (sandbox)" value={host} />
+          <div className="rounded-md border bg-muted/30 p-2.5 space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-xs text-muted-foreground">Host (sandbox)</div>
+              {!editingHost ? (
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => copy(host, "Host")} className="h-7 w-7 p-0">
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={!storeId}
+                    onClick={() => { setHostDraft(host); setEditingHost(true); }}
+                    className="h-7 w-7 p-0"
+                    title={storeId ? "Editar Host" : "Selecione uma loja primeiro"}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={savingHost}
+                    onClick={async () => {
+                      if (!storeId) return;
+                      const trimmed = hostDraft.trim();
+                      if (!trimmed) {
+                        toast({ title: "Host inválido", description: "Informe um endereço.", variant: "destructive" });
+                        return;
+                      }
+                      setSavingHost(true);
+                      const { error } = await supabase
+                        .from("pdv_tef_config")
+                        .update({ agent_url: trimmed })
+                        .eq("store_id", storeId);
+                      setSavingHost(false);
+                      if (error) {
+                        toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+                        return;
+                      }
+                      setCfg(prev => prev ? { ...prev, host: trimmed } : prev);
+                      setEditingHost(false);
+                      toast({ title: "Host atualizado", description: trimmed });
+                    }}
+                    className="h-7 w-7 p-0"
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={savingHost}
+                    onClick={() => setEditingHost(false)}
+                    className="h-7 w-7 p-0"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
+            </div>
+            {editingHost ? (
+              <Input
+                autoFocus
+                value={hostDraft}
+                onChange={(e) => setHostDraft(e.target.value)}
+                className="h-7 font-mono text-sm"
+                placeholder="http://127.0.0.1:3030"
+              />
+            ) : (
+              <div className="text-sm font-mono truncate">{host}</div>
+            )}
+          </div>
         </div>
       </Card>
 
