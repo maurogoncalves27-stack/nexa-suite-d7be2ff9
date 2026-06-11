@@ -368,11 +368,21 @@ export default function Menu() {
                   <CardContent className="space-y-2">
                     {list.map((it) => {
                       const otherBrands = (itemBrands[it.id] ?? []).filter((b) => b !== activeBrand);
+                      const photo = it.recipe_id ? recipePhotos[it.recipe_id] : null;
                       return (
                         <div
                           key={it.id}
                           className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-md border bg-card"
                         >
+                          {photo ? (
+                            <img
+                              src={photo}
+                              alt={it.name}
+                              className="h-14 w-14 rounded object-cover border shrink-0"
+                            />
+                          ) : (
+                            <div className="h-14 w-14 rounded bg-muted border shrink-0" />
+                          )}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-medium truncate">{it.name}</span>
