@@ -33,6 +33,12 @@ const Index = () => {
     return <Navigate to="/loja" replace />;
   }
 
+  // Nutricionista tem prioridade sobre supplier/outsourced — toda nutricionista
+  // vinculada deve cair no painel da nutricionista, mesmo se também marcada como terceirizada.
+  if (isNutritionist && !isAdmin && !isManager) {
+    return <Navigate to="/nutricionista/painel" replace />;
+  }
+
   if (isSupplier) {
     return <Navigate to="/fornecedor/painel" replace />;
   }
