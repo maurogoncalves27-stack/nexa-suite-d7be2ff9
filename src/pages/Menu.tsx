@@ -194,6 +194,7 @@ export default function Menu() {
     id ? (categories.find((c) => c.id === id)?.name ?? "Sem categoria") : "Sem categoria";
 
   const activeBrandObj = brands.find((b) => b.id === activeBrand);
+  const activeStoreObj = stores.find((s) => s.id === activeStore);
 
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-4 max-w-6xl">
@@ -204,7 +205,9 @@ export default function Menu() {
             Cardápio
           </h1>
           <p className="text-muted-foreground">
-            {activeBrandObj ? `Marca: ${activeBrandObj.name}` : "Selecione uma marca"}
+            {activeStoreObj && activeBrandObj
+              ? `${activeStoreObj.name} • ${activeBrandObj.name}`
+              : "Selecione uma loja e marca"}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -216,11 +219,25 @@ export default function Menu() {
           <Button variant="outline" size="sm" onClick={openNewCategory} className="gap-2" disabled={!activeBrand}>
             <FolderPlus className="h-4 w-4" /> Categoria
           </Button>
-          <Button size="sm" onClick={() => { setEditingId(null); setEditorOpen(true); }} className="gap-2" disabled={!activeBrand}>
+          <Button size="sm" onClick={() => { setEditingId(null); setEditorOpen(true); }} className="gap-2" disabled={!activeBrand || !activeStore}>
             <Plus className="h-4 w-4" /> Novo item
           </Button>
         </div>
       </div>
+
+      {stores.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <Label className="text-xs uppercase tracking-wide text-muted-foreground sm:w-16">Loja</Label>
+          <Select value={activeStore} onValueChange={setActiveStore}>
+            <SelectTrigger className="sm:w-72"><SelectValue placeholder="Selecione a loja" /></SelectTrigger>
+            <SelectContent>
+              {stores.map((s) => (
+                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {brands.length > 0 && (
         <Tabs value={activeBrand} onValueChange={setActiveBrand} className="w-full">
