@@ -163,8 +163,12 @@ async function handle(req, res) {
       let tefReady = false, tefVersion = null, tefError = null;
       const tefAvailable = tef.isAvailable();
       if (tefAvailable) {
-        const tefDiagnostics = tef.diagnostics();
-        tefReady = !!tefDiagnostics.initialized;
+        // Auto-inicializa a PGWebLib na primeira chamada de /health para que
+        // a checagem de saúde reflita tefReady=true sem exigir clique manual.
+        try { tef.ensureInit(); }
+        catch (e) { tefError = e.message; }
+        const d = tef.diagnostics();
+        tefReady = !!d.initialized;
         tefVersion = tefReady ? "PGWebLib inicializada" : "PGWebLib carregada";
       } else {
         tefError = "PGWebLib.dll não disponível";
