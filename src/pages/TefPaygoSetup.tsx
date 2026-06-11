@@ -86,6 +86,9 @@ const TefPaygoSetup = () => {
   const [editingPdc, setEditingPdc] = useState(false);
   const [pdcDraft, setPdcDraft] = useState("");
   const [savingPdc, setSavingPdc] = useState(false);
+  const [editingHost, setEditingHost] = useState(false);
+  const [hostDraft, setHostDraft] = useState("");
+  const [savingHost, setSavingHost] = useState(false);
 
   useEffect(() => {
     (async () => {
