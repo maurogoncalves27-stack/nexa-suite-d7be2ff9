@@ -20,6 +20,7 @@ interface Category { id: string; name: string; }
 interface RecipeOpt { id: string; name: string; }
 interface ItemOpt { id: string; name: string; price: number; }
 interface Brand { id: string; name: string; }
+interface Store { id: string; name: string; }
 
 interface Component {
   id?: string;
@@ -52,12 +53,14 @@ interface Props {
   itemId: string | null;
   categories: Category[];
   brands: Brand[];
+  stores: Store[];
   defaultBrandId: string;
+  defaultStoreId: string;
   onSaved: () => void;
 }
 
 export default function MenuItemEditorDialog({
-  open, onOpenChange, itemId, categories, brands, defaultBrandId, onSaved,
+  open, onOpenChange, itemId, categories, brands, stores, defaultBrandId, defaultStoreId, onSaved,
 }: Props) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -73,6 +76,7 @@ export default function MenuItemEditorDialog({
 
   const [components, setComponents] = useState<Component[]>([]);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+  const [selectedStores, setSelectedStores] = useState<string[]>([]);
   const [linkedGroupIds, setLinkedGroupIds] = useState<string[]>([]);
 
   const [recipes, setRecipes] = useState<RecipeOpt[]>([]);
@@ -112,26 +116,30 @@ export default function MenuItemEditorDialog({
           setIsCombo(!!it.is_combo);
           setIsActive(!!it.is_active);
         }
-        const [compRes, brRes, linksRes] = await Promise.all([
+        const [compRes, brRes, linksRes, stRes] = await Promise.all([
           supabase.from("menu_item_components").select("*").eq("parent_item_id", itemId).order("sort_order"),
           supabase.from("menu_item_brands").select("brand_id").eq("menu_item_id", itemId),
           (supabase as any).from("menu_item_complement_links").select("group_id, sort_order")
             .eq("menu_item_id", itemId).order("sort_order"),
+          (supabase as any).from("menu_item_stores").select("store_id").eq("menu_item_id", itemId).eq("is_available", true),
         ]);
         setComponents((compRes.data ?? []).map((c: any) => ({
           id: c.id, child_item_id: c.child_item_id, quantity: Number(c.quantity),
         })));
         setSelectedBrands(((brRes.data ?? []) as any[]).map((r) => r.brand_id));
         setLinkedGroupIds(((linksRes.data ?? []) as any[]).map((r) => r.group_id));
+        setSelectedStores(((stRes.data ?? []) as any[]).map((r) => r.store_id));
       } else {
         setName(""); setDescription(""); setCategoryId("__none__"); setRecipeId("__none__");
         setPrice("0"); setIsCombo(false); setIsActive(true);
         setComponents([]); setLinkedGroupIds([]);
         setSelectedBrands(defaultBrandId ? [defaultBrandId] : []);
+        // Por padrão, novos itens ficam disponíveis em todas as 4 lojas
+        setSelectedStores(stores.map((s) => s.id));
       }
       setLoading(false);
     })();
-  }, [open, itemId, defaultBrandId]);
+  }, [open, itemId, defaultBrandId, defaultStoreId, stores]);
 
   const componentSum = useMemo(() => components.reduce((sum, c) => {
     const it = allItems.find((x) => x.id === c.child_item_id);
@@ -166,6 +174,7 @@ export default function MenuItemEditorDialog({
   async function save() {
     if (!name.trim()) { toast({ title: "Informe o nome", variant: "destructive" }); return; }
     if (selectedBrands.length === 0) { toast({ title: "Selecione ao menos uma marca", variant: "destructive" }); return; }
+    if (selectedStores.length === 0) { toast({ title: "Selecione ao menos uma loja", variant: "destructive" }); return; }
     setSaving(true);
     try {
       const payload = {
@@ -252,6 +261,14 @@ export default function MenuItemEditorDialog({
         if (error) throw error;
       }
 
+      // Lojas (disponibilidade física)
+      await (supabase as any).from("menu_item_stores").delete().eq("menu_item_id", id!);
+      if (selectedStores.length) {
+        const storeRows = selectedStores.map((s) => ({ menu_item_id: id!, store_id: s, is_available: true }));
+        const { error } = await (supabase as any).from("menu_item_stores").insert(storeRows);
+        if (error) throw error;
+      }
+
       toast({ title: itemId ? "Item atualizado" : "Item criado" });
       onSaved();
       onOpenChange(false);
@@ -286,6 +303,26 @@ export default function MenuItemEditorDialog({
         ) : (
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Lojas (onde o item é vendido)</Label>
+                <div className="flex flex-wrap gap-2">
+                  {stores.map((s) => {
+                    const checked = selectedStores.includes(s.id);
+                    return (
+                      <button
+                        type="button" key={s.id}
+                        onClick={() => setSelectedStores((p) =>
+                          checked ? p.filter((x) => x !== s.id) : [...p, s.id])}
+                        className={`px-3 py-1.5 rounded-md border text-xs sm:text-sm transition-colors ${
+                          checked ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"
+                        }`}
+                      >
+                        {s.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <Label>Marcas (em quais cardápios aparece)</Label>
                 <div className="flex flex-wrap gap-2">

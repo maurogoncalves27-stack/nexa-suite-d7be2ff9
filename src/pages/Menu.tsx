@@ -11,11 +11,13 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
 import AddCategoryDialog from "@/components/menu/AddCategoryDialog";
 import MenuItemEditorDialog from "@/components/menu/MenuItemEditorDialog";
 import { fmt } from "@/lib/saiposMenu";
 
 interface Brand { id: string; name: string; sort_order: number; }
+interface Store { id: string; name: string; }
 interface Category { id: string; name: string; sort_order: number; }
 interface MenuItem {
   id: string;
@@ -30,6 +32,8 @@ interface MenuItem {
 }
 
 const ACTIVE_BRAND_KEY = "menu.activeBrand";
+const ACTIVE_STORE_KEY = "menu.activeStore";
+const STORE_NAMES = ["ASA SUL", "ASA NORTE", "ÁGUAS CLARAS", "LAGO SUL"];
 
 export default function Menu() {
   const { toast } = useToast();
@@ -38,9 +42,13 @@ export default function Menu() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [activeBrand, setActiveBrand] = useState<string>("");
 
+  const [stores, setStores] = useState<Store[]>([]);
+  const [activeStore, setActiveStore] = useState<string>("");
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [itemBrands, setItemBrands] = useState<Record<string, string[]>>({});
+  const [itemStores, setItemStores] = useState<Record<string, string[]>>({});
 
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState<string>("all");
@@ -54,12 +62,21 @@ export default function Menu() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("brands").select("*").eq("is_active", true).order("sort_order");
-      const list = (data ?? []) as Brand[];
-      setBrands(list);
-      const stored = localStorage.getItem(ACTIVE_BRAND_KEY);
-      const initial = stored && list.some((b) => b.id === stored) ? stored : list[0]?.id ?? "";
-      setActiveBrand(initial);
+      const [bRes, sRes] = await Promise.all([
+        supabase.from("brands").select("*").eq("is_active", true).order("sort_order"),
+        supabase.from("stores").select("id,name").eq("is_virtual", false).in("name", STORE_NAMES),
+      ]);
+      const blist = (bRes.data ?? []) as Brand[];
+      setBrands(blist);
+      const storedB = localStorage.getItem(ACTIVE_BRAND_KEY);
+      setActiveBrand(storedB && blist.some((b) => b.id === storedB) ? storedB : blist[0]?.id ?? "");
+
+      const slist = ((sRes.data ?? []) as Store[]).sort(
+        (a, b) => STORE_NAMES.indexOf(a.name) - STORE_NAMES.indexOf(b.name),
+      );
+      setStores(slist);
+      const storedS = localStorage.getItem(ACTIVE_STORE_KEY);
+      setActiveStore(storedS && slist.some((s) => s.id === storedS) ? storedS : slist[0]?.id ?? "");
     })();
   }, []);
 
@@ -67,10 +84,13 @@ export default function Menu() {
     if (activeBrand) localStorage.setItem(ACTIVE_BRAND_KEY, activeBrand);
   }, [activeBrand]);
 
+  useEffect(() => {
+    if (activeStore) localStorage.setItem(ACTIVE_STORE_KEY, activeStore);
+  }, [activeStore]);
+
   async function load() {
-    if (!activeBrand) return;
+    if (!activeBrand || !activeStore) return;
     setLoading(true);
-    // categorias da marca ativa via M2M
     const { data: catLinks } = await (supabase as any)
       .from("menu_category_brands").select("category_id").eq("brand_id", activeBrand);
     const catIds = ((catLinks ?? []) as any[]).map((r) => r.category_id);
@@ -82,14 +102,25 @@ export default function Menu() {
     }
     setCategories(cat);
 
-    const { data: mibs } = await supabase.from("menu_item_brands").select("menu_item_id, brand_id");
-    const map: Record<string, string[]> = {};
-    for (const r of (mibs ?? []) as any[]) {
-      (map[r.menu_item_id] ||= []).push(r.brand_id);
+    const [mibsRes, misRes] = await Promise.all([
+      supabase.from("menu_item_brands").select("menu_item_id, brand_id"),
+      (supabase as any).from("menu_item_stores").select("menu_item_id, store_id").eq("is_available", true),
+    ]);
+    const brandMap: Record<string, string[]> = {};
+    for (const r of (mibsRes.data ?? []) as any[]) {
+      (brandMap[r.menu_item_id] ||= []).push(r.brand_id);
     }
-    setItemBrands(map);
+    setItemBrands(brandMap);
 
-    const itemIds = Object.entries(map).filter(([, bs]) => bs.includes(activeBrand)).map(([id]) => id);
+    const storeMap: Record<string, string[]> = {};
+    for (const r of (misRes.data ?? []) as any[]) {
+      (storeMap[r.menu_item_id] ||= []).push(r.store_id);
+    }
+    setItemStores(storeMap);
+
+    const itemIds = Object.keys(brandMap).filter((id) =>
+      brandMap[id].includes(activeBrand) && (storeMap[id] ?? []).includes(activeStore),
+    );
     if (itemIds.length === 0) {
       setItems([]);
       setLoading(false);
@@ -100,7 +131,7 @@ export default function Menu() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, [activeBrand]);
+  useEffect(() => { load(); }, [activeBrand, activeStore]);
 
   function openNewCategory() {
     setCatName("");
@@ -164,6 +195,7 @@ export default function Menu() {
     id ? (categories.find((c) => c.id === id)?.name ?? "Sem categoria") : "Sem categoria";
 
   const activeBrandObj = brands.find((b) => b.id === activeBrand);
+  const activeStoreObj = stores.find((s) => s.id === activeStore);
 
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-4 max-w-6xl">
@@ -174,7 +206,9 @@ export default function Menu() {
             Cardápio
           </h1>
           <p className="text-muted-foreground">
-            {activeBrandObj ? `Marca: ${activeBrandObj.name}` : "Selecione uma marca"}
+            {activeStoreObj && activeBrandObj
+              ? `${activeStoreObj.name} • ${activeBrandObj.name}`
+              : "Selecione uma loja e marca"}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -186,11 +220,25 @@ export default function Menu() {
           <Button variant="outline" size="sm" onClick={openNewCategory} className="gap-2" disabled={!activeBrand}>
             <FolderPlus className="h-4 w-4" /> Categoria
           </Button>
-          <Button size="sm" onClick={() => { setEditingId(null); setEditorOpen(true); }} className="gap-2" disabled={!activeBrand}>
+          <Button size="sm" onClick={() => { setEditingId(null); setEditorOpen(true); }} className="gap-2" disabled={!activeBrand || !activeStore}>
             <Plus className="h-4 w-4" /> Novo item
           </Button>
         </div>
       </div>
+
+      {stores.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <Label className="text-xs uppercase tracking-wide text-muted-foreground sm:w-16">Loja</Label>
+          <Select value={activeStore} onValueChange={setActiveStore}>
+            <SelectTrigger className="sm:w-72"><SelectValue placeholder="Selecione a loja" /></SelectTrigger>
+            <SelectContent>
+              {stores.map((s) => (
+                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {brands.length > 0 && (
         <Tabs value={activeBrand} onValueChange={setActiveBrand} className="w-full">
@@ -301,7 +349,9 @@ export default function Menu() {
         itemId={editingId}
         categories={categories}
         brands={brands}
+        stores={stores}
         defaultBrandId={activeBrand}
+        defaultStoreId={activeStore}
         onSaved={load}
       />
     </div>

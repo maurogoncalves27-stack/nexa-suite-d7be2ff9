@@ -7395,6 +7395,42 @@ export type Database = {
           },
         ]
       }
+      menu_item_stores: {
+        Row: {
+          created_at: string
+          is_available: boolean
+          menu_item_id: string
+          store_id: string
+        }
+        Insert: {
+          created_at?: string
+          is_available?: boolean
+          menu_item_id: string
+          store_id: string
+        }
+        Update: {
+          created_at?: string
+          is_available?: boolean
+          menu_item_id?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_item_stores_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_item_stores_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menu_items: {
         Row: {
           category_id: string | null
