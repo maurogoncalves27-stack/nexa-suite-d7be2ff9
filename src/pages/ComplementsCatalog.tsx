@@ -155,7 +155,7 @@ export default function ComplementsCatalog() {
   }
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 space-y-6 max-w-4xl">
+    <div className="space-y-6">
       <div>
         <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
           <Layers className="h-6 w-6 md:h-7 md:w-7 text-primary" />

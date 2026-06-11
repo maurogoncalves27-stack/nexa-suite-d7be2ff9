@@ -198,32 +198,31 @@ export default function Menu() {
   const activeStoreObj = stores.find((s) => s.id === activeStore);
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 space-y-4 max-w-6xl">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-            <ScanText className="h-6 w-6 md:h-7 md:w-7 text-primary" />
-            Cardápio
-          </h1>
-          <p className="text-muted-foreground">
-            {activeStoreObj && activeBrandObj
-              ? `${activeStoreObj.name} • ${activeBrandObj.name}`
-              : "Selecione uma loja e marca"}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link to="/cardapio/complementos">
-            <Button variant="outline" size="sm" className="gap-2">
-              <Layers className="h-4 w-4" /> Complementos
-            </Button>
-          </Link>
-          <Button variant="outline" size="sm" onClick={openNewCategory} className="gap-2" disabled={!activeBrand}>
-            <FolderPlus className="h-4 w-4" /> Categoria
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+          <ScanText className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+          Cardápio
+        </h1>
+        <p className="text-muted-foreground">
+          {activeStoreObj && activeBrandObj
+            ? `${activeStoreObj.name} • ${activeBrandObj.name}`
+            : "Selecione uma loja e marca"}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Link to="/cardapio/complementos">
+          <Button variant="outline" size="sm" className="gap-2">
+            <Layers className="h-4 w-4" /> Complementos
           </Button>
-          <Button size="sm" onClick={() => { setEditingId(null); setEditorOpen(true); }} className="gap-2" disabled={!activeBrand || !activeStore}>
-            <Plus className="h-4 w-4" /> Novo item
-          </Button>
-        </div>
+        </Link>
+        <Button variant="outline" size="sm" onClick={openNewCategory} className="gap-2" disabled={!activeBrand}>
+          <FolderPlus className="h-4 w-4" /> Categoria
+        </Button>
+        <Button size="sm" onClick={() => { setEditingId(null); setEditorOpen(true); }} className="gap-2" disabled={!activeBrand || !activeStore}>
+          <Plus className="h-4 w-4" /> Novo item
+        </Button>
       </div>
 
       {stores.length > 0 && (
