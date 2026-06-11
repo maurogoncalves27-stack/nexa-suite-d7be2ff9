@@ -175,6 +175,25 @@ export default function Menu() {
     load();
   }
 
+  async function moveCategory(idx: number, dir: -1 | 1) {
+    const target = idx + dir;
+    if (target < 0 || target >= categories.length) return;
+    const a = categories[idx];
+    const b = categories[target];
+    // Optimistic local swap
+    const next = categories.slice();
+    next[idx] = b; next[target] = a;
+    setCategories(next.map((c, i) => ({ ...c, sort_order: i })));
+    const [r1, r2] = await Promise.all([
+      supabase.from("menu_categories").update({ sort_order: target }).eq("id", a.id),
+      supabase.from("menu_categories").update({ sort_order: idx }).eq("id", b.id),
+    ]);
+    if (r1.error || r2.error) {
+      toast({ title: "Erro ao reordenar", description: r1.error?.message ?? r2.error?.message, variant: "destructive" });
+      load();
+    }
+  }
+
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
     return items.filter((i) => {
