@@ -11,10 +11,10 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Usb, Loader2, Wifi, Settings2 } from "lucide-react";
+import { Usb, Loader2, Wifi, Settings2, ExternalLink, Activity } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { loadTefConfig } from "@/lib/tef";
-import { paygoAdministrativo } from "@/lib/tef/paygoAdapter";
+import { paygoAdministrativo, checkPaygoAgent } from "@/lib/tef/paygoAdapter";
 
 const ASA_SUL_ID = "fcf435c2-c382-444c-b499-4d95f07b2633";
 
@@ -24,10 +24,11 @@ interface Props {
 
 export default function TefPinpadSetupCard({ storeId }: Props) {
   const effectiveStoreId = storeId || ASA_SUL_ID;
-  const [busy, setBusy] = useState<"adm" | "test" | null>(null);
+  const [busy, setBusy] = useState<"adm" | "test" | "diag" | null>(null);
   const [lastMsg, setLastMsg] = useState<string>("");
   const [result, setResult] = useState<string>("");
   const [agentUrl, setAgentUrl] = useState<string>("");
+  const [fetchFailed, setFetchFailed] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -40,10 +41,38 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
     })();
   }, [effectiveStoreId]);
 
+  const isFetchFail = (msg: string) =>
+    /failed to fetch|network|load failed|offline/i.test(msg);
+
+  const diagnosticar = async () => {
+    setBusy("diag");
+    setLastMsg("Pingando /health do agente...");
+    setResult("");
+    setFetchFailed(false);
+    try {
+      const cfg = await loadTefConfig(effectiveStoreId);
+      const h = await checkPaygoAgent(cfg.agentUrl);
+      if (h.ok) {
+        setLastMsg(`Agente OK — ${h.mode ?? ""} ${h.version ?? ""}`.trim());
+      } else {
+        setLastMsg(`Agente respondeu, mas: ${h.error ?? "desconhecido"}`);
+        if (h.error && isFetchFail(h.error)) setFetchFailed(true);
+      }
+      setResult(JSON.stringify(h, null, 2));
+    } catch (err: any) {
+      const msg = err?.message ?? String(err);
+      setLastMsg(msg);
+      if (isFetchFail(msg)) setFetchFailed(true);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const run = async (mode: "adm" | "test") => {
     setBusy(mode);
     setLastMsg(mode === "adm" ? "Abrindo menu administrativo no pinpad..." : "Enviando teste de comunicação...");
     setResult("");
+    setFetchFailed(false);
     try {
       const cfg = await loadTefConfig(effectiveStoreId);
       if (cfg.provider !== "paygo") {
@@ -59,6 +88,7 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
       if (!resp.ok) {
         const err = resp.error ?? "Falha na operação ADM";
         setLastMsg(err);
+        if (isFetchFail(err)) setFetchFailed(true);
         toast({ title: "Erro", description: err, variant: "destructive" });
       } else {
         const msg = resp.retorno?.resultado ?? "Operação concluída";
@@ -69,6 +99,7 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
     } catch (err: any) {
       const msg = err?.message ?? String(err);
       setLastMsg(msg);
+      if (isFetchFail(msg)) setFetchFailed(true);
       toast({ title: "Erro", description: msg, variant: "destructive" });
     } finally {
       setBusy(null);
@@ -101,6 +132,10 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
           {busy === "test" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wifi className="h-4 w-4" />}
           Testar comunicação
         </Button>
+        <Button onClick={diagnosticar} disabled={!!busy} variant="outline" className="gap-2">
+          {busy === "diag" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Activity className="h-4 w-4" />}
+          Diagnosticar agente
+        </Button>
       </div>
 
       {agentUrl && (
@@ -112,6 +147,29 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
       {lastMsg && (
         <div className="rounded-md border bg-background p-2.5 text-sm">
           <span className="text-muted-foreground">Status:</span> {lastMsg}
+        </div>
+      )}
+
+      {fetchFailed && agentUrl && (
+        <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm space-y-2">
+          <p className="font-medium">"Failed to fetch" — provável causa:</p>
+          <ol className="list-decimal pl-5 space-y-1 text-xs">
+            <li>O agente <code>NEXA ACBr Agent</code> não está rodando na máquina (verifique a bandeja do Windows).</li>
+            <li>O certificado HTTPS auto-assinado em <code>{agentUrl}</code> ainda não foi aceito por este navegador.</li>
+            <li>Algum antivírus/firewall está bloqueando a porta 3031.</li>
+          </ol>
+          <p className="text-xs">
+            <strong>Como resolver:</strong> abra o link abaixo em uma nova aba, clique em <em>"Avançado → Continuar para 127.0.0.1"</em> e depois volte aqui.
+          </p>
+          <a
+            href={`${agentUrl}/health`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-primary hover:underline text-xs"
+          >
+            <ExternalLink className="h-3 w-3" />
+            Abrir {agentUrl}/health
+          </a>
         </div>
       )}
 
