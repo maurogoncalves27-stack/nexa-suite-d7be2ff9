@@ -24,10 +24,11 @@ interface Props {
 
 export default function TefPinpadSetupCard({ storeId }: Props) {
   const effectiveStoreId = storeId || ASA_SUL_ID;
-  const [busy, setBusy] = useState<"adm" | "test" | null>(null);
+  const [busy, setBusy] = useState<"adm" | "test" | "diag" | null>(null);
   const [lastMsg, setLastMsg] = useState<string>("");
   const [result, setResult] = useState<string>("");
   const [agentUrl, setAgentUrl] = useState<string>("");
+  const [fetchFailed, setFetchFailed] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -40,10 +41,38 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
     })();
   }, [effectiveStoreId]);
 
+  const isFetchFail = (msg: string) =>
+    /failed to fetch|network|load failed|offline/i.test(msg);
+
+  const diagnosticar = async () => {
+    setBusy("diag");
+    setLastMsg("Pingando /health do agente...");
+    setResult("");
+    setFetchFailed(false);
+    try {
+      const cfg = await loadTefConfig(effectiveStoreId);
+      const h = await checkPaygoAgent(cfg.agentUrl);
+      if (h.ok) {
+        setLastMsg(`Agente OK — ${h.mode ?? ""} ${h.version ?? ""}`.trim());
+      } else {
+        setLastMsg(`Agente respondeu, mas: ${h.error ?? "desconhecido"}`);
+        if (h.error && isFetchFail(h.error)) setFetchFailed(true);
+      }
+      setResult(JSON.stringify(h, null, 2));
+    } catch (err: any) {
+      const msg = err?.message ?? String(err);
+      setLastMsg(msg);
+      if (isFetchFail(msg)) setFetchFailed(true);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const run = async (mode: "adm" | "test") => {
     setBusy(mode);
     setLastMsg(mode === "adm" ? "Abrindo menu administrativo no pinpad..." : "Enviando teste de comunicação...");
     setResult("");
+    setFetchFailed(false);
     try {
       const cfg = await loadTefConfig(effectiveStoreId);
       if (cfg.provider !== "paygo") {
@@ -59,6 +88,7 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
       if (!resp.ok) {
         const err = resp.error ?? "Falha na operação ADM";
         setLastMsg(err);
+        if (isFetchFail(err)) setFetchFailed(true);
         toast({ title: "Erro", description: err, variant: "destructive" });
       } else {
         const msg = resp.retorno?.resultado ?? "Operação concluída";
@@ -69,6 +99,7 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
     } catch (err: any) {
       const msg = err?.message ?? String(err);
       setLastMsg(msg);
+      if (isFetchFail(msg)) setFetchFailed(true);
       toast({ title: "Erro", description: msg, variant: "destructive" });
     } finally {
       setBusy(null);
