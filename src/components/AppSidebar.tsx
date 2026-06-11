@@ -212,7 +212,7 @@ const pdvSections: Section[] = [
   ]},
   { label: "Cardápio", items: [
     { title: "Cardápio", url: "/cardapio", icon: ScanText, staffOnly: true },
-    { title: "Complementos", url: "/cardapio/complementos", icon: Layers, staffOnly: true },
+    
     { title: "Receituário", url: "/receituario", icon: BookMarked, staffOnly: true },
     { title: "Fichas técnicas", url: "/fichas-tecnicas", icon: ChefHat, staffOnly: true },
   ]},
