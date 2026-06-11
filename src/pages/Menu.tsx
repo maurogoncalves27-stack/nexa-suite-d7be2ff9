@@ -34,6 +34,9 @@ interface MenuItem {
 const ACTIVE_BRAND_KEY = "menu.activeBrand";
 const ACTIVE_STORE_KEY = "menu.activeStore";
 const STORE_NAMES = ["ASA SUL", "ASA NORTE", "ÁGUAS CLARAS", "LAGO SUL"];
+const ALLOWED_BRAND_NAMES = ["AQUELA PARME", "AQUELA PARMÊ", "BOX CAIPIRA", "AQUELE ESTROGONOFE"];
+const isAllowedBrand = (name: string) =>
+  ALLOWED_BRAND_NAMES.some((n) => n.localeCompare(name, "pt-BR", { sensitivity: "base" }) === 0);
 
 export default function Menu() {
   const { toast } = useToast();
@@ -66,7 +69,7 @@ export default function Menu() {
         supabase.from("brands").select("*").eq("is_active", true).order("sort_order"),
         supabase.from("stores").select("id,name").eq("is_virtual", false).in("name", STORE_NAMES),
       ]);
-      const blist = (bRes.data ?? []) as Brand[];
+      const blist = ((bRes.data ?? []) as Brand[]).filter((b) => isAllowedBrand(b.name));
       setBrands(blist);
       const storedB = localStorage.getItem(ACTIVE_BRAND_KEY);
       setActiveBrand(storedB && blist.some((b) => b.id === storedB) ? storedB : blist[0]?.id ?? "");
