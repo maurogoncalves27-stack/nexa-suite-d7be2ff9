@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, Loader2, FolderPlus, Search, ScanText, Layers, ChevronUp, ChevronDown } from "lucide-react";
-import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -14,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import AddCategoryDialog from "@/components/menu/AddCategoryDialog";
 import MenuItemEditorDialog from "@/components/menu/MenuItemEditorDialog";
+import ComplementsCatalogDialog from "@/components/menu/ComplementsCatalogDialog";
 import { fmt } from "@/lib/saiposMenu";
 
 interface Brand { id: string; name: string; sort_order: number; }
@@ -62,6 +62,8 @@ export default function Menu() {
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  const [complementsOpen, setComplementsOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -249,11 +251,9 @@ export default function Menu() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Link to="/cardapio/complementos">
-          <Button variant="outline" size="sm" className="gap-2">
-            <Layers className="h-4 w-4" /> Complementos
-          </Button>
-        </Link>
+        <Button variant="outline" size="sm" onClick={() => setComplementsOpen(true)} className="gap-2">
+          <Layers className="h-4 w-4" /> Complementos
+        </Button>
         <Button variant="outline" size="sm" onClick={openNewCategory} className="gap-2" disabled={!activeBrand}>
           <FolderPlus className="h-4 w-4" /> Categoria
         </Button>
@@ -261,6 +261,8 @@ export default function Menu() {
           <Plus className="h-4 w-4" /> Novo item
         </Button>
       </div>
+
+      <ComplementsCatalogDialog open={complementsOpen} onOpenChange={setComplementsOpen} />
 
 
       {brands.length > 0 && (
