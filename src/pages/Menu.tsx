@@ -349,7 +349,9 @@ export default function Menu() {
         itemId={editingId}
         categories={categories}
         brands={brands}
+        stores={stores}
         defaultBrandId={activeBrand}
+        defaultStoreId={activeStore}
         onSaved={load}
       />
     </div>
