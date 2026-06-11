@@ -41,9 +41,13 @@ export default function Menu() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [activeBrand, setActiveBrand] = useState<string>("");
 
+  const [stores, setStores] = useState<Store[]>([]);
+  const [activeStore, setActiveStore] = useState<string>("");
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [itemBrands, setItemBrands] = useState<Record<string, string[]>>({});
+  const [itemStores, setItemStores] = useState<Record<string, string[]>>({});
 
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState<string>("all");
@@ -57,12 +61,21 @@ export default function Menu() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("brands").select("*").eq("is_active", true).order("sort_order");
-      const list = (data ?? []) as Brand[];
-      setBrands(list);
-      const stored = localStorage.getItem(ACTIVE_BRAND_KEY);
-      const initial = stored && list.some((b) => b.id === stored) ? stored : list[0]?.id ?? "";
-      setActiveBrand(initial);
+      const [bRes, sRes] = await Promise.all([
+        supabase.from("brands").select("*").eq("is_active", true).order("sort_order"),
+        supabase.from("stores").select("id,name").eq("is_virtual", false).in("name", STORE_NAMES),
+      ]);
+      const blist = (bRes.data ?? []) as Brand[];
+      setBrands(blist);
+      const storedB = localStorage.getItem(ACTIVE_BRAND_KEY);
+      setActiveBrand(storedB && blist.some((b) => b.id === storedB) ? storedB : blist[0]?.id ?? "");
+
+      const slist = ((sRes.data ?? []) as Store[]).sort(
+        (a, b) => STORE_NAMES.indexOf(a.name) - STORE_NAMES.indexOf(b.name),
+      );
+      setStores(slist);
+      const storedS = localStorage.getItem(ACTIVE_STORE_KEY);
+      setActiveStore(storedS && slist.some((s) => s.id === storedS) ? storedS : slist[0]?.id ?? "");
     })();
   }, []);
 
@@ -70,10 +83,13 @@ export default function Menu() {
     if (activeBrand) localStorage.setItem(ACTIVE_BRAND_KEY, activeBrand);
   }, [activeBrand]);
 
+  useEffect(() => {
+    if (activeStore) localStorage.setItem(ACTIVE_STORE_KEY, activeStore);
+  }, [activeStore]);
+
   async function load() {
-    if (!activeBrand) return;
+    if (!activeBrand || !activeStore) return;
     setLoading(true);
-    // categorias da marca ativa via M2M
     const { data: catLinks } = await (supabase as any)
       .from("menu_category_brands").select("category_id").eq("brand_id", activeBrand);
     const catIds = ((catLinks ?? []) as any[]).map((r) => r.category_id);
@@ -85,14 +101,25 @@ export default function Menu() {
     }
     setCategories(cat);
 
-    const { data: mibs } = await supabase.from("menu_item_brands").select("menu_item_id, brand_id");
-    const map: Record<string, string[]> = {};
-    for (const r of (mibs ?? []) as any[]) {
-      (map[r.menu_item_id] ||= []).push(r.brand_id);
+    const [mibsRes, misRes] = await Promise.all([
+      supabase.from("menu_item_brands").select("menu_item_id, brand_id"),
+      (supabase as any).from("menu_item_stores").select("menu_item_id, store_id").eq("is_available", true),
+    ]);
+    const brandMap: Record<string, string[]> = {};
+    for (const r of (mibsRes.data ?? []) as any[]) {
+      (brandMap[r.menu_item_id] ||= []).push(r.brand_id);
     }
-    setItemBrands(map);
+    setItemBrands(brandMap);
 
-    const itemIds = Object.entries(map).filter(([, bs]) => bs.includes(activeBrand)).map(([id]) => id);
+    const storeMap: Record<string, string[]> = {};
+    for (const r of (misRes.data ?? []) as any[]) {
+      (storeMap[r.menu_item_id] ||= []).push(r.store_id);
+    }
+    setItemStores(storeMap);
+
+    const itemIds = Object.keys(brandMap).filter((id) =>
+      brandMap[id].includes(activeBrand) && (storeMap[id] ?? []).includes(activeStore),
+    );
     if (itemIds.length === 0) {
       setItems([]);
       setLoading(false);
@@ -103,7 +130,7 @@ export default function Menu() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, [activeBrand]);
+  useEffect(() => { load(); }, [activeBrand, activeStore]);
 
   function openNewCategory() {
     setCatName("");
