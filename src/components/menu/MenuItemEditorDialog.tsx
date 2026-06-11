@@ -116,26 +116,30 @@ export default function MenuItemEditorDialog({
           setIsCombo(!!it.is_combo);
           setIsActive(!!it.is_active);
         }
-        const [compRes, brRes, linksRes] = await Promise.all([
+        const [compRes, brRes, linksRes, stRes] = await Promise.all([
           supabase.from("menu_item_components").select("*").eq("parent_item_id", itemId).order("sort_order"),
           supabase.from("menu_item_brands").select("brand_id").eq("menu_item_id", itemId),
           (supabase as any).from("menu_item_complement_links").select("group_id, sort_order")
             .eq("menu_item_id", itemId).order("sort_order"),
+          (supabase as any).from("menu_item_stores").select("store_id").eq("menu_item_id", itemId).eq("is_available", true),
         ]);
         setComponents((compRes.data ?? []).map((c: any) => ({
           id: c.id, child_item_id: c.child_item_id, quantity: Number(c.quantity),
         })));
         setSelectedBrands(((brRes.data ?? []) as any[]).map((r) => r.brand_id));
         setLinkedGroupIds(((linksRes.data ?? []) as any[]).map((r) => r.group_id));
+        setSelectedStores(((stRes.data ?? []) as any[]).map((r) => r.store_id));
       } else {
         setName(""); setDescription(""); setCategoryId("__none__"); setRecipeId("__none__");
         setPrice("0"); setIsCombo(false); setIsActive(true);
         setComponents([]); setLinkedGroupIds([]);
         setSelectedBrands(defaultBrandId ? [defaultBrandId] : []);
+        // Por padrão, novos itens ficam disponíveis em todas as 4 lojas
+        setSelectedStores(stores.map((s) => s.id));
       }
       setLoading(false);
     })();
-  }, [open, itemId, defaultBrandId]);
+  }, [open, itemId, defaultBrandId, defaultStoreId, stores]);
 
   const componentSum = useMemo(() => components.reduce((sum, c) => {
     const it = allItems.find((x) => x.id === c.child_item_id);
