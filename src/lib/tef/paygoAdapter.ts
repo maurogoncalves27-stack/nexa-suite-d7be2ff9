@@ -128,7 +128,7 @@ export const createPaygoAdapter = (config: TefConfig): TefAdapter => {
     async cancel() {
       abortController?.abort();
       try {
-        await fetch(`${config.agentUrl}/tef/cancelar`, { method: "POST" });
+        await fetch(joinAgentUrl(config.agentUrl, "/tef/cancelar"), { method: "POST" });
       } catch {
         /* ignore */
       }
@@ -168,6 +168,12 @@ export const paygoInit = async (
       body: JSON.stringify({}),
     });
     const data = (await r.json().catch(() => ({}))) as PaygoAgentResponse;
+    if (r.status === 404) {
+      return {
+        ok: false,
+        error: "O agente respondeu, mas a rota /tef/init não existe. Remova a barra final da URL do agente ou atualize/reinstale o NEXA ACBr Agent.",
+      };
+    }
     if (!r.ok) return { ok: false, error: data?.error ?? `HTTP ${r.status}` };
     return data;
   } catch (e) {
