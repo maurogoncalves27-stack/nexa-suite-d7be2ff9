@@ -255,9 +255,13 @@ const TefPaygoSetup = () => {
         </div>
       </Card>
 
+      <TefHomologationChecklist storeId={storeId} />
+
       <TefPinpadSetupCard storeId={storeId} />
 
       <TefTestSaleCard />
+
+      <TefRecnumExtractor storeId={storeId} />
 
       <Card className="p-4 sm:p-6 space-y-6">
         <h2 className="font-semibold flex items-center gap-2">
