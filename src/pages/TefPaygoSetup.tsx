@@ -35,7 +35,7 @@ const DOCS_URL =
 const JIRA_URL =
   "https://dev.proj.setis.com.br/servicedesk/customer/portal/16";
 
-const DEFAULT_PDC = "111476";
+const DEFAULT_PDC = "111534";
 const DEFAULT_HOST = "pos-transac-sb.tpgweb.io:31735";
 const DEFAULT_CNPJ = "44.932.369/0001-08";
 
