@@ -158,7 +158,11 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
       </p>
 
       <div className="flex flex-wrap gap-2">
-        <Button onClick={() => run("adm")} disabled={!!busy} className="gap-2">
+        <Button onClick={inicializar} disabled={!!busy} className="gap-2">
+          {busy === "init" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
+          Inicializar TEF agora
+        </Button>
+        <Button onClick={() => run("adm")} disabled={!!busy} variant="secondary" className="gap-2">
           {busy === "adm" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Settings2 className="h-4 w-4" />}
           Abrir menu ADM
         </Button>
