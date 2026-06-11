@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, ChefHat, ListPlus, Trash2, Copy, BookOpen } from "lucide-react";
+import { Loader2, ChefHat, ListPlus, Trash2, Copy, BookOpen, Upload, ImageIcon } from "lucide-react";
 import { generateRecipeBookFromRecipe } from "@/lib/recipeBook";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,9 +93,49 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
   const [brands, setBrands] = useState<Brand[]>([]);
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
   const [form, setForm] = useState(emptyForm);
+  const [photoPath, setPhotoPath] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [openValue, setOpenValue] = useState<string | undefined>(defaultOpen ? "open" : undefined);
   const [ingredientsOpen, setIngredientsOpen] = useState(false);
   const [generatingBook, setGeneratingBook] = useState(false);
+
+  const photoUrl = photoPath
+    ? supabase.storage.from("recipe-photos").getPublicUrl(photoPath).data.publicUrl
+    : null;
+
+  const handlePhotoUpload = async (file: File) => {
+    if (!recipeId) {
+      toast.error("Salve a ficha antes de enviar a foto");
+      return;
+    }
+    setUploadingPhoto(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${recipeId}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("recipe-photos")
+        .upload(path, file, { upsert: false, contentType: file.type || "image/jpeg" });
+      if (upErr) throw upErr;
+      if (photoPath) {
+        await supabase.storage.from("recipe-photos").remove([photoPath]);
+      }
+      const { error: updErr } = await supabase.from("recipes").update({ photo_path: path }).eq("id", recipeId);
+      if (updErr) throw updErr;
+      setPhotoPath(path);
+      toast.success("Foto atualizada");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao enviar foto");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handlePhotoRemove = async () => {
+    if (!recipeId || !photoPath) return;
+    await supabase.storage.from("recipe-photos").remove([photoPath]);
+    await supabase.from("recipes").update({ photo_path: null }).eq("id", recipeId);
+    setPhotoPath(null);
+  };
 
   const handleGenerateBook = async () => {
     if (!recipeId) return;
@@ -128,6 +168,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
   useEffect(() => {
     if (!recipeId) {
       setForm(emptyForm);
+      setPhotoPath(null);
       setSelectedBrands(initialBrandId ? new Set([initialBrandId]) : new Set());
       return;
     }
@@ -153,6 +194,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
           unidade_comercial: (r as any).unidade_comercial ?? "UN",
           ean: (r as any).ean ?? "",
         });
+        setPhotoPath((r as any).photo_path ?? null);
       }
       setSelectedBrands(new Set((rb ?? []).map((x: any) => x.brand_id)));
       setLoading(false);
@@ -323,6 +365,46 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
               <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
             ) : (
               <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label>Foto do prato</Label>
+                  <div className="flex items-center gap-3">
+                    {photoUrl ? (
+                      <img src={photoUrl} alt={form.name} className="h-20 w-20 rounded object-cover border" />
+                    ) : (
+                      <div className="h-20 w-20 rounded border bg-muted flex items-center justify-center text-muted-foreground">
+                        <ImageIcon className="h-6 w-6" />
+                      </div>
+                    )}
+                    <div className="flex flex-col gap-1.5">
+                      <label>
+                        <Button asChild size="sm" variant="outline" disabled={uploadingPhoto || isNew}>
+                          <span className="cursor-pointer gap-1">
+                            {uploadingPhoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                            {photoPath ? "Trocar foto" : "Enviar foto"}
+                          </span>
+                        </Button>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) void handlePhotoUpload(f);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                      {photoPath && !isNew && (
+                        <Button size="sm" variant="ghost" className="text-destructive gap-1" onClick={handlePhotoRemove}>
+                          <Trash2 className="h-4 w-4" /> Remover
+                        </Button>
+                      )}
+                      {isNew && (
+                        <p className="text-[11px] text-muted-foreground">Salve a ficha para enviar uma foto.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
                 <div className="space-y-1">
                   <Label>Nome *</Label>
                   <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
