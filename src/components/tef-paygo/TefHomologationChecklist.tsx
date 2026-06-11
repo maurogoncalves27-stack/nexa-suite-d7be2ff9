@@ -84,9 +84,9 @@ export default function TefHomologationChecklist({ storeId }: Props) {
     const agent = await checkAcbrAgent(cfg.agent_url ?? "https://127.0.0.1:3031");
     next.push({
       label: "5. Agente local online",
-      state: agent.ok ? "ok" : "fail",
-      detail: agent.ok
-        ? `${agent.mode ?? "agente"} v${agent.version ?? "?"}`
+      state: agent.online ? "ok" : "fail",
+      detail: agent.online
+        ? `Agente respondeu no /health${agent.version ? ` • v${agent.version}` : ""}`
         : (agent.error ?? "Sem resposta. Instale/abra o NEXA ACBr Agent na máquina do PDV."),
     });
 
@@ -96,7 +96,7 @@ export default function TefHomologationChecklist({ storeId }: Props) {
       state: agent.ok ? "ok" : "fail",
       detail: agent.ok
         ? "DLL inicializada pelo agente."
-        : "Quando o agente subir, ele inicializa a DLL na pasta homologacao/.",
+        : (agent.error ?? "A DLL respondeu no /health, mas ainda não foi inicializada."),
     });
 
     // 7. Última transação aprovada
