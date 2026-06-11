@@ -81,7 +81,7 @@ const Field = ({ label, value }: { label: string; value: string }) => (
 
 const TefPaygoSetup = () => {
   const [stores, setStores] = useState<Store[]>([]);
-  const [storeId, setStoreId] = useState<string>("");
+  const [storeId, setStoreId] = useState<string>("fcf435c2-c382-444c-b499-4d95f07b2633");
   const [cfg, setCfg] = useState<TefRow | null>(null);
   const [editingPdc, setEditingPdc] = useState(false);
   const [pdcDraft, setPdcDraft] = useState("");
