@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, ChefHat, ListPlus, Trash2, Copy, BookOpen } from "lucide-react";
+import { Loader2, ChefHat, ListPlus, Trash2, Copy, BookOpen, Upload, ImageIcon } from "lucide-react";
 import { generateRecipeBookFromRecipe } from "@/lib/recipeBook";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,9 +93,49 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
   const [brands, setBrands] = useState<Brand[]>([]);
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
   const [form, setForm] = useState(emptyForm);
+  const [photoPath, setPhotoPath] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [openValue, setOpenValue] = useState<string | undefined>(defaultOpen ? "open" : undefined);
   const [ingredientsOpen, setIngredientsOpen] = useState(false);
   const [generatingBook, setGeneratingBook] = useState(false);
+
+  const photoUrl = photoPath
+    ? supabase.storage.from("recipe-photos").getPublicUrl(photoPath).data.publicUrl
+    : null;
+
+  const handlePhotoUpload = async (file: File) => {
+    if (!recipeId) {
+      toast.error("Salve a ficha antes de enviar a foto");
+      return;
+    }
+    setUploadingPhoto(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${recipeId}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("recipe-photos")
+        .upload(path, file, { upsert: false, contentType: file.type || "image/jpeg" });
+      if (upErr) throw upErr;
+      if (photoPath) {
+        await supabase.storage.from("recipe-photos").remove([photoPath]);
+      }
+      const { error: updErr } = await supabase.from("recipes").update({ photo_path: path }).eq("id", recipeId);
+      if (updErr) throw updErr;
+      setPhotoPath(path);
+      toast.success("Foto atualizada");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao enviar foto");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handlePhotoRemove = async () => {
+    if (!recipeId || !photoPath) return;
+    await supabase.storage.from("recipe-photos").remove([photoPath]);
+    await supabase.from("recipes").update({ photo_path: null }).eq("id", recipeId);
+    setPhotoPath(null);
+  };
 
   const handleGenerateBook = async () => {
     if (!recipeId) return;
