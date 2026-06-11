@@ -34,6 +34,9 @@ interface MenuItem {
 const ACTIVE_BRAND_KEY = "menu.activeBrand";
 const ACTIVE_STORE_KEY = "menu.activeStore";
 const STORE_NAMES = ["ASA SUL", "ASA NORTE", "ÁGUAS CLARAS", "LAGO SUL"];
+const ALLOWED_BRAND_NAMES = ["AQUELA PARME", "AQUELA PARMÊ", "BOX CAIPIRA", "AQUELE ESTROGONOFE"];
+const isAllowedBrand = (name: string) =>
+  ALLOWED_BRAND_NAMES.some((n) => n.localeCompare(name, "pt-BR", { sensitivity: "base" }) === 0);
 
 export default function Menu() {
   const { toast } = useToast();
