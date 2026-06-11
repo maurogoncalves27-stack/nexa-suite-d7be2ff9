@@ -7,7 +7,8 @@ import { isRestorableRouteSnapshot, readLastAppRoute } from "@/lib/pwaRouteState
 import { useViewMode } from "@/hooks/useViewMode";
 
 const Index = () => {
-  const { loading, user, isSupplier, isOutsourced, isContabilidade, isAdmin, isManager, isPartner, isSuperUser, isStoreLogin } = useAuth();
+  const { loading, user, isSupplier, isOutsourced, isContabilidade, isAdmin, isManager, isPartner, isSuperUser, isStoreLogin, hasRole } = useAuth();
+  const isNutritionist = hasRole("nutritionist");
   const { mode } = useViewMode();
 
   // Apenas este usuário vê a tela de seleção de perfil (Gestor / Sócio / Colaborador).
@@ -30,6 +31,12 @@ const Index = () => {
   // Login fixo de PC de loja: vai direto para /loja (sidebar próprio, sem sidebar do sistema).
   if (isStoreLogin) {
     return <Navigate to="/loja" replace />;
+  }
+
+  // Nutricionista tem prioridade sobre supplier/outsourced — toda nutricionista
+  // vinculada deve cair no painel da nutricionista, mesmo se também marcada como terceirizada.
+  if (isNutritionist && !isAdmin && !isManager) {
+    return <Navigate to="/nutricionista/painel" replace />;
   }
 
   if (isSupplier) {
