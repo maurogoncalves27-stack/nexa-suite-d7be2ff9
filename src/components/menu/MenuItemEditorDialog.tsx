@@ -76,6 +76,7 @@ export default function MenuItemEditorDialog({
 
   const [components, setComponents] = useState<Component[]>([]);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+  const [selectedStores, setSelectedStores] = useState<string[]>([]);
   const [linkedGroupIds, setLinkedGroupIds] = useState<string[]>([]);
 
   const [recipes, setRecipes] = useState<RecipeOpt[]>([]);
