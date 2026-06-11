@@ -68,6 +68,40 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
     }
   };
 
+  const inicializar = async () => {
+    setBusy("init");
+    setLastMsg("Chamando PW_iInit na PGWebLib...");
+    setResult("");
+    setFetchFailed(false);
+    try {
+      const cfg = await loadTefConfig(effectiveStoreId);
+      const resp = await paygoInit(cfg.agentUrl);
+      if (!resp.ok) {
+        const err = resp.error ?? "Falha ao inicializar";
+        setLastMsg(err);
+        if (isFetchFail(err)) setFetchFailed(true);
+        toast({ title: "Erro", description: err, variant: "destructive" });
+      } else {
+        const v = resp.retorno?.version ?? "PGWebLib";
+        setLastMsg(`TEF inicializado — ${v}`);
+        setResult(JSON.stringify(resp.retorno ?? {}, null, 2));
+        toast({ title: "TEF pronto", description: v });
+        // re-pinga health pra refletir tefReady:true
+        try {
+          const h = await checkPaygoAgent(cfg.agentUrl);
+          setResult((prev) => `${prev}\n\n--- /health ---\n${JSON.stringify(h, null, 2)}`);
+        } catch { /* ignore */ }
+      }
+    } catch (err: any) {
+      const msg = err?.message ?? String(err);
+      setLastMsg(msg);
+      if (isFetchFail(msg)) setFetchFailed(true);
+      toast({ title: "Erro", description: msg, variant: "destructive" });
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const run = async (mode: "adm" | "test") => {
     setBusy(mode);
     setLastMsg(mode === "adm" ? "Abrindo menu administrativo no pinpad..." : "Enviando teste de comunicação...");
