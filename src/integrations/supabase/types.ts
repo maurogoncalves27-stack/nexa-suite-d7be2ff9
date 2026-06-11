@@ -1497,6 +1497,93 @@ export type Database = {
         }
         Relationships: []
       }
+      complement_groups: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          is_required: boolean
+          max_choices: number
+          min_choices: number
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          max_choices?: number
+          min_choices?: number
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          max_choices?: number
+          min_choices?: number
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      complement_options: {
+        Row: {
+          created_at: string
+          extra_price: number
+          group_id: string
+          id: string
+          is_active: boolean
+          linked_item_id: string | null
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          extra_price?: number
+          group_id: string
+          id?: string
+          is_active?: boolean
+          linked_item_id?: string | null
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          extra_price?: number
+          group_id?: string
+          id?: string
+          is_active?: boolean
+          linked_item_id?: string | null
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "complement_options_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "complement_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complement_options_linked_item_id_fkey"
+            columns: ["linked_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_signatures: {
         Row: {
           content: string
@@ -7072,6 +7159,39 @@ export type Database = {
           },
         ]
       }
+      menu_category_brands: {
+        Row: {
+          brand_id: string
+          category_id: string
+          created_at: string
+        }
+        Insert: {
+          brand_id: string
+          category_id: string
+          created_at?: string
+        }
+        Update: {
+          brand_id?: string
+          category_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_category_brands_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_category_brands_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "menu_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menu_item_brands: {
         Row: {
           brand_id: string
@@ -7142,6 +7262,42 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "menu_item_complement_groups_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_item_complement_links: {
+        Row: {
+          created_at: string
+          group_id: string
+          menu_item_id: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          menu_item_id: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          menu_item_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_item_complement_links_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "complement_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_item_complement_links_menu_item_id_fkey"
             columns: ["menu_item_id"]
             isOneToOne: false
             referencedRelation: "menu_items"
