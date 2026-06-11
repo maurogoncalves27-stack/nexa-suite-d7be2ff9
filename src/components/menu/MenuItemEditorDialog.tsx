@@ -53,12 +53,14 @@ interface Props {
   itemId: string | null;
   categories: Category[];
   brands: Brand[];
+  stores: Store[];
   defaultBrandId: string;
+  defaultStoreId: string;
   onSaved: () => void;
 }
 
 export default function MenuItemEditorDialog({
-  open, onOpenChange, itemId, categories, brands, defaultBrandId, onSaved,
+  open, onOpenChange, itemId, categories, brands, stores, defaultBrandId, defaultStoreId, onSaved,
 }: Props) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
