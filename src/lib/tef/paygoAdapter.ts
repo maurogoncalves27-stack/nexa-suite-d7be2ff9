@@ -155,6 +155,24 @@ export const checkPaygoAgent = async (
   }
 };
 
+/** Força PW_iInit na DLL (sem abrir menu no pinpad). */
+export const paygoInit = async (
+  agentUrl: string,
+): Promise<PaygoAgentResponse & { retorno?: { initialized?: boolean; version?: string } }> => {
+  try {
+    const r = await fetch(`${agentUrl}/tef/init`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const data = (await r.json().catch(() => ({}))) as PaygoAgentResponse;
+    if (!r.ok) return { ok: false, error: data?.error ?? `HTTP ${r.status}` };
+    return data;
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "offline" };
+  }
+};
+
 /** Cancela uma venda já aprovada (NSU + data DDMMAAAA + valor em reais). */
 export const paygoCancelarVenda = async (
   agentUrl: string,

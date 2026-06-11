@@ -11,10 +11,10 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Usb, Loader2, Wifi, Settings2, ExternalLink, Activity } from "lucide-react";
+import { Usb, Loader2, Wifi, Settings2, ExternalLink, Activity, Power } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { loadTefConfig } from "@/lib/tef";
-import { paygoAdministrativo, checkPaygoAgent } from "@/lib/tef/paygoAdapter";
+import { paygoAdministrativo, checkPaygoAgent, paygoInit } from "@/lib/tef/paygoAdapter";
 
 const ASA_SUL_ID = "fcf435c2-c382-444c-b499-4d95f07b2633";
 
@@ -24,7 +24,7 @@ interface Props {
 
 export default function TefPinpadSetupCard({ storeId }: Props) {
   const effectiveStoreId = storeId || ASA_SUL_ID;
-  const [busy, setBusy] = useState<"adm" | "test" | "diag" | null>(null);
+  const [busy, setBusy] = useState<"adm" | "test" | "diag" | "init" | null>(null);
   const [lastMsg, setLastMsg] = useState<string>("");
   const [result, setResult] = useState<string>("");
   const [agentUrl, setAgentUrl] = useState<string>("");
@@ -63,6 +63,40 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
       const msg = err?.message ?? String(err);
       setLastMsg(msg);
       if (isFetchFail(msg)) setFetchFailed(true);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const inicializar = async () => {
+    setBusy("init");
+    setLastMsg("Chamando PW_iInit na PGWebLib...");
+    setResult("");
+    setFetchFailed(false);
+    try {
+      const cfg = await loadTefConfig(effectiveStoreId);
+      const resp = await paygoInit(cfg.agentUrl);
+      if (!resp.ok) {
+        const err = resp.error ?? "Falha ao inicializar";
+        setLastMsg(err);
+        if (isFetchFail(err)) setFetchFailed(true);
+        toast({ title: "Erro", description: err, variant: "destructive" });
+      } else {
+        const v = resp.retorno?.version ?? "PGWebLib";
+        setLastMsg(`TEF inicializado — ${v}`);
+        setResult(JSON.stringify(resp.retorno ?? {}, null, 2));
+        toast({ title: "TEF pronto", description: v });
+        // re-pinga health pra refletir tefReady:true
+        try {
+          const h = await checkPaygoAgent(cfg.agentUrl);
+          setResult((prev) => `${prev}\n\n--- /health ---\n${JSON.stringify(h, null, 2)}`);
+        } catch { /* ignore */ }
+      }
+    } catch (err: any) {
+      const msg = err?.message ?? String(err);
+      setLastMsg(msg);
+      if (isFetchFail(msg)) setFetchFailed(true);
+      toast({ title: "Erro", description: msg, variant: "destructive" });
     } finally {
       setBusy(null);
     }
@@ -124,7 +158,11 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
       </p>
 
       <div className="flex flex-wrap gap-2">
-        <Button onClick={() => run("adm")} disabled={!!busy} className="gap-2">
+        <Button onClick={inicializar} disabled={!!busy} className="gap-2">
+          {busy === "init" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
+          Inicializar TEF agora
+        </Button>
+        <Button onClick={() => run("adm")} disabled={!!busy} variant="secondary" className="gap-2">
           {busy === "adm" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Settings2 className="h-4 w-4" />}
           Abrir menu ADM
         </Button>
