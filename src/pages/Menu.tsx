@@ -69,7 +69,7 @@ export default function Menu() {
         supabase.from("brands").select("*").eq("is_active", true).order("sort_order"),
         supabase.from("stores").select("id,name").eq("is_virtual", false).in("name", STORE_NAMES),
       ]);
-      const blist = (bRes.data ?? []) as Brand[];
+      const blist = ((bRes.data ?? []) as Brand[]).filter((b) => isAllowedBrand(b.name));
       setBrands(blist);
       const storedB = localStorage.getItem(ACTIVE_BRAND_KEY);
       setActiveBrand(storedB && blist.some((b) => b.id === storedB) ? storedB : blist[0]?.id ?? "");
