@@ -50,6 +50,7 @@ export default function Menu() {
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
+  const [recipePhotos, setRecipePhotos] = useState<Record<string, string>>({});
   const [itemBrands, setItemBrands] = useState<Record<string, string[]>>({});
   const [itemStores, setItemStores] = useState<Record<string, string[]>>({});
 
@@ -132,7 +133,22 @@ export default function Menu() {
       return;
     }
     const its = await supabase.from("menu_items").select("*").in("id", itemIds).order("sort_order").order("name");
-    setItems((its.data ?? []) as MenuItem[]);
+    const loadedItems = (its.data ?? []) as MenuItem[];
+    setItems(loadedItems);
+
+    const recipeIds = Array.from(new Set(loadedItems.map((i) => i.recipe_id).filter(Boolean) as string[]));
+    if (recipeIds.length > 0) {
+      const { data: recs } = await supabase.from("recipes").select("id, photo_path").in("id", recipeIds);
+      const photoMap: Record<string, string> = {};
+      for (const r of (recs ?? []) as any[]) {
+        if (r.photo_path) {
+          photoMap[r.id] = supabase.storage.from("recipe-photos").getPublicUrl(r.photo_path).data.publicUrl;
+        }
+      }
+      setRecipePhotos(photoMap);
+    } else {
+      setRecipePhotos({});
+    }
     setLoading(false);
   }
 
