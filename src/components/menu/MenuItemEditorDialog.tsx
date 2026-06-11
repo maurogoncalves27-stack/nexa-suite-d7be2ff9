@@ -260,6 +260,14 @@ export default function MenuItemEditorDialog({
         if (error) throw error;
       }
 
+      // Lojas (disponibilidade física)
+      await (supabase as any).from("menu_item_stores").delete().eq("menu_item_id", id!);
+      if (selectedStores.length) {
+        const storeRows = selectedStores.map((s) => ({ menu_item_id: id!, store_id: s, is_available: true }));
+        const { error } = await (supabase as any).from("menu_item_stores").insert(storeRows);
+        if (error) throw error;
+      }
+
       toast({ title: itemId ? "Item atualizado" : "Item criado" });
       onSaved();
       onOpenChange(false);
