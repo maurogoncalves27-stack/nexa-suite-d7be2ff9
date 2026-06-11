@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Loader2, FolderPlus, Search, ScanText, Layers } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, FolderPlus, Search, ScanText, Layers, ChevronUp, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -175,6 +175,25 @@ export default function Menu() {
     load();
   }
 
+  async function moveCategory(idx: number, dir: -1 | 1) {
+    const target = idx + dir;
+    if (target < 0 || target >= categories.length) return;
+    const a = categories[idx];
+    const b = categories[target];
+    // Optimistic local swap
+    const next = categories.slice();
+    next[idx] = b; next[target] = a;
+    setCategories(next.map((c, i) => ({ ...c, sort_order: i })));
+    const [r1, r2] = await Promise.all([
+      supabase.from("menu_categories").update({ sort_order: target }).eq("id", a.id),
+      supabase.from("menu_categories").update({ sort_order: idx }).eq("id", b.id),
+    ]);
+    if (r1.error || r2.error) {
+      toast({ title: "Erro ao reordenar", description: r1.error?.message ?? r2.error?.message, variant: "destructive" });
+      load();
+    }
+  }
+
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
     return items.filter((i) => {
@@ -289,50 +308,86 @@ export default function Menu() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {Array.from(grouped.entries()).map(([catId, list]) => (
-            <Card key={catId}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">{catName_(catId === "__none__" ? null : catId)}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {list.map((it) => {
-                  const otherBrands = (itemBrands[it.id] ?? []).filter((b) => b !== activeBrand);
-                  return (
-                    <div
-                      key={it.id}
-                      className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-md border bg-card"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium truncate">{it.name}</span>
-                          {it.is_combo && <Badge variant="secondary" className="text-[10px]">Combo</Badge>}
-                          {!it.is_active && <Badge variant="outline" className="text-[10px]">Inativo</Badge>}
-                          {otherBrands.length > 0 && (
-                            <Badge variant="outline" className="text-[10px]">+{otherBrands.length} marca(s)</Badge>
-                          )}
+          {(() => {
+            const orderedKeys: string[] = categories
+              .filter((c) => grouped.has(c.id))
+              .map((c) => c.id);
+            if (grouped.has("__none__")) orderedKeys.push("__none__");
+            return orderedKeys.map((catId) => {
+              const list = grouped.get(catId)!;
+              const catIdx = catId === "__none__" ? -1 : categories.findIndex((c) => c.id === catId);
+              const canUp = catIdx > 0;
+              const canDown = catIdx >= 0 && catIdx < categories.length - 1;
+              return (
+                <Card key={catId}>
+                  <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2 space-y-0">
+                    <CardTitle className="text-base">{catName_(catId === "__none__" ? null : catId)}</CardTitle>
+                    {catIdx >= 0 && (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          disabled={!canUp}
+                          onClick={() => moveCategory(catIdx, -1)}
+                          title="Mover para cima"
+                        >
+                          <ChevronUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          disabled={!canDown}
+                          onClick={() => moveCategory(catIdx, 1)}
+                          title="Mover para baixo"
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {list.map((it) => {
+                      const otherBrands = (itemBrands[it.id] ?? []).filter((b) => b !== activeBrand);
+                      return (
+                        <div
+                          key={it.id}
+                          className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-md border bg-card"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium truncate">{it.name}</span>
+                              {it.is_combo && <Badge variant="secondary" className="text-[10px]">Combo</Badge>}
+                              {!it.is_active && <Badge variant="outline" className="text-[10px]">Inativo</Badge>}
+                              {otherBrands.length > 0 && (
+                                <Badge variant="outline" className="text-[10px]">+{otherBrands.length} marca(s)</Badge>
+                              )}
+                            </div>
+                            {it.description && (
+                              <p className="text-xs text-muted-foreground truncate">{it.description}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 sm:gap-3">
+                            <span className="tabular-nums font-semibold text-sm w-24 text-right">{fmt(Number(it.price))}</span>
+                            <Button size="sm" variant="ghost" onClick={() => toggleActive(it)}>
+                              {it.is_active ? "Desativar" : "Ativar"}
+                            </Button>
+                            <Button size="icon" variant="ghost" onClick={() => { setEditingId(it.id); setEditorOpen(true); }}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" onClick={() => deleteItem(it.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
                         </div>
-                        {it.description && (
-                          <p className="text-xs text-muted-foreground truncate">{it.description}</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 sm:gap-3">
-                        <span className="tabular-nums font-semibold text-sm w-24 text-right">{fmt(Number(it.price))}</span>
-                        <Button size="sm" variant="ghost" onClick={() => toggleActive(it)}>
-                          {it.is_active ? "Desativar" : "Ativar"}
-                        </Button>
-                        <Button size="icon" variant="ghost" onClick={() => { setEditingId(it.id); setEditorOpen(true); }}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost" onClick={() => deleteItem(it.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
-          ))}
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+              );
+            });
+          })()}
         </div>
       )}
 
