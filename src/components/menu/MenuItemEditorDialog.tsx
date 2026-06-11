@@ -174,6 +174,7 @@ export default function MenuItemEditorDialog({
   async function save() {
     if (!name.trim()) { toast({ title: "Informe o nome", variant: "destructive" }); return; }
     if (selectedBrands.length === 0) { toast({ title: "Selecione ao menos uma marca", variant: "destructive" }); return; }
+    if (selectedStores.length === 0) { toast({ title: "Selecione ao menos uma loja", variant: "destructive" }); return; }
     setSaving(true);
     try {
       const payload = {
