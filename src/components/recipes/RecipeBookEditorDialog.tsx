@@ -141,42 +141,17 @@ const RecipeBookEditorDialog = ({ open, onOpenChange, recipeBookId, onSaved }: P
               </div>
             </div>
 
-            <div>
-              <Label>Foto do prato</Label>
-              <div className="flex items-center gap-3 mt-1">
-                {photoUrl ? (
-                  <img src={photoUrl} alt={data.title} className="h-20 w-20 rounded object-cover" />
-                ) : (
-                  <div className="h-20 w-20 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                    sem foto
-                  </div>
-                )}
-                <div className="flex flex-col gap-2">
-                  <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                    <Button asChild size="sm" variant="outline" disabled={uploading}>
-                      <span>
-                        {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                        Enviar foto
-                      </span>
-                    </Button>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) void handleUpload(f);
-                      }}
-                    />
-                  </label>
-                  {data.photo_path && (
-                    <Button size="sm" variant="ghost" onClick={removePhoto} className="text-destructive">
-                      <Trash2 className="h-4 w-4" /> Remover
-                    </Button>
-                  )}
+            {photoUrl && (
+              <div>
+                <Label>Foto do prato</Label>
+                <div className="mt-1 flex items-center gap-3">
+                  <img src={photoUrl} alt={data.title} className="h-20 w-20 rounded object-cover border" />
+                  <p className="text-xs text-muted-foreground">
+                    A foto vem da ficha técnica. Para alterar, edite a foto na ficha técnica de origem.
+                  </p>
                 </div>
               </div>
-            </div>
+            )}
 
             <div>
               <Label>Ingredientes</Label>
