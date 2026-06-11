@@ -22,20 +22,18 @@ function normalizeBaseCandidate(value) {
   return /\.dll$/i.test(value) ? path.dirname(value) : value;
 }
 
-// IMPORTANTE: a partir do agente v1.3.5 estamos rodando Electron ia32 (32-bit)
-// para casar com a PGWebLib.dll x86 — ela é a única que a Setis distribui
-// sempre instalada por padrão. Por isso a busca prioriza x86 antes de x64.
+// IMPORTANTE: o agente roda em Electron ia32 (32-bit) e DEVE carregar a
+// PGWebLib.dll de 32-bit (pasta x86). NÃO usamos a x64 — ela falha com
+// EPERM ao tentar criar `...\PayGo\PGWebLib\x64` porque a DLL grava logs
+// dentro da própria instalação (sem permissão sob Program Files). Mantemos
+// apenas candidatos x86 e o diretório raiz, ignorando completamente x64.
 const DEFAULT_BASES = [
   normalizeBaseCandidate(process.env.PAYGO_BASE),
   normalizeBaseCandidate(process.env.PathPGWebLib_x86),
   normalizeBaseCandidate(process.env.PathPGWebLib),
-  normalizeBaseCandidate(process.env.PathPGWebLib_x64),
   "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib\\x86",
   "C:\\Program Files (x86)\\PayGo\\PGWebLib\\x86",
   "C:\\Program Files\\PayGo\\PGWebLib\\x86",
-  "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib\\x64",
-  "C:\\Program Files (x86)\\PayGo\\PGWebLib\\x64",
-  "C:\\Program Files\\PayGo\\PGWebLib\\x64",
   "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib",
   "C:\\Program Files (x86)\\PayGo\\PGWebLib",
   "C:\\Program Files\\PayGo\\PGWebLib",
@@ -48,10 +46,11 @@ const DEFAULT_WORK_DIR = path.join(
 );
 
 function resolveBase() {
-  // Para cada candidato, tenta o próprio diretório e também subpastas x86/x64.
-  // Prioriza x86 porque o agente roda em ia32 (precisa casar com a DLL).
+  // Tenta apenas o próprio diretório e a subpasta x86. NUNCA x64
+  // (a DLL x64 não casa com nosso processo ia32 e ainda tenta criar
+  // a pasta dentro de Program Files, gerando EPERM).
   for (const b of DEFAULT_BASES) {
-    const tries = [b, path.join(b, "x86"), path.join(b, "x64")];
+    const tries = [b, path.join(b, "x86")];
     for (const t of tries) {
       try { if (fs.existsSync(path.join(t, "PGWebLib.dll"))) return t; } catch { /* ignore */ }
     }
