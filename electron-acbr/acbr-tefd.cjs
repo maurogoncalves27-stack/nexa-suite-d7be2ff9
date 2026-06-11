@@ -33,6 +33,8 @@ const DEFAULT_BASES = [
   "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib",
   "C:\\Program Files (x86)\\PayGo\\PGWebLib",
   "C:\\Program Files\\PayGo\\PGWebLib",
+  "C:\\NexaACBr\\bin",
+  "C:\\NexaACBr",
 ].filter(Boolean);
 
 const DEFAULT_WORK_DIR = path.join(
