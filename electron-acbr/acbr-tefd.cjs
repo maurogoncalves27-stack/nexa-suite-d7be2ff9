@@ -25,11 +25,18 @@ function normalizeBaseCandidate(value) {
 
 const DEFAULT_BASES = [
   normalizeBaseCandidate(process.env.PAYGO_BASE),
+  normalizeBaseCandidate(process.env.PathPGWebLib_x64),
   normalizeBaseCandidate(process.env.PathPGWebLib_x86),
   normalizeBaseCandidate(process.env.PathPGWebLib),
+  // x64 primeiro (build atual do agente é x64)
+  "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib\\x64",
+  "C:\\Program Files (x86)\\PayGo\\PGWebLib\\x64",
+  "C:\\Program Files\\PayGo\\PGWebLib\\x64",
+  // fallback 32-bit (caso o agente seja reempacotado em ia32)
   "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib\\x86",
   "C:\\Program Files (x86)\\PayGo\\PGWebLib\\x86",
   "C:\\Program Files\\PayGo\\PGWebLib\\x86",
+  // raiz (instalações antigas)
   "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib",
   "C:\\Program Files (x86)\\PayGo\\PGWebLib",
   "C:\\Program Files\\PayGo\\PGWebLib",
