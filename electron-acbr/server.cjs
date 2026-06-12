@@ -228,8 +228,12 @@ async function handle(req, res) {
       if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "PGWebLib.dll não disponível" });
       const body = await readBody(req);
       if (!body.valor || body.valor <= 0) return send(res, 400, { ok: false, error: "valor obrigatório" });
-      const retorno = tef.efetuarPagamento({ ...body, onDisplay: (m) => console.log("[TEF display]", m) });
-      return send(res, 200, { ok: true, retorno });
+      try {
+        const retorno = await tef.efetuarPagamento({ ...body, onDisplay: (m) => console.log("[TEF display]", m) });
+        return send(res, 200, { ok: true, retorno });
+      } catch (e) {
+        return send(res, 500, { ok: false, error: e.message });
+      }
     }
 
     if (req.method === "POST" && path === "/tef/cancelar") {
@@ -240,8 +244,12 @@ async function handle(req, res) {
     if (req.method === "POST" && path === "/tef/cancelar-venda") {
       if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "PGWebLib.dll não disponível" });
       const body = await readBody(req);
-      const retorno = tef.cancelarVenda({ ...body, onDisplay: (m) => console.log("[TEF display]", m) });
-      return send(res, 200, { ok: true, retorno });
+      try {
+        const retorno = await tef.cancelarVenda({ ...body, onDisplay: (m) => console.log("[TEF display]", m) });
+        return send(res, 200, { ok: true, retorno });
+      } catch (e) {
+        return send(res, 500, { ok: false, error: e.message });
+      }
     }
 
     if (req.method === "POST" && path === "/tef/admin") {
@@ -256,7 +264,7 @@ async function handle(req, res) {
         terminalCode: body?.terminalCode,
         host: body?.host,
       })
-        .then((r) => console.log("[TEF admin] concluído:", r?.resultado))
+        .then((r) => console.log("[TEF admin] concluído:", r?.message ?? r?.status))
         .catch((e) => console.warn("[TEF admin] erro:", e.message));
       return send(res, 202, { ok: true, started: true, message: "Menu aberto no pinpad. Finalize na tela do dispositivo." });
     }

@@ -471,7 +471,7 @@ async function administrativoAsync(opts = {}) {
     });
     setAdmStatus({
       status: "done",
-      message: result?.message || result?.resultado || "Concluído",
+      message: result?.message || result?.status || "Concluído",
       result,
     });
     return result;

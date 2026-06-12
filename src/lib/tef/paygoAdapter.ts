@@ -24,22 +24,24 @@ import type {
 import { joinAgentUrl } from "./agentUrl";
 
 interface PaygoReceipts {
-  reqnum?: string | null;
-  nsu?: string | null;
-  autorizacao?: string | null;
-  rede?: string | null;
-  resultado?: string | null;
+  authCode?: string | null;
+  brand?: string | null;
+  acquirer?: string | null;
+  customerReceipt?: string | null;
+  merchantReceipt?: string | null;
+  reqNum?: string | null;
   locRef?: string | null;
   extRef?: string | null;
   virtMerch?: string | null;
-  dataHora?: string | null;
-  requerConfirmacao?: boolean;
-  viaEstabelecimento?: string | null;
-  viaCliente?: string | null;
+  authSyst?: string | null;
 }
 
 interface PaygoAgentResponse {
   ok: boolean;
+  status?: string;
+  message?: string;
+  ret?: number;
+  data?: PaygoReceipts;
   retorno?: PaygoReceipts;
   error?: string;
 }
@@ -52,11 +54,7 @@ const METHOD_MAP: Record<NonNullable<TefPaymentRequest["method"]>, "credito" | "
 };
 
 const isApproved = (r: PaygoReceipts): boolean => {
-  // PayGo retorna PWRET_OK no agente quando aprovado; collectReceipts() só roda nesse caso.
-  // Mas validamos a presença de NSU+autorização como sinal forte de aprovação.
-  if (r.nsu && r.autorizacao) return true;
-  const msg = (r.resultado ?? "").toLowerCase();
-  if (/aprovad|autoriz/.test(msg)) return true;
+  if (r.reqNum && r.authCode) return true;
   return false;
 };
 
@@ -100,18 +98,19 @@ export const createPaygoAdapter = (config: TefConfig): TefAdapter => {
           return { status: "error", message: err, raw: data };
         }
 
-        const r = data.retorno ?? {};
-        const approved = isApproved(r);
-        const status: TefPaymentResult["status"] = approved ? "approved" : "declined";
+        const r = data.data ?? data.retorno ?? {};
+        const approved = data.status === "approved" || (data.ok && isApproved(r));
+        const denied = data.status === "denied";
+        const status: TefPaymentResult["status"] = approved ? "approved" : denied ? "declined" : "error";
         const result: TefPaymentResult = {
           status,
-          message: r.resultado ?? (approved ? "Transação aprovada" : "Transação negada"),
-          nsu: r.nsu ?? r.extRef ?? undefined,
-          authorizationCode: r.autorizacao ?? undefined,
-          cardBrand: r.rede ?? undefined,
+          message: data.message ?? (approved ? "Transação aprovada" : denied ? "Transação negada" : "Falha na transação"),
+          nsu: r.reqNum ?? r.extRef ?? undefined,
+          authorizationCode: r.authCode ?? undefined,
+          cardBrand: r.brand ?? undefined,
           installments: parcelas,
-          acquirer: r.rede ?? config.acquirer,
-          raw: r,
+          acquirer: r.acquirer ?? r.authSyst ?? config.acquirer,
+          raw: data,
         };
         onStatus?.(status, result.message);
         return result;
