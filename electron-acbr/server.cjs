@@ -270,6 +270,55 @@ async function handle(req, res) {
       return send(res, 200, { ok: true, retorno });
     }
 
+    // -------- Teste isolado de porta COM do pinpad --------
+    // Não depende de PGWebLib/PdC/host. Tenta abrir \\.\COMn diretamente.
+    // Útil pra confirmar se a porta existe, se o pinpad está conectado e se
+    // outro processo (PayGo Windows) está segurando o handle.
+    if (req.method === "POST" && path === "/tef/pinpad/test") {
+      const body = await readBody(req).catch(() => ({}));
+      const portNum = String(body?.port ?? body?.com ?? "5").replace(/\D/g, "") || "5";
+      const devicePath = `\\\\.\\COM${portNum}`;
+      const fs = require("fs");
+      let fd = null;
+      try {
+        // 'r+' = leitura+escrita exclusiva; no Windows abre o device serial.
+        fd = fs.openSync(devicePath, "r+");
+        return send(res, 200, {
+          ok: true,
+          port: `COM${portNum}`,
+          devicePath,
+          accessible: true,
+          locked: false,
+          message: `COM${portNum} aberta com sucesso — pinpad acessível e porta livre.`,
+        });
+      } catch (e) {
+        const code = e && e.code;
+        const errno = e && e.errno;
+        let diagnosis;
+        if (code === "ENOENT") {
+          diagnosis = `COM${portNum} NÃO existe no Windows. Confirme no Gerenciador de Dispositivos qual porta o pinpad recebeu.`;
+        } else if (code === "EBUSY" || code === "EACCES" || code === "EPERM") {
+          diagnosis = `COM${portNum} existe mas está EM USO por outro processo (provavelmente o PayGo Windows com o serviço segurando o pinpad). Feche o PayGo Windows e tente de novo.`;
+        } else {
+          diagnosis = `Falha ao abrir COM${portNum}: ${e.message}`;
+        }
+        return send(res, 200, {
+          ok: false,
+          port: `COM${portNum}`,
+          devicePath,
+          accessible: code !== "ENOENT",
+          locked: code === "EBUSY" || code === "EACCES" || code === "EPERM",
+          error: { code, errno, message: e.message },
+          message: diagnosis,
+        });
+      } finally {
+        if (fd != null) {
+          try { fs.closeSync(fd); } catch { /* ignore */ }
+        }
+      }
+    }
+
+
     return send(res, 404, { ok: false, error: "Rota não encontrada", path });
   } catch (e) {
     console.error("[ACBr Agent] erro:", e);

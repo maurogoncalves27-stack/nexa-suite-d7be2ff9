@@ -217,3 +217,35 @@ export const paygoAdministrativo = async (
     return { ok: false, error: e instanceof Error ? e.message : "offline" };
   }
 };
+
+/**
+ * Teste isolado da porta COM do pinpad — não usa PGWebLib/PdC/host.
+ * Apenas tenta abrir \\.\COMn no Windows para confirmar se a porta existe,
+ * se o pinpad está conectado e se outro processo está segurando o handle.
+ */
+export interface PinpadPortTestResult {
+  ok: boolean;
+  port?: string;
+  devicePath?: string;
+  accessible?: boolean;
+  locked?: boolean;
+  message?: string;
+  error?: { code?: string; errno?: number; message?: string };
+}
+
+export const paygoTestarPinpad = async (
+  agentUrl: string,
+  port: number | string = 5,
+): Promise<PinpadPortTestResult> => {
+  try {
+    const r = await fetch(joinAgentUrl(agentUrl, "/tef/pinpad/test"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ port }),
+    });
+    const data = (await r.json().catch(() => ({}))) as PinpadPortTestResult;
+    return data;
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : "offline" };
+  }
+};

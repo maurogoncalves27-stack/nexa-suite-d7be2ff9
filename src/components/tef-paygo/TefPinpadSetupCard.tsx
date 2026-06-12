@@ -11,10 +11,10 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Usb, Loader2, Wifi, Settings2, ExternalLink, Activity, Power } from "lucide-react";
+import { Usb, Loader2, Wifi, Settings2, ExternalLink, Activity, Power, Plug } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { loadTefConfig } from "@/lib/tef";
-import { paygoAdministrativo, checkPaygoAgent, paygoInit } from "@/lib/tef/paygoAdapter";
+import { paygoAdministrativo, checkPaygoAgent, paygoInit, paygoTestarPinpad } from "@/lib/tef/paygoAdapter";
 
 const ASA_SUL_ID = "fcf435c2-c382-444c-b499-4d95f07b2633";
 
@@ -24,7 +24,7 @@ interface Props {
 
 export default function TefPinpadSetupCard({ storeId }: Props) {
   const effectiveStoreId = storeId || ASA_SUL_ID;
-  const [busy, setBusy] = useState<"adm" | "test" | "diag" | "init" | null>(null);
+  const [busy, setBusy] = useState<"adm" | "test" | "diag" | "init" | "port" | null>(null);
   const [lastMsg, setLastMsg] = useState<string>("");
   const [result, setResult] = useState<string>("");
   const [agentUrl, setAgentUrl] = useState<string>("");
@@ -102,6 +102,32 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
     }
   };
 
+  const testarPortaPinpad = async () => {
+    setBusy("port");
+    setLastMsg("Tentando abrir a porta COM do pinpad direto (sem PGWebLib)...");
+    setResult("");
+    setFetchFailed(false);
+    try {
+      const cfg = await loadTefConfig(effectiveStoreId);
+      const portNum = Number((cfg as any).pinpadPort ?? (cfg as any).pinpad_port ?? 5) || 5;
+      const resp = await paygoTestarPinpad(cfg.agentUrl, portNum);
+      setLastMsg(resp.message ?? (resp.ok ? "Pinpad acessível" : "Falha"));
+      setResult(JSON.stringify(resp, null, 2));
+      toast({
+        title: resp.ok ? `Pinpad OK (${resp.port})` : `Falha em ${resp.port ?? "COM?"}`,
+        description: resp.message ?? "",
+        variant: resp.ok ? "default" : "destructive",
+      });
+    } catch (err: any) {
+      const msg = err?.message ?? String(err);
+      setLastMsg(msg);
+      if (isFetchFail(msg)) setFetchFailed(true);
+      toast({ title: "Erro", description: msg, variant: "destructive" });
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const run = async (mode: "adm" | "test") => {
     setBusy(mode);
     setLastMsg(mode === "adm" ? "Abrindo menu administrativo no pinpad..." : "Enviando teste de comunicação...");
@@ -169,6 +195,10 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
         <Button onClick={() => run("test")} disabled={!!busy} variant="secondary" className="gap-2">
           {busy === "test" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wifi className="h-4 w-4" />}
           Testar comunicação
+        </Button>
+        <Button onClick={testarPortaPinpad} disabled={!!busy} variant="outline" className="gap-2 border-success/40 text-success hover:bg-success/10">
+          {busy === "port" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plug className="h-4 w-4" />}
+          Testar porta do pinpad
         </Button>
         <Button onClick={diagnosticar} disabled={!!busy} variant="outline" className="gap-2">
           {busy === "diag" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Activity className="h-4 w-4" />}
