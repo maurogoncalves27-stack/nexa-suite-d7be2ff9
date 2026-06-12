@@ -228,8 +228,12 @@ async function handle(req, res) {
       if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "PGWebLib.dll não disponível" });
       const body = await readBody(req);
       if (!body.valor || body.valor <= 0) return send(res, 400, { ok: false, error: "valor obrigatório" });
-      const retorno = tef.efetuarPagamento({ ...body, onDisplay: (m) => console.log("[TEF display]", m) });
-      return send(res, 200, { ok: true, retorno });
+      try {
+        const retorno = await tef.efetuarPagamento({ ...body, onDisplay: (m) => console.log("[TEF display]", m) });
+        return send(res, 200, { ok: true, retorno });
+      } catch (e) {
+        return send(res, 500, { ok: false, error: e.message });
+      }
     }
 
     if (req.method === "POST" && path === "/tef/cancelar") {
@@ -240,8 +244,12 @@ async function handle(req, res) {
     if (req.method === "POST" && path === "/tef/cancelar-venda") {
       if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "PGWebLib.dll não disponível" });
       const body = await readBody(req);
-      const retorno = tef.cancelarVenda({ ...body, onDisplay: (m) => console.log("[TEF display]", m) });
-      return send(res, 200, { ok: true, retorno });
+      try {
+        const retorno = await tef.cancelarVenda({ ...body, onDisplay: (m) => console.log("[TEF display]", m) });
+        return send(res, 200, { ok: true, retorno });
+      } catch (e) {
+        return send(res, 500, { ok: false, error: e.message });
+      }
     }
 
     if (req.method === "POST" && path === "/tef/admin") {
