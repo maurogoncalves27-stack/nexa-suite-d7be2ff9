@@ -102,6 +102,32 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
     }
   };
 
+  const testarPortaPinpad = async () => {
+    setBusy("port");
+    setLastMsg("Tentando abrir a porta COM do pinpad direto (sem PGWebLib)...");
+    setResult("");
+    setFetchFailed(false);
+    try {
+      const cfg = await loadTefConfig(effectiveStoreId);
+      const portNum = Number((cfg as any).pinpadPort ?? (cfg as any).pinpad_port ?? 5) || 5;
+      const resp = await paygoTestarPinpad(cfg.agentUrl, portNum);
+      setLastMsg(resp.message ?? (resp.ok ? "Pinpad acessível" : "Falha"));
+      setResult(JSON.stringify(resp, null, 2));
+      toast({
+        title: resp.ok ? `Pinpad OK (${resp.port})` : `Falha em ${resp.port ?? "COM?"}`,
+        description: resp.message ?? "",
+        variant: resp.ok ? "default" : "destructive",
+      });
+    } catch (err: any) {
+      const msg = err?.message ?? String(err);
+      setLastMsg(msg);
+      if (isFetchFail(msg)) setFetchFailed(true);
+      toast({ title: "Erro", description: msg, variant: "destructive" });
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const run = async (mode: "adm" | "test") => {
     setBusy(mode);
     setLastMsg(mode === "adm" ? "Abrindo menu administrativo no pinpad..." : "Enviando teste de comunicação...");
