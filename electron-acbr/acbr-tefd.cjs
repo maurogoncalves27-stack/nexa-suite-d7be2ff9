@@ -833,7 +833,6 @@ function administrativoAsync({ timeoutMs = 60000, technicalPassword, pinpadPort,
     if (host) fn.AddParam(PWINFO.AUTADDRESS, String(host));
     if (technicalPassword) fn.AddParam(PWINFO.AUTHTECHUSER, String(technicalPassword));
     if (pinpadPort) {
-      fn.AddParam(PWINFO.USINGPINPAD, "1");
       fn.AddParam(PWINFO.PPCOMMPORT, String(pinpadPort));
     }
   } catch (e) {
