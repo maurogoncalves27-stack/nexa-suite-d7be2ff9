@@ -40,6 +40,11 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
   const [result, setResult] = useState<string>("");
   const [agentUrl, setAgentUrl] = useState<string>("");
   const [fetchFailed, setFetchFailed] = useState(false);
+  const [captures, setCaptures] = useState<PaygoAdmCapture[] | null>(null);
+  const [captureInputs, setCaptureInputs] = useState<Record<number, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const pollRef = useRef<number | null>(null);
+  const lastCaptureSeqRef = useRef<number>(0);
 
   useEffect(() => {
     (async () => {
@@ -51,6 +56,89 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
       }
     })();
   }, [effectiveStoreId]);
+
+  const stopPolling = () => {
+    if (pollRef.current != null) {
+      window.clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
+
+  useEffect(() => () => stopPolling(), []);
+
+  const startPolling = (url: string) => {
+    stopPolling();
+    lastCaptureSeqRef.current = 0;
+    pollRef.current = window.setInterval(async () => {
+      const st = await paygoAdmStatus(url);
+      if (st.message) setLastMsg(st.message);
+      if (st.status === "waiting_input" && st.pendingCaptures && st.pendingCaptures.length > 0) {
+        const seq = st.captureSeq ?? 0;
+        if (seq !== lastCaptureSeqRef.current) {
+          lastCaptureSeqRef.current = seq;
+          setCaptures(st.pendingCaptures);
+          setCaptureInputs({});
+        }
+      } else if (st.status === "done" || st.status === "error" || st.status === "aborted" || st.status === "idle") {
+        stopPolling();
+        setCaptures(null);
+        if (st.status === "error" && st.error) {
+          setLastMsg(st.error);
+          toast({ title: "Erro", description: st.error, variant: "destructive" });
+        } else if (st.status === "done") {
+          const r = (st.receipts as any) ?? {};
+          setResult(JSON.stringify(r, null, 2));
+          setLastMsg(r.resultado || "Operação concluída");
+          toast({ title: "OK", description: r.resultado || "Operação concluída" });
+        }
+      }
+    }, 700);
+  };
+
+  const submitMenuOption = async (cap: PaygoAdmCapture, value: string) => {
+    if (!agentUrl) return;
+    setSubmitting(true);
+    try {
+      const resp = await paygoAdmRespond(agentUrl, [{ identificador: cap.identificador, value }]);
+      if (!resp.ok) {
+        toast({ title: "Erro", description: resp.error ?? "Falha ao enviar resposta", variant: "destructive" });
+      } else {
+        setCaptures(null);
+        setCaptureInputs({});
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const submitTypedAll = async () => {
+    if (!agentUrl || !captures) return;
+    setSubmitting(true);
+    try {
+      const payload = captures.map((c) => ({
+        identificador: c.identificador,
+        value: captureInputs[c.identificador] ?? "",
+      }));
+      const resp = await paygoAdmRespond(agentUrl, payload);
+      if (!resp.ok) {
+        toast({ title: "Erro", description: resp.error ?? "Falha ao enviar resposta", variant: "destructive" });
+      } else {
+        setCaptures(null);
+        setCaptureInputs({});
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const cancelCapture = async () => {
+    if (!agentUrl) return;
+    await paygoAdmAbort(agentUrl);
+    setCaptures(null);
+    setCaptureInputs({});
+    stopPolling();
+    setLastMsg("Operação abortada");
+  };
 
   const isFetchFail = (msg: string) =>
     /failed to fetch|network|load failed|offline/i.test(msg);
