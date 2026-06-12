@@ -44,15 +44,22 @@ const DEFAULT_BASES = [
   "C:\\NexaACBr",
 ].filter(Boolean);
 
-// Workdir do PGWebLib precisa ser SEMPRE gravável pelo usuário comum (sem
-// admin). LOCALAPPDATA garante isso em qualquer Windows; ProgramData costuma
-// ser ok, mas algumas máquinas têm ACL restritivo. Não usar pasta dentro de
-// "Program Files" — Windows bloqueia (EPERM).
-const DEFAULT_WORK_DIR = path.join(
-  process.env.LOCALAPPDATA || process.env.APPDATA || process.env.ProgramData || "C:\\ProgramData",
-  "NexaACBr",
-  "PayGo",
-);
+// Workdir do PGWebLib precisa apontar para a MESMA pasta onde o PayGo Windows
+// (UI Setis) instalou o PdC. Senão a DLL integrada não enxerga o PdC e devolve
+// PWRET_NOTINST (-2498). PayGo Windows instala, por padrão, em "C:\PGWebLib"
+// (raiz do disco) — é lá que ele cria a subpasta <PontoDeCaptura>\ com os
+// arquivos de configuração. Como fallback, tentamos %ProgramData%\PGWebLib e
+// só por último o %LOCALAPPDATA% (que NUNCA terá PdC instalado pela UI).
+const PDC_FROM_ENV = (process.env.PontoDeCaptura || process.env.PDC || "").trim();
+
+const WORK_DIR_CANDIDATES = [
+  process.env.PAYGO_WORKDIR,
+  "C:\\PGWebLib",
+  path.join(process.env.ProgramData || "C:\\ProgramData", "PGWebLib"),
+  path.join(process.env.ProgramData || "C:\\ProgramData", "PayGo", "PGWebLib"),
+  path.join(process.env.PUBLIC || "C:\\Users\\Public", "PGWebLib"),
+  path.join(process.env.LOCALAPPDATA || process.env.APPDATA || "C:\\ProgramData", "NexaACBr", "PayGo"),
+].filter(Boolean);
 
 function resolveBase() {
   // Em processo x64, prioriza pasta x64; em ia32, prioriza x86.
@@ -66,9 +73,39 @@ function resolveBase() {
   return DEFAULT_BASES[0] || "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib";
 }
 
+function hasPdcInstalled(workdir, pdc) {
+  if (!workdir) return false;
+  try {
+    if (!fs.existsSync(workdir)) return false;
+    // PayGo cria <workdir>\<PontoDeCaptura>\ com arquivos .dat/.bin após install
+    if (pdc) {
+      const pdcDir = path.join(workdir, pdc);
+      if (fs.existsSync(pdcDir)) return true;
+    }
+    // Heurística: workdir tem algum subdiretório com nome só de dígitos (id PdC)
+    const entries = fs.readdirSync(workdir, { withFileTypes: true });
+    return entries.some((e) => e.isDirectory() && /^\d{4,}$/.test(e.name));
+  } catch {
+    return false;
+  }
+}
+
+function resolveWorkDir() {
+  // 1) Workdir que já tem o PdC instalado vence sempre
+  for (const w of WORK_DIR_CANDIDATES) {
+    if (hasPdcInstalled(w, PDC_FROM_ENV)) return w;
+  }
+  // 2) Senão, primeiro candidato existente (preferindo C:\PGWebLib)
+  for (const w of WORK_DIR_CANDIDATES) {
+    try { if (fs.existsSync(w)) return w; } catch { /* ignore */ }
+  }
+  // 3) Último recurso: LOCALAPPDATA (será criado em runtime)
+  return WORK_DIR_CANDIDATES[WORK_DIR_CANDIDATES.length - 1];
+}
+
 const PAYGO_BASE = resolveBase();
 const DLL_PATH = path.join(PAYGO_BASE, "PGWebLib.dll");
-const WORK_DIR = process.env.PAYGO_WORKDIR || DEFAULT_WORK_DIR;
+const WORK_DIR = resolveWorkDir();
 
 // ============================================================
 // Enums do C# (Muxx.Lib/ValueObjects/Enums)
