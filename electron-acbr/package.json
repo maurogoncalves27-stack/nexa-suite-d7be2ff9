@@ -1,7 +1,7 @@
 {
   "name": "nexa-acbr",
   "productName": "NEXA ACBr Agent",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "description": "Agente HTTP local que expõe ACBrLib (NFC-e + TEF) na porta 3030",
   "main": "main.cjs",
   "author": {
@@ -34,6 +34,7 @@
       "server.cjs",
       "acbr-nfe.cjs",
       "acbr-tefd.cjs",
+      "scripts/**",
       "build/**"
     ],
     "directories": {
