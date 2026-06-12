@@ -1178,12 +1178,38 @@ function instalarPdc({
   onCapture,
 } = {}) {
   startTransaction(PWOPER.INSTALL, "install");
-  if (cnpj) fn.AddParam(PWINFO.MERCHCNPJCPF, String(cnpj).replace(/\D/g, ""));
+  const onlyDigits = (v) => String(v || "").replace(/\D/g, "");
+  const padPort = (v) => {
+    const d = onlyDigits(v);
+    if (!d) return "";
+    return String(parseInt(d, 10)).padStart(2, "0");
+  };
+  if (cnpj) fn.AddParam(PWINFO.MERCHCNPJCPF, onlyDigits(cnpj));
   if (pdc) fn.AddParam(PWINFO.POSID, String(pdc));
-  if (ambiente) fn.AddParam(PWINFO.AUTADDRESS, String(ambiente));
-  if (senhaTecnica) fn.AddParam(PWINFO.AUTHTECHUSER, String(senhaTecnica));
-  if (portaPinpad) fn.AddParam(PWINFO.PPCOMMPORT, String(portaPinpad));
-  runExecLoop({ onDisplay, onCapture, timeoutMs: 180000 });
+  fn.AddParam(PWINFO.USINGPINPAD, "1");
+  const pp = padPort(portaPinpad);
+  if (pp) fn.AddParam(PWINFO.PPCOMMPORT, pp);
+  if (ambiente) {
+    fn.AddParam(PWINFO.DESTTCPIP, String(ambiente));
+    const s = String(ambiente);
+    const i = s.lastIndexOf(":");
+    if (i > 0) {
+      fn.AddParam(PWINFO.AUTIP, s.slice(0, i));
+      fn.AddParam(PWINFO.AUTPORT, s.slice(i + 1));
+    }
+  }
+  // senhaTecnica é respondida via PWDAT_USERAUTH durante o loop (não como param inicial).
+  // Se onCapture não tratar, configure o caller pra auto-responder.
+  const wrappedCapture = (cap) => {
+    if (cap?.tipo === PWDAT.USERAUTH &&
+        (cap.identificador === PWINFO.AUTHTECHUSER || cap.identificador === PWINFO.AUTHMNGTUSER) &&
+        senhaTecnica) {
+      try { fn.AddParam(cap.identificador, String(senhaTecnica)); } catch { /* ignore */ }
+      return;
+    }
+    if (onCapture) onCapture(cap);
+  };
+  runExecLoop({ onDisplay, onCapture: wrappedCapture, timeoutMs: 180000 });
   return collectReceipts();
 }
 
