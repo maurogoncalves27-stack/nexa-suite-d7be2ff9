@@ -203,12 +203,19 @@ export const paygoCancelarVenda = async (
 /** Operação administrativa do pinpad (menu, relatório, teste de comunicação). */
 export const paygoAdministrativo = async (
   agentUrl: string,
+  options?: {
+    technicalPassword?: string;
+    pinpadPort?: number | string;
+    merchantCode?: string;
+    terminalCode?: string;
+    host?: string;
+  },
 ): Promise<PaygoAgentResponse> => {
   try {
     const r = await fetch(joinAgentUrl(agentUrl, "/tef/admin"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
+      body: JSON.stringify(options ?? {}),
     });
     const data = (await r.json().catch(() => ({}))) as PaygoAgentResponse;
     if (!r.ok) return { ok: false, error: data?.error ?? `HTTP ${r.status}` };
