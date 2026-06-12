@@ -377,6 +377,21 @@ function load() {
     fn.PPAbort = lib.func("__stdcall", "PW_iPPAbort", "short", []);
   } catch { fn.PPAbort = null; }
 
+  // Funções pinpad-driven do PGWebLib — chamadas em resposta a MOREDATA
+  // com PWDAT_CARDINF/PPENCPIN/PPENTRY/CARDOFF/CARDONL/PPCONF/PPREMCRD/
+  // PPGENCMD/PPDATAPOSCNF/TSTKEY. Sem isso o pinpad fica esperando para
+  // sempre e a transação dá timeout.
+  try { fn.PPGetCard = lib.func("__stdcall", "PW_iPPGetCard", "short", ["uint16"]); } catch { fn.PPGetCard = null; }
+  try { fn.PPGetPIN = lib.func("__stdcall", "PW_iPPGetPIN", "short", ["uint16"]); } catch { fn.PPGetPIN = null; }
+  try { fn.PPGetData = lib.func("__stdcall", "PW_iPPGetData", "short", ["uint16"]); } catch { fn.PPGetData = null; }
+  try { fn.PPGoOnChip = lib.func("__stdcall", "PW_iPPGoOnChip", "short", ["uint16"]); } catch { fn.PPGoOnChip = null; }
+  try { fn.PPFinishChip = lib.func("__stdcall", "PW_iPPFinishChip", "short", ["uint16"]); } catch { fn.PPFinishChip = null; }
+  try { fn.PPConfirmData = lib.func("__stdcall", "PW_iPPConfirmData", "short", ["uint16"]); } catch { fn.PPConfirmData = null; }
+  try { fn.PPRemoveCard = lib.func("__stdcall", "PW_iPPRemoveCard", "short", []); } catch { fn.PPRemoveCard = null; }
+  try { fn.PPGenericCMD = lib.func("__stdcall", "PW_iPPGenericCMD", "short", ["uint16"]); } catch { fn.PPGenericCMD = null; }
+  try { fn.PPPositiveConfirmation = lib.func("__stdcall", "PW_iPPPositiveConfirmation", "short", ["uint16"]); } catch { fn.PPPositiveConfirmation = null; }
+  try { fn.PPTestKey = lib.func("__stdcall", "PW_iPPTestKey", "short", ["uint16"]); } catch { fn.PPTestKey = null; }
+
   available = true;
   return lib;
 }
