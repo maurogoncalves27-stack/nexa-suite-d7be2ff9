@@ -264,7 +264,7 @@ async function handle(req, res) {
         terminalCode: body?.terminalCode,
         host: body?.host,
       })
-        .then((r) => console.log("[TEF admin] concluído:", r?.resultado))
+        .then((r) => console.log("[TEF admin] concluído:", r?.message ?? r?.status))
         .catch((e) => console.warn("[TEF admin] erro:", e.message));
       return send(res, 202, { ok: true, started: true, message: "Menu aberto no pinpad. Finalize na tela do dispositivo." });
     }
