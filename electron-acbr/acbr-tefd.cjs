@@ -70,6 +70,45 @@ function bridgeScriptPath() {
   return inAsar;
 }
 
+function workDirCandidates(dllPath) {
+  const dllDir = dllPath ? path.dirname(dllPath) : null;
+  return [
+    process.env.PAYGO_WORKING_DIR || null,
+    process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, "NexaACBr", "PayGo") : null,
+    process.env.PROGRAMDATA ? path.join(process.env.PROGRAMDATA, "NexaACBr", "PayGo") : null,
+    process.env.APPDATA ? path.join(process.env.APPDATA, "NexaACBr", "PayGo") : null,
+    dllDir,
+  ].filter(Boolean).filter((dir, index, arr) => arr.indexOf(dir) === index);
+}
+
+function canUseWorkingDir(dir) {
+  if (!dir) return false;
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.accessSync(dir, fs.constants.R_OK | fs.constants.W_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function resolveWorkingDir(dllPath) {
+  for (const dir of workDirCandidates(dllPath)) {
+    if (canUseWorkingDir(dir)) return dir;
+  }
+  return dllPath ? path.dirname(dllPath) : null;
+}
+
+function formatBridgeError(payload, fallback) {
+  const parts = [];
+  if (payload?.function) parts.push(payload.function);
+  if (payload?.ret !== undefined && payload?.ret !== null && payload.ret !== "") {
+    parts.push(`ret=${payload.ret}`);
+  }
+  const prefix = parts.length ? `${parts.join(" ")}: ` : "";
+  return prefix + (payload?.message || fallback || "Erro no host PayGo");
+}
+
 // ---------- defaults do ambiente NEXA ----------
 const NEXA_DEFAULTS = {
   cpfCnpj: process.env.PAYGO_CNPJ || "44932369000108",
@@ -142,7 +181,7 @@ function ensureHost() {
     return p;
   }
 
-  const workingDir = process.env.PAYGO_WORKING_DIR || path.dirname(dllPath);
+  const workingDir = resolveWorkingDir(dllPath);
   const bridge = bridgeScriptPath();
 
   if (!fs.existsSync(bridge)) {
@@ -244,7 +283,7 @@ function handleLine(line, finishReady) {
   if (resp.id === "__ready") {
     const payload = resp.payload || {};
     if (resp.error || payload.ok === false) {
-      finishReady(new Error(resp.error || payload.message || "Host não inicializou"));
+      finishReady(new Error(formatBridgeError(payload, resp.error || payload.message || "Host não inicializou")));
     } else {
       console.log("[TEF host] pronto:", payload.message || "ready");
       finishReady(null);
@@ -270,7 +309,7 @@ function handleLine(line, finishReady) {
   pending.delete(resp.id);
 
   if (resp.error) {
-    p.reject(new Error(resp.error));
+    p.reject(new Error(formatBridgeError(resp.payload, resp.error)));
     return;
   }
 
@@ -326,13 +365,15 @@ function versao() {
 
 function diagnostics() {
   const dll = findDllPath();
+  const candidates = workDirCandidates(dll);
   return {
     dllPath: dll || null,
     bridgePath: bridgeScriptPath(),
     bridgeExists: fs.existsSync(bridgeScriptPath()),
     hostRunning: !!host,
     initialized: !!host,
-    workingDir: process.env.PAYGO_WORKING_DIR || (dll ? path.dirname(dll) : null),
+    workingDir: resolveWorkingDir(dll),
+    workDirCandidates: candidates,
     defaults: { ...NEXA_DEFAULTS },
     lastInitError: hostLastError,
     lastInitErrorAt: hostLastErrorAt || null,

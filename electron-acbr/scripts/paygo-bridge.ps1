@@ -343,7 +343,7 @@ public static class PayGoBridge
             Load(dllPath);
             short ret = Init(workingDir);
             if (ret != PWRET_OK) return Error("PW_iInit", ret);
-            return "{\"ok\":true,\"status\":\"initialized\",\"message\":\"PGWebLib inicializada\"}";
+            return "{\"ok\":true,\"status\":\"initialized\",\"message\":\"PGWebLib inicializada\",\"workingDir\":\"" + Esc(workingDir) + "\"}";
         }
         catch (Exception ex)
         {
@@ -974,7 +974,12 @@ if ($Action -eq "host") {
   try {
     $readyPayload = [PayGoBridge]::CommTest($DllPath, $WorkingDir) | ConvertFrom-Json
     if (-not $readyPayload.ok) {
-      Write-HostResponse @{ id = "__ready"; error = $readyPayload.message; payload = $readyPayload }
+      $detail = if ($readyPayload.function -and $null -ne $readyPayload.ret) {
+        "$($readyPayload.function) ret=$($readyPayload.ret): $($readyPayload.message)"
+      } else {
+        $readyPayload.message
+      }
+      Write-HostResponse @{ id = "__ready"; error = $detail; payload = $readyPayload }
       exit 1
     }
 
