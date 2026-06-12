@@ -44,10 +44,14 @@ const DEFAULT_BASES = [
   "C:\\NexaACBr",
 ].filter(Boolean);
 
+// Workdir do PGWebLib precisa ser SEMPRE gravável pelo usuário comum (sem
+// admin). LOCALAPPDATA garante isso em qualquer Windows; ProgramData costuma
+// ser ok, mas algumas máquinas têm ACL restritivo. Não usar pasta dentro de
+// "Program Files" — Windows bloqueia (EPERM).
 const DEFAULT_WORK_DIR = path.join(
-  process.env.ProgramData || "C:\\ProgramData",
+  process.env.LOCALAPPDATA || process.env.APPDATA || process.env.ProgramData || "C:\\ProgramData",
+  "NexaACBr",
   "PayGo",
-  "PGWebLib",
 );
 
 function resolveBase() {
