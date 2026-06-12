@@ -815,10 +815,17 @@ function administrativo({ onDisplay, onCapture } = {}) {
  * do Node. Atualiza adminInFlight enquanto o pinpad está aberto.
  */
 function administrativoAsync({ timeoutMs = 60000, technicalPassword, pinpadPort, merchantCode, terminalCode, host } = {}) {
-  if (adminInFlight && adminInFlight.status === "running") {
+  if (adminInFlight && (adminInFlight.status === "running" || adminInFlight.status === "waiting_input")) {
     return Promise.reject(new Error("Já existe uma operação ADM em andamento"));
   }
-  adminInFlight = { startedAt: Date.now(), status: "running", message: "Iniciando..." };
+  adminInFlight = {
+    startedAt: Date.now(),
+    status: "running",
+    message: "Iniciando...",
+    pendingCaptures: null,
+    pendingResolve: null,
+    captureSeq: 0,
+  };
   try {
     startTransaction(PWOPER.ADMIN, "admin");
     if (merchantCode) fn.AddParam(PWINFO.MERCHCNPJCPF, String(merchantCode).replace(/\D/g, ""));
@@ -833,9 +840,18 @@ function administrativoAsync({ timeoutMs = 60000, technicalPassword, pinpadPort,
   return runExecLoopAsync({
     timeoutMs,
     onDisplay: (m) => {
-      if (adminInFlight) adminInFlight.message = m;
+      if (adminInFlight && adminInFlight.status === "running") adminInFlight.message = m;
       console.log("[TEF display]", m);
     },
+    onInteractiveCaptures: (captures) => new Promise((resolve) => {
+      if (!adminInFlight) return resolve(null);
+      adminInFlight.captureSeq = (adminInFlight.captureSeq || 0) + 1;
+      adminInFlight.pendingCaptures = captures.map((c) => ({ ...c, seq: adminInFlight.captureSeq }));
+      adminInFlight.status = "waiting_input";
+      adminInFlight.message = captures[0]?.prompt || "Aguardando entrada do operador";
+      adminInFlight.pendingResolve = resolve;
+      console.log("[TEF capture] aguardando resposta:", JSON.stringify(adminInFlight.pendingCaptures));
+    }),
     shouldAbort: () => adminInFlight && adminInFlight.status === "aborted",
   })
     .then(() => {
