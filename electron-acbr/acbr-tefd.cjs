@@ -78,9 +78,12 @@ const PWRET = {
 };
 
 const PWINFO = {
+  PPPPWD: 0x03,
+  POSID: 0x11,
   AUTNAME: 21,
   AUTVER: 22,
   AUTDEV: 23,
+  MERCHCNPJCPF: 0x1C,
   AUTCAP: 36,
   TOTAMNT: 37,
   CURRENCY: 38,
@@ -104,7 +107,10 @@ const PWINFO = {
   TRNORIGAMNT: 96,
   TRNORIGAUTH: 98,
   TRNORIGTIME: 115,
+  AUTHTECHUSER: 0xF6,
   DSPQRPREF: 152,
+  PPCOMMPORT: 0x7F02,
+  AUTADDRESS: 0x7F1F,
 };
 
 const PWOPER = {
@@ -552,11 +558,26 @@ function administrativo({ onDisplay, onCapture } = {}) {
 }
 
 /**
- * @deprecated Instalação/ativação do PdC é feita pela UI do PayGo
- * Windows (modo DEMO) — fluxo oficial Setis. Ver /configuracoes/tef-paygo.
+ * Instalação/ativação do PdC via PGWebLib.
+ * Recebe params do PayGo (CNPJ, PdC, host:porta, senha técnica, porta do pinpad).
+ * O fluxo recomendado continua sendo pela UI do PayGo Windows (modo DEMO),
+ * mas algumas instalações exigem PWOPER_INSTALL com estes parâmetros.
  */
-function instalarPdc({ onDisplay, onCapture } = {}) {
+function instalarPdc({
+  cnpj,
+  pdc,
+  ambiente,
+  senhaTecnica,
+  portaPinpad,
+  onDisplay,
+  onCapture,
+} = {}) {
   startTransaction(PWOPER.INSTALL, "install");
+  if (cnpj) fn.AddParam(PWINFO.MERCHCNPJCPF, String(cnpj).replace(/\D/g, ""));
+  if (pdc) fn.AddParam(PWINFO.POSID, String(pdc));
+  if (ambiente) fn.AddParam(PWINFO.AUTADDRESS, String(ambiente));
+  if (senhaTecnica) fn.AddParam(PWINFO.AUTHTECHUSER, String(senhaTecnica));
+  if (portaPinpad) fn.AddParam(PWINFO.PPCOMMPORT, String(portaPinpad));
   runExecLoop({ onDisplay, onCapture, timeoutMs: 180000 });
   return collectReceipts();
 }
