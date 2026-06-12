@@ -341,56 +341,51 @@ function load() {
   defineStruct();
   lib = koffi.load(DLL_PATH);
 
-  // Assinaturas alinhadas ao PGWebLib.cs (Muxx.Lib/Services).
-  // __stdcall em Windows (WINAPI).
-  fn.Init = lib.func("__stdcall", "PW_iInit", "short", ["string"]);
-  fn.NewTransac = lib.func("__stdcall", "PW_iNewTransac", "short", ["uint8"]);
-  fn.AddParam = lib.func("__stdcall", "PW_iAddParam", "short", ["uint16", "string"]);
+  // Convenção CDECL — alinhado à demo funcional Setis/PowerShell.
+  // Demo C# original também declarou CallingConvention.Cdecl em TODOS
+  // os delegates PW_i*. Usar __stdcall corrompia o stack e causava
+  // PWRET inesperado / TIMEOUT.
+  fn.Init = lib.func("__cdecl", "PW_iInit", "short", ["string"]);
+  fn.NewTransac = lib.func("__cdecl", "PW_iNewTransac", "short", ["uint8"]);
+  fn.AddParam = lib.func("__cdecl", "PW_iAddParam", "short", ["uint16", "string"]);
   fn.ExecTransac = lib.func(
-    "__stdcall",
+    "__cdecl",
     "PW_iExecTransac",
     "short",
     [koffi.out(koffi.pointer(PW_GetDataArray9)), koffi.inout(koffi.pointer("int16"))],
   );
-  // ulDataSize é UINT por VALOR (não ponteiro!) — divergência crítica vs versão antiga.
   fn.GetResult = lib.func(
-    "__stdcall",
+    "__cdecl",
     "PW_iGetResult",
     "short",
     ["int16", koffi.out("char*"), "uint32"],
   );
-  // (uint, 5×string) — ulStatus é UINT por valor (PWCNF_xxx).
   fn.Confirmation = lib.func(
-    "__stdcall",
+    "__cdecl",
     "PW_iConfirmation",
     "short",
     ["uint32", "string", "string", "string", "string", "string"],
   );
-  // ulDisplaySize também UINT por valor.
   fn.PPEventLoop = lib.func(
-    "__stdcall",
+    "__cdecl",
     "PW_iPPEventLoop",
     "short",
     [koffi.out("char*"), "uint32"],
   );
   try {
-    fn.PPAbort = lib.func("__stdcall", "PW_iPPAbort", "short", []);
+    fn.PPAbort = lib.func("__cdecl", "PW_iPPAbort", "short", []);
   } catch { fn.PPAbort = null; }
 
-  // Funções pinpad-driven do PGWebLib — chamadas em resposta a MOREDATA
-  // com PWDAT_CARDINF/PPENCPIN/PPENTRY/CARDOFF/CARDONL/PPCONF/PPREMCRD/
-  // PPGENCMD/PPDATAPOSCNF/TSTKEY. Sem isso o pinpad fica esperando para
-  // sempre e a transação dá timeout.
-  try { fn.PPGetCard = lib.func("__stdcall", "PW_iPPGetCard", "short", ["uint16"]); } catch { fn.PPGetCard = null; }
-  try { fn.PPGetPIN = lib.func("__stdcall", "PW_iPPGetPIN", "short", ["uint16"]); } catch { fn.PPGetPIN = null; }
-  try { fn.PPGetData = lib.func("__stdcall", "PW_iPPGetData", "short", ["uint16"]); } catch { fn.PPGetData = null; }
-  try { fn.PPGoOnChip = lib.func("__stdcall", "PW_iPPGoOnChip", "short", ["uint16"]); } catch { fn.PPGoOnChip = null; }
-  try { fn.PPFinishChip = lib.func("__stdcall", "PW_iPPFinishChip", "short", ["uint16"]); } catch { fn.PPFinishChip = null; }
-  try { fn.PPConfirmData = lib.func("__stdcall", "PW_iPPConfirmData", "short", ["uint16"]); } catch { fn.PPConfirmData = null; }
-  try { fn.PPRemoveCard = lib.func("__stdcall", "PW_iPPRemoveCard", "short", []); } catch { fn.PPRemoveCard = null; }
-  try { fn.PPGenericCMD = lib.func("__stdcall", "PW_iPPGenericCMD", "short", ["uint16"]); } catch { fn.PPGenericCMD = null; }
-  try { fn.PPPositiveConfirmation = lib.func("__stdcall", "PW_iPPPositiveConfirmation", "short", ["uint16"]); } catch { fn.PPPositiveConfirmation = null; }
-  try { fn.PPTestKey = lib.func("__stdcall", "PW_iPPTestKey", "short", ["uint16"]); } catch { fn.PPTestKey = null; }
+  try { fn.PPGetCard = lib.func("__cdecl", "PW_iPPGetCard", "short", ["uint16"]); } catch { fn.PPGetCard = null; }
+  try { fn.PPGetPIN = lib.func("__cdecl", "PW_iPPGetPIN", "short", ["uint16"]); } catch { fn.PPGetPIN = null; }
+  try { fn.PPGetData = lib.func("__cdecl", "PW_iPPGetData", "short", ["uint16"]); } catch { fn.PPGetData = null; }
+  try { fn.PPGoOnChip = lib.func("__cdecl", "PW_iPPGoOnChip", "short", ["uint16"]); } catch { fn.PPGoOnChip = null; }
+  try { fn.PPFinishChip = lib.func("__cdecl", "PW_iPPFinishChip", "short", ["uint16"]); } catch { fn.PPFinishChip = null; }
+  try { fn.PPConfirmData = lib.func("__cdecl", "PW_iPPConfirmData", "short", ["uint16"]); } catch { fn.PPConfirmData = null; }
+  try { fn.PPRemoveCard = lib.func("__cdecl", "PW_iPPRemoveCard", "short", []); } catch { fn.PPRemoveCard = null; }
+  try { fn.PPGenericCMD = lib.func("__cdecl", "PW_iPPGenericCMD", "short", ["uint16"]); } catch { fn.PPGenericCMD = null; }
+  try { fn.PPPositiveConfirmation = lib.func("__cdecl", "PW_iPPPositiveConfirmation", "short", ["uint16"]); } catch { fn.PPPositiveConfirmation = null; }
+  try { fn.PPTestKey = lib.func("__cdecl", "PW_iPPTestKey", "short", ["uint16"]); } catch { fn.PPTestKey = null; }
 
   available = true;
   return lib;
@@ -1066,15 +1061,38 @@ function administrativoAsync({ timeoutMs = 60000, technicalPassword, pinpadPort,
     pendingResolve: null,
     captureSeq: 0,
   };
+
+  // Helpers — replica AddActivationParams + AmbienteHost/Port do demo PS.
+  const onlyDigits = (v) => String(v || "").replace(/\D/g, "");
+  const normalizePinpadPort = (v) => {
+    const d = onlyDigits(v);
+    if (!d) return "";
+    const n = parseInt(d, 10);
+    return String(n).padStart(2, "0");
+  };
+  const splitHost = (envStr) => {
+    const s = String(envStr || "");
+    const i = s.lastIndexOf(":");
+    return i > 0 ? [s.slice(0, i), s.slice(i + 1)] : [s, ""];
+  };
+  const senhaTec = technicalPassword ? String(technicalPassword) : "";
+  const pinpadPortStr = normalizePinpadPort(pinpadPort);
+  const [autIp, autPort] = splitHost(host);
+
   try {
     startTransaction(PWOPER.ADMIN, "admin");
-    if (merchantCode) fn.AddParam(PWINFO.MERCHCNPJCPF, String(merchantCode).replace(/\D/g, ""));
+    // Demo: AddActivationParams na MESMA ordem.
+    if (merchantCode) fn.AddParam(PWINFO.MERCHCNPJCPF, onlyDigits(merchantCode));
     if (terminalCode) fn.AddParam(PWINFO.POSID, String(terminalCode));
-    if (host) fn.AddParam(PWINFO.AUTADDRESS, String(host));
-    if (technicalPassword) fn.AddParam(PWINFO.AUTHTECHUSER, String(technicalPassword));
-    if (pinpadPort) {
-      fn.AddParam(PWINFO.PPCOMMPORT, String(pinpadPort));
+    // USINGPINPAD sempre "1" — sem isso o PdC ignora a porta.
+    fn.AddParam(PWINFO.USINGPINPAD, "1");
+    if (pinpadPortStr) fn.AddParam(PWINFO.PPCOMMPORT, pinpadPortStr);
+    if (host) {
+      fn.AddParam(PWINFO.DESTTCPIP, String(host));
+      if (autIp) fn.AddParam(PWINFO.AUTIP, autIp);
+      if (autPort) fn.AddParam(PWINFO.AUTPORT, autPort);
     }
+    // NÃO mandar AUTHTECHUSER aqui — demo só responde quando PWDAT_USERAUTH chega.
   } catch (e) {
     adminInFlight = { status: "error", error: e.message, startedAt: Date.now() };
     return Promise.reject(e);
@@ -1087,11 +1105,31 @@ function administrativoAsync({ timeoutMs = 60000, technicalPassword, pinpadPort,
     },
     onInteractiveCaptures: (captures) => new Promise((resolve) => {
       if (!adminInFlight) return resolve(null);
+
+      // Auto-responde USERAUTH (senha técnica/gerencial) sem pedir operador.
+      const auto = [];
+      const pending = [];
+      for (const c of captures) {
+        if (c.tipo === PWDAT.USERAUTH &&
+            (c.identificador === PWINFO.AUTHTECHUSER || c.identificador === PWINFO.AUTHMNGTUSER) &&
+            senhaTec) {
+          auto.push({ identificador: c.identificador, value: senhaTec });
+        } else {
+          pending.push(c);
+        }
+      }
+      if (pending.length === 0 && auto.length > 0) {
+        console.log("[TEF auto-USERAUTH] respondendo senha técnica");
+        return resolve(auto);
+      }
       adminInFlight.captureSeq = (adminInFlight.captureSeq || 0) + 1;
-      adminInFlight.pendingCaptures = captures.map((c) => ({ ...c, seq: adminInFlight.captureSeq }));
+      adminInFlight.pendingCaptures = pending.map((c) => ({ ...c, seq: adminInFlight.captureSeq }));
       adminInFlight.status = "waiting_input";
-      adminInFlight.message = captures[0]?.prompt || "Aguardando entrada do operador";
-      adminInFlight.pendingResolve = resolve;
+      adminInFlight.message = pending[0]?.prompt || "Aguardando entrada do operador";
+      adminInFlight.pendingResolve = (responses) => {
+        if (!responses) return resolve(null);
+        resolve([...auto, ...responses]);
+      };
       console.log("[TEF capture] aguardando resposta:", JSON.stringify(adminInFlight.pendingCaptures));
     }),
     shouldAbort: () => adminInFlight && adminInFlight.status === "aborted",
@@ -1140,12 +1178,38 @@ function instalarPdc({
   onCapture,
 } = {}) {
   startTransaction(PWOPER.INSTALL, "install");
-  if (cnpj) fn.AddParam(PWINFO.MERCHCNPJCPF, String(cnpj).replace(/\D/g, ""));
+  const onlyDigits = (v) => String(v || "").replace(/\D/g, "");
+  const padPort = (v) => {
+    const d = onlyDigits(v);
+    if (!d) return "";
+    return String(parseInt(d, 10)).padStart(2, "0");
+  };
+  if (cnpj) fn.AddParam(PWINFO.MERCHCNPJCPF, onlyDigits(cnpj));
   if (pdc) fn.AddParam(PWINFO.POSID, String(pdc));
-  if (ambiente) fn.AddParam(PWINFO.AUTADDRESS, String(ambiente));
-  if (senhaTecnica) fn.AddParam(PWINFO.AUTHTECHUSER, String(senhaTecnica));
-  if (portaPinpad) fn.AddParam(PWINFO.PPCOMMPORT, String(portaPinpad));
-  runExecLoop({ onDisplay, onCapture, timeoutMs: 180000 });
+  fn.AddParam(PWINFO.USINGPINPAD, "1");
+  const pp = padPort(portaPinpad);
+  if (pp) fn.AddParam(PWINFO.PPCOMMPORT, pp);
+  if (ambiente) {
+    fn.AddParam(PWINFO.DESTTCPIP, String(ambiente));
+    const s = String(ambiente);
+    const i = s.lastIndexOf(":");
+    if (i > 0) {
+      fn.AddParam(PWINFO.AUTIP, s.slice(0, i));
+      fn.AddParam(PWINFO.AUTPORT, s.slice(i + 1));
+    }
+  }
+  // senhaTecnica é respondida via PWDAT_USERAUTH durante o loop (não como param inicial).
+  // Se onCapture não tratar, configure o caller pra auto-responder.
+  const wrappedCapture = (cap) => {
+    if (cap?.tipo === PWDAT.USERAUTH &&
+        (cap.identificador === PWINFO.AUTHTECHUSER || cap.identificador === PWINFO.AUTHMNGTUSER) &&
+        senhaTecnica) {
+      try { fn.AddParam(cap.identificador, String(senhaTecnica)); } catch { /* ignore */ }
+      return;
+    }
+    if (onCapture) onCapture(cap);
+  };
+  runExecLoop({ onDisplay, onCapture: wrappedCapture, timeoutMs: 180000 });
   return collectReceipts();
 }
 
