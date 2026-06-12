@@ -443,15 +443,11 @@ function runExecLoop({ onDisplay, onCapture, timeoutMs = 180000 } = {}) {
     if (ret === PWRET.MOREDATA) {
       const count = numRef[0] | 0;
       let interactiveCaptures = 0;
-      // Para cada captura solicitada, lê via PW_iPPEventLoop (display)
-      // ou repassa pro caller via onCapture.
       for (let i = 0; i < count; i++) {
         const item = buffer[i] || {};
         const tipo = item.bTipoDeDado;
         const prompt = (item.szPrompt || "").replace(/\0.*$/, "");
 
-        // Item zerado / não decodificado → ignora (PayGo às vezes devolve
-        // MOREDATA pedindo apenas leitura de display, sem captura real).
         if (tipo === undefined || tipo === 0 || tipo === null) {
           console.log(`[TEF MOREDATA] slot ${i} sem tipo definido — ignorando`);
           continue;
@@ -464,7 +460,6 @@ function runExecLoop({ onDisplay, onCapture, timeoutMs = 180000 } = {}) {
 
         interactiveCaptures++;
         if (onCapture) {
-          // Caller pode chamar PW_iAddParam(item.wIdentificador, valor)
           onCapture({ index: i, tipo, prompt, identificador: item.wIdentificador });
         } else {
           console.warn(
@@ -473,9 +468,6 @@ function runExecLoop({ onDisplay, onCapture, timeoutMs = 180000 } = {}) {
         }
       }
 
-      // Se nenhum item exigia captura interativa real, tenta ler display do
-      // pinpad antes de seguir pra próxima iteração (replica o comportamento
-      // do Fluxos.FluxoExecTransac quando count=0).
       if (interactiveCaptures === 0) {
         const dbuf = Buffer.alloc(512);
         try {
@@ -491,7 +483,6 @@ function runExecLoop({ onDisplay, onCapture, timeoutMs = 180000 } = {}) {
     }
 
     if (ret === PWRET.NOTHING || ret === PWRET.DISPLAY) {
-      // Lê display do pinpad (uint VALOR, não ponteiro!)
       const dbuf = Buffer.alloc(512);
       try {
         const r2 = normalizeRet(fn.PPEventLoop(dbuf, 512));
@@ -509,6 +500,104 @@ function runExecLoop({ onDisplay, onCapture, timeoutMs = 180000 } = {}) {
     );
   }
 }
+
+// ============================================================
+// Versão ASYNC do loop — usa setImmediate entre iterações para
+// não travar o event loop do Node (e portanto manter /health e
+// outras rotas HTTP respondendo enquanto o pinpad está aberto).
+// Usado por operações longas/interativas (admin, install).
+// ============================================================
+function runExecLoopAsync({ onDisplay, onCapture, timeoutMs = 60000, shouldAbort } = {}) {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    const buffer = [{}, {}, {}, {}, {}, {}, {}, {}, {}];
+
+    const tick = () => {
+      try {
+        if (shouldAbort && shouldAbort()) {
+          if (fn.PPAbort) { try { fn.PPAbort(); } catch { /* ignore */ } }
+          return reject(new Error("Operação abortada"));
+        }
+        if (Date.now() - start > timeoutMs) {
+          if (fn.PPAbort) { try { fn.PPAbort(); } catch { /* ignore */ } }
+          return reject(new Error("Timeout transação TEF"));
+        }
+
+        const numRef = [9];
+        const ret = normalizeRet(fn.ExecTransac(buffer, numRef));
+
+        if (ret === PWRET.OK) return resolve({ ret });
+        if (ret === PWRET.CANCEL) return reject(new Error("Transação cancelada (operador/pinpad)"));
+        if (ret === PWRET.TIMEOUT) return reject(new Error("Timeout no pinpad"));
+        if (ret === PWRET.COMMERROR) return reject(new Error("Erro de comunicação PayGo"));
+
+        if (ret === PWRET.MOREDATA) {
+          const count = numRef[0] | 0;
+          let interactiveCaptures = 0;
+          for (let i = 0; i < count; i++) {
+            const item = buffer[i] || {};
+            const tipo = item.bTipoDeDado;
+            const prompt = (item.szPrompt || "").replace(/\0.*$/, "");
+            if (tipo === undefined || tipo === 0 || tipo === null) continue;
+            if (tipo === PWDAT.DSPCHECKOUT || tipo === PWDAT.DSPQRCODE) {
+              if (onDisplay) onDisplay(prompt);
+              continue;
+            }
+            interactiveCaptures++;
+            if (onCapture) onCapture({ index: i, tipo, prompt, identificador: item.wIdentificador });
+          }
+          if (interactiveCaptures === 0) {
+            const dbuf = Buffer.alloc(512);
+            try {
+              const r2 = normalizeRet(fn.PPEventLoop(dbuf, 512));
+              if (r2 === PWRET.OK && onDisplay) {
+                const end = dbuf.indexOf(0);
+                const msg = dbuf.slice(0, end >= 0 ? end : 512).toString("latin1");
+                if (msg) onDisplay(msg);
+              }
+            } catch { /* ignore */ }
+          }
+          return setImmediate(tick);
+        }
+
+        if (ret === PWRET.NOTHING || ret === PWRET.DISPLAY) {
+          const dbuf = Buffer.alloc(512);
+          try {
+            const r2 = normalizeRet(fn.PPEventLoop(dbuf, 512));
+            if (r2 === PWRET.OK && onDisplay) {
+              const end = dbuf.indexOf(0);
+              const msg = dbuf.slice(0, end >= 0 ? end : 512).toString("latin1");
+              if (msg) onDisplay(msg);
+            }
+          } catch { /* ignore */ }
+          return setImmediate(tick);
+        }
+
+        return reject(new Error(
+          `PW_iExecTransac ret=${ret}${explainRet(ret) ? ` — ${explainRet(ret)}` : ""}`,
+        ));
+      } catch (e) {
+        reject(e);
+      }
+    };
+
+    setImmediate(tick);
+  });
+}
+
+// Estado da operação ADM em background (para não bloquear o agente)
+let adminInFlight = null; // { startedAt, status, message, error, receipts }
+function abortAdm() {
+  if (fn && fn.PPAbort) { try { fn.PPAbort(); } catch { /* ignore */ } }
+  if (adminInFlight && adminInFlight.status === "running") {
+    adminInFlight.status = "aborted";
+    adminInFlight.message = "Abortado pelo usuário";
+  }
+}
+function getAdmStatus() {
+  return adminInFlight || { status: "idle" };
+}
+
 
 function collectReceipts() {
   return {
