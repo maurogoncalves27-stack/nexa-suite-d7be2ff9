@@ -903,6 +903,7 @@ module.exports = {
   administrativoAsync,
   abortAdm,
   getAdmStatus,
+  respondAdm,
 
   instalarPdc,
   diagnostics,
