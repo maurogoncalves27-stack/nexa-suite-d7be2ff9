@@ -304,12 +304,16 @@ function explainRet(ret) {
 }
 
 function diagnostics() {
+  const pdcInstalledAt = WORK_DIR_CANDIDATES.find((w) => hasPdcInstalled(w, PDC_FROM_ENV)) || null;
   return {
     dllExists: fs.existsSync(DLL_PATH),
     workdirExists: fs.existsSync(WORK_DIR),
     missing: [DLL_PATH, WORK_DIR].filter((p) => !fs.existsSync(p)),
     expected: { DLL_PATH, WORK_DIR, PAYGO_BASE },
     searchedBases: DEFAULT_BASES,
+    workDirCandidates: WORK_DIR_CANDIDATES,
+    pdcFromEnv: PDC_FROM_ENV || null,
+    pdcInstalledAt,
     arch: process.arch,
     initialized,
     lastInitError,
