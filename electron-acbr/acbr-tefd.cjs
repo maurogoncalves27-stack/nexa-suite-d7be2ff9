@@ -974,21 +974,30 @@ function confirmarTransacao(status, receipts) {
  * @param {object} req { valor (number em reais), tipo, parcelas, financiamento, onDisplay, onCapture }
  *   tipo: 'credito' | 'debito' | 'voucher'
  */
-function efetuarPagamento({ valor, tipo = "credito", parcelas = 1, financiamento = 1, onDisplay, onCapture } = {}) {
+function efetuarPagamento({ valor, tipo = "credito", parcelas = 1, financiamento = 1, fiscalRef, onDisplay, onCapture } = {}) {
   if (!valor || valor <= 0) throw new Error("valor obrigatório");
   startTransaction(PWOPER.SALE, "sale");
 
   const centavos = Math.round(Number(valor) * 100).toString();
   const cardTypeMap = { credito: "1", debito: "2", voucher: "4" };
   const cardType = cardTypeMap[tipo] || null;
+  const saleId = String(fiscalRef || `NEXA${Date.now()}`).slice(0, 12);
 
   fn.AddParam(PWINFO.TOTAMNT, centavos);
   fn.AddParam(PWINFO.CURRENCY, "986");
   fn.AddParam(PWINFO.CURREXP, "2");
-  if (cardType) fn.AddParam(PWINFO.CARDTYPE, cardType);
-  if (tipo === "credito" && parcelas > 1) {
-    fn.AddParam(PWINFO.INSTALLMENTS, String(parcelas));
-    fn.AddParam(PWINFO.FINTYPE, String(financiamento || 4));
+  fn.AddParam(PWINFO.FISCALREF, saleId);
+  if (tipo === "credito") {
+    if (cardType) fn.AddParam(PWINFO.CARDTYPE, cardType);
+    fn.AddParam(PWINFO.FINTYPE, parcelas > 1 ? "4" : "1");
+    if (parcelas > 1) fn.AddParam(PWINFO.INSTALLMENTS, String(parcelas));
+    fn.AddParam(PWINFO.PAYMNTTYPE, "1");
+  } else if (tipo === "debito") {
+    if (cardType) fn.AddParam(PWINFO.CARDTYPE, cardType);
+    fn.AddParam(PWINFO.FINTYPE, "1");
+    fn.AddParam(PWINFO.PAYMNTTYPE, "1");
+  } else if (tipo === "voucher" && cardType) {
+    fn.AddParam(PWINFO.CARDTYPE, cardType);
   }
 
   let receipts;
