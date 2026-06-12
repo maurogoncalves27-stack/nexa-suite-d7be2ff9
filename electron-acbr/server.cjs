@@ -249,7 +249,7 @@ async function handle(req, res) {
       const body = await readBody(req).catch(() => ({}));
       // Fire-and-forget — pinpad é interativo; não bloqueia HTTP.
       tef.administrativoAsync({
-        timeoutMs: 60000,
+        timeoutMs: 600000, // 10 min — alinhado com a demo Setis (PAYGO_TRANSACTION_TIMEOUT_MS)
         technicalPassword: body?.technicalPassword,
         pinpadPort: body?.pinpadPort,
         merchantCode: body?.merchantCode,
