@@ -95,11 +95,12 @@ function createTray() {
     tray = new Tray(nativeImage.createFromPath(iconPath));
     const contextMenu = Menu.buildFromTemplate([
       { label: "Mostrar status", click: () => mainWindow?.show() },
-      { label: "Abrir /health no navegador", click: () => shell.openExternal("http://127.0.0.1:3030/health") },
+      { label: "Abrir /health (HTTP 3030)", click: () => shell.openExternal("http://127.0.0.1:3030/health") },
+      { label: "Abrir /health (HTTPS 3031)", click: () => shell.openExternal("https://127.0.0.1:3031/health") },
       { type: "separator" },
       { label: "Sair", click: () => { app.isQuiting = true; app.quit(); } },
     ]);
-    tray.setToolTip("NEXA ACBr Agent — porta 3030");
+    tray.setToolTip("NEXA ACBr Agent — HTTP 3030 / HTTPS 3031");
     tray.setContextMenu(contextMenu);
     tray.on("click", () => mainWindow?.show());
   } catch (e) {
