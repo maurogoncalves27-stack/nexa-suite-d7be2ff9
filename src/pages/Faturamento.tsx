@@ -138,15 +138,25 @@ export default function Faturamento() {
 
   async function load() {
     setLoading(true);
-    // NOTA: dados antigos vindos do Saipos (pos_sales) foram descartados.
-    // Toda a fonte de faturamento agora é monthly_revenue (manual via dialog
-    // até /pdv-novo entrar em produção).
-    const [r, s, b] = await Promise.all([
-      supabase.from("monthly_revenue").select("*").order("year").order("month"),
+    // Fonte: monthly_revenue (alimentada por daily_revenue via trigger).
+    // PAGINAR — passa de 1000 linhas (Supabase corta o default), por isso 2025 sumia.
+    const all: any[] = [];
+    const step = 1000;
+    for (let off = 0; ; off += step) {
+      const { data, error } = await supabase
+        .from("monthly_revenue")
+        .select("*")
+        .order("year").order("month").order("day")
+        .range(off, off + step - 1);
+      if (error || !data || data.length === 0) break;
+      all.push(...data);
+      if (data.length < step) break;
+    }
+    const [s, b] = await Promise.all([
       supabase.from("stores").select("id,name").eq("is_virtual", false).order("name"),
       supabase.from("brands").select("id,name").order("name"),
     ]);
-    if (r.data) setRows((r.data as any[]).map(x => ({ ...x, gross_revenue: Number(x.gross_revenue) })));
+    setRows(all.map(x => ({ ...x, gross_revenue: Number(x.gross_revenue) })));
     if (s.data) setStores(s.data as Store[]);
     if (b.data) setBrands(b.data as Brand[]);
     setOwnSales([]);

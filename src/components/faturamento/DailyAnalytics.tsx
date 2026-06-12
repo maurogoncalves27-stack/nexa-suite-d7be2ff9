@@ -98,15 +98,14 @@ export function DailyAnalytics() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      // paginar monthly_revenue
+      // Fonte de verdade do diário = daily_revenue.
       const all: any[] = [];
       const step = 1000;
       for (let off = 0; ; off += step) {
         const { data, error } = await supabase
-          .from("monthly_revenue")
-          .select("year,month,day,store_id,brand_id,gross_revenue,is_consolidated")
-          .gt("day", 0)
-          .order("year").order("month").order("day")
+          .from("daily_revenue")
+          .select("sale_date,store_id,brand_id,gross_revenue")
+          .order("sale_date")
           .range(off, off + step - 1);
         if (error || !data || data.length === 0) break;
         all.push(...data);
@@ -117,13 +116,14 @@ export function DailyAnalytics() {
         supabase.from("brands").select("id,name").order("name"),
         supabase.from("holidays").select("holiday_date,name,scope,store_id").order("holiday_date"),
       ]);
-      setRows(all
-        .filter((r: any) => !r.is_consolidated)
-        .map((r: any) => ({
-          year: r.year, month: r.month, day: r.day,
+      setRows(all.map((r: any) => {
+        const [y, m, d] = String(r.sale_date).split("-").map((n: string) => parseInt(n, 10));
+        return {
+          year: y, month: m, day: d,
           store_id: r.store_id, brand_id: r.brand_id,
           gross_revenue: Number(r.gross_revenue) || 0,
-        })));
+        };
+      }));
       if (st.data) setStores(st.data as any);
       if (br.data) setBrands(br.data as any);
       if (hd.data) {
