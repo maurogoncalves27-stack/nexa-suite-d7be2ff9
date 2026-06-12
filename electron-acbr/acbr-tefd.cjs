@@ -57,7 +57,17 @@ function findDllPath() {
 }
 
 function bridgeScriptPath() {
-  return path.join(__dirname, "scripts", "paygo-bridge.ps1");
+  // PowerShell não consegue ler arquivos dentro do app.asar.
+  // Em produção o electron-builder desempacota scripts/** para app.asar.unpacked.
+  const inAsar = path.join(__dirname, "scripts", "paygo-bridge.ps1");
+  if (inAsar.includes(`${path.sep}app.asar${path.sep}`)) {
+    const unpacked = inAsar.replace(
+      `${path.sep}app.asar${path.sep}`,
+      `${path.sep}app.asar.unpacked${path.sep}`
+    );
+    if (fs.existsSync(unpacked)) return unpacked;
+  }
+  return inAsar;
 }
 
 // ---------- defaults do ambiente NEXA ----------
