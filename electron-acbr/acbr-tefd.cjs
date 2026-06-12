@@ -1061,15 +1061,38 @@ function administrativoAsync({ timeoutMs = 60000, technicalPassword, pinpadPort,
     pendingResolve: null,
     captureSeq: 0,
   };
+
+  // Helpers — replica AddActivationParams + AmbienteHost/Port do demo PS.
+  const onlyDigits = (v) => String(v || "").replace(/\D/g, "");
+  const normalizePinpadPort = (v) => {
+    const d = onlyDigits(v);
+    if (!d) return "";
+    const n = parseInt(d, 10);
+    return String(n).padStart(2, "0");
+  };
+  const splitHost = (envStr) => {
+    const s = String(envStr || "");
+    const i = s.lastIndexOf(":");
+    return i > 0 ? [s.slice(0, i), s.slice(i + 1)] : [s, ""];
+  };
+  const senhaTec = technicalPassword ? String(technicalPassword) : "";
+  const pinpadPortStr = normalizePinpadPort(pinpadPort);
+  const [autIp, autPort] = splitHost(host);
+
   try {
     startTransaction(PWOPER.ADMIN, "admin");
-    if (merchantCode) fn.AddParam(PWINFO.MERCHCNPJCPF, String(merchantCode).replace(/\D/g, ""));
+    // Demo: AddActivationParams na MESMA ordem.
+    if (merchantCode) fn.AddParam(PWINFO.MERCHCNPJCPF, onlyDigits(merchantCode));
     if (terminalCode) fn.AddParam(PWINFO.POSID, String(terminalCode));
-    if (host) fn.AddParam(PWINFO.AUTADDRESS, String(host));
-    if (technicalPassword) fn.AddParam(PWINFO.AUTHTECHUSER, String(technicalPassword));
-    if (pinpadPort) {
-      fn.AddParam(PWINFO.PPCOMMPORT, String(pinpadPort));
+    // USINGPINPAD sempre "1" — sem isso o PdC ignora a porta.
+    fn.AddParam(PWINFO.USINGPINPAD, "1");
+    if (pinpadPortStr) fn.AddParam(PWINFO.PPCOMMPORT, pinpadPortStr);
+    if (host) {
+      fn.AddParam(PWINFO.DESTTCPIP, String(host));
+      if (autIp) fn.AddParam(PWINFO.AUTIP, autIp);
+      if (autPort) fn.AddParam(PWINFO.AUTPORT, autPort);
     }
+    // NÃO mandar AUTHTECHUSER aqui — demo só responde quando PWDAT_USERAUTH chega.
   } catch (e) {
     adminInFlight = { status: "error", error: e.message, startedAt: Date.now() };
     return Promise.reject(e);
@@ -1082,11 +1105,31 @@ function administrativoAsync({ timeoutMs = 60000, technicalPassword, pinpadPort,
     },
     onInteractiveCaptures: (captures) => new Promise((resolve) => {
       if (!adminInFlight) return resolve(null);
+
+      // Auto-responde USERAUTH (senha técnica/gerencial) sem pedir operador.
+      const auto = [];
+      const pending = [];
+      for (const c of captures) {
+        if (c.tipo === PWDAT.USERAUTH &&
+            (c.identificador === PWINFO.AUTHTECHUSER || c.identificador === PWINFO.AUTHMNGTUSER) &&
+            senhaTec) {
+          auto.push({ identificador: c.identificador, value: senhaTec });
+        } else {
+          pending.push(c);
+        }
+      }
+      if (pending.length === 0 && auto.length > 0) {
+        console.log("[TEF auto-USERAUTH] respondendo senha técnica");
+        return resolve(auto);
+      }
       adminInFlight.captureSeq = (adminInFlight.captureSeq || 0) + 1;
-      adminInFlight.pendingCaptures = captures.map((c) => ({ ...c, seq: adminInFlight.captureSeq }));
+      adminInFlight.pendingCaptures = pending.map((c) => ({ ...c, seq: adminInFlight.captureSeq }));
       adminInFlight.status = "waiting_input";
-      adminInFlight.message = captures[0]?.prompt || "Aguardando entrada do operador";
-      adminInFlight.pendingResolve = resolve;
+      adminInFlight.message = pending[0]?.prompt || "Aguardando entrada do operador";
+      adminInFlight.pendingResolve = (responses) => {
+        if (!responses) return resolve(null);
+        resolve([...auto, ...responses]);
+      };
       console.log("[TEF capture] aguardando resposta:", JSON.stringify(adminInFlight.pendingCaptures));
     }),
     shouldAbort: () => adminInFlight && adminInFlight.status === "aborted",
