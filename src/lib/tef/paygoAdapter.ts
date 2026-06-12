@@ -225,6 +225,66 @@ export const paygoAdministrativo = async (
   }
 };
 
+export interface PaygoAdmCapture {
+  identificador: number;
+  tipo: number; // 1=MENU, 2=TYPED, 3=BARCODE
+  prompt: string;
+  options?: { label: string; value: string }[];
+  tamMin?: number;
+  tamMax?: number;
+  mascara?: string;
+  ocultar?: boolean;
+  seq?: number;
+}
+
+export interface PaygoAdmStatus {
+  status: "idle" | "running" | "waiting_input" | "done" | "error" | "aborted";
+  message?: string;
+  error?: string;
+  receipts?: Record<string, unknown>;
+  pendingCaptures?: PaygoAdmCapture[] | null;
+  captureSeq?: number;
+  startedAt?: number;
+}
+
+export const paygoAdmStatus = async (agentUrl: string): Promise<PaygoAdmStatus> => {
+  try {
+    const r = await fetch(joinAgentUrl(agentUrl, "/tef/admin/status"));
+    const data = await r.json().catch(() => ({}));
+    return data as PaygoAdmStatus;
+  } catch (e) {
+    return { status: "error", error: e instanceof Error ? e.message : "offline" };
+  }
+};
+
+export const paygoAdmRespond = async (
+  agentUrl: string,
+  responses: { identificador: number; value: string }[],
+): Promise<{ ok: boolean; error?: string }> => {
+  try {
+    const r = await fetch(joinAgentUrl(agentUrl, "/tef/admin/respond"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ responses }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) return { ok: false, error: (data as any)?.error ?? `HTTP ${r.status}` };
+    return data as { ok: boolean };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "offline" };
+  }
+};
+
+export const paygoAdmAbort = async (agentUrl: string): Promise<{ ok: boolean }> => {
+  try {
+    const r = await fetch(joinAgentUrl(agentUrl, "/tef/admin/abort"), { method: "POST" });
+    const data = await r.json().catch(() => ({}));
+    return data as { ok: boolean };
+  } catch {
+    return { ok: false };
+  }
+};
+
 /**
  * Teste isolado da porta COM do pinpad — não usa PGWebLib/PdC/host.
  * Apenas tenta abrir \\.\COMn no Windows para confirmar se a porta existe,
