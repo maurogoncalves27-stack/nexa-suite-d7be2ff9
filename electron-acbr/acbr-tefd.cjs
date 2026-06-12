@@ -303,8 +303,11 @@ function isAvailable() {
 function ensureInit(opts = {}) {
   // mantém compat com chamadas síncronas antigas: agora só garante que
   // o host PS está spawned. Retorna uma promise; o server.cjs já chama
-  // ensureInit dentro do /health e ignora o retorno.
-  return ensureHost();
+  // ensureInit dentro do /health e ignora o retorno. O ensureHost já
+  // anexa .catch internamente para não emitir UnhandledRejection.
+  const p = ensureHost();
+  p.catch(() => {}); // duplo cinto-de-segurança
+  return p;
 }
 
 function versao() {
@@ -321,8 +324,13 @@ function diagnostics() {
     initialized: !!host,
     workingDir: process.env.PAYGO_WORKING_DIR || (dll ? path.dirname(dll) : null),
     defaults: { ...NEXA_DEFAULTS },
+    lastInitError: hostLastError,
+    lastInitErrorAt: hostLastErrorAt || null,
+    lastStderr: hostLastStderr || null,
+    cooldownMs: HOST_FAIL_COOLDOWN_MS,
   };
 }
+
 
 // ---------- venda ----------
 function methodToBridge(method) {
