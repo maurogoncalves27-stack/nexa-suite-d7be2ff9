@@ -482,101 +482,96 @@ function finalizar() {
 }
 
 // ============================================================
-// Loop principal — replica Fluxos.FluxoExecTransac do C#.
-// Aloca PW_GetData[9], chama PW_iExecTransac em loop, trata
-// MOREDATA/NOTHING continuando. Capturas interativas (MENU,
-// TYPED, USERAUTH, etc.) são reportadas via onCapture callback
-// — sem callback, aborta com erro (cenário headless/sandbox
-// automatizado roda 100% no pinpad).
 // ============================================================
-function runExecLoop({ onDisplay, onCapture, timeoutMs = 180000 } = {}) {
-  const start = Date.now();
-  const buffer = [{}, {}, {}, {}, {}, {}, {}, {}, {}]; // 9 structs vazias
+// Loop principal — replica Fluxos.FluxoExecTransac do demo Setis.
+// Aloca PW_GetData[9], chama PW_iExecTransac e PILOTA O PINPAD
+// (PW_iPPGetCard, PW_iPPGetPIN, PW_iPPRemoveCard, etc.) conforme
+// o tipo retornado em cada slot. Sem essa pilotagem, o pinpad
+// fica esperando para sempre e a transação dá timeout.
+// ============================================================
 
-  while (true) {
-    if (Date.now() - start > timeoutMs) {
-      if (fn.PPAbort) { try { fn.PPAbort(); } catch { /* ignore */ } }
-      throw new Error("Timeout transação TEF");
-    }
+// Sentinel: timeout depois de PPREMCRD com mensagem "AUTORIZADA"
+// é tratado como OK — pinpad já liberou a transação, só travou
+// na finalização do remove-card.
+const BRIDGE_AUTHORIZED_AFTER_REMOVE_TIMEOUT = 1;
 
-    const numRef = [9];
-    const ret = normalizeRet(fn.ExecTransac(buffer, numRef));
-
-    if (ret === PWRET.OK) return { ret };
-
-    if (ret === PWRET.CANCEL) throw new Error("Transação cancelada (operador/pinpad)");
-    if (ret === PWRET.TIMEOUT) throw new Error("Timeout no pinpad");
-    if (ret === PWRET.COMMERROR) throw new Error("Erro de comunicação PayGo");
-
-    if (ret === PWRET.MOREDATA) {
-      const count = numRef[0] | 0;
-      let interactiveCaptures = 0;
-      for (let i = 0; i < count; i++) {
-        const item = buffer[i] || {};
-        const tipo = item.bTipoDeDado;
-        const prompt = (item.szPrompt || "").replace(/\0.*$/, "");
-
-        if (tipo === undefined || tipo === 0 || tipo === null) {
-          console.log(`[TEF MOREDATA] slot ${i} sem tipo definido — ignorando`);
-          continue;
-        }
-
-        if (tipo === PWDAT.DSPCHECKOUT || tipo === PWDAT.DSPQRCODE) {
-          if (onDisplay) onDisplay(prompt);
-          continue;
-        }
-
-        interactiveCaptures++;
-        if (onCapture) {
-          onCapture({ index: i, tipo, prompt, identificador: item.wIdentificador });
-        } else {
-          console.warn(
-            `[TEF MOREDATA] captura interativa solicitada tipo=${tipo} prompt="${prompt}" — ignorada (agente headless)`,
-          );
-        }
-      }
-
-      if (interactiveCaptures === 0) {
-        const dbuf = Buffer.alloc(512);
-        try {
-          const r2 = normalizeRet(fn.PPEventLoop(dbuf, 512));
-          if (r2 === PWRET.OK && onDisplay) {
-            const end = dbuf.indexOf(0);
-            const msg = dbuf.slice(0, end >= 0 ? end : 512).toString("latin1");
-            if (msg) onDisplay(msg);
-          }
-        } catch { /* ignore */ }
-      }
-      continue;
-    }
-
-    if (ret === PWRET.NOTHING || ret === PWRET.DISPLAY) {
-      const dbuf = Buffer.alloc(512);
-      try {
-        const r2 = normalizeRet(fn.PPEventLoop(dbuf, 512));
-        if (r2 === PWRET.OK && onDisplay) {
-          const end = dbuf.indexOf(0);
-          const msg = dbuf.slice(0, end >= 0 ? end : 512).toString("latin1");
-          if (msg) onDisplay(msg);
-        }
-      } catch { /* ignore */ }
-      continue;
-    }
-
-    throw new Error(
-      `PW_iExecTransac ret=${ret}${explainRet(ret) ? ` — ${explainRet(ret)}` : ""}`,
-    );
+function readDisplay(bufSize = 512) {
+  const dbuf = Buffer.alloc(bufSize);
+  try {
+    const r = normalizeRet(fn.PPEventLoop(dbuf, bufSize));
+    const end = dbuf.indexOf(0);
+    const msg = dbuf.slice(0, end >= 0 ? end : bufSize).toString("latin1").trim();
+    return { ret: r, msg };
+  } catch {
+    return { ret: -1, msg: "" };
   }
 }
 
-// ============================================================
-// Versão ASYNC do loop — usa setImmediate entre iterações para
-// não travar o event loop do Node. Suporta captura interativa
-// (PWDAT.MENU/TYPED/BARCODE) via callback `onInteractiveCaptures`
-// que retorna Promise<Array<{identificador,value}>>. Quando o
-// callback resolve, faz PW_iAddParam de cada resposta e segue o
-// loop conforme spec PayGo.
-// ============================================================
+function isAuthorizedMessage(msg) {
+  return (msg || "").toUpperCase().includes("AUTORIZ");
+}
+
+// PinpadLoop síncrono — drena PW_iPPEventLoop até PWRET_OK ou erro.
+function pinpadLoop({ context = "", onDisplay, timeoutMs = 270000 } = {}) {
+  const deadline = Date.now() + (context === "removeCard" ? Math.min(timeoutMs, 30000) : timeoutMs);
+  let lastDisplay = "";
+  // Sleep curto: PWRET_NOTHING significa "pinpad ainda processando".
+  // Bloqueante (Atomics.wait) pra não floodar — só é usado no caminho
+  // síncrono. O async tem sleep via setTimeout.
+  const sleepSync = (ms) => {
+    const sab = new SharedArrayBuffer(4);
+    Atomics.wait(new Int32Array(sab), 0, 0, ms);
+  };
+  while (true) {
+    if (Date.now() > deadline) {
+      if (fn.PPAbort) { try { fn.PPAbort(); } catch { /* ignore */ } }
+      return PWRET.TIMEOUT;
+    }
+    const { ret, msg } = readDisplay(256);
+    if (ret === PWRET.OK) return PWRET.OK;
+    if (ret === PWRET.DISPLAY || ret === PWRET.NOTHING) {
+      if (ret === PWRET.DISPLAY && msg && msg !== lastDisplay) {
+        lastDisplay = msg;
+        if (onDisplay) onDisplay(msg);
+      }
+      sleepSync(150);
+      continue;
+    }
+    return ret;
+  }
+}
+
+function pinpadLoopAsync({ context = "", onDisplay, timeoutMs = 270000, shouldAbort } = {}) {
+  return new Promise((resolve) => {
+    const deadline = Date.now() + (context === "removeCard" ? Math.min(timeoutMs, 30000) : timeoutMs);
+    let lastDisplay = "";
+    let nothingCount = 0;
+    const tick = () => {
+      if (shouldAbort && shouldAbort()) {
+        if (fn.PPAbort) { try { fn.PPAbort(); } catch { /* ignore */ } }
+        return resolve(PWRET.CANCEL);
+      }
+      if (Date.now() > deadline) {
+        if (fn.PPAbort) { try { fn.PPAbort(); } catch { /* ignore */ } }
+        return resolve(PWRET.TIMEOUT);
+      }
+      const { ret, msg } = readDisplay(256);
+      if (ret === PWRET.OK) return resolve(PWRET.OK);
+      if (ret === PWRET.DISPLAY || ret === PWRET.NOTHING) {
+        if (ret === PWRET.DISPLAY && msg && msg !== lastDisplay) {
+          lastDisplay = msg;
+          if (onDisplay) onDisplay(msg);
+        }
+        nothingCount = ret === PWRET.NOTHING ? nothingCount + 1 : 0;
+        return setTimeout(tick, nothingCount > 20 ? 500 : 150);
+      }
+      return resolve(ret);
+    };
+    setImmediate(tick);
+  });
+}
+
+// Extrai opções/máscara para reportar capturas que precisam do operador.
 function extractCaptureItem(item) {
   const tipo = item.bTipoDeDado;
   const prompt = (item.szPrompt || "").replace(/\0.*$/, "").trim();
@@ -602,10 +597,233 @@ function extractCaptureItem(item) {
   return out;
 }
 
+// Processa um único slot do MOREDATA, pilotando o pinpad se preciso.
+// Retorna { handled: true, ret } se pilotou (com possível erro do pinpad),
+// ou { handled: false, capture: {...} } se precisa de input do operador.
+function handleDataSlot(item, index, { onDisplay } = {}) {
+  const tipo = item.bTipoDeDado;
+  if (tipo == null || tipo === 0) return { handled: true, ret: PWRET.OK };
+
+  switch (tipo) {
+    case PWDAT.MENU:
+    case PWDAT.TYPED:
+    case PWDAT.BARCODE:
+    case PWDAT.USERAUTH:
+      return { handled: false, capture: extractCaptureItem(item) };
+
+    case PWDAT.CARDINF: {
+      const mode = item.ulTipoEntradaCartao | 0;
+      // mode 1 = digitado (precisa de operador). 2/3 = pinpad.
+      if (mode === 1) return { handled: false, capture: extractCaptureItem(item) };
+      if (!fn.PPGetCard) return { handled: true, ret: -2499 };
+      const r = normalizeRet(fn.PPGetCard(index));
+      if (r !== PWRET.OK) return { handled: true, ret: r };
+      const r2 = pinpadLoop({ context: "card", onDisplay });
+      if (r2 === -2486 /* FALLBACK */ && mode === 3) {
+        return { handled: false, capture: extractCaptureItem(item) };
+      }
+      return { handled: true, ret: r2 };
+    }
+
+    case PWDAT.PPENTRY: {
+      if (!fn.PPGetData) return { handled: true, ret: -2499 };
+      const r = normalizeRet(fn.PPGetData(index));
+      return { handled: true, ret: r !== PWRET.OK ? r : pinpadLoop({ context: "entry", onDisplay }) };
+    }
+    case PWDAT.PPENCPIN: {
+      if (!fn.PPGetPIN) return { handled: true, ret: -2499 };
+      const r = normalizeRet(fn.PPGetPIN(index));
+      return { handled: true, ret: r !== PWRET.OK ? r : pinpadLoop({ context: "pin", onDisplay }) };
+    }
+    case PWDAT.CARDOFF: {
+      if (!fn.PPGoOnChip) return { handled: true, ret: -2499 };
+      const r = normalizeRet(fn.PPGoOnChip(index));
+      return { handled: true, ret: r !== PWRET.OK ? r : pinpadLoop({ context: "offlineChip", onDisplay }) };
+    }
+    case PWDAT.CARDONL: {
+      if (!fn.PPFinishChip) return { handled: true, ret: -2499 };
+      const r = normalizeRet(fn.PPFinishChip(index));
+      return { handled: true, ret: r !== PWRET.OK ? r : pinpadLoop({ context: "onlineChip", onDisplay }) };
+    }
+    case PWDAT.PPCONF: {
+      if (!fn.PPConfirmData) return { handled: true, ret: -2499 };
+      const r = normalizeRet(fn.PPConfirmData(index));
+      return { handled: true, ret: r !== PWRET.OK ? r : pinpadLoop({ context: "confirmData", onDisplay }) };
+    }
+    case PWDAT.PPREMCRD: {
+      if (!fn.PPRemoveCard) return { handled: true, ret: PWRET.OK };
+      const r = normalizeRet(fn.PPRemoveCard());
+      if (r !== PWRET.OK) return { handled: true, ret: r };
+      const r2 = pinpadLoop({ context: "removeCard", onDisplay });
+      if (r2 === PWRET.TIMEOUT) {
+        const msg = getResult(PWINFO.RESULTMSG, 2048);
+        if (isAuthorizedMessage(msg)) {
+          if (fn.PPAbort) { try { fn.PPAbort(); } catch { /* ignore */ } }
+          return { handled: true, ret: BRIDGE_AUTHORIZED_AFTER_REMOVE_TIMEOUT };
+        }
+      }
+      return { handled: true, ret: r2 };
+    }
+    case PWDAT.PPGENCMD: {
+      if (!fn.PPGenericCMD) return { handled: true, ret: -2499 };
+      const r = normalizeRet(fn.PPGenericCMD(index));
+      return { handled: true, ret: r !== PWRET.OK ? r : pinpadLoop({ context: "genericCommand", onDisplay }) };
+    }
+    case PWDAT.PPDATAPOSCNF: {
+      if (!fn.PPPositiveConfirmation) return { handled: true, ret: -2499 };
+      const r = normalizeRet(fn.PPPositiveConfirmation(index));
+      return { handled: true, ret: r !== PWRET.OK ? r : pinpadLoop({ context: "positiveConfirmation", onDisplay }) };
+    }
+    case PWDAT.TSTKEY: {
+      if (!fn.PPTestKey) return { handled: true, ret: -2499 };
+      const r = normalizeRet(fn.PPTestKey(index));
+      return { handled: true, ret: r !== PWRET.OK ? r : pinpadLoop({ context: "testKey", onDisplay }) };
+    }
+    case PWDAT.DSPCHECKOUT:
+    case PWDAT.DSPQRCODE: {
+      const valor = (item.szValorInicial || "").replace(/\0.*$/, "");
+      if (onDisplay) onDisplay(valor || (item.szPrompt || "").replace(/\0.*$/, ""));
+      try { fn.AddParam(item.wIdentificador, valor); } catch { /* ignore */ }
+      return { handled: true, ret: PWRET.OK };
+    }
+    default:
+      console.warn(`[TEF] tipo PWDAT desconhecido=${tipo} ident=0x${(item.wIdentificador||0).toString(16)}`);
+      return { handled: true, ret: PWRET.OK };
+  }
+}
+
+function runExecLoop({ onDisplay, onCapture, timeoutMs = 180000 } = {}) {
+  const deadline = Date.now() + timeoutMs;
+  const buffer = [{}, {}, {}, {}, {}, {}, {}, {}, {}];
+
+  while (true) {
+    if (Date.now() > deadline) {
+      if (fn.PPAbort) { try { fn.PPAbort(); } catch { /* ignore */ } }
+      throw new Error("Timeout transação TEF");
+    }
+
+    const numRef = [9];
+    const ret = normalizeRet(fn.ExecTransac(buffer, numRef));
+
+    if (ret === PWRET.OK) return { ret };
+    if (ret === BRIDGE_AUTHORIZED_AFTER_REMOVE_TIMEOUT) return { ret: PWRET.OK, authorizedAfterRemove: true };
+    if (ret === PWRET.CANCEL) throw new Error("Transação cancelada (operador/pinpad)");
+    if (ret === PWRET.TIMEOUT) {
+      const msg = getResult(PWINFO.RESULTMSG, 2048);
+      if (isAuthorizedMessage(msg)) {
+        if (fn.PPAbort) { try { fn.PPAbort(); } catch { /* ignore */ } }
+        return { ret: PWRET.OK, authorizedAfterRemove: true };
+      }
+      throw new Error("Timeout no pinpad");
+    }
+    if (ret === PWRET.COMMERROR) throw new Error("Erro de comunicação PayGo");
+
+    if (ret === PWRET.MOREDATA || ret === PWRET.NOTHING || ret === PWRET.DISPLAY) {
+      const count = ret === PWRET.MOREDATA ? (numRef[0] | 0) : 0;
+      let interactivePending = false;
+      for (let i = 0; i < count; i++) {
+        const slot = handleDataSlot(buffer[i] || {}, i, { onDisplay });
+        if (!slot.handled) {
+          interactivePending = true;
+          if (onCapture) {
+            onCapture(slot.capture);
+          } else {
+            if (fn.PPAbort) { try { fn.PPAbort(); } catch { /* ignore */ } }
+            throw new Error(`Captura interativa solicitada tipo=${slot.capture.tipo} sem handler`);
+          }
+          break;
+        }
+        if (slot.ret !== PWRET.OK && slot.ret !== BRIDGE_AUTHORIZED_AFTER_REMOVE_TIMEOUT) {
+          throw new Error(`Pinpad falhou ret=${slot.ret}${explainRet(slot.ret) ? ` — ${explainRet(slot.ret)}` : ""}`);
+        }
+        if (slot.ret === BRIDGE_AUTHORIZED_AFTER_REMOVE_TIMEOUT) return { ret: PWRET.OK, authorizedAfterRemove: true };
+      }
+      if (!interactivePending && count === 0) {
+        const { msg } = readDisplay(512);
+        if (msg && onDisplay) onDisplay(msg);
+      }
+      continue;
+    }
+
+    throw new Error(`PW_iExecTransac ret=${ret}${explainRet(ret) ? ` — ${explainRet(ret)}` : ""}`);
+  }
+}
+
+// ============================================================
+// Versão ASYNC do loop — pilota o pinpad de forma não-bloqueante.
+// Suporta captura interativa via onInteractiveCaptures(captures)
+// => Promise<Array<{identificador,value}>>.
+// ============================================================
 function runExecLoopAsync({ onDisplay, onInteractiveCaptures, timeoutMs = 60000, shouldAbort } = {}) {
   return new Promise((resolve, reject) => {
-    const start = Date.now();
+    const deadline = Date.now() + timeoutMs;
     const buffer = [{}, {}, {}, {}, {}, {}, {}, {}, {}];
+
+    const handleSlotAsync = async (item, index) => {
+      const tipo = item.bTipoDeDado;
+      if (tipo == null || tipo === 0) return { handled: true, ret: PWRET.OK };
+
+      // Slots que o pinpad pilota — usa pinpadLoopAsync.
+      const pinpadDriven = {
+        [PWDAT.PPENTRY]: { fn: fn.PPGetData, ctx: "entry" },
+        [PWDAT.PPENCPIN]: { fn: fn.PPGetPIN, ctx: "pin" },
+        [PWDAT.CARDOFF]: { fn: fn.PPGoOnChip, ctx: "offlineChip" },
+        [PWDAT.CARDONL]: { fn: fn.PPFinishChip, ctx: "onlineChip" },
+        [PWDAT.PPCONF]: { fn: fn.PPConfirmData, ctx: "confirmData" },
+        [PWDAT.PPGENCMD]: { fn: fn.PPGenericCMD, ctx: "genericCommand" },
+        [PWDAT.PPDATAPOSCNF]: { fn: fn.PPPositiveConfirmation, ctx: "positiveConfirmation" },
+        [PWDAT.TSTKEY]: { fn: fn.PPTestKey, ctx: "testKey" },
+      };
+      if (pinpadDriven[tipo]) {
+        const def = pinpadDriven[tipo];
+        if (!def.fn) return { handled: true, ret: -2499 };
+        const r = normalizeRet(def.fn(index));
+        if (r !== PWRET.OK) return { handled: true, ret: r };
+        const r2 = await pinpadLoopAsync({ context: def.ctx, onDisplay, shouldAbort });
+        return { handled: true, ret: r2 };
+      }
+
+      if (tipo === PWDAT.CARDINF) {
+        const mode = item.ulTipoEntradaCartao | 0;
+        if (mode === 1) return { handled: false, capture: extractCaptureItem(item) };
+        if (!fn.PPGetCard) return { handled: true, ret: -2499 };
+        const r = normalizeRet(fn.PPGetCard(index));
+        if (r !== PWRET.OK) return { handled: true, ret: r };
+        const r2 = await pinpadLoopAsync({ context: "card", onDisplay, shouldAbort });
+        if (r2 === -2486 && mode === 3) return { handled: false, capture: extractCaptureItem(item) };
+        return { handled: true, ret: r2 };
+      }
+
+      if (tipo === PWDAT.PPREMCRD) {
+        if (!fn.PPRemoveCard) return { handled: true, ret: PWRET.OK };
+        const r = normalizeRet(fn.PPRemoveCard());
+        if (r !== PWRET.OK) return { handled: true, ret: r };
+        const r2 = await pinpadLoopAsync({ context: "removeCard", onDisplay, shouldAbort });
+        if (r2 === PWRET.TIMEOUT) {
+          const msg = getResult(PWINFO.RESULTMSG, 2048);
+          if (isAuthorizedMessage(msg)) {
+            if (fn.PPAbort) { try { fn.PPAbort(); } catch { /* ignore */ } }
+            return { handled: true, ret: BRIDGE_AUTHORIZED_AFTER_REMOVE_TIMEOUT };
+          }
+        }
+        return { handled: true, ret: r2 };
+      }
+
+      if (tipo === PWDAT.DSPCHECKOUT || tipo === PWDAT.DSPQRCODE) {
+        const valor = (item.szValorInicial || "").replace(/\0.*$/, "");
+        if (onDisplay) onDisplay(valor || (item.szPrompt || "").replace(/\0.*$/, ""));
+        try { fn.AddParam(item.wIdentificador, valor); } catch { /* ignore */ }
+        return { handled: true, ret: PWRET.OK };
+      }
+
+      // MENU/TYPED/BARCODE/USERAUTH precisam do operador.
+      if (tipo === PWDAT.MENU || tipo === PWDAT.TYPED || tipo === PWDAT.BARCODE || tipo === PWDAT.USERAUTH) {
+        return { handled: false, capture: extractCaptureItem(item) };
+      }
+
+      console.warn(`[TEF async] tipo PWDAT desconhecido=${tipo}`);
+      return { handled: true, ret: PWRET.OK };
+    };
 
     const tick = async () => {
       try {
@@ -613,7 +831,7 @@ function runExecLoopAsync({ onDisplay, onInteractiveCaptures, timeoutMs = 60000,
           if (fn.PPAbort) { try { fn.PPAbort(); } catch { /* ignore */ } }
           return reject(new Error("Operação abortada"));
         }
-        if (Date.now() - start > timeoutMs) {
+        if (Date.now() > deadline) {
           if (fn.PPAbort) { try { fn.PPAbort(); } catch { /* ignore */ } }
           return reject(new Error("Timeout transação TEF"));
         }
@@ -622,31 +840,38 @@ function runExecLoopAsync({ onDisplay, onInteractiveCaptures, timeoutMs = 60000,
         const ret = normalizeRet(fn.ExecTransac(buffer, numRef));
 
         if (ret === PWRET.OK) return resolve({ ret });
+        if (ret === BRIDGE_AUTHORIZED_AFTER_REMOVE_TIMEOUT) return resolve({ ret: PWRET.OK, authorizedAfterRemove: true });
         if (ret === PWRET.CANCEL) return reject(new Error("Transação cancelada (operador/pinpad)"));
-        if (ret === PWRET.TIMEOUT) return reject(new Error("Timeout no pinpad"));
+        if (ret === PWRET.TIMEOUT) {
+          const msg = getResult(PWINFO.RESULTMSG, 2048);
+          if (isAuthorizedMessage(msg)) {
+            if (fn.PPAbort) { try { fn.PPAbort(); } catch { /* ignore */ } }
+            return resolve({ ret: PWRET.OK, authorizedAfterRemove: true });
+          }
+          return reject(new Error("Timeout no pinpad"));
+        }
         if (ret === PWRET.COMMERROR) return reject(new Error("Erro de comunicação PayGo"));
 
-        if (ret === PWRET.MOREDATA) {
-          const count = numRef[0] | 0;
-          const captures = [];
+        if (ret === PWRET.MOREDATA || ret === PWRET.NOTHING || ret === PWRET.DISPLAY) {
+          const count = ret === PWRET.MOREDATA ? (numRef[0] | 0) : 0;
+          const interactiveCaptures = [];
           for (let i = 0; i < count; i++) {
-            const item = buffer[i] || {};
-            const tipo = item.bTipoDeDado;
-            const prompt = (item.szPrompt || "").replace(/\0.*$/, "");
-            if (tipo === undefined || tipo === 0 || tipo === null) continue;
-            if (tipo === PWDAT.DSPCHECKOUT || tipo === PWDAT.DSPQRCODE) {
-              if (onDisplay) onDisplay(prompt);
-              continue;
+            const slot = await handleSlotAsync(buffer[i] || {}, i);
+            if (!slot.handled) { interactiveCaptures.push(slot.capture); break; }
+            if (slot.ret === BRIDGE_AUTHORIZED_AFTER_REMOVE_TIMEOUT) {
+              return resolve({ ret: PWRET.OK, authorizedAfterRemove: true });
             }
-            captures.push(extractCaptureItem(item));
+            if (slot.ret !== PWRET.OK) {
+              return reject(new Error(`Pinpad falhou ret=${slot.ret}${explainRet(slot.ret) ? ` — ${explainRet(slot.ret)}` : ""}`));
+            }
           }
-          if (captures.length > 0) {
+          if (interactiveCaptures.length > 0) {
             if (!onInteractiveCaptures) {
               if (fn.PPAbort) { try { fn.PPAbort(); } catch { /* ignore */ } }
               return reject(new Error("Captura interativa solicitada e nenhum handler disponível"));
             }
             try {
-              const responses = await onInteractiveCaptures(captures);
+              const responses = await onInteractiveCaptures(interactiveCaptures);
               if (!responses) {
                 if (fn.PPAbort) { try { fn.PPAbort(); } catch { /* ignore */ } }
                 return reject(new Error("Captura interativa cancelada"));
@@ -660,36 +885,14 @@ function runExecLoopAsync({ onDisplay, onInteractiveCaptures, timeoutMs = 60000,
               if (fn.PPAbort) { try { fn.PPAbort(); } catch { /* ignore */ } }
               return reject(e);
             }
-          } else {
-            const dbuf = Buffer.alloc(512);
-            try {
-              const r2 = normalizeRet(fn.PPEventLoop(dbuf, 512));
-              if (r2 === PWRET.OK && onDisplay) {
-                const end = dbuf.indexOf(0);
-                const msg = dbuf.slice(0, end >= 0 ? end : 512).toString("latin1");
-                if (msg) onDisplay(msg);
-              }
-            } catch { /* ignore */ }
+          } else if (count === 0) {
+            const { msg } = readDisplay(512);
+            if (msg && onDisplay) onDisplay(msg);
           }
           return setImmediate(tick);
         }
 
-        if (ret === PWRET.NOTHING || ret === PWRET.DISPLAY) {
-          const dbuf = Buffer.alloc(512);
-          try {
-            const r2 = normalizeRet(fn.PPEventLoop(dbuf, 512));
-            if (r2 === PWRET.OK && onDisplay) {
-              const end = dbuf.indexOf(0);
-              const msg = dbuf.slice(0, end >= 0 ? end : 512).toString("latin1");
-              if (msg) onDisplay(msg);
-            }
-          } catch { /* ignore */ }
-          return setImmediate(tick);
-        }
-
-        return reject(new Error(
-          `PW_iExecTransac ret=${ret}${explainRet(ret) ? ` — ${explainRet(ret)}` : ""}`,
-        ));
+        return reject(new Error(`PW_iExecTransac ret=${ret}${explainRet(ret) ? ` — ${explainRet(ret)}` : ""}`));
       } catch (e) {
         reject(e);
       }
@@ -698,6 +901,7 @@ function runExecLoopAsync({ onDisplay, onInteractiveCaptures, timeoutMs = 60000,
     setImmediate(() => { tick(); });
   });
 }
+
 
 // Estado da operação ADM em background (para não bloquear o agente)
 let adminInFlight = null;
