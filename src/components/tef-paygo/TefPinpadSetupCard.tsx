@@ -7,14 +7,25 @@
  * que o operador escolhe no menu mostrado no próprio pinpad
  * (Instalação do Pinpad x Teste de Comunicação).
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Usb, Loader2, Wifi, Settings2, ExternalLink, Activity, Power, Plug } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Usb, Loader2, Wifi, Settings2, ExternalLink, Activity, Power, Plug, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { loadTefConfig } from "@/lib/tef";
-import { paygoAdministrativo, checkPaygoAgent, paygoInit, paygoTestarPinpad } from "@/lib/tef/paygoAdapter";
+import {
+  paygoAdministrativo,
+  checkPaygoAgent,
+  paygoInit,
+  paygoTestarPinpad,
+  paygoAdmStatus,
+  paygoAdmRespond,
+  paygoAdmAbort,
+  type PaygoAdmCapture,
+} from "@/lib/tef/paygoAdapter";
 
 const ASA_SUL_ID = "fcf435c2-c382-444c-b499-4d95f07b2633";
 
@@ -29,6 +40,11 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
   const [result, setResult] = useState<string>("");
   const [agentUrl, setAgentUrl] = useState<string>("");
   const [fetchFailed, setFetchFailed] = useState(false);
+  const [captures, setCaptures] = useState<PaygoAdmCapture[] | null>(null);
+  const [captureInputs, setCaptureInputs] = useState<Record<number, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const pollRef = useRef<number | null>(null);
+  const lastCaptureSeqRef = useRef<number>(0);
 
   useEffect(() => {
     (async () => {
@@ -40,6 +56,89 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
       }
     })();
   }, [effectiveStoreId]);
+
+  const stopPolling = () => {
+    if (pollRef.current != null) {
+      window.clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
+
+  useEffect(() => () => stopPolling(), []);
+
+  const startPolling = (url: string) => {
+    stopPolling();
+    lastCaptureSeqRef.current = 0;
+    pollRef.current = window.setInterval(async () => {
+      const st = await paygoAdmStatus(url);
+      if (st.message) setLastMsg(st.message);
+      if (st.status === "waiting_input" && st.pendingCaptures && st.pendingCaptures.length > 0) {
+        const seq = st.captureSeq ?? 0;
+        if (seq !== lastCaptureSeqRef.current) {
+          lastCaptureSeqRef.current = seq;
+          setCaptures(st.pendingCaptures);
+          setCaptureInputs({});
+        }
+      } else if (st.status === "done" || st.status === "error" || st.status === "aborted" || st.status === "idle") {
+        stopPolling();
+        setCaptures(null);
+        if (st.status === "error" && st.error) {
+          setLastMsg(st.error);
+          toast({ title: "Erro", description: st.error, variant: "destructive" });
+        } else if (st.status === "done") {
+          const r = (st.receipts as any) ?? {};
+          setResult(JSON.stringify(r, null, 2));
+          setLastMsg(r.resultado || "Operação concluída");
+          toast({ title: "OK", description: r.resultado || "Operação concluída" });
+        }
+      }
+    }, 700);
+  };
+
+  const submitMenuOption = async (cap: PaygoAdmCapture, value: string) => {
+    if (!agentUrl) return;
+    setSubmitting(true);
+    try {
+      const resp = await paygoAdmRespond(agentUrl, [{ identificador: cap.identificador, value }]);
+      if (!resp.ok) {
+        toast({ title: "Erro", description: resp.error ?? "Falha ao enviar resposta", variant: "destructive" });
+      } else {
+        setCaptures(null);
+        setCaptureInputs({});
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const submitTypedAll = async () => {
+    if (!agentUrl || !captures) return;
+    setSubmitting(true);
+    try {
+      const payload = captures.map((c) => ({
+        identificador: c.identificador,
+        value: captureInputs[c.identificador] ?? "",
+      }));
+      const resp = await paygoAdmRespond(agentUrl, payload);
+      if (!resp.ok) {
+        toast({ title: "Erro", description: resp.error ?? "Falha ao enviar resposta", variant: "destructive" });
+      } else {
+        setCaptures(null);
+        setCaptureInputs({});
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const cancelCapture = async () => {
+    if (!agentUrl) return;
+    await paygoAdmAbort(agentUrl);
+    setCaptures(null);
+    setCaptureInputs({});
+    stopPolling();
+    setLastMsg("Operação abortada");
+  };
 
   const isFetchFail = (msg: string) =>
     /failed to fetch|network|load failed|offline/i.test(msg);
@@ -151,16 +250,15 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
         terminalCode: cfg.terminalCode,
         host: cfg.environment === "demo" ? "pos-transac-sb.tpgweb.io:31735" : undefined,
       });
-      if (!resp.ok) {
+      if (!resp.ok && !(resp as any).started) {
         const err = resp.error ?? "Falha na operação ADM";
         setLastMsg(err);
         if (isFetchFail(err)) setFetchFailed(true);
         toast({ title: "Erro", description: err, variant: "destructive" });
       } else {
-        const msg = resp.retorno?.resultado ?? "Operação concluída";
+        const msg = (resp as any).message ?? resp.retorno?.resultado ?? "Menu aberto no pinpad. Aguardando interação...";
         setLastMsg(msg);
-        setResult(JSON.stringify(resp.retorno ?? {}, null, 2));
-        toast({ title: "OK", description: msg });
+        startPolling(cfg.agentUrl);
       }
     } catch (err: any) {
       const msg = err?.message ?? String(err);
@@ -173,6 +271,7 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
   };
 
   return (
+    <>
     <Card className="p-4 space-y-3 border-primary/30 bg-primary/5">
       <div className="flex flex-wrap items-center gap-2">
         <Usb className="h-5 w-5 text-primary" />
@@ -258,5 +357,78 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
         </details>
       )}
     </Card>
+
+    <Dialog open={!!captures && captures.length > 0} onOpenChange={(o) => { if (!o) cancelCapture(); }}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        {captures && captures[0] && (() => {
+          const cap = captures[0];
+          const isMenu = cap.tipo === 1 && cap.options && cap.options.length > 0;
+          const isTyped = cap.tipo === 2 || cap.tipo === 3;
+          return (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Settings2 className="h-5 w-5 text-primary" />
+                  {isMenu ? "Selecione uma opção" : "Entrada solicitada pelo PayGo"}
+                </DialogTitle>
+                <DialogDescription className="whitespace-pre-wrap">
+                  {cap.prompt || (isMenu ? "Escolha uma opção do menu administrativo" : "Digite o valor solicitado")}
+                </DialogDescription>
+              </DialogHeader>
+
+              {isMenu && (
+                <div className="space-y-2">
+                  {cap.options!.map((opt) => (
+                    <Button
+                      key={`${cap.identificador}-${opt.value}`}
+                      variant="outline"
+                      className="w-full justify-start"
+                      disabled={submitting}
+                      onClick={() => submitMenuOption(cap, opt.value)}
+                    >
+                      <span className="font-mono text-xs text-muted-foreground mr-2">{opt.value}</span>
+                      {opt.label}
+                    </Button>
+                  ))}
+                </div>
+              )}
+
+              {isTyped && (
+                <div className="space-y-2">
+                  <Input
+                    autoFocus
+                    type={cap.ocultar ? "password" : "text"}
+                    maxLength={cap.tamMax || undefined}
+                    placeholder={cap.mascara || ""}
+                    value={captureInputs[cap.identificador] ?? ""}
+                    onChange={(e) =>
+                      setCaptureInputs((p) => ({ ...p, [cap.identificador]: e.target.value }))
+                    }
+                    onKeyDown={(e) => { if (e.key === "Enter") submitTypedAll(); }}
+                  />
+                  {(cap.tamMin || cap.tamMax) && (
+                    <p className="text-xs text-muted-foreground">
+                      Tamanho: {cap.tamMin ?? 0} – {cap.tamMax ?? "?"} caracteres
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <DialogFooter className="gap-2">
+                <Button variant="ghost" onClick={cancelCapture} disabled={submitting} className="gap-1">
+                  <X className="h-4 w-4" /> Cancelar
+                </Button>
+                {isTyped && (
+                  <Button onClick={submitTypedAll} disabled={submitting}>
+                    {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enviar"}
+                  </Button>
+                )}
+              </DialogFooter>
+            </>
+          );
+        })()}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

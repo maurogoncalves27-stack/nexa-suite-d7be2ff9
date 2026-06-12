@@ -544,16 +544,43 @@ function runExecLoop({ onDisplay, onCapture, timeoutMs = 180000 } = {}) {
 
 // ============================================================
 // Versão ASYNC do loop — usa setImmediate entre iterações para
-// não travar o event loop do Node (e portanto manter /health e
-// outras rotas HTTP respondendo enquanto o pinpad está aberto).
-// Usado por operações longas/interativas (admin, install).
+// não travar o event loop do Node. Suporta captura interativa
+// (PWDAT.MENU/TYPED/BARCODE) via callback `onInteractiveCaptures`
+// que retorna Promise<Array<{identificador,value}>>. Quando o
+// callback resolve, faz PW_iAddParam de cada resposta e segue o
+// loop conforme spec PayGo.
 // ============================================================
-function runExecLoopAsync({ onDisplay, onCapture, timeoutMs = 60000, shouldAbort } = {}) {
+function extractCaptureItem(item) {
+  const tipo = item.bTipoDeDado;
+  const prompt = (item.szPrompt || "").replace(/\0.*$/, "").trim();
+  const identificador = item.wIdentificador;
+  const out = { identificador, tipo, prompt };
+  if (tipo === PWDAT.MENU) {
+    const n = (item.bNumOpcoesMenu | 0);
+    const options = [];
+    for (let i = 0; i < n && i < 40; i++) {
+      try {
+        const label = ((item.vszTextoMenu?.[i]?.szTextoMenu) || "").replace(/\0.*$/, "").trim();
+        const value = ((item.vszValorMenu?.[i]?.szValorMenu) || "").replace(/\0.*$/, "").trim();
+        if (label || value) options.push({ label: label || value, value: value || String(i) });
+      } catch { /* ignore */ }
+    }
+    out.options = options;
+  } else if (tipo === PWDAT.TYPED || tipo === PWDAT.BARCODE) {
+    out.tamMin = item.bTamanhoMinimo;
+    out.tamMax = item.bTamanhoMaximo;
+    out.mascara = (item.szMascaraDeCaptura || "").replace(/\0.*$/, "");
+    out.ocultar = !!item.bOcultarDadosDigitados;
+  }
+  return out;
+}
+
+function runExecLoopAsync({ onDisplay, onInteractiveCaptures, timeoutMs = 60000, shouldAbort } = {}) {
   return new Promise((resolve, reject) => {
     const start = Date.now();
     const buffer = [{}, {}, {}, {}, {}, {}, {}, {}, {}];
 
-    const tick = () => {
+    const tick = async () => {
       try {
         if (shouldAbort && shouldAbort()) {
           if (fn.PPAbort) { try { fn.PPAbort(); } catch { /* ignore */ } }
@@ -574,7 +601,7 @@ function runExecLoopAsync({ onDisplay, onCapture, timeoutMs = 60000, shouldAbort
 
         if (ret === PWRET.MOREDATA) {
           const count = numRef[0] | 0;
-          let interactiveCaptures = 0;
+          const captures = [];
           for (let i = 0; i < count; i++) {
             const item = buffer[i] || {};
             const tipo = item.bTipoDeDado;
@@ -584,10 +611,29 @@ function runExecLoopAsync({ onDisplay, onCapture, timeoutMs = 60000, shouldAbort
               if (onDisplay) onDisplay(prompt);
               continue;
             }
-            interactiveCaptures++;
-            if (onCapture) onCapture({ index: i, tipo, prompt, identificador: item.wIdentificador });
+            captures.push(extractCaptureItem(item));
           }
-          if (interactiveCaptures === 0) {
+          if (captures.length > 0) {
+            if (!onInteractiveCaptures) {
+              if (fn.PPAbort) { try { fn.PPAbort(); } catch { /* ignore */ } }
+              return reject(new Error("Captura interativa solicitada e nenhum handler disponível"));
+            }
+            try {
+              const responses = await onInteractiveCaptures(captures);
+              if (!responses) {
+                if (fn.PPAbort) { try { fn.PPAbort(); } catch { /* ignore */ } }
+                return reject(new Error("Captura interativa cancelada"));
+              }
+              for (const r of responses) {
+                if (r && r.identificador != null && r.value != null) {
+                  fn.AddParam(r.identificador, String(r.value));
+                }
+              }
+            } catch (e) {
+              if (fn.PPAbort) { try { fn.PPAbort(); } catch { /* ignore */ } }
+              return reject(e);
+            }
+          } else {
             const dbuf = Buffer.alloc(512);
             try {
               const r2 = normalizeRet(fn.PPEventLoop(dbuf, 512));
@@ -622,21 +668,43 @@ function runExecLoopAsync({ onDisplay, onCapture, timeoutMs = 60000, shouldAbort
       }
     };
 
-    setImmediate(tick);
+    setImmediate(() => { tick(); });
   });
 }
 
 // Estado da operação ADM em background (para não bloquear o agente)
-let adminInFlight = null; // { startedAt, status, message, error, receipts }
+let adminInFlight = null;
+// adminInFlight: { startedAt, status, message, error, receipts,
+//                  pendingCaptures: [...] | null,
+//                  pendingResolve: (responses) => void | null,
+//                  captureSeq: number }
 function abortAdm() {
   if (fn && fn.PPAbort) { try { fn.PPAbort(); } catch { /* ignore */ } }
-  if (adminInFlight && adminInFlight.status === "running") {
+  if (adminInFlight && (adminInFlight.status === "running" || adminInFlight.status === "waiting_input")) {
     adminInFlight.status = "aborted";
     adminInFlight.message = "Abortado pelo usuário";
+    if (adminInFlight.pendingResolve) {
+      try { adminInFlight.pendingResolve(null); } catch { /* ignore */ }
+      adminInFlight.pendingResolve = null;
+      adminInFlight.pendingCaptures = null;
+    }
   }
 }
 function getAdmStatus() {
-  return adminInFlight || { status: "idle" };
+  if (!adminInFlight) return { status: "idle" };
+  const { pendingResolve, ...safe } = adminInFlight;
+  return safe;
+}
+function respondAdm(responses) {
+  if (!adminInFlight || adminInFlight.status !== "waiting_input" || !adminInFlight.pendingResolve) {
+    throw new Error("Nenhuma captura interativa pendente");
+  }
+  const resolve = adminInFlight.pendingResolve;
+  adminInFlight.pendingResolve = null;
+  adminInFlight.pendingCaptures = null;
+  adminInFlight.status = "running";
+  adminInFlight.message = "Processando resposta...";
+  resolve(Array.isArray(responses) ? responses : []);
 }
 
 
@@ -747,10 +815,17 @@ function administrativo({ onDisplay, onCapture } = {}) {
  * do Node. Atualiza adminInFlight enquanto o pinpad está aberto.
  */
 function administrativoAsync({ timeoutMs = 60000, technicalPassword, pinpadPort, merchantCode, terminalCode, host } = {}) {
-  if (adminInFlight && adminInFlight.status === "running") {
+  if (adminInFlight && (adminInFlight.status === "running" || adminInFlight.status === "waiting_input")) {
     return Promise.reject(new Error("Já existe uma operação ADM em andamento"));
   }
-  adminInFlight = { startedAt: Date.now(), status: "running", message: "Iniciando..." };
+  adminInFlight = {
+    startedAt: Date.now(),
+    status: "running",
+    message: "Iniciando...",
+    pendingCaptures: null,
+    pendingResolve: null,
+    captureSeq: 0,
+  };
   try {
     startTransaction(PWOPER.ADMIN, "admin");
     if (merchantCode) fn.AddParam(PWINFO.MERCHCNPJCPF, String(merchantCode).replace(/\D/g, ""));
@@ -765,9 +840,18 @@ function administrativoAsync({ timeoutMs = 60000, technicalPassword, pinpadPort,
   return runExecLoopAsync({
     timeoutMs,
     onDisplay: (m) => {
-      if (adminInFlight) adminInFlight.message = m;
+      if (adminInFlight && adminInFlight.status === "running") adminInFlight.message = m;
       console.log("[TEF display]", m);
     },
+    onInteractiveCaptures: (captures) => new Promise((resolve) => {
+      if (!adminInFlight) return resolve(null);
+      adminInFlight.captureSeq = (adminInFlight.captureSeq || 0) + 1;
+      adminInFlight.pendingCaptures = captures.map((c) => ({ ...c, seq: adminInFlight.captureSeq }));
+      adminInFlight.status = "waiting_input";
+      adminInFlight.message = captures[0]?.prompt || "Aguardando entrada do operador";
+      adminInFlight.pendingResolve = resolve;
+      console.log("[TEF capture] aguardando resposta:", JSON.stringify(adminInFlight.pendingCaptures));
+    }),
     shouldAbort: () => adminInFlight && adminInFlight.status === "aborted",
   })
     .then(() => {
@@ -819,6 +903,7 @@ module.exports = {
   administrativoAsync,
   abortAdm,
   getAdmStatus,
+  respondAdm,
 
   instalarPdc,
   diagnostics,

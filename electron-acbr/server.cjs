@@ -270,6 +270,16 @@ async function handle(req, res) {
       return send(res, 200, { ok: true, aborted: true });
     }
 
+    if (req.method === "POST" && path === "/tef/admin/respond") {
+      const body = await readBody(req).catch(() => ({}));
+      try {
+        tef.respondAdm(body?.responses || []);
+        return send(res, 200, { ok: true });
+      } catch (e) {
+        return send(res, 400, { ok: false, error: e.message });
+      }
+    }
+
 
     if (req.method === "POST" && (path === "/tef/install" || path === "/tef/instalar")) {
       if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "PGWebLib.dll não disponível" });
