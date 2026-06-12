@@ -442,6 +442,7 @@ function runExecLoop({ onDisplay, onCapture, timeoutMs = 180000 } = {}) {
 
     if (ret === PWRET.MOREDATA) {
       const count = numRef[0] | 0;
+      let interactiveCaptures = 0;
       // Para cada captura solicitada, lê via PW_iPPEventLoop (display)
       // ou repassa pro caller via onCapture.
       for (let i = 0; i < count; i++) {
@@ -449,18 +450,42 @@ function runExecLoop({ onDisplay, onCapture, timeoutMs = 180000 } = {}) {
         const tipo = item.bTipoDeDado;
         const prompt = (item.szPrompt || "").replace(/\0.*$/, "");
 
+        // Item zerado / não decodificado → ignora (PayGo às vezes devolve
+        // MOREDATA pedindo apenas leitura de display, sem captura real).
+        if (tipo === undefined || tipo === 0 || tipo === null) {
+          console.log(`[TEF MOREDATA] slot ${i} sem tipo definido — ignorando`);
+          continue;
+        }
+
         if (tipo === PWDAT.DSPCHECKOUT || tipo === PWDAT.DSPQRCODE) {
           if (onDisplay) onDisplay(prompt);
           continue;
         }
+
+        interactiveCaptures++;
         if (onCapture) {
           // Caller pode chamar PW_iAddParam(item.wIdentificador, valor)
           onCapture({ index: i, tipo, prompt, identificador: item.wIdentificador });
         } else {
-          throw new Error(
-            `PW_iExecTransac requer captura interativa (tipo=${tipo}, prompt="${prompt}") — agente sem UI`,
+          console.warn(
+            `[TEF MOREDATA] captura interativa solicitada tipo=${tipo} prompt="${prompt}" — ignorada (agente headless)`,
           );
         }
+      }
+
+      // Se nenhum item exigia captura interativa real, tenta ler display do
+      // pinpad antes de seguir pra próxima iteração (replica o comportamento
+      // do Fluxos.FluxoExecTransac quando count=0).
+      if (interactiveCaptures === 0) {
+        const dbuf = Buffer.alloc(512);
+        try {
+          const r2 = normalizeRet(fn.PPEventLoop(dbuf, 512));
+          if (r2 === PWRET.OK && onDisplay) {
+            const end = dbuf.indexOf(0);
+            const msg = dbuf.slice(0, end >= 0 ? end : 512).toString("latin1");
+            if (msg) onDisplay(msg);
+          }
+        } catch { /* ignore */ }
       }
       continue;
     }
