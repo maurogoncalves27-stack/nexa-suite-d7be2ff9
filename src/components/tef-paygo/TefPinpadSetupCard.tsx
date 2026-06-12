@@ -88,7 +88,7 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
           toast({ title: "Erro", description: st.error, variant: "destructive" });
         } else if (st.status === "done") {
           const r = ((st as any).result ?? st.receipts ?? {}) as Record<string, any>;
-          const message = r.message ?? r.resultado ?? st.message ?? "Operação concluída";
+          const message = r.message ?? st.message ?? "Operação concluída";
           setResult(JSON.stringify(r, null, 2));
           setLastMsg(message);
           toast({ title: "OK", description: message });
@@ -258,7 +258,7 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
         if (isFetchFail(err)) setFetchFailed(true);
         toast({ title: "Erro", description: err, variant: "destructive" });
       } else {
-        const msg = (resp as any).message ?? resp.retorno?.resultado ?? "Menu aberto no pinpad. Aguardando interação...";
+        const msg = (resp as any).message ?? "Menu aberto no pinpad. Aguardando interação...";
         setLastMsg(msg);
         startPolling(cfg.agentUrl);
       }
