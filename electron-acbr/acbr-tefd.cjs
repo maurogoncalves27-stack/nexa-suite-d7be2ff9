@@ -116,18 +116,31 @@ function stopHost(reason) {
 function ensureHost() {
   if (hostReadyPromise) return hostReadyPromise;
 
+  // Cooldown: se a última inicialização falhou há pouco, não respawna em loop.
+  if (hostLastError && (Date.now() - hostLastErrorAt) < HOST_FAIL_COOLDOWN_MS) {
+    const p = Promise.reject(new Error(hostLastError));
+    p.catch(() => {}); // marca como tratada — não polui o console
+    return p;
+  }
+
   const dllPath = findDllPath();
   if (!dllPath) {
-    return Promise.reject(new Error(
-      "PGWebLib.dll não encontrada. Instale o PayGo Integrado ou defina PAYGO_DLL_PATH."
-    ));
+    hostLastError = "PGWebLib.dll não encontrada. Instale o PayGo Integrado ou defina PAYGO_DLL_PATH.";
+    hostLastErrorAt = Date.now();
+    const p = Promise.reject(new Error(hostLastError));
+    p.catch(() => {});
+    return p;
   }
 
   const workingDir = process.env.PAYGO_WORKING_DIR || path.dirname(dllPath);
   const bridge = bridgeScriptPath();
 
   if (!fs.existsSync(bridge)) {
-    return Promise.reject(new Error(`Bridge PayGo não encontrado em ${bridge}`));
+    hostLastError = `Bridge PayGo não encontrado em ${bridge}`;
+    hostLastErrorAt = Date.now();
+    const p = Promise.reject(new Error(hostLastError));
+    p.catch(() => {});
+    return p;
   }
 
   console.log("[TEF] iniciando PayGo host (PS+C#) DLL=" + dllPath);
@@ -138,9 +151,14 @@ function ensureHost() {
       if (settled) return;
       settled = true;
       if (err) {
+        hostLastError = err.message || hostLastStderr || "Host PayGo falhou ao inicializar";
+        hostLastErrorAt = Date.now();
+        console.warn("[TEF host] falha ao inicializar:", hostLastError);
         hostReadyPromise = null;
-        reject(err);
+        reject(new Error(hostLastError));
       } else {
+        hostLastError = null;
+        hostLastErrorAt = 0;
         resolve();
       }
     };
@@ -159,6 +177,7 @@ function ensureHost() {
     );
 
     host = proc;
+    hostLastStderr = "";
 
     proc.stdout.setEncoding("utf8");
     proc.stdout.on("data", (chunk) => {
@@ -168,7 +187,8 @@ function ensureHost() {
       for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed) continue;
-        handleLine(trimmed, finishReady);
+        try { handleLine(trimmed, finishReady); }
+        catch (e) { console.warn("[TEF host] erro processando linha:", e.message); }
       }
     });
 
@@ -176,8 +196,8 @@ function ensureHost() {
     proc.stderr.on("data", (chunk) => {
       const msg = chunk.trim();
       if (!msg) return;
+      hostLastStderr = msg.slice(-500);
       console.warn("[TEF host stderr]", msg);
-      // não derruba o ready imediatamente — o host pode emitir warnings
     });
 
     proc.on("error", (err) => {
@@ -189,13 +209,19 @@ function ensureHost() {
     proc.on("exit", (code, signal) => {
       const msg = `Host PayGo encerrado code=${code ?? ""} signal=${signal ?? ""}`.trim();
       console.warn("[TEF host]", msg);
-      stopHost(msg);
-      finishReady(new Error(msg));
+      const detail = hostLastStderr ? `${msg} :: ${hostLastStderr}` : msg;
+      stopHost(detail);
+      finishReady(new Error(detail));
     });
   });
 
+  // Garante que callers que NÃO usam await (ex.: /health) não disparem
+  // UnhandledPromiseRejectionWarning. Quem usa await ainda recebe a rejeição.
+  hostReadyPromise.catch(() => {});
+
   return hostReadyPromise;
 }
+
 
 function handleLine(line, finishReady) {
   let resp;
