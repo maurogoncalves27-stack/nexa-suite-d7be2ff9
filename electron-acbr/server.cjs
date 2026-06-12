@@ -246,10 +246,22 @@ async function handle(req, res) {
 
     if (req.method === "POST" && path === "/tef/admin") {
       if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "PGWebLib.dll não disponível" });
-      const body = await readBody(req);
-      const retorno = tef.administrativo({ ...body, onDisplay: (m) => console.log("[TEF display]", m) });
-      return send(res, 200, { ok: true, retorno });
+      // Fire-and-forget — pinpad é interativo; não bloqueia HTTP.
+      tef.administrativoAsync({ timeoutMs: 60000 })
+        .then((r) => console.log("[TEF admin] concluído:", r?.resultado))
+        .catch((e) => console.warn("[TEF admin] erro:", e.message));
+      return send(res, 202, { ok: true, started: true, message: "Menu aberto no pinpad. Finalize na tela do dispositivo." });
     }
+
+    if (req.method === "GET" && path === "/tef/admin/status") {
+      return send(res, 200, { ok: true, ...tef.getAdmStatus() });
+    }
+
+    if (req.method === "POST" && path === "/tef/admin/abort") {
+      tef.abortAdm();
+      return send(res, 200, { ok: true, aborted: true });
+    }
+
 
     if (req.method === "POST" && (path === "/tef/install" || path === "/tef/instalar")) {
       if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "PGWebLib.dll não disponível" });
