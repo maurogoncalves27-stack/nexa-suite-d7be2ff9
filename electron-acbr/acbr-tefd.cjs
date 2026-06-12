@@ -746,13 +746,18 @@ function administrativo({ onDisplay, onCapture } = {}) {
  * Versão ASYNC do menu administrativo — não bloqueia o event loop
  * do Node. Atualiza adminInFlight enquanto o pinpad está aberto.
  */
-function administrativoAsync({ timeoutMs = 60000 } = {}) {
+function administrativoAsync({ timeoutMs = 60000, technicalPassword, pinpadPort, merchantCode, terminalCode, host } = {}) {
   if (adminInFlight && adminInFlight.status === "running") {
     return Promise.reject(new Error("Já existe uma operação ADM em andamento"));
   }
   adminInFlight = { startedAt: Date.now(), status: "running", message: "Iniciando..." };
   try {
     startTransaction(PWOPER.ADMIN, "admin");
+    if (merchantCode) fn.AddParam(PWINFO.MERCHCNPJCPF, String(merchantCode).replace(/\D/g, ""));
+    if (terminalCode) fn.AddParam(PWINFO.POSID, String(terminalCode));
+    if (host) fn.AddParam(PWINFO.AUTADDRESS, String(host));
+    if (technicalPassword) fn.AddParam(PWINFO.AUTHTECHUSER, String(technicalPassword));
+    if (pinpadPort) fn.AddParam(PWINFO.PPCOMMPORT, String(pinpadPort));
   } catch (e) {
     adminInFlight = { status: "error", error: e.message, startedAt: Date.now() };
     return Promise.reject(e);

@@ -144,7 +144,13 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
         setBusy(null);
         return;
       }
-      const resp = await paygoAdministrativo(cfg.agentUrl);
+      const resp = await paygoAdministrativo(cfg.agentUrl, {
+        technicalPassword: "314159",
+        pinpadPort: Number((cfg as any).pinpadPort ?? (cfg as any).pinpad_port ?? 5) || 5,
+        merchantCode: cfg.merchantCode,
+        terminalCode: cfg.terminalCode,
+        host: cfg.environment === "demo" ? "pos-transac-sb.tpgweb.io:31735" : undefined,
+      });
       if (!resp.ok) {
         const err = resp.error ?? "Falha na operação ADM";
         setLastMsg(err);
