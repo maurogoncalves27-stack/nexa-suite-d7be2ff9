@@ -1049,7 +1049,7 @@ function administrativo({ onDisplay, onCapture } = {}) {
  * Versão ASYNC do menu administrativo — não bloqueia o event loop
  * do Node. Atualiza adminInFlight enquanto o pinpad está aberto.
  */
-function administrativoAsync({ timeoutMs = 60000, technicalPassword, pinpadPort, merchantCode, terminalCode, host } = {}) {
+function administrativoAsync({ timeoutMs = 600000, technicalPassword, pinpadPort, merchantCode, terminalCode, host } = {}) {
   if (adminInFlight && (adminInFlight.status === "running" || adminInFlight.status === "waiting_input")) {
     return Promise.reject(new Error("Já existe uma operação ADM em andamento"));
   }
