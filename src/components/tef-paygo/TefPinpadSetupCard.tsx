@@ -271,6 +271,7 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
   };
 
   return (
+    <>
     <Card className="p-4 space-y-3 border-primary/30 bg-primary/5">
       <div className="flex flex-wrap items-center gap-2">
         <Usb className="h-5 w-5 text-primary" />
