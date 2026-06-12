@@ -24,7 +24,7 @@ interface Props {
 
 export default function TefPinpadSetupCard({ storeId }: Props) {
   const effectiveStoreId = storeId || ASA_SUL_ID;
-  const [busy, setBusy] = useState<"adm" | "test" | "diag" | "init" | null>(null);
+  const [busy, setBusy] = useState<"adm" | "test" | "diag" | "init" | "port" | null>(null);
   const [lastMsg, setLastMsg] = useState<string>("");
   const [result, setResult] = useState<string>("");
   const [agentUrl, setAgentUrl] = useState<string>("");
