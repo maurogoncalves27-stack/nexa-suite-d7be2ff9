@@ -54,7 +54,7 @@ function createWindow() {
     </head>
     <body>
       <h1>NEXA ACBr Agent</h1>
-      <div class="muted">Servidor HTTP local ouvindo na porta <b>3030</b></div>
+      <div class="muted">HTTP <b>3030</b> · HTTPS <b>3031</b> (usado pelo app)</div>
       <div id="status">Carregando...</div>
       <button onclick="refresh()">Atualizar status</button>
       <script>
