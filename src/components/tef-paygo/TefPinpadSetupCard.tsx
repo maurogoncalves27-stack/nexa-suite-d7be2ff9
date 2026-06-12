@@ -84,6 +84,7 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
         setCaptures(null);
         if (st.status === "error" && st.error) {
           setLastMsg(st.error);
+          if (st.receipts) setResult(JSON.stringify(st.receipts, null, 2));
           toast({ title: "Erro", description: st.error, variant: "destructive" });
         } else if (st.status === "done") {
           const r = (st.receipts as any) ?? {};

@@ -832,7 +832,10 @@ function administrativoAsync({ timeoutMs = 60000, technicalPassword, pinpadPort,
     if (terminalCode) fn.AddParam(PWINFO.POSID, String(terminalCode));
     if (host) fn.AddParam(PWINFO.AUTADDRESS, String(host));
     if (technicalPassword) fn.AddParam(PWINFO.AUTHTECHUSER, String(technicalPassword));
-    if (pinpadPort) fn.AddParam(PWINFO.PPCOMMPORT, String(pinpadPort));
+    if (pinpadPort) {
+      fn.AddParam(PWINFO.USINGPINPAD, "1");
+      fn.AddParam(PWINFO.PPCOMMPORT, String(pinpadPort));
+    }
   } catch (e) {
     adminInFlight = { status: "error", error: e.message, startedAt: Date.now() };
     return Promise.reject(e);
@@ -856,7 +859,23 @@ function administrativoAsync({ timeoutMs = 60000, technicalPassword, pinpadPort,
   })
     .then(() => {
       const receipts = collectReceipts();
-      adminInFlight = { status: "done", receipts, startedAt: adminInFlight.startedAt, message: receipts.resultado || "OK" };
+      const hasUsefulReceipt = Object.values(receipts).some((value) => {
+        if (value == null) return false;
+        if (typeof value === "boolean") return value;
+        return String(value).trim().length > 0;
+      });
+
+      adminInFlight = {
+        status: hasUsefulReceipt ? "done" : "error",
+        receipts,
+        startedAt: adminInFlight.startedAt,
+        message: hasUsefulReceipt
+          ? (receipts.resultado || adminInFlight.message || "OK")
+          : (adminInFlight.message || "A operação ADM terminou sem retorno útil do pinpad."),
+        error: hasUsefulReceipt
+          ? undefined
+          : "A operação ADM terminou sem retorno útil do pinpad. Verifique se a COM do pinpad está correta e se o PayGo Windows não está segurando a porta.",
+      };
       return receipts;
     })
     .catch((e) => {
