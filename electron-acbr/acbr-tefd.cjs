@@ -341,56 +341,51 @@ function load() {
   defineStruct();
   lib = koffi.load(DLL_PATH);
 
-  // Assinaturas alinhadas ao PGWebLib.cs (Muxx.Lib/Services).
-  // __stdcall em Windows (WINAPI).
-  fn.Init = lib.func("__stdcall", "PW_iInit", "short", ["string"]);
-  fn.NewTransac = lib.func("__stdcall", "PW_iNewTransac", "short", ["uint8"]);
-  fn.AddParam = lib.func("__stdcall", "PW_iAddParam", "short", ["uint16", "string"]);
+  // Convenção CDECL — alinhado à demo funcional Setis/PowerShell.
+  // Demo C# original também declarou CallingConvention.Cdecl em TODOS
+  // os delegates PW_i*. Usar __stdcall corrompia o stack e causava
+  // PWRET inesperado / TIMEOUT.
+  fn.Init = lib.func("__cdecl", "PW_iInit", "short", ["string"]);
+  fn.NewTransac = lib.func("__cdecl", "PW_iNewTransac", "short", ["uint8"]);
+  fn.AddParam = lib.func("__cdecl", "PW_iAddParam", "short", ["uint16", "string"]);
   fn.ExecTransac = lib.func(
-    "__stdcall",
+    "__cdecl",
     "PW_iExecTransac",
     "short",
     [koffi.out(koffi.pointer(PW_GetDataArray9)), koffi.inout(koffi.pointer("int16"))],
   );
-  // ulDataSize é UINT por VALOR (não ponteiro!) — divergência crítica vs versão antiga.
   fn.GetResult = lib.func(
-    "__stdcall",
+    "__cdecl",
     "PW_iGetResult",
     "short",
     ["int16", koffi.out("char*"), "uint32"],
   );
-  // (uint, 5×string) — ulStatus é UINT por valor (PWCNF_xxx).
   fn.Confirmation = lib.func(
-    "__stdcall",
+    "__cdecl",
     "PW_iConfirmation",
     "short",
     ["uint32", "string", "string", "string", "string", "string"],
   );
-  // ulDisplaySize também UINT por valor.
   fn.PPEventLoop = lib.func(
-    "__stdcall",
+    "__cdecl",
     "PW_iPPEventLoop",
     "short",
     [koffi.out("char*"), "uint32"],
   );
   try {
-    fn.PPAbort = lib.func("__stdcall", "PW_iPPAbort", "short", []);
+    fn.PPAbort = lib.func("__cdecl", "PW_iPPAbort", "short", []);
   } catch { fn.PPAbort = null; }
 
-  // Funções pinpad-driven do PGWebLib — chamadas em resposta a MOREDATA
-  // com PWDAT_CARDINF/PPENCPIN/PPENTRY/CARDOFF/CARDONL/PPCONF/PPREMCRD/
-  // PPGENCMD/PPDATAPOSCNF/TSTKEY. Sem isso o pinpad fica esperando para
-  // sempre e a transação dá timeout.
-  try { fn.PPGetCard = lib.func("__stdcall", "PW_iPPGetCard", "short", ["uint16"]); } catch { fn.PPGetCard = null; }
-  try { fn.PPGetPIN = lib.func("__stdcall", "PW_iPPGetPIN", "short", ["uint16"]); } catch { fn.PPGetPIN = null; }
-  try { fn.PPGetData = lib.func("__stdcall", "PW_iPPGetData", "short", ["uint16"]); } catch { fn.PPGetData = null; }
-  try { fn.PPGoOnChip = lib.func("__stdcall", "PW_iPPGoOnChip", "short", ["uint16"]); } catch { fn.PPGoOnChip = null; }
-  try { fn.PPFinishChip = lib.func("__stdcall", "PW_iPPFinishChip", "short", ["uint16"]); } catch { fn.PPFinishChip = null; }
-  try { fn.PPConfirmData = lib.func("__stdcall", "PW_iPPConfirmData", "short", ["uint16"]); } catch { fn.PPConfirmData = null; }
-  try { fn.PPRemoveCard = lib.func("__stdcall", "PW_iPPRemoveCard", "short", []); } catch { fn.PPRemoveCard = null; }
-  try { fn.PPGenericCMD = lib.func("__stdcall", "PW_iPPGenericCMD", "short", ["uint16"]); } catch { fn.PPGenericCMD = null; }
-  try { fn.PPPositiveConfirmation = lib.func("__stdcall", "PW_iPPPositiveConfirmation", "short", ["uint16"]); } catch { fn.PPPositiveConfirmation = null; }
-  try { fn.PPTestKey = lib.func("__stdcall", "PW_iPPTestKey", "short", ["uint16"]); } catch { fn.PPTestKey = null; }
+  try { fn.PPGetCard = lib.func("__cdecl", "PW_iPPGetCard", "short", ["uint16"]); } catch { fn.PPGetCard = null; }
+  try { fn.PPGetPIN = lib.func("__cdecl", "PW_iPPGetPIN", "short", ["uint16"]); } catch { fn.PPGetPIN = null; }
+  try { fn.PPGetData = lib.func("__cdecl", "PW_iPPGetData", "short", ["uint16"]); } catch { fn.PPGetData = null; }
+  try { fn.PPGoOnChip = lib.func("__cdecl", "PW_iPPGoOnChip", "short", ["uint16"]); } catch { fn.PPGoOnChip = null; }
+  try { fn.PPFinishChip = lib.func("__cdecl", "PW_iPPFinishChip", "short", ["uint16"]); } catch { fn.PPFinishChip = null; }
+  try { fn.PPConfirmData = lib.func("__cdecl", "PW_iPPConfirmData", "short", ["uint16"]); } catch { fn.PPConfirmData = null; }
+  try { fn.PPRemoveCard = lib.func("__cdecl", "PW_iPPRemoveCard", "short", []); } catch { fn.PPRemoveCard = null; }
+  try { fn.PPGenericCMD = lib.func("__cdecl", "PW_iPPGenericCMD", "short", ["uint16"]); } catch { fn.PPGenericCMD = null; }
+  try { fn.PPPositiveConfirmation = lib.func("__cdecl", "PW_iPPPositiveConfirmation", "short", ["uint16"]); } catch { fn.PPPositiveConfirmation = null; }
+  try { fn.PPTestKey = lib.func("__cdecl", "PW_iPPTestKey", "short", ["uint16"]); } catch { fn.PPTestKey = null; }
 
   available = true;
   return lib;
