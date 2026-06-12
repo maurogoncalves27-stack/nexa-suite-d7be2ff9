@@ -73,6 +73,10 @@ const NEXA_DEFAULTS = {
 let host = null;
 let hostBuffer = "";
 let hostReadyPromise = null;
+let hostLastError = null;
+let hostLastErrorAt = 0;
+let hostLastStderr = "";
+const HOST_FAIL_COOLDOWN_MS = 30000;
 let nextRequestId = 0;
 const pending = new Map(); // id -> { resolve, reject, timeout, onEvent }
 
@@ -107,6 +111,7 @@ function stopHost(reason) {
   }
   pending.clear();
 }
+
 
 function ensureHost() {
   if (hostReadyPromise) return hostReadyPromise;
