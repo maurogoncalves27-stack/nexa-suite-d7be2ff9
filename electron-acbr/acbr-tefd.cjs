@@ -770,6 +770,10 @@ module.exports = {
   cancelarEmAndamento,
   cancelarVenda,
   administrativo,
+  administrativoAsync,
+  abortAdm,
+  getAdmStatus,
+
   instalarPdc,
   diagnostics,
   paths: { DLL_PATH, WORK_DIR, PAYGO_BASE },
