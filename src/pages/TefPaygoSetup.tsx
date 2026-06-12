@@ -322,7 +322,7 @@ const TefPaygoSetup = () => {
                 value={hostDraft}
                 onChange={(e) => setHostDraft(e.target.value)}
                 className="h-7 font-mono text-sm"
-                placeholder="http://127.0.0.1:3030"
+                placeholder="https://127.0.0.1:3031"
               />
             ) : (
               <div className="text-sm font-mono truncate">{host}</div>
