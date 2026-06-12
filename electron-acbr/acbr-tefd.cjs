@@ -25,11 +25,18 @@ function normalizeBaseCandidate(value) {
 
 const DEFAULT_BASES = [
   normalizeBaseCandidate(process.env.PAYGO_BASE),
+  normalizeBaseCandidate(process.env.PathPGWebLib_x64),
   normalizeBaseCandidate(process.env.PathPGWebLib_x86),
   normalizeBaseCandidate(process.env.PathPGWebLib),
+  // x64 primeiro (build atual do agente é x64)
+  "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib\\x64",
+  "C:\\Program Files (x86)\\PayGo\\PGWebLib\\x64",
+  "C:\\Program Files\\PayGo\\PGWebLib\\x64",
+  // fallback 32-bit (caso o agente seja reempacotado em ia32)
   "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib\\x86",
   "C:\\Program Files (x86)\\PayGo\\PGWebLib\\x86",
   "C:\\Program Files\\PayGo\\PGWebLib\\x86",
+  // raiz (instalações antigas)
   "C:\\Arquivos de Programas (x86)\\PayGo\\PGWebLib",
   "C:\\Program Files (x86)\\PayGo\\PGWebLib",
   "C:\\Program Files\\PayGo\\PGWebLib",
@@ -44,8 +51,10 @@ const DEFAULT_WORK_DIR = path.join(
 );
 
 function resolveBase() {
+  // Em processo x64, prioriza pasta x64; em ia32, prioriza x86.
+  const archSubdir = process.arch === "ia32" ? "x86" : "x64";
   for (const b of DEFAULT_BASES) {
-    const tries = [b, path.join(b, "x86"), path.dirname(b)];
+    const tries = [path.join(b, archSubdir), b, path.dirname(b)];
     for (const t of tries) {
       try { if (fs.existsSync(path.join(t, "PGWebLib.dll"))) return t; } catch { /* ignore */ }
     }
