@@ -44,10 +44,14 @@ const DEFAULT_BASES = [
   "C:\\NexaACBr",
 ].filter(Boolean);
 
+// Workdir do PGWebLib precisa ser SEMPRE gravável pelo usuário comum (sem
+// admin). LOCALAPPDATA garante isso em qualquer Windows; ProgramData costuma
+// ser ok, mas algumas máquinas têm ACL restritivo. Não usar pasta dentro de
+// "Program Files" — Windows bloqueia (EPERM).
 const DEFAULT_WORK_DIR = path.join(
-  process.env.ProgramData || "C:\\ProgramData",
+  process.env.LOCALAPPDATA || process.env.APPDATA || process.env.ProgramData || "C:\\ProgramData",
+  "NexaACBr",
   "PayGo",
-  "PGWebLib",
 );
 
 function resolveBase() {
@@ -350,14 +354,31 @@ function addMandatoryAutomationParams() {
   fn.AddParam(PWINFO.DSPQRPREF, AUTOMATION_INFO.dspqrpref);
 }
 
+function safeMkdir(dir) {
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    return dir;
+  } catch (e) {
+    if (e && (e.code === "EPERM" || e.code === "EACCES")) {
+      const fallback = path.join(
+        process.env.LOCALAPPDATA || process.env.APPDATA || process.env.TEMP || "C:\\Temp",
+        "NexaACBr", "PayGo",
+      );
+      try { fs.mkdirSync(fallback, { recursive: true }); return fallback; }
+      catch { /* ignore */ }
+    }
+    throw e;
+  }
+}
+
 function ensureInit() {
   if (initialized) return;
   load();
-  fs.mkdirSync(WORK_DIR, { recursive: true });
-  const r = normalizeRet(fn.Init(WORK_DIR));
+  const workdir = safeMkdir(WORK_DIR);
+  const r = normalizeRet(fn.Init(workdir));
   if (r !== PWRET.OK) {
     lastInitError = `PW_iInit ret=${r}`;
-    throw new Error(`PW_iInit falhou (${r})${explainRet(r) ? ` — ${explainRet(r)}` : ""} — workdir=${WORK_DIR}`);
+    throw new Error(`PW_iInit falhou (${r})${explainRet(r) ? ` — ${explainRet(r)}` : ""} — workdir=${workdir}`);
   }
   initialized = true;
   lastInitError = null;
