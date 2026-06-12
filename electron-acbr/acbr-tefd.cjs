@@ -51,8 +51,10 @@ const DEFAULT_WORK_DIR = path.join(
 );
 
 function resolveBase() {
+  // Em processo x64, prioriza pasta x64; em ia32, prioriza x86.
+  const archSubdir = process.arch === "ia32" ? "x86" : "x64";
   for (const b of DEFAULT_BASES) {
-    const tries = [b, path.join(b, "x86"), path.dirname(b)];
+    const tries = [path.join(b, archSubdir), b, path.dirname(b)];
     for (const t of tries) {
       try { if (fs.existsSync(path.join(t, "PGWebLib.dll"))) return t; } catch { /* ignore */ }
     }
