@@ -673,16 +673,38 @@ function runExecLoopAsync({ onDisplay, onInteractiveCaptures, timeoutMs = 60000,
 }
 
 // Estado da operação ADM em background (para não bloquear o agente)
-let adminInFlight = null; // { startedAt, status, message, error, receipts }
+let adminInFlight = null;
+// adminInFlight: { startedAt, status, message, error, receipts,
+//                  pendingCaptures: [...] | null,
+//                  pendingResolve: (responses) => void | null,
+//                  captureSeq: number }
 function abortAdm() {
   if (fn && fn.PPAbort) { try { fn.PPAbort(); } catch { /* ignore */ } }
-  if (adminInFlight && adminInFlight.status === "running") {
+  if (adminInFlight && (adminInFlight.status === "running" || adminInFlight.status === "waiting_input")) {
     adminInFlight.status = "aborted";
     adminInFlight.message = "Abortado pelo usuário";
+    if (adminInFlight.pendingResolve) {
+      try { adminInFlight.pendingResolve(null); } catch { /* ignore */ }
+      adminInFlight.pendingResolve = null;
+      adminInFlight.pendingCaptures = null;
+    }
   }
 }
 function getAdmStatus() {
-  return adminInFlight || { status: "idle" };
+  if (!adminInFlight) return { status: "idle" };
+  const { pendingResolve, ...safe } = adminInFlight;
+  return safe;
+}
+function respondAdm(responses) {
+  if (!adminInFlight || adminInFlight.status !== "waiting_input" || !adminInFlight.pendingResolve) {
+    throw new Error("Nenhuma captura interativa pendente");
+  }
+  const resolve = adminInFlight.pendingResolve;
+  adminInFlight.pendingResolve = null;
+  adminInFlight.pendingCaptures = null;
+  adminInFlight.status = "running";
+  adminInFlight.message = "Processando resposta...";
+  resolve(Array.isArray(responses) ? responses : []);
 }
 
 
