@@ -250,16 +250,15 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
         terminalCode: cfg.terminalCode,
         host: cfg.environment === "demo" ? "pos-transac-sb.tpgweb.io:31735" : undefined,
       });
-      if (!resp.ok) {
+      if (!resp.ok && !(resp as any).started) {
         const err = resp.error ?? "Falha na operação ADM";
         setLastMsg(err);
         if (isFetchFail(err)) setFetchFailed(true);
         toast({ title: "Erro", description: err, variant: "destructive" });
       } else {
-        const msg = resp.retorno?.resultado ?? "Operação concluída";
+        const msg = (resp as any).message ?? resp.retorno?.resultado ?? "Menu aberto no pinpad. Aguardando interação...";
         setLastMsg(msg);
-        setResult(JSON.stringify(resp.retorno ?? {}, null, 2));
-        toast({ title: "OK", description: msg });
+        startPolling(cfg.agentUrl);
       }
     } catch (err: any) {
       const msg = err?.message ?? String(err);
