@@ -237,7 +237,7 @@ export default function TefConfigPanel() {
                 placeholder={DEFAULT_AGENT_URL[cfg.provider]} />
               {cfg.provider === "acbr" && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  Requer o <strong>NEXA ACBr Agent</strong> rodando na máquina do totem (porta 3030, ACBrLibTEFD + PayGo Integrado).
+                  Requer o <strong>NEXA ACBr Agent</strong> rodando na máquina do totem (HTTPS porta 3031, ACBrLibTEFD + PayGo Integrado).
                 </p>
               )}
             </div>
