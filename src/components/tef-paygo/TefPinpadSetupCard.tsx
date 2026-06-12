@@ -356,5 +356,78 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
         </details>
       )}
     </Card>
+
+    <Dialog open={!!captures && captures.length > 0} onOpenChange={(o) => { if (!o) cancelCapture(); }}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        {captures && captures[0] && (() => {
+          const cap = captures[0];
+          const isMenu = cap.tipo === 1 && cap.options && cap.options.length > 0;
+          const isTyped = cap.tipo === 2 || cap.tipo === 3;
+          return (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Settings2 className="h-5 w-5 text-primary" />
+                  {isMenu ? "Selecione uma opção" : "Entrada solicitada pelo PayGo"}
+                </DialogTitle>
+                <DialogDescription className="whitespace-pre-wrap">
+                  {cap.prompt || (isMenu ? "Escolha uma opção do menu administrativo" : "Digite o valor solicitado")}
+                </DialogDescription>
+              </DialogHeader>
+
+              {isMenu && (
+                <div className="space-y-2">
+                  {cap.options!.map((opt) => (
+                    <Button
+                      key={`${cap.identificador}-${opt.value}`}
+                      variant="outline"
+                      className="w-full justify-start"
+                      disabled={submitting}
+                      onClick={() => submitMenuOption(cap, opt.value)}
+                    >
+                      <span className="font-mono text-xs text-muted-foreground mr-2">{opt.value}</span>
+                      {opt.label}
+                    </Button>
+                  ))}
+                </div>
+              )}
+
+              {isTyped && (
+                <div className="space-y-2">
+                  <Input
+                    autoFocus
+                    type={cap.ocultar ? "password" : "text"}
+                    maxLength={cap.tamMax || undefined}
+                    placeholder={cap.mascara || ""}
+                    value={captureInputs[cap.identificador] ?? ""}
+                    onChange={(e) =>
+                      setCaptureInputs((p) => ({ ...p, [cap.identificador]: e.target.value }))
+                    }
+                    onKeyDown={(e) => { if (e.key === "Enter") submitTypedAll(); }}
+                  />
+                  {(cap.tamMin || cap.tamMax) && (
+                    <p className="text-xs text-muted-foreground">
+                      Tamanho: {cap.tamMin ?? 0} – {cap.tamMax ?? "?"} caracteres
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <DialogFooter className="gap-2">
+                <Button variant="ghost" onClick={cancelCapture} disabled={submitting} className="gap-1">
+                  <X className="h-4 w-4" /> Cancelar
+                </Button>
+                {isTyped && (
+                  <Button onClick={submitTypedAll} disabled={submitting}>
+                    {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enviar"}
+                  </Button>
+                )}
+              </DialogFooter>
+            </>
+          );
+        })()}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
