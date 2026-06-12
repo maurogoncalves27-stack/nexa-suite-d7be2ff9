@@ -127,38 +127,48 @@ const PWRET = {
   NOMANDATORY: -2483,
 };
 
+// PWINFO — IDs alinhados ao demo Setis PowerShell (PGWebLib.dll).
 const PWINFO = {
   PPPPWD: 0x03,
+  AUTIP: 0x05,
+  AUTPORT: 0x07,
   POSID: 0x11,
-  AUTNAME: 21,
-  AUTVER: 22,
-  AUTDEV: 23,
+  AUTNAME: 0x15,
+  AUTVER: 0x16,
+  AUTDEV: 0x17,
+  DESTTCPIP: 0x1B,
   MERCHCNPJCPF: 0x1C,
-  AUTCAP: 36,
-  TOTAMNT: 37,
-  CURRENCY: 38,
-  CURREXP: 39,
-  CARDTYPE: 41,
-  DATETIME: 49,
-  REQNUM: 50,
-  AUTHSYST: 53,
-  VIRTMERCH: 54,
-  FINTYPE: 59,
-  INSTALLMENTS: 60,
-  RESULTMSG: 66,
-  CNFREQ: 67,
-  AUTLOCREF: 68,
-  AUTEXTREF: 69,
-  AUTHCODE: 70,
-  RCPTMERCH: 83,
-  RCPTCHOLDER: 84,
+  AUTCAP: 0x24,
+  TOTAMNT: 0x25,
+  CURRENCY: 0x26,
+  CURREXP: 0x27,
+  FISCALREF: 0x28,
+  CARDTYPE: 0x29,
+  REQNUM: 0x32,
+  DATETIME: 0x31, // não usado diretamente; mantido por compat.
+  AUTHSYST: 0x35,
+  VIRTMERCH: 0x36,
+  FINTYPE: 0x3B,
+  INSTALLMENTS: 0x3C,
+  RESULTMSG: 0x42,
+  CNFREQ: 0x43,
+  AUTLOCREF: 0x44,
+  AUTEXTREF: 0x45,
+  AUTHCODE: 0x46,
+  CARDNAME: 0x4B,
+  RCPTFULL: 0x52,
+  RCPTMERCH: 0x53,
+  RCPTCHOLDER: 0x54,
   TRNORIGDATE: 87,
   TRNORIGNSU: 88,
   TRNORIGAMNT: 96,
   TRNORIGAUTH: 98,
   TRNORIGTIME: 115,
+  AUTHMNGTUSER: 0xF5,
   AUTHTECHUSER: 0xF6,
-  DSPQRPREF: 152,
+  DSPQRPREF: 0x7F50,
+  PAYMNTTYPE: 0x1F21,
+  USINGPINPAD: 0x7F01,
   PPCOMMPORT: 0x7F02,
   AUTADDRESS: 0x7F1F,
 };
@@ -170,7 +180,8 @@ const PWOPER = {
   SALEVOID: 0x22,
 };
 
-// PWINFO_AUTCAP bitmask (demo C# usa DSP_CHECKOUT + DSP_QRCODE = 384)
+// PWINFO_AUTCAP bitmask (demo Setis usa 452 = VALOR_FIXO + CUPOM_VIAS_DIFERENCIADAS
+// + REMOCAO_CARTAO + DSP_CHECKOUT + DSP_QRCODE).
 const PWINFO_AUTCAP = {
   TROCO_SAQUE: 1,
   DESCONTO: 2,
@@ -183,24 +194,25 @@ const PWINFO_AUTCAP = {
   DSP_QRCODE: 256,
 };
 
-// PWDAT — tipos de captura solicitados pelo MOREDATA
+// PWDAT — tipos de captura solicitados pelo MOREDATA.
+// VALORES OFICIAIS DA PGWebLib (bridge Setis):
 const PWDAT = {
   MENU: 1,
   TYPED: 2,
-  BARCODE: 3,
-  CARDINF: 4,
-  USERAUTH: 5,
-  PPENTRY: 6,
-  PPENCPIN: 7,
-  CARDOFF: 8,
-  CARDONL: 9,
-  PPCONF: 10,
-  PPREMCRD: 11,
-  DSPCHECKOUT: 12,
-  DSPQRCODE: 13,
+  CARDINF: 3,
+  PPENTRY: 5,
+  PPENCPIN: 6,
+  CARDOFF: 9,
+  CARDONL: 10,
+  PPCONF: 11,
+  BARCODE: 12,
+  PPREMCRD: 13,
   PPGENCMD: 14,
-  PPDATAPOSCNF: 15,
-  TSTKEY: 16,
+  PPDATAPOSCNF: 16,
+  USERAUTH: 17,
+  DSPCHECKOUT: 18,
+  TSTKEY: 19,
+  DSPQRCODE: 20,
 };
 
 // PWCNF — confirmação (valores oficiais do demo)
@@ -211,12 +223,12 @@ const PWCNF = {
   REV_ABORT: 0x43131,
 };
 
-// Params iniciais (idêntico ao MainWindow.xaml.cs do demo)
+// Params iniciais (alinhados ao demo Setis: AUTCAP=452, DSPQRPREF=2).
 const AUTOMATION_INFO = {
   name: "PDV",
-  version: "1.0.0.0",
+  version: "1.0.0",
   developer: "PayGo",
-  capabilities: String(PWINFO_AUTCAP.DSP_CHECKOUT + PWINFO_AUTCAP.DSP_QRCODE), // 384
+  capabilities: "452",
   dspqrpref: "2", // EXIBE_CHECKOUT
 };
 
