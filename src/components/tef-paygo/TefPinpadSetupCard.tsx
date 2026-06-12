@@ -196,6 +196,10 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
           {busy === "test" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wifi className="h-4 w-4" />}
           Testar comunicação
         </Button>
+        <Button onClick={testarPortaPinpad} disabled={!!busy} variant="outline" className="gap-2 border-success/40 text-success hover:bg-success/10">
+          {busy === "port" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plug className="h-4 w-4" />}
+          Testar porta do pinpad
+        </Button>
         <Button onClick={diagnosticar} disabled={!!busy} variant="outline" className="gap-2">
           {busy === "diag" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Activity className="h-4 w-4" />}
           Diagnosticar agente
