@@ -87,10 +87,11 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
           if (st.receipts) setResult(JSON.stringify(st.receipts, null, 2));
           toast({ title: "Erro", description: st.error, variant: "destructive" });
         } else if (st.status === "done") {
-          const r = (st.receipts as any) ?? {};
+          const r = ((st as any).result ?? st.receipts ?? {}) as Record<string, any>;
+          const message = r.message ?? r.resultado ?? st.message ?? "Operação concluída";
           setResult(JSON.stringify(r, null, 2));
-          setLastMsg(r.resultado || "Operação concluída");
-          toast({ title: "OK", description: r.resultado || "Operação concluída" });
+          setLastMsg(message);
+          toast({ title: "OK", description: message });
         }
       }
     }, 700);
