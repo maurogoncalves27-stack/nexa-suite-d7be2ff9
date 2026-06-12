@@ -697,9 +697,44 @@ function cancelarVenda({ valor, nsu, data, onDisplay, onCapture } = {}) {
  */
 function administrativo({ onDisplay, onCapture } = {}) {
   startTransaction(PWOPER.ADMIN, "admin");
-  runExecLoop({ onDisplay, onCapture });
+  runExecLoop({ onDisplay, onCapture, timeoutMs: 60000 });
   return collectReceipts();
 }
+
+/**
+ * Versão ASYNC do menu administrativo — não bloqueia o event loop
+ * do Node. Atualiza adminInFlight enquanto o pinpad está aberto.
+ */
+function administrativoAsync({ timeoutMs = 60000 } = {}) {
+  if (adminInFlight && adminInFlight.status === "running") {
+    return Promise.reject(new Error("Já existe uma operação ADM em andamento"));
+  }
+  adminInFlight = { startedAt: Date.now(), status: "running", message: "Iniciando..." };
+  try {
+    startTransaction(PWOPER.ADMIN, "admin");
+  } catch (e) {
+    adminInFlight = { status: "error", error: e.message, startedAt: Date.now() };
+    return Promise.reject(e);
+  }
+  return runExecLoopAsync({
+    timeoutMs,
+    onDisplay: (m) => {
+      if (adminInFlight) adminInFlight.message = m;
+      console.log("[TEF display]", m);
+    },
+    shouldAbort: () => adminInFlight && adminInFlight.status === "aborted",
+  })
+    .then(() => {
+      const receipts = collectReceipts();
+      adminInFlight = { status: "done", receipts, startedAt: adminInFlight.startedAt, message: receipts.resultado || "OK" };
+      return receipts;
+    })
+    .catch((e) => {
+      adminInFlight = { status: "error", error: e.message, startedAt: adminInFlight && adminInFlight.startedAt };
+      throw e;
+    });
+}
+
 
 /**
  * Instalação/ativação do PdC via PGWebLib.
