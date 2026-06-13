@@ -1,7 +1,6 @@
 /**
- * Card temporário de "Venda de Teste TEF" — dispara uma transação direto
- * no adapter PayGo da loja ASA SUL para validar o pinpad sem precisar
- * montar produto/menu no PDV. Pode ser removido após homologação.
+ * Card temporario de venda TEF para validar o pinpad PayGo sem passar pelo
+ * fluxo completo de produtos/menu do PDV.
  */
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
@@ -14,9 +13,12 @@ import { loadTefConfig, createTefAdapter, logTefTransaction } from "@/lib/tef";
 import type { TefStatus, TefPaymentMethod } from "@/lib/tef";
 
 const ASA_SUL_ID = "fcf435c2-c382-444c-b499-4d95f07b2633";
+const DEFAULT_SALE_ID = "VENDA-1001";
 
 export default function TefTestSaleCard() {
-  const [amount, setAmount] = useState("1,00");
+  const [amount, setAmount] = useState("129,90");
+  const [saleId, setSaleId] = useState(DEFAULT_SALE_ID);
+  const [acquirer, setAcquirer] = useState<"DEMO" | "REDE">("DEMO");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<TefStatus>("idle");
   const [statusMsg, setStatusMsg] = useState<string>("");
@@ -25,18 +27,20 @@ export default function TefTestSaleCard() {
   const runSale = async (method: TefPaymentMethod) => {
     const value = Number(amount.replace(",", "."));
     if (!value || value <= 0) {
-      toast({ title: "Valor inválido", variant: "destructive" });
+      toast({ title: "Valor invalido", variant: "destructive" });
       return;
     }
+
     setBusy(true);
     setStatus("connecting");
     setStatusMsg("Carregando config TEF da Asa Sul...");
     setLastResult("");
+
     try {
       const cfg = await loadTefConfig(ASA_SUL_ID);
       if (cfg.provider !== "paygo") {
         toast({
-          title: "Loja não está com PayGo",
+          title: "Loja nao esta com PayGo",
           description: `Provider atual: ${cfg.provider}. Ajuste em pdv_tef_config.`,
           variant: "destructive",
         });
@@ -44,17 +48,26 @@ export default function TefTestSaleCard() {
         setStatus("idle");
         return;
       }
+
       const adapter = createTefAdapter(cfg);
       const result = await adapter.processPayment(
-        { amount: value, method, storeId: ASA_SUL_ID },
+        {
+          amount: value,
+          method,
+          storeId: ASA_SUL_ID,
+          acquirer,
+          orderId: saleId.trim() || DEFAULT_SALE_ID,
+        },
         (s, msg) => {
           setStatus(s);
           if (msg) setStatusMsg(msg);
         },
       );
+
       setStatus(result.status);
       setStatusMsg(result.message ?? "");
       setLastResult(JSON.stringify(result, null, 2));
+
       await logTefTransaction({
         storeId: ASA_SUL_ID,
         provider: cfg.provider,
@@ -66,18 +79,23 @@ export default function TefTestSaleCard() {
         cardBrand: result.cardBrand,
         cardLast4: result.cardLast4,
         installments: result.installments,
-        acquirer: result.acquirer,
+        acquirer: result.acquirer ?? acquirer,
         raw: result.raw,
       });
+
       toast({
-        title: result.status === "approved" ? "Aprovado ✅" : `Resultado: ${result.status}`,
+        title: result.status === "approved" ? "Aprovado" : `Resultado: ${result.status}`,
         description: result.message ?? result.authorizationCode ?? result.nsu ?? "",
         variant: result.status === "approved" ? "default" : "destructive",
       });
     } catch (err: any) {
       setStatus("error");
       setStatusMsg(err?.message ?? String(err));
-      toast({ title: "Erro na transação", description: err?.message ?? String(err), variant: "destructive" });
+      toast({
+        title: "Erro na transacao",
+        description: err?.message ?? String(err),
+        variant: "destructive",
+      });
     } finally {
       setBusy(false);
     }
@@ -87,13 +105,13 @@ export default function TefTestSaleCard() {
     <Card className="p-4 space-y-3 border-warning/40 bg-warning/5">
       <div className="flex items-center gap-2">
         <FlaskConical className="h-5 w-5 text-warning" />
-        <h2 className="font-semibold">Venda de teste (temporário)</h2>
+        <h2 className="font-semibold">Venda de teste (temporario)</h2>
         <Badge variant="outline" className="ml-auto">ASA SUL</Badge>
       </div>
+
       <p className="text-sm text-muted-foreground">
-        Dispara uma transação direto no pinpad usando o adapter PayGo da Asa Sul,
-        sem passar pelo fluxo de produtos/menu do PDV. Use para validar o pinpad
-        em modo DEMO. Pode remover este card depois da homologação.
+        Dispara uma transacao direto no pinpad usando o adapter PayGo da Asa Sul,
+        com os mesmos parametros padrao do demo de referencia.
       </p>
 
       <div className="flex flex-wrap items-end gap-2">
@@ -106,13 +124,44 @@ export default function TefTestSaleCard() {
             disabled={busy}
           />
         </div>
-        <Button onClick={() => runSale("credit")} disabled={busy} className="gap-2">
+
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Venda</label>
+          <Input
+            value={saleId}
+            onChange={(e) => setSaleId(e.target.value)}
+            className="w-40"
+            disabled={busy}
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Rede</label>
+          <div className="flex rounded-md border bg-background p-1">
+            {(["DEMO", "REDE"] as const).map((option) => (
+              <Button
+                key={option}
+                type="button"
+                size="sm"
+                variant={acquirer === option ? "default" : "ghost"}
+                className="h-8 px-3"
+                disabled={busy}
+                onClick={() => setAcquirer(option)}
+              >
+                {option}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        <Button onClick={() => runSale("debit")} disabled={busy} className="gap-2">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-          Crédito
+          Debito
         </Button>
-        <Button onClick={() => runSale("debit")} disabled={busy} variant="secondary" className="gap-2">
+
+        <Button onClick={() => runSale("credit")} disabled={busy} variant="secondary" className="gap-2">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-          Débito
+          Credito
         </Button>
       </div>
 

@@ -263,6 +263,7 @@ async function handle(req, res) {
         merchantCode: body?.merchantCode,
         terminalCode: body?.terminalCode,
         host: body?.host,
+        paygoMenuChoice: body?.paygoMenuChoice,
       })
         .then((r) => console.log("[TEF admin] concluído:", r?.message ?? r?.status))
         .catch((e) => console.warn("[TEF admin] erro:", e.message));

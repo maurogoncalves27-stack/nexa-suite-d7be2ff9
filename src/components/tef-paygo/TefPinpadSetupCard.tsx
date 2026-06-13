@@ -19,7 +19,7 @@ import { loadTefConfig } from "@/lib/tef";
 import {
   paygoAdministrativo,
   checkPaygoAgent,
-  paygoInit,
+  paygoInstalarPdc,
   paygoTestarPinpad,
   paygoAdmStatus,
   paygoAdmRespond,
@@ -31,9 +31,26 @@ const ASA_SUL_ID = "fcf435c2-c382-444c-b499-4d95f07b2633";
 
 interface Props {
   storeId?: string | null;
+  cpfCnpj?: string | null;
+  pontoDeCaptura?: string | null;
+  sandboxHost?: string | null;
 }
 
-export default function TefPinpadSetupCard({ storeId }: Props) {
+type PaygoMenuOption = {
+  label: string;
+  value: string;
+};
+
+type PaygoMenuPrompt = {
+  mode: "install" | "adm" | "test";
+  agentUrl: string;
+  title: string;
+  message: string;
+  options: PaygoMenuOption[];
+  payload: Record<string, any>;
+};
+
+export default function TefPinpadSetupCard({ storeId, cpfCnpj, pontoDeCaptura, sandboxHost }: Props) {
   const effectiveStoreId = storeId || ASA_SUL_ID;
   const [busy, setBusy] = useState<"adm" | "test" | "diag" | "init" | "port" | null>(null);
   const [lastMsg, setLastMsg] = useState<string>("");
@@ -43,8 +60,11 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
   const [captures, setCaptures] = useState<PaygoAdmCapture[] | null>(null);
   const [captureInputs, setCaptureInputs] = useState<Record<number, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [menuPrompt, setMenuPrompt] = useState<PaygoMenuPrompt | null>(null);
+  const [menuSubmitting, setMenuSubmitting] = useState(false);
   const pollRef = useRef<number | null>(null);
   const lastCaptureSeqRef = useRef<number>(0);
+  const lastAdminPayloadRef = useRef<Record<string, any> | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -83,8 +103,9 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
         stopPolling();
         setCaptures(null);
         if (st.status === "error" && st.error) {
-          setLastMsg(st.error);
           if (st.receipts) setResult(JSON.stringify(st.receipts, null, 2));
+          if (openPaygoMenuPrompt("adm", url, lastAdminPayloadRef.current ?? {}, st.error)) return;
+          setLastMsg(st.error);
           toast({ title: "Erro", description: st.error, variant: "destructive" });
         } else if (st.status === "done") {
           const r = ((st as any).result ?? st.receipts ?? {}) as Record<string, any>;
@@ -145,6 +166,72 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
   const isFetchFail = (msg: string) =>
     /failed to fetch|network|load failed|offline/i.test(msg);
 
+  const parsePaygoMenuOptionsSafe = (message?: string): PaygoMenuOption[] => {
+    if (!message) return [];
+    const normalized = message
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/Ã§/g, "c")
+      .replace(/Ãµ/g, "o")
+      .replace(/ÃƒÂµ/g, "o")
+      .replace(/Ã£/g, "a");
+    const marker = normalized.match(/opcoes?\s*:/i);
+    if (!marker || marker.index == null) return [];
+    return message
+      .slice(marker.index + marker[0].length)
+      .split(",")
+      .map((raw) => {
+        const text = raw.trim();
+        const eq = text.indexOf("=");
+        const label = eq >= 0 ? text.slice(0, eq).trim() : text;
+        const value = eq >= 0 ? text.slice(eq + 1).trim() : text;
+        return { label: label || value, value };
+      })
+      .filter((opt) => opt.value.length > 0);
+  };
+
+  const parsePaygoMenuOptions = (message?: string): PaygoMenuOption[] => {
+    if (!message) return [];
+    const marker = message.match(/op[cç](?:o|õ|Ãµ)es?\s*:/i);
+    if (!marker || marker.index == null) return [];
+    return message
+      .slice(marker.index + marker[0].length)
+      .split(",")
+      .map((raw) => {
+        const text = raw.trim();
+        const eq = text.indexOf("=");
+        const label = eq >= 0 ? text.slice(0, eq).trim() : text;
+        const value = eq >= 0 ? text.slice(eq + 1).trim() : text;
+        return { label: label || value, value };
+      })
+      .filter((opt) => opt.value.length > 0);
+  };
+
+  const openPaygoMenuPrompt = (
+    mode: PaygoMenuPrompt["mode"],
+    url: string,
+    payload: Record<string, any>,
+    message: string,
+  ) => {
+    const options = parsePaygoMenuOptionsSafe(message);
+    if (options.length === 0) return false;
+    setMenuPrompt({
+      mode,
+      agentUrl: url,
+      payload,
+      options,
+      message,
+      title: mode === "install" ? "Instalação PayGo" : "Menu administrativo PayGo",
+    });
+    setLastMsg("PayGo solicitou uma opção. Selecione no modal para continuar.");
+    return true;
+  };
+
+  useEffect(() => {
+    if (!lastMsg || menuPrompt || parsePaygoMenuOptionsSafe(lastMsg).length === 0) return;
+    openPaygoMenuPrompt("adm", agentUrl, lastAdminPayloadRef.current ?? {}, lastMsg);
+  }, [agentUrl, lastMsg, menuPrompt]);
+
   const diagnosticar = async () => {
     setBusy("diag");
     setLastMsg("Pingando /health do agente...");
@@ -171,20 +258,39 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
 
   const inicializar = async () => {
     setBusy("init");
-    setLastMsg("Chamando PW_iInit na PGWebLib...");
+    setLastMsg("Executando instalacao do PdC e iniciacao do pinpad PayGo...");
     setResult("");
     setFetchFailed(false);
     try {
       const cfg = await loadTefConfig(effectiveStoreId);
-      const resp = await paygoInit(cfg.agentUrl);
+      if (cfg.provider !== "paygo") {
+        toast({
+          title: "Loja nao esta com PayGo",
+          description: `Provider atual: ${cfg.provider}.`,
+          variant: "destructive",
+        });
+        setBusy(null);
+        return;
+      }
+      const payload = {
+        cpfCnpj: cpfCnpj || cfg.merchantCode,
+        pontoDeCaptura: pontoDeCaptura || cfg.terminalCode,
+        ambiente: sandboxHost || "pos-transac-sb.tpgweb.io:31735",
+        senhaTecnica: "",
+        pinpadPort: "05",
+        usePinpad: true,
+      };
+      const resp = await paygoInstalarPdc(cfg.agentUrl, payload);
       if (!resp.ok) {
-        const err = resp.error ?? "Falha ao inicializar";
-        setLastMsg(err);
+        const err = resp.error ?? resp.message ?? "Falha ao instalar/inicializar o pinpad";
         if (isFetchFail(err)) setFetchFailed(true);
+        if (openPaygoMenuPrompt("install", cfg.agentUrl, payload, err)) return;
+        setLastMsg(err);
         toast({ title: "Erro", description: err, variant: "destructive" });
       } else {
-        const v = resp.retorno?.version ?? "PGWebLib";
-        setLastMsg(`TEF inicializado — ${v}`);
+        const r = (resp as any).retorno ?? resp;
+        const v = r.message ?? resp.message ?? "PdC/pinpad PayGo inicializado";
+        setLastMsg(v);
         setResult(JSON.stringify(resp.retorno ?? {}, null, 2));
         toast({ title: "TEF pronto", description: v });
         // re-pinga health pra refletir tefReady:true
@@ -245,17 +351,20 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
         setBusy(null);
         return;
       }
-      const resp = await paygoAdministrativo(cfg.agentUrl, {
+      const payload = {
         technicalPassword: "314159",
         pinpadPort: Number((cfg as any).pinpadPort ?? (cfg as any).pinpad_port ?? 5) || 5,
         merchantCode: cfg.merchantCode,
         terminalCode: cfg.terminalCode,
         host: cfg.environment === "demo" ? "pos-transac-sb.tpgweb.io:31735" : undefined,
-      });
+      };
+      lastAdminPayloadRef.current = payload;
+      const resp = await paygoAdministrativo(cfg.agentUrl, payload);
       if (!resp.ok && !(resp as any).started) {
         const err = resp.error ?? "Falha na operação ADM";
         setLastMsg(err);
         if (isFetchFail(err)) setFetchFailed(true);
+        if (openPaygoMenuPrompt(mode, cfg.agentUrl, payload, err)) return;
         toast({ title: "Erro", description: err, variant: "destructive" });
       } else {
         const msg = (resp as any).message ?? "Menu aberto no pinpad. Aguardando interação...";
@@ -269,6 +378,110 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
       toast({ title: "Erro", description: msg, variant: "destructive" });
     } finally {
       setBusy(null);
+    }
+  };
+
+  const isInstallOption = (option: PaygoMenuOption) =>
+    option.value === "1" || option.label.trim().toUpperCase() === "INSTALACAO";
+
+  const runInstallFromMenu = async (prompt: PaygoMenuPrompt, option: PaygoMenuOption) => {
+    const cfg = await loadTefConfig(effectiveStoreId);
+    const payload = {
+      cpfCnpj: cpfCnpj || cfg.merchantCode,
+      pontoDeCaptura: pontoDeCaptura || cfg.terminalCode,
+      ambiente: sandboxHost || "pos-transac-sb.tpgweb.io:31735",
+      senhaTecnica: "",
+      pinpadPort: "05",
+      usePinpad: true,
+      paygoMenuChoice: option.value,
+    };
+    setLastMsg("Executando instalacao do pinpad PayGo...");
+    const resp = await paygoInstalarPdc(prompt.agentUrl || cfg.agentUrl, payload);
+    if (!resp.ok) {
+      const err = resp.error ?? resp.message ?? "Falha ao instalar/inicializar o pinpad";
+      if (isFetchFail(err)) setFetchFailed(true);
+      if (openPaygoMenuPrompt("install", prompt.agentUrl || cfg.agentUrl, payload, err)) return;
+      setLastMsg(err);
+      toast({ title: "Erro", description: err, variant: "destructive" });
+      return;
+    }
+
+    const r = (resp as any).retorno ?? resp;
+    const msg = r.message ?? resp.message ?? "PdC/pinpad PayGo inicializado";
+    setMenuPrompt(null);
+    setLastMsg(msg);
+    setResult(JSON.stringify(resp.retorno ?? {}, null, 2));
+    toast({ title: "TEF pronto", description: msg });
+    try {
+      const h = await checkPaygoAgent(prompt.agentUrl || cfg.agentUrl);
+      setResult((prev) => `${prev}\n\n--- /health ---\n${JSON.stringify(h, null, 2)}`);
+    } catch { /* ignore */ }
+  };
+
+  const submitPaygoMenuChoice = async (option: PaygoMenuOption) => {
+    const prompt = menuPrompt;
+    if (!prompt) return;
+    const choice = option.value;
+    setMenuSubmitting(true);
+    setResult("");
+    setFetchFailed(false);
+
+    try {
+      if (prompt.mode !== "install" && isInstallOption(option)) {
+        await runInstallFromMenu(prompt, option);
+        return;
+      }
+
+      if (prompt.mode === "install") {
+        setLastMsg(`Executando opcao PayGo: ${choice}`);
+        const payload = { ...prompt.payload, paygoMenuChoice: choice };
+        const resp = await paygoInstalarPdc(prompt.agentUrl, payload);
+        if (!resp.ok) {
+          const err = resp.error ?? resp.message ?? "Falha ao instalar/inicializar o pinpad";
+          setLastMsg(err);
+          if (isFetchFail(err)) setFetchFailed(true);
+          if (openPaygoMenuPrompt("install", prompt.agentUrl, payload, err)) return;
+          toast({ title: "Erro", description: err, variant: "destructive" });
+          return;
+        }
+
+        const r = (resp as any).retorno ?? resp;
+        const msg = r.message ?? resp.message ?? "PdC/pinpad PayGo inicializado";
+        setMenuPrompt(null);
+        setLastMsg(msg);
+        setResult(JSON.stringify(resp.retorno ?? {}, null, 2));
+        toast({ title: "TEF pronto", description: msg });
+        try {
+          const h = await checkPaygoAgent(prompt.agentUrl);
+          setResult((prev) => `${prev}\n\n--- /health ---\n${JSON.stringify(h, null, 2)}`);
+        } catch { /* ignore */ }
+        return;
+      }
+
+      setLastMsg(`Executando opcao administrativa PayGo: ${choice}`);
+      const payload = { ...prompt.payload, paygoMenuChoice: choice };
+      lastAdminPayloadRef.current = payload;
+      const resp = await paygoAdministrativo(prompt.agentUrl, payload);
+      if (!resp.ok && !(resp as any).started) {
+        const err = resp.error ?? "Falha na operacao ADM";
+        setLastMsg(err);
+        if (isFetchFail(err)) setFetchFailed(true);
+        if (openPaygoMenuPrompt(prompt.mode, prompt.agentUrl, payload, err)) return;
+        toast({ title: "Erro", description: err, variant: "destructive" });
+        return;
+      }
+
+      setMenuPrompt(null);
+      const msg = (resp as any).message ?? "Menu aberto no pinpad. Aguardando interacao...";
+      setLastMsg(msg);
+      startPolling(prompt.agentUrl);
+    } catch (err: any) {
+      const msg = err?.message ?? String(err);
+      setLastMsg(msg);
+      if (isFetchFail(msg)) setFetchFailed(true);
+      toast({ title: "Erro", description: msg, variant: "destructive" });
+    } finally {
+      setMenuSubmitting(false);
     }
   };
 
@@ -359,6 +572,54 @@ export default function TefPinpadSetupCard({ storeId }: Props) {
         </details>
       )}
     </Card>
+
+    <Dialog open={!!menuPrompt} onOpenChange={(o) => { if (!o && !menuSubmitting) setMenuPrompt(null); }}>
+      <DialogContent className="max-w-md">
+        {menuPrompt && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Settings2 className="h-5 w-5 text-primary" />
+                {menuPrompt.title}
+              </DialogTitle>
+              <DialogDescription className="whitespace-pre-wrap">
+                Selecione a opcao retornada pelo PayGo para continuar a operacao.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-2">
+              {menuPrompt.options.map((opt) => (
+                <Button
+                  key={`${menuPrompt.mode}-${opt.value}`}
+                  variant="outline"
+                  className="w-full justify-start text-left"
+                  disabled={menuSubmitting}
+                  onClick={() => submitPaygoMenuChoice(opt)}
+                >
+                  <span className="font-mono text-xs text-muted-foreground mr-2">{opt.value}</span>
+                  <span>{opt.label}</span>
+                </Button>
+              ))}
+            </div>
+
+            <details className="text-xs">
+              <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                Ver mensagem original
+              </summary>
+              <pre className="mt-2 max-h-28 overflow-auto rounded bg-muted p-2 font-mono whitespace-pre-wrap">
+                {menuPrompt.message}
+              </pre>
+            </details>
+
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setMenuPrompt(null)} disabled={menuSubmitting}>
+                Cancelar
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
 
     <Dialog open={!!captures && captures.length > 0} onOpenChange={(o) => { if (!o) cancelCapture(); }}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">

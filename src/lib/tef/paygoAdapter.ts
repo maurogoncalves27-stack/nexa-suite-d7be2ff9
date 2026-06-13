@@ -58,6 +58,11 @@ const isApproved = (r: PaygoReceipts): boolean => {
   return false;
 };
 
+const cleanPaygoMessage = (message?: string | null): string | undefined => {
+  const cleaned = (message ?? "").replace(/\s+/g, " ").trim();
+  return cleaned || undefined;
+};
+
 export const createPaygoAdapter = (config: TefConfig): TefAdapter => {
   let abortController: AbortController | null = null;
 
@@ -86,6 +91,10 @@ export const createPaygoAdapter = (config: TefConfig): TefAdapter => {
             tipo,
             parcelas,
             financiamento,
+            saleId: req.orderId,
+            acquirer: req.acquirer,
+            rede: req.acquirer,
+            paygoMenuChoice: req.acquirer,
           }),
           signal: abortController.signal,
         });
@@ -98,10 +107,14 @@ export const createPaygoAdapter = (config: TefConfig): TefAdapter => {
           return { status: "error", message: err, raw: data };
         }
 
-        const r = data.data ?? data.retorno ?? {};
-        const approved = data.status === "approved" || (data.ok && isApproved(r));
-        const denied = data.status === "denied";
+        const retorno = ((data as any).retorno ?? {}) as PaygoAgentResponse & { data?: PaygoReceipts };
+        const effectiveStatus = retorno.status ?? data.status;
+        const effectiveMessage = cleanPaygoMessage(retorno.message ?? data.message);
+        const r = retorno.data ?? data.data ?? data.retorno ?? {};
+        const approved = effectiveStatus === "approved" || (data.ok && isApproved(r));
+        const denied = effectiveStatus === "denied";
         const status: TefPaymentResult["status"] = approved ? "approved" : denied ? "declined" : "error";
+        const fallbackMessage = approved ? "Transacao aprovada" : denied ? "Transacao negada" : "Falha na transacao";
         const result: TefPaymentResult = {
           status,
           message: data.message ?? (approved ? "Transação aprovada" : denied ? "Transação negada" : "Falha na transação"),
@@ -112,6 +125,7 @@ export const createPaygoAdapter = (config: TefConfig): TefAdapter => {
           acquirer: r.acquirer ?? r.authSyst ?? config.acquirer,
           raw: data,
         };
+        result.message = effectiveMessage ?? fallbackMessage;
         onStatus?.(status, result.message);
         return result;
       } catch (err) {
@@ -180,6 +194,40 @@ export const paygoInit = async (
   }
 };
 
+/** Executa a instalacao/iniciacao do PdC + pinpad, igual ao fluxo install do demo PayGo. */
+export const paygoInstalarPdc = async (
+  agentUrl: string,
+  options: {
+    cpfCnpj?: string;
+    pontoDeCaptura?: string;
+    ambiente?: string;
+    host?: string;
+    senhaTecnica?: string;
+    usePinpad?: boolean;
+    pinpadPort?: number | string;
+    paygoMenuChoice?: string;
+  },
+): Promise<PaygoAgentResponse> => {
+  try {
+    const r = await fetch(joinAgentUrl(agentUrl, "/tef/install"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(options),
+    });
+    const data = (await r.json().catch(() => ({}))) as PaygoAgentResponse;
+    if (r.status === 404) {
+      return {
+        ok: false,
+        error: "O agente respondeu, mas a rota /tef/install nao existe. Atualize/reinstale o NEXA ACBr Agent.",
+      };
+    }
+    if (!r.ok) return { ok: false, error: data?.error ?? `HTTP ${r.status}` };
+    return data;
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "offline" };
+  }
+};
+
 /** Cancela uma venda já aprovada (NSU + data DDMMAAAA + valor em reais). */
 export const paygoCancelarVenda = async (
   agentUrl: string,
@@ -208,6 +256,7 @@ export const paygoAdministrativo = async (
     merchantCode?: string;
     terminalCode?: string;
     host?: string;
+    paygoMenuChoice?: string;
   },
 ): Promise<PaygoAgentResponse> => {
   try {

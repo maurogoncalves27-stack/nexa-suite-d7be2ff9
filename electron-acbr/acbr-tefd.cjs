@@ -499,10 +499,11 @@ async function instalarPdc(opts = {}) {
     action: "install",
     cpfCnpj: opts.cpfCnpj || NEXA_DEFAULTS.cpfCnpj,
     pontoDeCaptura: opts.pontoDeCaptura || NEXA_DEFAULTS.pontoDeCaptura,
-    ambiente: opts.ambiente || NEXA_DEFAULTS.ambiente,
-    senhaTecnica: opts.senhaTecnica || NEXA_DEFAULTS.senhaTecnica,
-    usePinpad: opts.usePinpad === false ? "0" : "1",
-    pinpadPort: String(opts.pinpadPort || NEXA_DEFAULTS.pinpadPort),
+    ambiente: opts.host || opts.ambiente || NEXA_DEFAULTS.ambiente,
+    senhaTecnica: opts.senhaTecnica ?? NEXA_DEFAULTS.senhaTecnica,
+    usePinpad: opts.usePinpad === true ? "1" : opts.usePinpad === false ? "0" : "",
+    pinpadPort: opts.usePinpad === true ? String(opts.pinpadPort || NEXA_DEFAULTS.pinpadPort) : "",
+    paygoMenuChoice: opts.paygoMenuChoice || "",
   };
   return runBridge(payload, { timeoutMs: opts.timeoutMs || 600000 });
 }

@@ -24,6 +24,7 @@ export interface TefPaymentRequest {
   installments?: number;     // crédito parcelado
   orderId?: string;          // para vincular ao pdv_orders
   storeId?: string;          // para selecionar config TEF
+  acquirer?: string;          // rede/adquirente preferida (ex.: DEMO, REDE)
 }
 
 export interface TefPaymentResult {

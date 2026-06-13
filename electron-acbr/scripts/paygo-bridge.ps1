@@ -299,7 +299,7 @@ public static class PayGoBridge
         }
     }
 
-    public static string Operation(string dllPath, string workingDir, byte operation, string cpfCnpj, string pontoDeCaptura, string ambiente, string senhaTecnica, string usePinpad, string pinpadPort)
+    public static string Operation(string dllPath, string workingDir, byte operation, string cpfCnpj, string pontoDeCaptura, string ambiente, string senhaTecnica, string usePinpad, string pinpadPort, string paygoMenuChoice)
     {
         try
         {
@@ -307,12 +307,11 @@ public static class PayGoBridge
             _pontoDeCaptura = pontoDeCaptura ?? "";
             _ambiente = ambiente ?? "";
             _senhaTecnica = senhaTecnica ?? "";
+            _paygoMenuChoice = paygoMenuChoice ?? "";
             // No ADMIN, vazio precisa permanecer vazio para NÃO enviar PWINFO_USINGPINPAD (0x7F01),
             // pois esse parâmetro é inválido nesse fluxo e causa -2499 em PW_iAddParam.
             // Mantemos o default "1" apenas quando o chamador realmente está no INSTALL.
-            _usePinpad = String.IsNullOrWhiteSpace(usePinpad)
-                ? (operation == 0x01 ? "1" : "")
-                : usePinpad;
+            _usePinpad = String.IsNullOrWhiteSpace(usePinpad) ? "" : usePinpad;
             _pinpadPort = NormalizePinpadPort(pinpadPort);
 
             Load(dllPath);
@@ -932,7 +931,8 @@ function Invoke-PayGoCommand {
         [string]$Command.ambiente,
         [string]$Command.senhaTecnica,
         [string]$Command.usePinpad,
-        [string]$Command.pinpadPort
+        [string]$Command.pinpadPort,
+        [string]$Command.paygoMenuChoice
       )
     }
 
@@ -946,7 +946,8 @@ function Invoke-PayGoCommand {
         [string]$Command.ambiente,
         [string]$Command.senhaTecnica,
         [string]$Command.usePinpad,
-        [string]$Command.pinpadPort
+        [string]$Command.pinpadPort,
+        [string]$Command.paygoMenuChoice
       )
     }
 
@@ -1036,12 +1037,12 @@ if (-not [string]::IsNullOrWhiteSpace($Ambiente)) {
 }
 
 if ($Action -eq "install") {
-  [PayGoBridge]::Operation($DllPath, $WorkingDir, 0x01, $CpfCnpj, $PontoDeCaptura, $Ambiente, $SenhaTecnica, $UsePinpad, $PinpadPort)
+  [PayGoBridge]::Operation($DllPath, $WorkingDir, 0x01, $CpfCnpj, $PontoDeCaptura, $Ambiente, $SenhaTecnica, $UsePinpad, $PinpadPort, "")
   exit
 }
 
 if ($Action -eq "admin") {
-  [PayGoBridge]::Operation($DllPath, $WorkingDir, 0x20, $CpfCnpj, $PontoDeCaptura, $Ambiente, $SenhaTecnica, $UsePinpad, $PinpadPort)
+  [PayGoBridge]::Operation($DllPath, $WorkingDir, 0x20, $CpfCnpj, $PontoDeCaptura, $Ambiente, $SenhaTecnica, $UsePinpad, $PinpadPort, "")
   exit
 }
 

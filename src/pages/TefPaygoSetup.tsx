@@ -333,7 +333,12 @@ const TefPaygoSetup = () => {
 
       <TefHomologationChecklist storeId={storeId} />
 
-      <TefPinpadSetupCard storeId={storeId} />
+      <TefPinpadSetupCard
+        storeId={storeId}
+        cpfCnpj={cnpj}
+        pontoDeCaptura={pdc}
+        sandboxHost={DEFAULT_HOST}
+      />
 
       <TefTestSaleCard />
 
