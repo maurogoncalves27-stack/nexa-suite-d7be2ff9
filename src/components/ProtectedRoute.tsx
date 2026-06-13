@@ -87,6 +87,7 @@ export const ProtectedRoute = ({ children, requireRoles, redirectTo = "/auth", r
   const { modules, loading: modLoading } = usePartnerPermissions();
   const { mode: viewMode } = useViewMode();
   const location = useLocation();
+  const isTotemLogin = Boolean((user?.user_metadata as { totem_login?: boolean } | undefined)?.totem_login);
 
   // O modo escolhido em /selecionar-acesso vira o perfil efetivo da sessão.
   const suppressStaff = viewMode === "socio" || viewMode === "colaborador" || viewMode === "nutricionista" || viewMode === "fornecedor";
@@ -108,6 +109,14 @@ export const ProtectedRoute = ({ children, requireRoles, redirectTo = "/auth", r
   }
 
   if (!user) return <Navigate to={redirectTo} replace state={{ from: location }} />;
+
+  // Login dedicado de TOTEM: ignora viewMode/roles comuns e fica restrito ao /totem.
+  if (isTotemLogin) {
+    const p = location.pathname;
+    const allowed = p === "/totem" || p.startsWith("/totem/");
+    if (!allowed) return <Navigate to="/totem" replace />;
+    return <>{children}</>;
+  }
 
   // Login fixo de PC de loja (store_login): só pode acessar /loja e o PDV.
   if (isStoreLogin) {
