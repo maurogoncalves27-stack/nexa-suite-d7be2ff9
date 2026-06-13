@@ -65,7 +65,15 @@ interface CartItem {
 
 const IDLE_TIMEOUT_MS = 60_000; // 60s sem toque → reset
 const PHOTO_BUCKET = "menu-photos";
-const CURRENT_TOTEM_STORE = "asa sul";
+const DEFAULT_TOTEM_STORE = "asa sul";
+
+// Mapeia email do login de totem → loja física
+const TOTEM_LOGIN_STORE_MAP: Record<string, string> = {
+  "totemas@aquelaparme.com.br": "asa sul",
+  "toteman@aquelaparme.com.br": "asa norte",
+  "totemls@aquelaparme.com.br": "lago sul",
+  "totemac@aquelaparme.com.br": "aguas claras",
+};
 
 const TOTEM_THEME_STYLE = {
   "--primary": "0 82% 43%",
