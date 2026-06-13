@@ -452,14 +452,19 @@ async function administrativoAsync(opts = {}) {
     error: null,
   });
 
+  // IMPORTANTE: no fluxo ADMIN o PayGo NÃO aceita os parâmetros de ativação
+  // (USINGPINPAD/PPCOMMPORT/MERCHCNPJCPF/POSID/DESTTCPIP). Se enviados, retorna
+  // -2499 (PWRET_INVPARM) em PW_iAddParam 0x7F01. Esses params são exclusivos
+  // do fluxo INSTALL. Mantemos só a senha técnica para resposta de USERAUTH.
   const payload = {
     action: "admin",
-    cpfCnpj: opts.cpfCnpj || NEXA_DEFAULTS.cpfCnpj,
-    pontoDeCaptura: opts.pontoDeCaptura || opts.terminalCode || NEXA_DEFAULTS.pontoDeCaptura,
-    ambiente: opts.ambiente || NEXA_DEFAULTS.ambiente,
+    cpfCnpj: "",
+    pontoDeCaptura: "",
+    ambiente: "",
     senhaTecnica: opts.senhaTecnica || opts.technicalPassword || NEXA_DEFAULTS.senhaTecnica,
-    usePinpad: opts.usePinpad === false ? "0" : "1",
-    pinpadPort: String(opts.pinpadPort || NEXA_DEFAULTS.pinpadPort),
+    usePinpad: "",
+    pinpadPort: "",
+    paygoMenuChoice: opts.paygoMenuChoice || "",
   };
 
   try {
