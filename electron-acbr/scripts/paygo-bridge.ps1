@@ -307,7 +307,12 @@ public static class PayGoBridge
             _pontoDeCaptura = pontoDeCaptura ?? "";
             _ambiente = ambiente ?? "";
             _senhaTecnica = senhaTecnica ?? "";
-            _usePinpad = String.IsNullOrWhiteSpace(usePinpad) ? "1" : usePinpad;
+            // No ADMIN, vazio precisa permanecer vazio para NÃO enviar PWINFO_USINGPINPAD (0x7F01),
+            // pois esse parâmetro é inválido nesse fluxo e causa -2499 em PW_iAddParam.
+            // Mantemos o default "1" apenas quando o chamador realmente está no INSTALL.
+            _usePinpad = String.IsNullOrWhiteSpace(usePinpad)
+                ? (operation == 0x01 ? "1" : "")
+                : usePinpad;
             _pinpadPort = NormalizePinpadPort(pinpadPort);
 
             Load(dllPath);
