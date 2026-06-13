@@ -179,7 +179,7 @@ export default function Totem() {
     void (async () => {
       const [b, s, ta] = await Promise.all([
         supabase.from("brands").select("id,name,slug").eq("is_active", true).not("name", "ilike", "%fábrica%").not("name", "ilike", "%fabrica%").order("sort_order"),
-        supabase.from("stores").select("id,name,brand_id,parent_store_id,parent_store:parent_store_id(name)").eq("is_virtual", true).order("name"),
+        supabase.from("stores").select("id,name,brand_id,parent_store_id,parent_store:parent_store_id(name)").order("name"),
         (supabase as any).from("totem_assets").select("kind,brand_slug,image_url,sort_order,is_active").eq("is_active", true).order("sort_order"),
       ]);
       setBrands(((b.data ?? []) as Brand[]).filter(x => !/f[áa]brica/i.test(x.name)));
@@ -313,7 +313,18 @@ export default function Totem() {
 
   const pickStoreForBrand = useCallback((brand: Brand) => {
     const brandStores = stores.filter((s) => s.brand_id === brand.id);
-    return brandStores.find((s) => normalize(`${s.name} ${s.parent_store?.name ?? ""}`).includes(currentTotemStore)) ?? brandStores[0] ?? null;
+    // prefere virtual cujo parent bate; senão a própria física com o nome certo; fallback: primeira virtual; depois primeira qualquer
+    const matchTotem = (s: Store) =>
+      normalize(`${s.name} ${s.parent_store?.name ?? ""}`).includes(currentTotemStore);
+    const virtuals = brandStores.filter((s) => !!s.parent_store_id);
+    const physicals = brandStores.filter((s) => !s.parent_store_id);
+    return (
+      virtuals.find(matchTotem) ??
+      physicals.find(matchTotem) ??
+      virtuals[0] ??
+      physicals[0] ??
+      null
+    );
   }, [stores, currentTotemStore]);
 
   const filteredItems = useMemo(() => items.filter(it => {
