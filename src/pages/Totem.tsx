@@ -313,7 +313,7 @@ export default function Totem() {
 
   const pickStoreForBrand = useCallback((brand: Brand) => {
     const brandStores = stores.filter((s) => s.brand_id === brand.id);
-    return brandStores.find((s) => normalize(`${s.name} ${s.parent_store?.name ?? ""}`).includes(CURRENT_TOTEM_STORE)) ?? brandStores[0] ?? null;
+    return brandStores.find((s) => normalize(`${s.name} ${s.parent_store?.name ?? ""}`).includes(currentTotemStore)) ?? brandStores[0] ?? null;
   }, [stores]);
 
   const filteredItems = useMemo(() => items.filter(it => {
@@ -594,7 +594,7 @@ export default function Totem() {
                       } else {
                         toast({
                           title: "Marca sem loja vinculada",
-                          description: `Nenhuma loja virtual da marca "${b.name}" foi encontrada para este totem (${CURRENT_TOTEM_STORE}). Vincule em Configurações → Lojas.`,
+                          description: `Nenhuma loja virtual da marca "${b.name}" foi encontrada para este totem (${currentTotemStore}). Vincule em Configurações → Lojas.`,
                           variant: "destructive",
                         });
                       }
