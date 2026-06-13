@@ -313,7 +313,18 @@ export default function Totem() {
 
   const pickStoreForBrand = useCallback((brand: Brand) => {
     const brandStores = stores.filter((s) => s.brand_id === brand.id);
-    return brandStores.find((s) => normalize(`${s.name} ${s.parent_store?.name ?? ""}`).includes(currentTotemStore)) ?? brandStores[0] ?? null;
+    // prefere virtual cujo parent bate; senão a própria física com o nome certo; fallback: primeira virtual; depois primeira qualquer
+    const matchTotem = (s: Store) =>
+      normalize(`${s.name} ${s.parent_store?.name ?? ""}`).includes(currentTotemStore);
+    const virtuals = brandStores.filter((s) => !!s.parent_store_id);
+    const physicals = brandStores.filter((s) => !s.parent_store_id);
+    return (
+      virtuals.find(matchTotem) ??
+      physicals.find(matchTotem) ??
+      virtuals[0] ??
+      physicals[0] ??
+      null
+    );
   }, [stores, currentTotemStore]);
 
   const filteredItems = useMemo(() => items.filter(it => {
