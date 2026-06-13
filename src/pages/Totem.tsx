@@ -172,29 +172,54 @@ export default function Totem() {
     })();
   }, []);
 
-  // ----- carregar cardápio
+  // ----- carregar cardápio (marca + loja física do totem)
   useEffect(() => {
     if (step !== "menu" || !selectedBrand || !selectedStore) return;
     void (async () => {
       setLoading(true);
-      const [cats, mib] = await Promise.all([
+      // loja física = parent_store_id da virtual (ou a própria, se já for física)
+      const physicalStoreId = selectedStore.parent_store_id ?? selectedStore.id;
+      const [cats, mib, mis] = await Promise.all([
         supabase.from("menu_categories").select("id,name,sort_order,brand_id")
           .or(`brand_id.eq.${selectedBrand.id},brand_id.is.null`).order("sort_order"),
         supabase.from("menu_item_brands").select("menu_item_id").eq("brand_id", selectedBrand.id),
+        (supabase as any).from("menu_item_stores").select("menu_item_id")
+          .eq("store_id", physicalStoreId).eq("is_available", true),
       ]);
-      const itemIds = (mib.data ?? []).map((r: any) => r.menu_item_id);
+      const brandIds = new Set((mib.data ?? []).map((r: any) => r.menu_item_id));
+      const storeIds = new Set((mis.data ?? []).map((r: any) => r.menu_item_id));
+      const itemIds = Array.from(brandIds).filter((id) => storeIds.has(id));
       let itemsData: MenuItem[] = [];
       if (itemIds.length > 0) {
         const { data } = await supabase.from("menu_items")
-          .select("id,name,description,price,category_id,photo_path")
+          .select("id,name,description,price,category_id,photo_path,recipe_id")
           .in("id", itemIds).eq("is_active", true).order("sort_order");
         itemsData = (data ?? []) as MenuItem[];
+
+        // foto única: usa recipes.photo_path (mesma do /cardapio); fallback p/ menu_items.photo_path
+        const recipeIds = Array.from(new Set(itemsData.map((i) => i.recipe_id).filter(Boolean) as string[]));
+        const recipePhotoMap: Record<string, string> = {};
+        if (recipeIds.length > 0) {
+          const { data: recs } = await supabase.from("recipes").select("id,photo_path").in("id", recipeIds);
+          for (const r of (recs ?? []) as any[]) {
+            if (r.photo_path) {
+              recipePhotoMap[r.id] = supabase.storage.from("recipe-photos").getPublicUrl(r.photo_path).data.publicUrl;
+            }
+          }
+        }
+        itemsData = itemsData.map((it) => ({
+          ...it,
+          photo_url:
+            (it.recipe_id ? recipePhotoMap[it.recipe_id] : null) ??
+            photoUrl(it.photo_path),
+        }));
       }
       setCategories((cats.data ?? []) as Category[]);
       setItems(itemsData);
       setLoading(false);
     })();
   }, [step, selectedBrand, selectedStore]);
+
 
   // ----- timeout de inatividade
   const idleRef = useRef<number | null>(null);
