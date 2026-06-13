@@ -28,6 +28,12 @@ const Index = () => {
     return <Navigate to="/totem" replace />;
   }
 
+  // Login dedicado de TOTEM (user_metadata.totem_login=true) vai direto para /totem
+  if ((user?.user_metadata as { totem_login?: boolean } | undefined)?.totem_login) {
+    return <Navigate to="/totem" replace />;
+  }
+
+
   // Login fixo de PC de loja: vai direto para /loja (sidebar próprio, sem sidebar do sistema).
   if (isStoreLogin) {
     return <Navigate to="/loja" replace />;
