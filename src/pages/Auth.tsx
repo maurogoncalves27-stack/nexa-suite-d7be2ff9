@@ -61,17 +61,21 @@ export default function Auth() {
   const { user, loading } = useAuth();
   const webAuthnOk = isWebAuthnSupported();
   const explicitFrom = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
-  const computeRedirect = (uid?: string | null) => {
+  const computeRedirect = (uid?: string | null, meta?: Record<string, unknown> | null) => {
     // Super-usuário SEMPRE vai para a tela de seleção de perfil ao logar,
     // ignorando "from" e qualquer viewMode antigo na sessão.
     if (isSuperUserId(uid)) {
       try { sessionStorage.removeItem("rh:viewMode"); } catch {}
       return "/selecionar-acesso";
     }
+    // Logins de TOTEM vão direto para a tela do totem.
+    const m = meta ?? (user?.user_metadata as Record<string, unknown> | undefined);
+    if (m && (m as { totem_login?: boolean }).totem_login) return "/totem";
     if (explicitFrom) return explicitFrom;
     return "/";
   };
   const redirectAfterLogin = computeRedirect(user?.id);
+
 
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState(() => {
@@ -157,7 +161,7 @@ export default function Auth() {
     }
     rememberEmail(ep.data);
     setBioPref(ep.data, bioPrefEnabled);
-    navigate(computeRedirect(signInData.user?.id), { replace: true });
+    navigate(computeRedirect(signInData.user?.id, signInData.user?.user_metadata as Record<string, unknown> | null), { replace: true });
   };
 
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
