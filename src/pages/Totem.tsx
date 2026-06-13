@@ -65,7 +65,15 @@ interface CartItem {
 
 const IDLE_TIMEOUT_MS = 60_000; // 60s sem toque → reset
 const PHOTO_BUCKET = "menu-photos";
-const CURRENT_TOTEM_STORE = "asa sul";
+const DEFAULT_TOTEM_STORE = "asa sul";
+
+// Mapeia email do login de totem → loja física
+const TOTEM_LOGIN_STORE_MAP: Record<string, string> = {
+  "totemas@aquelaparme.com.br": "asa sul",
+  "toteman@aquelaparme.com.br": "asa norte",
+  "totemls@aquelaparme.com.br": "lago sul",
+  "totemac@aquelaparme.com.br": "aguas claras",
+};
 
 const TOTEM_THEME_STYLE = {
   "--primary": "0 82% 43%",
@@ -127,6 +135,18 @@ const photoUrl = (path: string | null): string | null => {
 
 export default function Totem() {
   const [step, setStep] = useState<Step>("idle");
+  const [currentTotemStore, setCurrentTotemStore] = useState<string>(DEFAULT_TOTEM_STORE);
+
+  useEffect(() => {
+    void supabase.auth.getUser().then(({ data }) => {
+      const email = data.user?.email?.toLowerCase();
+      const meta = data.user?.user_metadata as { totem_store?: string } | undefined;
+      const fromMeta = meta?.totem_store;
+      const fromEmail = email ? TOTEM_LOGIN_STORE_MAP[email] : undefined;
+      if (fromMeta) setCurrentTotemStore(fromMeta);
+      else if (fromEmail) setCurrentTotemStore(fromEmail);
+    });
+  }, []);
   const [idleSlide, setIdleSlide] = useState(0);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
@@ -293,8 +313,8 @@ export default function Totem() {
 
   const pickStoreForBrand = useCallback((brand: Brand) => {
     const brandStores = stores.filter((s) => s.brand_id === brand.id);
-    return brandStores.find((s) => normalize(`${s.name} ${s.parent_store?.name ?? ""}`).includes(CURRENT_TOTEM_STORE)) ?? brandStores[0] ?? null;
-  }, [stores]);
+    return brandStores.find((s) => normalize(`${s.name} ${s.parent_store?.name ?? ""}`).includes(currentTotemStore)) ?? brandStores[0] ?? null;
+  }, [stores, currentTotemStore]);
 
   const filteredItems = useMemo(() => items.filter(it => {
     if (activeCat !== "all" && it.category_id !== activeCat) return false;
@@ -574,7 +594,7 @@ export default function Totem() {
                       } else {
                         toast({
                           title: "Marca sem loja vinculada",
-                          description: `Nenhuma loja virtual da marca "${b.name}" foi encontrada para este totem (${CURRENT_TOTEM_STORE}). Vincule em Configurações → Lojas.`,
+                          description: `Nenhuma loja virtual da marca "${b.name}" foi encontrada para este totem (${currentTotemStore}). Vincule em Configurações → Lojas.`,
                           variant: "destructive",
                         });
                       }
