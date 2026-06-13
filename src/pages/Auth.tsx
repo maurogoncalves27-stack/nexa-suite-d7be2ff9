@@ -161,7 +161,7 @@ export default function Auth() {
     }
     rememberEmail(ep.data);
     setBioPref(ep.data, bioPrefEnabled);
-    navigate(computeRedirect(signInData.user?.id), { replace: true });
+    navigate(computeRedirect(signInData.user?.id, signInData.user?.user_metadata as Record<string, unknown> | null), { replace: true });
   };
 
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
