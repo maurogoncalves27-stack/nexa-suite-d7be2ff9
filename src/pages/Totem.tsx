@@ -571,6 +571,12 @@ export default function Totem() {
                         setSelectedStore(store);
                         setOrderType("takeout");
                         setStep("menu");
+                      } else {
+                        toast({
+                          title: "Marca sem loja vinculada",
+                          description: `Nenhuma loja virtual da marca "${b.name}" foi encontrada para este totem (${CURRENT_TOTEM_STORE}). Vincule em Configurações → Lojas.`,
+                          variant: "destructive",
+                        });
                       }
                     }}
                     className="flex items-center justify-center h-56 transition-transform hover:scale-105 active:scale-95 overflow-visible"
