@@ -135,6 +135,18 @@ const photoUrl = (path: string | null): string | null => {
 
 export default function Totem() {
   const [step, setStep] = useState<Step>("idle");
+  const [currentTotemStore, setCurrentTotemStore] = useState<string>(DEFAULT_TOTEM_STORE);
+
+  useEffect(() => {
+    void supabase.auth.getUser().then(({ data }) => {
+      const email = data.user?.email?.toLowerCase();
+      const meta = data.user?.user_metadata as { totem_store?: string } | undefined;
+      const fromMeta = meta?.totem_store;
+      const fromEmail = email ? TOTEM_LOGIN_STORE_MAP[email] : undefined;
+      if (fromMeta) setCurrentTotemStore(fromMeta);
+      else if (fromEmail) setCurrentTotemStore(fromEmail);
+    });
+  }, []);
   const [idleSlide, setIdleSlide] = useState(0);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
