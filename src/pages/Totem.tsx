@@ -314,7 +314,7 @@ export default function Totem() {
   const pickStoreForBrand = useCallback((brand: Brand) => {
     const brandStores = stores.filter((s) => s.brand_id === brand.id);
     return brandStores.find((s) => normalize(`${s.name} ${s.parent_store?.name ?? ""}`).includes(currentTotemStore)) ?? brandStores[0] ?? null;
-  }, [stores]);
+  }, [stores, currentTotemStore]);
 
   const filteredItems = useMemo(() => items.filter(it => {
     if (activeCat !== "all" && it.category_id !== activeCat) return false;
