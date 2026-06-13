@@ -144,6 +144,26 @@ export default function TotemConfig() {
             <ExternalLink className="h-4 w-4 mr-1" /> Abrir totem
           </a>
         </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={async () => {
+            const { data, error } = await supabase.functions.invoke("seed-totem-logins");
+            if (error) {
+              toast({ title: "Erro ao criar logins", description: error.message, variant: "destructive" });
+              return;
+            }
+            const results = (data as { results?: Array<{ email: string; status: string; error?: string }> })?.results ?? [];
+            const ok = results.filter((r) => r.status === "ok").length;
+            const fail = results.length - ok;
+            toast({
+              title: `Logins de totem prontos`,
+              description: `${ok} ok${fail ? `, ${fail} com erro` : ""}. Senha: Senha@123`,
+            });
+          }}
+        >
+          Criar logins de totem
+        </Button>
       </div>
 
       {/* FUNDOS */}
