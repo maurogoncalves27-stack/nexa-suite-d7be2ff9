@@ -843,7 +843,7 @@ export default function Totem() {
           {noteDialog && (
             <div className="space-y-5">
               {(() => {
-                const url = photoUrl(noteDialog.item.photo_path) ?? fakePhotoFor(noteDialog.item, selectedBrand);
+                const url = noteDialog.item.photo_url ?? fakePhotoFor(noteDialog.item, selectedBrand);
                 return (
                   <img src={url} alt={noteDialog.item.name} className="w-full aspect-video object-cover rounded-md" />
                 );
