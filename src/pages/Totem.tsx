@@ -56,6 +56,7 @@ interface Category { id: string; name: string; sort_order: number; brand_id: str
 interface MenuItem {
   id: string; name: string; description: string | null; price: number;
   category_id: string | null; photo_path: string | null;
+  recipe_id?: string | null; photo_url?: string | null;
 }
 interface CartItem {
   uid: string; menu_item_id: string; name: string; unit_price: number;
