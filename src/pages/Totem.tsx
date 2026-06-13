@@ -626,7 +626,7 @@ export default function Totem() {
               <div id="totem-scroll-top" />
               {(() => {
                 const renderCard = (it: MenuItem) => {
-                  const url = photoUrl(it.photo_path) ?? fakePhotoFor(it, selectedBrand);
+                  const url = it.photo_url ?? fakePhotoFor(it, selectedBrand);
                   const inCart = cart.filter(c => c.menu_item_id === it.id).reduce((s, c) => s + c.quantity, 0);
                   return (
                     <Card key={it.id}
