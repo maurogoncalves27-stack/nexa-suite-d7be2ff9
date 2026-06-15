@@ -1,76 +1,64 @@
+## Por que precisa
 
-## O que vamos fazer
+O roteiro oficial PayGo C6 (`Roteiro_de_testes_v20241216`) pede em quase todos os passos: **"Recibo impresso corretamente"**. Como a integração é via **Biblioteca Windows (PGWebLib)**, é a automação que imprime — a DLL apenas devolve o texto do cupom em campos como `PWINFO_CUPOMx` / via estabelecimento / via portador / cupom reduzido. Sem capturar e exibir esse texto, não há como evidenciar nenhum passo do roteiro.
 
-A demo do seu amigo (`integracao_tef_paygo`) tem uma arquitetura **completamente diferente** da nossa para falar com o pinpad. Vamos trocar o nosso motor pelo dele, preservando 100% do resto do sistema (UI, banco, iFood, NFC-e, etc).
+A solução aceita pela Setis é uma **impressora simulada**: renderizar em tela o cupom exatamente como veio do PdC, com export TXT/PDF para anexar como evidência.
 
-### Por que a do amigo funciona e a nossa trava
+## Escopo (somente cosmético + captura do texto que já é retornado)
 
-| | Nosso agente hoje | Demo do amigo |
-|---|---|---|
-| Como chama a DLL | `node-ffi-napi` (Node x64) | PowerShell compila C# em memória e usa `P/Invoke` |
-| Tipo de processo | Node único | Node + "host" PowerShell persistente que processa comandos JSON |
-| Loop de eventos do pinpad | Implementado a mão no JS | Implementado dentro do C# (igual aos exemplos oficiais Setis) |
-| Resultado prático | Trava em "Iniciando…" e dá timeout | Acende o pinpad, processa cartão, retorna NSU |
+Não altera regra de negócio, fluxo de venda, parâmetros, nem a comunicação com PGWebLib. Só:
 
-A diferença é estrutural — não é parâmetro que conserta. Por isso "ajustar o nosso" não resolve.
+1. Passa adiante o texto do cupom que o PGWebLib já retorna.
+2. Mostra esse texto em um "rolo de impressora" na UI.
 
-## Plano de execução
+## Mudanças
 
-### 1. Trazer o bridge PowerShell do amigo
-- Copiar `scripts/paygo-bridge.ps1` (1052 linhas, é o coração) para `electron-acbr/scripts/paygo-bridge.ps1`.
-- Esse arquivo é o que carrega a `PGWebLib.dll`, faz `PW_iInit`, `PW_iNewTransac`, `PW_iExecTransac`, `PW_iPPEventLoop`, etc.
-- Ele aceita as ações: `commtest`, `admin`, `install`, `sale`, `confirm`, `undo`, `host`.
-- **Nenhuma alteração de conteúdo** — copiamos na íntegra para não introduzir bug.
+### 1. Agente Electron (`electron-acbr/acbr-tefd.cjs`)
+Pequeno acréscimo no handler de resposta de transação para coletar, se presentes, os campos da PGWebLib relacionados a cupom e devolvê-los junto do payload já existente — sem mudar nada do fluxo:
 
-### 2. Reescrever o adapter do agente Node
-- Trocar `electron-acbr/acbr-tefd.cjs` por um adapter inspirado em `RealPayGoTefAdapter.ts` do amigo.
-- Em vez de `ffi-napi.Library(...)`, o agente vai `spawn('powershell.exe', ['-File','paygo-bridge.ps1','-Action','host', ...])` e conversar via JSON pelo stdin/stdout.
-- Mantém os mesmos endpoints HTTP que a nossa UI já chama (`/tef/admin`, `/tef/status`, `/tef/sale`, `/tef/confirm`, `/tef/undo`, `/tef/health`).
+- `PWINFO_CUPOMx` (texto completo)
+- `PWINFO_VIACLIENTE` / `PWINFO_VIAESTABELEC`
+- `PWINFO_CUPOMREDUZIDO`
+- `PWINFO_CUPOMDIF1` / `CUPOMDIF2` (recibos diferenciados — passos 9 e 10)
 
-### 3. Defaults travados no nosso PdC
-- O bridge aceita `-PontoDeCaptura`, `-CpfCnpj`, `-SenhaTecnica`, `-Ambiente`, `-PinpadPort` via argumento.
-- O agente vai sempre passar:
-  - `PontoDeCaptura = 111476`
-  - `CpfCnpj = 44932369000108`
-  - `SenhaTecnica = 314159`
-  - `Ambiente = DEMO`
-  - `PinpadPort = 5` (da config da loja)
-- Esses defaults também ficam disponíveis em variáveis de ambiente caso o usuário queira sobrescrever.
+Saída fica: `{ ...payloadExistente, receipt: { merchant, customer, reduced, diff1, diff2 } }`.
 
-### 4. Limpar o que está obsoleto
-- Remover do agente: `ffi-napi`, `ref-napi`, `ref-struct-di` (não vamos mais usar).
-- Remover funções `PW_iInit/PW_iPPEventLoop` implementadas a mão em JS — agora isso vive no PS/C#.
-- Manter NFC-e (`electron-acbr/acbr-nfe.cjs`) e o server HTTP intactos.
+Nenhum comportamento atual muda; só agrega campos opcionais.
 
-### 5. UI fica igual
-- `/configuracoes/tef-paygo` continua igual: botões "Inicializar TEF", "Abrir menu ADM", "Testar comunicação", "Testar porta", "Diagnosticar agente".
-- Os fluxos de captura (menu/teclado) já existentes no `TefPinpadSetupCard.tsx` continuam funcionando porque o PS bridge emite os mesmos eventos de `PW_GetData`.
+### 2. UI — novo componente `src/components/tef-paygo/SimulatedPrinter.tsx`
+- Card "Impressora Simulada" no topo da página, ao lado do card de teste de venda.
+- Mostra o último cupom recebido em fonte monoespaçada, 40 colunas, fundo "papel" claro, com botões:
+  - **Imprimir via** (alterna entre Estabelecimento / Cliente / Reduzido / Diferenciado 1 / 2)
+  - **Baixar .TXT** e **Baixar .PDF** (jsPDF) — nome do arquivo inclui passo + data/hora para anexar como evidência.
+  - **Limpar**.
+- Histórico curto (últimos 10 cupons em uma lista lateral colapsável).
 
-### 6. Como testar (passo a passo na sua máquina)
-1. `cd C:\Users\Mauro\Documents\GitHub\nexa-suite-d7be2ff9\electron-acbr`
-2. `git pull` (puxa o bridge novo)
-3. `npm install` (vai remover ffi-napi e ref-napi automaticamente)
-4. `npm start` (abre o agente)
-5. No app: `/configuracoes/tef-paygo` → "Inicializar TEF" → deve voltar `ok:true`
-6. Botão **"Testar comunicação"** → pinpad acende, mostra menu, escolhe "Teste de Comunicação", volta NSU de teste.
+### 3. UI — `src/pages/TefPaygoSetup.tsx`
+- Adicionar o `<SimulatedPrinter />` logo abaixo do card de Teste de Venda (já existente).
+- Quando o teste de venda retornar `receipt`, alimentar o componente via estado local/contexto leve já presente na página.
+- Sem outras mudanças visuais.
 
-## Detalhes técnicos (pode pular se quiser)
+### 4. Hook compartilhado `src/hooks/useTefReceipts.ts` (novo, pequeno)
+Pequeno store em memória (Zustand já usado no projeto ou `useState` no topo da página) para empurrar cada cupom recebido no histórico da impressora.
 
-- O "host" PowerShell roda em loop lendo linhas JSON do stdin no formato `{"id":"...","action":"sale","amountInCents":1000,...}` e respondendo no stdout com `{"id":"...","payload":{...},"event":{...}}`.
-- O C# in-memory faz `LoadLibrary("PGWebLib.dll")` + `GetProcAddress` para cada função (`PW_iInit`, `PW_iNewTransac`, `PW_iAddParam`, `PW_iExecTransac`, `PW_iGetResult`, `PW_iConfirmation`, `PW_iPPEventLoop`, `PW_iPPAbort`, `PW_iPPGetCard`, `PW_iPPGetPIN`, `PW_iPPGetData`, `PW_iPPGoOnChip`, `PW_iPPFinishChip`, `PW_iPPConfirmData`, `PW_iPPRemoveCard`, `PW_iPPGenericCMD`, `PW_iPPPositiveConfirmation`, `PW_iPPTestKey`).
-- Os códigos de retorno PayGo (`PWRET_OK=0`, `PWRET_TIMEOUT=-2490`, `PWRET_PPNOTFOUND=-2489`, etc.) ficam no arquivo `paygoReturnCodes.ts` portado do amigo.
-- Como o C# roda dentro do PowerShell (que é nativo x64 no Windows), ele acessa a DLL x64 sem o "vai com 32, não vai com 64" que estraga o `ffi-napi`.
+## Fora de escopo
 
-## O que NÃO muda
-- iFood (em produção, intocável)
-- NFC-e
-- Toda a UI do app
-- Banco/RLS
-- Garçom / PDV / Totem
+- Não toca em PGWebLib, agente de TEF (motor), parâmetros de instalação, fluxo de venda, cancelamento, pinpad.
+- Não cria endpoint novo nem migration.
+- Não imprime de verdade em impressora física.
 
-## Risco
-- **Baixo no app**: zero mudança de schema, zero mudança de rota visível.
-- **Médio no agente Electron**: substitui o adapter inteiro. Se der ruim, basta voltar `acbr-tefd.cjs` da versão anterior via git revert.
+## Resultado
 
-## Tempo estimado
-- 1 sessão de chat para portar tudo e gerar release `electron-acbr v1.x` pronto pra você instalar.
+Cada passo do roteiro (Instalação, Venda à vista, Crédito, Débito, Parcelado, PIX, Recibos diferenciados, Contactless, Cancelamentos) gera um cupom visível e exportável em PDF/TXT — evidência suficiente para a Setis encerrar a homologação.
+
+```text
++------------------------------------------------+
+|  TESTE DE VENDA  |  IMPRESSORA SIMULADA       |
+|  [valor] [tipo]  |  --- PAYGO PdC 111476 ---  |
+|  [Vender]        |  CREDITO A VISTA           |
+|                  |  R$ 10,00  AUT 123456      |
+|                  |  ...                       |
+|                  |  [via estab][cliente][...] |
+|                  |  [TXT] [PDF] [limpar]      |
++------------------------------------------------+
+```

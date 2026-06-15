@@ -19,6 +19,7 @@ import TefTestSaleCard from "@/components/tef-paygo/TefTestSaleCard";
 import TefPinpadSetupCard from "@/components/tef-paygo/TefPinpadSetupCard";
 import TefHomologationChecklist from "@/components/tef-paygo/TefHomologationChecklist";
 import TefRecnumExtractor from "@/components/tef-paygo/TefRecnumExtractor";
+import SimulatedPrinter from "@/components/tef-paygo/SimulatedPrinter";
 
 const DEFAULT_PDC = "111476";
 const DEFAULT_HOST = "pos-transac-sb.tpgweb.io:31735";
@@ -284,6 +285,8 @@ const TefPaygoSetup = () => {
       />
 
       <TefTestSaleCard />
+
+      <SimulatedPrinter />
 
       <TefRecnumExtractor storeId={storeId} />
 

@@ -12,6 +12,7 @@ import { CreditCard, Loader2, FlaskConical } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { loadTefConfig, createTefAdapter, logTefTransaction } from "@/lib/tef";
 import type { TefStatus, TefPaymentMethod } from "@/lib/tef";
+import { pushTefReceipt } from "@/hooks/useTefReceipts";
 
 const ASA_SUL_ID = "fcf435c2-c382-444c-b499-4d95f07b2633";
 const DEFAULT_SALE_ID = "VENDA-1001";
@@ -74,6 +75,24 @@ export default function TefTestSaleCard() {
       setStatus(result.status);
       setStatusMsg(result.message ?? "");
       setLastResult(JSON.stringify(result, null, 2));
+
+      const rawAny = (result.raw ?? {}) as any;
+      const rawData = rawAny?.retorno?.data ?? rawAny?.data ?? {};
+      const merchant = result.merchantReceipt || rawData.merchantReceipt || rawData.PWINFO_RCPTMERCH;
+      const customer = result.customerReceipt || rawData.customerReceipt || rawData.PWINFO_RCPTCHOLDER;
+      const reduced = rawData.reducedReceipt || rawData.PWINFO_CUPOMREDUZIDO;
+      const diff1 = rawData.diffReceipt1 || rawData.PWINFO_CUPOMDIF1;
+      const diff2 = rawData.diffReceipt2 || rawData.PWINFO_CUPOMDIF2;
+      if (merchant || customer || reduced || diff1 || diff2) {
+        pushTefReceipt({
+          label: `${method === "credit" ? "Crédito" : "Débito"} ${selectedAcquirer ?? acquirer} · ${(saleId.trim() || DEFAULT_SALE_ID)} · R$ ${value.toFixed(2)}`,
+          merchant,
+          customer,
+          reduced,
+          diff1,
+          diff2,
+        });
+      }
 
       if (!selectedAcquirer && isPaygoNetworkMenuRequest(result)) {
         setPendingMethod(method);
