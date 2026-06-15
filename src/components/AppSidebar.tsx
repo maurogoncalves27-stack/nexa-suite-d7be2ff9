@@ -205,7 +205,7 @@ const pdvSections: Section[] = [
     { title: "PDV (gestor)", url: "/pdv-novo", icon: ShoppingBag, staffOnly: true },
     { title: "Smart POS", url: "/smartpos", icon: Smartphone, staffOnly: true },
     { title: "Cancelamentos", url: "/pdv-cancelamentos", icon: XCircle, staffOnly: true },
-    { title: "Homologação PayGo", url: "/pdv-novo/homologacao-paygo", icon: ScrollText, staffOnly: true },
+    
     { title: "Totem", url: "/configuracoes/totem", icon: Monitor, staffOnly: true },
     { title: "WhatsApp", url: "/whatsapp", icon: MessageCircle, staffOnly: true },
     { title: "Entregas", url: "/configuracoes/entregas", icon: Truck, staffOnly: true },
