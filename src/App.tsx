@@ -113,6 +113,7 @@ const Quotations = lazy(() => import("./pages/Quotations.tsx"));
 
 const PdvNovo = lazy(() => import("./pages/PdvNovo.tsx"));
 const PdvHomologacaoPayGo = lazy(() => import("./pages/PdvHomologacaoPayGo.tsx"));
+const TefPaygoSetup = lazy(() => import("./pages/TefPaygoSetup.tsx"));
 const PdvCancellations = lazy(() => import("./pages/PdvCancellations.tsx"));
 const StoreHome = lazy(() => import("./pages/StoreHome.tsx"));
 const SmartPos = lazy(() => import("./pages/SmartPos.tsx"));
@@ -339,7 +340,7 @@ const App = () => (
               <Route path="/whatsapp" element={<Guarded staff><WhatsApp /></Guarded>} />
               <Route path="/configuracoes/totem" element={<Guarded staff><TotemConfig /></Guarded>} />
               <Route path="/configuracoes/nfce-tester" element={<Guarded staff><NfceTester /></Guarded>} />
-              <Route path="/configuracoes/tef-paygo" element={<Guarded staff><PdvHomologacaoPayGo /></Guarded>} />
+              <Route path="/configuracoes/tef-paygo" element={<Guarded staff><TefPaygoSetup /></Guarded>} />
               <Route path="/recebimento" element={<Guarded><InventoryReceiving /></Guarded>} />
               <Route path="/nf-arquivadas" element={<Guarded><NfArchived /></Guarded>} />
               <Route path="/produtos" element={<Guarded><InventoryProducts /></Guarded>} />
@@ -374,7 +375,7 @@ const App = () => (
               
               <Route path="/pdv-novo" element={<Guarded staff><PdvNovo /></Guarded>} />
               <Route path="/pdv-cancelamentos" element={<Guarded staff><PdvCancellations /></Guarded>} />
-              <Route path="/pdv-novo/homologacao-paygo" element={<Navigate to="/configuracoes/tef-paygo" replace />} />
+              <Route path="/pdv-novo/homologacao-paygo" element={<Guarded staff><PdvHomologacaoPayGo /></Guarded>} />
 
               {/* /loja movido para fora do AppLayout (fullscreen) */}
               <Route path="/cardapio" element={<Guarded staff><Menu /></Guarded>} />

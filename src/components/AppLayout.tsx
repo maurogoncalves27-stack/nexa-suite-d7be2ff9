@@ -131,6 +131,7 @@ const PAGE_TITLES: PageMeta[] = [
   // PDV (mais específicas primeiro)
   { match: (p) => p.startsWith("/totem"), title: "Totem", group: "PDV" },
   
+  { match: (p) => p.startsWith("/pdv-novo/homologacao-paygo"), title: "Homologação PayGo", group: "PDV" },
   { match: (p) => p.startsWith("/pdv-cancelamentos"), title: "Cancelamentos", group: "PDV" },
   { match: (p) => p.startsWith("/pdv-novo"), title: "PDV", group: "PDV" },
   { match: (p) => p === "/loja", title: "Loja", group: "PDV" },
@@ -164,7 +165,7 @@ const PAGE_TITLES: PageMeta[] = [
   { match: (p) => p.startsWith("/configuracoes/whatsapp"), title: "Notificações WhatsApp", group: "Configurações" },
   { match: (p) => p.startsWith("/configuracoes/totem"), title: "Configuração do Totem", group: "Configurações" },
   { match: (p) => p.startsWith("/configuracoes/nfce-tester"), title: "Teste NFC-e (ACBr)", group: "Configurações" },
-  { match: (p) => p.startsWith("/configuracoes/tef-paygo"), title: "Homologação PayGo", group: "Configurações" },
+  { match: (p) => p.startsWith("/configuracoes/tef-paygo"), title: "TEF PayGo (instalação)", group: "Configurações" },
   { match: (p) => p.startsWith("/configuracoes"), title: "Configurações" },
   { match: (p) => p.startsWith("/whatsapp"), title: "WhatsApp" },
 ];
