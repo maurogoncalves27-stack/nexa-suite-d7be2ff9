@@ -25,14 +25,14 @@ const isPaygoNetworkMenuRequest = (result: { status: string; message?: string; r
 export default function TefTestSaleCard() {
   const [amount, setAmount] = useState("129,90");
   const [saleId, setSaleId] = useState(DEFAULT_SALE_ID);
-  const [acquirer, setAcquirer] = useState<"DEMO" | "REDE">("DEMO");
+  const [acquirer, setAcquirer] = useState<"DEMO" | "REDE" | "PIX C6 BANK">("DEMO");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<TefStatus>("idle");
   const [statusMsg, setStatusMsg] = useState<string>("");
   const [lastResult, setLastResult] = useState<string>("");
   const [pendingMethod, setPendingMethod] = useState<TefPaymentMethod | null>(null);
 
-  const runSale = async (method: TefPaymentMethod, selectedAcquirer?: "DEMO" | "REDE") => {
+  const runSale = async (method: TefPaymentMethod, selectedAcquirer?: "DEMO" | "REDE" | "PIX C6 BANK") => {
     const value = Number(amount.replace(",", "."));
     if (!value || value <= 0) {
       toast({ title: "Valor invalido", variant: "destructive" });
@@ -132,7 +132,7 @@ export default function TefTestSaleCard() {
     }
   };
 
-  const startSelectedNetworkSale = (selectedAcquirer: "DEMO" | "REDE") => {
+  const startSelectedNetworkSale = (selectedAcquirer: "DEMO" | "REDE" | "PIX C6 BANK") => {
     if (!pendingMethod) return;
     setAcquirer(selectedAcquirer);
     const method = pendingMethod;
@@ -197,9 +197,9 @@ export default function TefTestSaleCard() {
           Credito
         </Button>
 
-        <Button onClick={() => void runSale("pix", "REDE")} disabled={busy || !!pendingMethod} variant="outline" className="gap-2">
+        <Button onClick={() => void runSale("pix", "PIX C6 BANK")} disabled={busy || !!pendingMethod} variant="outline" className="gap-2">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-          PIX
+          PIX C6 BANK
         </Button>
       </div>
 
