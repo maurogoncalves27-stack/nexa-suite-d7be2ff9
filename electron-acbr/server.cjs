@@ -252,6 +252,26 @@ async function handle(req, res) {
       }
     }
 
+    if (req.method === "POST" && (path === "/tef/confirm" || path === "/tef/undo")) {
+      if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "PGWebLib.dll nÃ£o disponÃ­vel" });
+      const body = await readBody(req).catch(() => ({}));
+      const confirmationJsonBase64 = body?.confirmationJsonBase64 || Buffer.from(JSON.stringify({
+        reqNum: body?.reqNum || "",
+        locRef: body?.locRef || "",
+        extRef: body?.extRef || "",
+        virtMerch: body?.virtMerch || "",
+        authSyst: body?.authSyst || "",
+      }), "utf8").toString("base64");
+      try {
+        const retorno = path === "/tef/confirm"
+          ? await tef.confirmarVenda({ confirmationJsonBase64 })
+          : await tef.cancelarVenda({ confirmationJsonBase64 });
+        return send(res, 200, { ok: !!retorno?.ok, retorno, message: retorno?.message });
+      } catch (e) {
+        return send(res, 500, { ok: false, error: e.message });
+      }
+    }
+
     if (req.method === "POST" && path === "/tef/admin") {
       if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "PGWebLib.dll não disponível" });
       const body = await readBody(req).catch(() => ({}));

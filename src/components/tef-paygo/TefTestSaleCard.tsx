@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CreditCard, Loader2, FlaskConical } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { loadTefConfig, createTefAdapter, logTefTransaction } from "@/lib/tef";
@@ -14,6 +15,11 @@ import type { TefStatus, TefPaymentMethod } from "@/lib/tef";
 
 const ASA_SUL_ID = "fcf435c2-c382-444c-b499-4d95f07b2633";
 const DEFAULT_SALE_ID = "VENDA-1001";
+
+const isPaygoNetworkMenuRequest = (result: { status: string; message?: string; raw?: unknown }) => {
+  const text = `${result.message ?? ""} ${JSON.stringify(result.raw ?? {})}`.toUpperCase();
+  return result.status === "error" && text.includes("DEMO") && text.includes("REDE");
+};
 
 export default function TefTestSaleCard() {
   const [amount, setAmount] = useState("129,90");
@@ -23,8 +29,9 @@ export default function TefTestSaleCard() {
   const [status, setStatus] = useState<TefStatus>("idle");
   const [statusMsg, setStatusMsg] = useState<string>("");
   const [lastResult, setLastResult] = useState<string>("");
+  const [pendingMethod, setPendingMethod] = useState<TefPaymentMethod | null>(null);
 
-  const runSale = async (method: TefPaymentMethod) => {
+  const runSale = async (method: TefPaymentMethod, selectedAcquirer?: "DEMO" | "REDE") => {
     const value = Number(amount.replace(",", "."));
     if (!value || value <= 0) {
       toast({ title: "Valor invalido", variant: "destructive" });
@@ -55,7 +62,7 @@ export default function TefTestSaleCard() {
           amount: value,
           method,
           storeId: ASA_SUL_ID,
-          acquirer,
+          acquirer: selectedAcquirer,
           orderId: saleId.trim() || DEFAULT_SALE_ID,
         },
         (s, msg) => {
@@ -68,6 +75,11 @@ export default function TefTestSaleCard() {
       setStatusMsg(result.message ?? "");
       setLastResult(JSON.stringify(result, null, 2));
 
+      if (!selectedAcquirer && isPaygoNetworkMenuRequest(result)) {
+        setPendingMethod(method);
+        return;
+      }
+
       await logTefTransaction({
         storeId: ASA_SUL_ID,
         provider: cfg.provider,
@@ -79,7 +91,7 @@ export default function TefTestSaleCard() {
         cardBrand: result.cardBrand,
         cardLast4: result.cardLast4,
         installments: result.installments,
-        acquirer: result.acquirer ?? acquirer,
+        acquirer: result.acquirer ?? selectedAcquirer ?? acquirer,
         raw: result.raw,
       });
 
@@ -99,6 +111,27 @@ export default function TefTestSaleCard() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const startSelectedNetworkSale = (selectedAcquirer: "DEMO" | "REDE") => {
+    if (!pendingMethod) return;
+    setAcquirer(selectedAcquirer);
+    const method = pendingMethod;
+    setPendingMethod(null);
+    void runSale(method, selectedAcquirer);
+  };
+
+  const cancelNetworkSelection = async () => {
+    setPendingMethod(null);
+    try {
+      const cfg = await loadTefConfig(ASA_SUL_ID);
+      const adapter = createTefAdapter(cfg);
+      await adapter.cancel();
+    } catch {
+      /* ignore */
+    }
+    setStatus("cancelled");
+    setStatusMsg("Operacao PayGo cancelada pelo operador");
   };
 
   return (
@@ -135,31 +168,12 @@ export default function TefTestSaleCard() {
           />
         </div>
 
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Rede</label>
-          <div className="flex rounded-md border bg-background p-1">
-            {(["DEMO", "REDE"] as const).map((option) => (
-              <Button
-                key={option}
-                type="button"
-                size="sm"
-                variant={acquirer === option ? "default" : "ghost"}
-                className="h-8 px-3"
-                disabled={busy}
-                onClick={() => setAcquirer(option)}
-              >
-                {option}
-              </Button>
-            ))}
-          </div>
-        </div>
-
-        <Button onClick={() => runSale("debit")} disabled={busy} className="gap-2">
+        <Button onClick={() => void runSale("debit")} disabled={busy || !!pendingMethod} className="gap-2">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
           Debito
         </Button>
 
-        <Button onClick={() => runSale("credit")} disabled={busy} variant="secondary" className="gap-2">
+        <Button onClick={() => void runSale("credit")} disabled={busy || !!pendingMethod} variant="secondary" className="gap-2">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
           Credito
         </Button>
@@ -184,6 +198,25 @@ export default function TefTestSaleCard() {
           </pre>
         </details>
       )}
+
+      <Dialog open={!!pendingMethod} onOpenChange={(open) => { if (!open) setPendingMethod(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Selecione a rede</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <Button size="lg" className="h-12" onClick={() => startSelectedNetworkSale("DEMO")}>
+              DEMO
+            </Button>
+            <Button size="lg" variant="secondary" className="h-12" onClick={() => startSelectedNetworkSale("REDE")}>
+              REDE
+            </Button>
+            <Button variant="outline" className="h-11" onClick={() => void cancelNetworkSelection()}>
+              Cancelar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

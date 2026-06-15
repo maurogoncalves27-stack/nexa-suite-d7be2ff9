@@ -39,6 +39,11 @@ const toAcbrDate = (iso: string | null | undefined): string => {
   return `${dd}${mm}${d.getFullYear()}`;
 };
 
+const isPaygoNetworkMenuRequest = (value: unknown): boolean => {
+  const text = JSON.stringify(value ?? {}).toUpperCase();
+  return text.includes("DEMO") && text.includes("REDE");
+};
+
 interface Store { id: string; name: string; }
 interface RunRow {
   id: string;
@@ -178,7 +183,7 @@ export default function PdvHomologacaoPayGo() {
     }
     setRun(newRun as RunRow);
     await loadSteps(newRun.id);
-    toast({ title: "Rodada iniciada", description: `54 passos criados para a loja selecionada.` });
+    toast({ title: "Rodada iniciada", description: `${HOMOLOGATION_STEPS.length} passos criados para a loja selecionada.` });
   };
 
   // --- Executa um passo ----------------------------------------------------
@@ -197,6 +202,42 @@ export default function PdvHomologacaoPayGo() {
       if (step.kind === "controlpay-na") {
         status = "na";
         obs = "ControlPay REST não utilizado.";
+      } else if (step.kind === "network-cancel") {
+        const cfg: TefConfig = {
+          ...(await loadTefConfig(storeId)),
+          provider: "acbr",
+          agentUrl: ACBR_AGENT_URL,
+          acquirer: undefined,
+        };
+        const adapter = createAcbrAdapter(cfg);
+        const res = await adapter.processPayment({
+          amount: step.sale?.amount ?? 1,
+          method: step.sale?.method ?? "credit",
+          installments: step.sale?.installments,
+          storeId,
+        });
+        amount = step.sale?.amount ?? 1;
+        raw = { first: res };
+
+        if (isPaygoNetworkMenuRequest(res.raw ?? res)) {
+          await adapter.cancel();
+          status = "ok";
+          obs = "Venda cancelada na selecao de rede; rede nao informada.";
+          raw = {
+            first: res,
+            resolution: {
+              action: "cancel",
+              status: "cancelled",
+              message: "Operacao cancelada apos a PayGo solicitar a rede.",
+            },
+          };
+        } else if (res.status === "cancelled" || res.status === "declined") {
+          status = "ok";
+          obs = res.message ?? "Venda negada/cancelada antes da selecao da rede.";
+        } else {
+          status = "fail";
+          obs = res.message ?? "A PayGo nao solicitou o menu de rede para cancelamento.";
+        }
       } else if (step.kind === "sale" || step.kind === "sale-cancel") {
         const cfg: TefConfig = {
           ...(await loadTefConfig(storeId)),
@@ -379,7 +420,7 @@ export default function PdvHomologacaoPayGo() {
           Homologação PayGo
         </h1>
         <p className="text-muted-foreground">
-          Execute o roteiro Setis v20241216 (54 passos) contra o NEXA ACBr Agent e exporte
+          Execute o roteiro Setis v20241216 ({HOMOLOGATION_STEPS.length} passos) contra o NEXA ACBr Agent e exporte
           a planilha de retorno pronta para envio.
         </p>
       </div>
@@ -476,10 +517,20 @@ export default function PdvHomologacaoPayGo() {
                       )}
                       <StatusBadge status={status} />
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">{s.description}</p>
-                    <p className="text-xs text-muted-foreground italic mt-1">
-                      Esperado: {s.expected}
-                    </p>
+                    <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                      <p><strong className="text-foreground">Procedimento:</strong> {s.procedure}</p>
+                      <p><strong className="text-foreground">Resultado esperado:</strong> {s.expected}</p>
+                      <p><strong className="text-foreground">Verificar:</strong> {s.verify}</p>
+                      {s.sale && (
+                        <p className="text-xs">
+                          <strong className="text-foreground">Parametros sugeridos:</strong>{" "}
+                          valor R$ {Number(s.sale.amount ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} -
+                          {" "}metodo {s.sale.method ?? "credit"} -
+                          {" "}rede {s.sale.acquirer ?? "selecionar quando a PayGo solicitar"}
+                          {s.sale.installments ? ` - ${s.sale.installments} parcelas` : ""}
+                        </p>
+                      )}
+                    </div>
                     {row?.nsu && (
                       <div className="text-xs mt-1 text-foreground">
                         NSU: <code className="bg-muted px-1 rounded">{row.nsu}</code>

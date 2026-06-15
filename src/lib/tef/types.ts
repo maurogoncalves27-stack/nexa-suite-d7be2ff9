@@ -14,7 +14,16 @@ export type TefStatus =
   | "declined"
   | "cancelled"
   | "error"
-  | "timeout";
+  | "timeout"
+  | "pending_confirmation";
+
+export interface PaygoPendingInfo {
+  reqNum: string;
+  locRef?: string;
+  extRef?: string;
+  virtMerch?: string;
+  authSyst?: string;
+}
 
 export type TefPaymentMethod = "credit" | "debit" | "pix" | "voucher";
 
@@ -36,6 +45,10 @@ export interface TefPaymentResult {
   cardLast4?: string;
   installments?: number;
   acquirer?: string;
+  customerReceipt?: string;
+  merchantReceipt?: string;
+  paygoReqnum?: string;
+  paygoPending?: PaygoPendingInfo;
   raw?: unknown;
 }
 

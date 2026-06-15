@@ -84,6 +84,11 @@ public static class PayGoBridge
     private const ushort PWINFO_PAYMNTTYPE = 0x1F21;
     private const ushort PWINFO_USINGPINPAD = 0x7F01;
     private const ushort PWINFO_PPCOMMPORT = 0x7F02;
+    private const ushort PWINFO_PNDAUTHSYST = 0x7F05;
+    private const ushort PWINFO_PNDVIRTMERCH = 0x7F06;
+    private const ushort PWINFO_PNDREQNUM = 0x7F07;
+    private const ushort PWINFO_PNDAUTLOCREF = 0x7F08;
+    private const ushort PWINFO_PNDAUTEXTREF = 0x7F09;
 
     private const uint PWCNF_CNF_AUTO = 0x00000121;
     private const uint PWCNF_REV_MANU_AUT = 0x00003231;
@@ -263,12 +268,17 @@ public static class PayGoBridge
             if (ret == BRIDGE_AUTHORIZED_AFTER_REMOVE_TIMEOUT)
             {
                 EmitEvent("APPROVED", "Transacao autorizada. Finalizando fluxo do pinpad.");
+                if (RequiresConfirmation())
+                {
+                    short cnfRet = ConfirmCurrent(PWCNF_CNF_AUTO);
+                    if (cnfRet != PWRET_OK) return Error("PW_iConfirmation", cnfRet);
+                }
                 return Json("approved", true, First(Result(PWINFO_RESULTMSG), "Transacao autorizada"), PWRET_OK, ResultsJson(true));
             }
 
             if (ret == PWRET_FROMHOSTPENDTRN)
             {
-                return Json("pendingConfirmation", false, "Existe transacao pendente de confirmacao no PayGo", ret, ResultsJson(true));
+                return Json("pendingConfirmation", false, "Existe transacao pendente de confirmacao no PayGo", ret, PendingResultsJson());
             }
 
             if (ret != PWRET_OK)
@@ -283,6 +293,11 @@ public static class PayGoBridge
                 {
                     AbortPinpad();
                     EmitEvent("APPROVED", "Transacao autorizada. Timeout apenas na finalizacao do pinpad.");
+                    if (RequiresConfirmation())
+                    {
+                        short cnfRet = ConfirmCurrent(PWCNF_CNF_AUTO);
+                        if (cnfRet != PWRET_OK) return Error("PW_iConfirmation", cnfRet);
+                    }
                     return Json("approved", true, resultMessage, ret, ResultsJson(true));
                 }
 
@@ -291,6 +306,11 @@ public static class PayGoBridge
             }
 
             EmitEvent("APPROVED", "Transacao autorizada pelo PayGo");
+            if (RequiresConfirmation())
+            {
+                ret = ConfirmCurrent(PWCNF_CNF_AUTO);
+                if (ret != PWRET_OK) return Error("PW_iConfirmation", ret);
+            }
             return Json("approved", true, Result(PWINFO_RESULTMSG), ret, ResultsJson(true));
         }
         catch (Exception ex)
@@ -841,8 +861,44 @@ public static class PayGoBridge
         Field(sb, "extRef", includeConfirmation ? Result(PWINFO_AUTEXTREF) : "", true);
         Field(sb, "virtMerch", includeConfirmation ? Result(PWINFO_VIRTMERCH) : "", true);
         Field(sb, "authSyst", includeConfirmation ? Result(PWINFO_AUTHSYST) : "", true);
+        Field(sb, "cnfReq", Result(PWINFO_CNFREQ), true);
         sb.Append("}");
         return sb.ToString();
+    }
+
+    private static string PendingResultsJson()
+    {
+        var sb = new StringBuilder();
+        sb.Append("{");
+        Field(sb, "authCode", "", false);
+        Field(sb, "brand", Result(PWINFO_CARDNAME), true);
+        Field(sb, "acquirer", Result(PWINFO_PNDAUTHSYST), true);
+        Field(sb, "customerReceipt", "", true);
+        Field(sb, "merchantReceipt", "", true);
+        Field(sb, "reqNum", Result(PWINFO_PNDREQNUM), true);
+        Field(sb, "locRef", Result(PWINFO_PNDAUTLOCREF), true);
+        Field(sb, "extRef", Result(PWINFO_PNDAUTEXTREF), true);
+        Field(sb, "virtMerch", Result(PWINFO_PNDVIRTMERCH), true);
+        Field(sb, "authSyst", Result(PWINFO_PNDAUTHSYST), true);
+        sb.Append("}");
+        return sb.ToString();
+    }
+
+    private static bool RequiresConfirmation()
+    {
+        return Result(PWINFO_CNFREQ) == "1";
+    }
+
+    private static short ConfirmCurrent(uint confirmation)
+    {
+        return Fn<PW_iConfirmation_>("PW_iConfirmation")(
+            confirmation,
+            Result(PWINFO_REQNUM),
+            Result(PWINFO_AUTLOCREF),
+            Result(PWINFO_AUTEXTREF),
+            Result(PWINFO_VIRTMERCH),
+            Result(PWINFO_AUTHSYST)
+        );
     }
 
     private static string First(string a, string b)

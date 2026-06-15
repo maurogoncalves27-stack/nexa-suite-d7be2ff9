@@ -111,10 +111,12 @@ export const createPaygoAdapter = (config: TefConfig): TefAdapter => {
         const effectiveStatus = retorno.status ?? data.status;
         const effectiveMessage = cleanPaygoMessage(retorno.message ?? data.message);
         const r = retorno.data ?? data.data ?? data.retorno ?? {};
+        const effectiveRet = (retorno as any).ret ?? data.ret;
+        const pending = effectiveStatus === "pendingConfirmation" || effectiveRet === -2599;
         const approved = effectiveStatus === "approved" || (data.ok && isApproved(r));
         const denied = effectiveStatus === "denied";
-        const status: TefPaymentResult["status"] = approved ? "approved" : denied ? "declined" : "error";
-        const fallbackMessage = approved ? "Transacao aprovada" : denied ? "Transacao negada" : "Falha na transacao";
+        const status: TefPaymentResult["status"] = pending ? "pending_confirmation" : approved ? "approved" : denied ? "declined" : "error";
+        const fallbackMessage = pending ? "Existe transacao pendente de confirmacao no PayGo" : approved ? "Transacao aprovada" : denied ? "Transacao negada" : "Falha na transacao";
         const result: TefPaymentResult = {
           status,
           message: data.message ?? (approved ? "Transação aprovada" : denied ? "Transação negada" : "Falha na transação"),
@@ -123,8 +125,20 @@ export const createPaygoAdapter = (config: TefConfig): TefAdapter => {
           cardBrand: r.brand ?? undefined,
           installments: parcelas,
           acquirer: r.acquirer ?? r.authSyst ?? config.acquirer,
+          customerReceipt: r.customerReceipt ?? undefined,
+          merchantReceipt: r.merchantReceipt ?? undefined,
+          paygoReqnum: r.reqNum ?? undefined,
           raw: data,
         };
+        if (pending && r.reqNum) {
+          result.paygoPending = {
+            reqNum: r.reqNum,
+            locRef: r.locRef ?? undefined,
+            extRef: r.extRef ?? undefined,
+            virtMerch: r.virtMerch ?? undefined,
+            authSyst: r.authSyst ?? undefined,
+          };
+        }
         result.message = effectiveMessage ?? fallbackMessage;
         onStatus?.(status, result.message);
         return result;
