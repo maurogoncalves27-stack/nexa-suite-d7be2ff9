@@ -78,8 +78,8 @@ export default function SimulatedPrinter() {
     : [];
 
   return (
-    <Card className="p-4 space-y-3">
-      <div className="flex items-center gap-2">
+    <Card className="p-4 h-full flex flex-col space-y-3">
+      <div className="flex items-center gap-2 shrink-0">
         <Printer className="h-5 w-5 text-primary" />
         <h2 className="font-semibold">Impressora simulada</h2>
         <Badge variant="outline" className="ml-auto text-xs">
@@ -87,19 +87,19 @@ export default function SimulatedPrinter() {
         </Badge>
       </div>
 
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs text-muted-foreground shrink-0">
         Renderiza o cupom devolvido pela PGWebLib. Use os botões abaixo para
         baixar como TXT ou PDF e anexar como evidência do passo do roteiro.
       </p>
 
       {!current ? (
-        <div className="rounded-md border border-dashed bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+        <div className="flex-1 flex items-center justify-center rounded-md border border-dashed bg-muted/30 p-6 text-center text-sm text-muted-foreground">
           Nenhum cupom ainda. Rode uma venda de teste para gerar a primeira evidência.
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-[1fr_220px]">
-          <div className="space-y-2">
-            <div className="flex flex-wrap gap-1.5">
+        <div className="flex-1 min-h-0 grid gap-3 md:grid-cols-[1fr_220px]">
+          <div className="flex flex-col min-h-0 gap-2">
+            <div className="flex flex-wrap gap-1.5 shrink-0">
               {availableVias.map((k) => (
                 <Button
                   key={k}
@@ -119,13 +119,13 @@ export default function SimulatedPrinter() {
             </div>
 
             <pre
-              className="max-h-[420px] min-h-[180px] overflow-auto rounded border bg-background p-3 font-mono text-[11px] leading-tight whitespace-pre"
+              className="flex-1 min-h-0 overflow-auto rounded border bg-background p-3 font-mono text-[11px] leading-tight whitespace-pre"
               style={{ fontFamily: "ui-monospace, Menlo, Consolas, monospace" }}
             >
               {text || "(vazio)"}
             </pre>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 shrink-0">
               <Button
                 size="sm"
                 variant="outline"
@@ -159,8 +159,8 @@ export default function SimulatedPrinter() {
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
+          <div className="flex flex-col min-h-0 gap-1.5">
+            <div className="flex items-center justify-between shrink-0">
               <span className="text-xs font-medium text-muted-foreground">Histórico</span>
               <Button
                 size="sm"
@@ -171,7 +171,7 @@ export default function SimulatedPrinter() {
                 <Trash2 className="h-3 w-3" />
               </Button>
             </div>
-            <div className="space-y-1 max-h-[420px] overflow-auto">
+            <div className="flex-1 min-h-0 overflow-auto space-y-1">
               {entries.map((e) => {
                 const active = e.id === current.id;
                 return (
