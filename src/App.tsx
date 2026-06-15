@@ -112,7 +112,7 @@ const Suppliers = lazy(() => import("./pages/Suppliers.tsx"));
 const Quotations = lazy(() => import("./pages/Quotations.tsx"));
 
 const PdvNovo = lazy(() => import("./pages/PdvNovo.tsx"));
-const PdvHomologacaoPayGo = lazy(() => import("./pages/PdvHomologacaoPayGo.tsx"));
+
 const TefPaygoSetup = lazy(() => import("./pages/TefPaygoSetup.tsx"));
 const PdvCancellations = lazy(() => import("./pages/PdvCancellations.tsx"));
 const StoreHome = lazy(() => import("./pages/StoreHome.tsx"));
@@ -375,7 +375,7 @@ const App = () => (
               
               <Route path="/pdv-novo" element={<Guarded staff><PdvNovo /></Guarded>} />
               <Route path="/pdv-cancelamentos" element={<Guarded staff><PdvCancellations /></Guarded>} />
-              <Route path="/pdv-novo/homologacao-paygo" element={<Guarded staff><PdvHomologacaoPayGo /></Guarded>} />
+              
 
               {/* /loja movido para fora do AppLayout (fullscreen) */}
               <Route path="/cardapio" element={<Guarded staff><Menu /></Guarded>} />
