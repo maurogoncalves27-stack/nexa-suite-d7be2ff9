@@ -108,9 +108,9 @@ const TefPaygoSetup = () => {
         </p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
+      <div className="grid gap-4 lg:grid-cols-[1fr_380px] items-start min-h-0">
         {/* Coluna principal */}
-        <div className="space-y-4">
+        <div className="space-y-4 min-h-0">
           <Card className="p-4 space-y-2">
             <div className="flex items-center gap-2">
               <KeyRound className="h-5 w-5 text-primary" />
@@ -297,9 +297,9 @@ const TefPaygoSetup = () => {
           <TefHomologationChecklist storeId={storeId} />
         </div>
 
-        {/* Coluna lateral — impressora */}
-        <div className="space-y-4">
-          <div className="lg:sticky lg:top-4">
+        {/* Coluna lateral — impressora (altura total) */}
+        <div className="h-full">
+          <div className="lg:sticky lg:top-4 h-[calc(100vh-7rem)]">
             <SimulatedPrinter />
           </div>
         </div>
