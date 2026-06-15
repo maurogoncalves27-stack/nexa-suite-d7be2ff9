@@ -1,29 +1,36 @@
-## Card "Roteiro de Testes"
+# Roteiro de Testes PayGo C6 — versão completa
 
-Novo card visual em `src/components/tef-paygo/TefRoteiroTestesCard.tsx`, inserido em `src/pages/TefPaygoSetup.tsx` logo abaixo de `<TefTestSaleCard />`.
+Substituir o card atual (`src/components/tef-paygo/TefRoteiroTestesCard.tsx`), que tem só 9 itens genéricos, por um roteiro fiel ao **Roteiro de testes v20241216** + **Planilha de testes v20240306** da PayGo. Foco em Biblioteca Windows (PGWebLib.dll), que é o nosso modo de integração.
 
-### Conteúdo (passo a passo, baseado nos cenários PayGo sandbox)
+## O que muda
 
-Lista numerada com checkboxes (estado apenas local — marca/desmarca para acompanhar progresso, sem persistência):
+- 54 passos numerados (Passo 01 → Passo 54), na ordem oficial.
+- Cada passo mostra: número, badge `OBRIGATÓRIO` / `OPCIONAL` / `SE AUTOATENDIMENTO`, título, breve descrição do procedimento e do resultado esperado.
+- Agrupado em seções colapsáveis (Accordion) para não estourar a tela:
+  1. Instalação e vendas básicas (1–8)
+  2. Recibos e QR Code PIX C6 (9–11)
+  3. Comunicação e relatórios (12–16)
+  4. Cancelamentos (17–23)
+  5. Quedas de energia (24–25)
+  6. Dado genérico / menu genérico / mensagem máxima (26–30)
+  7. Transação pendente e confirmação (31–36)
+  8. Desfazimento (37–38)
+  9. Autoatendimento (39–40, só obrigatório se PDV em modo totem)
+  10. Cancelamento por referência (41–44)
+  11. Contactless / aproximação (45–46)
+  12. ControlPay (47–50, só obrigatório se usar Web Service — no nosso caso ficam opcionais)
+  13. Queda de energia pós-aprovação + QR Code finais (51–54)
+- Checkbox por passo + estado de "N/A" para os opcionais que não se aplicam.
+- Persistência local em `localStorage` (chave `tef-paygo-roteiro-v20241216`) para não perder progresso ao recarregar.
+- Barra de progresso topo do card: `X de Y obrigatórios concluídos`.
+- Botão "Resetar" mantido; novo botão "Exportar checklist" que baixa um `.txt` com status de cada passo (útil para enviar à PayGo na homologação).
 
-1. **Pinpad conectado** — confirmar no card "Pinpad" status "OK na porta X" antes de iniciar.
-2. **Venda Débito aprovada** — clicar "Débito" no card Venda de Teste, valor R$ 1,00, senha sandbox `1234`. Esperado: comprovante impresso na impressora simulada.
-3. **Venda Crédito à vista aprovada** — botão "Crédito", à vista, senha `1234`.
-4. **Venda Crédito parcelado (2x sem juros)** — botão "Crédito", escolher parcelado loja no menu DEMO.
-5. **Venda negada** — repetir débito digitando senha errada (`0000`). Esperado: retorno negado, sem cupom.
-6. **Cancelamento de venda** — usar card "Extrator de RECNUM" para pegar NSU da última venda aprovada e cancelar via botão "Cancelar".
-7. **PIX QR Code C6 BANK** — botão "PIX" no card Venda de Teste, valor R$ 1,00. Esperado: QR exibido no pinpad, simular pagamento.
-8. **Reimpressão (opcional)** — verificar histórico no card da impressora simulada (rolar lista).
-9. **Checklist de homologação** — marcar cenários concluídos no card "Checklist" para registrar evidências.
+## Arquivos
 
-### Layout do card
+- **edit** `src/components/tef-paygo/TefRoteiroTestesCard.tsx` — reescrever com a lista completa, accordion por seção, persistência e progresso.
+- Sem mudanças em `TefPaygoSetup.tsx` (o card continua renderizado no mesmo lugar).
+- Sem mudanças de banco/edge function — estado fica em `localStorage`.
 
-- Header: ícone `ListChecks` + título "Roteiro de testes" + subtítulo "Siga na ordem para validar a integração".
-- Cada passo: linha com `Checkbox` + número em badge + título em negrito + descrição curta em `text-muted-foreground text-sm`.
-- Passo marcado fica com `line-through` e opacidade reduzida.
-- Botão "Resetar" no canto superior direito para limpar marcações.
+## Fonte dos dados
 
-### Arquivos
-
-- **novo**: `src/components/tef-paygo/TefRoteiroTestesCard.tsx`
-- **editado**: `src/pages/TefPaygoSetup.tsx` (1 linha — import + render abaixo de `TefTestSaleCard`)
+Lista de 54 passos derivada da **Planilha de testes v20240306** (coluna Obrigatoriedade) cruzada com os títulos/descrições do **PDF Roteiro v20241216**. Conteúdo fica hardcoded no componente como um array `ROTEIRO: { n, obrig, secao, titulo, desc }[]` — sem depender de fetch.
