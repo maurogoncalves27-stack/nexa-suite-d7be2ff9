@@ -10989,18 +10989,26 @@ export type Database = {
           acquirer: string | null
           amount: number
           authorization_code: string | null
+          cancelled_at: string | null
           card_brand: string | null
           card_last4: string | null
+          confirmed_at: string | null
           created_at: string
+          customer_receipt: string | null
+          error_code: string | null
+          events: Json
           finished_at: string | null
           id: string
           installments: number | null
+          merchant_receipt: string | null
           message: string | null
           nsu: string | null
           order_id: string | null
+          paygo_reqnum: string | null
           payment_method: string | null
           provider: string
           raw_response: Json | null
+          sale_id: string | null
           started_at: string
           status: string
           store_id: string | null
@@ -11010,18 +11018,26 @@ export type Database = {
           acquirer?: string | null
           amount: number
           authorization_code?: string | null
+          cancelled_at?: string | null
           card_brand?: string | null
           card_last4?: string | null
+          confirmed_at?: string | null
           created_at?: string
+          customer_receipt?: string | null
+          error_code?: string | null
+          events?: Json
           finished_at?: string | null
           id?: string
           installments?: number | null
+          merchant_receipt?: string | null
           message?: string | null
           nsu?: string | null
           order_id?: string | null
+          paygo_reqnum?: string | null
           payment_method?: string | null
           provider: string
           raw_response?: Json | null
+          sale_id?: string | null
           started_at?: string
           status?: string
           store_id?: string | null
@@ -11031,18 +11047,26 @@ export type Database = {
           acquirer?: string | null
           amount?: number
           authorization_code?: string | null
+          cancelled_at?: string | null
           card_brand?: string | null
           card_last4?: string | null
+          confirmed_at?: string | null
           created_at?: string
+          customer_receipt?: string | null
+          error_code?: string | null
+          events?: Json
           finished_at?: string | null
           id?: string
           installments?: number | null
+          merchant_receipt?: string | null
           message?: string | null
           nsu?: string | null
           order_id?: string | null
+          paygo_reqnum?: string | null
           payment_method?: string | null
           provider?: string
           raw_response?: Json | null
+          sale_id?: string | null
           started_at?: string
           status?: string
           store_id?: string | null
