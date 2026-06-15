@@ -96,7 +96,7 @@ const TefPaygoSetup = () => {
   const host = cfg?.host || DEFAULT_HOST;
 
   return (
-    <div className="space-y-4 max-w-4xl">
+    <div className="space-y-4 max-w-7xl">
       <div>
         <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
           <CreditCard className="h-6 w-6 md:h-7 md:w-7 text-primary" />
@@ -107,190 +107,200 @@ const TefPaygoSetup = () => {
         </p>
       </div>
 
-      <Card className="p-4 space-y-2">
-        <div className="flex items-center gap-2">
-          <KeyRound className="h-5 w-5 text-primary" />
-          <h2 className="font-semibold text-sm">Credenciais desta loja</h2>
-        </div>
-        <div className="grid gap-3 md:grid-cols-[1fr_auto] items-end">
-          <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">Loja</label>
-            <Select value={storeId} onValueChange={setStoreId}>
-              <SelectTrigger><SelectValue placeholder="Selecione a loja" /></SelectTrigger>
-              <SelectContent>
-                {stores.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <Badge variant="outline" className="h-fit text-xs">
-            {cfg ? "Configuração encontrada" : "Padrão (sandbox)"}
-          </Badge>
-        </div>
-        <div className="grid gap-2 sm:grid-cols-3 pt-1">
-          <Field label="CNPJ" value={cnpj} />
-          <div className="rounded-md border bg-muted/30 p-2.5 space-y-1">
-            <div className="flex items-center justify-between gap-2">
-              <div className="text-xs text-muted-foreground">Ponto de Captura (PdC)</div>
-              {!editingPdc ? (
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => copy(pdc, "Ponto de Captura")} className="h-7 w-7 p-0">
-                    <Copy className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={!storeId}
-                    onClick={() => { setPdcDraft(pdc); setEditingPdc(true); }}
-                    className="h-7 w-7 p-0"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={savingPdc}
-                    onClick={async () => {
-                      if (!storeId) return;
-                      const trimmed = pdcDraft.trim();
-                      if (!trimmed) {
-                        toast({ title: "PdC inválido", description: "Informe um Ponto de Captura.", variant: "destructive" });
-                        return;
-                      }
-                      setSavingPdc(true);
-                      const { error } = await supabase
-                        .from("pdv_tef_config")
-                        .update({ terminal_code: trimmed })
-                        .eq("store_id", storeId);
-                      setSavingPdc(false);
-                      if (error) {
-                        toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
-                        return;
-                      }
-                      setCfg(prev => prev ? { ...prev, pdc: trimmed } : prev);
-                      setEditingPdc(false);
-                      toast({ title: "PdC atualizado", description: `Ponto de Captura: ${trimmed}` });
-                    }}
-                    className="h-7 w-7 p-0"
-                  >
-                    <Save className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={savingPdc}
-                    onClick={() => setEditingPdc(false)}
-                    className="h-7 w-7 p-0"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              )}
+      <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
+        {/* Coluna principal */}
+        <div className="space-y-4">
+          <Card className="p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-primary" />
+              <h2 className="font-semibold text-sm">Credenciais desta loja</h2>
             </div>
-            {editingPdc ? (
-              <Input
-                autoFocus
-                value={pdcDraft}
-                onChange={(e) => setPdcDraft(e.target.value)}
-                className="h-7 font-mono text-sm"
-                placeholder="Ex.: 111476"
-              />
-            ) : (
-              <div className="text-sm font-mono truncate">{pdc}</div>
-            )}
-          </div>
-          <div className="rounded-md border bg-muted/30 p-2.5 space-y-1">
-            <div className="flex items-center justify-between gap-2">
-              <div className="text-xs text-muted-foreground">Host (sandbox)</div>
-              {!editingHost ? (
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => copy(host, "Host")} className="h-7 w-7 p-0">
-                    <Copy className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={!storeId}
-                    onClick={() => { setHostDraft(host); setEditingHost(true); }}
-                    className="h-7 w-7 p-0"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={savingHost}
-                    onClick={async () => {
-                      if (!storeId) return;
-                      const trimmed = hostDraft.trim();
-                      if (!trimmed) {
-                        toast({ title: "Host inválido", description: "Informe um endereço.", variant: "destructive" });
-                        return;
-                      }
-                      setSavingHost(true);
-                      const { error } = await supabase
-                        .from("pdv_tef_config")
-                        .update({ agent_url: trimmed })
-                        .eq("store_id", storeId);
-                      setSavingHost(false);
-                      if (error) {
-                        toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
-                        return;
-                      }
-                      setCfg(prev => prev ? { ...prev, host: trimmed } : prev);
-                      setEditingHost(false);
-                      toast({ title: "Host atualizado", description: trimmed });
-                    }}
-                    className="h-7 w-7 p-0"
-                  >
-                    <Save className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={savingHost}
-                    onClick={() => setEditingHost(false)}
-                    className="h-7 w-7 p-0"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              )}
+            <div className="grid gap-3 md:grid-cols-[1fr_auto] items-end">
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Loja</label>
+                <Select value={storeId} onValueChange={setStoreId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione a loja" /></SelectTrigger>
+                  <SelectContent>
+                    {stores.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Badge variant="outline" className="h-fit text-xs">
+                {cfg ? "Configuração encontrada" : "Padrão (sandbox)"}
+              </Badge>
             </div>
-            {editingHost ? (
-              <Input
-                autoFocus
-                value={hostDraft}
-                onChange={(e) => setHostDraft(e.target.value)}
-                className="h-7 font-mono text-sm"
-                placeholder="https://127.0.0.1:3031"
-              />
-            ) : (
-              <div className="text-sm font-mono truncate">{host}</div>
-            )}
+            <div className="grid gap-2 sm:grid-cols-3 pt-1">
+              <Field label="CNPJ" value={cnpj} />
+              <div className="rounded-md border bg-muted/30 p-2.5 space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-xs text-muted-foreground">Ponto de Captura (PdC)</div>
+                  {!editingPdc ? (
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => copy(pdc, "Ponto de Captura")} className="h-7 w-7 p-0">
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={!storeId}
+                        onClick={() => { setPdcDraft(pdc); setEditingPdc(true); }}
+                        className="h-7 w-7 p-0"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={savingPdc}
+                        onClick={async () => {
+                          if (!storeId) return;
+                          const trimmed = pdcDraft.trim();
+                          if (!trimmed) {
+                            toast({ title: "PdC inválido", description: "Informe um Ponto de Captura.", variant: "destructive" });
+                            return;
+                          }
+                          setSavingPdc(true);
+                          const { error } = await supabase
+                            .from("pdv_tef_config")
+                            .update({ terminal_code: trimmed })
+                            .eq("store_id", storeId);
+                          setSavingPdc(false);
+                          if (error) {
+                            toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+                            return;
+                          }
+                          setCfg(prev => prev ? { ...prev, pdc: trimmed } : prev);
+                          setEditingPdc(false);
+                          toast({ title: "PdC atualizado", description: `Ponto de Captura: ${trimmed}` });
+                        }}
+                        className="h-7 w-7 p-0"
+                      >
+                        <Save className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={savingPdc}
+                        onClick={() => setEditingPdc(false)}
+                        className="h-7 w-7 p-0"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                {editingPdc ? (
+                  <Input
+                    autoFocus
+                    value={pdcDraft}
+                    onChange={(e) => setPdcDraft(e.target.value)}
+                    className="h-7 font-mono text-sm"
+                    placeholder="Ex.: 111476"
+                  />
+                ) : (
+                  <div className="text-sm font-mono truncate">{pdc}</div>
+                )}
+              </div>
+              <div className="rounded-md border bg-muted/30 p-2.5 space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-xs text-muted-foreground">Host (sandbox)</div>
+                  {!editingHost ? (
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => copy(host, "Host")} className="h-7 w-7 p-0">
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={!storeId}
+                        onClick={() => { setHostDraft(host); setEditingHost(true); }}
+                        className="h-7 w-7 p-0"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={savingHost}
+                        onClick={async () => {
+                          if (!storeId) return;
+                          const trimmed = hostDraft.trim();
+                          if (!trimmed) {
+                            toast({ title: "Host inválido", description: "Informe um endereço.", variant: "destructive" });
+                            return;
+                          }
+                          setSavingHost(true);
+                          const { error } = await supabase
+                            .from("pdv_tef_config")
+                            .update({ agent_url: trimmed })
+                            .eq("store_id", storeId);
+                          setSavingHost(false);
+                          if (error) {
+                            toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+                            return;
+                          }
+                          setCfg(prev => prev ? { ...prev, host: trimmed } : prev);
+                          setEditingHost(false);
+                          toast({ title: "Host atualizado", description: trimmed });
+                        }}
+                        className="h-7 w-7 p-0"
+                      >
+                        <Save className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={savingHost}
+                        onClick={() => setEditingHost(false)}
+                        className="h-7 w-7 p-0"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                {editingHost ? (
+                  <Input
+                    autoFocus
+                    value={hostDraft}
+                    onChange={(e) => setHostDraft(e.target.value)}
+                    className="h-7 font-mono text-sm"
+                    placeholder="https://127.0.0.1:3031"
+                  />
+                ) : (
+                  <div className="text-sm font-mono truncate">{host}</div>
+                )}
+              </div>
+            </div>
+          </Card>
+
+          <TefPinpadSetupCard
+            storeId={storeId}
+            cpfCnpj={cnpj}
+            pontoDeCaptura={pdc}
+            sandboxHost={DEFAULT_HOST}
+          />
+
+          <TefTestSaleCard />
+
+          <TefRecnumExtractor storeId={storeId} />
+
+          <TefHomologationChecklist storeId={storeId} />
+        </div>
+
+        {/* Coluna lateral — impressora */}
+        <div className="space-y-4">
+          <div className="lg:sticky lg:top-4">
+            <SimulatedPrinter />
           </div>
         </div>
-      </Card>
-
-      <TefPinpadSetupCard
-        storeId={storeId}
-        cpfCnpj={cnpj}
-        pontoDeCaptura={pdc}
-        sandboxHost={DEFAULT_HOST}
-      />
-
-      <TefTestSaleCard />
-
-      <SimulatedPrinter />
-
-      <TefRecnumExtractor storeId={storeId} />
-
-      <TefHomologationChecklist storeId={storeId} />
+      </div>
     </div>
   );
 };
