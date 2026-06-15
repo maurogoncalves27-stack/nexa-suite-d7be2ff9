@@ -491,85 +491,17 @@ export default function TefPinpadSetupCard({ storeId, cpfCnpj, pontoDeCaptura, s
       <div className="flex flex-wrap items-center gap-2">
         <Usb className="h-5 w-5 text-primary" />
         <h2 className="font-semibold">Configurar pinpad</h2>
-        <Badge variant="outline" className="ml-auto">
-          {storeId ? "Loja selecionada" : "ASA SUL (padrão)"}
-        </Badge>
       </div>
 
-      <p className="text-sm text-muted-foreground">
-        Abre o menu administrativo da PGWebLib direto no pinpad. Use{" "}
-        <strong>Abrir menu ADM</strong> e escolha <em>"Instalação do Pinpad"</em> para
-        parear a porta COM; depois rode <strong>Testar comunicação</strong> para
-        confirmar que o pinpad está respondendo.
-      </p>
-
-      <div className="flex flex-wrap gap-2">
-        <Button onClick={inicializar} disabled={!!busy} className="gap-2">
-          {busy === "init" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
-          Inicializar TEF agora
-        </Button>
-        <Button onClick={() => run("adm")} disabled={!!busy} variant="secondary" className="gap-2">
-          {busy === "adm" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Settings2 className="h-4 w-4" />}
-          Abrir menu ADM
-        </Button>
-        <Button onClick={() => run("test")} disabled={!!busy} variant="secondary" className="gap-2">
-          {busy === "test" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wifi className="h-4 w-4" />}
-          Testar comunicação
-        </Button>
-        <Button onClick={testarPortaPinpad} disabled={!!busy} variant="outline" className="gap-2 border-success/40 text-success hover:bg-success/10">
-          {busy === "port" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plug className="h-4 w-4" />}
-          Testar porta do pinpad
-        </Button>
-        <Button onClick={diagnosticar} disabled={!!busy} variant="outline" className="gap-2">
-          {busy === "diag" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Activity className="h-4 w-4" />}
-          Diagnosticar agente
-        </Button>
-      </div>
-
-      {agentUrl && (
-        <p className="text-xs text-muted-foreground">
-          Agente: <code className="font-mono">{agentUrl}</code>
-        </p>
-      )}
+      <Button onClick={() => run("adm")} disabled={!!busy} className="gap-2">
+        {busy === "adm" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Settings2 className="h-4 w-4" />}
+        Abrir menu ADM
+      </Button>
 
       {lastMsg && (
         <div className="rounded-md border bg-background p-2.5 text-sm">
           <span className="text-muted-foreground">Status:</span> {lastMsg}
         </div>
-      )}
-
-      {fetchFailed && agentUrl && (
-        <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm space-y-2">
-          <p className="font-medium">"Failed to fetch" — provável causa:</p>
-          <ol className="list-decimal pl-5 space-y-1 text-xs">
-            <li>O agente <code>NEXA ACBr Agent</code> não está rodando na máquina (verifique a bandeja do Windows).</li>
-            <li>O certificado HTTPS auto-assinado em <code>{agentUrl}</code> ainda não foi aceito por este navegador.</li>
-            <li>Algum antivírus/firewall está bloqueando a porta 3031.</li>
-          </ol>
-          <p className="text-xs">
-            <strong>Como resolver:</strong> abra o link abaixo em uma nova aba, clique em <em>"Avançado → Continuar para 127.0.0.1"</em> e depois volte aqui.
-          </p>
-          <a
-            href={`${agentUrl}/health`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-primary hover:underline text-xs"
-          >
-            <ExternalLink className="h-3 w-3" />
-            Abrir {agentUrl}/health
-          </a>
-        </div>
-      )}
-
-      {result && (
-        <details className="text-xs">
-          <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-            Ver resposta completa
-          </summary>
-          <pre className="mt-2 max-h-48 overflow-auto rounded bg-muted p-2 font-mono">
-            {result}
-          </pre>
-        </details>
       )}
     </Card>
 
