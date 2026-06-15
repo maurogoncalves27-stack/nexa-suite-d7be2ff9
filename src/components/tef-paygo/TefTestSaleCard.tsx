@@ -196,6 +196,11 @@ export default function TefTestSaleCard() {
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
           Credito
         </Button>
+
+        <Button onClick={() => void runSale("pix", "REDE")} disabled={busy || !!pendingMethod} variant="outline" className="gap-2">
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+          PIX
+        </Button>
       </div>
 
       {status !== "idle" && (
