@@ -395,6 +395,38 @@ public static class PayGoBridge
         return Confirmation(dllPath, workingDir, PWCNF_REV_MANU_AUT, reqNum, locRef, extRef, virtMerch, authSyst);
     }
 
+    // Cleanup: força desfazimento de QUALQUER pendência presa na PGWebLib
+    // (situação típica após timeout de PIX, queda de host, ou venda abortada
+    // antes do PW_iConfirmation). Chamado tanto por rota explícita
+    // (/tef/limpar-pendencia) quanto pelo agente JS no início de cada venda
+    // quando o estado anterior ficou "timeout".
+    public static string Cleanup(string dllPath, string workingDir)
+    {
+        try
+        {
+            Load(dllPath);
+            short ret = Init(workingDir);
+            if (ret != PWRET_OK) return Error("PW_iInit", ret);
+
+            EmitEvent("INFO", "Cleanup: forcando PW_iConfirmation(PWCNF_REV_MANU_AUT) com params vazios");
+            short cnfRet = Fn<PW_iConfirmation_>("PW_iConfirmation")(PWCNF_REV_MANU_AUT, "", "", "", "", "");
+            if (cnfRet != PWRET_OK)
+            {
+                EmitEvent("INFO", "Cleanup: PW_iConfirmation ret=" + cnfRet + " (nenhuma pendencia ou ja limpa)");
+                // Não tratamos como erro fatal — se não havia pendência, a DLL
+                // retorna algo != 0 e tudo bem, a próxima venda funciona.
+                return "{\"ok\":true,\"status\":\"cleanup\",\"message\":\"Sem pendencia a limpar (ret=" + cnfRet + ")\",\"ret\":" + cnfRet + "}";
+            }
+
+            EmitEvent("CONFIRMED", "Cleanup: pendencia anterior desfeita com sucesso");
+            return "{\"ok\":true,\"status\":\"cleanup\",\"message\":\"Pendencia anterior desfeita\",\"ret\":0}";
+        }
+        catch (Exception ex)
+        {
+            return "{\"ok\":false,\"status\":\"error\",\"message\":\"" + Esc(ex.Message) + "\"}";
+        }
+    }
+
     private static string Confirmation(string dllPath, string workingDir, uint confirmation, string reqNum, string locRef, string extRef, string virtMerch, string authSyst)
     {
         try
