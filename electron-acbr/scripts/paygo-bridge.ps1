@@ -350,7 +350,7 @@ public static class PayGoBridge
             Add(PWINFO_AUTNAME, "PDV");
             Add(PWINFO_AUTVER, "1.0.0");
             Add(PWINFO_AUTDEV, "PayGo");
-            Add(PWINFO_AUTCAP, "452");
+            Add(PWINFO_AUTCAP, "384");
             Add(PWINFO_DSPQRPREF, "2");
 
             AddActivationParams();
