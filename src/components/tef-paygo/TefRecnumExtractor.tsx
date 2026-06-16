@@ -32,6 +32,7 @@ export default function TefRecnumExtractor({ storeId }: Props) {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [limit, setLimit] = useState("60");
+  const [showLogs, setShowLogs] = useState(false);
 
   const load = async () => {
     if (!storeId) { setRows([]); return; }
