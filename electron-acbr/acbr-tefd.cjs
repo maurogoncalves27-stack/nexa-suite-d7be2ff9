@@ -428,14 +428,18 @@ async function efetuarPagamento(opts = {}) {
   const installments = Number(opts.parcelas || 1);
   const method = methodToBridge(opts.tipo);
   const saleId = opts.saleId || `SALE-${Date.now()}`;
+  const qrDisplayPreference = String(opts.qrDisplayPreference || process.env.PAYGO_QR_DISPLAY_PREF || NEXA_DEFAULTS.qrDisplayPreference) === "1" ? "1" : "2";
 
   setSaleStatus({
     status: "running",
-    message: "Iniciando transação no PayGo...",
+    message: `Iniciando transação no PayGo (${saleId})...`,
     qrCode: "",
     startedAt: Date.now(),
+    saleId,
     method,
     amount: valor,
+    qrDisplayPreference,
+    lastQrAt: 0,
   });
 
   try {
@@ -447,12 +451,13 @@ async function efetuarPagamento(opts = {}) {
       installments,
       paygoMenuChoice: opts.paygoMenuChoice || "",
       captureValuesBase64: opts.captureValuesBase64 || "",
+      qrDisplayPreference,
     }, { onEvent: (ev) => {
       if (!ev) return;
       // O bridge emite eventos NDJSON: { type, message }.
-      // QRCODE traz o BR Code Pix em `message` (vindo de szValorInicial).
+      // QRCODE traz o BR Code Pix em `message` (vindo de PWINFO_AUTHPOSQRCODE).
       if (ev.type === "QRCODE" && ev.message) {
-        setSaleStatus({ qrCode: ev.message, message: "Aguardando pagamento PIX. Cliente, escaneie o QR Code." });
+        setSaleStatus({ qrCode: ev.message, lastQrAt: Date.now(), message: `Aguardando pagamento PIX da venda ${saleId}. Cliente, escaneie o QR Code no checkout/PC.` });
       } else if (ev.message) {
         setSaleStatus({ message: ev.message });
       }
@@ -462,7 +467,14 @@ async function efetuarPagamento(opts = {}) {
     setSaleStatus({ status: "done", message: payload?.message || payload?.status || "Concluído" });
     return payload;
   } catch (err) {
-    setSaleStatus({ status: "error", message: err.message });
+    if (method === "PIX" && saleStatus.qrCode) {
+      setSaleStatus({
+        status: "timeout",
+        message: `QR Code gerado para ${saleId}, mas o PayGo excedeu o tempo aguardando confirmação. Verifique se o Pix foi pago antes de cancelar ou repetir.`,
+      });
+    } else {
+      setSaleStatus({ status: "error", message: err.message });
+    }
     throw err;
   }
 }
