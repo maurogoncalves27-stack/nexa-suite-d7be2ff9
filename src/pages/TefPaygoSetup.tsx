@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
+import TefAgentDownloadCard from "@/components/tef-paygo/TefAgentDownloadCard";
 import TefTestSaleCard from "@/components/tef-paygo/TefTestSaleCard";
 import TefPinpadSetupCard from "@/components/tef-paygo/TefPinpadSetupCard";
 import TefHomologationChecklist from "@/components/tef-paygo/TefHomologationChecklist";
