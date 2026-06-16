@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
+import TefAgentDownloadCard from "@/components/tef-paygo/TefAgentDownloadCard";
 import TefTestSaleCard from "@/components/tef-paygo/TefTestSaleCard";
 import TefPinpadSetupCard from "@/components/tef-paygo/TefPinpadSetupCard";
 import TefHomologationChecklist from "@/components/tef-paygo/TefHomologationChecklist";
@@ -126,10 +127,10 @@ const TefPaygoSetup = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <Badge variant="outline" className="h-fit text-xs">
-                {cfg ? "Configuração encontrada" : "Padrão (sandbox)"}
-              </Badge>
-            </div>
+            <Badge variant="outline" className="h-fit text-xs">
+              {cfg ? "Configuração encontrada" : "Padrão (sandbox)"}
+            </Badge>
+          </div>
             <div className="grid gap-2 sm:grid-cols-3 pt-1">
               <Field label="CNPJ" value={cnpj} />
               <div className="rounded-md border bg-muted/30 p-2.5 space-y-1">
@@ -280,6 +281,8 @@ const TefPaygoSetup = () => {
               </div>
             </div>
           </Card>
+
+          <TefAgentDownloadCard />
 
           <TefPinpadSetupCard
             storeId={storeId}
