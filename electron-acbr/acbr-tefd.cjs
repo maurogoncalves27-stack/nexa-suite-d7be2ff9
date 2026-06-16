@@ -132,12 +132,18 @@ const pending = new Map(); // id -> { resolve, reject, timeout, onEvent }
 
 // status visível pelas rotas /tef/admin/status
 let admStatus = {
-  status: "idle",       // idle | running | done | error | aborted
+  status: "idle",       // idle | running | waiting_input | done | error | aborted
   message: "",
   startedAt: 0,
   result: null,
   error: null,
+  pendingCaptures: null, // CAPTURE_REQUEST emitidos pelo bridge aguardando resposta
+  captureSeq: 0,
 };
+
+// Id do request /tef/admin atualmente em execução (usado por respondAdm pra
+// escrever capture_response no stdin do host PowerShell).
+let currentAdminRequestId = null;
 
 function setAdmStatus(patch) {
   admStatus = { ...admStatus, ...patch };
@@ -146,6 +152,7 @@ function setAdmStatus(patch) {
 function getAdmStatus() {
   return { ...admStatus };
 }
+
 
 // status visível pelas rotas /tef/sale/status — usado pela UI para renderizar
 // o QR Code PIX (o pinpad PPC930 não tem display gráfico, então a automação
@@ -361,6 +368,10 @@ function runBridge(payload, opts = {}) {
 
     pending.set(id, { resolve, reject, timeout, onEvent: opts.onEvent });
 
+    if (typeof opts.onRequestId === "function") {
+      try { opts.onRequestId(id); } catch { /* ignore */ }
+    }
+
     const line = JSON.stringify({ id, ...payload }) + "\n";
     host.stdin.write(line, "utf8", (err) => {
       if (!err) return;
@@ -371,6 +382,16 @@ function runBridge(payload, opts = {}) {
     });
   }));
 }
+
+// Escreve uma linha JSON direto na stdin do host PayGo. Usado pra responder
+// um CAPTURE_REQUEST que o bridge está bloqueando aguardando.
+function writeHostLine(obj) {
+  if (!host || !host.stdin || !host.stdin.writable) {
+    throw new Error("Host PayGo indisponivel");
+  }
+  host.stdin.write(JSON.stringify(obj) + "\n", "utf8");
+}
+
 
 // ---------- API pública ----------
 function isAvailable() {
@@ -558,27 +579,45 @@ async function administrativoAsync(opts = {}) {
     startedAt: Date.now(),
     result: null,
     error: null,
+    pendingCaptures: null,
+    captureSeq: 0,
   });
 
-  // IMPORTANTE: no fluxo ADMIN o PayGo NÃO aceita os parâmetros de ativação
-  // (USINGPINPAD/PPCOMMPORT/MERCHCNPJCPF/POSID/DESTTCPIP). Se enviados, retorna
-  // -2499 (PWRET_INVPARM) em PW_iAddParam 0x7F01. Esses params são exclusivos
-  // do fluxo INSTALL. Mantemos só a senha técnica para resposta de USERAUTH.
-  const payload = {
-    action: "admin",
-    cpfCnpj: "",
-    pontoDeCaptura: "",
-    ambiente: "",
-    senhaTecnica: opts.senhaTecnica || opts.technicalPassword || NEXA_DEFAULTS.senhaTecnica,
-    usePinpad: "",
-    pinpadPort: "",
-    paygoMenuChoice: opts.paygoMenuChoice || "",
-  };
+  // Espelha a demo oficial Setis (Integracao-PayGoWeb-CSharp / MainWindow.xaml.cs):
+  // ADMIN não recebe nenhum parâmetro de configuração — o bridge envia apenas os 5
+  // params base (AUTNAME/AUTVER/AUTDEV/AUTCAP/DSPQRPREF). Tudo mais (cpfCnpj/PdC/
+  // ambiente/pinpad) vem das env vars setadas pelo instalador do PayGo Windows.
+  // Os PWDAT_MENU/TYPED/USERAUTH chegam interativamente como CAPTURE events e o
+  // operador responde via /tef/admin/respond.
+  const payload = { action: "admin" };
 
   try {
     const result = await runBridge(payload, {
       timeoutMs: opts.timeoutMs || 600000,
+      onRequestId: (id) => { currentAdminRequestId = id; },
       onEvent: (ev) => {
+        if (!ev) return;
+        if (ev.type === "CAPTURE") {
+          // ev tem { type:"CAPTURE", captureType, identificador, tipo, prompt, options, tamMin, tamMax, mascara, ocultar, aceitaNulo, seq }
+          const cap = {
+            identificador: Number(ev.identificador),
+            tipo: Number(ev.tipo),
+            prompt: String(ev.prompt || ""),
+            options: Array.isArray(ev.options) ? ev.options : [],
+            tamMin: Number(ev.tamMin || 0),
+            tamMax: Number(ev.tamMax || 0),
+            mascara: String(ev.mascara || ""),
+            ocultar: !!ev.ocultar,
+            seq: Number(ev.seq || 0),
+          };
+          setAdmStatus({
+            status: "waiting_input",
+            message: cap.prompt || "Aguardando entrada do operador",
+            pendingCaptures: [cap],
+            captureSeq: cap.seq,
+          });
+          return;
+        }
         if (ev.message) setAdmStatus({ message: ev.message });
       },
     });
@@ -586,6 +625,7 @@ async function administrativoAsync(opts = {}) {
       status: "done",
       message: result?.message || result?.status || "Concluído",
       result,
+      pendingCaptures: null,
     });
     return result;
   } catch (err) {
@@ -593,16 +633,18 @@ async function administrativoAsync(opts = {}) {
       status: "error",
       message: err.message,
       error: err.message,
+      pendingCaptures: null,
     });
     throw err;
+  } finally {
+    currentAdminRequestId = null;
   }
 }
 
 async function instalarPdc(opts = {}) {
-  // Mantido pra compatibilidade da rota /tef/install — mas o método
-  // OFICIAL recomendado pela Setis é instalar via UI do PayGo Windows
-  // em modo DEMO (3 cliques no logo). Use isso só em ambiente já
-  // configurado pra reaproveitar o PdC.
+  // DEPRECATED: a instalação oficial do PdC é feita pelo instalador do PayGo Windows
+  // (modo DEMO) — ver /configuracoes/tef-paygo. Mantido só por compatibilidade da
+  // rota /tef/install; não usar em UI nova.
   const payload = {
     action: "install",
     cpfCnpj: opts.cpfCnpj || NEXA_DEFAULTS.cpfCnpj,
@@ -617,20 +659,34 @@ async function instalarPdc(opts = {}) {
 }
 
 function abortAdm() {
-  setAdmStatus({ status: "aborted", message: "Operação abortada" });
+  // tenta sinalizar abort ao bridge antes de derrubar o host
+  if (currentAdminRequestId) {
+    try { writeHostLine({ id: currentAdminRequestId, action: "abort_capture" }); } catch { /* ignore */ }
+  }
+  setAdmStatus({ status: "aborted", message: "Operação abortada", pendingCaptures: null });
   stopHost("abortAdm");
+  currentAdminRequestId = null;
 }
 
-function respondAdm(_responses) {
-  // O bridge do amigo NÃO usa o fluxo interativo de captura (PWDAT_MENU/TYPED)
-  // — em vez disso ele exige que o paygoMenuChoice/captureValues venham antes
-  // da chamada. Por enquanto este endpoint é no-op; a UI já está sendo
-  // ajustada pra coletar a escolha antes de disparar o comando.
-  throw new Error(
-    "Fluxo de captura interativa não é suportado no novo host. " +
-    "Envie paygoMenuChoice no payload inicial."
-  );
+function respondAdm(responses) {
+  if (!Array.isArray(responses) || responses.length === 0) {
+    throw new Error("responses obrigatório (array de { identificador, value })");
+  }
+  if (!currentAdminRequestId) {
+    throw new Error("Nenhum admin em andamento aguardando resposta");
+  }
+  const id = currentAdminRequestId;
+  for (const r of responses) {
+    writeHostLine({
+      id,
+      action: "capture_response",
+      identificador: Number(r.identificador),
+      value: String(r.value ?? ""),
+    });
+  }
+  setAdmStatus({ pendingCaptures: null, message: "Resposta enviada, aguardando PayGo..." });
 }
+
 
 function finalizar() {
   stopHost("finalizar");

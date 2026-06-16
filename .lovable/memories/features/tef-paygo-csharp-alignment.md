@@ -1,35 +1,19 @@
 ---
-name: TEF PayGo — alinhamento C# Setis
-description: Agente acbr-tefd.cjs reescrito 100% alinhado ao demo oficial C# da Setis (adminti2/Integracao-PayGoWeb-CSharp)
-type: reference
+name: TEF PayGo — alinhamento com demo oficial Setis
+description: Como ADMIN/SALE devem chamar PGWebLib espelhando adminti2/Integracao-PayGoWeb-CSharp
+type: feature
 ---
-Repo de referência: https://github.com/adminti2/Integracao-PayGoWeb-CSharp
 
-Arquivos-fonte no demo:
-- PDV/Muxx.Lib/Services/PGWebLib.cs — assinaturas DllImport
-- PDV/Muxx.Lib/Services/Fluxos.cs — loop oficial PW_iExecTransac
-- PDV/Muxx.Lib/ValueObjects/Structs/PW_GetData.cs — struct (ANSI, Sequential)
-- PDV/PDV/MainWindow.xaml.cs — params iniciais e fluxo de venda
+Demo oficial: `https://github.com/adminti2/Integracao-PayGoWeb-CSharp` (PDV/MainWindow.xaml.cs + Muxx.Lib/Services/Fluxos.cs).
 
-Assinaturas críticas (verificadas no PGWebLib.cs):
-- PW_iInit(string) → short
-- PW_iNewTransac(byte) → short                    (byte, NÃO short)
-- PW_iAddParam(ushort, string) → short            (ushort, NÃO short)
-- PW_iExecTransac(PW_GetData[9], ref short) → short
-- PW_iGetResult(short, char*, uint VALOR) → short (uint por valor!)
-- PW_iConfirmation(uint, 5×string) → short        (uint por valor!)
-- PW_iPPEventLoop(char*, uint VALOR) → short      (uint por valor!)
+Regras obrigatórias:
 
-Params iniciais obrigatórios em TODA transação (MainWindow.xaml.cs):
-- AUTNAME="PDV", AUTVER="1.0.0.0", AUTDEV="PayGo"
-- AUTCAP=384 (DSP_CHECKOUT 128 | DSP_QRCODE 256)
-- DSPQRPREF=2 (EXIBE_CHECKOUT)
+1) **ADMIN não recebe parâmetros de configuração.** `PW_iNewTransac(PWOPER_ADMIN)` seguido apenas de `AUTNAME/AUTVER/AUTDEV/AUTCAP/DSPQRPREF`. Nada de `MERCHCNPJCPF`, `POSID`, `USINGPINPAD`, `PPCOMMPORT`, `DESTTCPIP`. Esses vêm das env vars `CPFCNPJ`/`PontoDeCaptura`/`AmbienteCPAY` setadas pelo instalador do PayGo Windows.
 
-Confirmação: PWCNF_CNF_AUTO = 0x121 (não 0!). Reversão: PWCNF_REV_MANU_AUT = 0x3231.
+2) **Captura interativa é obrigatória.** Quando a DLL emite `PWDAT_MENU`/`PWDAT_TYPED`/`PWDAT_USERAUTH` durante ADMIN, o bridge deve emitir evento `CAPTURE` via stdout e BLOQUEAR em `Console.In.ReadLine()` até o agente JS enviar `{ action:"capture_response", identificador, value }` no stdin. Nunca pré-preencher senha técnica nem `paygoMenuChoice` no ADMIN — o operador responde na tela do PC.
 
-NÃO existe PW_iSetEnvironment no demo. Ambiente sandbox/produção é definido
-ANTES do PayGo subir via ENV: CPFCNPJ, PontoDeCaptura, AmbienteCPAY=DEMO.
+3) **Confirmação de pendência.** Após `FluxoExecTransac` no ADMIN, se `PWINFO_PNDREQNUM` está preenchido, chamar `PW_iConfirmation(PWCNF_CNF_AUTO, pndReqNum, pndLocRef, pndExtRef, pndVirtMerch, pndAuthSyst)` para liberar a próxima operação. Sem isso a próxima operação dá "ERRO DE AUTENTICACAO DO PONTO DE CAPTURA".
 
-Loop FluxoExecTransac: aloca PW_GetData[9], chama PW_iExecTransac com piNumParam=9
-ref, em MOREDATA itera as `count` capturas (PWDAT_MENU/TYPED/USERAUTH/CARDINF/etc.)
-e continua. Capturas interativas só são processáveis com UI — em headless, abortar.
+4) **`PWOPER_INSTALL` programático está fora do contrato Setis.** Instalação do PdC é via instalador do PayGo Windows (modo DEMO) + env vars. `instalarPdc()` e rota `/tef/install` ficaram deprecated; não usar em UI nova.
+
+SALE continua com lógica auto-resposta atual (não interativa) — escopo só do ADMIN.

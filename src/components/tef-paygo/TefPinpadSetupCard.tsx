@@ -493,6 +493,10 @@ export default function TefPinpadSetupCard({ storeId, cpfCnpj, pontoDeCaptura, s
         <h2 className="font-semibold">Configurar pinpad</h2>
       </div>
 
+      <p className="text-xs text-muted-foreground">
+        A instalação do PdC é feita uma única vez pelo instalador do PayGo Windows (modo DEMO). Aqui você apenas abre o menu administrativo do pinpad — as opções de menu e a senha técnica são solicitadas em tela e respondidas pelo operador.
+      </p>
+
       <Button onClick={() => run("adm")} disabled={!!busy} className="gap-2">
         {busy === "adm" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Settings2 className="h-4 w-4" />}
         Abrir menu ADM
@@ -504,6 +508,7 @@ export default function TefPinpadSetupCard({ storeId, cpfCnpj, pontoDeCaptura, s
         </div>
       )}
     </Card>
+
 
     <Dialog open={!!menuPrompt} onOpenChange={(o) => { if (!o && !menuSubmitting) setMenuPrompt(null); }}>
       <DialogContent className="max-w-md">
