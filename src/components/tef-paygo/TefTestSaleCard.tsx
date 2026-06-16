@@ -397,13 +397,6 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
           Cancelar última venda
         </Button>
-          disabled={busy || !!pendingMethod}
-          variant="destructive"
-          className="gap-2"
-        >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
-          Desfazer pendência
-        </Button>
 
         <Button
           onClick={() => setShowPinpad((s) => !s)}
