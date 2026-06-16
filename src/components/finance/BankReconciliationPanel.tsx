@@ -313,6 +313,7 @@ export default function BankReconciliationPanel() {
       return;
     }
     toast({ title: "Conciliada", description: `${ids.length} ${isCredit ? "recebimentos" : "pagamentos"} vinculados.` });
+    focusDateRef.current = matchTarget.posted_at;
     setMatchTarget(null);
     setMatchSearch("");
     setBatchMode(false);
