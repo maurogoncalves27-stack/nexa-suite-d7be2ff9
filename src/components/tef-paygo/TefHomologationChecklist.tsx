@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle, AlertTriangle, Loader2, RefreshCw, ListChecks } from "lucide-react";
+import { CheckCircle2, XCircle, AlertTriangle, Loader2, RefreshCw, ListChecks, Download } from "lucide-react";
 import { checkAcbrAgent } from "@/lib/tef/acbrAdapter";
 
 interface Props { storeId: string }
@@ -130,6 +130,18 @@ export default function TefHomologationChecklist({ storeId }: Props) {
               {okCount}/{total} OK
             </Badge>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            asChild
+            className="h-7 text-[11px] gap-1"
+            title="Baixar agente ACBr (v1.5.5)"
+          >
+            <a href="/releases/NEXA-ACBr-Agent-Setup-1.5.5.exe" download>
+              <Download className="h-3.5 w-3.5" />
+              Baixar agente
+            </a>
+          </Button>
           <Button variant="ghost" size="sm" onClick={() => void run()} disabled={loading} className="h-7 w-7 p-0">
             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
           </Button>
