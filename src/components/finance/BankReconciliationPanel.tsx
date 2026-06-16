@@ -120,6 +120,11 @@ export default function BankReconciliationPanel() {
   // Lembra a data da última transação conciliada para restaurar a posição
   // após o reload (evita "voltar para o topo" descrito pelo usuário).
   const focusDateRef = useRef<string | null>(null);
+  // Rateio (centro de custo = loja)
+  const [allocStores, setAllocStores] = useState<StoreLite[]>([]);
+  const [allocTarget, setAllocTarget] = useState<BankTx | null>(null);
+  const [allocSplits, setAllocSplits] = useState<AllocationSplit[]>([]);
+  const [allocLoading, setAllocLoading] = useState(false);
 
   const loadAccounts = useCallback(async () => {
     const { data } = await supabase.from("bank_accounts").select("*").order("name");
