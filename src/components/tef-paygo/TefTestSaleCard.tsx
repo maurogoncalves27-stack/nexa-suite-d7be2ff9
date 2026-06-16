@@ -433,9 +433,14 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
           Credito
         </Button>
 
-        <Button onClick={() => void runSale("pix", "PIX C6 BANK")} disabled={busy || !!pendingMethod} variant="outline" className="gap-2">
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-          PIX C6 BANK
+        <Button onClick={() => { setQrDisplayPreference("2"); void runSale("pix", "PIX C6 BANK", "2"); }} disabled={busy || !!pendingMethod} variant="outline" className="gap-2">
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <QrCode className="h-4 w-4" />}
+          PIX PC
+        </Button>
+
+        <Button onClick={() => { setQrDisplayPreference("1"); void runSale("pix", "PIX C6 BANK", "1"); }} disabled={busy || !!pendingMethod} variant="secondary" className="gap-2">
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <QrCode className="h-4 w-4" />}
+          PIX pinpad
         </Button>
 
         <Button
