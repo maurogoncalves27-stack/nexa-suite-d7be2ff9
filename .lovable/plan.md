@@ -1,60 +1,31 @@
-## Validação automática simples do roteiro PayGo
+## O que o usuário relatou
 
-Manter o roteiro com look-and-feel atual; só acrescentar uma camada simples que olha a tabela `pdv_tef_transactions` da Asa Sul e marca verde sozinho o que o log já comprova. Quando não houver evidência clara, fica em manual (check normal do operador).
+Ele está conciliando no dia **13/05**. Toda vez que finaliza uma conciliação naquela data, a página recarrega e volta para o **topo (08/06)**, e ele precisa rolar muito até reencontrar o 13/05 e continuar. Quer que o sistema mantenha a posição.
 
-### Como funciona
+## Causa
 
-1. **Marco zero por rodada**
-   - O botão **Resetar** já existente passa a salvar também `runStartedAt = new Date().toISOString()` no mesmo `localStorage` (`tef-paygo-roteiro-obrig-v1`).
-   - Se nunca resetou, assume marco zero = momento em que abriu a página pela primeira vez (já cria na montagem se não existir).
+Em `src/components/finance/BankReconciliationPanel.tsx`, após cada `reconcileCandidate` / `reconcileBatch` / `undo` / `autoReconcileAll`, chamamos `loadData()`, que reseta o array de `transactions`. Como a tabela é ordenada DESC por `posted_at` (08/06 → 13/05 → mais antigas), o re-render joga o scroll de volta para o topo. Além disso, a transação recém-conciliada some da lista (com "Ocultar conciliadas"), o que agrava a sensação de "perdi meu lugar".
 
-2. **Polling leve a cada 10s** (e em foco da aba)
-   - `SELECT * FROM pdv_tef_transactions WHERE store_id = ASA_SUL_ID AND provider = 'paygo' AND finished_at >= runStartedAt ORDER BY finished_at ASC`
-   - Resultado vai pra um `useMemo` que aplica os matchers de cada passo.
+## Correção proposta (cirúrgica, só nesse painel)
 
-3. **Matchers (auto-detectáveis) — apenas estes ganham marca automática:**
-   - **2** valor máximo: `amount >= 99999 && status='approved'`
-   - **3** pré-seleção DEMO crédito à vista: `acquirer='DEMO' && status='approved' && method=credit && installments<=1` (method/installments lido do `raw_response`)
-   - **4** negada: `amount = 1000.01 && status != 'approved'`
-   - **5** cancelada na seleção de rede: `status='cancelled'` + mensagem contém `OPERAÇÃO CANCELADA` ou `REDE`
-   - **6** crédito: primeira venda crédito aprovada
-   - **7** débito: primeira venda débito aprovada
-   - **8** crédito 99x: `installments = 99 && approved`
-   - **11** PIX C6 BANK: `acquirer='PIX C6 BANK' && approved`
-   - **19** venda OK para cancelar
-   - **21** cancelamento aprovado (status `cancelled` numa segunda transação após uma venda aprovada anterior)
-   - **41–44** cancelamento por referência: `status='cancelled'` + raw contém `referenciaLocal`/`referenciaExterna`
-   - **45/46** contactless com e sem senha: raw contém `CTLS`/`contactless`; PIN ausente para 46
-   - **52/53/54** QR Code: `method='pix'` aprovado/cancelado
+1. **Lembrar a data foco** ao conciliar: antes de chamar `loadData()`, salvar `posted_at` da transação que acabou de ser conciliada num `useRef` (ex.: `focusDateRef`).
+2. **Restaurar scroll após o reload**: num `useEffect` que dispara quando `loading` vira `false` e `focusDateRef.current` está setado:
+   - Marcar cada `<TableRow>` com `data-posted-at={tx.posted_at}`.
+   - Procurar a primeira linha com `posted_at <= focusDateRef.current` (ou seja, a próxima transação ainda pendente daquela data ou imediatamente anterior).
+   - Chamar `row.scrollIntoView({ block: "center" })` e limpar a ref.
+3. **Fallback**: se não houver nenhuma linha com data ≤ foco (acabaram as do dia), rolar para o fim da lista atual em vez de voltar ao topo.
+4. **Não mudar** ordenação, filtros, paginação, RPCs nem qualquer outro comportamento.
 
-   Demais passos (1, 9, 10, 12, 16, 24, 25, 26–35, 37, 51) ficam **manuais** (o usuário marca como já fazia hoje).
+### Bônus opcional (só se você aprovar)
 
-4. **Estado do checkbox: 3 origens**
-   - `auto`: pintado verde pelo matcher (não persistido — recalcula sempre)
-   - `manual`: marcado pelo usuário (persistido no localStorage como hoje)
-   - O checkbox aparece marcado se for `auto OR manual`. Manual sempre pode sobrescrever (desmarcar um auto força um "ignorar" que dura só até reset). Para simplificar ao máximo: **não permite desmarcar auto** — sumiu a complicação, evidência manda.
+Adicionar um pequeno seletor de **"Ir para data"** (input `type="date"`) ao lado do campo de busca, que faz o mesmo `scrollIntoView` sob demanda — útil quando ele reabre a tela no dia seguinte.
 
-5. **Evidência visual mínima**
-   - Quando um passo é auto, ao lado do título aparece um chip pequeno `auto • NSU 123456 • R$ 1.000,01` (texto-only, sem cor extra além de `text-muted-foreground`).
-   - Sem painel separado, sem botão extra. Só o chip.
+## Arquivos afetados
 
-6. **Resumo do progresso**
-   - O cabeçalho já mostra "Concluídos X/Y". Passa a contar `auto + manual` (sem duplicar). Nada mais muda.
+- `src/components/finance/BankReconciliationPanel.tsx` (único arquivo)
 
-### Arquivos
+## Risco
 
-- **`src/components/tef-paygo/TefRoteiroTestesCard.tsx`**
-  - Adiciona estado `runStartedAt` + persistência no mesmo `STORAGE_KEY` (estende formato pra `{ estado, runStartedAt }` com migração graciosa do formato antigo).
-  - Botão **Resetar** atualiza `runStartedAt = now()`.
-  - Novo hook interno `useAutoValidation(runStartedAt)` que:
-    - Carrega `pdv_tef_transactions` via `supabase.from(...).select(...).gte('finished_at', runStartedAt).eq('store_id', ASA_SUL_ID).eq('provider','paygo')`
-    - Re-busca a cada 10s e em `visibilitychange`.
-    - Retorna `Map<passoN, { nsu, amount, acquirer }>`.
-  - Renderiza chip de evidência quando o passo está em `auto`.
+Baixo. Mudança só de UX/scroll; nenhuma lógica de conciliação, RPC ou query é alterada.
 
-- **Sem migrações de banco**, sem edge function nova, sem mudança no card de venda de teste.
-
-### O que fica explicitamente fora
-
-- Passos que dependem do agente expor eventos novos (ADM, pendentes, desfazimento, dado/menu genérico). Continuam manuais — adicionar mais tarde quando o agente publicar esses logs.
-- Nenhuma alteração no `paygoAdapter`, `TefTestSaleCard`, nem na tabela `pdv_tef_transactions`.
+Posso implementar?
