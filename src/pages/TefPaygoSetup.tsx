@@ -43,13 +43,13 @@ const copy = (v: string, label: string) => {
 };
 
 const Field = ({ label, value }: { label: string; value: string }) => (
-  <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 p-2.5">
+  <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 p-2">
     <div className="min-w-0">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="text-sm font-mono truncate">{value}</div>
+      <div className="text-[11px] text-muted-foreground">{label}</div>
+      <div className="text-xs font-mono truncate">{value}</div>
     </div>
-    <Button variant="ghost" size="sm" onClick={() => copy(value, label)} className="shrink-0">
-      <Copy className="h-4 w-4" />
+    <Button variant="ghost" size="sm" onClick={() => copy(value, label)} className="shrink-0 h-6 w-6 p-0">
+      <Copy className="h-3 w-3" />
     </Button>
   </div>
 );
