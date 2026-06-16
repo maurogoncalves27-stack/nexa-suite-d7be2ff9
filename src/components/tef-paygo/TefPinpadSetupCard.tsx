@@ -563,7 +563,10 @@ export default function TefPinpadSetupCard({ storeId, cpfCnpj, pontoDeCaptura, s
         {captures && captures[0] && (() => {
           const cap = captures[0];
           const isMenu = cap.tipo === 1 && cap.options && cap.options.length > 0;
-          const isTyped = cap.tipo === 2 || cap.tipo === 3;
+          // Qualquer captura que não é menu vira entrada digitada (TYPED=2, BARCODE=12, USERAUTH=17, etc.)
+          const isTyped = !isMenu;
+          // USERAUTH (17) e qualquer captura com ocultar=true deve mascarar a digitação
+          const isSecret = cap.ocultar || cap.tipo === 17;
           return (
             <>
               <DialogHeader>
