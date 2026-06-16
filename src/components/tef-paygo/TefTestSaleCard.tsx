@@ -83,7 +83,7 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
               const place = data?.qrDisplayPreference === "1" ? "pinpad" : "checkout/PC";
               setPixSaleInfo([data?.saleId, amountText, `QR: ${place}`].filter(Boolean).join(" · "));
             }
-            if (data?.status === "done" || data?.status === "error" || data?.status === "idle") break;
+            if (["done", "error", "timeout", "idle"].includes(String(data?.status))) break;
           }
         } catch { /* ignora — segue tentando */ }
         await new Promise((res) => setTimeout(res, 700));
@@ -147,6 +147,10 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
 
       setStatus(result.status);
       setStatusMsg(result.message ?? "");
+      if (method === "pix" && result.status === "error" && latestPixQrRef.current) {
+        setStatus("timeout");
+        setStatusMsg("QR Code gerado, mas o PayGo excedeu o tempo aguardando confirmação. Confira no banco/PayGo antes de repetir.");
+      }
       setLastResult(JSON.stringify(result, null, 2));
 
       const rawAny = (result.raw ?? {}) as any;
@@ -204,6 +208,9 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
       setStatusMsg(hasQr && method === "pix"
         ? "QR Code gerado, mas o PayGo excedeu o tempo aguardando confirmação. Confira no banco/PayGo antes de repetir."
         : err?.message ?? String(err));
+      if (hasQr && method === "pix") {
+        setPixWaitMsg("QR Code gerado. Tempo de confirmação excedido; confira se houve pagamento antes de repetir.");
+      }
       toast({
         title: hasQr && method === "pix" ? "Pix aguardando conferência" : "Erro na transacao",
         description: hasQr && method === "pix" ? "O QR continua visível para conferência; não repita a venda sem verificar se houve pagamento." : err?.message ?? String(err),
