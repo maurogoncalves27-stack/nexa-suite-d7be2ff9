@@ -556,6 +556,9 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center gap-3">
+            <div className="w-full rounded border border-warning/40 bg-warning/10 p-2 text-xs text-warning-foreground">
+              <strong>Ambiente DEMO Setis:</strong> este QR não é Pix real. Não tente pagar pelo app do banco — a aprovação é simulada pelo próprio PayGo após alguns segundos.
+            </div>
             {pixSaleInfo && <Badge variant="outline">{pixSaleInfo}</Badge>}
             {pixQrDataUrl && (
               <img src={pixQrDataUrl} alt="QR Code Pix" className="rounded border bg-white p-2" width={320} height={320} />
