@@ -156,6 +156,77 @@ export default function TefTestSaleCard() {
     setStatusMsg("Operacao PayGo cancelada pelo operador");
   };
 
+  const resolverPendencia = async (action: "confirm" | "undo") => {
+    setBusy(true);
+    setStatus("processing");
+    setStatusMsg(action === "confirm" ? "Confirmando transação pendente..." : "Desfazendo transação pendente...");
+    try {
+      const cfg = await loadTefConfig(ASA_SUL_ID);
+
+      // Busca o token da última transação pendente da Asa Sul
+      const { data: pendingRows } = await supabase
+        .from("pdv_tef_transactions")
+        .select("id, raw_response")
+        .eq("store_id", ASA_SUL_ID)
+        .eq("provider", "paygo")
+        .eq("status", "pending_confirmation")
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      const row = (pendingRows ?? [])[0];
+      const raw: any = row?.raw_response ?? {};
+      const d = raw?.retorno?.data ?? raw?.data ?? {};
+      const token = {
+        reqNum: d.reqNum ?? "",
+        locRef: d.locRef ?? "",
+        extRef: d.extRef ?? "",
+        virtMerch: d.virtMerch ?? "",
+        authSyst: d.authSyst ?? "",
+      };
+
+      const resp = await fetch(joinAgentUrl(cfg.agentUrl, action === "confirm" ? "/tef/confirm" : "/tef/undo"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(token),
+      });
+      const data = await resp.json().catch(() => ({} as any));
+
+      if (resp.ok && data?.ok) {
+        // Atualiza a transação no banco para sair do estado "pending"
+        if (row?.id) {
+          await supabase
+            .from("pdv_tef_transactions")
+            .update({
+              status: action === "confirm" ? "approved" : "cancelled",
+              message: action === "confirm" ? "Pendência confirmada manualmente" : "Pendência desfeita manualmente",
+            })
+            .eq("id", row.id);
+        }
+        setStatus(action === "confirm" ? "approved" : "cancelled");
+        setStatusMsg(data?.message ?? `Pendência ${action === "confirm" ? "confirmada" : "desfeita"} com sucesso.`);
+        toast({
+          title: action === "confirm" ? "Pendência confirmada" : "Pendência desfeita",
+          description: data?.message ?? "Pinpad liberado para próxima venda.",
+        });
+      } else {
+        setStatus("error");
+        setStatusMsg(data?.error ?? `Falha ao ${action === "confirm" ? "confirmar" : "desfazer"} pendência`);
+        toast({
+          title: "Falha",
+          description: data?.error ?? `HTTP ${resp.status}`,
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      setStatus("error");
+      setStatusMsg(err?.message ?? String(err));
+      toast({ title: "Erro", description: err?.message ?? String(err), variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+
   return (
     <Card className="p-4 space-y-3 border-warning/40 bg-warning/5">
       <div className="flex items-center gap-2">
