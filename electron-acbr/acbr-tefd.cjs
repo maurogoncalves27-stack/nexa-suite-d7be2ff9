@@ -586,6 +586,8 @@ module.exports = {
   cancelarEmAndamento,
   administrativoAsync,
   getAdmStatus,
+  getSaleStatus,
+  clearSaleStatus,
   abortAdm,
   respondAdm,
   instalarPdc,
