@@ -643,6 +643,36 @@ public static class PayGoBridge
             return -2499;
         }
 
+        // Modo interativo (ADMIN): solicita escolha ao operador via CAPTURE_REQUEST e
+        // bloqueia ate receber capture_response na stdin do host.
+        if (_interactive)
+        {
+            string menuJson = BuildCaptureRequestJson(data, "MENU");
+            EmitRawCapture(menuJson);
+            string answer = WaitForCaptureResponse(data.wIdentificador);
+            if (answer == null)
+            {
+                EmitEvent("INFO", "Captura de menu cancelada pelo operador");
+                return PWRET_CANCEL;
+            }
+            // operador pode mandar o valor literal OU o numero do item (1..n) OU o texto.
+            string normalized = NormalizeChoice(answer);
+            string value = null;
+            for (int i = 0; i < data.bNumOpcoesMenu; i++)
+            {
+                string text = data.vszTextoMenu != null && i < data.vszTextoMenu.Length ? data.vszTextoMenu[i].szTextoMenu : "";
+                string opt = data.vszValorMenu != null && i < data.vszValorMenu.Length ? data.vszValorMenu[i].szValorMenu : "";
+                if (NormalizeChoice(opt) == normalized || NormalizeChoice(text) == normalized || (i + 1).ToString() == normalized)
+                {
+                    value = String.IsNullOrWhiteSpace(opt) ? text : opt;
+                    break;
+                }
+            }
+            if (value == null) value = answer; // confia no que o front mandou
+            EmitEvent("INFO", "Opcao escolhida pelo operador: " + value);
+            return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, value);
+        }
+
         if (String.IsNullOrWhiteSpace(_paygoMenuChoice))
         {
             EmitEvent("INFO", "PayGo solicitou selecao de menu: " + MenuOptions(data));
@@ -651,7 +681,7 @@ public static class PayGoBridge
 
         EmitEvent("INFO", "PayGo solicitou selecao de menu: " + MenuOptions(data));
         string normalizedChoice = NormalizeChoice(_paygoMenuChoice);
-        string value = "";
+        string staticValue = "";
 
         for (int i = 0; i < data.bNumOpcoesMenu; i++)
         {
@@ -660,19 +690,19 @@ public static class PayGoBridge
 
             if (NormalizeChoice(text) == normalizedChoice || NormalizeChoice(optionValue) == normalizedChoice)
             {
-                value = optionValue;
-                if (String.IsNullOrWhiteSpace(value)) value = text;
+                staticValue = optionValue;
+                if (String.IsNullOrWhiteSpace(staticValue)) staticValue = text;
                 break;
             }
         }
 
-        if (String.IsNullOrWhiteSpace(value))
+        if (String.IsNullOrWhiteSpace(staticValue))
         {
             throw new Exception("Opcao de menu PayGo nao encontrada: " + _paygoMenuChoice + ". Opcoes: " + MenuOptions(data));
         }
 
         EmitEvent("INFO", "Opcao PayGo selecionada: " + _paygoMenuChoice);
-        short ret = Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, value ?? "");
+        short ret = Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, staticValue ?? "");
         return ret;
     }
 
@@ -697,6 +727,19 @@ public static class PayGoBridge
 
     private static short AddTypedValue(PW_GetData data, string captureAlias)
     {
+        if (_interactive)
+        {
+            string js = BuildCaptureRequestJson(data, captureAlias == "BARCODE" ? "BARCODE" : "TYPED");
+            EmitRawCapture(js);
+            string answer = WaitForCaptureResponse(data.wIdentificador);
+            if (answer == null)
+            {
+                EmitEvent("INFO", "Captura digitada cancelada pelo operador");
+                return PWRET_CANCEL;
+            }
+            return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, answer);
+        }
+
         string value = ResolveTypedValue(data, captureAlias);
         if (String.IsNullOrWhiteSpace(value) && data.bAceitaNulo != 1)
         {
@@ -710,6 +753,19 @@ public static class PayGoBridge
 
     private static short AddUserAuthValue(PW_GetData data)
     {
+        if (_interactive)
+        {
+            string js = BuildCaptureRequestJson(data, "USERAUTH");
+            EmitRawCapture(js);
+            string answer = WaitForCaptureResponse(data.wIdentificador);
+            if (answer == null)
+            {
+                EmitEvent("INFO", "Captura de senha cancelada pelo operador");
+                return PWRET_CANCEL;
+            }
+            return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, answer);
+        }
+
         string value = "";
         if (data.wIdentificador == PWINFO_AUTHTECHUSER || data.wIdentificador == PWINFO_AUTHMNGTUSER)
         {
@@ -727,6 +783,128 @@ public static class PayGoBridge
         }
 
         return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, value ?? "");
+    }
+
+    // Constroi o payload JSON do CAPTURE_REQUEST que e enviado pro front via stdout.
+    private static string BuildCaptureRequestJson(PW_GetData data, string captureType)
+    {
+        _captureSeq++;
+        var sb = new StringBuilder();
+        sb.Append("{");
+        sb.Append("\"type\":\"CAPTURE\",");
+        sb.Append("\"captureType\":\"").Append(Esc(captureType)).Append("\",");
+        sb.Append("\"identificador\":").Append((int)data.wIdentificador).Append(",");
+        sb.Append("\"tipo\":").Append((int)data.bTipoDeDado).Append(",");
+        sb.Append("\"seq\":").Append(_captureSeq).Append(",");
+        sb.Append("\"prompt\":\"").Append(Esc(data.szPrompt ?? "")).Append("\",");
+        sb.Append("\"mascara\":\"").Append(Esc(data.szMascaraDeCaptura ?? "")).Append("\",");
+        sb.Append("\"tamMin\":").Append((int)data.bTamanhoMinimo).Append(",");
+        sb.Append("\"tamMax\":").Append((int)data.bTamanhoMaximo).Append(",");
+        sb.Append("\"ocultar\":").Append(data.bOcultarDadosDigitados == 1 ? "true" : "false").Append(",");
+        sb.Append("\"aceitaNulo\":").Append(data.bAceitaNulo == 1 ? "true" : "false").Append(",");
+        sb.Append("\"valorInicial\":\"").Append(Esc(data.szValorInicial ?? "")).Append("\",");
+        sb.Append("\"options\":[");
+        if (data.bTipoDeDado == PWDAT_MENU)
+        {
+            for (int i = 0; i < data.bNumOpcoesMenu; i++)
+            {
+                if (i > 0) sb.Append(",");
+                string text = data.vszTextoMenu != null && i < data.vszTextoMenu.Length ? data.vszTextoMenu[i].szTextoMenu : "";
+                string val = data.vszValorMenu != null && i < data.vszValorMenu.Length ? data.vszValorMenu[i].szValorMenu : "";
+                sb.Append("{\"label\":\"").Append(Esc(text ?? "")).Append("\",\"value\":\"").Append(Esc(val ?? "")).Append("\"}");
+            }
+        }
+        sb.Append("]");
+        sb.Append("}");
+        return sb.ToString();
+    }
+
+    private static void EmitRawCapture(string captureJson)
+    {
+        if (String.IsNullOrWhiteSpace(_eventId)) return;
+        Console.Out.WriteLine("{\"id\":\"" + Esc(_eventId) + "\",\"event\":" + captureJson + "}");
+        Console.Out.Flush();
+    }
+
+    // Bloqueia lendo stdin ate receber um capture_response do agente JS
+    // ou um abort. Retorna null em cancelamento.
+    private static string WaitForCaptureResponse(ushort identificador)
+    {
+        while (true)
+        {
+            string line;
+            try { line = Console.In.ReadLine(); }
+            catch (Exception ex) { EmitEvent("INFO", "stdin ReadLine falhou: " + ex.Message); return null; }
+            if (line == null) return null; // EOF
+            line = line.Trim();
+            if (line.Length == 0) continue;
+
+            // parse minimal: procura "action":"capture_response" e "value":"..." e opcionalmente "identificador":NNN
+            string action = ExtractJsonString(line, "action");
+            if (action == "abort_capture") return null;
+            if (action != "capture_response")
+            {
+                // qualquer outra linha (ex.: novo comando) — ignora pra nao quebrar
+                EmitEvent("INFO", "Linha stdin ignorada durante captura: " + line.Substring(0, Math.Min(160, line.Length)));
+                continue;
+            }
+            // se trouxe identificador, valida — senao aceita.
+            string identStr = ExtractJsonNumber(line, "identificador");
+            if (!String.IsNullOrEmpty(identStr))
+            {
+                int ident;
+                if (Int32.TryParse(identStr, out ident) && ident != (int)identificador)
+                {
+                    EmitEvent("INFO", "capture_response com identificador divergente (esperado=" + (int)identificador + " recebido=" + ident + ") — ignorando");
+                    continue;
+                }
+            }
+            string value = ExtractJsonString(line, "value");
+            return value ?? "";
+        }
+    }
+
+    private static string ExtractJsonString(string json, string key)
+    {
+        string pat = "\"" + key + "\":\"";
+        int i = json.IndexOf(pat);
+        if (i < 0) return null;
+        int start = i + pat.Length;
+        var sb = new StringBuilder();
+        for (int j = start; j < json.Length; j++)
+        {
+            char c = json[j];
+            if (c == '\\' && j + 1 < json.Length)
+            {
+                char n = json[j + 1];
+                if (n == 'n') sb.Append('\n');
+                else if (n == 'r') sb.Append('\r');
+                else if (n == 't') sb.Append('\t');
+                else sb.Append(n);
+                j++;
+                continue;
+            }
+            if (c == '"') return sb.ToString();
+            sb.Append(c);
+        }
+        return sb.ToString();
+    }
+
+    private static string ExtractJsonNumber(string json, string key)
+    {
+        string pat = "\"" + key + "\":";
+        int i = json.IndexOf(pat);
+        if (i < 0) return null;
+        int start = i + pat.Length;
+        var sb = new StringBuilder();
+        for (int j = start; j < json.Length; j++)
+        {
+            char c = json[j];
+            if (Char.IsWhiteSpace(c)) { if (sb.Length == 0) continue; else break; }
+            if (Char.IsDigit(c) || c == '-') { sb.Append(c); continue; }
+            break;
+        }
+        return sb.Length == 0 ? null : sb.ToString();
     }
 
     private static string ResolveTypedValue(PW_GetData data, string captureAlias)
@@ -767,6 +945,7 @@ public static class PayGoBridge
     {
         return String.Join(", ", CaptureKeyList(data, captureAlias));
     }
+
 
     private static IEnumerable<string> CaptureKeyList(PW_GetData data, string captureAlias)
     {
