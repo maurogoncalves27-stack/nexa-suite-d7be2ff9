@@ -261,6 +261,29 @@ export const paygoCancelarVenda = async (
   }
 };
 
+/**
+ * Confirma uma venda aprovada (libera o token PGWEB: na DLL).
+ * PayGo Integrado exige esse 2º passo após a aprovação — sem ele a próxima
+ * venda falha com "Existe transacao pendente de confirmacao no PayGo".
+ */
+export const paygoConfirmarVenda = async (
+  agentUrl: string,
+  body: { reqNum?: string; locRef?: string; extRef?: string; virtMerch?: string; authSyst?: string },
+): Promise<PaygoAgentResponse> => {
+  try {
+    const r = await fetch(joinAgentUrl(agentUrl, "/tef/confirm"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = (await r.json().catch(() => ({}))) as PaygoAgentResponse;
+    if (!r.ok) return { ok: false, error: data?.error ?? `HTTP ${r.status}` };
+    return data;
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "offline" };
+  }
+};
+
 /** Operação administrativa do pinpad (menu, relatório, teste de comunicação). */
 export const paygoAdministrativo = async (
   agentUrl: string,
