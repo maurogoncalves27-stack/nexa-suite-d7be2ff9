@@ -10,10 +10,11 @@ import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Printer, Download, FileText, Trash2 } from "lucide-react";
+import { Printer, Download, FileText, Trash2, FolderArchive } from "lucide-react";
 import { clearTefReceipts, useTefReceipts, type TefReceiptEntry } from "@/hooks/useTefReceipts";
 import { toast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
+import JSZip from "jszip";
 
 type ViaKey = "merchant" | "customer" | "reduced" | "diff1" | "diff2";
 
@@ -62,6 +63,35 @@ const downloadPdf = (entry: TefReceiptEntry, via: ViaKey, text: string) => {
   doc.save(buildFilename(entry, via, "pdf"));
 };
 
+const folderName = (entry: TefReceiptEntry) => {
+  const safe = entry.label.replace(/[^a-zA-Z0-9_-]+/g, "_").slice(0, 40) || "cupom";
+  const stamp = new Date(entry.ts).toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  return `${stamp}_${safe}`;
+};
+
+const downloadAllAsZip = async (entries: TefReceiptEntry[]) => {
+  if (!entries.length) return;
+  const zip = new JSZip();
+  const root = zip.folder(`comprovantes-paygo-${new Date().toISOString().slice(0, 10)}`)!;
+  for (const entry of entries) {
+    const sub = root.folder(folderName(entry))!;
+    (Object.keys(VIA_LABEL) as ViaKey[]).forEach((via) => {
+      const text = pickText(entry, via);
+      if (text) sub.file(`${via}.txt`, text);
+    });
+    // Resumo da transação
+    const header = `Transação: ${entry.label}\nData: ${fmtTs(entry.ts)}\nID: ${entry.id}\n`;
+    sub.file("_resumo.txt", header);
+  }
+  const blob = await zip.generateAsync({ type: "blob" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `comprovantes-paygo-${new Date().toISOString().slice(0, 10)}.zip`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
 export default function SimulatedPrinter() {
   const entries = useTefReceipts();
   const [via, setVia] = useState<ViaKey>("merchant");
@@ -85,12 +115,27 @@ export default function SimulatedPrinter() {
         <Badge variant="outline" className="ml-auto text-xs">
           {entries.length}/10 cupons
         </Badge>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={!entries.length}
+          onClick={() =>
+            downloadAllAsZip(entries).then(() =>
+              toast({ title: "Pasta de comprovantes baixada" }),
+            )
+          }
+          className="h-7 gap-1.5 text-xs"
+        >
+          <FolderArchive className="h-3.5 w-3.5" /> Baixar pasta (ZIP)
+        </Button>
       </div>
 
       <p className="text-xs text-muted-foreground shrink-0">
-        Renderiza o cupom devolvido pela PGWebLib. Use os botões abaixo para
-        baixar como TXT ou PDF e anexar como evidência do passo do roteiro.
+        Cada transação vira uma subpasta com um <code>.txt</code> por via
+        (estabelecimento, cliente, reduzido, diferenciados). Use "Baixar pasta
+        (ZIP)" para anexar tudo como evidência do roteiro Setis.
       </p>
+
 
       {!current ? (
         <div className="flex-1 flex items-center justify-center rounded-md border border-dashed bg-muted/30 p-6 text-center text-sm text-muted-foreground">
