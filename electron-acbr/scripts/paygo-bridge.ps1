@@ -240,7 +240,7 @@ public static class PayGoBridge
             Add(PWINFO_AUTNAME, "PDV");
             Add(PWINFO_AUTVER, "1.0.0");
             Add(PWINFO_AUTDEV, "PayGo");
-            Add(PWINFO_AUTCAP, "452"); // valor fixo + vias diferenciadas + remocao cartao + display checkout + QR checkout
+            Add(PWINFO_AUTCAP, "384"); // 128 (DSP_CHECKOUT) + 256 (DSP_QRCODE), igual demo oficial C#
             Add(PWINFO_DSPQRPREF, "2");
             Add(PWINFO_TOTAMNT, amountInCents.ToString());
             Add(PWINFO_CURRENCY, "986");
