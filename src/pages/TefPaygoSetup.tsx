@@ -31,7 +31,7 @@ const AGENT_VERSION = "1.5.5";
 const AGENT_EXE_URL = "https://nexasuite.aquelaparme.com.br/releases/NEXA-ACBr-Agent-Setup-1.5.5.exe";
 // Cole DIRETO no prompt do PowerShell (não use `powershell -Command "..."` — as aspas duplas comem os $variáveis).
 // curl.exe é nativo no Windows 10/11 e ignora as regras de quoting do PowerShell.
-const AGENT_INSTALL_COMMAND = `taskkill /F /T /IM "NEXA ACBr Agent.exe" 2>$null; taskkill /F /T /IM "nexa-acbr.exe" 2>$null; cd C:\\Users\\Mauro\\Documents\\GitHub\\nexa-suite-d7be2ff9; npm run build; cd electron-acbr; npm run release:keep`;
+const AGENT_INSTALL_COMMAND = `taskkill /F /T /IM "NEXA ACBr Agent.exe" 2>$null; taskkill /F /T /IM "nexa-acbr.exe" 2>$null; taskkill /F /T /IM electron.exe 2>$null; cd C:\\Users\\Mauro\\Documents\\GitHub\\nexa-suite-d7be2ff9; git pull; cd electron-acbr; npm install --no-audit --no-fund; npm start`;
 
 interface Store { id: string; name: string; }
 interface TefRow {
