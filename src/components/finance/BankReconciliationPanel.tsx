@@ -287,6 +287,8 @@ export default function BankReconciliationPanel() {
       return;
     }
     toast({ title: "Conciliada", description: c.kind === "payable" ? "Conta a pagar quitada." : "Conta a receber recebida." });
+    const tx = transactions.find((t) => t.id === txId);
+    if (tx) focusDateRef.current = tx.posted_at;
     setMatchTarget(null);
     setMatchSearch("");
     await loadData();
