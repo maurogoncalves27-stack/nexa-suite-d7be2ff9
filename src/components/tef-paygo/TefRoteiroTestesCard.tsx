@@ -729,7 +729,7 @@ export function TefRoteiroTestesCard() {
 
   // Índice atual do carrossel (controlado, mas se o passo for concluído avança auto)
   const [idx, setIdx] = useState(0);
-  // Quando concluir o passo atual via auto-validação, avança automaticamente
+  // Quando concluir o passo atual (auto ou manual), avança automaticamente
   useEffect(() => {
     const cur = flat[idx];
     if (cur && isDone(cur.passo.n) && idx < flat.length - 1) {
@@ -737,7 +737,7 @@ export function TefRoteiroTestesCard() {
       return () => window.clearTimeout(t);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoEv, idx, flat.length]);
+  }, [autoEv, estado, idx, flat.length]);
   const goPrev = () => setIdx((i) => Math.max(0, i - 1));
   const goNext = () => setIdx((i) => Math.min(flat.length - 1, i + 1));
 
@@ -850,7 +850,7 @@ export function TefRoteiroTestesCard() {
             {/* Card do passo atual — altura mínima fixa para não “pular” */}
             <div
               className={`rounded-md border p-4 min-h-[420px] flex gap-3 items-start ${
-                done ? "bg-muted/50" : "bg-background"
+                done ? "bg-muted/50 border-success/30" : "bg-background"
               }`}
             >
               <Checkbox
@@ -861,10 +861,10 @@ export function TefRoteiroTestesCard() {
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-mono text-muted-foreground">
+                  <span className={`text-xs font-mono ${done ? "text-success" : "text-muted-foreground"}`}>
                     Passo {String(p.n).padStart(2, "0")}
                   </span>
-                  <span className={`text-base font-semibold ${done ? "line-through" : ""}`}>
+                  <span className={`text-base font-semibold ${done ? "text-success line-through" : ""}`}>
                     {p.titulo}
                   </span>
                   {ev && (
@@ -873,42 +873,47 @@ export function TefRoteiroTestesCard() {
                     </Badge>
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">{p.desc}</p>
+                <p className={`text-sm mt-1 ${done ? "text-success" : "text-muted-foreground"}`}>{p.desc}</p>
 
-                {(p.valor || p.rede || p.modalidade) && (
-                  <div className="flex flex-wrap gap-1.5 mt-3">
-                    {p.valor && (
-                      <Badge variant="default" className="text-xs font-mono">
-                        💰 {p.valor}
-                      </Badge>
+                {/* Sanfona fechada: só mostra detalhes quando pendente */}
+                {!done && (
+                  <>
+                    {(p.valor || p.rede || p.modalidade) && (
+                      <div className="flex flex-wrap gap-1.5 mt-3">
+                        {p.valor && (
+                          <Badge variant="default" className="text-xs font-mono">
+                            💰 {p.valor}
+                          </Badge>
+                        )}
+                        {p.rede && (
+                          <Badge variant="outline" className="text-xs">Rede: {p.rede}</Badge>
+                        )}
+                        {p.modalidade && (
+                          <Badge variant="outline" className="text-xs">{p.modalidade}</Badge>
+                        )}
+                      </div>
                     )}
-                    {p.rede && (
-                      <Badge variant="outline" className="text-xs">Rede: {p.rede}</Badge>
-                    )}
-                    {p.modalidade && (
-                      <Badge variant="outline" className="text-xs">{p.modalidade}</Badge>
-                    )}
-                  </div>
-                )}
 
-                {p.comoFazer && p.comoFazer.length > 0 && (
-                  <div className="mt-3 rounded border bg-muted/30 p-3">
-                    <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
-                      Como fazer
-                    </div>
-                    <ol className="list-decimal list-inside space-y-1 text-sm text-foreground/90">
-                      {p.comoFazer.map((passo, i) => (
-                        <li key={i} className="leading-snug">{passo}</li>
-                      ))}
-                    </ol>
-                  </div>
-                )}
+                    {p.comoFazer && p.comoFazer.length > 0 && (
+                      <div className="mt-3 rounded border bg-muted/30 p-3">
+                        <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                          Como fazer
+                        </div>
+                        <ol className="list-decimal list-inside space-y-1 text-sm text-foreground/90">
+                          {p.comoFazer.map((passo, i) => (
+                            <li key={i} className="leading-snug">{passo}</li>
+                          ))}
+                        </ol>
+                      </div>
+                    )}
 
-                {p.esperado && (
-                  <div className="mt-3 text-sm">
-                    <span className="font-semibold text-success">✓ Esperado:</span>{" "}
-                    <span className="text-muted-foreground">{p.esperado}</span>
-                  </div>
+                    {p.esperado && (
+                      <div className="mt-3 text-sm">
+                        <span className="font-semibold text-success">✓ Esperado:</span>{" "}
+                        <span className="text-muted-foreground">{p.esperado}</span>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {ev && (
