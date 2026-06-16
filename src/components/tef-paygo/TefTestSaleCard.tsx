@@ -193,6 +193,11 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
         description: result.message ?? result.authorizationCode ?? result.nsu ?? "",
         variant: result.status === "approved" ? "default" : "destructive",
       });
+      if (method === "pix" && ["approved", "declined", "cancelled"].includes(result.status)) {
+        setPixQrBrCode("");
+        setPixWaitMsg("");
+        setPixSaleInfo("");
+      }
     } catch (err: any) {
       const hasQr = !!latestPixQrRef.current;
       setStatus(hasQr && method === "pix" ? "timeout" : "error");
