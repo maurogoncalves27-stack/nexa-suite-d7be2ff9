@@ -12,13 +12,14 @@ import {
 } from "@/components/ui/select";
 import {
   CreditCard, Copy, Pencil, Save, X, KeyRound,
+  ListChecks, CheckCircle2, XCircle, AlertTriangle, Loader2, RefreshCw, Download,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
+import { checkAcbrAgent } from "@/lib/tef/acbrAdapter";
 
 import TefTestSaleCard from "@/components/tef-paygo/TefTestSaleCard";
 import TefPinpadSetupCard from "@/components/tef-paygo/TefPinpadSetupCard";
-import TefHomologationChecklist from "@/components/tef-paygo/TefHomologationChecklist";
 import TefRecnumExtractor from "@/components/tef-paygo/TefRecnumExtractor";
 import SimulatedPrinter from "@/components/tef-paygo/SimulatedPrinter";
 import TefRoteiroTestesCard from "@/components/tef-paygo/TefRoteiroTestesCard";
@@ -63,6 +64,98 @@ const TefPaygoSetup = () => {
   const [editingHost, setEditingHost] = useState(false);
   const [hostDraft, setHostDraft] = useState("");
   const [savingHost, setSavingHost] = useState(false);
+
+  /* checklist inline (ex-TefHomologationChecklist) */
+  type CheckState = "ok" | "warn" | "fail" | "pending";
+  interface CheckItem { label: string; state: CheckState; detail?: string; }
+  const [items, setItems] = useState<CheckItem[]>([]);
+  const [checkLoading, setCheckLoading] = useState(false);
+
+  const Dot = ({ state }: { state: CheckState }) => {
+    if (state === "ok") return <CheckCircle2 className="h-4 w-4 text-success shrink-0" />;
+    if (state === "warn") return <AlertTriangle className="h-4 w-4 text-warning shrink-0" />;
+    if (state === "fail") return <XCircle className="h-4 w-4 text-destructive shrink-0" />;
+    return <Loader2 className="h-4 w-4 text-muted-foreground animate-spin shrink-0" />;
+  };
+
+  const runChecklist = async () => {
+    setCheckLoading(true);
+    const next: CheckItem[] = [];
+
+    if (!storeId) {
+      next.push({ label: "Loja selecionada", state: "warn", detail: "Selecione uma loja." });
+      setItems(next);
+      setCheckLoading(false);
+      return;
+    }
+    next.push({ label: "Loja selecionada", state: "ok" });
+
+    const { data: cfgRow } = await supabase
+      .from("pdv_tef_config")
+      .select("provider, agent_url, environment, merchant_code, terminal_code, is_active")
+      .eq("store_id", storeId)
+      .maybeSingle();
+
+    if (!cfgRow) {
+      next.push({ label: "Config TEF cadastrada", state: "fail", detail: "Sem registro em pdv_tef_config." });
+      setItems(next);
+      setCheckLoading(false);
+      return;
+    }
+    next.push({
+      label: "Config TEF cadastrada",
+      state: cfgRow.is_active ? "ok" : "warn",
+      detail: cfgRow.is_active ? `provider=${cfgRow.provider}` : "TEF inativo nesta loja",
+    });
+
+    next.push({
+      label: "Ambiente em DEMO",
+      state: cfgRow.environment === "demo" ? "ok" : "warn",
+      detail: cfgRow.environment === "demo" ? "OK" : `Atual: ${cfgRow.environment}. Use DEMO.`,
+    });
+
+    const credsOk = !!cfgRow.merchant_code && !!cfgRow.terminal_code;
+    next.push({
+      label: "CNPJ + PdC preenchidos",
+      state: credsOk ? "ok" : "warn",
+      detail: credsOk ? `PdC=${cfgRow.terminal_code}` : "Recomendado preencher.",
+    });
+
+    const agent = await checkAcbrAgent(cfgRow.agent_url ?? "https://127.0.0.1:3031");
+    next.push({
+      label: "Agente local online",
+      state: agent.online ? "ok" : "fail",
+      detail: agent.online ? "Agente respondeu" : (agent.error ?? "Sem resposta."),
+    });
+
+    next.push({
+      label: "PGWebLib.dll carregada",
+      state: agent.ok ? "ok" : "fail",
+      detail: agent.ok ? "DLL inicializada" : (agent.error ?? "Não inicializada."),
+    });
+
+    const { data: lastOk } = await supabase
+      .from("pdv_tef_transactions")
+      .select("amount, finished_at, nsu")
+      .eq("store_id", storeId)
+      .eq("status", "approved")
+      .order("finished_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    next.push({
+      label: "Pelo menos 1 venda aprovada",
+      state: lastOk ? "ok" : "warn",
+      detail: lastOk
+        ? `R$ ${Number(lastOk.amount).toFixed(2)} \u2022 NSU ${lastOk.nsu ?? "\u2014"} \u2022 ${new Date(lastOk.finished_at as string).toLocaleString("pt-BR")}`
+        : "Rode a venda de teste R$ 1,00.",
+    });
+
+    setItems(next);
+    setCheckLoading(false);
+  };
+
+  useEffect(() => { void runChecklist(); /* eslint-disable-next-line */ }, [storeId]);
 
   useEffect(() => {
     (async () => {
@@ -280,6 +373,59 @@ const TefPaygoSetup = () => {
                 )}
               </div>
             </div>
+
+            {/* Checklist inline */}
+            <div className="pt-2 border-t space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <ListChecks className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold">Checklist de homologação</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {items.length > 0 && (
+                    <Badge variant={items.filter(i => i.state === "ok").length === items.length ? "default" : "secondary"} className="text-[10px] h-5">
+                      {items.filter(i => i.state === "ok").length}/{items.length} OK
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="text-[10px] h-5">Agente v1.5.5</Badge>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                    className="h-7 text-[11px] gap-1"
+                    title="Baixar agente ACBr (v1.5.5)"
+                  >
+                    <a href="/releases/NEXA-ACBr-Agent-Setup-1.5.5.exe" download>
+                      <Download className="h-3.5 w-3.5" />
+                      Baixar agente
+                    </a>
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => void runChecklist()} disabled={checkLoading} className="h-7 w-7 p-0">
+                    {checkLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+              </div>
+
+              {items.filter(i => i.state !== "ok").length === 0 ? (
+                <p className="text-[11px] text-muted-foreground">
+                  Tudo certo. Use o botão <strong>Abrir menu ADM</strong> e a <strong>Venda de teste</strong> para validar o pinpad.
+                </p>
+              ) : (
+                <ul className="space-y-1">
+                  {items.filter(i => i.state !== "ok").map((it, idx) => (
+                    <li key={idx} className="flex items-start gap-2 rounded border bg-muted/20 px-2 py-1">
+                      <Dot state={it.state} />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-medium leading-tight">{it.label}</div>
+                        {it.detail && (
+                          <div className="text-[11px] text-muted-foreground leading-tight">{it.detail}</div>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </Card>
 
           
@@ -296,8 +442,6 @@ const TefPaygoSetup = () => {
           <TefRoteiroTestesCard />
 
           <TefRecnumExtractor storeId={storeId} />
-
-          <TefHomologationChecklist storeId={storeId} />
         </div>
 
         {/* Coluna lateral — impressora (altura total) */}
