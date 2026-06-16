@@ -333,6 +333,8 @@ export default function BankReconciliationPanel() {
     const tx = transactions.find((t) => t.id === txId);
     if (tx) focusDateRef.current = tx.posted_at;
     await loadData();
+  };
+
 
   const autoReconcileAll = async () => {
     const candidates = transactions
