@@ -45,13 +45,17 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
   const [lastResult, setLastResult] = useState<string>("");
   const [pendingMethod, setPendingMethod] = useState<TefPaymentMethod | null>(null);
   const [showPinpad, setShowPinpad] = useState(false);
+  const [qrDisplayPreference, setQrDisplayPreference] = useState<"1" | "2">("2");
   const [pixQrBrCode, setPixQrBrCode] = useState<string>("");
   const [pixQrDataUrl, setPixQrDataUrl] = useState<string>("");
   const [pixWaitMsg, setPixWaitMsg] = useState<string>("");
+  const [pixSaleInfo, setPixSaleInfo] = useState<string>("");
   const pollAbortRef = useRef<{ stop: boolean } | null>(null);
+  const latestPixQrRef = useRef("");
 
   // Renderiza QR sempre que receber novo BR Code
   useEffect(() => {
+    latestPixQrRef.current = pixQrBrCode;
     if (!pixQrBrCode) { setPixQrDataUrl(""); return; }
     QRCode.toDataURL(pixQrBrCode, { width: 320, margin: 1, errorCorrectionLevel: "M" })
       .then(setPixQrDataUrl)
