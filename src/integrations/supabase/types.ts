@@ -4158,6 +4158,53 @@ export type Database = {
           },
         ]
       }
+      finance_allocations: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          percent: number | null
+          source_id: string
+          source_kind: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          percent?: number | null
+          source_id: string
+          source_kind: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          percent?: number | null
+          source_id?: string
+          source_kind?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_allocations_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finance_categories: {
         Row: {
           color: string | null
@@ -15511,6 +15558,18 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      v_finance_allocations_effective: {
+        Row: {
+          amount: number | null
+          category_id: string | null
+          is_split: boolean | null
+          reference_date: string | null
+          source_id: string | null
+          source_kind: string | null
+          store_id: string | null
+        }
+        Relationships: []
       }
     }
     Functions: {

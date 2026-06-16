@@ -10,6 +10,7 @@ import { Loader2, Plus, ChevronsUpDown, Check } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import AllocationEditor, { type AllocationSplit, validateSplits } from "./AllocationEditor";
 
 interface Props {
   open: boolean;
@@ -45,6 +46,8 @@ export default function NewPayableDialog({ open, onOpenChange, onSaved }: Props)
   const [recurrenceCount, setRecurrenceCount] = useState("12");
   const [installments, setInstallments] = useState("1");
   const [installmentIntervalDays, setInstallmentIntervalDays] = useState("30");
+  const [rateioOn, setRateioOn] = useState(false);
+  const [splits, setSplits] = useState<AllocationSplit[]>([]);
 
   const loadSuppliers = async () => {
     const { data } = await supabase
@@ -79,7 +82,10 @@ export default function NewPayableDialog({ open, onOpenChange, onSaved }: Props)
     setRecurrenceCount("12");
     setInstallments("1");
     setInstallmentIntervalDays("30");
+    setRateioOn(false);
+    setSplits([]);
   }, [open]);
+
 
   const addInterval = (iso: string, i: number, kind: "weekly" | "monthly" | "yearly") => {
     const d = new Date(iso + "T12:00:00");
@@ -147,16 +153,64 @@ export default function NewPayableDialog({ open, onOpenChange, onSaved }: Props)
       };
     });
 
+    // Valida rateio antes de gravar
+    let validSplits: AllocationSplit[] = [];
+    if (rateioOn && splits.length > 0) {
+      const v = validateSplits(splits, valor);
+      if (!v) {
+        toast({ title: "Rateio inválido", description: "Confira lojas e a soma dos percentuais.", variant: "destructive" });
+        return;
+      }
+      validSplits = v;
+    }
+
     setSubmitting(true);
-    const { error } = await supabase.from("accounts_payable").insert(rows as any);
-    setSubmitting(false);
+    const { data: inserted, error } = await supabase
+      .from("accounts_payable")
+      .insert(rows as any)
+      .select("id, amount");
     if (error) {
+      setSubmitting(false);
       toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
       return;
     }
+
+    // Replica o rateio em cada parcela criada, proporcional ao valor da parcela
+    if (validSplits.length > 0 && inserted && inserted.length > 0) {
+      const allocRows: any[] = [];
+      for (const ap of inserted as Array<{ id: string; amount: number }>) {
+        const apAmount = Number(ap.amount);
+        let allocated = 0;
+        validSplits.forEach((s, i) => {
+          const amt = i === validSplits.length - 1
+            ? Math.round((apAmount - allocated) * 100) / 100
+            : Math.round((s.percent / 100) * apAmount * 100) / 100;
+          allocated += amt;
+          if (amt > 0) {
+            allocRows.push({
+              source_kind: "payable",
+              source_id: ap.id,
+              store_id: s.store_id,
+              amount: amt,
+              percent: s.percent,
+              created_by: user.id,
+            });
+          }
+        });
+      }
+      const { error: aErr } = await supabase.from("finance_allocations").insert(allocRows);
+      if (aErr) {
+        setSubmitting(false);
+        toast({ title: "Pagamento criado, mas o rateio falhou", description: aErr.message, variant: "destructive" });
+        return;
+      }
+    }
+
+    setSubmitting(false);
     toast({ title: count > 1 ? `${count} ${isParcelado ? "parcelas" : "lançamentos"} incluído(s)` : "Pagamento incluído" });
     onOpenChange(false);
     onSaved?.();
+
   };
 
   const supplierLabel = (s: Supplier) => s.trade_name || s.legal_name;
@@ -247,6 +301,31 @@ export default function NewPayableDialog({ open, onOpenChange, onSaved }: Props)
               </select>
             </div>
           </div>
+          <div className="flex items-center justify-between rounded-md border bg-muted/20 px-3 py-2">
+            <div className="text-sm">
+              <div className="font-medium">Ratear entre lojas</div>
+              <div className="text-xs text-muted-foreground">Divida este lançamento entre várias lojas (centros de custo).</div>
+            </div>
+            <Button type="button" size="sm" variant={rateioOn ? "default" : "outline"} onClick={() => {
+              const next = !rateioOn;
+              setRateioOn(next);
+              if (next && splits.length === 0) {
+                // pré-preenche com 1 linha (a loja atual, se houver)
+                setSplits([{ store_id: storeId || "", amount: Number(amount) || 0, percent: 100 }]);
+              }
+            }}>
+              {rateioOn ? "Ativado" : "Ativar"}
+            </Button>
+          </div>
+          {rateioOn && (
+            <AllocationEditor
+              stores={stores}
+              totalAmount={Number(amount) || 0}
+              value={splits}
+              onChange={setSplits}
+              disabled={submitting}
+            />
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>Competência</Label>

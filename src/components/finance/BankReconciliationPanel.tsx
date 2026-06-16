@@ -11,6 +11,8 @@ import { toast } from "@/hooks/use-toast";
 import { type BankAccount } from "./BankAccountsManager";
 import OfxImportDialog from "./OfxImportDialog";
 import CreateFinanceFromTxDialog from "./CreateFinanceFromTxDialog";
+import AllocationEditor, { type AllocationSplit, type StoreLite, validateSplits } from "./AllocationEditor";
+import { Split } from "lucide-react";
 
 interface BankTx {
   id: string;
@@ -118,6 +120,11 @@ export default function BankReconciliationPanel() {
   // Lembra a data da última transação conciliada para restaurar a posição
   // após o reload (evita "voltar para o topo" descrito pelo usuário).
   const focusDateRef = useRef<string | null>(null);
+  // Rateio (centro de custo = loja)
+  const [allocStores, setAllocStores] = useState<StoreLite[]>([]);
+  const [allocTarget, setAllocTarget] = useState<BankTx | null>(null);
+  const [allocSplits, setAllocSplits] = useState<AllocationSplit[]>([]);
+  const [allocLoading, setAllocLoading] = useState(false);
 
   const loadAccounts = useCallback(async () => {
     const { data } = await supabase.from("bank_accounts").select("*").order("name");
@@ -175,6 +182,96 @@ export default function BankReconciliationPanel() {
 
   useEffect(() => { loadAccounts(); }, [loadAccounts]);
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Carrega lista de lojas para o editor de rateio (uma vez)
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("stores")
+        .select("id, name, store_type, is_virtual")
+        .eq("is_virtual", false)
+        .neq("store_type", "central")
+        .order("name");
+      setAllocStores(((data ?? []) as any[]).map((s) => ({ id: s.id, name: s.name })));
+    })();
+  }, []);
+
+  // Após conciliar contra um AP/AR já rateado, herda o rateio para a bank_tx
+  const inheritAllocationsFromSource = async (txId: string, sourceKind: "payable" | "receivable", sourceId: string, txAbsAmount: number) => {
+    const { data: src } = await supabase
+      .from("finance_allocations")
+      .select("store_id, percent, amount")
+      .eq("source_kind", sourceKind)
+      .eq("source_id", sourceId);
+    if (!src || src.length === 0) return;
+    // Remove qualquer rateio antigo da bank_tx e replica proporcional ao valor da tx
+    await supabase.from("finance_allocations").delete().eq("source_kind", "bank_tx").eq("source_id", txId);
+    let allocated = 0;
+    const rows = src.map((s: any, i: number) => {
+      const pct = Number(s.percent) || 0;
+      const amt = i === src.length - 1
+        ? Math.round((txAbsAmount - allocated) * 100) / 100
+        : Math.round((pct / 100) * txAbsAmount * 100) / 100;
+      allocated += amt;
+      return { source_kind: "bank_tx", source_id: txId, store_id: s.store_id, amount: amt, percent: pct };
+    });
+    await supabase.from("finance_allocations").insert(rows);
+  };
+
+  const openAllocDialog = async (tx: BankTx) => {
+    setAllocTarget(tx);
+    setAllocLoading(true);
+    const { data } = await supabase
+      .from("finance_allocations")
+      .select("store_id, amount, percent")
+      .eq("source_kind", "bank_tx")
+      .eq("source_id", tx.id);
+    const existing = (data ?? []) as any[];
+    if (existing.length > 0) {
+      setAllocSplits(existing.map((r) => ({
+        store_id: r.store_id,
+        amount: Number(r.amount),
+        percent: Number(r.percent ?? (Number(r.amount) / Math.abs(Number(tx.amount))) * 100),
+      })));
+    } else {
+      setAllocSplits([{ store_id: "", amount: Math.abs(Number(tx.amount)), percent: 100 }]);
+    }
+    setAllocLoading(false);
+  };
+
+  const saveAllocations = async () => {
+    if (!allocTarget) return;
+    const total = Math.abs(Number(allocTarget.amount));
+    const valid = validateSplits(allocSplits, total);
+    if (!valid) {
+      toast({ title: "Rateio inválido", description: "Confira lojas e a soma dos percentuais.", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    // Substitui o rateio antigo
+    await supabase.from("finance_allocations").delete().eq("source_kind", "bank_tx").eq("source_id", allocTarget.id);
+    if (valid.length > 0) {
+      const rows = valid.map((s) => ({
+        source_kind: "bank_tx",
+        source_id: allocTarget.id,
+        store_id: s.store_id,
+        amount: s.amount,
+        percent: s.percent,
+      }));
+      const { error } = await supabase.from("finance_allocations").insert(rows);
+      if (error) {
+        setSubmitting(false);
+        toast({ title: "Erro ao salvar rateio", description: error.message, variant: "destructive" });
+        return;
+      }
+    }
+    setSubmitting(false);
+    toast({ title: "Rateio salvo" });
+    setAllocTarget(null);
+    setAllocSplits([]);
+  };
+
+
 
   // Após cada reload, se houver uma "data foco" salva, rola até a primeira
   // linha cuja posted_at seja <= data foco (mantém o usuário no dia em que
@@ -288,7 +385,11 @@ export default function BankReconciliationPanel() {
     }
     toast({ title: "Conciliada", description: c.kind === "payable" ? "Conta a pagar quitada." : "Conta a receber recebida." });
     const tx = transactions.find((t) => t.id === txId);
-    if (tx) focusDateRef.current = tx.posted_at;
+    if (tx) {
+      focusDateRef.current = tx.posted_at;
+      // Herda o rateio do AP/AR (se houver) para a transação bancária
+      await inheritAllocationsFromSource(txId, c.kind, c.id, Math.abs(Number(tx.amount)));
+    }
     setMatchTarget(null);
     setMatchSearch("");
     await loadData();
@@ -484,28 +585,39 @@ export default function BankReconciliationPanel() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          {isReconciled ? (
-                            <Button size="sm" variant="ghost" disabled={submitting} onClick={() => undo(tx.id)} className="gap-1">
-                              <RotateCcw className="h-3 w-3" /> Desfazer
+                          <div className="flex justify-end gap-1 flex-wrap items-center">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              title="Ratear entre lojas"
+                              className="h-8 w-8"
+                              onClick={() => openAllocDialog(tx)}
+                            >
+                              <Split className="h-3.5 w-3.5" />
                             </Button>
-                          ) : sug ? (
-                            <div className="flex justify-end gap-1 flex-wrap">
-                              <Button size="sm" disabled={submitting} onClick={() => reconcileCandidate(tx.id, sug)} className="gap-1">
-                                <CheckCircle2 className="h-3 w-3" /> Aceitar
+                            {isReconciled ? (
+                              <Button size="sm" variant="ghost" disabled={submitting} onClick={() => undo(tx.id)} className="gap-1">
+                                <RotateCcw className="h-3 w-3" /> Desfazer
                               </Button>
-                              <Button size="sm" variant="outline" onClick={() => { setMatchSearch(""); setMatchTarget(tx); }}>Outra</Button>
-                              <Button size="sm" variant="ghost" onClick={() => setCreateTarget(tx)} className="gap-1">
-                                <Plus className="h-3 w-3" /> Gerar
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="flex justify-end gap-1 flex-wrap">
-                              <Button size="sm" variant="outline" onClick={() => { setMatchSearch(""); setMatchTarget(tx); }}>Vincular</Button>
-                              <Button size="sm" onClick={() => setCreateTarget(tx)} className="gap-1">
-                                <Plus className="h-3 w-3" /> Gerar lançamento
-                              </Button>
-                            </div>
-                          )}
+                            ) : sug ? (
+                              <>
+                                <Button size="sm" disabled={submitting} onClick={() => reconcileCandidate(tx.id, sug)} className="gap-1">
+                                  <CheckCircle2 className="h-3 w-3" /> Aceitar
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => { setMatchSearch(""); setMatchTarget(tx); }}>Outra</Button>
+                                <Button size="sm" variant="ghost" onClick={() => setCreateTarget(tx)} className="gap-1">
+                                  <Plus className="h-3 w-3" /> Gerar
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button size="sm" variant="outline" onClick={() => { setMatchSearch(""); setMatchTarget(tx); }}>Vincular</Button>
+                                <Button size="sm" onClick={() => setCreateTarget(tx)} className="gap-1">
+                                  <Plus className="h-3 w-3" /> Gerar lançamento
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -686,6 +798,37 @@ export default function BankReconciliationPanel() {
         onOpenChange={(o) => !o && setCreateTarget(null)}
         onCreated={loadData}
       />
+
+      <Dialog open={!!allocTarget} onOpenChange={(o) => { if (!o && !submitting) { setAllocTarget(null); setAllocSplits([]); } }}>
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Ratear entre lojas</DialogTitle>
+            <DialogDescription>
+              {allocTarget && (
+                <>Transação de <strong>{fmtBRL(Number(allocTarget.amount))}</strong> em {fmtDate(allocTarget.posted_at)} — {allocTarget.payee || allocTarget.memo || "—"}</>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {allocLoading ? (
+            <div className="py-8 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+          ) : (
+            <AllocationEditor
+              stores={allocStores}
+              totalAmount={allocTarget ? Math.abs(Number(allocTarget.amount)) : 0}
+              value={allocSplits}
+              onChange={setAllocSplits}
+              disabled={submitting}
+            />
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setAllocTarget(null); setAllocSplits([]); }} disabled={submitting}>Cancelar</Button>
+            <Button onClick={saveAllocations} disabled={submitting || allocLoading}>
+              {submitting && <Loader2 className="h-4 w-4 animate-spin mr-1" />} Salvar rateio
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
