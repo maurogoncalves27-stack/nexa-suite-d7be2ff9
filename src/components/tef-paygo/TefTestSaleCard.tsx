@@ -76,8 +76,13 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
           });
           if (r.ok) {
             const data = await r.json().catch(() => ({} as any));
-            if (data?.qrCode && data.qrCode !== pixQrBrCode) setPixQrBrCode(data.qrCode);
+            if (data?.qrCode && data.qrCode !== latestPixQrRef.current) setPixQrBrCode(data.qrCode);
             if (data?.message) setPixWaitMsg(String(data.message));
+            if (data?.saleId || data?.amount || data?.qrDisplayPreference) {
+              const amountText = data?.amount ? `R$ ${Number(data.amount).toFixed(2)}` : "";
+              const place = data?.qrDisplayPreference === "1" ? "pinpad" : "checkout/PC";
+              setPixSaleInfo([data?.saleId, amountText, `QR: ${place}`].filter(Boolean).join(" · "));
+            }
             if (data?.status === "done" || data?.status === "error" || data?.status === "idle") break;
           }
         } catch { /* ignora — segue tentando */ }
@@ -104,6 +109,7 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
     setLastResult("");
     setPixQrBrCode("");
     setPixWaitMsg("");
+    setPixSaleInfo("");
 
     // PIX nao aparece no PPC930 (sem display grafico) — a automacao tem que mostrar o QR.
     if (method === "pix") void startPixPolling();
@@ -131,6 +137,7 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
           acquirer: selectedAcquirer,
           orderId: saleId.trim() || DEFAULT_SALE_ID,
           installments: method === "credit" ? parsedInst : 1,
+          paygoQrDisplayPreference: method === "pix" ? qrDisplayPreference : undefined,
         },
         (s, msg) => {
           setStatus(s);
