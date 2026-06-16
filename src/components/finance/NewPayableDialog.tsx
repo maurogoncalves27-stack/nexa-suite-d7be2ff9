@@ -153,16 +153,64 @@ export default function NewPayableDialog({ open, onOpenChange, onSaved }: Props)
       };
     });
 
+    // Valida rateio antes de gravar
+    let validSplits: AllocationSplit[] = [];
+    if (rateioOn && splits.length > 0) {
+      const v = validateSplits(splits, valor);
+      if (!v) {
+        toast({ title: "Rateio inválido", description: "Confira lojas e a soma dos percentuais.", variant: "destructive" });
+        return;
+      }
+      validSplits = v;
+    }
+
     setSubmitting(true);
-    const { error } = await supabase.from("accounts_payable").insert(rows as any);
-    setSubmitting(false);
+    const { data: inserted, error } = await supabase
+      .from("accounts_payable")
+      .insert(rows as any)
+      .select("id, amount");
     if (error) {
+      setSubmitting(false);
       toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
       return;
     }
+
+    // Replica o rateio em cada parcela criada, proporcional ao valor da parcela
+    if (validSplits.length > 0 && inserted && inserted.length > 0) {
+      const allocRows: any[] = [];
+      for (const ap of inserted as Array<{ id: string; amount: number }>) {
+        const apAmount = Number(ap.amount);
+        let allocated = 0;
+        validSplits.forEach((s, i) => {
+          const amt = i === validSplits.length - 1
+            ? Math.round((apAmount - allocated) * 100) / 100
+            : Math.round((s.percent / 100) * apAmount * 100) / 100;
+          allocated += amt;
+          if (amt > 0) {
+            allocRows.push({
+              source_kind: "payable",
+              source_id: ap.id,
+              store_id: s.store_id,
+              amount: amt,
+              percent: s.percent,
+              created_by: user.id,
+            });
+          }
+        });
+      }
+      const { error: aErr } = await supabase.from("finance_allocations").insert(allocRows);
+      if (aErr) {
+        setSubmitting(false);
+        toast({ title: "Pagamento criado, mas o rateio falhou", description: aErr.message, variant: "destructive" });
+        return;
+      }
+    }
+
+    setSubmitting(false);
     toast({ title: count > 1 ? `${count} ${isParcelado ? "parcelas" : "lançamentos"} incluído(s)` : "Pagamento incluído" });
     onOpenChange(false);
     onSaved?.();
+
   };
 
   const supplierLabel = (s: Supplier) => s.trade_name || s.legal_name;
