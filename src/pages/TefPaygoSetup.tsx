@@ -12,13 +12,14 @@ import {
 } from "@/components/ui/select";
 import {
   CreditCard, Copy, Pencil, Save, X, KeyRound,
+  ListChecks, CheckCircle2, XCircle, AlertTriangle, Loader2, RefreshCw, Download,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
+import { checkAcbrAgent } from "@/lib/tef/acbrAdapter";
 
 import TefTestSaleCard from "@/components/tef-paygo/TefTestSaleCard";
 import TefPinpadSetupCard from "@/components/tef-paygo/TefPinpadSetupCard";
-import TefHomologationChecklist from "@/components/tef-paygo/TefHomologationChecklist";
 import TefRecnumExtractor from "@/components/tef-paygo/TefRecnumExtractor";
 import SimulatedPrinter from "@/components/tef-paygo/SimulatedPrinter";
 import TefRoteiroTestesCard from "@/components/tef-paygo/TefRoteiroTestesCard";
