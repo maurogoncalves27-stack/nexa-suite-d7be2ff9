@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CreditCard, Loader2, FlaskConical } from "lucide-react";
+import { CreditCard, Loader2, FlaskConical, Wrench } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { loadTefConfig, createTefAdapter, logTefTransaction } from "@/lib/tef";
 import type { TefStatus, TefPaymentMethod } from "@/lib/tef";
+import { paygoAdministrativo } from "@/lib/tef/paygoAdapter";
 import { pushTefReceipt } from "@/hooks/useTefReceipts";
 
 const ASA_SUL_ID = "fcf435c2-c382-444c-b499-4d95f07b2633";
@@ -200,6 +201,46 @@ export default function TefTestSaleCard() {
         <Button onClick={() => void runSale("pix", "PIX C6 BANK")} disabled={busy || !!pendingMethod} variant="outline" className="gap-2">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
           PIX C6 BANK
+        </Button>
+
+        <Button
+          onClick={async () => {
+            setBusy(true);
+            setStatus("processing");
+            setStatusMsg("Abrindo menu ADM no pinpad para resolver pendência...");
+            try {
+              const cfg = await loadTefConfig(ASA_SUL_ID);
+              const r = await paygoAdministrativo(cfg.agentUrl, {
+                merchantCode: cfg.merchantCode,
+                terminalCode: cfg.terminalCode,
+                host: cfg.agentUrl,
+              });
+              if (r.ok) {
+                setStatus("waiting_card");
+                setStatusMsg(r.message ?? "Menu ADM aberto. No pinpad, escolha 'Resolver pendência' e siga as instruções.");
+                toast({
+                  title: "ADM iniciado",
+                  description: "Selecione 'Resolver pendência' no pinpad para confirmar ou desfazer a transação pendente.",
+                });
+              } else {
+                setStatus("error");
+                setStatusMsg(r.error ?? "Falha ao abrir ADM");
+                toast({ title: "Falha ao abrir ADM", description: r.error, variant: "destructive" });
+              }
+            } catch (err: any) {
+              setStatus("error");
+              setStatusMsg(err?.message ?? String(err));
+              toast({ title: "Erro", description: err?.message ?? String(err), variant: "destructive" });
+            } finally {
+              setBusy(false);
+            }
+          }}
+          disabled={busy || !!pendingMethod}
+          variant="destructive"
+          className="gap-2"
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wrench className="h-4 w-4" />}
+          Resolver pendência (ADM)
         </Button>
       </div>
 
