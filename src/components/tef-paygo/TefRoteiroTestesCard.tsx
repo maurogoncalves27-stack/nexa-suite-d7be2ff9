@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -10,8 +10,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { ListChecks, RotateCcw, Download } from "lucide-react";
+import { ListChecks, RotateCcw, Download, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 type Passo = {
   n: number;
@@ -24,6 +25,8 @@ type Secao = {
   titulo: string;
   passos: Passo[];
 };
+
+const ASA_SUL_ID = "fcf435c2-c382-444c-b499-4d95f07b2633";
 
 const ROTEIRO: Secao[] = [
   {
@@ -131,49 +134,239 @@ const ROTEIRO: Secao[] = [
   },
 ];
 
-const STORAGE_KEY = "tef-paygo-roteiro-obrig-v1";
+const STORAGE_KEY = "tef-paygo-roteiro-obrig-v2";
 
 type Estado = Record<number, "done" | undefined>;
+type Persisted = { estado: Estado; runStartedAt: string };
+
+type Tx = {
+  id: string;
+  amount: number | null;
+  status: string | null;
+  message: string | null;
+  nsu: string | null;
+  acquirer: string | null;
+  installments: number | null;
+  finished_at: string | null;
+  raw_response: any;
+};
+
+type Evidence = { nsu?: string | null; amount?: number | null; acquirer?: string | null; label: string };
+
+const isApproved = (s: string | null | undefined) => (s ?? "").toLowerCase().includes("approv");
+const isCancelled = (s: string | null | undefined) => {
+  const v = (s ?? "").toLowerCase();
+  return v.includes("cancel") || v.includes("declin") || v.includes("error");
+};
+const rawText = (raw: any) => JSON.stringify(raw ?? {}).toLowerCase();
+const methodOf = (raw: any): string => {
+  const t = rawText(raw);
+  if (t.includes('"method":"pix"') || t.includes("pix")) return "pix";
+  if (t.includes('"method":"credit"') || t.includes("credito") || t.includes("crédito") || t.includes("credit")) return "credit";
+  if (t.includes('"method":"debit"') || t.includes("debito") || t.includes("débito") || t.includes("debit")) return "debit";
+  return "";
+};
+
+const formatBRL = (v: number | null | undefined) =>
+  typeof v === "number" ? v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "—";
+
+const mkEv = (t: Tx, label: string): Evidence => ({
+  nsu: t.nsu,
+  amount: t.amount,
+  acquirer: t.acquirer,
+  label,
+});
+
+function computeAutoEvidence(txs: Tx[]): Map<number, Evidence> {
+  const m = new Map<number, Evidence>();
+  const approved = txs.filter((t) => isApproved(t.status));
+  const cancelled = txs.filter((t) => isCancelled(t.status));
+
+  // 2 — valor máximo (>= R$ 99.999)
+  const max = approved.find((t) => (t.amount ?? 0) >= 99999);
+  if (max) m.set(2, mkEv(max, "valor máximo aprovado"));
+
+  // 3 — DEMO crédito à vista aprovada
+  const demoCredVista = approved.find(
+    (t) => (t.acquirer ?? "").toUpperCase() === "DEMO" && methodOf(t.raw_response) === "credit" && (t.installments ?? 1) <= 1,
+  );
+  if (demoCredVista) m.set(3, mkEv(demoCredVista, "DEMO crédito à vista"));
+
+  // 4 — negada R$ 1.000,01
+  const negada = txs.find((t) => Math.abs((t.amount ?? 0) - 1000.01) < 0.005 && !isApproved(t.status));
+  if (negada) m.set(4, mkEv(negada, "negada R$ 1.000,01"));
+
+  // 5 — cancelada na seleção de rede
+  const cancRede = cancelled.find((t) => {
+    const msg = `${t.message ?? ""} ${rawText(t.raw_response)}`.toUpperCase();
+    return msg.includes("OPERAÇÃO CANCELADA") || msg.includes("OPERACAO CANCELADA") || msg.includes("REDE");
+  });
+  if (cancRede) m.set(5, mkEv(cancRede, "operação cancelada"));
+
+  // 6 — crédito aprovada
+  const cred = approved.find((t) => methodOf(t.raw_response) === "credit");
+  if (cred) m.set(6, mkEv(cred, "crédito aprovada"));
+
+  // 7 — débito aprovada
+  const deb = approved.find((t) => methodOf(t.raw_response) === "debit");
+  if (deb) m.set(7, mkEv(deb, "débito aprovada"));
+
+  // 8 — crédito 99x
+  const cred99 = approved.find((t) => (t.installments ?? 0) >= 99);
+  if (cred99) m.set(8, mkEv(cred99, "99x aprovada"));
+
+  // 11 — PIX C6 BANK
+  const pixC6 = approved.find((t) => (t.acquirer ?? "").toUpperCase().includes("PIX C6"));
+  if (pixC6) m.set(11, mkEv(pixC6, "PIX C6 aprovada"));
+
+  // 19 + 21 — venda + cancelamento subsequente
+  const venda19 = approved.find(
+    (t) => (t.acquirer ?? "").toUpperCase() !== "DEMO" || methodOf(t.raw_response) !== "credit" || (t.installments ?? 1) > 1,
+  ) ?? approved[0];
+  if (venda19) m.set(19, mkEv(venda19, "venda aprovada"));
+  if (venda19) {
+    const after = cancelled.find((t) => (t.finished_at ?? "") > (venda19.finished_at ?? ""));
+    if (after) m.set(21, mkEv(after, "cancelamento confirmado"));
+  }
+
+  // 41–44 — cancelamento por referência (local/externa)
+  const refLocais = cancelled.filter((t) => {
+    const txt = rawText(t.raw_response);
+    return txt.includes("referencialocal") || txt.includes("referência local") || txt.includes("referencia local");
+  });
+  if (refLocais[0]) m.set(41, mkEv(refLocais[0], "ref. local"));
+  if (refLocais[1]) m.set(42, mkEv(refLocais[1], "ref. local #2"));
+  const refExt = cancelled.filter((t) => {
+    const txt = rawText(t.raw_response);
+    return txt.includes("referenciaexterna") || txt.includes("referência externa") || txt.includes("referencia externa");
+  });
+  if (refExt[0]) m.set(43, mkEv(refExt[0], "ref. externa"));
+  if (refExt[1]) m.set(44, mkEv(refExt[1], "ref. externa #2"));
+
+  // 45/46 — contactless
+  const ctls = approved.filter((t) => {
+    const txt = rawText(t.raw_response);
+    return txt.includes("ctls") || txt.includes("contactless") || txt.includes("aproxim");
+  });
+  const ctlsComPin = ctls.find((t) => {
+    const txt = rawText(t.raw_response);
+    return txt.includes("senha") || txt.includes('"pin":"yes"') || txt.includes("pinrequired");
+  });
+  const ctlsSemPin = ctls.find((t) => t !== ctlsComPin);
+  if (ctlsComPin) m.set(45, mkEv(ctlsComPin, "contactless c/ senha"));
+  if (ctlsSemPin) m.set(46, mkEv(ctlsSemPin, "contactless s/ senha"));
+
+  // 52/53 — QR Code aprovada/cancelada
+  const qr = approved.find((t) => methodOf(t.raw_response) === "pix");
+  if (qr) m.set(52, mkEv(qr, "QR aprovada"));
+  const qrCanc = cancelled.find((t) => methodOf(t.raw_response) === "pix");
+  if (qrCanc) m.set(53, mkEv(qrCanc, "QR cancelada"));
+  const qrs = txs.filter((t) => methodOf(t.raw_response) === "pix");
+  if (qrs.length >= 3) m.set(54, mkEv(qrs[qrs.length - 1], "QR variação"));
+
+  return m;
+}
 
 export function TefRoteiroTestesCard() {
   const [estado, setEstado] = useState<Estado>({});
+  const [runStartedAt, setRunStartedAt] = useState<string>(() => new Date().toISOString());
+  const [txs, setTxs] = useState<Tx[]>([]);
 
+  // Carregar persistido (com migração graciosa do v1)
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setEstado(JSON.parse(raw));
+      if (raw) {
+        const parsed = JSON.parse(raw) as Persisted;
+        if (parsed && typeof parsed === "object" && "estado" in parsed) {
+          setEstado(parsed.estado || {});
+          if (parsed.runStartedAt) setRunStartedAt(parsed.runStartedAt);
+          return;
+        }
+      }
+      const old = localStorage.getItem("tef-paygo-roteiro-obrig-v1");
+      if (old) {
+        try {
+          setEstado(JSON.parse(old) || {});
+        } catch {}
+      }
     } catch {}
   }, []);
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(estado));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ estado, runStartedAt } as Persisted));
     } catch {}
-  }, [estado]);
+  }, [estado, runStartedAt]);
+
+  // Polling das transações desde runStartedAt
+  const fetchTxs = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("pdv_tef_transactions")
+        .select("id, amount, status, message, nsu, acquirer, installments, finished_at, raw_response")
+        .eq("store_id", ASA_SUL_ID)
+        .eq("provider", "paygo")
+        .gte("finished_at", runStartedAt)
+        .order("finished_at", { ascending: true })
+        .limit(500);
+      if (error) throw error;
+      setTxs((data ?? []) as Tx[]);
+    } catch {
+      /* silencioso */
+    }
+  }, [runStartedAt]);
+
+  useEffect(() => {
+    fetchTxs();
+    const id = window.setInterval(fetchTxs, 10000);
+    const onVis = () => {
+      if (document.visibilityState === "visible") fetchTxs();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [fetchTxs]);
+
+  const autoEv = useMemo(() => computeAutoEvidence(txs), [txs]);
 
   const todos = useMemo(() => ROTEIRO.flatMap((s) => s.passos), []);
-  const concluidos = todos.filter((p) => estado[p.n] === "done").length;
+  const isDone = (n: number) => estado[n] === "done" || autoEv.has(n);
+  const concluidos = todos.filter((p) => isDone(p.n)).length;
+  const autoCount = todos.filter((p) => autoEv.has(p.n)).length;
   const pct = Math.round((concluidos / todos.length) * 100);
 
   const toggle = (n: number) => {
+    // Não permitir desmarcar quando há evidência automática
+    if (autoEv.has(n)) {
+      toast.info("Este passo foi validado automaticamente pelo log da transação.");
+      return;
+    }
     setEstado((e) => ({ ...e, [n]: e[n] === "done" ? undefined : "done" }));
   };
 
   const resetar = () => {
     setEstado({});
-    toast.success("Roteiro resetado");
+    setRunStartedAt(new Date().toISOString());
+    setTxs([]);
+    toast.success("Roteiro resetado — nova rodada iniciada");
   };
 
   const exportar = () => {
     const linhas: string[] = [];
     linhas.push("Roteiro de Testes PayGo C6 — Obrigatórios");
-    linhas.push(`Concluídos: ${concluidos}/${todos.length} (${pct}%)`);
+    linhas.push(`Rodada iniciada em: ${new Date(runStartedAt).toLocaleString("pt-BR")}`);
+    linhas.push(`Concluídos: ${concluidos}/${todos.length} (${pct}%) — ${autoCount} auto-validados`);
     linhas.push("");
     ROTEIRO.forEach((sec) => {
       linhas.push(`# ${sec.titulo}`);
       sec.passos.forEach((p) => {
-        const mark = estado[p.n] === "done" ? "[X]" : "[ ]";
-        linhas.push(`  ${mark} Passo ${String(p.n).padStart(2, "0")} - ${p.titulo}`);
+        const ev = autoEv.get(p.n);
+        const mark = ev ? "[A]" : estado[p.n] === "done" ? "[X]" : "[ ]";
+        const extra = ev ? ` — auto: NSU ${ev.nsu ?? "—"} ${formatBRL(ev.amount)}${ev.acquirer ? ` (${ev.acquirer})` : ""}` : "";
+        linhas.push(`  ${mark} Passo ${String(p.n).padStart(2, "0")} - ${p.titulo}${extra}`);
       });
       linhas.push("");
     });
@@ -196,7 +389,7 @@ export function TefRoteiroTestesCard() {
             Roteiro de Testes PayGo C6
           </h3>
           <p className="text-xs text-muted-foreground">
-            Apenas itens obrigatórios do roteiro v20241216 + planilha v20240306 (PGWebLib).
+            Apenas itens obrigatórios. Passos com log de transação são auto-validados.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -211,9 +404,12 @@ export function TefRoteiroTestesCard() {
 
       <div className="space-y-1">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>Concluídos</span>
+          <span>
+            Concluídos · rodada desde {new Date(runStartedAt).toLocaleTimeString("pt-BR")}
+          </span>
           <span className="font-medium text-foreground">
             {concluidos} de {todos.length} ({pct}%)
+            {autoCount > 0 && <span className="ml-1 text-primary">· {autoCount} auto</span>}
           </span>
         </div>
         <Progress value={pct} className="h-2" />
@@ -221,7 +417,7 @@ export function TefRoteiroTestesCard() {
 
       <Accordion type="multiple" defaultValue={["s1"]} className="w-full">
         {ROTEIRO.map((sec) => {
-          const ok = sec.passos.filter((p) => estado[p.n] === "done").length;
+          const ok = sec.passos.filter((p) => isDone(p.n)).length;
           return (
             <AccordionItem key={sec.id} value={sec.id}>
               <AccordionTrigger className="text-sm hover:no-underline">
@@ -235,33 +431,43 @@ export function TefRoteiroTestesCard() {
               <AccordionContent>
                 <ul className="space-y-2">
                   {sec.passos.map((p) => {
-                    const done = estado[p.n] === "done";
+                    const ev = autoEv.get(p.n);
+                    const done = isDone(p.n);
                     return (
                       <li
                         key={p.n}
                         className={`flex gap-3 items-start p-2 rounded-md border ${
-                          done ? "bg-muted/50 opacity-70" : "bg-background"
+                          done ? "bg-muted/50 opacity-80" : "bg-background"
                         }`}
                       >
                         <Checkbox
                           checked={done}
                           onCheckedChange={() => toggle(p.n)}
                           className="mt-1"
+                          disabled={!!ev}
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-xs font-mono text-muted-foreground">
                               Passo {String(p.n).padStart(2, "0")}
                             </span>
-                            <span
-                              className={`text-sm font-medium ${
-                                done ? "line-through" : ""
-                              }`}
-                            >
+                            <span className={`text-sm font-medium ${done ? "line-through" : ""}`}>
                               {p.titulo}
                             </span>
+                            {ev && (
+                              <Badge variant="secondary" className="text-[10px] gap-1">
+                                <Sparkles className="h-3 w-3" />
+                                auto
+                              </Badge>
+                            )}
                           </div>
                           <p className="text-xs text-muted-foreground mt-1">{p.desc}</p>
+                          {ev && (
+                            <p className="text-[11px] text-muted-foreground mt-1 font-mono">
+                              {ev.label} · NSU {ev.nsu ?? "—"} · {formatBRL(ev.amount)}
+                              {ev.acquirer ? ` · ${ev.acquirer}` : ""}
+                            </p>
+                          )}
                         </div>
                       </li>
                     );
