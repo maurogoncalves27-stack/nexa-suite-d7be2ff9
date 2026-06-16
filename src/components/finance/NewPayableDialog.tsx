@@ -301,6 +301,31 @@ export default function NewPayableDialog({ open, onOpenChange, onSaved }: Props)
               </select>
             </div>
           </div>
+          <div className="flex items-center justify-between rounded-md border bg-muted/20 px-3 py-2">
+            <div className="text-sm">
+              <div className="font-medium">Ratear entre lojas</div>
+              <div className="text-xs text-muted-foreground">Divida este lançamento entre várias lojas (centros de custo).</div>
+            </div>
+            <Button type="button" size="sm" variant={rateioOn ? "default" : "outline"} onClick={() => {
+              const next = !rateioOn;
+              setRateioOn(next);
+              if (next && splits.length === 0) {
+                // pré-preenche com 1 linha (a loja atual, se houver)
+                setSplits([{ store_id: storeId || "", amount: Number(amount) || 0, percent: 100 }]);
+              }
+            }}>
+              {rateioOn ? "Ativado" : "Ativar"}
+            </Button>
+          </div>
+          {rateioOn && (
+            <AllocationEditor
+              stores={stores}
+              totalAmount={Number(amount) || 0}
+              value={splits}
+              onChange={setSplits}
+              disabled={submitting}
+            />
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>Competência</Label>
