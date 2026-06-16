@@ -218,6 +218,60 @@ export default function BankReconciliationPanel() {
     await supabase.from("finance_allocations").insert(rows);
   };
 
+  const openAllocDialog = async (tx: BankTx) => {
+    setAllocTarget(tx);
+    setAllocLoading(true);
+    const { data } = await supabase
+      .from("finance_allocations")
+      .select("store_id, amount, percent")
+      .eq("source_kind", "bank_tx")
+      .eq("source_id", tx.id);
+    const existing = (data ?? []) as any[];
+    if (existing.length > 0) {
+      setAllocSplits(existing.map((r) => ({
+        store_id: r.store_id,
+        amount: Number(r.amount),
+        percent: Number(r.percent ?? (Number(r.amount) / Math.abs(Number(tx.amount))) * 100),
+      })));
+    } else {
+      setAllocSplits([{ store_id: "", amount: Math.abs(Number(tx.amount)), percent: 100 }]);
+    }
+    setAllocLoading(false);
+  };
+
+  const saveAllocations = async () => {
+    if (!allocTarget) return;
+    const total = Math.abs(Number(allocTarget.amount));
+    const valid = validateSplits(allocSplits, total);
+    if (!valid) {
+      toast({ title: "Rateio inválido", description: "Confira lojas e a soma dos percentuais.", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    // Substitui o rateio antigo
+    await supabase.from("finance_allocations").delete().eq("source_kind", "bank_tx").eq("source_id", allocTarget.id);
+    if (valid.length > 0) {
+      const rows = valid.map((s) => ({
+        source_kind: "bank_tx",
+        source_id: allocTarget.id,
+        store_id: s.store_id,
+        amount: s.amount,
+        percent: s.percent,
+      }));
+      const { error } = await supabase.from("finance_allocations").insert(rows);
+      if (error) {
+        setSubmitting(false);
+        toast({ title: "Erro ao salvar rateio", description: error.message, variant: "destructive" });
+        return;
+      }
+    }
+    setSubmitting(false);
+    toast({ title: "Rateio salvo" });
+    setAllocTarget(null);
+    setAllocSplits([]);
+  };
+
+
 
   // Após cada reload, se houver uma "data foco" salva, rola até a primeira
   // linha cuja posted_at seja <= data foco (mantém o usuário no dia em que
