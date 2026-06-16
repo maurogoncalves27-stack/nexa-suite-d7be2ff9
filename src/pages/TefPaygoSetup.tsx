@@ -388,11 +388,11 @@ const TefPaygoSetup = () => {
                   size="sm"
                   asChild
                   className="h-6 text-[10px] gap-1"
-                  title="Baixar agente ACBr (v1.5.5)"
+                  title="Baixar agente ACBr (v1.5.5) em ZIP — extraia e execute o .exe"
                 >
-                  <a href="/releases/NEXA-ACBr-Agent-Setup-1.5.5.exe" download>
+                  <a href="/releases/NEXA-ACBr-Agent-Setup-1.5.5.zip" download>
                     <Download className="h-3 w-3" />
-                    Baixar agente
+                    Baixar agente (.zip)
                   </a>
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => void runChecklist()} disabled={checkLoading} className="h-6 w-6 p-0">
