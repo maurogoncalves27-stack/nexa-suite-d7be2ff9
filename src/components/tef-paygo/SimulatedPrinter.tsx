@@ -10,10 +10,11 @@ import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Printer, Download, FileText, Trash2 } from "lucide-react";
+import { Printer, Download, FileText, Trash2, FolderArchive } from "lucide-react";
 import { clearTefReceipts, useTefReceipts, type TefReceiptEntry } from "@/hooks/useTefReceipts";
 import { toast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
+import JSZip from "jszip";
 
 type ViaKey = "merchant" | "customer" | "reduced" | "diff1" | "diff2";
 
