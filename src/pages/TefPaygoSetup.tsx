@@ -396,7 +396,7 @@ const TefPaygoSetup = () => {
                   onClick={() => copy(AGENT_INSTALL_COMMAND, "Comando de instalação do agente")}
                 >
                   <Terminal className="h-3 w-3" />
-                  Copiar instalação
+                  Copiar
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => void runChecklist()} disabled={checkLoading} className="h-6 w-6 p-0">
                   {checkLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
