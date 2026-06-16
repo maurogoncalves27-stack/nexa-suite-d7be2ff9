@@ -968,7 +968,9 @@ export function TefRoteiroTestesCard() {
             <AccordionItem key={sec.id} value={sec.id}>
               <AccordionTrigger className="text-sm">
                 <span className="flex items-center gap-2 flex-1 text-left">
-                  <span className="font-medium">{sec.titulo}</span>
+                  <span className={`font-medium ${doneSec === totalSec ? "text-success" : ""}`}>
+                    {sec.titulo}
+                  </span>
                   <Badge
                     variant={doneSec === totalSec ? "default" : "outline"}
                     className="text-[10px] ml-auto"
