@@ -36,6 +36,7 @@ const isPaygoNetworkMenuRequest = (result: { status: string; message?: string; r
 export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sandboxHost }: Props) {
   const [amount, setAmount] = useState("");
   const [saleId, setSaleId] = useState(DEFAULT_SALE_ID);
+  const [installments, setInstallments] = useState("1");
   const [acquirer, setAcquirer] = useState<"DEMO" | "REDE" | "PIX C6 BANK">("DEMO");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<TefStatus>("idle");
