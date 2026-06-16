@@ -13,6 +13,7 @@ import {
 import {
   CreditCard, Copy, Pencil, Save, X, KeyRound,
   ListChecks, CheckCircle2, XCircle, AlertTriangle, Loader2, RefreshCw, Terminal,
+  FolderOpen,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
@@ -413,6 +414,16 @@ const TefPaygoSetup = () => {
                 >
                   <Terminal className="h-3 w-3" />
                   Copiar
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[10px] gap-1"
+                  title="Copia o caminho da pasta de logs do PayGo para colar no Explorer"
+                  onClick={() => copy("C:\\NexaACBr\\logs", "Caminho da pasta de logs")}
+                >
+                  <FolderOpen className="h-3 w-3" />
+                  Logs
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => void runChecklist()} disabled={checkLoading} className="h-6 w-6 p-0">
                   {checkLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
