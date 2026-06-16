@@ -59,6 +59,7 @@ export function useTefPayment() {
       cardLast4: res.cardLast4,
       installments: res.installments,
       acquirer: res.acquirer ?? config.acquirer,
+      method: req.method,
       raw: res.raw,
     });
 
