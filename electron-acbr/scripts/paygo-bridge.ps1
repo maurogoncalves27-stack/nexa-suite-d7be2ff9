@@ -122,6 +122,8 @@ public static class PayGoBridge
     private static string _qrDisplayPreference = "";
     private static string _eventId = "";
     private static string _lastQrEmitted = "";
+    private static bool _interactive = false;
+    private static int _captureSeq = 0;
     private static Dictionary<string, string> _captureValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
