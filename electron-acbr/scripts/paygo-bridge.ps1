@@ -517,6 +517,8 @@ public static class PayGoBridge
                 EmitEvent("PINPAD", "Testando chave do pinpad");
                 ret = Fn<PW_iPPTestKey_>("PW_iPPTestKey")(index);
                 return ret == PWRET_OK ? PinpadLoop("testKey") : ret;
+            case 0: // PWDAT_NONE / slot vazio retornado pela DLL (count alocado > capturas reais)
+                return PWRET_OK;
             default:
                 throw new Exception("Tipo de captura PayGo nao tratado. Tipo=" + data.bTipoDeDado + " Identificador=" + FormatIdentifier(data.wIdentificador) + " Prompt=" + data.szPrompt);
         }
