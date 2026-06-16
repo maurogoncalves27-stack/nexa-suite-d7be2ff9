@@ -340,6 +340,19 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
           />
         </div>
 
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Parcelas (crédito)</label>
+          <Input
+            type="number"
+            min={1}
+            max={99}
+            value={installments}
+            onChange={(e) => setInstallments(e.target.value)}
+            className="w-24"
+            disabled={busy}
+          />
+        </div>
+
         <Button onClick={() => void runSale("debit")} disabled={busy || !!pendingMethod} className="gap-2">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
           Debito
