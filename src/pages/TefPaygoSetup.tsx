@@ -29,7 +29,9 @@ const DEFAULT_HOST = "pos-transac-sb.tpgweb.io:31735";
 const DEFAULT_CNPJ = "44.932.369/0001-08";
 const AGENT_VERSION = "1.5.5";
 const AGENT_EXE_URL = "https://nexasuite.aquelaparme.com.br/releases/NEXA-ACBr-Agent-Setup-1.5.5.exe";
-const AGENT_INSTALL_COMMAND = `powershell -NoProfile -ExecutionPolicy Bypass -Command "$url='${AGENT_EXE_URL}'; $out=Join-Path $env:TEMP 'NEXA-ACBr-Agent-Setup-1.5.5.exe'; Invoke-WebRequest -Uri $url -OutFile $out; Start-Process $out"`;
+// Cole DIRETO no prompt do PowerShell (não use `powershell -Command "..."` — as aspas duplas comem os $variáveis).
+// curl.exe é nativo no Windows 10/11 e ignora as regras de quoting do PowerShell.
+const AGENT_INSTALL_COMMAND = `curl.exe -L -o "$env:TEMP\\NEXA-ACBr-Agent-Setup-${AGENT_VERSION}.exe" ${AGENT_EXE_URL}; Start-Process "$env:TEMP\\NEXA-ACBr-Agent-Setup-${AGENT_VERSION}.exe"`;
 
 interface Store { id: string; name: string; }
 interface TefRow {
