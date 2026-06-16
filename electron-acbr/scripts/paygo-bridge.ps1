@@ -1403,14 +1403,15 @@ if (-not [string]::IsNullOrWhiteSpace($Ambiente)) {
 }
 
 if ($Action -eq "install") {
-  [PayGoBridge]::Operation($DllPath, $WorkingDir, 0x01, $CpfCnpj, $PontoDeCaptura, $Ambiente, $SenhaTecnica, $UsePinpad, $PinpadPort, "")
+  [PayGoBridge]::Operation($DllPath, $WorkingDir, 0x01, $CpfCnpj, $PontoDeCaptura, $Ambiente, $SenhaTecnica, $UsePinpad, $PinpadPort, "", $false)
   exit
 }
 
 if ($Action -eq "admin") {
-  [PayGoBridge]::Operation($DllPath, $WorkingDir, 0x20, $CpfCnpj, $PontoDeCaptura, $Ambiente, $SenhaTecnica, $UsePinpad, $PinpadPort, "")
+  [PayGoBridge]::Operation($DllPath, $WorkingDir, 0x20, "", "", "", "", "", "", "", $true)
   exit
 }
+
 
 if ($Action -eq "cleanup") {
   [PayGoBridge]::Cleanup($DllPath, $WorkingDir)
