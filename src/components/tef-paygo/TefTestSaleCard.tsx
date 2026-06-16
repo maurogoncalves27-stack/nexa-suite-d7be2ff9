@@ -71,6 +71,7 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
       }
 
       const adapter = createTefAdapter(cfg);
+      const parsedInst = Math.max(1, Math.min(99, parseInt(installments, 10) || 1));
       const result = await adapter.processPayment(
         {
           amount: value,
@@ -78,6 +79,7 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
           storeId: ASA_SUL_ID,
           acquirer: selectedAcquirer,
           orderId: saleId.trim() || DEFAULT_SALE_ID,
+          installments: method === "credit" ? parsedInst : 1,
         },
         (s, msg) => {
           setStatus(s);
