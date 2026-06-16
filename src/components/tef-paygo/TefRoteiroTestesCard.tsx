@@ -729,7 +729,7 @@ export function TefRoteiroTestesCard() {
 
   // Índice atual do carrossel (controlado, mas se o passo for concluído avança auto)
   const [idx, setIdx] = useState(0);
-  // Quando concluir o passo atual via auto-validação, avança automaticamente
+  // Quando concluir o passo atual (auto ou manual), avança automaticamente
   useEffect(() => {
     const cur = flat[idx];
     if (cur && isDone(cur.passo.n) && idx < flat.length - 1) {
@@ -737,7 +737,7 @@ export function TefRoteiroTestesCard() {
       return () => window.clearTimeout(t);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoEv, idx, flat.length]);
+  }, [autoEv, estado, idx, flat.length]);
   const goPrev = () => setIdx((i) => Math.max(0, i - 1));
   const goNext = () => setIdx((i) => Math.min(flat.length - 1, i + 1));
 
