@@ -140,6 +140,29 @@ export const createPaygoAdapter = (config: TefConfig): TefAdapter => {
           };
         }
         result.message = effectiveMessage ?? fallbackMessage;
+
+        // Auto-confirma a venda aprovada (libera o token PGWEB: na DLL).
+        // Sem isso a próxima venda trava com "Existe transacao pendente de confirmacao no PayGo".
+        if (status === "approved" && r.reqNum) {
+          try {
+            const conf = await fetch(joinAgentUrl(config.agentUrl, "/tef/confirm"), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                reqNum: r.reqNum,
+                locRef: r.locRef ?? "",
+                extRef: r.extRef ?? "",
+                virtMerch: r.virtMerch ?? "",
+                authSyst: r.authSyst ?? "",
+              }),
+            });
+            const confData = await conf.json().catch(() => ({}));
+            (result.raw as any).__autoConfirm = { ok: !!confData?.ok, message: confData?.message };
+          } catch (e) {
+            (result.raw as any).__autoConfirm = { ok: false, error: e instanceof Error ? e.message : String(e) };
+          }
+        }
+
         onStatus?.(status, result.message);
         return result;
       } catch (err) {
@@ -249,6 +272,29 @@ export const paygoCancelarVenda = async (
 ): Promise<PaygoAgentResponse> => {
   try {
     const r = await fetch(joinAgentUrl(agentUrl, "/tef/cancelar-venda"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = (await r.json().catch(() => ({}))) as PaygoAgentResponse;
+    if (!r.ok) return { ok: false, error: data?.error ?? `HTTP ${r.status}` };
+    return data;
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "offline" };
+  }
+};
+
+/**
+ * Confirma uma venda aprovada (libera o token PGWEB: na DLL).
+ * PayGo Integrado exige esse 2º passo após a aprovação — sem ele a próxima
+ * venda falha com "Existe transacao pendente de confirmacao no PayGo".
+ */
+export const paygoConfirmarVenda = async (
+  agentUrl: string,
+  body: { reqNum?: string; locRef?: string; extRef?: string; virtMerch?: string; authSyst?: string },
+): Promise<PaygoAgentResponse> => {
+  try {
+    const r = await fetch(joinAgentUrl(agentUrl, "/tef/confirm"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
