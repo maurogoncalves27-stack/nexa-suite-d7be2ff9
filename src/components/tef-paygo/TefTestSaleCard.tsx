@@ -507,6 +507,16 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
         </Button>
 
         <Button
+          onClick={() => void limparPendenciaPaygo()}
+          disabled={busy}
+          variant="outline"
+          className="gap-2 border-warning text-warning hover:bg-warning/10"
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+          Limpar pendência PayGo
+        </Button>
+
+        <Button
           onClick={() => setShowPinpad((s) => !s)}
           disabled={busy}
           variant="outline"
