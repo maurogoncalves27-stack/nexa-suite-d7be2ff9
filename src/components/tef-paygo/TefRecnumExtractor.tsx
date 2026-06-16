@@ -120,6 +120,15 @@ export default function TefRecnumExtractor({ storeId }: Props) {
           Extrator de RecNum (planilha Setis)
         </h2>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-[11px] gap-1"
+            onClick={() => setShowLogs(v => !v)}
+          >
+            <ScrollText className="h-3.5 w-3.5" />
+            {showLogs ? "Ocultar logs" : "Ver logs PayGo"}
+          </Button>
           <Badge variant={withReqnum > 0 ? "default" : "secondary"}>
             {withReqnum}/{rows.length} com RecNum
           </Badge>
