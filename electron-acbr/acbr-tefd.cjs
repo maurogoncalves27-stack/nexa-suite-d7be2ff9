@@ -638,6 +638,7 @@ module.exports = {
   cancelarVenda,
   confirmarVenda,
   cancelarEmAndamento,
+  limparPendencia,
   administrativoAsync,
   getAdmStatus,
   getSaleStatus,
