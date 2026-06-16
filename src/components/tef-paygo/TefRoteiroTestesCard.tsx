@@ -18,6 +18,11 @@ type Passo = {
   n: number;
   titulo: string;
   desc: string;
+  valor?: string;       // valor sugerido (ex.: "R$ 2,07")
+  rede?: string;        // ex.: "DEMO" | "PIX C6 BANK"
+  modalidade?: string;  // ex.: "Crédito à vista"
+  comoFazer?: string[]; // passo-a-passo no pinpad/app
+  esperado?: string;    // resultado esperado
 };
 
 type Secao = {
@@ -33,103 +38,489 @@ const ROTEIRO: Secao[] = [
     id: "s1",
     titulo: "1. Instalação e vendas básicas",
     passos: [
-      { n: 1, titulo: "Instalação", desc: "Instalar com os dados enviados pela PayGo. Esperado: 'TRANSAÇÃO APROVADA' e recibo impresso." },
-      { n: 2, titulo: "Venda valor máximo", desc: "Venda com o valor máximo permitido pela automação (ex.: R$ 100.000,00). Esperado: aprovada e confirmada." },
-      { n: 3, titulo: "Venda pré-seleção (DEMO/Cartão/Crédito/À vista)", desc: "Venda pré-selecionando Autorizador DEMO, Cartão, Crédito, À vista. Esperado: aprovada e confirmada." },
-      { n: 4, titulo: "Venda negada", desc: "Venda de R$ 1.000,01 no DEMO. Esperado: NEGADA 01 retornada à automação." },
-      { n: 5, titulo: "Venda negada - rede desconhecida", desc: "No menu de seleção de rede, pressionar Esc/Cancelar. Esperado: 'OPERAÇÃO CANCELADA'." },
-      { n: 6, titulo: "Venda crédito (inserir cartão no PIN-Pad)", desc: "Venda na modalidade crédito inserindo cartão. Esperado: aprovada e confirmada." },
-      { n: 7, titulo: "Venda débito (inserir cartão no PIN-Pad)", desc: "Venda na modalidade débito inserindo cartão. Esperado: aprovada e confirmada." },
-      { n: 8, titulo: "Venda crédito parcelado loja em 99x", desc: "Venda crédito parcelada pelo estabelecimento em 99 parcelas. Esperado: aprovada e confirmada." },
+      {
+        n: 1,
+        titulo: "Instalação",
+        desc: "Instalar com os dados enviados pela PayGo.",
+        comoFazer: [
+          "Abrir PayGo Integrado (Windows) e confirmar CNPJ 44.932.369/0001-08 + PdC 111476",
+          "Garantir modo DEMO (3 cliques no logo, host pos-transac-sb.tpgweb.io:31735)",
+          "No card Venda de teste: rodar 1 venda de R$ 1,00 débito DEMO",
+        ],
+        esperado: "TRANSAÇÃO APROVADA e recibo impresso.",
+      },
+      {
+        n: 2,
+        titulo: "Venda valor máximo",
+        desc: "Venda com o valor máximo permitido pela automação.",
+        valor: "R$ 100.000,00",
+        rede: "DEMO",
+        modalidade: "Crédito",
+        comoFazer: [
+          "Card Venda de teste → Valor: 100000,00",
+          "Clicar Crédito → escolher DEMO",
+          "No pinpad: inserir cartão DEMO → digitar senha",
+        ],
+        esperado: "Aprovada e confirmada automaticamente.",
+      },
+      {
+        n: 3,
+        titulo: "Venda pré-seleção (DEMO / Crédito / À vista)",
+        desc: "Pré-seleciona rede, tipo e modalidade — pinpad não pergunta.",
+        valor: "R$ 2,07",
+        rede: "DEMO",
+        modalidade: "Crédito à vista",
+        comoFazer: [
+          "Card Venda de teste → Valor: 2,07",
+          "Clicar Crédito → escolher DEMO no diálogo de rede",
+          "No pinpad: inserir cartão DEMO → digitar senha",
+        ],
+        esperado: "Pinpad NÃO pergunta débito/crédito nem à vista/parcelado. Aprovada direto.",
+      },
+      {
+        n: 4,
+        titulo: "Venda negada",
+        desc: "Valor mágico que força negativa no DEMO.",
+        valor: "R$ 1.000,01",
+        rede: "DEMO",
+        modalidade: "Crédito",
+        comoFazer: [
+          "Card Venda de teste → Valor: 1000,01",
+          "Clicar Crédito → escolher DEMO",
+          "No pinpad: inserir cartão → senha",
+        ],
+        esperado: "NEGADA 01 retornada à automação.",
+      },
+      {
+        n: 5,
+        titulo: "Venda cancelada na seleção de rede",
+        desc: "Cancelar no menu de rede do PayGo.",
+        valor: "R$ 5,00",
+        comoFazer: [
+          "Card Venda de teste → Valor: 5,00 → Crédito",
+          "Quando abrir o diálogo de seleção de rede → clicar Cancelar",
+        ],
+        esperado: "Mensagem 'OPERAÇÃO CANCELADA'.",
+      },
+      {
+        n: 6,
+        titulo: "Venda crédito (inserir cartão)",
+        desc: "Crédito à vista com cartão inserido.",
+        valor: "R$ 10,00",
+        rede: "DEMO",
+        modalidade: "Crédito à vista",
+        comoFazer: [
+          "Card Venda de teste → Valor: 10,00 → Crédito → DEMO",
+          "No pinpad: inserir cartão → senha",
+        ],
+        esperado: "Aprovada e confirmada.",
+      },
+      {
+        n: 7,
+        titulo: "Venda débito (inserir cartão)",
+        desc: "Débito à vista com cartão inserido.",
+        valor: "R$ 15,00",
+        rede: "DEMO",
+        modalidade: "Débito",
+        comoFazer: [
+          "Card Venda de teste → Valor: 15,00 → Débito → DEMO",
+          "No pinpad: inserir cartão → senha",
+        ],
+        esperado: "Aprovada e confirmada.",
+      },
+      {
+        n: 8,
+        titulo: "Venda crédito parcelado loja em 99x",
+        desc: "Parcelamento pelo estabelecimento, 99 parcelas.",
+        valor: "R$ 9.900,00",
+        rede: "DEMO",
+        modalidade: "Crédito parcelado loja — 99x",
+        comoFazer: [
+          "Card Venda de teste → Valor: 9900,00 → Crédito → DEMO",
+          "No menu de parcelamento: selecionar Parcelado LOJA → digitar 99",
+          "No pinpad: inserir cartão → senha",
+        ],
+        esperado: "Aprovada e confirmada com 99 parcelas no recibo.",
+      },
     ],
   },
   {
     id: "s2",
     titulo: "2. Recibos diferenciados e QR Code PIX C6",
     passos: [
-      { n: 10, titulo: "Recibos diferenciados #2", desc: "Venda DEMO. Esperado: vias DIFERENCIADAS para portador e lojista." },
-      { n: 11, titulo: "QR Code PIX C6 BANK", desc: "Venda pré-selecionando rede 'PIX C6 BANK'. Esperado: aprovação automática e recibo impresso." },
+      {
+        n: 10,
+        titulo: "Recibos diferenciados",
+        desc: "Confirma que sai via portador + via lojista distintas.",
+        valor: "R$ 3,33",
+        rede: "DEMO",
+        modalidade: "Crédito",
+        comoFazer: [
+          "Card Venda de teste → Valor: 3,33 → Crédito → DEMO",
+          "No pinpad: inserir cartão → senha",
+          "Conferir no painel de recibos: via Lojista e via Portador",
+        ],
+        esperado: "Duas vias DIFERENCIADAS impressas.",
+      },
+      {
+        n: 11,
+        titulo: "QR Code PIX C6 BANK",
+        desc: "Pré-seleciona rede PIX C6 BANK.",
+        valor: "R$ 1,50",
+        rede: "PIX C6 BANK",
+        modalidade: "PIX",
+        comoFazer: [
+          "Card Venda de teste → Valor: 1,50",
+          "Clicar no botão PIX C6 BANK",
+          "Ler QR Code com o app DEMO PayGo (ou aguardar simulação)",
+        ],
+        esperado: "Aprovação automática e recibo impresso.",
+      },
     ],
   },
   {
     id: "s3",
     titulo: "3. Comunicação e menu administrativo",
     passos: [
-      { n: 12, titulo: "Teste de comunicação", desc: "Executar Teste de Comunicação no menu administrativo. Esperado: sucesso sem recibo." },
-      { n: 16, titulo: "Operação cancelada no menu administrativo", desc: "Entrar no menu administrativo e cancelar. Esperado: retorno 'OPERAÇÃO CANCELADA' à automação." },
+      {
+        n: 12,
+        titulo: "Teste de comunicação",
+        desc: "Executa apenas o teste de comunicação (sem venda).",
+        comoFazer: [
+          "Card TEF → botão Abrir menu ADM",
+          "No pinpad: escolher 'Teste de Comunicação'",
+        ],
+        esperado: "Sucesso sem recibo.",
+      },
+      {
+        n: 16,
+        titulo: "Cancelar dentro do menu administrativo",
+        desc: "Abrir o menu ADM e cancelar.",
+        comoFazer: [
+          "Card TEF → botão Abrir menu ADM",
+          "No pinpad: pressionar Cancelar/Esc no menu",
+        ],
+        esperado: "Retorno 'OPERAÇÃO CANCELADA' para a automação.",
+      },
     ],
   },
   {
     id: "s4",
     titulo: "4. Vendas para teste de cancelamento",
     passos: [
-      { n: 19, titulo: "Venda bem-sucedida (p/ cancelar depois)", desc: "Venda comum para gerar transação cancelável." },
-      { n: 21, titulo: "Cancelamento bem-sucedido", desc: "Cancelar venda do Passo 19. Esperado: aprovado e confirmado." },
+      {
+        n: 19,
+        titulo: "Venda bem-sucedida (para cancelar depois)",
+        desc: "Venda comum que vai ser cancelada no passo 21.",
+        valor: "R$ 20,00",
+        rede: "DEMO",
+        modalidade: "Crédito",
+        comoFazer: [
+          "Card Venda de teste → Valor: 20,00 → Crédito → DEMO",
+          "No pinpad: inserir cartão → senha",
+          "Anotar o NSU exibido no painel",
+        ],
+        esperado: "Aprovada e confirmada.",
+      },
+      {
+        n: 21,
+        titulo: "Cancelamento bem-sucedido",
+        desc: "Cancela a venda do passo 19.",
+        comoFazer: [
+          "Card TEF → botão Cancelar última venda (ou menu ADM → Cancelamento)",
+          "Informar o NSU do passo 19 se solicitado",
+          "No pinpad: passar cartão de supervisor (DEMO) → senha",
+        ],
+        esperado: "Cancelamento aprovado e confirmado.",
+      },
     ],
   },
   {
     id: "s5",
     titulo: "5. Quedas de energia",
     passos: [
-      { n: 24, titulo: "Queda de energia durante venda", desc: "Iniciar venda e simular queda (kill do processo). Esperado: ao reabrir, transação é recuperada/desfeita corretamente." },
-      { n: 25, titulo: "Queda de energia durante operação administrativa", desc: "Iniciar operação no menu admin e simular queda. Esperado: recuperação correta na próxima execução." },
+      {
+        n: 24,
+        titulo: "Queda de energia durante venda",
+        desc: "Simular queda no meio de uma venda.",
+        valor: "R$ 7,00",
+        comoFazer: [
+          "Iniciar venda R$ 7,00 → Crédito → DEMO",
+          "Quando o pinpad pedir senha, FECHAR o agente PayGo (kill no Gerenciador de Tarefas)",
+          "Reabrir o agente e tentar nova venda",
+        ],
+        esperado: "Pendência é recuperada / desfeita automaticamente.",
+      },
+      {
+        n: 25,
+        titulo: "Queda durante operação administrativa",
+        desc: "Simular queda no meio de operação no menu ADM.",
+        comoFazer: [
+          "Abrir menu ADM → escolher uma opção",
+          "FECHAR o agente PayGo antes de concluir",
+          "Reabrir o agente",
+        ],
+        esperado: "Recuperação correta na próxima execução.",
+      },
     ],
   },
   {
     id: "s6",
     titulo: "6. Dado genérico, menu genérico e mensagem máxima",
     passos: [
-      { n: 26, titulo: "Dado genérico digitado #1", desc: "Responder solicitação de dado genérico via teclado. Esperado: dado entregue corretamente." },
-      { n: 27, titulo: "Dado genérico digitado #2", desc: "Repetir solicitação de dado genérico digitado em outro fluxo." },
-      { n: 28, titulo: "Menu genérico #1", desc: "Selecionar opção em menu genérico apresentado pelo TEF." },
-      { n: 29, titulo: "Menu genérico #2 (selecionar 'ABCDEF')", desc: "Selecionar o item 'ABCDEF' no menu genérico." },
-      { n: 30, titulo: "Mensagem resultado tamanho máximo", desc: "Venda em que a mensagem de resultado utiliza o tamanho máximo. Esperado: tratada sem truncar." },
+      {
+        n: 26,
+        titulo: "Dado genérico digitado #1",
+        desc: "Responder solicitação de dado genérico no pinpad.",
+        valor: "R$ 4,00",
+        comoFazer: [
+          "Iniciar venda DEMO que dispare entrada de dado (ex.: CPF, parcelas)",
+          "No pinpad: digitar o dado solicitado",
+        ],
+        esperado: "Dado entregue corretamente e venda segue.",
+      },
+      {
+        n: 27,
+        titulo: "Dado genérico digitado #2",
+        desc: "Repetir em outro fluxo (ex.: débito).",
+        valor: "R$ 4,50",
+        comoFazer: [
+          "Iniciar venda Débito DEMO",
+          "Digitar dado quando solicitado",
+        ],
+        esperado: "Dado entregue e venda concluída.",
+      },
+      {
+        n: 28,
+        titulo: "Menu genérico #1",
+        desc: "Selecionar opção em menu genérico exibido pelo TEF.",
+        comoFazer: [
+          "Iniciar venda que dispare menu genérico",
+          "No pinpad: escolher a primeira opção",
+        ],
+        esperado: "Opção aceita e fluxo segue.",
+      },
+      {
+        n: 29,
+        titulo: "Menu genérico #2 — selecionar 'ABCDEF'",
+        desc: "Mesmo cenário, escolhendo o item 'ABCDEF'.",
+        comoFazer: [
+          "Iniciar venda que dispare menu genérico",
+          "No pinpad: navegar até 'ABCDEF' e confirmar",
+        ],
+        esperado: "Item 'ABCDEF' aceito.",
+      },
+      {
+        n: 30,
+        titulo: "Mensagem de resultado no tamanho máximo",
+        desc: "Venda cuja mensagem final ocupa o tamanho máximo.",
+        valor: "R$ 8,88",
+        comoFazer: [
+          "Rodar venda DEMO Crédito R$ 8,88",
+          "Conferir no painel a mensagem completa (não truncada)",
+        ],
+        esperado: "Mensagem tratada sem truncar.",
+      },
     ],
   },
   {
     id: "s7",
     titulo: "7. Transação pendente e confirmação",
     passos: [
-      { n: 31, titulo: "Preparar transação pendente", desc: "Realizar venda mantendo pendente para os próximos testes." },
-      { n: 32, titulo: "Transação pendente #2", desc: "Tratamento adicional da transação pendente conforme roteiro." },
-      { n: 33, titulo: "Pendente não encontrada #1", desc: "Solicitar confirmação de uma pendente inexistente. Esperado: tratada sem erro." },
-      { n: 34, titulo: "Pendente não encontrada #2", desc: "Repetir cenário de pendente inexistente em outro fluxo." },
-      { n: 35, titulo: "Confirmação manual", desc: "Confirmar manualmente uma transação previamente realizada." },
+      {
+        n: 31,
+        titulo: "Preparar transação pendente",
+        desc: "Forçar uma venda a ficar pendente para os próximos passos.",
+        valor: "R$ 6,00",
+        comoFazer: [
+          "Iniciar venda R$ 6,00 → Crédito → DEMO",
+          "Concluir digitação no pinpad",
+          "DESCONECTAR a rede do PC imediatamente após o OK do pinpad",
+          "Aguardar erro 'pendência' aparecer no painel",
+        ],
+        esperado: "Status fica pending_confirmation no painel.",
+      },
+      {
+        n: 32,
+        titulo: "Transação pendente #2",
+        desc: "Tratamento adicional da pendente.",
+        comoFazer: [
+          "Reconectar a rede",
+          "No card Venda de teste: clicar Confirmar pendência",
+        ],
+        esperado: "Pinpad liberado e transação marcada como aprovada.",
+      },
+      {
+        n: 33,
+        titulo: "Pendente não encontrada #1",
+        desc: "Pedir confirmação de uma pendente que não existe.",
+        comoFazer: [
+          "Sem ter pendência ativa: clicar Confirmar pendência",
+        ],
+        esperado: "Tratada sem erro (mensagem amigável).",
+      },
+      {
+        n: 34,
+        titulo: "Pendente não encontrada #2",
+        desc: "Mesmo cenário em outro fluxo (Desfazer).",
+        comoFazer: [
+          "Sem pendência ativa: clicar Desfazer pendência",
+        ],
+        esperado: "Tratada sem erro.",
+      },
+      {
+        n: 35,
+        titulo: "Confirmação manual",
+        desc: "Confirmar manualmente uma venda já feita.",
+        comoFazer: [
+          "Após uma venda aprovada, clicar Confirmar pendência no card",
+        ],
+        esperado: "Confirmação aceita pelo TEF.",
+      },
     ],
   },
   {
     id: "s8",
     titulo: "8. Desfazimento",
     passos: [
-      { n: 37, titulo: "Desfazimento manual", desc: "Solicitar desfazimento de uma transação. Esperado: aceito pelo TEF." },
+      {
+        n: 37,
+        titulo: "Desfazimento manual",
+        desc: "Solicitar desfazimento manual de transação.",
+        comoFazer: [
+          "Após uma venda recém-aprovada (mesma sessão), clicar Desfazer pendência",
+        ],
+        esperado: "Desfazimento aceito pelo TEF.",
+      },
     ],
   },
   {
     id: "s9",
     titulo: "9. Cancelamento por referência",
     passos: [
-      { n: 41, titulo: "Cancelamento por Referência Local #1", desc: "Cancelar informando 'Referência Local'. Esperado: aprovado." },
-      { n: 42, titulo: "Cancelamento por Referência Local #2", desc: "Variação do cancelamento por Referência Local." },
-      { n: 43, titulo: "Cancelamento por Referência Externa #1", desc: "Cancelar informando 'Referência Externa'. Esperado: aprovado." },
-      { n: 44, titulo: "Cancelamento por Referência Externa #2", desc: "Variação do cancelamento por Referência Externa." },
+      {
+        n: 41,
+        titulo: "Cancelamento por Referência Local #1",
+        desc: "Cancelar usando a Referência Local da venda.",
+        comoFazer: [
+          "Rodar venda DEMO R$ 12,00 → anotar a Referência Local (locRef) no painel",
+          "Menu ADM → Cancelamento por Referência Local → digitar locRef",
+          "Pinpad: cartão supervisor → senha",
+        ],
+        esperado: "Cancelamento aprovado.",
+      },
+      {
+        n: 42,
+        titulo: "Cancelamento por Referência Local #2",
+        desc: "Variação do anterior em outra venda.",
+        comoFazer: [
+          "Repetir o passo 41 com uma nova venda (R$ 13,00)",
+        ],
+        esperado: "Cancelamento aprovado.",
+      },
+      {
+        n: 43,
+        titulo: "Cancelamento por Referência Externa #1",
+        desc: "Cancelar usando a Referência Externa (extRef).",
+        comoFazer: [
+          "Rodar venda DEMO R$ 14,00 → anotar extRef no painel",
+          "Menu ADM → Cancelamento por Referência Externa → digitar extRef",
+          "Pinpad: cartão supervisor → senha",
+        ],
+        esperado: "Cancelamento aprovado.",
+      },
+      {
+        n: 44,
+        titulo: "Cancelamento por Referência Externa #2",
+        desc: "Variação em outra venda.",
+        comoFazer: [
+          "Repetir o passo 43 com nova venda (R$ 16,00)",
+        ],
+        esperado: "Cancelamento aprovado.",
+      },
     ],
   },
   {
     id: "s10",
     titulo: "10. Contactless / aproximação",
     passos: [
-      { n: 45, titulo: "Venda contactless aprovada", desc: "Venda por aproximação com senha. Esperado: aprovada e confirmada." },
-      { n: 46, titulo: "Venda contactless aprovada sem senha", desc: "Venda por aproximação dispensando senha. Esperado: aprovada e confirmada." },
+      {
+        n: 45,
+        titulo: "Venda contactless COM senha",
+        desc: "Aproximação acima do limite (pede PIN).",
+        valor: "R$ 250,00",
+        rede: "DEMO",
+        modalidade: "Crédito contactless",
+        comoFazer: [
+          "Card Venda de teste → Valor: 250,00 → Crédito → DEMO",
+          "No pinpad: APROXIMAR cartão DEMO contactless",
+          "Digitar a senha quando solicitada",
+        ],
+        esperado: "Aprovada e confirmada.",
+      },
+      {
+        n: 46,
+        titulo: "Venda contactless SEM senha",
+        desc: "Aproximação abaixo do limite — dispensa PIN.",
+        valor: "R$ 30,00",
+        rede: "DEMO",
+        modalidade: "Crédito contactless",
+        comoFazer: [
+          "Card Venda de teste → Valor: 30,00 → Crédito → DEMO",
+          "No pinpad: APROXIMAR cartão DEMO contactless",
+        ],
+        esperado: "Aprovada sem pedir senha.",
+      },
     ],
   },
   {
     id: "s11",
     titulo: "11. Queda após aprovação e QR Code finais",
     passos: [
-      { n: 51, titulo: "Queda de energia após aprovação", desc: "Aprovar venda e simular queda antes da confirmação. Esperado: tratamento correto na próxima execução." },
-      { n: 52, titulo: "QR Code — aprovação", desc: "Venda por QR Code com aprovação. Esperado: aprovada e confirmada." },
-      { n: 53, titulo: "QR Code — cancelamento", desc: "Cancelar venda QR Code. Esperado: aprovado." },
-      { n: 54, titulo: "QR Code — variação final", desc: "Variação final do fluxo QR Code conforme roteiro PayGo." },
+      {
+        n: 51,
+        titulo: "Queda de energia após aprovação",
+        desc: "Aprovar venda e simular queda ANTES da confirmação.",
+        valor: "R$ 18,00",
+        comoFazer: [
+          "Rodar venda R$ 18,00 → Crédito → DEMO",
+          "Assim que o pinpad mostrar APROVADA, FECHAR o agente (kill)",
+          "Reabrir o agente",
+        ],
+        esperado: "Recuperação correta na próxima execução (pendência resolvida).",
+      },
+      {
+        n: 52,
+        titulo: "QR Code — aprovação",
+        desc: "Venda QR Code aprovada.",
+        valor: "R$ 2,00",
+        rede: "PIX C6 BANK",
+        comoFazer: [
+          "Card Venda de teste → Valor: 2,00 → botão PIX C6 BANK",
+          "Pagar QR Code no app DEMO",
+        ],
+        esperado: "Aprovada e confirmada.",
+      },
+      {
+        n: 53,
+        titulo: "QR Code — cancelamento",
+        desc: "Cancelar venda QR Code aprovada.",
+        comoFazer: [
+          "Após o passo 52, abrir menu ADM → Cancelamento → informar NSU PIX",
+        ],
+        esperado: "Cancelamento aprovado.",
+      },
+      {
+        n: 54,
+        titulo: "QR Code — variação final",
+        desc: "Variação final do fluxo QR Code conforme roteiro PayGo.",
+        valor: "R$ 3,00",
+        rede: "PIX C6 BANK",
+        comoFazer: [
+          "Rodar nova venda PIX C6 BANK R$ 3,00 e seguir variação solicitada pela PayGo",
+        ],
+        esperado: "Conforme orientação do homologador.",
+      },
     ],
   },
 ];
@@ -462,12 +853,54 @@ export function TefRoteiroTestesCard() {
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground mt-1">{p.desc}</p>
+
+                          {(p.valor || p.rede || p.modalidade) && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {p.valor && (
+                                <Badge variant="default" className="text-[10px] font-mono">
+                                  💰 {p.valor}
+                                </Badge>
+                              )}
+                              {p.rede && (
+                                <Badge variant="outline" className="text-[10px]">
+                                  Rede: {p.rede}
+                                </Badge>
+                              )}
+                              {p.modalidade && (
+                                <Badge variant="outline" className="text-[10px]">
+                                  {p.modalidade}
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+
+                          {p.comoFazer && p.comoFazer.length > 0 && (
+                            <div className="mt-2 rounded border bg-muted/30 p-2">
+                              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                                Como fazer
+                              </div>
+                              <ol className="list-decimal list-inside space-y-0.5 text-xs text-foreground/90">
+                                {p.comoFazer.map((passo, i) => (
+                                  <li key={i} className="leading-snug">{passo}</li>
+                                ))}
+                              </ol>
+                            </div>
+                          )}
+
+                          {p.esperado && (
+                            <div className="mt-2 text-xs">
+                              <span className="font-semibold text-success">✓ Esperado:</span>{" "}
+                              <span className="text-muted-foreground">{p.esperado}</span>
+                            </div>
+                          )}
+
                           {ev && (
-                            <p className="text-[11px] text-muted-foreground mt-1 font-mono">
-                              {ev.label} · NSU {ev.nsu ?? "—"} · {formatBRL(ev.amount)}
+                            <p className="text-[11px] text-muted-foreground mt-2 font-mono">
+                              auto · {ev.label} · NSU {ev.nsu ?? "—"} · {formatBRL(ev.amount)}
                               {ev.acquirer ? ` · ${ev.acquirer}` : ""}
                             </p>
                           )}
+
                         </div>
                       </li>
                     );
