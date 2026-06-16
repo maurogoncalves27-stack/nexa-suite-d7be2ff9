@@ -331,7 +331,11 @@ export default function BankReconciliationPanel() {
     }
     toast({ title: "Conciliada", description: c.kind === "payable" ? "Conta a pagar quitada." : "Conta a receber recebida." });
     const tx = transactions.find((t) => t.id === txId);
-    if (tx) focusDateRef.current = tx.posted_at;
+    if (tx) {
+      focusDateRef.current = tx.posted_at;
+      // Herda o rateio do AP/AR (se houver) para a transação bancária
+      await inheritAllocationsFromSource(txId, c.kind, c.id, Math.abs(Number(tx.amount)));
+    }
     setMatchTarget(null);
     setMatchSearch("");
     await loadData();
