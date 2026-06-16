@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import {
   CreditCard, Copy, Pencil, Save, X, KeyRound,
-  ListChecks, CheckCircle2, XCircle, AlertTriangle, Loader2, RefreshCw, Download,
+  ListChecks, CheckCircle2, XCircle, AlertTriangle, Loader2, RefreshCw, Terminal,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
@@ -27,6 +27,9 @@ import TefRoteiroTestesCard from "@/components/tef-paygo/TefRoteiroTestesCard";
 const DEFAULT_PDC = "111476";
 const DEFAULT_HOST = "pos-transac-sb.tpgweb.io:31735";
 const DEFAULT_CNPJ = "44.932.369/0001-08";
+const AGENT_VERSION = "1.5.5";
+const AGENT_EXE_URL = "https://nexasuite.aquelaparme.com.br/releases/NEXA-ACBr-Agent-Setup-1.5.5.exe";
+const AGENT_INSTALL_COMMAND = `powershell -NoProfile -ExecutionPolicy Bypass -Command "$url='${AGENT_EXE_URL}'; $out=Join-Path $env:TEMP 'NEXA-ACBr-Agent-Setup-1.5.5.exe'; Invoke-WebRequest -Uri $url -OutFile $out; Start-Process $out"`;
 
 interface Store { id: string; name: string; }
 interface TefRow {
@@ -382,18 +385,16 @@ const TefPaygoSetup = () => {
                     {items.filter(i => i.state === "ok").length}/{items.length} OK
                   </Badge>
                 )}
-                <Badge variant="outline" className="text-[10px] h-5">Agente v1.5.5</Badge>
+                <Badge variant="outline" className="text-[10px] h-5">Agente v{AGENT_VERSION}</Badge>
                 <Button
                   variant="outline"
                   size="sm"
-                  asChild
                   className="h-6 text-[10px] gap-1"
-                  title="Baixar agente ACBr (v1.5.5) em ZIP — extraia e execute o .exe"
+                  title="Copia um comando PowerShell para baixar e iniciar o instalador fora do navegador"
+                  onClick={() => copy(AGENT_INSTALL_COMMAND, "Comando de instalação do agente")}
                 >
-                  <a href="/releases/NEXA-ACBr-Agent-Setup-1.5.5.zip" download>
-                    <Download className="h-3 w-3" />
-                    Baixar agente (.zip)
-                  </a>
+                  <Terminal className="h-3 w-3" />
+                  Copiar instalação
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => void runChecklist()} disabled={checkLoading} className="h-6 w-6 p-0">
                   {checkLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
