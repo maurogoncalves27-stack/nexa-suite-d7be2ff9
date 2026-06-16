@@ -470,6 +470,21 @@ public static class PayGoBridge
             short execRet = Fn<PW_iExecTransac_>("PW_iExecTransac")(data, ref count);
             EmitEvent("INFO", "PW_iExecTransac ret=" + execRet + " capturas=" + count);
 
+            // Leitura proativa do BR Code: quando QR pref=2 (PC) a DLL pode nao
+            // disparar PWDAT_DSPQRCODE, mas o QR ja fica disponivel em
+            // PWINFO_AUTHPOSQRCODE assim que o PayGo o gera. Emitimos uma unica
+            // vez para o agente entregar via /sale/status.
+            try
+            {
+                string qrPoll = Result(PWINFO_AUTHPOSQRCODE);
+                if (!String.IsNullOrEmpty(qrPoll) && qrPoll != _lastQrEmitted)
+                {
+                    _lastQrEmitted = qrPoll;
+                    EmitEvent("INFO", "QR Code lido proativamente (len=" + qrPoll.Length + ")");
+                    EmitEvent("QRCODE", qrPoll);
+                }
+            } catch { }
+
             if (execRet == PWRET_MOREDATA || execRet == PWRET_NOTHING) continue;
             return execRet;
         }
