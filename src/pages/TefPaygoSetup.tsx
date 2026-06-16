@@ -131,8 +131,6 @@ const TefPaygoSetup = () => {
               {cfg ? "Configuração encontrada" : "Padrão (sandbox)"}
             </Badge>
           </div>
-
-          <TefAgentDownloadCard />
             <div className="grid gap-2 sm:grid-cols-3 pt-1">
               <Field label="CNPJ" value={cnpj} />
               <div className="rounded-md border bg-muted/30 p-2.5 space-y-1">
