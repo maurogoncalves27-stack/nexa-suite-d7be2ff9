@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Loader2, RefreshCw, Copy, Download, FileSpreadsheet } from "lucide-react";
+import { Loader2, RefreshCw, Copy, Download, FileSpreadsheet, ScrollText } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface Props { storeId: string }
@@ -24,6 +24,7 @@ interface Row {
   authorization_code: string | null;
   reqnum: string | null;
   acquirer: string | null;
+  raw_response: any;
 }
 
 const HEADER = ["Data", "Hora", "Valor", "Status", "RecNum (REQNUM)", "NSU", "Autorização", "Adquirente"];
@@ -32,6 +33,7 @@ export default function TefRecnumExtractor({ storeId }: Props) {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [limit, setLimit] = useState("60");
+  const [showLogs, setShowLogs] = useState(false);
 
   const load = async () => {
     if (!storeId) { setRows([]); return; }
@@ -61,6 +63,7 @@ export default function TefRecnumExtractor({ storeId }: Props) {
         authorization_code: r.authorization_code ?? null,
         reqnum: reqnum ? String(reqnum) : null,
         acquirer: r.acquirer ?? null,
+        raw_response: raw,
       };
     });
     setRows(parsed);
@@ -119,6 +122,15 @@ export default function TefRecnumExtractor({ storeId }: Props) {
           Extrator de RecNum (planilha Setis)
         </h2>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-[11px] gap-1"
+            onClick={() => setShowLogs(v => !v)}
+          >
+            <ScrollText className="h-3.5 w-3.5" />
+            {showLogs ? "Ocultar logs" : "Ver logs PayGo"}
+          </Button>
           <Badge variant={withReqnum > 0 ? "default" : "secondary"}>
             {withReqnum}/{rows.length} com RecNum
           </Badge>
@@ -195,6 +207,40 @@ export default function TefRecnumExtractor({ storeId }: Props) {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+      {showLogs && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <ScrollText className="h-4 w-4 text-primary" />
+            Logs brutos PayGo (raw_response)
+          </h3>
+          {rows.length === 0 ? (
+            <div className="rounded-md border bg-muted/20 p-3 text-sm text-muted-foreground">
+              Nenhuma transação para exibir logs.
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {rows.map((r, i) => {
+                const raw = (r as any).raw_response ?? {};
+                return (
+                  <div key={i} className="rounded-md border bg-muted/20 p-2.5 text-xs space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline" className="text-[10px]">{r.status}</Badge>
+                      <span className="font-mono text-muted-foreground">
+                        {new Date(r.finished_at).toLocaleString("pt-BR")}
+                      </span>
+                      <span className="font-mono">R$ {r.amount.toFixed(2).replace(".", ",")}</span>
+                      {r.reqnum && <span className="font-mono text-primary">RecNum: {r.reqnum}</span>}
+                    </div>
+                    <pre className="text-[11px] bg-background rounded p-2 overflow-x-auto whitespace-pre-wrap">
+                      {JSON.stringify(raw, null, 2)}
+                    </pre>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </Card>
