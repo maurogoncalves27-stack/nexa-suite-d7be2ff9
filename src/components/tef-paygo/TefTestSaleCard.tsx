@@ -315,6 +315,16 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
           Desfazer pendência
         </Button>
+
+        <Button
+          onClick={() => setShowPinpad((s) => !s)}
+          disabled={busy}
+          variant="outline"
+          className="gap-2"
+        >
+          <Settings2 className="h-4 w-4" />
+          {showPinpad ? "Ocultar menu pinpad" : "Menu pinpad"}
+        </Button>
       </div>
 
       {status !== "idle" && (
