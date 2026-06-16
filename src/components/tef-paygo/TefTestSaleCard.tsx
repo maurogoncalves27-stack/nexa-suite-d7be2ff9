@@ -45,6 +45,47 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
   const [lastResult, setLastResult] = useState<string>("");
   const [pendingMethod, setPendingMethod] = useState<TefPaymentMethod | null>(null);
   const [showPinpad, setShowPinpad] = useState(false);
+  const [pixQrBrCode, setPixQrBrCode] = useState<string>("");
+  const [pixQrDataUrl, setPixQrDataUrl] = useState<string>("");
+  const [pixWaitMsg, setPixWaitMsg] = useState<string>("");
+  const pollAbortRef = useRef<{ stop: boolean } | null>(null);
+
+  // Renderiza QR sempre que receber novo BR Code
+  useEffect(() => {
+    if (!pixQrBrCode) { setPixQrDataUrl(""); return; }
+    QRCode.toDataURL(pixQrBrCode, { width: 320, margin: 1, errorCorrectionLevel: "M" })
+      .then(setPixQrDataUrl)
+      .catch(() => setPixQrDataUrl(""));
+  }, [pixQrBrCode]);
+
+  // Faz polling de /tef/sale/status enquanto a transacao PIX esta em andamento.
+  // O pinpad PPC930 nao tem display grafico — quem renderiza o QR e' essa UI.
+  const startPixPolling = async () => {
+    try {
+      const cfg = await loadTefConfig(ASA_SUL_ID);
+      const ctl = { stop: false };
+      pollAbortRef.current = ctl;
+      while (!ctl.stop) {
+        try {
+          const r = await fetch(joinAgentUrl(cfg.agentUrl, "/tef/sale/status"), {
+            signal: AbortSignal.timeout(2500),
+          });
+          if (r.ok) {
+            const data = await r.json().catch(() => ({} as any));
+            if (data?.qrCode && data.qrCode !== pixQrBrCode) setPixQrBrCode(data.qrCode);
+            if (data?.message) setPixWaitMsg(String(data.message));
+            if (data?.status === "done" || data?.status === "error" || data?.status === "idle") break;
+          }
+        } catch { /* ignora — segue tentando */ }
+        await new Promise((res) => setTimeout(res, 700));
+      }
+    } catch { /* ignore */ }
+  };
+
+  const stopPixPolling = () => {
+    if (pollAbortRef.current) pollAbortRef.current.stop = true;
+    pollAbortRef.current = null;
+  };
 
   const runSale = async (method: TefPaymentMethod, selectedAcquirer?: "DEMO" | "REDE" | "PIX C6 BANK") => {
     const value = Number(amount.replace(",", "."));
