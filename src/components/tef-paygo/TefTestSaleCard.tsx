@@ -194,17 +194,18 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
         variant: result.status === "approved" ? "default" : "destructive",
       });
     } catch (err: any) {
-      setStatus("error");
-      setStatusMsg(err?.message ?? String(err));
+      const hasQr = !!latestPixQrRef.current;
+      setStatus(hasQr && method === "pix" ? "timeout" : "error");
+      setStatusMsg(hasQr && method === "pix"
+        ? "QR Code gerado, mas o PayGo excedeu o tempo aguardando confirmação. Confira no banco/PayGo antes de repetir."
+        : err?.message ?? String(err));
       toast({
-        title: "Erro na transacao",
-        description: err?.message ?? String(err),
-        variant: "destructive",
+        title: hasQr && method === "pix" ? "Pix aguardando conferência" : "Erro na transacao",
+        description: hasQr && method === "pix" ? "O QR continua visível para conferência; não repita a venda sem verificar se houve pagamento." : err?.message ?? String(err),
+        variant: hasQr && method === "pix" ? "default" : "destructive",
       });
     } finally {
       stopPixPolling();
-      setPixQrBrCode("");
-      setPixWaitMsg("");
       setBusy(false);
     }
   };
