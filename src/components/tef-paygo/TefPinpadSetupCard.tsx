@@ -600,7 +600,7 @@ export default function TefPinpadSetupCard({ storeId, cpfCnpj, pontoDeCaptura, s
                 <div className="space-y-2">
                   <Input
                     autoFocus
-                    type={cap.ocultar ? "password" : "text"}
+                    type={isSecret ? "password" : "text"}
                     maxLength={cap.tamMax || undefined}
                     placeholder={cap.mascara || ""}
                     value={captureInputs[cap.identificador] ?? ""}
