@@ -115,6 +115,9 @@ export default function BankReconciliationPanel() {
   const [showReconciled, setShowReconciled] = useState(false);
   const [pageSize, setPageSize] = useState(50);
   const [hasMore, setHasMore] = useState(false);
+  // Lembra a data da última transação conciliada para restaurar a posição
+  // após o reload (evita "voltar para o topo" descrito pelo usuário).
+  const focusDateRef = useRef<string | null>(null);
 
   const loadAccounts = useCallback(async () => {
     const { data } = await supabase.from("bank_accounts").select("*").order("name");
