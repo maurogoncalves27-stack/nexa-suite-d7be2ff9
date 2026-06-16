@@ -376,34 +376,28 @@ const TefPaygoSetup = () => {
 
             {/* Checklist inline */}
             <div className="pt-2 border-t space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <ListChecks className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-semibold">Checklist de homologação</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {items.length > 0 && (
-                    <Badge variant={items.filter(i => i.state === "ok").length === items.length ? "default" : "secondary"} className="text-[10px] h-5">
-                      {items.filter(i => i.state === "ok").length}/{items.length} OK
-                    </Badge>
-                  )}
-                  <Badge variant="outline" className="text-[10px] h-5">Agente v1.5.5</Badge>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    asChild
-                    className="h-7 text-[11px] gap-1"
-                    title="Baixar agente ACBr (v1.5.5)"
-                  >
-                    <a href="/releases/NEXA-ACBr-Agent-Setup-1.5.5.exe" download>
-                      <Download className="h-3.5 w-3.5" />
-                      Baixar agente
-                    </a>
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => void runChecklist()} disabled={checkLoading} className="h-7 w-7 p-0">
-                    {checkLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                  </Button>
-                </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {items.length > 0 && (
+                  <Badge variant={items.filter(i => i.state === "ok").length === items.length ? "default" : "secondary"} className="text-[10px] h-5">
+                    {items.filter(i => i.state === "ok").length}/{items.length} OK
+                  </Badge>
+                )}
+                <Badge variant="outline" className="text-[10px] h-5">Agente v1.5.5</Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="h-7 text-[11px] gap-1"
+                  title="Baixar agente ACBr (v1.5.5)"
+                >
+                  <a href="/releases/NEXA-ACBr-Agent-Setup-1.5.5.exe" download>
+                    <Download className="h-3.5 w-3.5" />
+                    Baixar agente
+                  </a>
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => void runChecklist()} disabled={checkLoading} className="h-7 w-7 p-0">
+                  {checkLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                </Button>
               </div>
 
               {items.filter(i => i.state !== "ok").length === 0 ? (
@@ -411,19 +405,19 @@ const TefPaygoSetup = () => {
                   Tudo certo. Use o botão <strong>Abrir menu ADM</strong> e a <strong>Venda de teste</strong> para validar o pinpad.
                 </p>
               ) : (
-                <ul className="space-y-1">
+                <div className="flex flex-wrap gap-1.5">
                   {items.filter(i => i.state !== "ok").map((it, idx) => (
-                    <li key={idx} className="flex items-start gap-2 rounded border bg-muted/20 px-2 py-1">
+                    <Badge
+                      key={idx}
+                      variant={it.state === "fail" ? "destructive" : "outline"}
+                      className="text-[10px] h-5 gap-1"
+                      title={it.detail}
+                    >
                       <Dot state={it.state} />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs font-medium leading-tight">{it.label}</div>
-                        {it.detail && (
-                          <div className="text-[11px] text-muted-foreground leading-tight">{it.detail}</div>
-                        )}
-                      </div>
-                    </li>
+                      {it.label}
+                    </Badge>
                   ))}
-                </ul>
+                </div>
               )}
             </div>
           </Card>
