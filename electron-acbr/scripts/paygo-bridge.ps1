@@ -1291,7 +1291,8 @@ function Invoke-PayGoCommand {
         [string]$Command.senhaTecnica,
         [string]$Command.usePinpad,
         [string]$Command.pinpadPort,
-        [string]$Command.paygoMenuChoice
+        [string]$Command.paygoMenuChoice,
+        $false
       )
     }
 
@@ -1300,15 +1301,17 @@ function Invoke-PayGoCommand {
         $DllPath,
         $WorkingDir,
         0x20,
-        [string]$Command.cpfCnpj,
-        [string]$Command.pontoDeCaptura,
-        [string]$Command.ambiente,
-        [string]$Command.senhaTecnica,
-        [string]$Command.usePinpad,
-        [string]$Command.pinpadPort,
-        [string]$Command.paygoMenuChoice
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        $true
       )
     }
+
 
     if ($cmdAction -eq "cleanup") {
       return [PayGoBridge]::Cleanup($DllPath, $WorkingDir)
