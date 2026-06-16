@@ -809,140 +809,36 @@ export function TefRoteiroTestesCard() {
         <Progress value={pct} className="h-2" />
       </div>
 
-      {(() => {
-        const cur = flat[Math.min(idx, flat.length - 1)];
-        if (!cur) return null;
-        const { sec, passo: p } = cur;
-        const ev = autoEv.get(p.n);
-        const done = isDone(p.n);
-        return (
-          <div className="space-y-3">
-            {/* Navegação topo */}
-            <div className="flex items-center justify-between gap-2">
-              <Button variant="outline" size="sm" onClick={goPrev} disabled={idx === 0}>
-                <ChevronLeft className="h-4 w-4 mr-1" /> Voltar
-              </Button>
-              <div className="text-xs text-muted-foreground text-center flex-1 min-w-0 truncate">
-                <span className="font-medium text-foreground">{sec.titulo}</span>
-                <span className="mx-2">·</span>
-                <span>{idx + 1} de {flat.length}</span>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={goNext}
-                disabled={idx >= flat.length - 1}
-              >
-                Avançar <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </div>
+      <Accordion type="multiple" className="w-full">
+        {ROTEIRO.map((sec) => {
+          const totalSec = sec.passos.length;
+          const doneSec = sec.passos.filter((p) => isDone(p.n)).length;
+          return (
+            <AccordionItem key={sec.id} value={sec.id}>
+              <AccordionTrigger className="text-sm">
+                <span className="flex items-center gap-2 flex-1 text-left">
+                  <span className="font-medium">{sec.titulo}</span>
+                  <Badge
+                    variant={doneSec === totalSec ? "default" : "outline"}
+                    className="text-[10px] ml-auto"
+                  >
+                    {doneSec}/{totalSec}
+                  </Badge>
+                </span>
+              </AccordionTrigger>
+              <AccordionContent>
+                <SectionCarousel
+                  sec={sec}
+                  autoEv={autoEv}
+                  isDone={isDone}
+                  toggle={toggle}
+                />
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
+      </Accordion>
 
-            {/* Card do passo atual — altura mínima fixa para não “pular” */}
-            <div
-              className={`rounded-md border p-4 min-h-[420px] flex gap-3 items-start ${
-                done ? "bg-muted/50 border-success/30" : "bg-background"
-              }`}
-            >
-              <Checkbox
-                checked={done}
-                onCheckedChange={() => toggle(p.n)}
-                className="mt-1"
-                disabled={!!ev}
-              />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`text-xs font-mono ${done ? "text-success" : "text-muted-foreground"}`}>
-                    Passo {String(p.n).padStart(2, "0")}
-                  </span>
-                  <span className={`text-base font-semibold ${done ? "text-success line-through" : ""}`}>
-                    {p.titulo}
-                  </span>
-                  {ev && (
-                    <Badge variant="secondary" className="text-[10px] gap-1">
-                      <Sparkles className="h-3 w-3" /> auto
-                    </Badge>
-                  )}
-                </div>
-                <p className={`text-sm mt-1 ${done ? "text-success" : "text-muted-foreground"}`}>{p.desc}</p>
-
-                {/* Sanfona fechada: só mostra detalhes quando pendente */}
-                {!done && (
-                  <>
-                    {(p.valor || p.rede || p.modalidade) && (
-                      <div className="flex flex-wrap gap-1.5 mt-3">
-                        {p.valor && (
-                          <Badge variant="default" className="text-xs font-mono">
-                            💰 {p.valor}
-                          </Badge>
-                        )}
-                        {p.rede && (
-                          <Badge variant="outline" className="text-xs">Rede: {p.rede}</Badge>
-                        )}
-                        {p.modalidade && (
-                          <Badge variant="outline" className="text-xs">{p.modalidade}</Badge>
-                        )}
-                      </div>
-                    )}
-
-                    {p.comoFazer && p.comoFazer.length > 0 && (
-                      <div className="mt-3 rounded border bg-muted/30 p-3">
-                        <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
-                          Como fazer
-                        </div>
-                        <ol className="list-decimal list-inside space-y-1 text-sm text-foreground/90">
-                          {p.comoFazer.map((passo, i) => (
-                            <li key={i} className="leading-snug">{passo}</li>
-                          ))}
-                        </ol>
-                      </div>
-                    )}
-
-                    {p.esperado && (
-                      <div className="mt-3 text-sm">
-                        <span className="font-semibold text-success">✓ Esperado:</span>{" "}
-                        <span className="text-muted-foreground">{p.esperado}</span>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {ev && (
-                  <p className="text-[11px] text-muted-foreground mt-3 font-mono">
-                    auto · {ev.label} · NSU {ev.nsu ?? "—"} · {formatBRL(ev.amount)}
-                    {ev.acquirer ? ` · ${ev.acquirer}` : ""}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Navegação inferior + pular para próximo não-concluído */}
-            <div className="flex items-center justify-between gap-2">
-              <Button variant="ghost" size="sm" onClick={goPrev} disabled={idx === 0}>
-                <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  const next = flat.findIndex((f, i) => i > idx && !isDone(f.passo.n));
-                  if (next >= 0) setIdx(next);
-                  else toast.success("Nenhum passo pendente à frente.");
-                }}
-              >
-                Pular para próximo pendente
-              </Button>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={goNext}
-                disabled={idx >= flat.length - 1}
-              >
-                Próximo <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </div>
-          </div>
-        );
-      })()}
     </Card>
   );
 }
