@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle, AlertTriangle, Loader2, RefreshCw, ListChecks } from "lucide-react";
+import { CheckCircle2, XCircle, AlertTriangle, Loader2, RefreshCw, ListChecks, Download } from "lucide-react";
 import { checkAcbrAgent } from "@/lib/tef/acbrAdapter";
 
 interface Props { storeId: string }
