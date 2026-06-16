@@ -145,9 +145,10 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
         },
       );
 
-      setStatus(result.status);
+      const qrTimeout = method === "pix" && result.status === "error" && !!latestPixQrRef.current;
+      setStatus(qrTimeout ? "timeout" : result.status);
       setStatusMsg(result.message ?? "");
-      if (method === "pix" && result.status === "error" && latestPixQrRef.current) {
+      if (qrTimeout) {
         setStatus("timeout");
         setStatusMsg("QR Code gerado, mas o PayGo excedeu o tempo aguardando confirmação. Confira no banco/PayGo antes de repetir.");
       }
@@ -193,9 +194,9 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
       });
 
       toast({
-        title: result.status === "approved" ? "Aprovado" : `Resultado: ${result.status}`,
-        description: result.message ?? result.authorizationCode ?? result.nsu ?? "",
-        variant: result.status === "approved" ? "default" : "destructive",
+        title: qrTimeout ? "Pix aguardando conferência" : result.status === "approved" ? "Aprovado" : `Resultado: ${result.status}`,
+        description: qrTimeout ? "O QR continua visível; confira se houve pagamento antes de repetir." : result.message ?? result.authorizationCode ?? result.nsu ?? "",
+        variant: qrTimeout || result.status === "approved" ? "default" : "destructive",
       });
       if (method === "pix" && ["approved", "declined", "cancelled"].includes(result.status)) {
         setPixQrBrCode("");
