@@ -461,7 +461,7 @@ export default function BankReconciliationPanel() {
                     const sug = suggestionMap.get(tx.id);
                     const isReconciled = !!tx.reconciled_at;
                     return (
-                      <TableRow key={tx.id} className={isReconciled ? "opacity-60" : undefined}>
+                      <TableRow key={tx.id} data-posted-at={tx.posted_at} className={isReconciled ? "opacity-60" : undefined}>
                         <TableCell className="whitespace-nowrap">{fmtDate(tx.posted_at)}</TableCell>
                         <TableCell className="max-w-[280px]">
                           <div className="truncate text-sm">{tx.payee || tx.memo || "—"}</div>
