@@ -140,6 +140,29 @@ export const createPaygoAdapter = (config: TefConfig): TefAdapter => {
           };
         }
         result.message = effectiveMessage ?? fallbackMessage;
+
+        // Auto-confirma a venda aprovada (libera o token PGWEB: na DLL).
+        // Sem isso a próxima venda trava com "Existe transacao pendente de confirmacao no PayGo".
+        if (status === "approved" && r.reqNum) {
+          try {
+            const conf = await fetch(joinAgentUrl(config.agentUrl, "/tef/confirm"), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                reqNum: r.reqNum,
+                locRef: r.locRef ?? "",
+                extRef: r.extRef ?? "",
+                virtMerch: r.virtMerch ?? "",
+                authSyst: r.authSyst ?? "",
+              }),
+            });
+            const confData = await conf.json().catch(() => ({}));
+            (result.raw as any).__autoConfirm = { ok: !!confData?.ok, message: confData?.message };
+          } catch (e) {
+            (result.raw as any).__autoConfirm = { ok: false, error: e instanceof Error ? e.message : String(e) };
+          }
+        }
+
         onStatus?.(status, result.message);
         return result;
       } catch (err) {
