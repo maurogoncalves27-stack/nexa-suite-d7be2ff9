@@ -24,6 +24,7 @@ interface Row {
   authorization_code: string | null;
   reqnum: string | null;
   acquirer: string | null;
+  raw_response: any;
 }
 
 const HEADER = ["Data", "Hora", "Valor", "Status", "RecNum (REQNUM)", "NSU", "Autorização", "Adquirente"];
