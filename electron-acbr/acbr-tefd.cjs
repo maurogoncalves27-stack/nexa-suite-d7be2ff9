@@ -132,12 +132,18 @@ const pending = new Map(); // id -> { resolve, reject, timeout, onEvent }
 
 // status visível pelas rotas /tef/admin/status
 let admStatus = {
-  status: "idle",       // idle | running | done | error | aborted
+  status: "idle",       // idle | running | waiting_input | done | error | aborted
   message: "",
   startedAt: 0,
   result: null,
   error: null,
+  pendingCaptures: null, // CAPTURE_REQUEST emitidos pelo bridge aguardando resposta
+  captureSeq: 0,
 };
+
+// Id do request /tef/admin atualmente em execução (usado por respondAdm pra
+// escrever capture_response no stdin do host PowerShell).
+let currentAdminRequestId = null;
 
 function setAdmStatus(patch) {
   admStatus = { ...admStatus, ...patch };
@@ -146,6 +152,7 @@ function setAdmStatus(patch) {
 function getAdmStatus() {
   return { ...admStatus };
 }
+
 
 // status visível pelas rotas /tef/sale/status — usado pela UI para renderizar
 // o QR Code PIX (o pinpad PPC930 não tem display gráfico, então a automação
