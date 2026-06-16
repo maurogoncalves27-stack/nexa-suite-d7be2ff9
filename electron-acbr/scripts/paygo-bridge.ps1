@@ -333,7 +333,7 @@ public static class PayGoBridge
         }
     }
 
-    public static string Operation(string dllPath, string workingDir, byte operation, string cpfCnpj, string pontoDeCaptura, string ambiente, string senhaTecnica, string usePinpad, string pinpadPort, string paygoMenuChoice)
+    public static string Operation(string dllPath, string workingDir, byte operation, string cpfCnpj, string pontoDeCaptura, string ambiente, string senhaTecnica, string usePinpad, string pinpadPort, string paygoMenuChoice, bool interactive)
     {
         try
         {
@@ -342,11 +342,10 @@ public static class PayGoBridge
             _ambiente = ambiente ?? "";
             _senhaTecnica = senhaTecnica ?? "";
             _paygoMenuChoice = paygoMenuChoice ?? "";
-            // No ADMIN, vazio precisa permanecer vazio para NÃO enviar PWINFO_USINGPINPAD (0x7F01),
-            // pois esse parâmetro é inválido nesse fluxo e causa -2499 em PW_iAddParam.
-            // Mantemos o default "1" apenas quando o chamador realmente está no INSTALL.
             _usePinpad = String.IsNullOrWhiteSpace(usePinpad) ? "" : usePinpad;
             _pinpadPort = NormalizePinpadPort(pinpadPort);
+            _interactive = interactive;
+            _captureSeq = 0;
 
             Load(dllPath);
             short ret = Init(workingDir);
@@ -355,24 +354,66 @@ public static class PayGoBridge
             ret = Fn<PW_iNewTransac_>("PW_iNewTransac")(operation);
             if (ret != PWRET_OK) return Error("PW_iNewTransac", ret);
 
+            // Espelha demo oficial Setis (MainWindow.NewTransacExecute): para ADMIN/SALE
+            // apenas estes 5 params sao adicionados. CPFCNPJ/PontoDeCaptura/Ambiente
+            // sao lidos pela DLL via env vars setadas durante a instalacao do PdC.
             Add(PWINFO_AUTNAME, "PDV");
             Add(PWINFO_AUTVER, "1.0.0");
             Add(PWINFO_AUTDEV, "PayGo");
             Add(PWINFO_AUTCAP, "384");
             Add(PWINFO_DSPQRPREF, "2");
 
-            AddActivationParams();
+            // Modo nao-interativo (install legado): mantem behavior antigo com params extras.
+            if (!_interactive) AddActivationParams();
 
             ret = ExecLoop();
             if (ret != PWRET_OK) return Error("PW_iExecTransac", ret);
 
+            // Pendencia: espelha Fluxos.FluxoConfirmacaoPendencia da demo oficial.
+            // Apos ADMIN, se ficou pendencia confirma automaticamente para nao
+            // travar a proxima operacao com ERRO DE AUTENTICACAO DO PONTO DE CAPTURA.
+            TryConfirmPendency();
+
+            // Se a transacao corrente exige confirmacao, confirma agora.
+            if (RequiresConfirmation())
+            {
+                short cret = ConfirmCurrent(PWCNF_CNF_AUTO);
+                if (cret != PWRET_OK) EmitEvent("INFO", "PW_iConfirmation pos-ADMIN ret=" + cret);
+            }
+
+            _interactive = false;
             return "{\"ok\":true,\"status\":\"ok\",\"message\":\"Operacao PayGo concluida\"}";
         }
         catch (Exception ex)
         {
+            _interactive = false;
             return "{\"ok\":false,\"status\":\"error\",\"message\":\"" + Esc(ex.Message) + "\"}";
         }
     }
+
+    private static void TryConfirmPendency()
+    {
+        try
+        {
+            string pndReqNum = Result(PWINFO_PNDREQNUM);
+            if (String.IsNullOrWhiteSpace(pndReqNum)) return;
+            EmitEvent("INFO", "Pendencia detectada apos ADMIN — confirmando automaticamente (PWCNF_CNF_AUTO).");
+            short ret = Fn<PW_iConfirmation_>("PW_iConfirmation")(
+                PWCNF_CNF_AUTO,
+                pndReqNum,
+                Result(PWINFO_PNDAUTLOCREF),
+                Result(PWINFO_PNDAUTEXTREF),
+                Result(PWINFO_PNDVIRTMERCH),
+                Result(PWINFO_PNDAUTHSYST)
+            );
+            EmitEvent("INFO", "Confirmacao de pendencia ret=" + ret);
+        }
+        catch (Exception ex)
+        {
+            EmitEvent("INFO", "Falha confirmando pendencia: " + ex.Message);
+        }
+    }
+
 
     public static string CommTest(string dllPath, string workingDir)
     {
