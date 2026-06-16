@@ -442,8 +442,6 @@ const TefPaygoSetup = () => {
           <TefRoteiroTestesCard />
 
           <TefRecnumExtractor storeId={storeId} />
-
-          <TefHomologationChecklist storeId={storeId} />
         </div>
 
         {/* Coluna lateral — impressora (altura total) */}
