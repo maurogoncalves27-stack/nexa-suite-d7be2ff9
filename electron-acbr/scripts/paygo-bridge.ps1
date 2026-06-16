@@ -1071,6 +1071,10 @@ function Invoke-PayGoCommand {
       )
     }
 
+    if ($cmdAction -eq "cleanup") {
+      return [PayGoBridge]::Cleanup($DllPath, $WorkingDir)
+    }
+
     if ($cmdAction -eq "confirm" -or $cmdAction -eq "undo") {
       if ([string]::IsNullOrWhiteSpace([string]$Command.confirmationJsonBase64)) {
         throw "confirmationJsonBase64 e obrigatorio para $cmdAction"
