@@ -381,6 +381,31 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
     }
   };
 
+  const limparPendenciaPaygo = async () => {
+    setBusy(true);
+    setStatus("processing");
+    setStatusMsg("Limpando pendência da PGWebLib...");
+    try {
+      const cfg = await loadTefConfig(ASA_SUL_ID);
+      const resp = await paygoLimparPendencia(cfg.agentUrl);
+      if (resp.ok) {
+        setStatus("idle");
+        setStatusMsg(resp.message ?? "Pendência limpa. Pode iniciar nova venda.");
+        toast({ title: "Pendência limpa", description: resp.message ?? "OK" });
+      } else {
+        setStatus("error");
+        setStatusMsg(resp.error ?? "Falha ao limpar pendência");
+        toast({ title: "Falha", description: resp.error ?? "", variant: "destructive" });
+      }
+    } catch (err: any) {
+      setStatus("error");
+      setStatusMsg(err?.message ?? String(err));
+      toast({ title: "Erro", description: err?.message ?? String(err), variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
 
 
   return (
