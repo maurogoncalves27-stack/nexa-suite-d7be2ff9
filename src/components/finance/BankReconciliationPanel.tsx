@@ -798,6 +798,37 @@ export default function BankReconciliationPanel() {
         onOpenChange={(o) => !o && setCreateTarget(null)}
         onCreated={loadData}
       />
+
+      <Dialog open={!!allocTarget} onOpenChange={(o) => { if (!o && !submitting) { setAllocTarget(null); setAllocSplits([]); } }}>
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Ratear entre lojas</DialogTitle>
+            <DialogDescription>
+              {allocTarget && (
+                <>Transação de <strong>{fmtBRL(Number(allocTarget.amount))}</strong> em {fmtDate(allocTarget.posted_at)} — {allocTarget.payee || allocTarget.memo || "—"}</>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {allocLoading ? (
+            <div className="py-8 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+          ) : (
+            <AllocationEditor
+              stores={allocStores}
+              totalAmount={allocTarget ? Math.abs(Number(allocTarget.amount)) : 0}
+              value={allocSplits}
+              onChange={setAllocSplits}
+              disabled={submitting}
+            />
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setAllocTarget(null); setAllocSplits([]); }} disabled={submitting}>Cancelar</Button>
+            <Button onClick={saveAllocations} disabled={submitting || allocLoading}>
+              {submitting && <Loader2 className="h-4 w-4 animate-spin mr-1" />} Salvar rateio
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
