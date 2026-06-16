@@ -34,6 +34,7 @@ export interface TefPaymentRequest {
   orderId?: string;          // para vincular ao pdv_orders
   storeId?: string;          // para selecionar config TEF
   acquirer?: string;          // rede/adquirente preferida (ex.: DEMO, REDE)
+  paygoQrDisplayPreference?: "1" | "2"; // 1=pinpad, 2=checkout/PC
 }
 
 export interface TefPaymentResult {
