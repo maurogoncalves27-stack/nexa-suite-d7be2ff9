@@ -62,6 +62,7 @@ export const logTefTransaction = async (params: {
   cardLast4?: string;
   installments?: number;
   acquirer?: string;
+  method?: string;
   raw?: unknown;
 }) => {
   await supabase.from("pdv_tef_transactions").insert({
@@ -77,6 +78,7 @@ export const logTefTransaction = async (params: {
     card_last4: params.cardLast4 ?? null,
     installments: params.installments ?? null,
     acquirer: params.acquirer ?? null,
+    payment_method: params.method ?? null,
     raw_response: (params.raw ?? null) as never,
     finished_at: new Date().toISOString(),
   });
