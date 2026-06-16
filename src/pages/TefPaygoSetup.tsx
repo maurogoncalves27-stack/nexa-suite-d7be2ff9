@@ -28,8 +28,8 @@ import TefRoteiroTestesCard from "@/components/tef-paygo/TefRoteiroTestesCard";
 const DEFAULT_PDC = "111476";
 const DEFAULT_HOST = "pos-transac-sb.tpgweb.io:31735";
 const DEFAULT_CNPJ = "44.932.369/0001-08";
-const AGENT_VERSION = "1.5.12";
-const AGENT_EXE_URL = "https://nexasuite.aquelaparme.com.br/releases/NEXA-ACBr-Agent-Setup-1.5.12.exe";
+const AGENT_VERSION = "1.5.13";
+const AGENT_EXE_URL = "https://nexasuite.aquelaparme.com.br/releases/NEXA-ACBr-Agent-Setup-1.5.13.exe";
 // Cole DIRETO no prompt do PowerShell. Faz tudo numa tacada:
 // 1) mata o agente que estiver rodando
 // 2) entra na pasta do repo e dá git pull (atualiza pro código mais novo)
