@@ -368,6 +368,10 @@ function runBridge(payload, opts = {}) {
 
     pending.set(id, { resolve, reject, timeout, onEvent: opts.onEvent });
 
+    if (typeof opts.onRequestId === "function") {
+      try { opts.onRequestId(id); } catch { /* ignore */ }
+    }
+
     const line = JSON.stringify({ id, ...payload }) + "\n";
     host.stdin.write(line, "utf8", (err) => {
       if (!err) return;
@@ -378,6 +382,16 @@ function runBridge(payload, opts = {}) {
     });
   }));
 }
+
+// Escreve uma linha JSON direto na stdin do host PayGo. Usado pra responder
+// um CAPTURE_REQUEST que o bridge está bloqueando aguardando.
+function writeHostLine(obj) {
+  if (!host || !host.stdin || !host.stdin.writable) {
+    throw new Error("Host PayGo indisponivel");
+  }
+  host.stdin.write(JSON.stringify(obj) + "\n", "utf8");
+}
+
 
 // ---------- API pública ----------
 function isAvailable() {
