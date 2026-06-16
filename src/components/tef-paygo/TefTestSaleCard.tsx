@@ -113,6 +113,7 @@ export default function TefTestSaleCard() {
         cardLast4: result.cardLast4,
         installments: result.installments,
         acquirer: result.acquirer ?? selectedAcquirer ?? acquirer,
+        method,
         raw: result.raw,
       });
 
