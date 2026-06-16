@@ -268,6 +268,7 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
             onChange={(e) => setAmount(e.target.value)}
             className="w-32"
             disabled={busy}
+            placeholder="0,00"
           />
         </div>
 
