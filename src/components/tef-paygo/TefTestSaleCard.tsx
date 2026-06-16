@@ -2,13 +2,14 @@
  * Card temporario de venda TEF para validar o pinpad PayGo sem passar pelo
  * fluxo completo de produtos/menu do PDV.
  */
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import QRCode from "qrcode";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CreditCard, Loader2, FlaskConical, CheckCircle2, XCircle, Settings2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { CreditCard, Loader2, FlaskConical, CheckCircle2, XCircle, Settings2, QrCode } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { loadTefConfig, createTefAdapter, logTefTransaction } from "@/lib/tef";
@@ -44,6 +45,47 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
   const [lastResult, setLastResult] = useState<string>("");
   const [pendingMethod, setPendingMethod] = useState<TefPaymentMethod | null>(null);
   const [showPinpad, setShowPinpad] = useState(false);
+  const [pixQrBrCode, setPixQrBrCode] = useState<string>("");
+  const [pixQrDataUrl, setPixQrDataUrl] = useState<string>("");
+  const [pixWaitMsg, setPixWaitMsg] = useState<string>("");
+  const pollAbortRef = useRef<{ stop: boolean } | null>(null);
+
+  // Renderiza QR sempre que receber novo BR Code
+  useEffect(() => {
+    if (!pixQrBrCode) { setPixQrDataUrl(""); return; }
+    QRCode.toDataURL(pixQrBrCode, { width: 320, margin: 1, errorCorrectionLevel: "M" })
+      .then(setPixQrDataUrl)
+      .catch(() => setPixQrDataUrl(""));
+  }, [pixQrBrCode]);
+
+  // Faz polling de /tef/sale/status enquanto a transacao PIX esta em andamento.
+  // O pinpad PPC930 nao tem display grafico — quem renderiza o QR e' essa UI.
+  const startPixPolling = async () => {
+    try {
+      const cfg = await loadTefConfig(ASA_SUL_ID);
+      const ctl = { stop: false };
+      pollAbortRef.current = ctl;
+      while (!ctl.stop) {
+        try {
+          const r = await fetch(joinAgentUrl(cfg.agentUrl, "/tef/sale/status"), {
+            signal: AbortSignal.timeout(2500),
+          });
+          if (r.ok) {
+            const data = await r.json().catch(() => ({} as any));
+            if (data?.qrCode && data.qrCode !== pixQrBrCode) setPixQrBrCode(data.qrCode);
+            if (data?.message) setPixWaitMsg(String(data.message));
+            if (data?.status === "done" || data?.status === "error" || data?.status === "idle") break;
+          }
+        } catch { /* ignora — segue tentando */ }
+        await new Promise((res) => setTimeout(res, 700));
+      }
+    } catch { /* ignore */ }
+  };
+
+  const stopPixPolling = () => {
+    if (pollAbortRef.current) pollAbortRef.current.stop = true;
+    pollAbortRef.current = null;
+  };
 
   const runSale = async (method: TefPaymentMethod, selectedAcquirer?: "DEMO" | "REDE" | "PIX C6 BANK") => {
     const value = Number(amount.replace(",", "."));
@@ -56,6 +98,11 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
     setStatus("connecting");
     setStatusMsg("Carregando config TEF da Asa Sul...");
     setLastResult("");
+    setPixQrBrCode("");
+    setPixWaitMsg("");
+
+    // PIX nao aparece no PPC930 (sem display grafico) — a automacao tem que mostrar o QR.
+    if (method === "pix") void startPixPolling();
 
     try {
       const cfg = await loadTefConfig(ASA_SUL_ID);
@@ -144,6 +191,9 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
         variant: "destructive",
       });
     } finally {
+      stopPixPolling();
+      setPixQrBrCode("");
+      setPixWaitMsg("");
       setBusy(false);
     }
   };
@@ -158,6 +208,9 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
 
   const cancelNetworkSelection = async () => {
     setPendingMethod(null);
+    stopPixPolling();
+    setPixQrBrCode("");
+    setPixWaitMsg("");
     try {
       const cfg = await loadTefConfig(ASA_SUL_ID);
       const adapter = createTefAdapter(cfg);
@@ -428,6 +481,29 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
           </pre>
         </details>
       )}
+
+      <Dialog open={!!pixQrDataUrl} onOpenChange={(open) => { if (!open) { void cancelNetworkSelection(); setPixQrBrCode(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><QrCode className="h-5 w-5" /> Pague com Pix</DialogTitle>
+            <DialogDescription>
+              {pixWaitMsg || "Cliente, escaneie este QR Code no app do seu banco para concluir o pagamento."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-3">
+            {pixQrDataUrl && (
+              <img src={pixQrDataUrl} alt="QR Code Pix" className="rounded border bg-white p-2" width={320} height={320} />
+            )}
+            <details className="w-full text-xs">
+              <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Mostrar BR Code (Pix copia-e-cola)</summary>
+              <pre className="mt-2 max-h-32 overflow-auto rounded bg-muted p-2 font-mono break-all whitespace-pre-wrap">{pixQrBrCode}</pre>
+            </details>
+            <Button variant="destructive" className="w-full" onClick={() => void cancelNetworkSelection()}>
+              Cancelar transação
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!pendingMethod} onOpenChange={(open) => { if (!open) setPendingMethod(null); }}>
         <DialogContent className="sm:max-w-sm">

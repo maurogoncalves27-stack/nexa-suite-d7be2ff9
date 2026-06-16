@@ -146,6 +146,30 @@ function getAdmStatus() {
   return { ...admStatus };
 }
 
+// status visível pelas rotas /tef/sale/status — usado pela UI para renderizar
+// o QR Code PIX (o pinpad PPC930 não tem display gráfico, então a automação
+// precisa mostrar o BR Code para o cliente escanear no app do banco).
+let saleStatus = {
+  status: "idle", // idle | running | done | error
+  message: "",
+  qrCode: "",     // BR Code Pix recebido via PWDAT_DSPQRCODE
+  startedAt: 0,
+  method: "",     // CREDITO | DEBITO | PIX | VOUCHER
+  amount: 0,
+};
+
+function setSaleStatus(patch) {
+  saleStatus = { ...saleStatus, ...patch };
+}
+
+function getSaleStatus() {
+  return { ...saleStatus };
+}
+
+function clearSaleStatus() {
+  saleStatus = { status: "idle", message: "", qrCode: "", startedAt: 0, method: "", amount: 0 };
+}
+
 // ---------- spawn / shutdown ----------
 function stopHost(reason) {
   if (host) {
@@ -401,19 +425,42 @@ async function efetuarPagamento(opts = {}) {
   const method = methodToBridge(opts.tipo);
   const saleId = opts.saleId || `SALE-${Date.now()}`;
 
-  const payload = await runBridge({
-    action: "sale",
-    saleId,
-    amountInCents,
+  setSaleStatus({
+    status: "running",
+    message: "Iniciando transação no PayGo...",
+    qrCode: "",
+    startedAt: Date.now(),
     method,
-    installments,
-    paygoMenuChoice: opts.paygoMenuChoice || "",
-    captureValuesBase64: opts.captureValuesBase64 || "",
-  }, { onEvent: (ev) => {
-    if (typeof opts.onDisplay === "function" && ev.message) opts.onDisplay(ev.message);
-  }});
+    amount: valor,
+  });
 
-  return payload;
+  try {
+    const payload = await runBridge({
+      action: "sale",
+      saleId,
+      amountInCents,
+      method,
+      installments,
+      paygoMenuChoice: opts.paygoMenuChoice || "",
+      captureValuesBase64: opts.captureValuesBase64 || "",
+    }, { onEvent: (ev) => {
+      if (!ev) return;
+      // O bridge emite eventos NDJSON: { type, message }.
+      // QRCODE traz o BR Code Pix em `message` (vindo de szValorInicial).
+      if (ev.type === "QRCODE" && ev.message) {
+        setSaleStatus({ qrCode: ev.message, message: "Aguardando pagamento PIX. Cliente, escaneie o QR Code." });
+      } else if (ev.message) {
+        setSaleStatus({ message: ev.message });
+      }
+      if (typeof opts.onDisplay === "function" && ev.message) opts.onDisplay(ev.message);
+    }});
+
+    setSaleStatus({ status: "done", message: payload?.message || payload?.status || "Concluído" });
+    return payload;
+  } catch (err) {
+    setSaleStatus({ status: "error", message: err.message });
+    throw err;
+  }
 }
 
 async function cancelarVenda(opts = {}) {
@@ -539,6 +586,8 @@ module.exports = {
   cancelarEmAndamento,
   administrativoAsync,
   getAdmStatus,
+  getSaleStatus,
+  clearSaleStatus,
   abortAdm,
   respondAdm,
   instalarPdc,
