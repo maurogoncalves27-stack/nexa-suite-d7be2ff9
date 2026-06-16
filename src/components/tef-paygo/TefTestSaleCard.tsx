@@ -520,6 +520,7 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center gap-3">
+            {pixSaleInfo && <Badge variant="outline">{pixSaleInfo}</Badge>}
             {pixQrDataUrl && (
               <img src={pixQrDataUrl} alt="QR Code Pix" className="rounded border bg-white p-2" width={320} height={320} />
             )}
@@ -528,7 +529,7 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
               <pre className="mt-2 max-h-32 overflow-auto rounded bg-muted p-2 font-mono break-all whitespace-pre-wrap">{pixQrBrCode}</pre>
             </details>
             <Button variant="destructive" className="w-full" onClick={() => void cancelNetworkSelection()}>
-              Cancelar transação
+              {status === "timeout" ? "Cancelar após conferência" : "Cancelar transação"}
             </Button>
           </div>
         </DialogContent>
