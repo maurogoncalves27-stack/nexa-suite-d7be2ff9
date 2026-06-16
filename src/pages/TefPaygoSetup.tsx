@@ -282,6 +282,8 @@ const TefPaygoSetup = () => {
             </div>
           </Card>
 
+          <TefAgentDownloadCard />
+
           <TefPinpadSetupCard
             storeId={storeId}
             cpfCnpj={cnpj}
