@@ -665,7 +665,7 @@ function SectionCarousel({
   toggle,
 }: {
   sec: Secao;
-  autoEv: Map<number, AutoEv>;
+  autoEv: Map<number, Evidence>;
   isDone: (n: number) => boolean;
   toggle: (n: number) => void;
 }) {
