@@ -208,6 +208,9 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
 
   const cancelNetworkSelection = async () => {
     setPendingMethod(null);
+    stopPixPolling();
+    setPixQrBrCode("");
+    setPixWaitMsg("");
     try {
       const cfg = await loadTefConfig(ASA_SUL_ID);
       const adapter = createTefAdapter(cfg);
