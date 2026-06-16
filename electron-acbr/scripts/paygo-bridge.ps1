@@ -473,9 +473,12 @@ public static class PayGoBridge
                 EmitEvent("INFO", First(data.szValorInicial, "PayGo solicitou exibicao no checkout"));
                 return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, data.szValorInicial ?? "");
             case PWDAT_DSPQRCODE:
-                EmitEvent("INFO", "PayGo solicitou exibicao de QR Code");
-                EmitEvent("QRCODE", data.szValorInicial ?? "");
-                return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, data.szValorInicial ?? "");
+                {
+                    string qr = data.szValorInicial ?? "";
+                    EmitEvent("INFO", "PayGo solicitou exibicao de QR Code (id=" + FormatIdentifier(data.wIdentificador) + " len=" + qr.Length + ")");
+                    EmitEvent("QRCODE", qr);
+                    return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, qr);
+                }
             case PWDAT_PPENTRY:
                 EmitEvent("PINPAD", "Aguardando entrada de dados no pinpad");
                 ret = Fn<PW_iPPGetData_>("PW_iPPGetData")(index);
