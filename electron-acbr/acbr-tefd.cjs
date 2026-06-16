@@ -116,6 +116,7 @@ const NEXA_DEFAULTS = {
   ambiente: process.env.PAYGO_AMBIENTE || "DEMO",
   senhaTecnica: process.env.PAYGO_SENHA_TECNICA || "314159",
   pinpadPort: process.env.PAYGO_PINPAD_PORT || "5",
+  qrDisplayPreference: process.env.PAYGO_QR_DISPLAY_PREF || "2",
 };
 
 // ---------- estado do host PowerShell ----------
@@ -150,12 +151,15 @@ function getAdmStatus() {
 // o QR Code PIX (o pinpad PPC930 não tem display gráfico, então a automação
 // precisa mostrar o BR Code para o cliente escanear no app do banco).
 let saleStatus = {
-  status: "idle", // idle | running | done | error
+  status: "idle", // idle | running | done | error | timeout
   message: "",
   qrCode: "",     // BR Code Pix recebido via PWDAT_DSPQRCODE
   startedAt: 0,
+  saleId: "",
   method: "",     // CREDITO | DEBITO | PIX | VOUCHER
   amount: 0,
+  qrDisplayPreference: NEXA_DEFAULTS.qrDisplayPreference,
+  lastQrAt: 0,
 };
 
 function setSaleStatus(patch) {
@@ -167,7 +171,7 @@ function getSaleStatus() {
 }
 
 function clearSaleStatus() {
-  saleStatus = { status: "idle", message: "", qrCode: "", startedAt: 0, method: "", amount: 0 };
+  saleStatus = { status: "idle", message: "", qrCode: "", startedAt: 0, saleId: "", method: "", amount: 0, qrDisplayPreference: NEXA_DEFAULTS.qrDisplayPreference, lastQrAt: 0 };
 }
 
 // ---------- spawn / shutdown ----------
