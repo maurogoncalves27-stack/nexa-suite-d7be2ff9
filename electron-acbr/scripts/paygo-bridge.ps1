@@ -82,6 +82,7 @@ public static class PayGoBridge
     private const ushort PWINFO_AUTHTECHUSER = 0xF6;
     private const ushort PWINFO_DSPQRPREF = 0x7F50;
     private const ushort PWINFO_PAYMNTTYPE = 0x1F21;
+    private const ushort PWINFO_AUTHPOSQRCODE = 0x1F77;
     private const ushort PWINFO_USINGPINPAD = 0x7F01;
     private const ushort PWINFO_PPCOMMPORT = 0x7F02;
     private const ushort PWINFO_PNDAUTHSYST = 0x7F05;

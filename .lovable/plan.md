@@ -1,23 +1,22 @@
-Plano para corrigir o PIX no PayGo/PPC930:
+Vou ajustar o fluxo PIX do agente PayGo para ficar alinhado ao exemplo oficial C# que você enviou.
 
-1. Corrigir o tipo de pagamento PIX no bridge
-- Hoje o agente envia `method = "PIX"`, mas o `paygo-bridge.ps1` só ativa PIX quando recebe `"PIX_TEF"`.
-- Vou ajustar para aceitar `PIX` e `PIX_TEF`, enviando `PWINFO_PAYMNTTYPE = 8` corretamente.
-- Isso é o principal suspeito: a tela pisca porque a transação entra, mas o PayGo pode não estar configurando o fluxo Pix de verdade.
+Pontos encontrados na comparação:
+- A demo oficial usa `PWINFO_AUTCAP = 128 + 256 = 384`; nosso agente está usando `452`, com capacidades extras.
+- A demo oficial usa `PWINFO_DSPQRPREF = 2`, ou seja, QR Code no checkout/tela do PC.
+- O mais importante: no `PWDAT_DSPQRCODE`, a demo NÃO lê o QR de `szValorInicial`. Ela chama `PW_iGetResult(PWINFO_AUTHPOSQRCODE = 0x1F77)` e depois responde `PW_iAddParam(wIdentificador, "")`.
+- Nosso código hoje está pegando `data.szValorInicial`, emitindo esse valor e devolvendo esse mesmo valor no `PW_iAddParam`; isso diverge da demo e explica o timeout sem modal/QR.
 
-2. Ajustar preferência de QR para pinpad + PC
-- Manter o suporte ao QR na tela do PC como fallback.
-- Ajustar o comentário e o estado para não assumir mais que o PPC930 não tem display.
-- Preservar `PWINFO_DSPQRPREF`, mas deixar explícito no código que o objetivo é permitir QR no pinpad e espelho na automação.
+Plano de implementação:
+1. Em `electron-acbr/scripts/paygo-bridge.ps1`, adicionar a constante `PWINFO_AUTHPOSQRCODE = 0x1F77`.
+2. Trocar o tratamento de `PWDAT_DSPQRCODE` para:
+   - chamar `Result(PWINFO_AUTHPOSQRCODE)` para obter o BR Code real;
+   - emitir evento `QRCODE` com esse conteúdo para o modal no PC;
+   - chamar `PW_iAddParam(data.wIdentificador, "")`, igual à demo oficial.
+3. Alinhar `PWINFO_AUTCAP` da venda/admin/install para `384`, igual à demo oficial: checkout display + QR checkout.
+4. Manter `PWINFO_DSPQRPREF = 2`, porque a própria documentação diz que `2` é exibir no checkout/PC; se quisermos testar pinpad depois, será um teste separado com valor `1`.
+5. Atualizar mensagens/comentários da tela de teste para parar de dizer que o PPC930 não tem display gráfico e deixar claro que o QR do PC é o fallback oficial do checkout.
+6. Subir versão do agente para `1.5.8`, para você conseguir confirmar que gerou a versão certa.
 
-3. Reforçar log do evento `PWDAT_DSPQRCODE`
-- Quando o PayGo pedir exibição do QR, registrar identificador, tamanho do payload e mensagem de diagnóstico.
-- Não expor dados sensíveis além do necessário; o BR Code só seguirá para a UI porque é necessário para renderização fallback.
-
-4. Subir versão do agente
-- Atualizar `electron-acbr/package.json` de `1.5.6` para `1.5.7`, pois é uma correção real depois da 1.5.6.
-
-5. Resultado esperado no reteste
-- Rebuild do agente.
-- No Passo 11 PIX C6 BANK, o PPC930 deve sair da tela branca e exibir o QR Code.
-- Se ainda não exibir no pinpad, a tela do PC deve receber o BR Code e mostrar o modal, e os logs vão indicar se a DLL gerou `PWDAT_DSPQRCODE`.
+Resultado esperado:
+- Na próxima venda PIX, se a DLL gerar `PWDAT_DSPQRCODE`, o agente deve receber o BR Code por `PWINFO_AUTHPOSQRCODE` e abrir o modal/QR no PC.
+- Se ainda não aparecer no pinpad, isso passa a ser comportamento/configuração do PayGo/PdC, mas o fluxo do PC estará igual ao exemplo oficial.
