@@ -96,7 +96,7 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
     pollAbortRef.current = null;
   };
 
-  const runSale = async (method: TefPaymentMethod, selectedAcquirer?: "DEMO" | "REDE" | "PIX C6 BANK") => {
+  const runSale = async (method: TefPaymentMethod, selectedAcquirer?: "DEMO" | "REDE" | "PIX C6 BANK", qrPref: "1" | "2" = qrDisplayPreference) => {
     const value = Number(amount.replace(",", "."));
     if (!value || value <= 0) {
       toast({ title: "Valor invalido", variant: "destructive" });
@@ -137,7 +137,7 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
           acquirer: selectedAcquirer,
           orderId: saleId.trim() || DEFAULT_SALE_ID,
           installments: method === "credit" ? parsedInst : 1,
-          paygoQrDisplayPreference: method === "pix" ? qrDisplayPreference : undefined,
+          paygoQrDisplayPreference: method === "pix" ? qrPref : undefined,
         },
         (s, msg) => {
           setStatus(s);
