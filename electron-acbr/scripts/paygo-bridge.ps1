@@ -259,9 +259,14 @@ public static class PayGoBridge
                 Add(PWINFO_FINTYPE, "1");
                 Add(PWINFO_PAYMNTTYPE, "1");
             }
-            else if (method == "PIX_TEF")
+            else if (method == "PIX" || method == "PIX_TEF")
             {
+                // Pix via PayGo Integrado: PAYMNTTYPE=8 ativa o fluxo Pix
+                // (gera BR Code via PSP do PdC). Sem isso, a DLL trata a
+                // transação como cartao e o PIX nunca é solicitado, o que
+                // explica a tela branca no PPC930.
                 Add(PWINFO_PAYMNTTYPE, "8");
+                EmitEvent("INFO", "Fluxo PIX habilitado (PWINFO_PAYMNTTYPE=8)");
             }
 
             ret = ExecLoop();
