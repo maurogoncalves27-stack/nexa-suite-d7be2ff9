@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -115,6 +115,9 @@ export default function BankReconciliationPanel() {
   const [showReconciled, setShowReconciled] = useState(false);
   const [pageSize, setPageSize] = useState(50);
   const [hasMore, setHasMore] = useState(false);
+  // Lembra a data da última transação conciliada para restaurar a posição
+  // após o reload (evita "voltar para o topo" descrito pelo usuário).
+  const focusDateRef = useRef<string | null>(null);
 
   const loadAccounts = useCallback(async () => {
     const { data } = await supabase.from("bank_accounts").select("*").order("name");
@@ -172,6 +175,27 @@ export default function BankReconciliationPanel() {
 
   useEffect(() => { loadAccounts(); }, [loadAccounts]);
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Após cada reload, se houver uma "data foco" salva, rola até a primeira
+  // linha cuja posted_at seja <= data foco (mantém o usuário no dia em que
+  // ele estava conciliando, em vez de jogá-lo de volta ao topo).
+  useEffect(() => {
+    if (loading) return;
+    const focus = focusDateRef.current;
+    if (!focus) return;
+    focusDateRef.current = null;
+    // Aguarda um frame para garantir que a tabela já foi pintada
+    requestAnimationFrame(() => {
+      const rows = document.querySelectorAll<HTMLElement>("tr[data-posted-at]");
+      let target: HTMLElement | null = null;
+      for (const row of Array.from(rows)) {
+        const d = row.dataset.postedAt;
+        if (d && d <= focus) { target = row; break; }
+      }
+      if (!target && rows.length > 0) target = rows[rows.length - 1];
+      target?.scrollIntoView({ block: "center", behavior: "auto" });
+    });
+  }, [loading, transactions]);
 
   // Constrói candidatos compatíveis com cada transação (débito → pagar; crédito → receber)
   // Pré-filtra por janela de valor (±20%) e data (±15 dias) para reduzir O(N×M) drasticamente
@@ -263,6 +287,8 @@ export default function BankReconciliationPanel() {
       return;
     }
     toast({ title: "Conciliada", description: c.kind === "payable" ? "Conta a pagar quitada." : "Conta a receber recebida." });
+    const tx = transactions.find((t) => t.id === txId);
+    if (tx) focusDateRef.current = tx.posted_at;
     setMatchTarget(null);
     setMatchSearch("");
     await loadData();
@@ -287,6 +313,7 @@ export default function BankReconciliationPanel() {
       return;
     }
     toast({ title: "Conciliada", description: `${ids.length} ${isCredit ? "recebimentos" : "pagamentos"} vinculados.` });
+    focusDateRef.current = matchTarget.posted_at;
     setMatchTarget(null);
     setMatchSearch("");
     setBatchMode(false);
@@ -303,8 +330,11 @@ export default function BankReconciliationPanel() {
       return;
     }
     toast({ title: "Conciliação desfeita" });
+    const tx = transactions.find((t) => t.id === txId);
+    if (tx) focusDateRef.current = tx.posted_at;
     await loadData();
   };
+
 
   const autoReconcileAll = async () => {
     const candidates = transactions
@@ -431,7 +461,7 @@ export default function BankReconciliationPanel() {
                     const sug = suggestionMap.get(tx.id);
                     const isReconciled = !!tx.reconciled_at;
                     return (
-                      <TableRow key={tx.id} className={isReconciled ? "opacity-60" : undefined}>
+                      <TableRow key={tx.id} data-posted-at={tx.posted_at} className={isReconciled ? "opacity-60" : undefined}>
                         <TableCell className="whitespace-nowrap">{fmtDate(tx.posted_at)}</TableCell>
                         <TableCell className="max-w-[280px]">
                           <div className="truncate text-sm">{tx.payee || tx.memo || "—"}</div>
