@@ -1,6 +1,6 @@
 param(
   [Parameter(Mandatory = $true)]
-  [ValidateSet("sale", "confirm", "undo", "commtest", "install", "admin", "host")]
+  [ValidateSet("sale", "confirm", "undo", "cleanup", "commtest", "install", "admin", "host")]
   [string] $Action,
 
   [string] $DllPath = "C:\Program Files (x86)\PayGo\PGWebLib\x64\PGWebLib.dll",
