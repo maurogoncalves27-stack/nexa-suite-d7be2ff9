@@ -723,29 +723,13 @@ export function TefRoteiroTestesCard() {
 
   const autoEv = useMemo(() => computeAutoEvidence(txs), [txs]);
 
-  const flat = useMemo(
-    () => ROTEIRO.flatMap((s) => s.passos.map((p) => ({ sec: s, passo: p }))),
-    [],
-  );
   const todos = useMemo(() => ROTEIRO.flatMap((s) => s.passos), []);
   const isDone = (n: number) => estado[n] === "done" || autoEv.has(n);
   const concluidos = todos.filter((p) => isDone(p.n)).length;
   const autoCount = todos.filter((p) => autoEv.has(p.n)).length;
   const pct = Math.round((concluidos / todos.length) * 100);
 
-  // Índice atual do carrossel (controlado, mas se o passo for concluído avança auto)
-  const [idx, setIdx] = useState(0);
-  // Quando concluir o passo atual (auto ou manual), avança automaticamente
-  useEffect(() => {
-    const cur = flat[idx];
-    if (cur && isDone(cur.passo.n) && idx < flat.length - 1) {
-      const t = window.setTimeout(() => setIdx((i) => Math.min(flat.length - 1, i + 1)), 400);
-      return () => window.clearTimeout(t);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoEv, estado, idx, flat.length]);
-  const goPrev = () => setIdx((i) => Math.max(0, i - 1));
-  const goNext = () => setIdx((i) => Math.min(flat.length - 1, i + 1));
+
 
 
   const toggle = (n: number) => {
