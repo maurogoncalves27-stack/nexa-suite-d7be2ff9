@@ -232,6 +232,7 @@ public static class PayGoBridge
             _paygoMenuChoice = paygoMenuChoice ?? "";
             _captureValues = ParseCaptureValues(captureValuesBase64);
             _qrDisplayPreference = qrDisplayPreference ?? "";
+            _lastQrEmitted = "";
             EmitEvent("INFO", "Iniciando venda PayGo TEF saleId=" + saleId + " valorCentavos=" + amountInCents + " metodo=" + method);
 
             Load(dllPath);
