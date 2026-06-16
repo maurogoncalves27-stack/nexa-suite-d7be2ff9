@@ -192,21 +192,32 @@ export default function TefTestSaleCard() {
       const data = await resp.json().catch(() => ({} as any));
 
       if (resp.ok && data?.ok) {
+        // Tenta extrair authCode/nsu retornados pelo /tef/confirm (se houver)
+        const cd = data?.data ?? data?.retorno?.data ?? {};
+        const newAuth = cd.authCode || cd.authorizationCode || "";
+        const newNsu = cd.reqNum || cd.nsu || "";
         // Atualiza a transação no banco para sair do estado "pending"
         if (row?.id) {
+          const patch: any = {
+            status: action === "confirm" ? "approved" : "cancelled",
+            message: action === "confirm" ? "Pendência confirmada manualmente" : "Pendência desfeita manualmente",
+            raw_response: { ...(raw || {}), confirmResult: data },
+          };
+          if (action === "confirm" && newAuth) patch.authorization_code = newAuth;
+          if (action === "confirm" && newNsu) patch.nsu = newNsu;
           await supabase
             .from("pdv_tef_transactions")
-            .update({
-              status: action === "confirm" ? "approved" : "cancelled",
-              message: action === "confirm" ? "Pendência confirmada manualmente" : "Pendência desfeita manualmente",
-            })
+            .update(patch)
             .eq("id", row.id);
         }
         setStatus(action === "confirm" ? "approved" : "cancelled");
-        setStatusMsg(data?.message ?? `Pendência ${action === "confirm" ? "confirmada" : "desfeita"} com sucesso.`);
+        const note = action === "confirm" && !newAuth
+          ? " (PayGo não retornou novo código de autorização para esta confirmação manual)"
+          : "";
+        setStatusMsg((data?.message ?? `Pendência ${action === "confirm" ? "confirmada" : "desfeita"} com sucesso.`) + note);
         toast({
           title: action === "confirm" ? "Pendência confirmada" : "Pendência desfeita",
-          description: data?.message ?? "Pinpad liberado para próxima venda.",
+          description: (data?.message ?? "Pinpad liberado para próxima venda.") + note,
         });
       } else {
         setStatus("error");
