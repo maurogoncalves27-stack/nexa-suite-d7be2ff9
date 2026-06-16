@@ -98,6 +98,11 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
     setStatus("connecting");
     setStatusMsg("Carregando config TEF da Asa Sul...");
     setLastResult("");
+    setPixQrBrCode("");
+    setPixWaitMsg("");
+
+    // PIX nao aparece no PPC930 (sem display grafico) — a automacao tem que mostrar o QR.
+    if (method === "pix") void startPixPolling();
 
     try {
       const cfg = await loadTefConfig(ASA_SUL_ID);
