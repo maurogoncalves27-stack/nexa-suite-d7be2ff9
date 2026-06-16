@@ -531,28 +531,39 @@ export default function BankReconciliationPanel() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          {isReconciled ? (
-                            <Button size="sm" variant="ghost" disabled={submitting} onClick={() => undo(tx.id)} className="gap-1">
-                              <RotateCcw className="h-3 w-3" /> Desfazer
+                          <div className="flex justify-end gap-1 flex-wrap items-center">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              title="Ratear entre lojas"
+                              className="h-8 w-8"
+                              onClick={() => openAllocDialog(tx)}
+                            >
+                              <Split className="h-3.5 w-3.5" />
                             </Button>
-                          ) : sug ? (
-                            <div className="flex justify-end gap-1 flex-wrap">
-                              <Button size="sm" disabled={submitting} onClick={() => reconcileCandidate(tx.id, sug)} className="gap-1">
-                                <CheckCircle2 className="h-3 w-3" /> Aceitar
+                            {isReconciled ? (
+                              <Button size="sm" variant="ghost" disabled={submitting} onClick={() => undo(tx.id)} className="gap-1">
+                                <RotateCcw className="h-3 w-3" /> Desfazer
                               </Button>
-                              <Button size="sm" variant="outline" onClick={() => { setMatchSearch(""); setMatchTarget(tx); }}>Outra</Button>
-                              <Button size="sm" variant="ghost" onClick={() => setCreateTarget(tx)} className="gap-1">
-                                <Plus className="h-3 w-3" /> Gerar
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="flex justify-end gap-1 flex-wrap">
-                              <Button size="sm" variant="outline" onClick={() => { setMatchSearch(""); setMatchTarget(tx); }}>Vincular</Button>
-                              <Button size="sm" onClick={() => setCreateTarget(tx)} className="gap-1">
-                                <Plus className="h-3 w-3" /> Gerar lançamento
-                              </Button>
-                            </div>
-                          )}
+                            ) : sug ? (
+                              <>
+                                <Button size="sm" disabled={submitting} onClick={() => reconcileCandidate(tx.id, sug)} className="gap-1">
+                                  <CheckCircle2 className="h-3 w-3" /> Aceitar
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => { setMatchSearch(""); setMatchTarget(tx); }}>Outra</Button>
+                                <Button size="sm" variant="ghost" onClick={() => setCreateTarget(tx)} className="gap-1">
+                                  <Plus className="h-3 w-3" /> Gerar
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button size="sm" variant="outline" onClick={() => { setMatchSearch(""); setMatchTarget(tx); }}>Vincular</Button>
+                                <Button size="sm" onClick={() => setCreateTarget(tx)} className="gap-1">
+                                  <Plus className="h-3 w-3" /> Gerar lançamento
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
