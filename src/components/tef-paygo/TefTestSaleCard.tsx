@@ -13,7 +13,6 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { loadTefConfig, createTefAdapter, logTefTransaction } from "@/lib/tef";
 import type { TefStatus, TefPaymentMethod } from "@/lib/tef";
-import { paygoConfirmarVenda } from "@/lib/tef/paygoAdapter";
 import { joinAgentUrl } from "@/lib/tef/agentUrl";
 import { pushTefReceipt } from "@/hooks/useTefReceipts";
 
