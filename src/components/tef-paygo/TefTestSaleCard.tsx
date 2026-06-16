@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CreditCard, Loader2, FlaskConical } from "lucide-react";
+import { CreditCard, Loader2, FlaskConical, Wrench } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { loadTefConfig, createTefAdapter, logTefTransaction } from "@/lib/tef";
 import type { TefStatus, TefPaymentMethod } from "@/lib/tef";
+import { paygoAdministrativo } from "@/lib/tef/paygoAdapter";
 import { pushTefReceipt } from "@/hooks/useTefReceipts";
 
 const ASA_SUL_ID = "fcf435c2-c382-444c-b499-4d95f07b2633";
