@@ -492,11 +492,18 @@ async function efetuarPagamento(opts = {}) {
 
     // Auto-cleanup pós-falha: desfaz pendência presa na DLL para liberar a
     // próxima venda. Best-effort, não propaga erro.
-    try {
-      console.log("[TEF] Pós-cleanup automático após falha:", err.message);
-      await runBridge({ action: "cleanup" }, { timeoutMs: 15000 });
-    } catch (e) {
-      console.warn("[TEF] Pós-cleanup falhou:", e.message);
+    // IMPORTANTE: se já temos QR Pix gerado, NÃO limpar — a venda pode ter
+    // sido paga e o cleanup desfaria uma transação aprovada. Usuário precisa
+    // confirmar manualmente via botão "Limpar pendência" na UI.
+    if (method === "PIX" && saleStatus.qrCode) {
+      console.log("[TEF] Pós-cleanup pulado: Pix com QR gerado, aguardando confirmação manual.");
+    } else {
+      try {
+        console.log("[TEF] Pós-cleanup automático após falha:", err.message);
+        await runBridge({ action: "cleanup" }, { timeoutMs: 15000 });
+      } catch (e) {
+        console.warn("[TEF] Pós-cleanup falhou:", e.message);
+      }
     }
 
     throw err;
