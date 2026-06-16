@@ -12,6 +12,7 @@ param(
   [string] $PaygoMenuChoice = "",
   [string] $CaptureValuesBase64 = "",
   [string] $ConfirmationJsonBase64 = "",
+  [string] $QrDisplayPreference = "",
   [string] $CpfCnpj = "",
   [string] $PontoDeCaptura = "",
   [string] $Ambiente = "",
@@ -118,6 +119,7 @@ public static class PayGoBridge
     private static string _usePinpad = "1";
     private static string _pinpadPort = "";
     private static string _paygoMenuChoice = "";
+    private static string _qrDisplayPreference = "";
     private static string _eventId = "";
     private static Dictionary<string, string> _captureValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -222,13 +224,14 @@ public static class PayGoBridge
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
 
-    public static string Sale(string dllPath, string workingDir, string saleId, int amountInCents, string method, int installments, string paygoMenuChoice, string captureValuesBase64)
+    public static string Sale(string dllPath, string workingDir, string saleId, int amountInCents, string method, int installments, string paygoMenuChoice, string captureValuesBase64, string qrDisplayPreference)
     {
         try
         {
             _paygoMenuChoice = paygoMenuChoice ?? "";
             _captureValues = ParseCaptureValues(captureValuesBase64);
-            EmitEvent("INFO", "Iniciando venda PayGo TEF");
+            _qrDisplayPreference = qrDisplayPreference ?? "";
+            EmitEvent("INFO", "Iniciando venda PayGo TEF saleId=" + saleId + " valorCentavos=" + amountInCents + " metodo=" + method);
 
             Load(dllPath);
             short ret = Init(workingDir);
@@ -241,7 +244,8 @@ public static class PayGoBridge
             Add(PWINFO_AUTVER, "1.0.0");
             Add(PWINFO_AUTDEV, "PayGo");
             Add(PWINFO_AUTCAP, "384"); // 128 (DSP_CHECKOUT) + 256 (DSP_QRCODE), igual demo oficial C#
-            Add(PWINFO_DSPQRPREF, "2");
+            Add(PWINFO_DSPQRPREF, QrDisplayPreference());
+            EmitEvent("INFO", "Preferencia QR PayGo=" + QrDisplayPreference() + " (1=pinpad, 2=checkout/PC)");
             Add(PWINFO_TOTAMNT, amountInCents.ToString());
             Add(PWINFO_CURRENCY, "986");
             Add(PWINFO_CURREXP, "2");
@@ -431,6 +435,7 @@ public static class PayGoBridge
             data = NewDataArray(count);
             EmitEvent("INFO", "Processando transacao no PayGo");
             short execRet = Fn<PW_iExecTransac_>("PW_iExecTransac")(data, ref count);
+            EmitEvent("INFO", "PW_iExecTransac ret=" + execRet + " capturas=" + count);
 
             if (execRet == PWRET_MOREDATA || execRet == PWRET_NOTHING) continue;
             return execRet;
@@ -440,6 +445,7 @@ public static class PayGoBridge
     private static short HandleData(PW_GetData data, ushort index)
     {
         short ret;
+            EmitEvent("INFO", "Captura PayGo tipo=" + data.bTipoDeDado + " id=" + FormatIdentifier(data.wIdentificador) + " prompt=" + (data.szPrompt ?? "") + " valorInicialLen=" + ((data.szValorInicial ?? "").Length) + " aceitaNulo=" + data.bAceitaNulo);
             switch (data.bTipoDeDado)
             {
             case PWDAT_MENU:
@@ -481,6 +487,7 @@ public static class PayGoBridge
                     // respondemos com PW_iAddParam(wIdentificador, "").
                     string qr = Result(PWINFO_AUTHPOSQRCODE);
                     EmitEvent("INFO", "PayGo solicitou exibicao de QR Code (id=" + FormatIdentifier(data.wIdentificador) + " len=" + (qr ?? "").Length + ")");
+                    EmitEvent("INFO", "BR Code PIX recebido para saleId atual; use este QR no checkout se o pinpad nao exibir.");
                     if (!String.IsNullOrEmpty(qr)) EmitEvent("QRCODE", qr);
                     return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, "");
                 }
@@ -750,6 +757,15 @@ public static class PayGoBridge
         if (String.IsNullOrWhiteSpace(digits)) return "";
         int port = Int32.Parse(digits);
         return port.ToString("00");
+    }
+
+    private static string QrDisplayPreference()
+    {
+        string value = String.IsNullOrWhiteSpace(_qrDisplayPreference)
+            ? Environment.GetEnvironmentVariable("PAYGO_QR_DISPLAY_PREF")
+            : _qrDisplayPreference;
+        value = (value ?? "").Trim();
+        return value == "1" ? "1" : "2";
     }
 
     private static short PinpadLoop(string context)
