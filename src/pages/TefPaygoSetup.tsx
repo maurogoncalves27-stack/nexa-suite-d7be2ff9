@@ -13,6 +13,7 @@ import {
 import {
   CreditCard, Copy, Pencil, Save, X, KeyRound,
   ListChecks, CheckCircle2, XCircle, AlertTriangle, Loader2, RefreshCw, Terminal,
+  FolderOpen,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
