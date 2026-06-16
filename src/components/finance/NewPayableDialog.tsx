@@ -82,7 +82,10 @@ export default function NewPayableDialog({ open, onOpenChange, onSaved }: Props)
     setRecurrenceCount("12");
     setInstallments("1");
     setInstallmentIntervalDays("30");
+    setRateioOn(false);
+    setSplits([]);
   }, [open]);
+
 
   const addInterval = (iso: string, i: number, kind: "weekly" | "monthly" | "yearly") => {
     const d = new Date(iso + "T12:00:00");
