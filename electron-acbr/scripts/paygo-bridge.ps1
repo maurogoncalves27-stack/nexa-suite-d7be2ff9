@@ -82,6 +82,7 @@ public static class PayGoBridge
     private const ushort PWINFO_AUTHTECHUSER = 0xF6;
     private const ushort PWINFO_DSPQRPREF = 0x7F50;
     private const ushort PWINFO_PAYMNTTYPE = 0x1F21;
+    private const ushort PWINFO_AUTHPOSQRCODE = 0x1F77;
     private const ushort PWINFO_USINGPINPAD = 0x7F01;
     private const ushort PWINFO_PPCOMMPORT = 0x7F02;
     private const ushort PWINFO_PNDAUTHSYST = 0x7F05;
@@ -239,7 +240,7 @@ public static class PayGoBridge
             Add(PWINFO_AUTNAME, "PDV");
             Add(PWINFO_AUTVER, "1.0.0");
             Add(PWINFO_AUTDEV, "PayGo");
-            Add(PWINFO_AUTCAP, "452"); // valor fixo + vias diferenciadas + remocao cartao + display checkout + QR checkout
+            Add(PWINFO_AUTCAP, "384"); // 128 (DSP_CHECKOUT) + 256 (DSP_QRCODE), igual demo oficial C#
             Add(PWINFO_DSPQRPREF, "2");
             Add(PWINFO_TOTAMNT, amountInCents.ToString());
             Add(PWINFO_CURRENCY, "986");
@@ -349,7 +350,7 @@ public static class PayGoBridge
             Add(PWINFO_AUTNAME, "PDV");
             Add(PWINFO_AUTVER, "1.0.0");
             Add(PWINFO_AUTDEV, "PayGo");
-            Add(PWINFO_AUTCAP, "452");
+            Add(PWINFO_AUTCAP, "384");
             Add(PWINFO_DSPQRPREF, "2");
 
             AddActivationParams();
@@ -474,10 +475,14 @@ public static class PayGoBridge
                 return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, data.szValorInicial ?? "");
             case PWDAT_DSPQRCODE:
                 {
-                    string qr = data.szValorInicial ?? "";
-                    EmitEvent("INFO", "PayGo solicitou exibicao de QR Code (id=" + FormatIdentifier(data.wIdentificador) + " len=" + qr.Length + ")");
-                    EmitEvent("QRCODE", qr);
-                    return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, qr);
+                    // Alinhado a demo oficial C# (Fluxos.FluxoDspQRCode):
+                    // o BR Code NAO vem em szValorInicial — tem que ser lido
+                    // via PW_iGetResult(PWINFO_AUTHPOSQRCODE=0x1F77). Depois
+                    // respondemos com PW_iAddParam(wIdentificador, "").
+                    string qr = Result(PWINFO_AUTHPOSQRCODE);
+                    EmitEvent("INFO", "PayGo solicitou exibicao de QR Code (id=" + FormatIdentifier(data.wIdentificador) + " len=" + (qr ?? "").Length + ")");
+                    if (!String.IsNullOrEmpty(qr)) EmitEvent("QRCODE", qr);
+                    return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, "");
                 }
             case PWDAT_PPENTRY:
                 EmitEvent("PINPAD", "Aguardando entrada de dados no pinpad");
