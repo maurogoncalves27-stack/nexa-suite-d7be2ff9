@@ -469,6 +469,7 @@ public static class PayGoBridge
                 return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, data.szValorInicial ?? "");
             case PWDAT_DSPQRCODE:
                 EmitEvent("INFO", "PayGo solicitou exibicao de QR Code");
+                EmitEvent("QRCODE", data.szValorInicial ?? "");
                 return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, data.szValorInicial ?? "");
             case PWDAT_PPENTRY:
                 EmitEvent("PINPAD", "Aguardando entrada de dados no pinpad");
