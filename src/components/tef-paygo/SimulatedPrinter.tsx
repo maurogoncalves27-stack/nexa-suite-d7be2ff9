@@ -115,12 +115,27 @@ export default function SimulatedPrinter() {
         <Badge variant="outline" className="ml-auto text-xs">
           {entries.length}/10 cupons
         </Badge>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={!entries.length}
+          onClick={() =>
+            downloadAllAsZip(entries).then(() =>
+              toast({ title: "Pasta de comprovantes baixada" }),
+            )
+          }
+          className="h-7 gap-1.5 text-xs"
+        >
+          <FolderArchive className="h-3.5 w-3.5" /> Baixar pasta (ZIP)
+        </Button>
       </div>
 
       <p className="text-xs text-muted-foreground shrink-0">
-        Renderiza o cupom devolvido pela PGWebLib. Use os botões abaixo para
-        baixar como TXT ou PDF e anexar como evidência do passo do roteiro.
+        Cada transação vira uma subpasta com um <code>.txt</code> por via
+        (estabelecimento, cliente, reduzido, diferenciados). Use "Baixar pasta
+        (ZIP)" para anexar tudo como evidência do roteiro Setis.
       </p>
+
 
       {!current ? (
         <div className="flex-1 flex items-center justify-center rounded-md border border-dashed bg-muted/30 p-6 text-center text-sm text-muted-foreground">
