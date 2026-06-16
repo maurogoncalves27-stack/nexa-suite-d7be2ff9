@@ -45,13 +45,17 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
   const [lastResult, setLastResult] = useState<string>("");
   const [pendingMethod, setPendingMethod] = useState<TefPaymentMethod | null>(null);
   const [showPinpad, setShowPinpad] = useState(false);
+  const [qrDisplayPreference, setQrDisplayPreference] = useState<"1" | "2">("2");
   const [pixQrBrCode, setPixQrBrCode] = useState<string>("");
   const [pixQrDataUrl, setPixQrDataUrl] = useState<string>("");
   const [pixWaitMsg, setPixWaitMsg] = useState<string>("");
+  const [pixSaleInfo, setPixSaleInfo] = useState<string>("");
   const pollAbortRef = useRef<{ stop: boolean } | null>(null);
+  const latestPixQrRef = useRef("");
 
   // Renderiza QR sempre que receber novo BR Code
   useEffect(() => {
+    latestPixQrRef.current = pixQrBrCode;
     if (!pixQrBrCode) { setPixQrDataUrl(""); return; }
     QRCode.toDataURL(pixQrBrCode, { width: 320, margin: 1, errorCorrectionLevel: "M" })
       .then(setPixQrDataUrl)
@@ -72,9 +76,14 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
           });
           if (r.ok) {
             const data = await r.json().catch(() => ({} as any));
-            if (data?.qrCode && data.qrCode !== pixQrBrCode) setPixQrBrCode(data.qrCode);
+            if (data?.qrCode && data.qrCode !== latestPixQrRef.current) setPixQrBrCode(data.qrCode);
             if (data?.message) setPixWaitMsg(String(data.message));
-            if (data?.status === "done" || data?.status === "error" || data?.status === "idle") break;
+            if (data?.saleId || data?.amount || data?.qrDisplayPreference) {
+              const amountText = data?.amount ? `R$ ${Number(data.amount).toFixed(2)}` : "";
+              const place = data?.qrDisplayPreference === "1" ? "pinpad" : "checkout/PC";
+              setPixSaleInfo([data?.saleId, amountText, `QR: ${place}`].filter(Boolean).join(" · "));
+            }
+            if (["done", "error", "timeout", "idle"].includes(String(data?.status))) break;
           }
         } catch { /* ignora — segue tentando */ }
         await new Promise((res) => setTimeout(res, 700));
@@ -87,7 +96,7 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
     pollAbortRef.current = null;
   };
 
-  const runSale = async (method: TefPaymentMethod, selectedAcquirer?: "DEMO" | "REDE" | "PIX C6 BANK") => {
+  const runSale = async (method: TefPaymentMethod, selectedAcquirer?: "DEMO" | "REDE" | "PIX C6 BANK", qrPref: "1" | "2" = qrDisplayPreference) => {
     const value = Number(amount.replace(",", "."));
     if (!value || value <= 0) {
       toast({ title: "Valor invalido", variant: "destructive" });
@@ -100,6 +109,7 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
     setLastResult("");
     setPixQrBrCode("");
     setPixWaitMsg("");
+    setPixSaleInfo("");
 
     // PIX nao aparece no PPC930 (sem display grafico) — a automacao tem que mostrar o QR.
     if (method === "pix") void startPixPolling();
@@ -127,6 +137,7 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
           acquirer: selectedAcquirer,
           orderId: saleId.trim() || DEFAULT_SALE_ID,
           installments: method === "credit" ? parsedInst : 1,
+          paygoQrDisplayPreference: method === "pix" ? qrPref : undefined,
         },
         (s, msg) => {
           setStatus(s);
@@ -134,8 +145,13 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
         },
       );
 
-      setStatus(result.status);
+      const qrTimeout = method === "pix" && result.status === "error" && !!latestPixQrRef.current;
+      setStatus(qrTimeout ? "timeout" : result.status);
       setStatusMsg(result.message ?? "");
+      if (qrTimeout) {
+        setStatus("timeout");
+        setStatusMsg("QR Code gerado, mas o PayGo excedeu o tempo aguardando confirmação. Confira no banco/PayGo antes de repetir.");
+      }
       setLastResult(JSON.stringify(result, null, 2));
 
       const rawAny = (result.raw ?? {}) as any;
@@ -178,22 +194,31 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
       });
 
       toast({
-        title: result.status === "approved" ? "Aprovado" : `Resultado: ${result.status}`,
-        description: result.message ?? result.authorizationCode ?? result.nsu ?? "",
-        variant: result.status === "approved" ? "default" : "destructive",
+        title: qrTimeout ? "Pix aguardando conferência" : result.status === "approved" ? "Aprovado" : `Resultado: ${result.status}`,
+        description: qrTimeout ? "O QR continua visível; confira se houve pagamento antes de repetir." : result.message ?? result.authorizationCode ?? result.nsu ?? "",
+        variant: qrTimeout || result.status === "approved" ? "default" : "destructive",
       });
+      if (method === "pix" && ["approved", "declined", "cancelled"].includes(result.status)) {
+        setPixQrBrCode("");
+        setPixWaitMsg("");
+        setPixSaleInfo("");
+      }
     } catch (err: any) {
-      setStatus("error");
-      setStatusMsg(err?.message ?? String(err));
+      const hasQr = !!latestPixQrRef.current;
+      setStatus(hasQr && method === "pix" ? "timeout" : "error");
+      setStatusMsg(hasQr && method === "pix"
+        ? "QR Code gerado, mas o PayGo excedeu o tempo aguardando confirmação. Confira no banco/PayGo antes de repetir."
+        : err?.message ?? String(err));
+      if (hasQr && method === "pix") {
+        setPixWaitMsg("QR Code gerado. Tempo de confirmação excedido; confira se houve pagamento antes de repetir.");
+      }
       toast({
-        title: "Erro na transacao",
-        description: err?.message ?? String(err),
-        variant: "destructive",
+        title: hasQr && method === "pix" ? "Pix aguardando conferência" : "Erro na transacao",
+        description: hasQr && method === "pix" ? "O QR continua visível para conferência; não repita a venda sem verificar se houve pagamento." : err?.message ?? String(err),
+        variant: hasQr && method === "pix" ? "default" : "destructive",
       });
     } finally {
       stopPixPolling();
-      setPixQrBrCode("");
-      setPixWaitMsg("");
       setBusy(false);
     }
   };
@@ -416,9 +441,14 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
           Credito
         </Button>
 
-        <Button onClick={() => void runSale("pix", "PIX C6 BANK")} disabled={busy || !!pendingMethod} variant="outline" className="gap-2">
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-          PIX C6 BANK
+        <Button onClick={() => { setQrDisplayPreference("2"); void runSale("pix", "PIX C6 BANK", "2"); }} disabled={busy || !!pendingMethod} variant="outline" className="gap-2">
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <QrCode className="h-4 w-4" />}
+          PIX PC
+        </Button>
+
+        <Button onClick={() => { setQrDisplayPreference("1"); void runSale("pix", "PIX C6 BANK", "1"); }} disabled={busy || !!pendingMethod} variant="secondary" className="gap-2">
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <QrCode className="h-4 w-4" />}
+          PIX pinpad
         </Button>
 
         <Button
@@ -491,6 +521,7 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center gap-3">
+            {pixSaleInfo && <Badge variant="outline">{pixSaleInfo}</Badge>}
             {pixQrDataUrl && (
               <img src={pixQrDataUrl} alt="QR Code Pix" className="rounded border bg-white p-2" width={320} height={320} />
             )}
@@ -499,7 +530,7 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
               <pre className="mt-2 max-h-32 overflow-auto rounded bg-muted p-2 font-mono break-all whitespace-pre-wrap">{pixQrBrCode}</pre>
             </details>
             <Button variant="destructive" className="w-full" onClick={() => void cancelNetworkSelection()}>
-              Cancelar transação
+              {status === "timeout" ? "Cancelar após conferência" : "Cancelar transação"}
             </Button>
           </div>
         </DialogContent>

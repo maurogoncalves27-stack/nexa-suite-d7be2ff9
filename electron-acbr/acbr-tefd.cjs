@@ -116,6 +116,7 @@ const NEXA_DEFAULTS = {
   ambiente: process.env.PAYGO_AMBIENTE || "DEMO",
   senhaTecnica: process.env.PAYGO_SENHA_TECNICA || "314159",
   pinpadPort: process.env.PAYGO_PINPAD_PORT || "5",
+  qrDisplayPreference: process.env.PAYGO_QR_DISPLAY_PREF || "2",
 };
 
 // ---------- estado do host PowerShell ----------
@@ -150,12 +151,15 @@ function getAdmStatus() {
 // o QR Code PIX (o pinpad PPC930 não tem display gráfico, então a automação
 // precisa mostrar o BR Code para o cliente escanear no app do banco).
 let saleStatus = {
-  status: "idle", // idle | running | done | error
+  status: "idle", // idle | running | done | error | timeout
   message: "",
   qrCode: "",     // BR Code Pix recebido via PWDAT_DSPQRCODE
   startedAt: 0,
+  saleId: "",
   method: "",     // CREDITO | DEBITO | PIX | VOUCHER
   amount: 0,
+  qrDisplayPreference: NEXA_DEFAULTS.qrDisplayPreference,
+  lastQrAt: 0,
 };
 
 function setSaleStatus(patch) {
@@ -167,7 +171,7 @@ function getSaleStatus() {
 }
 
 function clearSaleStatus() {
-  saleStatus = { status: "idle", message: "", qrCode: "", startedAt: 0, method: "", amount: 0 };
+  saleStatus = { status: "idle", message: "", qrCode: "", startedAt: 0, saleId: "", method: "", amount: 0, qrDisplayPreference: NEXA_DEFAULTS.qrDisplayPreference, lastQrAt: 0 };
 }
 
 // ---------- spawn / shutdown ----------
@@ -424,14 +428,18 @@ async function efetuarPagamento(opts = {}) {
   const installments = Number(opts.parcelas || 1);
   const method = methodToBridge(opts.tipo);
   const saleId = opts.saleId || `SALE-${Date.now()}`;
+  const qrDisplayPreference = String(opts.qrDisplayPreference || process.env.PAYGO_QR_DISPLAY_PREF || NEXA_DEFAULTS.qrDisplayPreference) === "1" ? "1" : "2";
 
   setSaleStatus({
     status: "running",
-    message: "Iniciando transação no PayGo...",
+    message: `Iniciando transação no PayGo (${saleId})...`,
     qrCode: "",
     startedAt: Date.now(),
+    saleId,
     method,
     amount: valor,
+    qrDisplayPreference,
+    lastQrAt: 0,
   });
 
   try {
@@ -443,12 +451,13 @@ async function efetuarPagamento(opts = {}) {
       installments,
       paygoMenuChoice: opts.paygoMenuChoice || "",
       captureValuesBase64: opts.captureValuesBase64 || "",
+      qrDisplayPreference,
     }, { onEvent: (ev) => {
       if (!ev) return;
       // O bridge emite eventos NDJSON: { type, message }.
-      // QRCODE traz o BR Code Pix em `message` (vindo de szValorInicial).
+      // QRCODE traz o BR Code Pix em `message` (vindo de PWINFO_AUTHPOSQRCODE).
       if (ev.type === "QRCODE" && ev.message) {
-        setSaleStatus({ qrCode: ev.message, message: "Aguardando pagamento PIX. Cliente, escaneie o QR Code." });
+        setSaleStatus({ qrCode: ev.message, lastQrAt: Date.now(), message: `Aguardando pagamento PIX da venda ${saleId}. Cliente, escaneie o QR Code no checkout/PC.` });
       } else if (ev.message) {
         setSaleStatus({ message: ev.message });
       }
@@ -458,7 +467,14 @@ async function efetuarPagamento(opts = {}) {
     setSaleStatus({ status: "done", message: payload?.message || payload?.status || "Concluído" });
     return payload;
   } catch (err) {
-    setSaleStatus({ status: "error", message: err.message });
+    if (method === "PIX" && saleStatus.qrCode) {
+      setSaleStatus({
+        status: "timeout",
+        message: `QR Code gerado para ${saleId}, mas o PayGo excedeu o tempo aguardando confirmação. Verifique se o Pix foi pago antes de cancelar ou repetir.`,
+      });
+    } else {
+      setSaleStatus({ status: "error", message: err.message });
+    }
     throw err;
   }
 }

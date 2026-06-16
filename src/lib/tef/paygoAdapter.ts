@@ -79,7 +79,7 @@ export const createPaygoAdapter = (config: TefConfig): TefAdapter => {
       await new Promise((r) => setTimeout(r, 200));
       onStatus?.(
         "waiting_card",
-        tipo === "pix" ? "Escaneie o QR Code no pinpad" : "Aproxime, insira ou passe o cartão",
+          tipo === "pix" ? "Aguardando QR Code Pix" : "Aproxime, insira ou passe o cartão",
       );
 
       try {
@@ -95,6 +95,7 @@ export const createPaygoAdapter = (config: TefConfig): TefAdapter => {
             acquirer: req.acquirer,
             rede: req.acquirer,
             paygoMenuChoice: req.acquirer,
+            qrDisplayPreference: req.paygoQrDisplayPreference,
           }),
           signal: abortController.signal,
         });
@@ -119,7 +120,7 @@ export const createPaygoAdapter = (config: TefConfig): TefAdapter => {
         const fallbackMessage = pending ? "Existe transacao pendente de confirmacao no PayGo" : approved ? "Transacao aprovada" : denied ? "Transacao negada" : "Falha na transacao";
         const result: TefPaymentResult = {
           status,
-          message: data.message ?? (approved ? "Transação aprovada" : denied ? "Transação negada" : "Falha na transação"),
+          message: effectiveMessage ?? (approved ? "Transação aprovada" : denied ? "Transação negada" : "Falha na transação"),
           nsu: r.reqNum ?? r.extRef ?? undefined,
           authorizationCode: r.authCode ?? undefined,
           cardBrand: r.brand ?? undefined,
