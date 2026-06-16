@@ -202,6 +202,46 @@ export default function TefTestSaleCard() {
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
           PIX C6 BANK
         </Button>
+
+        <Button
+          onClick={async () => {
+            setBusy(true);
+            setStatus("processing");
+            setStatusMsg("Abrindo menu ADM no pinpad para resolver pendência...");
+            try {
+              const cfg = await loadTefConfig(ASA_SUL_ID);
+              const r = await paygoAdministrativo(cfg.agentUrl, {
+                merchantCode: cfg.merchantCode,
+                terminalCode: cfg.terminalCode,
+                host: cfg.agentUrl,
+              });
+              if (r.ok) {
+                setStatus("waiting_card");
+                setStatusMsg(r.message ?? "Menu ADM aberto. No pinpad, escolha 'Resolver pendência' e siga as instruções.");
+                toast({
+                  title: "ADM iniciado",
+                  description: "Selecione 'Resolver pendência' no pinpad para confirmar ou desfazer a transação pendente.",
+                });
+              } else {
+                setStatus("error");
+                setStatusMsg(r.error ?? "Falha ao abrir ADM");
+                toast({ title: "Falha ao abrir ADM", description: r.error, variant: "destructive" });
+              }
+            } catch (err: any) {
+              setStatus("error");
+              setStatusMsg(err?.message ?? String(err));
+              toast({ title: "Erro", description: err?.message ?? String(err), variant: "destructive" });
+            } finally {
+              setBusy(false);
+            }
+          }}
+          disabled={busy || !!pendingMethod}
+          variant="destructive"
+          className="gap-2"
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wrench className="h-4 w-4" />}
+          Resolver pendência (ADM)
+        </Button>
       </div>
 
       {status !== "idle" && (
