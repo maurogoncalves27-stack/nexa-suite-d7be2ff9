@@ -191,6 +191,9 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
         variant: "destructive",
       });
     } finally {
+      stopPixPolling();
+      setPixQrBrCode("");
+      setPixWaitMsg("");
       setBusy(false);
     }
   };
