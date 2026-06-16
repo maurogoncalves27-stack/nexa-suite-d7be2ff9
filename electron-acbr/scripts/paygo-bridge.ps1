@@ -121,6 +121,7 @@ public static class PayGoBridge
     private static string _paygoMenuChoice = "";
     private static string _qrDisplayPreference = "";
     private static string _eventId = "";
+    private static string _lastQrEmitted = "";
     private static Dictionary<string, string> _captureValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
@@ -231,6 +232,7 @@ public static class PayGoBridge
             _paygoMenuChoice = paygoMenuChoice ?? "";
             _captureValues = ParseCaptureValues(captureValuesBase64);
             _qrDisplayPreference = qrDisplayPreference ?? "";
+            _lastQrEmitted = "";
             EmitEvent("INFO", "Iniciando venda PayGo TEF saleId=" + saleId + " valorCentavos=" + amountInCents + " metodo=" + method);
 
             Load(dllPath);
@@ -468,6 +470,21 @@ public static class PayGoBridge
             EmitEvent("INFO", "Processando transacao no PayGo");
             short execRet = Fn<PW_iExecTransac_>("PW_iExecTransac")(data, ref count);
             EmitEvent("INFO", "PW_iExecTransac ret=" + execRet + " capturas=" + count);
+
+            // Leitura proativa do BR Code: quando QR pref=2 (PC) a DLL pode nao
+            // disparar PWDAT_DSPQRCODE, mas o QR ja fica disponivel em
+            // PWINFO_AUTHPOSQRCODE assim que o PayGo o gera. Emitimos uma unica
+            // vez para o agente entregar via /sale/status.
+            try
+            {
+                string qrPoll = Result(PWINFO_AUTHPOSQRCODE);
+                if (!String.IsNullOrEmpty(qrPoll) && qrPoll != _lastQrEmitted)
+                {
+                    _lastQrEmitted = qrPoll;
+                    EmitEvent("INFO", "QR Code lido proativamente (len=" + qrPoll.Length + ")");
+                    EmitEvent("QRCODE", qrPoll);
+                }
+            } catch { }
 
             if (execRet == PWRET_MOREDATA || execRet == PWRET_NOTHING) continue;
             return execRet;
