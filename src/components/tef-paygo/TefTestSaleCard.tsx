@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { loadTefConfig, createTefAdapter, logTefTransaction } from "@/lib/tef";
 import type { TefStatus, TefPaymentMethod } from "@/lib/tef";
 import { joinAgentUrl } from "@/lib/tef/agentUrl";
+import { paygoCancelarVenda } from "@/lib/tef/paygoAdapter";
 import { pushTefReceipt } from "@/hooks/useTefReceipts";
 import TefPinpadSetupCard from "./TefPinpadSetupCard";
 
@@ -35,6 +36,7 @@ const isPaygoNetworkMenuRequest = (result: { status: string; message?: string; r
 export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sandboxHost }: Props) {
   const [amount, setAmount] = useState("");
   const [saleId, setSaleId] = useState(DEFAULT_SALE_ID);
+  const [installments, setInstallments] = useState("1");
   const [acquirer, setAcquirer] = useState<"DEMO" | "REDE" | "PIX C6 BANK">("DEMO");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<TefStatus>("idle");
@@ -69,6 +71,7 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
       }
 
       const adapter = createTefAdapter(cfg);
+      const parsedInst = Math.max(1, Math.min(99, parseInt(installments, 10) || 1));
       const result = await adapter.processPayment(
         {
           amount: value,
@@ -76,6 +79,7 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
           storeId: ASA_SUL_ID,
           acquirer: selectedAcquirer,
           orderId: saleId.trim() || DEFAULT_SALE_ID,
+          installments: method === "credit" ? parsedInst : 1,
         },
         (s, msg) => {
           setStatus(s);
@@ -245,6 +249,60 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
       setBusy(false);
     }
   };
+  const cancelarUltimaVenda = async () => {
+    setBusy(true);
+    setStatus("processing");
+    setStatusMsg("Buscando última venda aprovada da Asa Sul...");
+    try {
+      const cfg = await loadTefConfig(ASA_SUL_ID);
+      const { data: rows } = await supabase
+        .from("pdv_tef_transactions")
+        .select("id, nsu, amount, created_at, raw_response")
+        .eq("store_id", ASA_SUL_ID)
+        .eq("provider", "paygo")
+        .eq("status", "approved")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const row = (rows ?? [])[0];
+      if (!row || !row.nsu) {
+        toast({ title: "Nenhuma venda aprovada encontrada", variant: "destructive" });
+        setStatus("idle");
+        setStatusMsg("");
+        return;
+      }
+      const dt = new Date(row.created_at);
+      const dd = String(dt.getDate()).padStart(2, "0");
+      const mm = String(dt.getMonth() + 1).padStart(2, "0");
+      const yyyy = String(dt.getFullYear());
+      const dataDDMMAAAA = `${dd}${mm}${yyyy}`;
+      setStatusMsg(`Cancelando NSU ${row.nsu} de ${dd}/${mm}/${yyyy} (R$ ${Number(row.amount).toFixed(2)})...`);
+      const resp = await paygoCancelarVenda(cfg.agentUrl, {
+        nsu: String(row.nsu),
+        data: dataDDMMAAAA,
+        valor: Number(row.amount),
+      });
+      if (resp.ok) {
+        setStatus("cancelled");
+        setStatusMsg(resp.message ?? "Cancelamento aprovado.");
+        await supabase
+          .from("pdv_tef_transactions")
+          .update({ status: "cancelled", message: "Cancelado via venda de teste" })
+          .eq("id", row.id);
+        toast({ title: "Cancelamento aprovado", description: `NSU ${row.nsu}` });
+      } else {
+        setStatus("error");
+        setStatusMsg(resp.error ?? "Falha no cancelamento");
+        toast({ title: "Falha no cancelamento", description: resp.error ?? "", variant: "destructive" });
+      }
+    } catch (err: any) {
+      setStatus("error");
+      setStatusMsg(err?.message ?? String(err));
+      toast({ title: "Erro", description: err?.message ?? String(err), variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
 
 
   return (
@@ -282,6 +340,19 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
           />
         </div>
 
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Parcelas (crédito)</label>
+          <Input
+            type="number"
+            min={1}
+            max={99}
+            value={installments}
+            onChange={(e) => setInstallments(e.target.value)}
+            className="w-24"
+            disabled={busy}
+          />
+        </div>
+
         <Button onClick={() => void runSale("debit")} disabled={busy || !!pendingMethod} className="gap-2">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
           Debito
@@ -315,6 +386,16 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
           Desfazer pendência
+        </Button>
+
+        <Button
+          onClick={() => void cancelarUltimaVenda()}
+          disabled={busy || !!pendingMethod}
+          variant="destructive"
+          className="gap-2"
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+          Cancelar última venda
         </Button>
 
         <Button
