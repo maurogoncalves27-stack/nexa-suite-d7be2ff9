@@ -391,7 +391,19 @@ const TefPaygoSetup = () => {
                     {items.filter(i => i.state === "ok").length}/{items.length} OK
                   </Badge>
                 )}
-                <Badge variant="outline" className="text-[10px] h-5">Agente v{AGENT_VERSION}</Badge>
+                {(() => {
+                  const agentItem = items.find(i => i.label === "Agente local online");
+                  const online = agentItem?.state === "ok";
+                  return (
+                    <Badge
+                      className={`text-[10px] h-5 border ${online
+                        ? "bg-success/15 text-success border-success/40"
+                        : "bg-destructive/15 text-destructive border-destructive/40"}`}
+                    >
+                      Agente v{AGENT_VERSION} {online ? "• online" : "• offline"}
+                    </Badge>
+                  );
+                })()}
                 <Button
                   variant="outline"
                   size="sm"
