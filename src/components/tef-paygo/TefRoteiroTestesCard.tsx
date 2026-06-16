@@ -658,6 +658,157 @@ function computeAutoEvidence(txs: Tx[]): Map<number, Evidence> {
   return m;
 }
 
+function SectionCarousel({
+  sec,
+  autoEv,
+  isDone,
+  toggle,
+}: {
+  sec: Secao;
+  autoEv: Map<number, AutoEv>;
+  isDone: (n: number) => boolean;
+  toggle: (n: number) => void;
+}) {
+  const passos = sec.passos;
+  const [idx, setIdx] = useState(0);
+
+  // Auto-avançar quando o passo atual for concluído (auto ou manual)
+  useEffect(() => {
+    const cur = passos[idx];
+    if (cur && isDone(cur.n) && idx < passos.length - 1) {
+      const t = window.setTimeout(() => setIdx((i) => Math.min(passos.length - 1, i + 1)), 400);
+      return () => window.clearTimeout(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoEv, idx, passos.length]);
+
+  const goPrev = () => setIdx((i) => Math.max(0, i - 1));
+  const goNext = () => setIdx((i) => Math.min(passos.length - 1, i + 1));
+
+  const p = passos[Math.min(idx, passos.length - 1)];
+  if (!p) return null;
+  const ev = autoEv.get(p.n);
+  const done = isDone(p.n);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <Button variant="outline" size="sm" onClick={goPrev} disabled={idx === 0}>
+          <ChevronLeft className="h-4 w-4 mr-1" /> Voltar
+        </Button>
+        <div className="text-xs text-muted-foreground text-center flex-1 min-w-0 truncate">
+          {idx + 1} de {passos.length}
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={goNext}
+          disabled={idx >= passos.length - 1}
+        >
+          Avançar <ChevronRight className="h-4 w-4 ml-1" />
+        </Button>
+      </div>
+
+      <div
+        className={`rounded-md border p-4 min-h-[360px] flex gap-3 items-start ${
+          done ? "bg-muted/50 border-success/30" : "bg-background"
+        }`}
+      >
+        <Checkbox
+          checked={done}
+          onCheckedChange={() => toggle(p.n)}
+          className="mt-1"
+          disabled={!!ev}
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`text-xs font-mono ${done ? "text-success" : "text-muted-foreground"}`}>
+              Passo {String(p.n).padStart(2, "0")}
+            </span>
+            <span className={`text-base font-semibold ${done ? "text-success line-through" : ""}`}>
+              {p.titulo}
+            </span>
+            {ev && (
+              <Badge variant="secondary" className="text-[10px] gap-1">
+                <Sparkles className="h-3 w-3" /> auto
+              </Badge>
+            )}
+          </div>
+          <p className={`text-sm mt-1 ${done ? "text-success" : "text-muted-foreground"}`}>{p.desc}</p>
+
+          {!done && (
+            <>
+              {(p.valor || p.rede || p.modalidade) && (
+                <div className="flex flex-wrap gap-1.5 mt-3">
+                  {p.valor && (
+                    <Badge variant="default" className="text-xs font-mono">
+                      💰 {p.valor}
+                    </Badge>
+                  )}
+                  {p.rede && <Badge variant="outline" className="text-xs">Rede: {p.rede}</Badge>}
+                  {p.modalidade && <Badge variant="outline" className="text-xs">{p.modalidade}</Badge>}
+                </div>
+              )}
+
+              {p.comoFazer && p.comoFazer.length > 0 && (
+                <div className="mt-3 rounded border bg-muted/30 p-3">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                    Como fazer
+                  </div>
+                  <ol className="list-decimal list-inside space-y-1 text-sm text-foreground/90">
+                    {p.comoFazer.map((passo, i) => (
+                      <li key={i} className="leading-snug">{passo}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+
+              {p.esperado && (
+                <div className="mt-3 text-sm">
+                  <span className="font-semibold text-success">✓ Esperado:</span>{" "}
+                  <span className="text-muted-foreground">{p.esperado}</span>
+                </div>
+              )}
+            </>
+          )}
+
+          {ev && (
+            <p className="text-[11px] text-muted-foreground mt-3 font-mono">
+              auto · {ev.label} · NSU {ev.nsu ?? "—"} · {formatBRL(ev.amount)}
+              {ev.acquirer ? ` · ${ev.acquirer}` : ""}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <Button variant="ghost" size="sm" onClick={goPrev} disabled={idx === 0}>
+          <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            const next = passos.findIndex((pp, i) => i > idx && !isDone(pp.n));
+            if (next >= 0) setIdx(next);
+            else toast.success("Nenhum passo pendente nesta seção.");
+          }}
+        >
+          Pular para próximo pendente
+        </Button>
+        <Button
+          variant="default"
+          size="sm"
+          onClick={goNext}
+          disabled={idx >= passos.length - 1}
+        >
+          Próximo <ChevronRight className="h-4 w-4 ml-1" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function TefRoteiroTestesCard() {
   const [estado, setEstado] = useState<Estado>({});
   const [runStartedAt, setRunStartedAt] = useState<string>(() => new Date().toISOString());
