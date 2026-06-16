@@ -29,9 +29,13 @@ const DEFAULT_HOST = "pos-transac-sb.tpgweb.io:31735";
 const DEFAULT_CNPJ = "44.932.369/0001-08";
 const AGENT_VERSION = "1.5.5";
 const AGENT_EXE_URL = "https://nexasuite.aquelaparme.com.br/releases/NEXA-ACBr-Agent-Setup-1.5.5.exe";
-// Cole DIRETO no prompt do PowerShell (não use `powershell -Command "..."` — as aspas duplas comem os $variáveis).
-// curl.exe é nativo no Windows 10/11 e ignora as regras de quoting do PowerShell.
-const AGENT_INSTALL_COMMAND = `taskkill /F /T /IM "NEXA ACBr Agent.exe" 2>$null; taskkill /F /T /IM "nexa-acbr.exe" 2>$null; cd C:\\Users\\Mauro\\Documents\\GitHub\\nexa-suite-d7be2ff9; npm run build; cd electron-acbr; npm run release:keep`;
+// Cole DIRETO no prompt do PowerShell. Faz tudo numa tacada:
+// 1) mata o agente que estiver rodando
+// 2) entra na pasta do repo e dá git pull (atualiza pro código mais novo)
+// 3) entra em electron-acbr, instala deps se necessário
+// 4) sobe o agente em modo dev (sem instalar .exe) — só pra teste
+const AGENT_INSTALL_COMMAND = `taskkill /F /T /IM "NEXA ACBr Agent.exe" 2>$null; taskkill /F /T /IM "nexa-acbr.exe" 2>$null; taskkill /F /T /IM electron.exe 2>$null; cd C:\\Users\\Mauro\\Documents\\GitHub\\nexa-suite-d7be2ff9; git pull; if (!(Test-Path electron-acbr\\node_modules)) { cd electron-acbr; npm install; cd .. }; cd electron-acbr; npx electron . ; cd ..`;
+
 
 interface Store { id: string; name: string; }
 interface TefRow {
