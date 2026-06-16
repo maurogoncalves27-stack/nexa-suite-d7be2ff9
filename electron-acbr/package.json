@@ -50,8 +50,14 @@
     },
     "win": {
       "icon": "build/icon.ico",
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
       "publisherName": "Aquela Parme"
+    },
+    "portable": {
+      "artifactName": "NEXA-ACBr-Agent-Portable-${version}.exe"
     },
     "nsis": {
       "oneClick": false,
