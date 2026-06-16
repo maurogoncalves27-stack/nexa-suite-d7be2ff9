@@ -41,6 +41,7 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
   const [statusMsg, setStatusMsg] = useState<string>("");
   const [lastResult, setLastResult] = useState<string>("");
   const [pendingMethod, setPendingMethod] = useState<TefPaymentMethod | null>(null);
+  const [showPinpad, setShowPinpad] = useState(false);
 
   const runSale = async (method: TefPaymentMethod, selectedAcquirer?: "DEMO" | "REDE" | "PIX C6 BANK") => {
     const value = Number(amount.replace(",", "."));
