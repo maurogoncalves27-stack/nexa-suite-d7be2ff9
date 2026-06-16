@@ -364,7 +364,14 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
             </Button>
           </div>
         </DialogContent>
-      </Dialog>
+      {showPinpad && (
+        <TefPinpadSetupCard
+          storeId={storeId}
+          cpfCnpj={cpfCnpj}
+          pontoDeCaptura={pontoDeCaptura}
+          sandboxHost={sandboxHost}
+        />
+      )}
     </Card>
   );
 }
