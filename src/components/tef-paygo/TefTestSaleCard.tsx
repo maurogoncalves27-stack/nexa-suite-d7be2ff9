@@ -13,7 +13,8 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { loadTefConfig, createTefAdapter, logTefTransaction } from "@/lib/tef";
 import type { TefStatus, TefPaymentMethod } from "@/lib/tef";
-import { paygoConfirmarVenda, joinAgentUrl } from "@/lib/tef/paygoAdapter" as any;
+import { paygoConfirmarVenda } from "@/lib/tef/paygoAdapter";
+import { joinAgentUrl } from "@/lib/tef/agentUrl";
 import { pushTefReceipt } from "@/hooks/useTefReceipts";
 
 const ASA_SUL_ID = "fcf435c2-c382-444c-b499-4d95f07b2633";
