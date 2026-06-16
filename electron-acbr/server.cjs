@@ -229,11 +229,19 @@ async function handle(req, res) {
       const body = await readBody(req);
       if (!body.valor || body.valor <= 0) return send(res, 400, { ok: false, error: "valor obrigatório" });
       try {
+        if (typeof tef.clearSaleStatus === "function") tef.clearSaleStatus();
         const retorno = await tef.efetuarPagamento({ ...body, onDisplay: (m) => console.log("[TEF display]", m) });
         return send(res, 200, { ok: true, retorno });
       } catch (e) {
         return send(res, 500, { ok: false, error: e.message });
       }
+    }
+
+    if (req.method === "GET" && path === "/tef/sale/status") {
+      if (typeof tef.getSaleStatus !== "function") {
+        return send(res, 200, { ok: true, status: "idle", message: "", qrCode: "" });
+      }
+      return send(res, 200, { ok: true, ...tef.getSaleStatus() });
     }
 
     if (req.method === "POST" && path === "/tef/cancelar") {
