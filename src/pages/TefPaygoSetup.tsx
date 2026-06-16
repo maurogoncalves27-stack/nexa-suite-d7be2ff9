@@ -454,14 +454,7 @@ const TefPaygoSetup = () => {
 
           
 
-          <TefPinpadSetupCard
-            storeId={storeId}
-            cpfCnpj={cnpj}
-            pontoDeCaptura={pdc}
-            sandboxHost={DEFAULT_HOST}
-          />
-
-          <TefTestSaleCard />
+          <TefTestSaleCard storeId={storeId} cpfCnpj={cnpj} pontoDeCaptura={pdc} sandboxHost={DEFAULT_HOST} />
 
           <TefRoteiroTestesCard />
 

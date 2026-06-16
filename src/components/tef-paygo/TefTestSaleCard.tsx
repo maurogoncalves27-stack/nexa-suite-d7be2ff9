@@ -8,23 +8,31 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CreditCard, Loader2, FlaskConical, CheckCircle2, XCircle } from "lucide-react";
+import { CreditCard, Loader2, FlaskConical, CheckCircle2, XCircle, Settings2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { loadTefConfig, createTefAdapter, logTefTransaction } from "@/lib/tef";
 import type { TefStatus, TefPaymentMethod } from "@/lib/tef";
 import { joinAgentUrl } from "@/lib/tef/agentUrl";
 import { pushTefReceipt } from "@/hooks/useTefReceipts";
+import TefPinpadSetupCard from "./TefPinpadSetupCard";
 
 const ASA_SUL_ID = "fcf435c2-c382-444c-b499-4d95f07b2633";
 const DEFAULT_SALE_ID = "VENDA-1001";
+
+interface Props {
+  storeId?: string | null;
+  cpfCnpj?: string | null;
+  pontoDeCaptura?: string | null;
+  sandboxHost?: string | null;
+}
 
 const isPaygoNetworkMenuRequest = (result: { status: string; message?: string; raw?: unknown }) => {
   const text = `${result.message ?? ""} ${JSON.stringify(result.raw ?? {})}`.toUpperCase();
   return result.status === "error" && text.includes("DEMO") && text.includes("REDE");
 };
 
-export default function TefTestSaleCard() {
+export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sandboxHost }: Props) {
   const [amount, setAmount] = useState("129,90");
   const [saleId, setSaleId] = useState(DEFAULT_SALE_ID);
   const [acquirer, setAcquirer] = useState<"DEMO" | "REDE" | "PIX C6 BANK">("DEMO");
@@ -33,6 +41,7 @@ export default function TefTestSaleCard() {
   const [statusMsg, setStatusMsg] = useState<string>("");
   const [lastResult, setLastResult] = useState<string>("");
   const [pendingMethod, setPendingMethod] = useState<TefPaymentMethod | null>(null);
+  const [showPinpad, setShowPinpad] = useState(false);
 
   const runSale = async (method: TefPaymentMethod, selectedAcquirer?: "DEMO" | "REDE" | "PIX C6 BANK") => {
     const value = Number(amount.replace(",", "."));
@@ -306,6 +315,16 @@ export default function TefTestSaleCard() {
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
           Desfazer pendência
         </Button>
+
+        <Button
+          onClick={() => setShowPinpad((s) => !s)}
+          disabled={busy}
+          variant="outline"
+          className="gap-2"
+        >
+          <Settings2 className="h-4 w-4" />
+          {showPinpad ? "Ocultar menu pinpad" : "Menu pinpad"}
+        </Button>
       </div>
 
       {status !== "idle" && (
@@ -346,6 +365,15 @@ export default function TefTestSaleCard() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {showPinpad && (
+        <TefPinpadSetupCard
+          storeId={storeId}
+          cpfCnpj={cpfCnpj}
+          pontoDeCaptura={pontoDeCaptura}
+          sandboxHost={sandboxHost}
+        />
+      )}
     </Card>
   );
 }
