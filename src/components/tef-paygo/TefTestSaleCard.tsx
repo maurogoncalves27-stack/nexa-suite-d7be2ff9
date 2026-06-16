@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { loadTefConfig, createTefAdapter, logTefTransaction } from "@/lib/tef";
 import type { TefStatus, TefPaymentMethod } from "@/lib/tef";
 import { joinAgentUrl } from "@/lib/tef/agentUrl";
+import { paygoCancelarVenda } from "@/lib/tef/paygoAdapter";
 import { pushTefReceipt } from "@/hooks/useTefReceipts";
 import TefPinpadSetupCard from "./TefPinpadSetupCard";
 
