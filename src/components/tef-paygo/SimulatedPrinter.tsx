@@ -63,6 +63,35 @@ const downloadPdf = (entry: TefReceiptEntry, via: ViaKey, text: string) => {
   doc.save(buildFilename(entry, via, "pdf"));
 };
 
+const folderName = (entry: TefReceiptEntry) => {
+  const safe = entry.label.replace(/[^a-zA-Z0-9_-]+/g, "_").slice(0, 40) || "cupom";
+  const stamp = new Date(entry.ts).toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  return `${stamp}_${safe}`;
+};
+
+const downloadAllAsZip = async (entries: TefReceiptEntry[]) => {
+  if (!entries.length) return;
+  const zip = new JSZip();
+  const root = zip.folder(`comprovantes-paygo-${new Date().toISOString().slice(0, 10)}`)!;
+  for (const entry of entries) {
+    const sub = root.folder(folderName(entry))!;
+    (Object.keys(VIA_LABEL) as ViaKey[]).forEach((via) => {
+      const text = pickText(entry, via);
+      if (text) sub.file(`${via}.txt`, text);
+    });
+    // Resumo da transação
+    const header = `Transação: ${entry.label}\nData: ${fmtTs(entry.ts)}\nID: ${entry.id}\n`;
+    sub.file("_resumo.txt", header);
+  }
+  const blob = await zip.generateAsync({ type: "blob" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `comprovantes-paygo-${new Date().toISOString().slice(0, 10)}.zip`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
 export default function SimulatedPrinter() {
   const entries = useTefReceipts();
   const [via, setVia] = useState<ViaKey>("merchant");
