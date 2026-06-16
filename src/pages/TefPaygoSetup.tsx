@@ -419,8 +419,8 @@ const TefPaygoSetup = () => {
                   variant="outline"
                   size="sm"
                   className="h-6 text-[10px] gap-1"
-                  title="Copia o caminho da pasta de logs do PayGo para colar no Explorer"
-                  onClick={() => copy("C:\\Program Files (x86)\\PayGo\\PGWebLib\\x64\\Log", "Caminho da pasta de logs")}
+                  title="Copia o caminho oficial dos logs do PayGo Windows (C:\PAYGOWEB\Log) — cole no Explorer"
+                  onClick={() => copy("C:\\PAYGOWEB\\Log", "Caminho da pasta de logs")}
                 >
                   <FolderOpen className="h-3 w-3" />
                   Logs
