@@ -10,6 +10,7 @@ import { Loader2, Plus, ChevronsUpDown, Check } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import AllocationEditor, { type AllocationSplit, validateSplits } from "./AllocationEditor";
 
 interface Props {
   open: boolean;
