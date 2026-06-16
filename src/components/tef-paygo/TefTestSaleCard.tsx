@@ -479,6 +479,29 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
         </details>
       )}
 
+      <Dialog open={!!pixQrDataUrl} onOpenChange={(open) => { if (!open) { void cancelNetworkSelection(); setPixQrBrCode(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><QrCode className="h-5 w-5" /> Pague com Pix</DialogTitle>
+            <DialogDescription>
+              {pixWaitMsg || "Cliente, escaneie este QR Code no app do seu banco para concluir o pagamento."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-3">
+            {pixQrDataUrl && (
+              <img src={pixQrDataUrl} alt="QR Code Pix" className="rounded border bg-white p-2" width={320} height={320} />
+            )}
+            <details className="w-full text-xs">
+              <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Mostrar BR Code (Pix copia-e-cola)</summary>
+              <pre className="mt-2 max-h-32 overflow-auto rounded bg-muted p-2 font-mono break-all whitespace-pre-wrap">{pixQrBrCode}</pre>
+            </details>
+            <Button variant="destructive" className="w-full" onClick={() => void cancelNetworkSelection()}>
+              Cancelar transação
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!pendingMethod} onOpenChange={(open) => { if (!open) setPendingMethod(null); }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
