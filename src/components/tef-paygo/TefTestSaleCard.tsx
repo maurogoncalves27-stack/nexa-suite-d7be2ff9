@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CreditCard, Loader2, FlaskConical, Wrench } from "lucide-react";
+import { CreditCard, Loader2, FlaskConical, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { loadTefConfig, createTefAdapter, logTefTransaction } from "@/lib/tef";
 import type { TefStatus, TefPaymentMethod } from "@/lib/tef";
-import { paygoAdministrativo } from "@/lib/tef/paygoAdapter";
+import { joinAgentUrl } from "@/lib/tef/agentUrl";
 import { pushTefReceipt } from "@/hooks/useTefReceipts";
 
 const ASA_SUL_ID = "fcf435c2-c382-444c-b499-4d95f07b2633";
@@ -154,6 +155,77 @@ export default function TefTestSaleCard() {
     setStatusMsg("Operacao PayGo cancelada pelo operador");
   };
 
+  const resolverPendencia = async (action: "confirm" | "undo") => {
+    setBusy(true);
+    setStatus("processing");
+    setStatusMsg(action === "confirm" ? "Confirmando transação pendente..." : "Desfazendo transação pendente...");
+    try {
+      const cfg = await loadTefConfig(ASA_SUL_ID);
+
+      // Busca o token da última transação pendente da Asa Sul
+      const { data: pendingRows } = await supabase
+        .from("pdv_tef_transactions")
+        .select("id, raw_response")
+        .eq("store_id", ASA_SUL_ID)
+        .eq("provider", "paygo")
+        .eq("status", "pending_confirmation")
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      const row = (pendingRows ?? [])[0];
+      const raw: any = row?.raw_response ?? {};
+      const d = raw?.retorno?.data ?? raw?.data ?? {};
+      const token = {
+        reqNum: d.reqNum ?? "",
+        locRef: d.locRef ?? "",
+        extRef: d.extRef ?? "",
+        virtMerch: d.virtMerch ?? "",
+        authSyst: d.authSyst ?? "",
+      };
+
+      const resp = await fetch(joinAgentUrl(cfg.agentUrl, action === "confirm" ? "/tef/confirm" : "/tef/undo"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(token),
+      });
+      const data = await resp.json().catch(() => ({} as any));
+
+      if (resp.ok && data?.ok) {
+        // Atualiza a transação no banco para sair do estado "pending"
+        if (row?.id) {
+          await supabase
+            .from("pdv_tef_transactions")
+            .update({
+              status: action === "confirm" ? "approved" : "cancelled",
+              message: action === "confirm" ? "Pendência confirmada manualmente" : "Pendência desfeita manualmente",
+            })
+            .eq("id", row.id);
+        }
+        setStatus(action === "confirm" ? "approved" : "cancelled");
+        setStatusMsg(data?.message ?? `Pendência ${action === "confirm" ? "confirmada" : "desfeita"} com sucesso.`);
+        toast({
+          title: action === "confirm" ? "Pendência confirmada" : "Pendência desfeita",
+          description: data?.message ?? "Pinpad liberado para próxima venda.",
+        });
+      } else {
+        setStatus("error");
+        setStatusMsg(data?.error ?? `Falha ao ${action === "confirm" ? "confirmar" : "desfazer"} pendência`);
+        toast({
+          title: "Falha",
+          description: data?.error ?? `HTTP ${resp.status}`,
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      setStatus("error");
+      setStatusMsg(err?.message ?? String(err));
+      toast({ title: "Erro", description: err?.message ?? String(err), variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+
   return (
     <Card className="p-4 space-y-3 border-warning/40 bg-warning/5">
       <div className="flex items-center gap-2">
@@ -204,43 +276,23 @@ export default function TefTestSaleCard() {
         </Button>
 
         <Button
-          onClick={async () => {
-            setBusy(true);
-            setStatus("processing");
-            setStatusMsg("Abrindo menu ADM no pinpad para resolver pendência...");
-            try {
-              const cfg = await loadTefConfig(ASA_SUL_ID);
-              const r = await paygoAdministrativo(cfg.agentUrl, {
-                merchantCode: cfg.merchantCode,
-                terminalCode: cfg.terminalCode,
-                host: cfg.agentUrl,
-              });
-              if (r.ok) {
-                setStatus("waiting_card");
-                setStatusMsg(r.message ?? "Menu ADM aberto. No pinpad, escolha 'Resolver pendência' e siga as instruções.");
-                toast({
-                  title: "ADM iniciado",
-                  description: "Selecione 'Resolver pendência' no pinpad para confirmar ou desfazer a transação pendente.",
-                });
-              } else {
-                setStatus("error");
-                setStatusMsg(r.error ?? "Falha ao abrir ADM");
-                toast({ title: "Falha ao abrir ADM", description: r.error, variant: "destructive" });
-              }
-            } catch (err: any) {
-              setStatus("error");
-              setStatusMsg(err?.message ?? String(err));
-              toast({ title: "Erro", description: err?.message ?? String(err), variant: "destructive" });
-            } finally {
-              setBusy(false);
-            }
-          }}
+          onClick={() => void resolverPendencia("confirm")}
+          disabled={busy || !!pendingMethod}
+          variant="default"
+          className="gap-2"
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+          Confirmar pendência
+        </Button>
+
+        <Button
+          onClick={() => void resolverPendencia("undo")}
           disabled={busy || !!pendingMethod}
           variant="destructive"
           className="gap-2"
         >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wrench className="h-4 w-4" />}
-          Resolver pendência (ADM)
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+          Desfazer pendência
         </Button>
       </div>
 
