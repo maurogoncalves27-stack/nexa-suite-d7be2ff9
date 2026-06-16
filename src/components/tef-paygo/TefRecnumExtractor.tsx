@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Loader2, RefreshCw, Copy, Download, FileSpreadsheet } from "lucide-react";
+import { Loader2, RefreshCw, Copy, Download, FileSpreadsheet, ScrollText } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface Props { storeId: string }
