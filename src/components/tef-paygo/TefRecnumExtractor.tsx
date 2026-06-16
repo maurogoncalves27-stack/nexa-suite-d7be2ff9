@@ -207,6 +207,40 @@ export default function TefRecnumExtractor({ storeId }: Props) {
           </table>
         </div>
       )}
+      {showLogs && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <ScrollText className="h-4 w-4 text-primary" />
+            Logs brutos PayGo (raw_response)
+          </h3>
+          {rows.length === 0 ? (
+            <div className="rounded-md border bg-muted/20 p-3 text-sm text-muted-foreground">
+              Nenhuma transação para exibir logs.
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {rows.map((r, i) => {
+                const raw = (r as any).raw_response ?? {};
+                return (
+                  <div key={i} className="rounded-md border bg-muted/20 p-2.5 text-xs space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline" className="text-[10px]">{r.status}</Badge>
+                      <span className="font-mono text-muted-foreground">
+                        {new Date(r.finished_at).toLocaleString("pt-BR")}
+                      </span>
+                      <span className="font-mono">R$ {r.amount.toFixed(2).replace(".", ",")}</span>
+                      {r.reqnum && <span className="font-mono text-primary">RecNum: {r.reqnum}</span>}
+                    </div>
+                    <pre className="text-[11px] bg-background rounded p-2 overflow-x-auto whitespace-pre-wrap">
+                      {JSON.stringify(raw, null, 2)}
+                    </pre>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </Card>
   );
 }
