@@ -308,6 +308,29 @@ export const paygoConfirmarVenda = async (
   }
 };
 
+/**
+ * Limpa pendência presa na PGWebLib (estado "cancelarEmAndamento" após
+ * timeout de PIX ou venda abortada). Chama PW_iConfirmation(PWCNF_REV_MANU_AUT)
+ * com parâmetros vazios — best-effort, sempre retorna ok=true salvo erro de
+ * comunicação com o agente.
+ */
+export const paygoLimparPendencia = async (
+  agentUrl: string,
+): Promise<PaygoAgentResponse> => {
+  try {
+    const r = await fetch(joinAgentUrl(agentUrl, "/tef/limpar-pendencia"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    const data = (await r.json().catch(() => ({}))) as PaygoAgentResponse;
+    if (!r.ok) return { ok: false, error: data?.error ?? `HTTP ${r.status}` };
+    return data;
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "offline" };
+  }
+};
+
 /** Operação administrativa do pinpad (menu, relatório, teste de comunicação). */
 export const paygoAdministrativo = async (
   agentUrl: string,

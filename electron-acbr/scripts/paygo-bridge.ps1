@@ -1,6 +1,6 @@
 param(
   [Parameter(Mandatory = $true)]
-  [ValidateSet("sale", "confirm", "undo", "commtest", "install", "admin", "host")]
+  [ValidateSet("sale", "confirm", "undo", "cleanup", "commtest", "install", "admin", "host")]
   [string] $Action,
 
   [string] $DllPath = "C:\Program Files (x86)\PayGo\PGWebLib\x64\PGWebLib.dll",
@@ -393,6 +393,38 @@ public static class PayGoBridge
     public static string Undo(string dllPath, string workingDir, string reqNum, string locRef, string extRef, string virtMerch, string authSyst)
     {
         return Confirmation(dllPath, workingDir, PWCNF_REV_MANU_AUT, reqNum, locRef, extRef, virtMerch, authSyst);
+    }
+
+    // Cleanup: força desfazimento de QUALQUER pendência presa na PGWebLib
+    // (situação típica após timeout de PIX, queda de host, ou venda abortada
+    // antes do PW_iConfirmation). Chamado tanto por rota explícita
+    // (/tef/limpar-pendencia) quanto pelo agente JS no início de cada venda
+    // quando o estado anterior ficou "timeout".
+    public static string Cleanup(string dllPath, string workingDir)
+    {
+        try
+        {
+            Load(dllPath);
+            short ret = Init(workingDir);
+            if (ret != PWRET_OK) return Error("PW_iInit", ret);
+
+            EmitEvent("INFO", "Cleanup: forcando PW_iConfirmation(PWCNF_REV_MANU_AUT) com params vazios");
+            short cnfRet = Fn<PW_iConfirmation_>("PW_iConfirmation")(PWCNF_REV_MANU_AUT, "", "", "", "", "");
+            if (cnfRet != PWRET_OK)
+            {
+                EmitEvent("INFO", "Cleanup: PW_iConfirmation ret=" + cnfRet + " (nenhuma pendencia ou ja limpa)");
+                // Não tratamos como erro fatal — se não havia pendência, a DLL
+                // retorna algo != 0 e tudo bem, a próxima venda funciona.
+                return "{\"ok\":true,\"status\":\"cleanup\",\"message\":\"Sem pendencia a limpar (ret=" + cnfRet + ")\",\"ret\":" + cnfRet + "}";
+            }
+
+            EmitEvent("CONFIRMED", "Cleanup: pendencia anterior desfeita com sucesso");
+            return "{\"ok\":true,\"status\":\"cleanup\",\"message\":\"Pendencia anterior desfeita\",\"ret\":0}";
+        }
+        catch (Exception ex)
+        {
+            return "{\"ok\":false,\"status\":\"error\",\"message\":\"" + Esc(ex.Message) + "\"}";
+        }
     }
 
     private static string Confirmation(string dllPath, string workingDir, uint confirmation, string reqNum, string locRef, string extRef, string virtMerch, string authSyst)
@@ -1039,6 +1071,10 @@ function Invoke-PayGoCommand {
       )
     }
 
+    if ($cmdAction -eq "cleanup") {
+      return [PayGoBridge]::Cleanup($DllPath, $WorkingDir)
+    }
+
     if ($cmdAction -eq "confirm" -or $cmdAction -eq "undo") {
       if ([string]::IsNullOrWhiteSpace([string]$Command.confirmationJsonBase64)) {
         throw "confirmationJsonBase64 e obrigatorio para $cmdAction"
@@ -1131,6 +1167,11 @@ if ($Action -eq "install") {
 
 if ($Action -eq "admin") {
   [PayGoBridge]::Operation($DllPath, $WorkingDir, 0x20, $CpfCnpj, $PontoDeCaptura, $Ambiente, $SenhaTecnica, $UsePinpad, $PinpadPort, "")
+  exit
+}
+
+if ($Action -eq "cleanup") {
+  [PayGoBridge]::Cleanup($DllPath, $WorkingDir)
   exit
 }
 

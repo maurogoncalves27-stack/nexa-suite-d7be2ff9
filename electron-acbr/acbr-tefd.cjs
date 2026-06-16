@@ -430,6 +430,20 @@ async function efetuarPagamento(opts = {}) {
   const saleId = opts.saleId || `SALE-${Date.now()}`;
   const qrDisplayPreference = String(opts.qrDisplayPreference || process.env.PAYGO_QR_DISPLAY_PREF || NEXA_DEFAULTS.qrDisplayPreference) === "1" ? "1" : "2";
 
+  // Auto-cleanup pre-flight: se a transação anterior morreu em timeout/error,
+  // a DLL PGWebLib pode ter ficado com estado "transação em andamento" e a
+  // próxima venda devolve `cancelarEmAndamento`. Forçamos um desfazimento
+  // best-effort antes de iniciar a nova venda.
+  const prevStatus = saleStatus?.status;
+  if (prevStatus === "timeout" || prevStatus === "error") {
+    try {
+      console.log("[TEF] Pré-cleanup automático: estado anterior=", prevStatus);
+      await runBridge({ action: "cleanup" }, { timeoutMs: 15000 });
+    } catch (e) {
+      console.warn("[TEF] Pré-cleanup falhou (seguindo mesmo assim):", e.message);
+    }
+  }
+
   setSaleStatus({
     status: "running",
     message: `Iniciando transação no PayGo (${saleId})...`,
@@ -475,7 +489,31 @@ async function efetuarPagamento(opts = {}) {
     } else {
       setSaleStatus({ status: "error", message: err.message });
     }
+
+    // Auto-cleanup pós-falha: desfaz pendência presa na DLL para liberar a
+    // próxima venda. Best-effort, não propaga erro.
+    try {
+      console.log("[TEF] Pós-cleanup automático após falha:", err.message);
+      await runBridge({ action: "cleanup" }, { timeoutMs: 15000 });
+    } catch (e) {
+      console.warn("[TEF] Pós-cleanup falhou:", e.message);
+    }
+
     throw err;
+  }
+}
+
+async function limparPendencia() {
+  try {
+    const r = await runBridge({ action: "cleanup" }, { timeoutMs: 15000 });
+    clearSaleStatus();
+    return r;
+  } catch (e) {
+    // Se a DLL não respondeu, ainda assim matamos o host para garantir
+    // estado limpo na próxima chamada.
+    stopHost("limparPendencia-fallback");
+    clearSaleStatus();
+    return { ok: true, status: "cleanup", message: `Host reiniciado (${e.message})` };
   }
 }
 
@@ -600,6 +638,7 @@ module.exports = {
   cancelarVenda,
   confirmarVenda,
   cancelarEmAndamento,
+  limparPendencia,
   administrativoAsync,
   getAdmStatus,
   getSaleStatus,

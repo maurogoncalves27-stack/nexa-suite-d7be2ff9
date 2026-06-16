@@ -15,7 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { loadTefConfig, createTefAdapter, logTefTransaction } from "@/lib/tef";
 import type { TefStatus, TefPaymentMethod } from "@/lib/tef";
 import { joinAgentUrl } from "@/lib/tef/agentUrl";
-import { paygoCancelarVenda } from "@/lib/tef/paygoAdapter";
+import { paygoCancelarVenda, paygoLimparPendencia } from "@/lib/tef/paygoAdapter";
 import { pushTefReceipt } from "@/hooks/useTefReceipts";
 import TefPinpadSetupCard from "./TefPinpadSetupCard";
 
@@ -381,6 +381,31 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
     }
   };
 
+  const limparPendenciaPaygo = async () => {
+    setBusy(true);
+    setStatus("processing");
+    setStatusMsg("Limpando pendência da PGWebLib...");
+    try {
+      const cfg = await loadTefConfig(ASA_SUL_ID);
+      const resp = await paygoLimparPendencia(cfg.agentUrl);
+      if (resp.ok) {
+        setStatus("idle");
+        setStatusMsg(resp.message ?? "Pendência limpa. Pode iniciar nova venda.");
+        toast({ title: "Pendência limpa", description: resp.message ?? "OK" });
+      } else {
+        setStatus("error");
+        setStatusMsg(resp.error ?? "Falha ao limpar pendência");
+        toast({ title: "Falha", description: resp.error ?? "", variant: "destructive" });
+      }
+    } catch (err: any) {
+      setStatus("error");
+      setStatusMsg(err?.message ?? String(err));
+      toast({ title: "Erro", description: err?.message ?? String(err), variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
 
 
   return (
@@ -479,6 +504,16 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
           Cancelar última venda
+        </Button>
+
+        <Button
+          onClick={() => void limparPendenciaPaygo()}
+          disabled={busy}
+          variant="outline"
+          className="gap-2 border-warning text-warning hover:bg-warning/10"
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+          Limpar pendência PayGo
         </Button>
 
         <Button

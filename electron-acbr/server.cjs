@@ -249,6 +249,16 @@ async function handle(req, res) {
       return send(res, 200, { ok: true });
     }
 
+    if (req.method === "POST" && path === "/tef/limpar-pendencia") {
+      if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "PGWebLib.dll não disponível" });
+      try {
+        const retorno = await tef.limparPendencia();
+        return send(res, 200, { ok: !!retorno?.ok, retorno, message: retorno?.message });
+      } catch (e) {
+        return send(res, 500, { ok: false, error: e.message });
+      }
+    }
+
     if (req.method === "POST" && path === "/tef/cancelar-venda") {
       if (!tef.isAvailable()) return send(res, 503, { ok: false, error: "PGWebLib.dll não disponível" });
       const body = await readBody(req);
