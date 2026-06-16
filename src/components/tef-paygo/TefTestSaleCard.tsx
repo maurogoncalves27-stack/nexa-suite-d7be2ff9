@@ -249,6 +249,60 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
       setBusy(false);
     }
   };
+  const cancelarUltimaVenda = async () => {
+    setBusy(true);
+    setStatus("processing");
+    setStatusMsg("Buscando última venda aprovada da Asa Sul...");
+    try {
+      const cfg = await loadTefConfig(ASA_SUL_ID);
+      const { data: rows } = await supabase
+        .from("pdv_tef_transactions")
+        .select("id, nsu, amount, created_at, raw_response")
+        .eq("store_id", ASA_SUL_ID)
+        .eq("provider", "paygo")
+        .eq("status", "approved")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const row = (rows ?? [])[0];
+      if (!row || !row.nsu) {
+        toast({ title: "Nenhuma venda aprovada encontrada", variant: "destructive" });
+        setStatus("idle");
+        setStatusMsg("");
+        return;
+      }
+      const dt = new Date(row.created_at);
+      const dd = String(dt.getDate()).padStart(2, "0");
+      const mm = String(dt.getMonth() + 1).padStart(2, "0");
+      const yyyy = String(dt.getFullYear());
+      const dataDDMMAAAA = `${dd}${mm}${yyyy}`;
+      setStatusMsg(`Cancelando NSU ${row.nsu} de ${dd}/${mm}/${yyyy} (R$ ${Number(row.amount).toFixed(2)})...`);
+      const resp = await paygoCancelarVenda(cfg.agentUrl, {
+        nsu: String(row.nsu),
+        data: dataDDMMAAAA,
+        valor: Number(row.amount),
+      });
+      if (resp.ok) {
+        setStatus("cancelled");
+        setStatusMsg(resp.message ?? "Cancelamento aprovado.");
+        await supabase
+          .from("pdv_tef_transactions")
+          .update({ status: "cancelled", message: "Cancelado via venda de teste" })
+          .eq("id", row.id);
+        toast({ title: "Cancelamento aprovado", description: `NSU ${row.nsu}` });
+      } else {
+        setStatus("error");
+        setStatusMsg(resp.error ?? "Falha no cancelamento");
+        toast({ title: "Falha no cancelamento", description: resp.error ?? "", variant: "destructive" });
+      }
+    } catch (err: any) {
+      setStatus("error");
+      setStatusMsg(err?.message ?? String(err));
+      toast({ title: "Erro", description: err?.message ?? String(err), variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
 
 
   return (
