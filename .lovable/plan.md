@@ -1,22 +1,27 @@
-Vou ajustar o fluxo PIX do agente PayGo para ficar alinhado ao exemplo oficial C# que você enviou.
+O QR que apareceu provavelmente é da venda nova, porque antes o app nem recebia BR Code. Agora sabemos: o host/Pix está gerando QR; o que falha é a conclusão por timeout e a exibição no pinpad.
 
-Pontos encontrados na comparação:
-- A demo oficial usa `PWINFO_AUTCAP = 128 + 256 = 384`; nosso agente está usando `452`, com capacidades extras.
-- A demo oficial usa `PWINFO_DSPQRPREF = 2`, ou seja, QR Code no checkout/tela do PC.
-- O mais importante: no `PWDAT_DSPQRCODE`, a demo NÃO lê o QR de `szValorInicial`. Ela chama `PW_iGetResult(PWINFO_AUTHPOSQRCODE = 0x1F77)` e depois responde `PW_iAddParam(wIdentificador, "")`.
-- Nosso código hoje está pegando `data.szValorInicial`, emitindo esse valor e devolvendo esse mesmo valor no `PW_iAddParam`; isso diverge da demo e explica o timeout sem modal/QR.
+Plano de correção:
 
-Plano de implementação:
-1. Em `electron-acbr/scripts/paygo-bridge.ps1`, adicionar a constante `PWINFO_AUTHPOSQRCODE = 0x1F77`.
-2. Trocar o tratamento de `PWDAT_DSPQRCODE` para:
-   - chamar `Result(PWINFO_AUTHPOSQRCODE)` para obter o BR Code real;
-   - emitir evento `QRCODE` com esse conteúdo para o modal no PC;
-   - chamar `PW_iAddParam(data.wIdentificador, "")`, igual à demo oficial.
-3. Alinhar `PWINFO_AUTCAP` da venda/admin/install para `384`, igual à demo oficial: checkout display + QR checkout.
-4. Manter `PWINFO_DSPQRPREF = 2`, porque a própria documentação diz que `2` é exibir no checkout/PC; se quisermos testar pinpad depois, será um teste separado com valor `1`.
-5. Atualizar mensagens/comentários da tela de teste para parar de dizer que o PPC930 não tem display gráfico e deixar claro que o QR do PC é o fallback oficial do checkout.
-6. Subir versão do agente para `1.5.8`, para você conseguir confirmar que gerou a versão certa.
+1. Não tratar “tempo de captura excedido” como erro seco quando já existe QR
+   - Se o agente recebeu `PWDAT_DSPQRCODE` e emitiu `QRCODE`, manter o modal aberto como “aguardando pagamento” em vez de parecer transação perdida.
+   - Mostrar no modal que o QR foi gerado e que o cliente pode pagar pelo QR do PC.
 
-Resultado esperado:
-- Na próxima venda PIX, se a DLL gerar `PWDAT_DSPQRCODE`, o agente deve receber o BR Code por `PWINFO_AUTHPOSQRCODE` e abrir o modal/QR no PC.
-- Se ainda não aparecer no pinpad, isso passa a ser comportamento/configuração do PayGo/PdC, mas o fluxo do PC estará igual ao exemplo oficial.
+2. Adicionar log de correlação da venda
+   - Incluir `SaleId`, valor e horário nos eventos do QR.
+   - Assim fica claro se o QR é da tentativa atual ou anterior.
+
+3. Testar preferência de QR no pinpad
+   - Criar uma variação configurável de `PWINFO_DSPQRPREF`:
+     - `2` = checkout/PC, que já gerou QR.
+     - `1` = pinpad, para testar PPC930.
+   - Deixar padrão em `2`, porque é o caminho que já funcionou.
+
+4. Confirmar pela documentação PayGo
+   - `PWINFO_DSPQRPREF=1` força pinpad; `2` força checkout/PC.
+   - A própria documentação diz que só exibe no pinpad se automação e pinpad suportarem; portanto, se `1` não aparecer, não é mais problema do Pix em si.
+
+5. Gerar versão `1.5.9`
+   - Agente com logs melhores, preferência configurável e mensagem mais clara no modal.
+   - Depois testar duas vendas de R$ 1,00: uma com PC (`2`) e uma com pinpad (`1`).
+
+Minha leitura: o QR não é “fantasma”; o Pix passou a gerar. O próximo gargalo é que o PayGo está expirando antes da baixa/consulta da transação, e o PPC930 talvez não suporte/esteja configurado para exibir QR apesar de aceitar cartão.
