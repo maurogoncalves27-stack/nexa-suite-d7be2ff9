@@ -183,6 +183,42 @@ export default function BankReconciliationPanel() {
   useEffect(() => { loadAccounts(); }, [loadAccounts]);
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Carrega lista de lojas para o editor de rateio (uma vez)
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("stores")
+        .select("id, name, store_type, is_virtual")
+        .eq("is_virtual", false)
+        .neq("store_type", "central")
+        .order("name");
+      setAllocStores(((data ?? []) as any[]).map((s) => ({ id: s.id, name: s.name })));
+    })();
+  }, []);
+
+  // Após conciliar contra um AP/AR já rateado, herda o rateio para a bank_tx
+  const inheritAllocationsFromSource = async (txId: string, sourceKind: "payable" | "receivable", sourceId: string, txAbsAmount: number) => {
+    const { data: src } = await supabase
+      .from("finance_allocations")
+      .select("store_id, percent, amount")
+      .eq("source_kind", sourceKind)
+      .eq("source_id", sourceId);
+    if (!src || src.length === 0) return;
+    // Remove qualquer rateio antigo da bank_tx e replica proporcional ao valor da tx
+    await supabase.from("finance_allocations").delete().eq("source_kind", "bank_tx").eq("source_id", txId);
+    let allocated = 0;
+    const rows = src.map((s: any, i: number) => {
+      const pct = Number(s.percent) || 0;
+      const amt = i === src.length - 1
+        ? Math.round((txAbsAmount - allocated) * 100) / 100
+        : Math.round((pct / 100) * txAbsAmount * 100) / 100;
+      allocated += amt;
+      return { source_kind: "bank_tx", source_id: txId, store_id: s.store_id, amount: amt, percent: pct };
+    });
+    await supabase.from("finance_allocations").insert(rows);
+  };
+
+
   // Após cada reload, se houver uma "data foco" salva, rola até a primeira
   // linha cuja posted_at seja <= data foco (mantém o usuário no dia em que
   // ele estava conciliando, em vez de jogá-lo de volta ao topo).
