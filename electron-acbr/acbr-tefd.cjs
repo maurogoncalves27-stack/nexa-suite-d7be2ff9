@@ -146,6 +146,30 @@ function getAdmStatus() {
   return { ...admStatus };
 }
 
+// status visível pelas rotas /tef/sale/status — usado pela UI para renderizar
+// o QR Code PIX (o pinpad PPC930 não tem display gráfico, então a automação
+// precisa mostrar o BR Code para o cliente escanear no app do banco).
+let saleStatus = {
+  status: "idle", // idle | running | done | error
+  message: "",
+  qrCode: "",     // BR Code Pix recebido via PWDAT_DSPQRCODE
+  startedAt: 0,
+  method: "",     // CREDITO | DEBITO | PIX | VOUCHER
+  amount: 0,
+};
+
+function setSaleStatus(patch) {
+  saleStatus = { ...saleStatus, ...patch };
+}
+
+function getSaleStatus() {
+  return { ...saleStatus };
+}
+
+function clearSaleStatus() {
+  saleStatus = { status: "idle", message: "", qrCode: "", startedAt: 0, method: "", amount: 0 };
+}
+
 // ---------- spawn / shutdown ----------
 function stopHost(reason) {
   if (host) {
