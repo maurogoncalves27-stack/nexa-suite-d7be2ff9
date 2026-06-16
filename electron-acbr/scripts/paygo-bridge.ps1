@@ -259,9 +259,14 @@ public static class PayGoBridge
                 Add(PWINFO_FINTYPE, "1");
                 Add(PWINFO_PAYMNTTYPE, "1");
             }
-            else if (method == "PIX_TEF")
+            else if (method == "PIX" || method == "PIX_TEF")
             {
+                // Pix via PayGo Integrado: PAYMNTTYPE=8 ativa o fluxo Pix
+                // (gera BR Code via PSP do PdC). Sem isso, a DLL trata a
+                // transação como cartao e o PIX nunca é solicitado, o que
+                // explica a tela branca no PPC930.
                 Add(PWINFO_PAYMNTTYPE, "8");
+                EmitEvent("INFO", "Fluxo PIX habilitado (PWINFO_PAYMNTTYPE=8)");
             }
 
             ret = ExecLoop();
@@ -468,9 +473,12 @@ public static class PayGoBridge
                 EmitEvent("INFO", First(data.szValorInicial, "PayGo solicitou exibicao no checkout"));
                 return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, data.szValorInicial ?? "");
             case PWDAT_DSPQRCODE:
-                EmitEvent("INFO", "PayGo solicitou exibicao de QR Code");
-                EmitEvent("QRCODE", data.szValorInicial ?? "");
-                return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, data.szValorInicial ?? "");
+                {
+                    string qr = data.szValorInicial ?? "";
+                    EmitEvent("INFO", "PayGo solicitou exibicao de QR Code (id=" + FormatIdentifier(data.wIdentificador) + " len=" + qr.Length + ")");
+                    EmitEvent("QRCODE", qr);
+                    return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, qr);
+                }
             case PWDAT_PPENTRY:
                 EmitEvent("PINPAD", "Aguardando entrada de dados no pinpad");
                 ret = Fn<PW_iPPGetData_>("PW_iPPGetData")(index);
