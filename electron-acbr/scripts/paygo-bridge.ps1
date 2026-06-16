@@ -475,10 +475,14 @@ public static class PayGoBridge
                 return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, data.szValorInicial ?? "");
             case PWDAT_DSPQRCODE:
                 {
-                    string qr = data.szValorInicial ?? "";
-                    EmitEvent("INFO", "PayGo solicitou exibicao de QR Code (id=" + FormatIdentifier(data.wIdentificador) + " len=" + qr.Length + ")");
-                    EmitEvent("QRCODE", qr);
-                    return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, qr);
+                    // Alinhado a demo oficial C# (Fluxos.FluxoDspQRCode):
+                    // o BR Code NAO vem em szValorInicial — tem que ser lido
+                    // via PW_iGetResult(PWINFO_AUTHPOSQRCODE=0x1F77). Depois
+                    // respondemos com PW_iAddParam(wIdentificador, "").
+                    string qr = Result(PWINFO_AUTHPOSQRCODE);
+                    EmitEvent("INFO", "PayGo solicitou exibicao de QR Code (id=" + FormatIdentifier(data.wIdentificador) + " len=" + (qr ?? "").Length + ")");
+                    if (!String.IsNullOrEmpty(qr)) EmitEvent("QRCODE", qr);
+                    return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, "");
                 }
             case PWDAT_PPENTRY:
                 EmitEvent("PINPAD", "Aguardando entrada de dados no pinpad");
