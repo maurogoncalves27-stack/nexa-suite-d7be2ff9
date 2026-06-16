@@ -176,6 +176,27 @@ export default function BankReconciliationPanel() {
   useEffect(() => { loadAccounts(); }, [loadAccounts]);
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Após cada reload, se houver uma "data foco" salva, rola até a primeira
+  // linha cuja posted_at seja <= data foco (mantém o usuário no dia em que
+  // ele estava conciliando, em vez de jogá-lo de volta ao topo).
+  useEffect(() => {
+    if (loading) return;
+    const focus = focusDateRef.current;
+    if (!focus) return;
+    focusDateRef.current = null;
+    // Aguarda um frame para garantir que a tabela já foi pintada
+    requestAnimationFrame(() => {
+      const rows = document.querySelectorAll<HTMLElement>("tr[data-posted-at]");
+      let target: HTMLElement | null = null;
+      for (const row of Array.from(rows)) {
+        const d = row.dataset.postedAt;
+        if (d && d <= focus) { target = row; break; }
+      }
+      if (!target && rows.length > 0) target = rows[rows.length - 1];
+      target?.scrollIntoView({ block: "center", behavior: "auto" });
+    });
+  }, [loading, transactions]);
+
   // Constrói candidatos compatíveis com cada transação (débito → pagar; crédito → receber)
   // Pré-filtra por janela de valor (±20%) e data (±15 dias) para reduzir O(N×M) drasticamente
   const candidatesFor = useCallback((tx: BankTx, wide = false): Candidate[] => {
