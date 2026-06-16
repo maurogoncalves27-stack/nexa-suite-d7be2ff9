@@ -8,23 +8,31 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CreditCard, Loader2, FlaskConical, CheckCircle2, XCircle } from "lucide-react";
+import { CreditCard, Loader2, FlaskConical, CheckCircle2, XCircle, Settings2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { loadTefConfig, createTefAdapter, logTefTransaction } from "@/lib/tef";
 import type { TefStatus, TefPaymentMethod } from "@/lib/tef";
 import { joinAgentUrl } from "@/lib/tef/agentUrl";
 import { pushTefReceipt } from "@/hooks/useTefReceipts";
+import TefPinpadSetupCard from "./TefPinpadSetupCard";
 
 const ASA_SUL_ID = "fcf435c2-c382-444c-b499-4d95f07b2633";
 const DEFAULT_SALE_ID = "VENDA-1001";
+
+interface Props {
+  storeId?: string | null;
+  cpfCnpj?: string | null;
+  pontoDeCaptura?: string | null;
+  sandboxHost?: string | null;
+}
 
 const isPaygoNetworkMenuRequest = (result: { status: string; message?: string; raw?: unknown }) => {
   const text = `${result.message ?? ""} ${JSON.stringify(result.raw ?? {})}`.toUpperCase();
   return result.status === "error" && text.includes("DEMO") && text.includes("REDE");
 };
 
-export default function TefTestSaleCard() {
+export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sandboxHost }: Props) {
   const [amount, setAmount] = useState("129,90");
   const [saleId, setSaleId] = useState(DEFAULT_SALE_ID);
   const [acquirer, setAcquirer] = useState<"DEMO" | "REDE" | "PIX C6 BANK">("DEMO");
