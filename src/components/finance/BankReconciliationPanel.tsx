@@ -11,6 +11,8 @@ import { toast } from "@/hooks/use-toast";
 import { type BankAccount } from "./BankAccountsManager";
 import OfxImportDialog from "./OfxImportDialog";
 import CreateFinanceFromTxDialog from "./CreateFinanceFromTxDialog";
+import AllocationEditor, { type AllocationSplit, type StoreLite, validateSplits } from "./AllocationEditor";
+import { Split } from "lucide-react";
 
 interface BankTx {
   id: string;
