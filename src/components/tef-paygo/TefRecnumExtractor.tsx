@@ -63,6 +63,7 @@ export default function TefRecnumExtractor({ storeId }: Props) {
         authorization_code: r.authorization_code ?? null,
         reqnum: reqnum ? String(reqnum) : null,
         acquirer: r.acquirer ?? null,
+        raw_response: raw,
       };
     });
     setRows(parsed);
