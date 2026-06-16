@@ -46,6 +46,8 @@ export default function NewPayableDialog({ open, onOpenChange, onSaved }: Props)
   const [recurrenceCount, setRecurrenceCount] = useState("12");
   const [installments, setInstallments] = useState("1");
   const [installmentIntervalDays, setInstallmentIntervalDays] = useState("30");
+  const [rateioOn, setRateioOn] = useState(false);
+  const [splits, setSplits] = useState<AllocationSplit[]>([]);
 
   const loadSuppliers = async () => {
     const { data } = await supabase
