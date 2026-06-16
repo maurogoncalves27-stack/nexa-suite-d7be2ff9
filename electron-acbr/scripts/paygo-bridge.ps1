@@ -1170,6 +1170,11 @@ if ($Action -eq "admin") {
   exit
 }
 
+if ($Action -eq "cleanup") {
+  [PayGoBridge]::Cleanup($DllPath, $WorkingDir)
+  exit
+}
+
 if ([string]::IsNullOrWhiteSpace($ConfirmationJsonBase64)) {
   throw "ConfirmationJsonBase64 e obrigatorio para $Action"
 }
