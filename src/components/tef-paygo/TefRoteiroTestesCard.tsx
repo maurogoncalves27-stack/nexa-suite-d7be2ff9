@@ -853,12 +853,54 @@ export function TefRoteiroTestesCard() {
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground mt-1">{p.desc}</p>
+
+                          {(p.valor || p.rede || p.modalidade) && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {p.valor && (
+                                <Badge variant="default" className="text-[10px] font-mono">
+                                  💰 {p.valor}
+                                </Badge>
+                              )}
+                              {p.rede && (
+                                <Badge variant="outline" className="text-[10px]">
+                                  Rede: {p.rede}
+                                </Badge>
+                              )}
+                              {p.modalidade && (
+                                <Badge variant="outline" className="text-[10px]">
+                                  {p.modalidade}
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+
+                          {p.comoFazer && p.comoFazer.length > 0 && (
+                            <div className="mt-2 rounded border bg-muted/30 p-2">
+                              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                                Como fazer
+                              </div>
+                              <ol className="list-decimal list-inside space-y-0.5 text-xs text-foreground/90">
+                                {p.comoFazer.map((passo, i) => (
+                                  <li key={i} className="leading-snug">{passo}</li>
+                                ))}
+                              </ol>
+                            </div>
+                          )}
+
+                          {p.esperado && (
+                            <div className="mt-2 text-xs">
+                              <span className="font-semibold text-success">✓ Esperado:</span>{" "}
+                              <span className="text-muted-foreground">{p.esperado}</span>
+                            </div>
+                          )}
+
                           {ev && (
-                            <p className="text-[11px] text-muted-foreground mt-1 font-mono">
-                              {ev.label} · NSU {ev.nsu ?? "—"} · {formatBRL(ev.amount)}
+                            <p className="text-[11px] text-muted-foreground mt-2 font-mono">
+                              auto · {ev.label} · NSU {ev.nsu ?? "—"} · {formatBRL(ev.amount)}
                               {ev.acquirer ? ` · ${ev.acquirer}` : ""}
                             </p>
                           )}
+
                         </div>
                       </li>
                     );
