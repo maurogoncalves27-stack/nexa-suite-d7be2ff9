@@ -303,7 +303,9 @@ export default function FinanceStatementPanel({
 
     for (const b of (bk.data ?? []) as any[]) {
       if (linkedTxIds.has(b.id)) continue;
-      if (!b.reconciled_at) continue;
+      // Inclui TODAS as movimentações bancárias (conciliadas ou não) para que os
+      // totais de entradas/saídas batam com o Extrato da conta. A conciliação
+      // (vínculo com AP/AR) é separada de "já caiu no banco".
       const dt = String(b.posted_at).slice(0, 10);
       merged.push({
         id: `bk-${b.id}`,
