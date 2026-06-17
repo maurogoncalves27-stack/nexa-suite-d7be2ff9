@@ -284,16 +284,56 @@ export default function Faturamento() {
     }).filter(d => d.total > 0);
   }, [rows, years]);
 
-  // Comparativo mensal entre anos
+  // Comparativo mensal entre anos (com projeção para o ano corrente)
   const monthlyByYear = useMemo(() => {
+    const CURRENT = new Date().getFullYear();
+    const PREV = CURRENT - 1;
     const yrs = years.slice().sort((a, b) => a - b).filter(y =>
       MONTH_LABELS.some((_, i) => consolidatedMonthTotal(rows, y, i + 1) !== null)
     );
-    return { years: yrs, data: MONTH_LABELS.map((label, i) => {
+
+    // Último mês consolidado do ano corrente
+    let lastRealizedMonth = 0;
+    for (let m = 1; m <= 12; m++) {
+      if (consolidatedMonthTotal(rows, CURRENT, m) !== null) lastRealizedMonth = m;
+    }
+
+    // Crescimento YoY observado YTD
+    let sumCur = 0, sumPrev = 0;
+    for (let m = 1; m <= lastRealizedMonth; m++) {
+      const cur = monthTotal(rows, CURRENT, m);
+      const prev = monthTotal(rows, PREV, m);
+      if (prev > 0) { sumCur += cur; sumPrev += prev; }
+    }
+    const growth = sumPrev > 0 ? (sumCur / sumPrev) - 1 : 0;
+
+    const projectionKey = `${CURRENT} projetado`;
+    const hasCurrent = yrs.includes(CURRENT);
+
+    const data = MONTH_LABELS.map((label, i) => {
+      const m = i + 1;
       const item: any = { label };
       yrs.forEach(y => { item[String(y)] = consolidatedMonthTotal(rows, y, i + 1); });
+
+      if (hasCurrent && m > lastRealizedMonth) {
+        const prev = monthTotal(rows, PREV, m);
+        const projected = prev > 0 ? prev * (1 + growth) : 0;
+        const isFirstProjected = m === lastRealizedMonth + 1 && projected > 0;
+
+        // Conecta a linha sólida ao primeiro ponto projetado
+        if (isFirstProjected) {
+          item[String(CURRENT)] = projected;
+        }
+
+        if (projected > 0) {
+          item[projectionKey] = projected;
+        }
+      }
+
       return item;
-    })};
+    });
+
+    return { years: yrs, data, hasCurrent, currentYear: CURRENT, projectionKey };
   }, [rows, years]);
 
   // Projeção 2026 baseada em 2025 + crescimento observado YTD
@@ -319,9 +359,10 @@ export default function Faturamento() {
       const real = monthTotal(rows, TARGET, m);
       const prev = monthTotal(rows, PREV, m);
       const projected = m > lastRealizedMonth && prev > 0 ? prev * (1 + growth) : 0;
+      const isFirstProjected = m === lastRealizedMonth + 1 && projected > 0;
       return {
         label,
-        realizado: real > 0 ? real : null,
+        realizado: real > 0 ? real : (isFirstProjected ? projected : null),
         projetado: projected > 0 ? projected : null,
         ano2025: prev > 0 ? prev : null,
       };
@@ -672,6 +713,9 @@ export default function Faturamento() {
                       {monthlyByYear.years.map((y, i) => (
                         <Line key={y} type="monotone" dataKey={String(y)} stroke={BRAND_COLORS[i % BRAND_COLORS.length]} strokeWidth={2} dot />
                       ))}
+                      {monthlyByYear.hasCurrent && (
+                        <Line type="monotone" dataKey={monthlyByYear.projectionKey} name={`${monthlyByYear.currentYear} projetado`} stroke={BRAND_COLORS[monthlyByYear.years.indexOf(monthlyByYear.currentYear) % BRAND_COLORS.length]} strokeWidth={2} strokeDasharray="5 5" dot />
+                      )}
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
