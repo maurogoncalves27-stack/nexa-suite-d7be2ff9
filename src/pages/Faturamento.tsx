@@ -18,6 +18,7 @@ import { fmtBRL } from "@/lib/dre";
 import { FileSpreadsheet, RefreshCw, Plus, TrendingUp } from "lucide-react";
 import { ManualRevenueDialog } from "@/components/faturamento/ManualRevenueDialog";
 import { DailyAnalytics } from "@/components/faturamento/DailyAnalytics";
+import CurrentMonthVs3Panel from "@/components/faturamento/CurrentMonthVs3Panel";
 
 interface Store { id: string; name: string }
 interface Brand { id: string; name: string; color?: string | null }
