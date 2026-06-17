@@ -521,8 +521,53 @@ export default function BankReconciliationPanel() {
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar..." className="pl-8" />
-              </div>
             </div>
+          </div>
+
+          <div className="flex flex-wrap items-end gap-2 border-t pt-3">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Período</label>
+              <select
+                className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={periodPreset}
+                onChange={(e) => {
+                  const v = e.target.value as typeof periodPreset;
+                  setPeriodPreset(v);
+                  setPageSize(50);
+                  if (v === "all") { setPeriodFrom(""); setPeriodTo(""); }
+                  else if (v === "current") { setPeriodFrom(monthStartIso); setPeriodTo(todayIso); }
+                  else if (v === "previous") { setPeriodFrom(prevMonthStartIso); setPeriodTo(prevMonthEndIso); }
+                }}
+              >
+                <option value="all">Todos</option>
+                <option value="current">Mês atual</option>
+                <option value="previous">Mês anterior</option>
+                <option value="custom">Personalizado</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">De</label>
+              <Input
+                type="date"
+                value={periodFrom}
+                onChange={(e) => { setPeriodFrom(e.target.value); setPeriodPreset("custom"); setPageSize(50); }}
+                className="w-[160px]"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Até</label>
+              <Input
+                type="date"
+                value={periodTo}
+                onChange={(e) => { setPeriodTo(e.target.value); setPeriodPreset("custom"); setPageSize(50); }}
+                className="w-[160px]"
+              />
+            </div>
+            {(periodFrom || periodTo) && (
+              <Button size="sm" variant="ghost" onClick={() => { setPeriodPreset("all"); setPeriodFrom(""); setPeriodTo(""); setPageSize(50); }}>
+                Limpar período
+              </Button>
+            )}
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={() => { setPageSize(50); setShowReconciled((v) => !v); }}>
                 {showReconciled ? "Ocultar conciliadas" : "Mostrar conciliadas"}
