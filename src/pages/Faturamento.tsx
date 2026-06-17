@@ -18,6 +18,7 @@ import { fmtBRL } from "@/lib/dre";
 import { FileSpreadsheet, RefreshCw, Plus, TrendingUp } from "lucide-react";
 import { ManualRevenueDialog } from "@/components/faturamento/ManualRevenueDialog";
 import { DailyAnalytics } from "@/components/faturamento/DailyAnalytics";
+import CurrentMonthVs3Panel from "@/components/faturamento/CurrentMonthVs3Panel";
 
 interface Store { id: string; name: string }
 interface Brand { id: string; name: string; color?: string | null }
@@ -517,6 +518,7 @@ export default function Faturamento() {
       <Tabs defaultValue="comparativo">
         <TabsList className="w-full justify-start overflow-x-auto">
           <TabsTrigger value="comparativo">Loja × Marca</TabsTrigger>
+          <TabsTrigger value="mes-corrente">Mês corrente × 3 últimos</TabsTrigger>
           <TabsTrigger value="evolucao">Evolução mensal</TabsTrigger>
           <TabsTrigger value="anual">Comparativo anual</TabsTrigger>
           <TabsTrigger value="projecao">Projeção 2026</TabsTrigger>
@@ -524,6 +526,11 @@ export default function Faturamento() {
           <TabsTrigger value="proprias">Vendas próprias</TabsTrigger>
           <TabsTrigger value="tabela">Tabela mensal</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="mes-corrente">
+          <CurrentMonthVs3Panel stores={operationalStores} storeColor={storeColor} />
+        </TabsContent>
+
 
         <TabsContent value="comparativo">
           <Card>
