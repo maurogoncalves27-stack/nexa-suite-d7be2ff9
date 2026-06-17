@@ -592,7 +592,6 @@ export default function Faturamento() {
         <TabsList className="w-full justify-start overflow-x-auto">
           <TabsTrigger value="comparativo">Loja × Marca</TabsTrigger>
           <TabsTrigger value="mes-corrente">Mês corrente × 3 últimos</TabsTrigger>
-          <TabsTrigger value="evolucao">Evolução mensal</TabsTrigger>
           <TabsTrigger value="anual">Comparativo anual</TabsTrigger>
           <TabsTrigger value="projecao">Projeção 2026</TabsTrigger>
           <TabsTrigger value="marca-loja">Marca × Loja</TabsTrigger>
@@ -669,24 +668,6 @@ export default function Faturamento() {
                   </ResponsiveContainer>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="evolucao">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Total mensal {year}</CardTitle></CardHeader>
-            <CardContent>
-              <div className="h-[340px] sm:h-[380px] w-full">
-                <ResponsiveContainer>
-                  <LineChart data={lineData}>
-                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                    <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
-                    <RTooltip formatter={(v: any) => fmtBRL(Number(v))} />
-                    <Line type="monotone" dataKey="total" stroke="hsl(var(--primary))" strokeWidth={2} dot />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
