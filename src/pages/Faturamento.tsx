@@ -592,7 +592,6 @@ export default function Faturamento() {
         <TabsList className="w-full justify-start overflow-x-auto">
           <TabsTrigger value="comparativo">Loja × Marca</TabsTrigger>
           <TabsTrigger value="mes-corrente">Mês corrente × 3 últimos</TabsTrigger>
-          <TabsTrigger value="evolucao">Evolução mensal</TabsTrigger>
           <TabsTrigger value="anual">Comparativo anual</TabsTrigger>
           <TabsTrigger value="projecao">Projeção 2026</TabsTrigger>
           <TabsTrigger value="marca-loja">Marca × Loja</TabsTrigger>
