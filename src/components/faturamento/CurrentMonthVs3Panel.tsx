@@ -216,7 +216,7 @@ export default function CurrentMonthVs3Panel({ stores, storeColor }: Props) {
                 <div className="text-[11px] text-muted-foreground mt-1">dias 1–{cutoffDay}</div>
               </CardContent>
             </Card>
-            {prevs.map((b) => {
+            {prevs.slice().reverse().map((b) => {
               const v = pctVar(current.total, b.total);
               return (
                 <Card key={b.key}>
