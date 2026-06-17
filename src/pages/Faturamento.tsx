@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,8 +17,13 @@ import {
 import { fmtBRL } from "@/lib/dre";
 import { FileSpreadsheet, RefreshCw, Plus, TrendingUp } from "lucide-react";
 import { ManualRevenueDialog } from "@/components/faturamento/ManualRevenueDialog";
-import { DailyAnalytics } from "@/components/faturamento/DailyAnalytics";
-import CurrentMonthVs3Panel from "@/components/faturamento/CurrentMonthVs3Panel";
+
+const DailyAnalytics = lazy(() =>
+  import("@/components/faturamento/DailyAnalytics").then(m => ({ default: m.DailyAnalytics }))
+);
+const CurrentMonthVs3Panel = lazy(() =>
+  import("@/components/faturamento/CurrentMonthVs3Panel")
+);
 
 interface Store { id: string; name: string }
 interface Brand { id: string; name: string; color?: string | null }
@@ -525,11 +530,16 @@ export default function Faturamento() {
           <TabsTrigger value="marca-loja">Marca × Loja</TabsTrigger>
           <TabsTrigger value="proprias">Vendas próprias</TabsTrigger>
           <TabsTrigger value="tabela">Tabela mensal</TabsTrigger>
+          <TabsTrigger value="diarias">Análises diárias</TabsTrigger>
         </TabsList>
 
         <TabsContent value="mes-corrente">
-          <CurrentMonthVs3Panel stores={operationalStores} storeColor={storeColor} />
+          <Suspense fallback={<Skeleton className="h-[420px] w-full" />}>
+            <CurrentMonthVs3Panel stores={operationalStores} storeColor={storeColor} />
+          </Suspense>
         </TabsContent>
+
+
 
 
         <TabsContent value="comparativo">
@@ -1070,10 +1080,13 @@ export default function Faturamento() {
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
 
-      {/* Análises diárias (filtro Período + Top 10 + Média por dia da semana + Feriados) */}
-      <DailyAnalytics />
+        <TabsContent value="diarias">
+          <Suspense fallback={<Skeleton className="h-[600px] w-full" />}>
+            <DailyAnalytics />
+          </Suspense>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
