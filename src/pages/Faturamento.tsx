@@ -144,7 +144,7 @@ export default function Faturamento() {
   const [stores, setStores] = useState<Store[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [ownSales, setOwnSales] = useState<OwnSale[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [year, setYear] = useState<number>(new Date().getFullYear());
 
   async function load() {
@@ -175,16 +175,18 @@ export default function Faturamento() {
         return yearRows;
       };
 
-      const [yearGroups, s, b] = await Promise.all([
-        Promise.all(targetYears.map(fetchYearRows)),
+      const [s, b] = await Promise.all([
         supabase.from("stores").select("id,name").eq("is_virtual", false).order("name"),
         supabase.from("brands").select("id,name").order("name"),
       ]);
 
-      const all = yearGroups.flat();
-      setRows(all.map(x => ({ ...x, gross_revenue: Number(x.gross_revenue) })));
       if (s.data) setStores(s.data as Store[]);
       if (b.data) setBrands(b.data as Brand[]);
+
+      const yearGroups = await Promise.all(targetYears.map(fetchYearRows));
+
+      const all = yearGroups.flat();
+      setRows(all.map(x => ({ ...x, gross_revenue: Number(x.gross_revenue) })));
       setOwnSales([]);
     } catch (e: any) {
       console.error("Erro ao carregar faturamento", e);
