@@ -337,7 +337,8 @@ export default function FinanceStatementPanel({
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthCursor]);
 
   const filtered = useMemo(() => {
     const today = new Date();
