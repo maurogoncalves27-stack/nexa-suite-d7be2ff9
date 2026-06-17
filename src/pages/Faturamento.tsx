@@ -349,12 +349,19 @@ export default function Faturamento() {
   }, [rows, years]);
 
   // Projeção 2026 baseada em 2025 + crescimento observado YTD
+  // "Realizado" só conta meses já ENCERRADOS (anteriores ao mês corrente). O mês em
+  // andamento entra como projetado até virar o mês.
   const projection2026 = useMemo(() => {
     const TARGET = 2026;
     const PREV = 2025;
+    const now = new Date();
+    const lastClosedMonth = now.getFullYear() > TARGET ? 12
+      : now.getFullYear() < TARGET ? 0
+      : now.getMonth(); // mês anterior ao corrente (0 se janeiro)
+
     const realized: Array<{ month: number; value: number }> = [];
     let lastRealizedMonth = 0;
-    for (let m = 1; m <= 12; m++) {
+    for (let m = 1; m <= lastClosedMonth; m++) {
       const v = monthTotal(rows, TARGET, m);
       if (v > 0) { realized.push({ month: m, value: v }); lastRealizedMonth = m; }
     }
@@ -368,7 +375,7 @@ export default function Faturamento() {
 
     const data = MONTH_LABELS.map((label, i) => {
       const m = i + 1;
-      const real = monthTotal(rows, TARGET, m);
+      const real = m <= lastRealizedMonth ? monthTotal(rows, TARGET, m) : 0;
       const prev = monthTotal(rows, PREV, m);
       const projected = m > lastRealizedMonth && prev > 0 ? prev * (1 + growth) : 0;
       const isFirstProjected = m === lastRealizedMonth + 1 && projected > 0;
