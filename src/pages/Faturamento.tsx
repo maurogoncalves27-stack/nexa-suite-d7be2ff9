@@ -237,19 +237,40 @@ export default function Faturamento() {
     });
   }, [operationalStores, productBrands, detailRows]);
 
-  // Linha mensal do ano (consolidado quando houver) — quebra a linha após o último mês consolidado
+  // Linha mensal do ano — sólido até o último mês consolidado; pontilhado para meses projetados
   const lineData = useMemo(() => {
-    const data = MONTH_LABELS.map((label, i) => ({ label, total: monthTotal(rows, year, i + 1) }));
-    let lastIdx = -1;
-    for (let i = data.length - 1; i >= 0; i--) {
-      if (consolidatedMonthTotal(rows, year, i + 1) !== null) { lastIdx = i; break; }
+    const prevYear = year - 1;
+    let lastConsolidatedMonth = 0;
+    for (let m = 1; m <= 12; m++) {
+      if (consolidatedMonthTotal(rows, year, m) !== null) lastConsolidatedMonth = m;
     }
-    if (lastIdx >= 0) {
-      for (let i = lastIdx + 1; i < data.length; i++) {
-        (data[i] as any).total = null;
+
+    let growth = 0;
+    if (lastConsolidatedMonth > 0 && lastConsolidatedMonth < 12) {
+      let sumCur = 0, sumPrev = 0;
+      for (let m = 1; m <= lastConsolidatedMonth; m++) {
+        const cur = consolidatedMonthTotal(rows, year, m) || 0;
+        const prev = monthTotal(rows, prevYear, m);
+        if (prev > 0) { sumCur += cur; sumPrev += prev; }
       }
+      growth = sumPrev > 0 ? (sumCur / sumPrev) - 1 : 0;
     }
-    return data;
+
+    return MONTH_LABELS.map((label, i) => {
+      const m = i + 1;
+      const cons = consolidatedMonthTotal(rows, year, m);
+      if (cons !== null) {
+        return { label, realizado: cons, projetado: null };
+      }
+      const prev = monthTotal(rows, prevYear, m);
+      const projected = prev > 0 ? prev * (1 + growth) : 0;
+      const isFirstProjected = m === lastConsolidatedMonth + 1 && projected > 0;
+      return {
+        label,
+        realizado: isFirstProjected ? projected : null,
+        projetado: projected > 0 ? projected : null,
+      };
+    });
   }, [rows, year]);
 
   // Comparativo anual (com projeção empilhada para o ano corrente)
@@ -671,7 +692,9 @@ export default function Faturamento() {
                     <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
                     <RTooltip formatter={(v: any) => fmtBRL(Number(v))} />
-                    <Line type="monotone" dataKey="total" stroke="hsl(var(--primary))" strokeWidth={2} dot />
+                    <Legend />
+                    <Line type="monotone" dataKey="realizado" name="Realizado" stroke="hsl(var(--primary))" strokeWidth={2} dot />
+                    <Line type="monotone" dataKey="projetado" name="Projetado" stroke="hsl(var(--primary))" strokeWidth={2} strokeDasharray="5 5" dot />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
