@@ -671,24 +671,6 @@ export default function Faturamento() {
             </CardContent>
           </Card>
         </TabsContent>
-        <TabsContent value="evolucao">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Total mensal {year}</CardTitle></CardHeader>
-            <CardContent>
-              <div className="h-[340px] sm:h-[380px] w-full">
-                <ResponsiveContainer>
-                  <LineChart data={lineData}>
-                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                    <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
-                    <RTooltip formatter={(v: any) => fmtBRL(Number(v))} />
-                    <Line type="monotone" dataKey="total" stroke="hsl(var(--primary))" strokeWidth={2} dot />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="anual">
           <div className="grid gap-3 md:grid-cols-2">
