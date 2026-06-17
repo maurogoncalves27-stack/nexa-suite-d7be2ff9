@@ -521,6 +521,7 @@ export default function BankReconciliationPanel() {
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar..." className="pl-8" />
+              </div>
             </div>
           </div>
 
