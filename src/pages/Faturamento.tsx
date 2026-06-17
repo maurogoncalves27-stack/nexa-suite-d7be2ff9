@@ -544,10 +544,6 @@ export default function Faturamento() {
     }
   }
 
-  if (loading) {
-    return <div className="space-y-4 p-4"><Skeleton className="h-32" /><Skeleton className="h-64" /></div>;
-  }
-
   return (
     <div className="space-y-6 p-3 sm:p-4">
       <div>
@@ -557,6 +553,11 @@ export default function Faturamento() {
         </h1>
         <p className="text-muted-foreground">Receita por loja, marca e canal de venda — consolidado mensal.</p>
       </div>
+      {loading && rows.length === 0 && (
+        <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+          Carregando faturamento...
+        </div>
+      )}
       {/* Header / filtros */}
       <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
 
