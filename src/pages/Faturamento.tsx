@@ -150,23 +150,32 @@ export default function Faturamento() {
   async function load() {
     setLoading(true);
     // Fonte: monthly_revenue (alimentada por daily_revenue via trigger).
-    // Filtra últimos 3 anos (atual + 2 anteriores) — suficiente p/ comparativos YoY
-    // e evita carregar dezenas de milhares de linhas históricas.
+    // Filtra últimos 3 anos e busca páginas em PARALELO p/ não travar a tela.
     const currentYear = new Date().getFullYear();
     const minYear = currentYear - 2;
-    const all: any[] = [];
+    const COLS = "id,year,month,store_id,brand_id,gross_revenue,is_consolidated";
     const step = 1000;
-    for (let off = 0; ; off += step) {
-      const { data, error } = await supabase
-        .from("monthly_revenue")
-        .select("*")
-        .gte("year", minYear)
-        .order("year").order("month").order("day")
-        .range(off, off + step - 1);
-      if (error || !data || data.length === 0) break;
-      all.push(...data);
-      if (data.length < step) break;
-    }
+
+    // Descobre total de linhas pra paralelizar as páginas
+    const { count } = await supabase
+      .from("monthly_revenue")
+      .select("id", { count: "exact", head: true })
+      .gte("year", minYear);
+
+    const total = count ?? 0;
+    const pages = Math.max(1, Math.ceil(total / step));
+    const results = await Promise.all(
+      Array.from({ length: pages }, (_, i) =>
+        supabase
+          .from("monthly_revenue")
+          .select(COLS)
+          .gte("year", minYear)
+          .order("year").order("month")
+          .range(i * step, i * step + step - 1)
+      )
+    );
+    const all: any[] = [];
+    for (const r of results) if (r.data) all.push(...r.data);
     const [s, b] = await Promise.all([
       supabase.from("stores").select("id,name").eq("is_virtual", false).order("name"),
       supabase.from("brands").select("id,name").order("name"),
