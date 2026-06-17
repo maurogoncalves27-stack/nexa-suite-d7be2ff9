@@ -692,7 +692,9 @@ export default function Faturamento() {
                     <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
                     <RTooltip formatter={(v: any) => fmtBRL(Number(v))} />
-                    <Line type="monotone" dataKey="total" stroke="hsl(var(--primary))" strokeWidth={2} dot />
+                    <Legend />
+                    <Line type="monotone" dataKey="realizado" name="Realizado" stroke="hsl(var(--primary))" strokeWidth={2} dot />
+                    <Line type="monotone" dataKey="projetado" name="Projetado" stroke="hsl(var(--primary))" strokeWidth={2} strokeDasharray="5 5" dot />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
