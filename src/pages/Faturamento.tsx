@@ -237,40 +237,19 @@ export default function Faturamento() {
     });
   }, [operationalStores, productBrands, detailRows]);
 
-  // Linha mensal do ano — sólido até o último mês consolidado; pontilhado para meses projetados
+  // Linha mensal do ano (consolidado quando houver) — quebra a linha após o último mês consolidado
   const lineData = useMemo(() => {
-    const prevYear = year - 1;
-    let lastConsolidatedMonth = 0;
-    for (let m = 1; m <= 12; m++) {
-      if (consolidatedMonthTotal(rows, year, m) !== null) lastConsolidatedMonth = m;
+    const data = MONTH_LABELS.map((label, i) => ({ label, total: monthTotal(rows, year, i + 1) }));
+    let lastIdx = -1;
+    for (let i = data.length - 1; i >= 0; i--) {
+      if (consolidatedMonthTotal(rows, year, i + 1) !== null) { lastIdx = i; break; }
     }
-
-    let growth = 0;
-    if (lastConsolidatedMonth > 0 && lastConsolidatedMonth < 12) {
-      let sumCur = 0, sumPrev = 0;
-      for (let m = 1; m <= lastConsolidatedMonth; m++) {
-        const cur = consolidatedMonthTotal(rows, year, m) || 0;
-        const prev = monthTotal(rows, prevYear, m);
-        if (prev > 0) { sumCur += cur; sumPrev += prev; }
+    if (lastIdx >= 0) {
+      for (let i = lastIdx + 1; i < data.length; i++) {
+        (data[i] as any).total = null;
       }
-      growth = sumPrev > 0 ? (sumCur / sumPrev) - 1 : 0;
     }
-
-    return MONTH_LABELS.map((label, i) => {
-      const m = i + 1;
-      const cons = consolidatedMonthTotal(rows, year, m);
-      if (cons !== null) {
-        return { label, realizado: cons, projetado: null };
-      }
-      const prev = monthTotal(rows, prevYear, m);
-      const projected = prev > 0 ? prev * (1 + growth) : 0;
-      const isFirstProjected = m === lastConsolidatedMonth + 1 && projected > 0;
-      return {
-        label,
-        realizado: isFirstProjected ? projected : null,
-        projetado: projected > 0 ? projected : null,
-      };
-    });
+    return data;
   }, [rows, year]);
 
   // Comparativo anual (com projeção empilhada para o ano corrente)
