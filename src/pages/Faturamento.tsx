@@ -670,7 +670,7 @@ export default function Faturamento() {
                       <RTooltip formatter={(v: any) => fmtBRL(Number(v))} />
                       <Legend />
                       {monthlyByYear.years.map((y, i) => (
-                        <Line key={y} type="monotone" dataKey={String(y)} stroke={BRAND_COLORS[i % BRAND_COLORS.length]} strokeWidth={2} dot connectNulls />
+                        <Line key={y} type="monotone" dataKey={String(y)} stroke={BRAND_COLORS[i % BRAND_COLORS.length]} strokeWidth={2} dot />
                       ))}
                     </LineChart>
                   </ResponsiveContainer>
