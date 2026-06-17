@@ -161,6 +161,8 @@ export default function BankReconciliationPanel() {
     if (!showReconciled) {
       txQuery = txQuery.is("reconciled_at", null);
     }
+    if (periodFrom) txQuery = txQuery.gte("posted_at", periodFrom);
+    if (periodTo) txQuery = txQuery.lte("posted_at", periodTo);
 
     const payQuery = supabase
       .from("accounts_payable")
