@@ -45,6 +45,11 @@ function monthTotal(rows: Row[], year: number, month: number): number {
     .reduce((a, r) => a + r.gross_revenue, 0);
 }
 
+function consolidatedMonthTotal(rows: Row[], year: number, month: number): number | null {
+  const cons = rows.find(r => r.year === year && r.month === month && r.is_consolidated);
+  return cons && cons.gross_revenue > 0 ? cons.gross_revenue : null;
+}
+
 const MONTH_LABELS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const BRAND_COLORS = ["hsl(var(--primary))", "hsl(var(--chart-2, 142 71% 45%))", "hsl(var(--chart-3, 35 91% 55%))", "hsl(var(--chart-4, 280 65% 60%))"];
 
@@ -282,11 +287,11 @@ export default function Faturamento() {
   // Comparativo mensal entre anos
   const monthlyByYear = useMemo(() => {
     const yrs = years.slice().sort((a, b) => a - b).filter(y =>
-      MONTH_LABELS.some((_, i) => monthTotal(rows, y, i + 1) > 0)
+      MONTH_LABELS.some((_, i) => consolidatedMonthTotal(rows, y, i + 1) !== null)
     );
     return { years: yrs, data: MONTH_LABELS.map((label, i) => {
       const item: any = { label };
-      yrs.forEach(y => { item[String(y)] = monthTotal(rows, y, i + 1) || null; });
+      yrs.forEach(y => { item[String(y)] = consolidatedMonthTotal(rows, y, i + 1); });
       return item;
     })};
   }, [rows, years]);
@@ -665,7 +670,7 @@ export default function Faturamento() {
                       <RTooltip formatter={(v: any) => fmtBRL(Number(v))} />
                       <Legend />
                       {monthlyByYear.years.map((y, i) => (
-                        <Line key={y} type="monotone" dataKey={String(y)} stroke={BRAND_COLORS[i % BRAND_COLORS.length]} strokeWidth={2} dot connectNulls />
+                        <Line key={y} type="monotone" dataKey={String(y)} stroke={BRAND_COLORS[i % BRAND_COLORS.length]} strokeWidth={2} dot />
                       ))}
                     </LineChart>
                   </ResponsiveContainer>
