@@ -232,9 +232,19 @@ export default function Faturamento() {
     });
   }, [operationalStores, productBrands, detailRows]);
 
-  // Linha mensal do ano (consolidado quando houver)
+  // Linha mensal do ano (consolidado quando houver) — quebra a linha após o último mês com dado
   const lineData = useMemo(() => {
-    return MONTH_LABELS.map((label, i) => ({ label, total: monthTotal(rows, year, i + 1) }));
+    const data = MONTH_LABELS.map((label, i) => ({ label, total: monthTotal(rows, year, i + 1) }));
+    let lastIdx = -1;
+    for (let i = data.length - 1; i >= 0; i--) {
+      if (data[i].total > 0) { lastIdx = i; break; }
+    }
+    if (lastIdx >= 0) {
+      for (let i = lastIdx + 1; i < data.length; i++) {
+        (data[i] as any).total = null;
+      }
+    }
+    return data;
   }, [rows, year]);
 
   // Comparativo anual (com projeção empilhada para o ano corrente)
