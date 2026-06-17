@@ -406,6 +406,7 @@ export default function FinanceStatementPanel({
     for (const r of filtered) {
       if (r.kind === "transfer") continue;
       const settled =
+        r.kind === "bank" ||
         r.status === "paid" || r.status === "received" || r.status === "reconciled";
       if (settled) {
         if (r.amount >= 0) {
