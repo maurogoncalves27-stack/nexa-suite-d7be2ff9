@@ -149,42 +149,44 @@ export default function Faturamento() {
 
   async function load() {
     setLoading(true);
-    // Fonte: monthly_revenue (alimentada por daily_revenue via trigger).
-    // Filtra últimos 3 anos e busca páginas em PARALELO p/ não travar a tela.
-    const currentYear = new Date().getFullYear();
-    const minYear = currentYear - 2;
-    const COLS = "id,year,month,store_id,brand_id,gross_revenue,is_consolidated";
-    const step = 1000;
+    try {
+      // Fonte: monthly_revenue (alimentada por daily_revenue via trigger).
+      // Busca paginada sem depender do HEAD/count, que pode falhar e deixar a tela presa no skeleton.
+      const currentYear = new Date().getFullYear();
+      const minYear = currentYear - 2;
+      const COLS = "id,year,month,store_id,brand_id,gross_revenue,is_consolidated";
+      const step = 1000;
+      const all: any[] = [];
 
-    // Descobre total de linhas pra paralelizar as páginas
-    const { count } = await supabase
-      .from("monthly_revenue")
-      .select("id", { count: "exact", head: true })
-      .gte("year", minYear);
-
-    const total = count ?? 0;
-    const pages = Math.max(1, Math.ceil(total / step));
-    const results = await Promise.all(
-      Array.from({ length: pages }, (_, i) =>
-        supabase
+      for (let page = 0; page < 50; page++) {
+        const from = page * step;
+        const { data, error } = await supabase
           .from("monthly_revenue")
           .select(COLS)
           .gte("year", minYear)
           .order("year").order("month")
-          .range(i * step, i * step + step - 1)
-      )
-    );
-    const all: any[] = [];
-    for (const r of results) if (r.data) all.push(...r.data);
-    const [s, b] = await Promise.all([
-      supabase.from("stores").select("id,name").eq("is_virtual", false).order("name"),
-      supabase.from("brands").select("id,name").order("name"),
-    ]);
-    setRows(all.map(x => ({ ...x, gross_revenue: Number(x.gross_revenue) })));
-    if (s.data) setStores(s.data as Store[]);
-    if (b.data) setBrands(b.data as Brand[]);
-    setOwnSales([]);
-    setLoading(false);
+          .range(from, from + step - 1);
+
+        if (error) throw error;
+        all.push(...(data ?? []));
+        if (!data || data.length < step) break;
+      }
+
+      const [s, b] = await Promise.all([
+        supabase.from("stores").select("id,name").eq("is_virtual", false).order("name"),
+        supabase.from("brands").select("id,name").order("name"),
+      ]);
+
+      setRows(all.map(x => ({ ...x, gross_revenue: Number(x.gross_revenue) })));
+      if (s.data) setStores(s.data as Store[]);
+      if (b.data) setBrands(b.data as Brand[]);
+      setOwnSales([]);
+    } catch (e: any) {
+      console.error("Erro ao carregar faturamento", e);
+      toast({ title: "Erro ao carregar faturamento", description: e.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   }
   useEffect(() => { load(); }, []);
 
