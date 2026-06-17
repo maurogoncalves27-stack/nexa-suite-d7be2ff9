@@ -575,10 +575,6 @@ export default function BankReconciliationPanel() {
               <Button variant="outline" size="sm" onClick={() => { setPageSize(50); setShowReconciled((v) => !v); }}>
                 {showReconciled ? "Ocultar conciliadas" : "Mostrar conciliadas"}
               </Button>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={() => { setPageSize(50); setShowReconciled((v) => !v); }}>
-                {showReconciled ? "Ocultar conciliadas" : "Mostrar conciliadas"}
-              </Button>
               {suggestionsCount > 0 && (
                 <Button size="sm" variant="secondary" disabled={submitting} onClick={autoReconcileAll} className="gap-1">
                   <Sparkles className="h-3.5 w-3.5" /> Aplicar {suggestionsCount} sugest{suggestionsCount === 1 ? "ão" : "ões"}
