@@ -117,6 +117,14 @@ export default function BankReconciliationPanel() {
   const [showReconciled, setShowReconciled] = useState(false);
   const [pageSize, setPageSize] = useState(50);
   const [hasMore, setHasMore] = useState(false);
+  // Filtro de período (auditoria por mês). "all" = sem filtro de data.
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const monthStartIso = (() => { const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10); })();
+  const prevMonthStartIso = (() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 10); })();
+  const prevMonthEndIso = (() => { const d = new Date(); d.setDate(0); return d.toISOString().slice(0, 10); })();
+  const [periodPreset, setPeriodPreset] = useState<"all" | "current" | "previous" | "custom">("all");
+  const [periodFrom, setPeriodFrom] = useState<string>("");
+  const [periodTo, setPeriodTo] = useState<string>("");
   // Lembra a data da última transação conciliada para restaurar a posição
   // após o reload (evita "voltar para o topo" descrito pelo usuário).
   const focusDateRef = useRef<string | null>(null);
