@@ -150,13 +150,17 @@ export default function Faturamento() {
   async function load() {
     setLoading(true);
     // Fonte: monthly_revenue (alimentada por daily_revenue via trigger).
-    // PAGINAR — passa de 1000 linhas (Supabase corta o default), por isso 2025 sumia.
+    // Filtra últimos 3 anos (atual + 2 anteriores) — suficiente p/ comparativos YoY
+    // e evita carregar dezenas de milhares de linhas históricas.
+    const currentYear = new Date().getFullYear();
+    const minYear = currentYear - 2;
     const all: any[] = [];
     const step = 1000;
     for (let off = 0; ; off += step) {
       const { data, error } = await supabase
         .from("monthly_revenue")
         .select("*")
+        .gte("year", minYear)
         .order("year").order("month").order("day")
         .range(off, off + step - 1);
       if (error || !data || data.length === 0) break;
