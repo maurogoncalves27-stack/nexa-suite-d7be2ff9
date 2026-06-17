@@ -188,7 +188,7 @@ export default function BankReconciliationPanel() {
     setPayables((payRes.data ?? []) as Payable[]);
     setReceivables((recRes.data ?? []) as Receivable[]);
     setLoading(false);
-  }, [selectedAccount, showReconciled, pageSize]);
+  }, [selectedAccount, showReconciled, pageSize, periodFrom, periodTo]);
 
   useEffect(() => { loadAccounts(); }, [loadAccounts]);
   useEffect(() => { loadData(); }, [loadData]);
