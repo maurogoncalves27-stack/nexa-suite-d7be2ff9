@@ -330,13 +330,6 @@ export default function Faturamento() {
       if (hasCurrent && m > lastRealizedMonth) {
         const prev = monthTotal(rows, PREV, m);
         const projected = prev > 0 ? prev * (1 + growth) : 0;
-        const isFirstProjected = m === lastRealizedMonth + 1 && projected > 0;
-
-        // Conecta a linha sólida ao primeiro ponto projetado
-        if (isFirstProjected) {
-          item[String(CURRENT)] = projected;
-        }
-
         if (projected > 0) {
           item[projectionKey] = projected;
         }
