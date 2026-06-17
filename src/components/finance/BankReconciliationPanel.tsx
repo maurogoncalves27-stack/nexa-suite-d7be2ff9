@@ -568,6 +568,13 @@ export default function BankReconciliationPanel() {
                 Limpar período
               </Button>
             )}
+          </div>
+
+          <div className="flex flex-wrap gap-2 justify-end">
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => { setPageSize(50); setShowReconciled((v) => !v); }}>
+                {showReconciled ? "Ocultar conciliadas" : "Mostrar conciliadas"}
+              </Button>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={() => { setPageSize(50); setShowReconciled((v) => !v); }}>
                 {showReconciled ? "Ocultar conciliadas" : "Mostrar conciliadas"}
