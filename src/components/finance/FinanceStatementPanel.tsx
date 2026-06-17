@@ -169,35 +169,56 @@ export default function FinanceStatementPanel({
 
   const load = async () => {
     setLoading(true);
+    // Janela do mês selecionado + folga (3 dias) p/ pegar lançamentos cujo
+    // paid_at/competence caia em meses vizinhos. Sem isso, com >500 registros
+    // o limit cortava meses inteiros (ex.: maio sumia quando jun+jul+... ≥ 500).
+    const { from, to } = monthRange;
+    const pad = (s: string, days: number) => {
+      const d = new Date(s + "T00:00:00");
+      d.setDate(d.getDate() + days);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
+    const fromPad = pad(from, -3);
+    const toPad = pad(to, 3);
+    const toPadNext = pad(to, 4); // exclusivo para timestamps
+    const payOr = `and(due_date.gte.${fromPad},due_date.lte.${toPad}),and(paid_at.gte.${fromPad}T00:00:00,paid_at.lt.${toPadNext}T00:00:00),and(competence_date.gte.${fromPad},competence_date.lte.${toPad})`;
+    const recOr = `and(due_date.gte.${fromPad},due_date.lte.${toPad}),and(received_at.gte.${fromPad}T00:00:00,received_at.lt.${toPadNext}T00:00:00)`;
+
     const [pay, rec, tr, bk] = await Promise.all([
       supabase
         .from("accounts_payable")
         .select(
-          "id, due_date, paid_at, amount, status, supplier_name, beneficiary, description, store_id, category_id, bank_transaction_id, finance_categories(name), stores(name), inventory_invoices(supplier_name, invoice_number, issue_date)",
+          "id, due_date, paid_at, amount, status, supplier_name, beneficiary, description, store_id, category_id, bank_transaction_id, competence_date, finance_categories(name), stores(name), inventory_invoices(supplier_name, invoice_number, issue_date)",
         )
+        .or(payOr)
         .order("due_date", { ascending: false, nullsFirst: false })
-        .limit(500),
+        .limit(2000),
       supabase
         .from("accounts_receivable")
         .select(
           "id, due_date, received_at, amount, status, payer_name, description, store_id, category_id, bank_transaction_id, finance_categories(name), stores(name)",
         )
+        .or(recOr)
         .order("due_date", { ascending: false, nullsFirst: false })
-        .limit(500),
+        .limit(2000),
       supabase
         .from("bank_transfers")
         .select(
           "id, transferred_at, amount, description, from_transaction_id, to_transaction_id, from_account:bank_accounts!bank_transfers_from_account_id_fkey(name), to_account:bank_accounts!bank_transfers_to_account_id_fkey(name)",
         )
+        .gte("transferred_at", fromPad)
+        .lte("transferred_at", toPad)
         .order("transferred_at", { ascending: false })
-        .limit(300),
+        .limit(500),
       supabase
         .from("bank_transactions")
         .select(
           "id, posted_at, amount, memo, payee, reconciled_at, bank_account_id, bank_accounts(name)",
         )
+        .gte("posted_at", fromPad)
+        .lte("posted_at", toPad)
         .order("posted_at", { ascending: false })
-        .limit(800),
+        .limit(2000),
     ]);
 
     if (pay.error) toast({ title: "Erro a pagar", description: pay.error.message, variant: "destructive" });
