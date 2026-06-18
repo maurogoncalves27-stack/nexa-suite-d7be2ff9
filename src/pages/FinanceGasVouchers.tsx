@@ -352,7 +352,7 @@ export default function FinanceGasVouchers() {
               </Badge>
             )}
             {urgencySummary.noReserveCount > 0 && (
-              <Badge variant="warning" className="text-[10px]">
+              <Badge variant="outline" className="text-[10px]">
                 {urgencySummary.noReserveCount} sem reserva
               </Badge>
             )}
