@@ -89,9 +89,9 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
 
   return (
     <div
-      className={`transition-opacity duration-500 flex items-center gap-3 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 via-accent/15 to-primary/10 px-3 py-3 shadow-sm backdrop-blur-sm ${fading ? "opacity-0" : "opacity-100"}`}
+      className={`transition-opacity duration-500 flex items-center gap-3 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 via-accent/15 to-primary/10 px-3 py-4 shadow-sm backdrop-blur-sm ${fading ? "opacity-0" : "opacity-100"}`}
     >
-      <div className="flex flex-col items-center gap-0.5 shrink-0 pl-0.5">
+      <div className="flex flex-col items-center gap-0.5 shrink-0 pl-0.5 self-center">
         <div className="rounded-full bg-gradient-to-br from-primary to-accent p-1.5 shadow-sm">
           <Cake className="h-4 w-4 text-primary-foreground" />
         </div>
@@ -100,20 +100,20 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
         </span>
       </div>
 
-      <div className="h-10 w-px bg-primary/20 shrink-0" />
+      <div className="h-16 w-px bg-primary/20 shrink-0 self-center" />
 
-      <div className="flex gap-2.5 overflow-x-auto flex-1 min-w-0 scrollbar-none items-center">
+      <div className="flex gap-4 overflow-x-auto flex-1 min-w-0 scrollbar-none items-center py-1">
         {items.map((emp) => {
           const isToday = emp.day === todayDay && parseInt(emp.birth_date.slice(5, 7), 10) === todayMonth;
           const firstName = emp.full_name.split(" ")[0];
           return (
             <div
               key={emp.id}
-              className="flex items-center gap-1.5 shrink-0"
+              className="flex flex-col items-center gap-1 shrink-0"
               title={`${emp.full_name} — dia ${String(emp.day).padStart(2, "0")}`}
             >
               <Avatar
-                className={`h-12 w-12 rounded-md border-2 ${
+                className={`h-14 w-14 rounded-md border-2 ${
                   isToday
                     ? "border-accent ring-2 ring-accent/40 animate-pulse"
                     : "border-primary/40"
@@ -124,9 +124,9 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
                   {emp.full_name ? emp.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase() : <UserCircle className="h-5 w-5" />}
                 </AvatarFallback>
               </Avatar>
-              <span className={`text-xs font-medium whitespace-nowrap ${isToday ? "text-accent font-bold" : "text-foreground/85"}`}>
+              <span className={`text-[11px] font-medium text-center leading-tight ${isToday ? "text-accent font-bold" : "text-foreground/85"}`}>
                 {firstName}
-                <span className="text-muted-foreground ml-1">
+                <span className="text-muted-foreground ml-0.5">
                   {isToday ? "🎉" : String(emp.day).padStart(2, "0")}
                 </span>
               </span>
