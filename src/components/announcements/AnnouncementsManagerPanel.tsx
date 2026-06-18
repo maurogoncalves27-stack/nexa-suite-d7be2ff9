@@ -340,7 +340,7 @@ export default function AnnouncementsManagerPanel() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-6">
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
                 <div className="flex items-center gap-2">
                   <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
                   <Label className="cursor-pointer">Ativo</Label>
@@ -348,6 +348,10 @@ export default function AnnouncementsManagerPanel() {
                 <div className="flex items-center gap-2">
                   <Switch checked={form.send_push} onCheckedChange={(v) => setForm({ ...form, send_push: v })} />
                   <Label className="cursor-pointer">Enviar push</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={form.send_whatsapp} onCheckedChange={(v) => setForm({ ...form, send_whatsapp: v })} />
+                  <Label className="cursor-pointer">Enviar WhatsApp</Label>
                 </div>
               </div>
             </div>
