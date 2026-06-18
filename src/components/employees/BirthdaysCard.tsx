@@ -75,8 +75,8 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
 
   useEffect(() => {
     if (loading || items.length === 0) return;
-    const fadeTimer = setTimeout(() => setFading(true), 13000);
-    const hideTimer = setTimeout(() => setVisible(false), 13500);
+    const fadeTimer = setTimeout(() => setFading(true), 18000);
+    const hideTimer = setTimeout(() => setVisible(false), 18500);
     return () => { clearTimeout(fadeTimer); clearTimeout(hideTimer); };
   }, [loading, items.length]);
 
@@ -91,11 +91,11 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
     <div
       className={`transition-opacity duration-500 flex items-center gap-3 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 via-accent/15 to-primary/10 px-3 py-3 shadow-sm backdrop-blur-sm ${fading ? "opacity-0" : "opacity-100"}`}
     >
-      <div className="flex items-center gap-1.5 shrink-0 pl-0.5">
+      <div className="flex flex-col items-center gap-0.5 shrink-0 pl-0.5">
         <div className="rounded-full bg-gradient-to-br from-primary to-accent p-1.5 shadow-sm">
           <Cake className="h-4 w-4 text-primary-foreground" />
         </div>
-        <span className="text-sm font-semibold text-primary capitalize whitespace-nowrap hidden sm:inline">
+        <span className="text-[11px] font-semibold text-primary capitalize whitespace-nowrap leading-tight">
           {monthLabel}
         </span>
       </div>
@@ -113,14 +113,14 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
               title={`${emp.full_name} — dia ${String(emp.day).padStart(2, "0")}`}
             >
               <Avatar
-                className={`h-14 w-14 border-2 ${
+                className={`h-12 w-12 rounded-md border-2 ${
                   isToday
                     ? "border-accent ring-2 ring-accent/40 animate-pulse"
                     : "border-primary/40"
                 }`}
               >
-                {emp.photoUrl && <AvatarImage src={emp.photoUrl} alt={emp.full_name} />}
-                <AvatarFallback className="bg-primary/15 text-primary text-sm font-semibold">
+                {emp.photoUrl && <AvatarImage src={emp.photoUrl} alt={emp.full_name} className="rounded-md object-cover" />}
+                <AvatarFallback className="bg-primary/15 text-primary text-sm font-semibold rounded-md">
                   {emp.full_name ? emp.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase() : <UserCircle className="h-5 w-5" />}
                 </AvatarFallback>
               </Avatar>
