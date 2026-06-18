@@ -43,6 +43,7 @@ const Climate = lazy(() => import("./pages/Climate.tsx"));
 const Vacations = lazy(() => import("./pages/Vacations.tsx"));
 const Uniforms = lazy(() => import("./pages/Uniforms.tsx"));
 const EmployeeArea = lazy(() => import("./pages/EmployeeArea.tsx"));
+const ManagerArea = lazy(() => import("./pages/ManagerArea.tsx"));
 const MyPayslips = lazy(() => import("./pages/MyPayslips.tsx"));
 const ViewEmployee = lazy(() => import("./pages/ViewEmployee.tsx"));
 const Schedules = lazy(() => import("./pages/Schedules.tsx"));
@@ -282,6 +283,7 @@ const App = () => (
               <Route path="/painel-socio" element={<ProtectedRoute><PartnerDashboard /></ProtectedRoute>} />
               <Route path="/ranking" element={<Guarded staff partner><EmployeeRanking /></Guarded>} />
               <Route path="/area-colaborador" element={<Guarded><EmployeeArea /></Guarded>} />
+              <Route path="/area-gestor" element={<Guarded staff><ManagerArea /></Guarded>} />
               <Route path="/meus-holerites" element={<Guarded><MyPayslips /></Guarded>} />
               <Route path="/visualizar-colaborador" element={<Guarded staff><ViewEmployee /></Guarded>} />
 
