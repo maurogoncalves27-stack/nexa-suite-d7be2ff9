@@ -479,12 +479,12 @@ export default function FinanceGasVouchers() {
                   <div className="flex items-center justify-between gap-2">
                     <div className="font-medium truncate">{s.name}</div>
                     {isCentralStock ? (
-                      <Badge variant="default" className="shrink-0">
-                        Vales em estoque: {totalAvailable}
+                      <Badge variant="secondary" className="shrink-0 text-[10px]">
+                        Estoque: {totalAvailable}
                       </Badge>
                     ) : (
                       <div className="flex items-center gap-1 shrink-0">
-                        <Badge variant={vouchersBalance > 0 ? "default" : "outline"} className="shrink-0">
+                        <Badge variant="secondary" className="shrink-0 text-[10px]">
                           Vales: {vouchersBalance}
                         </Badge>
                         {isStaff && (
