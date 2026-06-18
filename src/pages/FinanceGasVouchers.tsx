@@ -411,8 +411,8 @@ export default function FinanceGasVouchers() {
 
 
       {/* LOJAS */}
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-muted-foreground">Lojas</h2>
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-muted-foreground tracking-wide">Lojas</h2>
         {!isStaff && geofence.loading && (
           <Card>
             <CardContent className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
