@@ -28,6 +28,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { buildRouteSnapshot, isRestorableAppRoute, saveLastAppRoute } from "@/lib/pwaRouteState";
+import VoiceAppointmentFAB from "@/components/announcements/VoiceAppointmentFAB";
 
 type PageMeta = { match: (p: string) => boolean; title: string; group?: string };
 
