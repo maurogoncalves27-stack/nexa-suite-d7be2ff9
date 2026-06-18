@@ -450,6 +450,12 @@ async function efetuarPagamento(opts = {}) {
   const method = methodToBridge(opts.tipo);
   const saleId = opts.saleId || `SALE-${Date.now()}`;
   const qrDisplayPreference = String(opts.qrDisplayPreference || process.env.PAYGO_QR_DISPLAY_PREF || NEXA_DEFAULTS.qrDisplayPreference) === "1" ? "1" : "2";
+  const usePinpad =
+    opts.usePinpad === false || opts.usePinpad === "0"
+      ? "0"
+      : method === "PIX" && qrDisplayPreference === "2"
+        ? "0"
+        : "1";
 
   // Auto-cleanup pre-flight: se a transação anterior morreu em timeout/error,
   // a DLL PGWebLib pode ter ficado com estado "transação em andamento" e a
@@ -487,6 +493,7 @@ async function efetuarPagamento(opts = {}) {
       paygoMenuChoice: opts.paygoMenuChoice || "",
       captureValuesBase64: opts.captureValuesBase64 || "",
       qrDisplayPreference,
+      usePinpad,
     }, { onEvent: (ev) => {
       if (!ev) return;
       // O bridge emite eventos NDJSON: { type, message }.

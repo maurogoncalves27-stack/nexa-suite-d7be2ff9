@@ -9,6 +9,11 @@ contextBridge.exposeInMainWorld("electron", {
   isElectron: true,
   isTotem: true,
   platform: process.platform,
+  remote: {
+    getRustDeskId: () => ipcRenderer.invoke("remote:getRustDeskId"),
+    machineName: require("os").hostname(),
+    appVersion: require("./package.json").version,
+  },
   // Lista impressoras USB instaladas no Windows
   listPrinters: () => ipcRenderer.invoke("printers:list"),
   // Imprime um conteúdo (test/customer/kitchen) via ESC/POS

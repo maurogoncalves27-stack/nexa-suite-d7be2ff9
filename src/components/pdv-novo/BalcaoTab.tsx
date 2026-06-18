@@ -323,6 +323,9 @@ export default function BalcaoTab({ storeId, channelId, cashSessionId, onOrderCr
         placeholder="Buscar produto…"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
+        inputMode="none"
+        autoComplete="off"
+        className="h-12 text-base"
       />
 
       <ScrollArea className="w-full whitespace-nowrap">

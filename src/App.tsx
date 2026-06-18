@@ -11,6 +11,7 @@ import { ThemeProvider } from "@/hooks/useTheme";
 import { useInactivityLogout } from "@/hooks/useInactivityLogout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/AppLayout";
+import { TouchKeyboardProvider } from "@/components/touch/TouchKeyboardProvider";
 
 // Eager: rotas críticas de boot (auth + landing)
 import Index from "./pages/Index.tsx";
@@ -252,20 +253,36 @@ const App = () => (
             <Route path="/balcao" element={<Navigate to="/loja" replace />} />
             {/* Totem fullscreen kiosk - fora do AppLayout */}
             <Route path="/totem" element={
-              <ProtectedRoute requireRoles={[...STAFF]}><Totem /></ProtectedRoute>
+              <ProtectedRoute requireRoles={[...STAFF]}>
+                <TouchKeyboardProvider variant="totem">
+                  <Totem />
+                </TouchKeyboardProvider>
+              </ProtectedRoute>
             } />
             {/* Loja (PDV + atalhos) — fullscreen sem sidebar/breadcrumb */}
             <Route path="/loja" element={
-              <ProtectedRoute requireRoles={[...STAFF]}><StoreHome /></ProtectedRoute>
+              <ProtectedRoute requireRoles={[...STAFF]}>
+                <TouchKeyboardProvider variant="pdv">
+                  <StoreHome />
+                </TouchKeyboardProvider>
+              </ProtectedRoute>
             } />
             {/* Smart POS — fullscreen mobile (Cielo LIO / Stone / qualquer Android) */}
             <Route path="/smartpos/login" element={<SmartPosLogin />} />
             <Route path="/smartpos" element={
-              <ProtectedRoute requireRoles={[...STAFF]}><SmartPos /></ProtectedRoute>
+              <ProtectedRoute requireRoles={[...STAFF]}>
+                <TouchKeyboardProvider variant="pdv">
+                  <SmartPos />
+                </TouchKeyboardProvider>
+              </ProtectedRoute>
             } />
             {/* NEXA Garçom — Gertec GPOS780 + PayGo (Fase 1: TEF mock) */}
             <Route path="/garcom" element={
-              <ProtectedRoute requireRoles={[...STAFF]}><Garcom /></ProtectedRoute>
+              <ProtectedRoute requireRoles={[...STAFF]}>
+                <TouchKeyboardProvider variant="pdv">
+                  <Garcom />
+                </TouchKeyboardProvider>
+              </ProtectedRoute>
             } />
 
 

@@ -1,6 +1,6 @@
 param(
   [Parameter(Mandatory = $true)]
-  [ValidateSet("sale", "confirm", "undo", "cleanup", "commtest", "install", "admin", "host")]
+  [ValidateSet("sale", "confirm", "undo", "cleanup", "commtest", "install", "config", "maintenance", "admin", "host")]
   [string] $Action,
 
   [string] $DllPath = "C:\Program Files (x86)\PayGo\PGWebLib\x64\PGWebLib.dll",
@@ -47,9 +47,12 @@ public static class PayGoBridge
     private const short PWRET_FALLBACK = -2486;
     private const short BRIDGE_AUTHORIZED_AFTER_REMOVE_TIMEOUT = 1;
 
-    private const byte PWOPER_SALE = 0x21;
     private const byte PWOPER_INSTALL = 0x01;
+    private const byte PWOPER_COMMTEST = 0x14;
     private const byte PWOPER_ADMIN = 0x20;
+    private const byte PWOPER_SALE = 0x21;
+    private const byte PWOPER_CONFIG = 0xFD;
+    private const byte PWOPER_MAINTENANCE = 0xFE;
 
     private const ushort PWINFO_AUTNAME = 0x15;
     private const ushort PWINFO_AUTVER = 0x16;
@@ -227,7 +230,7 @@ public static class PayGoBridge
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
 
-    public static string Sale(string dllPath, string workingDir, string saleId, int amountInCents, string method, int installments, string paygoMenuChoice, string captureValuesBase64, string qrDisplayPreference)
+    public static string Sale(string dllPath, string workingDir, string saleId, int amountInCents, string method, int installments, string paygoMenuChoice, string captureValuesBase64, string qrDisplayPreference, string usePinpad)
     {
         try
         {
@@ -235,7 +238,30 @@ public static class PayGoBridge
             _captureValues = ParseCaptureValues(captureValuesBase64);
             _qrDisplayPreference = qrDisplayPreference ?? "";
             _lastQrEmitted = "";
-            EmitEvent("INFO", "Iniciando venda PayGo TEF saleId=" + saleId + " valorCentavos=" + amountInCents + " metodo=" + method);
+            // PIX no checkout/PC (DSPQRPREF=2) nao usa pinpad fisico — sem isso a DLL
+            // tenta abrir COM5 e devolve "ERRO PINPAD" mesmo no botao "PIX PC".
+            if (!String.IsNullOrWhiteSpace(usePinpad))
+            {
+                _usePinpad = usePinpad == "0" ? "0" : "1";
+            }
+            else if ((method == "PIX" || method == "PIX_TEF") && QrDisplayPreference() == "2")
+            {
+                _usePinpad = "0";
+            }
+            else
+            {
+                _usePinpad = "1";
+            }
+            _pinpadPort = _usePinpad == "0"
+                ? ""
+                : NormalizePinpadPort(Environment.GetEnvironmentVariable("PAYGO_PINPAD_PORT") ?? "5");
+            if (String.IsNullOrWhiteSpace(_cpfCnpj))
+                _cpfCnpj = Digits(Environment.GetEnvironmentVariable("PAYGO_CNPJ") ?? Environment.GetEnvironmentVariable("CPFCNPJ") ?? "44932369000108");
+            if (String.IsNullOrWhiteSpace(_pontoDeCaptura))
+                _pontoDeCaptura = Environment.GetEnvironmentVariable("PAYGO_PDC") ?? Environment.GetEnvironmentVariable("PontoDeCaptura") ?? "111476";
+            if (String.IsNullOrWhiteSpace(_ambiente))
+                _ambiente = Environment.GetEnvironmentVariable("PAYGO_AMBIENTE") ?? Environment.GetEnvironmentVariable("AmbienteCPAY") ?? "DEMO";
+            EmitEvent("INFO", "Iniciando venda PayGo TEF saleId=" + saleId + " valorCentavos=" + amountInCents + " metodo=" + method + " usePinpad=" + _usePinpad + " pdc=" + _pontoDeCaptura);
 
             Load(dllPath);
             short ret = Init(workingDir);
@@ -534,6 +560,18 @@ public static class PayGoBridge
         }
     }
 
+    private static bool PinpadDisabled()
+    {
+        return _usePinpad == "0";
+    }
+
+    private static short SkipPinpadCapture(PW_GetData data, string step)
+    {
+        EmitEvent("INFO", "Fluxo sem pinpad — respondendo captura " + step + " sem dispositivo");
+        AbortPinpad();
+        return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, "");
+    }
+
     private static short HandleData(PW_GetData data, ushort index)
     {
         short ret;
@@ -556,6 +594,11 @@ public static class PayGoBridge
                 }
                 if (data.ulTipoEntradaCartao == 2 || data.ulTipoEntradaCartao == 3)
                 {
+                    if (PinpadDisabled())
+                    {
+                        EmitEvent("INFO", "Pinpad desabilitado — usando digitacao do cartao");
+                        return AddTypedValue(data, "CARDINF");
+                    }
                     EmitEvent("PINPAD", "Aguardando cartao no pinpad");
                     ret = Fn<PW_iPPGetCard_>("PW_iPPGetCard")(index);
                     if (ret != PWRET_OK) return ret;
@@ -584,26 +627,39 @@ public static class PayGoBridge
                     return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, "");
                 }
             case PWDAT_PPENTRY:
+                if (PinpadDisabled()) return SkipPinpadCapture(data, "entry");
                 EmitEvent("PINPAD", "Aguardando entrada de dados no pinpad");
                 ret = Fn<PW_iPPGetData_>("PW_iPPGetData")(index);
                 return ret == PWRET_OK ? PinpadLoop("entry") : ret;
             case PWDAT_PPENCPIN:
+                if (PinpadDisabled()) return SkipPinpadCapture(data, "pin");
                 EmitEvent("PINPAD", "Aguardando senha no pinpad");
                 ret = Fn<PW_iPPGetPIN_>("PW_iPPGetPIN")(index);
                 return ret == PWRET_OK ? PinpadLoop("pin") : ret;
             case PWDAT_CARDOFF:
+                if (PinpadDisabled()) return SkipPinpadCapture(data, "offlineChip");
                 EmitEvent("PINPAD", "Processando chip offline");
                 ret = Fn<PW_iPPGoOnChip_>("PW_iPPGoOnChip")(index);
                 return ret == PWRET_OK ? PinpadLoop("offlineChip") : ret;
             case PWDAT_CARDONL:
+                if (PinpadDisabled()) return SkipPinpadCapture(data, "onlineChip");
                 EmitEvent("PINPAD", "Processando chip online");
                 ret = Fn<PW_iPPFinishChip_>("PW_iPPFinishChip")(index);
                 return ret == PWRET_OK ? PinpadLoop("onlineChip") : ret;
             case PWDAT_PPCONF:
+                if (PinpadDisabled()) return SkipPinpadCapture(data, "confirmData");
                 EmitEvent("PINPAD", "Confirmando dados no pinpad");
                 ret = Fn<PW_iPPConfirmData_>("PW_iPPConfirmData")(index);
                 return ret == PWRET_OK ? PinpadLoop("confirmData") : ret;
             case PWDAT_PPREMCRD:
+                if (PinpadDisabled())
+                {
+                    EmitEvent("INFO", "Fluxo sem pinpad — PPRemoveCard/PinpadLoop stub");
+                    ret = Fn<PW_iPPRemoveCard_>("PW_iPPRemoveCard")();
+                    if (ret == PWRET_PPNOTFOUND) return PWRET_OK;
+                    if (ret != PWRET_OK) return ret;
+                    return PinpadLoop("removeCard");
+                }
                 EmitEvent("PINPAD", "Remova o cartao do pinpad");
                 ret = Fn<PW_iPPRemoveCard_>("PW_iPPRemoveCard")();
                 if (ret != PWRET_OK) return ret;
@@ -615,10 +671,12 @@ public static class PayGoBridge
                 }
                 return ret;
             case PWDAT_PPGENCMD:
+                if (PinpadDisabled()) return SkipPinpadCapture(data, "genericCommand");
                 EmitEvent("PINPAD", "Executando comando no pinpad");
                 ret = Fn<PW_iPPGenericCMD_>("PW_iPPGenericCMD")(index);
                 return ret == PWRET_OK ? PinpadLoop("genericCommand") : ret;
             case PWDAT_PPDATAPOSCNF:
+                if (PinpadDisabled()) return SkipPinpadCapture(data, "positiveConfirmation");
                 EmitEvent("PINPAD", "Enviando confirmacao positiva ao pinpad");
                 ret = Fn<PW_iPPPositiveConfirmation_>("PW_iPPPositiveConfirmation")(index);
                 return ret == PWRET_OK ? PinpadLoop("positiveConfirmation") : ret;
@@ -626,6 +684,7 @@ public static class PayGoBridge
                 EmitEvent("INFO", "PayGo solicitou autenticacao tecnica");
                 return AddUserAuthValue(data);
             case PWDAT_TSTKEY:
+                if (PinpadDisabled()) return SkipPinpadCapture(data, "testKey");
                 EmitEvent("PINPAD", "Testando chave do pinpad");
                 ret = Fn<PW_iPPTestKey_>("PW_iPPTestKey")(index);
                 return ret == PWRET_OK ? PinpadLoop("testKey") : ret;
@@ -1041,6 +1100,22 @@ public static class PayGoBridge
 
     private static short PinpadLoop(string context)
     {
+        if (PinpadDisabled())
+        {
+            EmitEvent("INFO", "PinpadLoop poll unico (sem dispositivo) contexto=" + context);
+            try
+            {
+                var display = new StringBuilder(256);
+                short ev = Fn<PW_iPPEventLoop_>("PW_iPPEventLoop")(display, 256);
+                if (ev == PWRET_OK || ev == PWRET_NOTHING || ev == PWRET_PPNOTFOUND) return PWRET_OK;
+                AbortPinpad();
+                return ev;
+            }
+            catch
+            {
+                return PWRET_OK;
+            }
+        }
         int timeoutMs = context == "removeCard"
             ? EnvInt("PAYGO_REMOVE_CARD_TIMEOUT_MS", 30000)
             : EnvInt("PAYGO_PINPAD_TIMEOUT_MS", 270000);
@@ -1273,11 +1348,11 @@ function Invoke-PayGoCommand {
 
   try {
     if ($cmdAction -eq "sale") {
-      return [PayGoBridge]::Sale($DllPath, $WorkingDir, [string]$Command.saleId, [int]$Command.amountInCents, [string]$Command.method, [int]$Command.installments, [string]$Command.paygoMenuChoice, [string]$Command.captureValuesBase64, [string]$Command.qrDisplayPreference)
+      return [PayGoBridge]::Sale($DllPath, $WorkingDir, [string]$Command.saleId, [int]$Command.amountInCents, [string]$Command.method, [int]$Command.installments, [string]$Command.paygoMenuChoice, [string]$Command.captureValuesBase64, [string]$Command.qrDisplayPreference, [string]$Command.usePinpad)
     }
 
     if ($cmdAction -eq "commtest") {
-      return [PayGoBridge]::CommTest($DllPath, $WorkingDir)
+      return [PayGoBridge]::Operation($DllPath, $WorkingDir, 0x14, "", "", "", "", "", "", "", $true)
     }
 
     if ($cmdAction -eq "install") {
@@ -1294,6 +1369,14 @@ function Invoke-PayGoCommand {
         [string]$Command.paygoMenuChoice,
         $false
       )
+    }
+
+    if ($cmdAction -eq "config") {
+      return [PayGoBridge]::Operation($DllPath, $WorkingDir, 0xFD, "", "", "", "", "", "", "", $true)
+    }
+
+    if ($cmdAction -eq "maintenance") {
+      return [PayGoBridge]::Operation($DllPath, $WorkingDir, 0xFE, "", "", "", "", "", "", "", $true)
     }
 
     if ($cmdAction -eq "admin") {
@@ -1383,12 +1466,12 @@ if ($Action -eq "host") {
 }
 
 if ($Action -eq "sale") {
-  [PayGoBridge]::Sale($DllPath, $WorkingDir, $SaleId, $AmountInCents, $Method, $Installments, $PaygoMenuChoice, $CaptureValuesBase64, $QrDisplayPreference)
+  [PayGoBridge]::Sale($DllPath, $WorkingDir, $SaleId, $AmountInCents, $Method, $Installments, $PaygoMenuChoice, $CaptureValuesBase64, $QrDisplayPreference, $UsePinpad)
   exit
 }
 
 if ($Action -eq "commtest") {
-  [PayGoBridge]::CommTest($DllPath, $WorkingDir)
+  [PayGoBridge]::Operation($DllPath, $WorkingDir, 0x14, "", "", "", "", "", "", "", $true)
   exit
 }
 
@@ -1404,6 +1487,16 @@ if (-not [string]::IsNullOrWhiteSpace($Ambiente)) {
 
 if ($Action -eq "install") {
   [PayGoBridge]::Operation($DllPath, $WorkingDir, 0x01, $CpfCnpj, $PontoDeCaptura, $Ambiente, $SenhaTecnica, $UsePinpad, $PinpadPort, "", $false)
+  exit
+}
+
+if ($Action -eq "config") {
+  [PayGoBridge]::Operation($DllPath, $WorkingDir, 0xFD, "", "", "", "", "", "", "", $true)
+  exit
+}
+
+if ($Action -eq "maintenance") {
+  [PayGoBridge]::Operation($DllPath, $WorkingDir, 0xFE, "", "", "", "", "", "", "", $true)
   exit
 }
 

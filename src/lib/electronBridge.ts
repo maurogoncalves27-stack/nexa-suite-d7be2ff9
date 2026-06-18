@@ -69,6 +69,11 @@ declare global {
       sitef?: {
         health: () => Promise<{ ok: boolean; mode?: string; version?: string; busy?: boolean; error?: string }>;
       };
+      remote?: {
+        getRustDeskId: () => Promise<{ id: string | null; hostname?: string; installed?: boolean; configPath?: string }>;
+        machineName: string;
+        appVersion: string;
+      };
     };
   }
 }

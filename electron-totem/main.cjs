@@ -9,6 +9,7 @@ const path = require("path");
 const { execFile } = require("child_process");
 const packageJson = require("./package.json");
 const { startSitefAgent, stopSitefAgent } = require("./sitef-agent.cjs");
+const { getRustDeskInfo } = require("./rustdesk-helper.cjs");
 
 let ThermalPrinter, PrinterTypes;
 try {
@@ -219,6 +220,11 @@ ipcMain.handle("sitef:cancelar", async () => {
     return { ok: false, status: 0, error: e?.message ?? String(e) };
   }
 });
+
+// ============================================================
+// IPC: RustDesk / monitoramento remoto
+// ============================================================
+ipcMain.handle("remote:getRustDeskId", async () => getRustDeskInfo());
 
 // ============================================================
 // IPC: listar impressoras instaladas

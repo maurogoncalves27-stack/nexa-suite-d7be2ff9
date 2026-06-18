@@ -21,12 +21,24 @@ interface TotemAsset {
   is_active: boolean;
 }
 
+interface RemoteTerminal {
+  id: string;
+  store_id: string;
+  terminal_kind: string;
+  machine_name: string;
+  rustdesk_id: string | null;
+  screen_spec: string | null;
+  last_seen_at: string;
+  stores?: { name: string } | null;
+}
+
 const BUCKET = "totem-backgrounds";
 
 export default function TotemConfig() {
   const { user } = useAuth();
   const [brands, setBrands] = useState<Brand[]>([]);
   const [assets, setAssets] = useState<TotemAsset[]>([]);
+  const [remoteTerminals, setRemoteTerminals] = useState<RemoteTerminal[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploadingKind, setUploadingKind] = useState<"background" | "logo" | null>(null);
   const [selectedBrand, setSelectedBrand] = useState<string>("");
@@ -35,12 +47,18 @@ export default function TotemConfig() {
 
   const load = async () => {
     setLoading(true);
-    const [b, a] = await Promise.all([
+    const [b, a, r] = await Promise.all([
       supabase.from("brands").select("id,name,slug").eq("is_active", true).order("sort_order"),
       (supabase as any).from("totem_assets").select("*").order("sort_order"),
+      (supabase as any)
+        .from("store_terminal_remote")
+        .select("id,store_id,terminal_kind,machine_name,rustdesk_id,screen_spec,last_seen_at,stores(name)")
+        .eq("terminal_kind", "totem")
+        .order("last_seen_at", { ascending: false }),
     ]);
     setBrands(((b.data ?? []) as Brand[]).filter((x) => !/f[áa]brica/i.test(x.name)));
     setAssets((a.data ?? []) as TotemAsset[]);
+    setRemoteTerminals((r.data ?? []) as RemoteTerminal[]);
     setLoading(false);
   };
 
@@ -146,6 +164,34 @@ export default function TotemConfig() {
         </Button>
 
       </div>
+
+      <Card className="p-4">
+        <h2 className="font-semibold mb-2">Acesso remoto (RustDesk)</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Totens 23,8&quot; vertical. O instalador configura RustDesk; o ID aparece aqui após o totem ligar.
+        </p>
+        {remoteTerminals.length === 0 ? (
+          <p className="text-sm text-muted-foreground border border-dashed rounded p-4">
+            Nenhum totem reportou presença ainda. Instale o Nexa Totem com RustDesk na loja piloto.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {remoteTerminals.map((t) => (
+              <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 border rounded-md p-3 text-sm">
+                <div>
+                  <div className="font-medium">{t.stores?.name ?? "Loja"} — {t.machine_name}</div>
+                  <div className="text-muted-foreground">
+                    RustDesk ID: <span className="font-mono text-foreground">{t.rustdesk_id ?? "—"}</span>
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Último sinal: {new Date(t.last_seen_at).toLocaleString("pt-BR")}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
 
       {/* FUNDOS */}
       <Card className="p-4 space-y-4">

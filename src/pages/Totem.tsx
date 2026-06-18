@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Plus, Minus, Trash2, ShoppingCart, ArrowLeft, Printer, Check, X, Timer, Hand } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { TefPaymentDialog } from "@/components/tef/TefPaymentDialog";
-import { VirtualKeyboard } from "@/components/totem/VirtualKeyboard";
+import { TotemRemoteHeartbeat } from "@/components/totem/TotemRemoteHeartbeat";
 import type { TefPaymentResult } from "@/lib/tef";
 import { isElectron } from "@/lib/electronBridge";
 import logoAquelaParme from "@/assets/logo-aquela-parme.png";
@@ -168,8 +168,6 @@ export default function Totem() {
   const [cpf, setCpf] = useState("");
   const [noteDialog, setNoteDialog] = useState<{ item: MenuItem; note: string; qty: number } | null>(null);
   const [tefOpen, setTefOpen] = useState(false);
-  const [showNoteKb, setShowNoteKb] = useState(false);
-  const [showCpfKb, setShowCpfKb] = useState(false);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const [customBackgrounds, setCustomBackgrounds] = useState<string[]>([]);
   const [customLogos, setCustomLogos] = useState<Record<string, string>>({});
@@ -255,8 +253,6 @@ export default function Totem() {
     setOrderNumber("");
     setCpf("");
     setNoteDialog(null);
-    setShowCpfKb(false);
-    setShowNoteKb(false);
   }, []);
 
   // Slideshow do idle
@@ -284,11 +280,6 @@ export default function Totem() {
       events.forEach(e => window.removeEventListener(e, resetIdle));
     };
   }, [resetIdle]);
-
-  useEffect(() => {
-    if (step !== "checkout") setShowCpfKb(false);
-    if (!noteDialog) setShowNoteKb(false);
-  }, [step, noteDialog]);
 
   const brandSlugById = useMemo(() => {
     const map: Record<string, string> = {};
@@ -483,6 +474,7 @@ export default function Totem() {
   // ------------------- RENDER -------------------
   return (
     <div className="fixed inset-0 bg-background flex flex-col overflow-hidden" style={TOTEM_THEME_STYLE}>
+      <TotemRemoteHeartbeat storeId={selectedStore?.parent_store_id ?? selectedStore?.id ?? null} />
 
       {/* Header (não aparece no idle/done) */}
       {step !== "idle" && step !== "store" && (
@@ -656,8 +648,14 @@ export default function Totem() {
               </div>
             </div>
             <div className="p-4 border-b">
-              <Input placeholder="Buscar produto..." value={search} onChange={e => setSearch(e.target.value)}
-                className="text-lg h-14" />
+              <Input
+                placeholder="Buscar produto..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                inputMode="none"
+                autoComplete="off"
+                className="text-lg h-14"
+              />
             </div>
             <ScrollArea className="flex-1 p-4">
               <div id="totem-scroll-top" />
@@ -796,25 +794,13 @@ export default function Totem() {
               <Input
                 value={cpf}
                 onChange={e => setCpf(maskCpf(e.target.value))}
-                onPointerDown={() => setShowCpfKb(true)}
-                onClick={() => setShowCpfKb(true)}
                 placeholder="000.000.000-00"
                 inputMode="none"
-                readOnly
+                data-touch-layout="numeric"
+                data-touch-mask="cpf"
+                autoComplete="off"
                 className="h-16 text-2xl focus-visible:ring-primary"
               />
-              {showCpfKb && (
-                <div className="mt-4 flex justify-center">
-                  <div className="max-w-md w-full">
-                    <VirtualKeyboard
-                      layout="numeric"
-                      onKey={(k) => setCpf(prev => maskCpf((prev || "") + k))}
-                      onBackspace={() => setCpf(prev => maskCpf((prev || "").replace(/\D/g, "").slice(0, -1)))}
-                      onEnter={() => setShowCpfKb(false)}
-                    />
-                  </div>
-                </div>
-              )}
             </Card>
 
             <Card className="p-6 mb-6 bg-muted">
@@ -872,7 +858,7 @@ export default function Totem() {
       </main>
 
       {/* Dialog de observação ao adicionar item */}
-      <Dialog open={!!noteDialog} onOpenChange={(o) => { if (!o) { setNoteDialog(null); setShowNoteKb(false); } }}>
+      <Dialog open={!!noteDialog} onOpenChange={(o) => { if (!o) setNoteDialog(null); }}>
         <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto border-primary/30" style={TOTEM_THEME_STYLE}>
           <DialogHeader>
             <DialogTitle className="text-3xl font-black">{noteDialog?.item.name}</DialogTitle>
@@ -893,23 +879,13 @@ export default function Totem() {
                 <Textarea
                   value={noteDialog.note}
                   onChange={e => setNoteDialog(n => n ? { ...n, note: e.target.value } : n)}
-                  onPointerDown={() => setShowNoteKb(true)}
-                  onClick={() => setShowNoteKb(true)}
                   placeholder="Ex: sem cebola, ponto da carne, etc."
                   rows={2}
-                  readOnly
-                  className="text-2xl min-h-[104px] cursor-pointer focus-visible:ring-primary"
+                  inputMode="none"
+                  data-touch-lowercase="true"
+                  autoComplete="off"
+                  className="text-2xl min-h-[104px] focus-visible:ring-primary"
                 />
-                {showNoteKb && (
-                  <div className="mt-3">
-                    <VirtualKeyboard
-                      onKey={(k) => setNoteDialog(n => n ? { ...n, note: (n.note || "") + k.toLowerCase() } : n)}
-                      onSpace={() => setNoteDialog(n => n ? { ...n, note: (n.note || "") + " " } : n)}
-                      onBackspace={() => setNoteDialog(n => n ? { ...n, note: (n.note || "").slice(0, -1) } : n)}
-                      onEnter={() => setShowNoteKb(false)}
-                    />
-                  </div>
-                )}
               </div>
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">

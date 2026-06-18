@@ -1,0 +1,18 @@
+{
+  "dllPath": "",
+  "workingDir": "",
+  "cpfCnpj": "44932369000108",
+  "pontoDeCaptura": "111476",
+  "ambiente": "DEMO",
+  "senhaTecnica": "314159",
+  "usePinpad": true,
+  "pinpadPort": "5",
+  "qrDisplayPreference": "2",
+  "saleAmount": "1.00",
+  "saleMethod": "DEBITO",
+  "saleInstallments": "1",
+  "saleIdPrefix": "TESTE",
+  "paygoMenuChoice": "",
+  "captureValues": "",
+  "command": "commtest"
+}

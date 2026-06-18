@@ -32,7 +32,15 @@
       "preload.cjs",
       "sitef-agent.cjs",
       "sitef-real.cjs",
+      "rustdesk-helper.cjs",
       "build/**"
+    ],
+    "extraResources": [
+      {
+        "from": "scripts",
+        "to": "scripts",
+        "filter": ["**/*"]
+      }
     ],
     "directories": {
       "output": "release",
@@ -62,7 +70,8 @@
       "deleteAppDataOnUninstall": false,
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
-      "installerHeaderIcon": "build/icon.ico"
+      "installerHeaderIcon": "build/icon.ico",
+      "include": "build/installer.nsh"
     }
   }
 }

@@ -21,6 +21,10 @@ import TefPinpadSetupCard from "./TefPinpadSetupCard";
 
 const ASA_SUL_ID = "fcf435c2-c382-444c-b499-4d95f07b2633";
 const DEFAULT_SALE_ID = "VENDA-1001";
+const PIX_PAYMENT_TIMEOUT_MS = 90_000;
+const PIX_POLL_MAX_MS = 120_000;
+const PINPAD_PIX_MSG =
+  "PIX PayGo exige pinpad conectado (mesmo no modo PIX PC). Sem o equipamento, o PayGo trava aguardando o pinpad. Conecte o pinpad na COM correta, clique em Limpar pendência e tente novamente.";
 
 interface Props {
   storeId?: string | null;
@@ -50,6 +54,8 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
   const [pixQrDataUrl, setPixQrDataUrl] = useState<string>("");
   const [pixWaitMsg, setPixWaitMsg] = useState<string>("");
   const [pixSaleInfo, setPixSaleInfo] = useState<string>("");
+  const [pixDialogOpen, setPixDialogOpen] = useState(false);
+  const [pixDialogError, setPixDialogError] = useState<string>("");
   const pollAbortRef = useRef<{ stop: boolean } | null>(null);
   const latestPixQrRef = useRef("");
 
@@ -69,7 +75,8 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
       const cfg = await loadTefConfig(ASA_SUL_ID);
       const ctl = { stop: false };
       pollAbortRef.current = ctl;
-      while (!ctl.stop) {
+      const deadline = Date.now() + PIX_POLL_MAX_MS;
+      while (!ctl.stop && Date.now() < deadline) {
         try {
           const r = await fetch(joinAgentUrl(cfg.agentUrl, "/tef/sale/status"), {
             signal: AbortSignal.timeout(2500),
@@ -110,9 +117,16 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
     setPixQrBrCode("");
     setPixWaitMsg("");
     setPixSaleInfo("");
+    setPixDialogError("");
 
     // PIX nao aparece no PPC930 (sem display grafico) — a automacao tem que mostrar o QR.
-    if (method === "pix") void startPixPolling();
+    if (method === "pix") {
+      setPixDialogOpen(true);
+      setPixWaitMsg("Aguardando QR Code do PayGo...");
+      void startPixPolling();
+    } else {
+      setPixDialogOpen(false);
+    }
 
     try {
       const cfg = await loadTefConfig(ASA_SUL_ID);
@@ -124,12 +138,13 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
         });
         setBusy(false);
         setStatus("idle");
+        setPixDialogOpen(false);
         return;
       }
 
       const adapter = createTefAdapter(cfg);
       const parsedInst = Math.max(1, Math.min(99, parseInt(installments, 10) || 1));
-      const result = await adapter.processPayment(
+      const paymentPromise = adapter.processPayment(
         {
           amount: value,
           method,
@@ -144,13 +159,33 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
           if (msg) setStatusMsg(msg);
         },
       );
+      const result = method === "pix"
+        ? await Promise.race([
+            paymentPromise,
+            new Promise<never>((_, reject) => {
+              window.setTimeout(() => reject(new Error("PIX_TIMEOUT")), PIX_PAYMENT_TIMEOUT_MS);
+            }),
+          ])
+        : await paymentPromise;
 
       const qrTimeout = method === "pix" && result.status === "error" && !!latestPixQrRef.current;
+      const pixFailedWithoutQr = method === "pix" && !latestPixQrRef.current && result.status !== "approved";
       setStatus(qrTimeout ? "timeout" : result.status);
-      setStatusMsg(result.message ?? "");
+      const fallbackPixMsg = pixFailedWithoutQr
+        ? (result.message?.trim() || PINPAD_PIX_MSG)
+        : "";
+      setStatusMsg(result.message?.trim() || fallbackPixMsg);
       if (qrTimeout) {
         setStatus("timeout");
         setStatusMsg("QR Code gerado, mas o PayGo excedeu o tempo aguardando confirmação. Confira no banco/PayGo antes de repetir.");
+      }
+      if (method === "pix" && pixFailedWithoutQr) {
+        setPixDialogError(fallbackPixMsg);
+        setPixWaitMsg("Não foi possível gerar o QR Code.");
+      }
+      if (method === "pix" && result.status === "approved") {
+        setPixDialogOpen(false);
+        setPixDialogError("");
       }
       setLastResult(JSON.stringify(result, null, 2));
 
@@ -199,23 +234,41 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
         variant: qrTimeout || result.status === "approved" ? "default" : "destructive",
       });
       if (method === "pix" && ["approved", "declined", "cancelled"].includes(result.status)) {
-        setPixQrBrCode("");
-        setPixWaitMsg("");
-        setPixSaleInfo("");
+        if (result.status === "approved" || !latestPixQrRef.current) {
+          setPixQrBrCode("");
+          setPixWaitMsg("");
+          setPixSaleInfo("");
+          if (result.status !== "approved") setPixDialogOpen(!!pixDialogError);
+        }
       }
     } catch (err: any) {
+      const isPixTimeout = method === "pix" && err?.message === "PIX_TIMEOUT";
       const hasQr = !!latestPixQrRef.current;
-      setStatus(hasQr && method === "pix" ? "timeout" : "error");
-      setStatusMsg(hasQr && method === "pix"
-        ? "QR Code gerado, mas o PayGo excedeu o tempo aguardando confirmação. Confira no banco/PayGo antes de repetir."
-        : err?.message ?? String(err));
-      if (hasQr && method === "pix") {
-        setPixWaitMsg("QR Code gerado. Tempo de confirmação excedido; confira se houve pagamento antes de repetir.");
+      setStatus(isPixTimeout ? "timeout" : hasQr && method === "pix" ? "timeout" : "error");
+      const errMsg = isPixTimeout
+        ? PINPAD_PIX_MSG
+        : hasQr && method === "pix"
+          ? "QR Code gerado, mas o PayGo excedeu o tempo aguardando confirmação. Confira no banco/PayGo antes de repetir."
+          : err?.message ?? String(err);
+      setStatusMsg(errMsg);
+      if (method === "pix") {
+        if (isPixTimeout || (!hasQr && !isPixTimeout)) {
+          setPixDialogError(errMsg);
+          setPixWaitMsg(isPixTimeout ? "Tempo esgotado aguardando o PayGo/pinpad." : "Falha ao gerar QR Code.");
+          setPixDialogOpen(true);
+        } else if (hasQr) {
+          setPixWaitMsg("QR Code gerado. Tempo de confirmação excedido; confira se houve pagamento antes de repetir.");
+        }
+        try {
+          const cfg = await loadTefConfig(ASA_SUL_ID);
+          const adapter = createTefAdapter(cfg);
+          await adapter.cancel();
+        } catch { /* ignore */ }
       }
       toast({
-        title: hasQr && method === "pix" ? "Pix aguardando conferência" : "Erro na transacao",
-        description: hasQr && method === "pix" ? "O QR continua visível para conferência; não repita a venda sem verificar se houve pagamento." : err?.message ?? String(err),
-        variant: hasQr && method === "pix" ? "default" : "destructive",
+        title: isPixTimeout ? "PIX exige pinpad" : hasQr && method === "pix" ? "Pix aguardando conferência" : "Erro na transacao",
+        description: errMsg,
+        variant: isPixTimeout || (hasQr && method === "pix") ? "default" : "destructive",
       });
     } finally {
       stopPixPolling();
@@ -236,6 +289,8 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
     stopPixPolling();
     setPixQrBrCode("");
     setPixWaitMsg("");
+    setPixDialogOpen(false);
+    setPixDialogError("");
     try {
       const cfg = await loadTefConfig(ASA_SUL_ID);
       const adapter = createTefAdapter(cfg);
@@ -245,6 +300,7 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
     }
     setStatus("cancelled");
     setStatusMsg("Operacao PayGo cancelada pelo operador");
+    setBusy(false);
   };
 
   const resolverPendencia = async (action: "confirm" | "undo") => {
@@ -420,6 +476,9 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
         Dispara uma transacao direto no pinpad usando o adapter PayGo da Asa Sul,
         com os mesmos parametros padrao do demo de referencia.
       </p>
+      <p className="text-xs text-warning-foreground rounded border border-warning/30 bg-warning/10 p-2">
+        <strong>PIX (C6/Cielo):</strong> exige pinpad conectado, inclusive no botao PIX PC. Sem pinpad a tela fica aguardando ate 90s e encerra com aviso.
+      </p>
 
       <div className="flex flex-wrap items-end gap-2">
         <div className="space-y-1">
@@ -547,26 +606,41 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
         </details>
       )}
 
-      <Dialog open={!!pixQrDataUrl} onOpenChange={(open) => { if (!open) { void cancelNetworkSelection(); setPixQrBrCode(""); } }}>
+      <Dialog open={pixDialogOpen} onOpenChange={(open) => { if (!open) { void cancelNetworkSelection(); setPixQrBrCode(""); setPixDialogOpen(false); setPixDialogError(""); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><QrCode className="h-5 w-5" /> Pague com Pix</DialogTitle>
             <DialogDescription>
-              {pixWaitMsg || "Cliente, escaneie este QR Code no app do seu banco para concluir o pagamento."}
+              {pixDialogError || pixWaitMsg || "Cliente, escaneie este QR Code no app do seu banco para concluir o pagamento."}
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center gap-3">
-            <div className="w-full rounded border border-warning/40 bg-warning/10 p-2 text-xs text-warning-foreground">
-              <strong>Ambiente DEMO Setis:</strong> este QR não é Pix real. Não tente pagar pelo app do banco — a aprovação é simulada pelo próprio PayGo após alguns segundos.
-            </div>
+            {!pixQrDataUrl && !pixDialogError && (
+              <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                <span className="text-sm">Gerando QR Code no PayGo...</span>
+              </div>
+            )}
+            {pixDialogError && (
+              <div className="w-full rounded border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                {pixDialogError}
+              </div>
+            )}
+            {!pixDialogError && (
+              <div className="w-full rounded border border-warning/40 bg-warning/10 p-2 text-xs text-warning-foreground">
+                <strong>Ambiente DEMO Setis:</strong> este QR não é Pix real. Não tente pagar pelo app do banco — a aprovação é simulada pelo próprio PayGo após alguns segundos.
+              </div>
+            )}
             {pixSaleInfo && <Badge variant="outline">{pixSaleInfo}</Badge>}
             {pixQrDataUrl && (
               <img src={pixQrDataUrl} alt="QR Code Pix" className="rounded border bg-white p-2" width={320} height={320} />
             )}
-            <details className="w-full text-xs">
-              <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Mostrar BR Code (Pix copia-e-cola)</summary>
-              <pre className="mt-2 max-h-32 overflow-auto rounded bg-muted p-2 font-mono break-all whitespace-pre-wrap">{pixQrBrCode}</pre>
-            </details>
+            {pixQrBrCode && (
+              <details className="w-full text-xs">
+                <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Mostrar BR Code (Pix copia-e-cola)</summary>
+                <pre className="mt-2 max-h-32 overflow-auto rounded bg-muted p-2 font-mono break-all whitespace-pre-wrap">{pixQrBrCode}</pre>
+              </details>
+            )}
             <Button variant="destructive" className="w-full" onClick={() => void cancelNetworkSelection()}>
               {status === "timeout" ? "Cancelar após conferência" : "Cancelar transação"}
             </Button>
