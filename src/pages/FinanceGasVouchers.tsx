@@ -570,39 +570,39 @@ export default function FinanceGasVouchers() {
                     {inTransit && (
                       <Button
                         size="sm"
-                        variant="default"
+                        variant="outline"
                         disabled={confirmingShipmentId === inTransit.id}
                         onClick={() => confirmShipment(inTransit.id)}
-                        className="h-10 w-full bg-blue-600 px-3 text-sm font-medium hover:bg-blue-700 sm:min-w-[240px]"
+                        className="h-9 w-full text-sm sm:min-w-[200px]"
                       >
                         {confirmingShipmentId === inTransit.id ? (
                           <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
                         ) : (
                           <Package className="mr-1.5 h-4 w-4" />
                         )}
-                        Confirmar recebimento{inTransitQty ? ` (${inTransitQty} vale${inTransitQty > 1 ? "s" : ""})` : ""}
+                        Confirmar recebimento{inTransitQty ? ` (${inTransitQty})` : ""}
                       </Button>
                     )}
                     <div className="flex flex-row gap-2">
                       <Button
                         size="sm"
-                        variant={reserveQty > 0 && inUseQty > 0 ? "destructive" : "secondary"}
+                        variant="outline"
                         disabled={consumingStoreId === s.id || reserveQty <= 0 || inUseQty <= 0}
                         onClick={() => consume(s.id, "reserve")}
                         title={reserveQty <= 0 ? "Sem reserva disponível" : inUseQty <= 0 ? "Nenhum bujão em uso" : ""}
-                        className="h-12 flex-1 px-3 text-sm font-medium sm:flex-none sm:min-w-[112px]"
+                        className="h-9 flex-1 px-2 text-xs font-medium sm:flex-none sm:min-w-[100px]"
                       >
-                        <Flame className="mr-1.5 h-4 w-4" /> Usei reserva
+                        <Flame className="mr-1 h-3.5 w-3.5" /> Usei reserva
                       </Button>
                       <Button
                         size="sm"
-                        variant={emptyQty > 0 && vouchersBalance > 0 ? "default" : "secondary"}
+                        variant="outline"
                         disabled={consumingStoreId === s.id || emptyQty <= 0 || vouchersBalance <= 0}
                         onClick={() => consume(s.id, "in_use")}
                         title={emptyQty <= 0 ? "Nenhum vazio para repor" : vouchersBalance <= 0 ? "Sem vales nesta loja" : ""}
-                        className="h-12 flex-1 px-3 text-sm font-medium gap-1.5 sm:flex-none sm:min-w-[112px]"
+                        className="h-9 flex-1 px-2 text-xs font-medium gap-1 sm:flex-none sm:min-w-[100px]"
                       >
-                        <CreditCard className="h-4 w-4" /> Usei vale
+                        <CreditCard className="h-3.5 w-3.5" /> Usei vale
                       </Button>
                     </div>
                   </div>
