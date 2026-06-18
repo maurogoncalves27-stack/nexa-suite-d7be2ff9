@@ -43,6 +43,7 @@ const Climate = lazy(() => import("./pages/Climate.tsx"));
 const Vacations = lazy(() => import("./pages/Vacations.tsx"));
 const Uniforms = lazy(() => import("./pages/Uniforms.tsx"));
 const EmployeeArea = lazy(() => import("./pages/EmployeeArea.tsx"));
+const ManagerArea = lazy(() => import("./pages/ManagerArea.tsx"));
 const MyPayslips = lazy(() => import("./pages/MyPayslips.tsx"));
 const ViewEmployee = lazy(() => import("./pages/ViewEmployee.tsx"));
 const Schedules = lazy(() => import("./pages/Schedules.tsx"));
