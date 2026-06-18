@@ -15750,6 +15750,7 @@ export type Database = {
         Args: { _description: string; _from_tx_id: string; _to_tx_id: string }
         Returns: string
       }
+      current_profile_store_id: { Args: { _user_id: string }; Returns: string }
       current_supplier_id: { Args: never; Returns: string }
       current_user_position: { Args: never; Returns: string }
       delete_email: {
