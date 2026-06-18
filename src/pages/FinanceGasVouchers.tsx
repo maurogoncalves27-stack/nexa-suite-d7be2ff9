@@ -503,33 +503,23 @@ export default function FinanceGasVouchers() {
                   </div>
                   {!isCentralStock && (
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      <Badge variant="secondary" className={inUseQty === 0 ? "opacity-50" : ""}>
-                        🟡 Em uso: {inUseQty}
+                      <Badge variant="outline" className={inUseQty === 0 ? "opacity-50" : ""}>
+                        Em uso: {inUseQty}
                       </Badge>
-                      <Badge
-                        variant="secondary"
-                        className={
-                          reserveQty === 0
-                            ? "opacity-60"
-                            : "bg-green-500/15 text-green-700 hover:bg-green-500/20 dark:text-green-400"
-                        }
-                      >
-                        🟢 Reserva: {reserveQty}
+                      <Badge variant="outline" className={reserveQty === 0 ? "opacity-60" : ""}>
+                        Reserva: {reserveQty}
                       </Badge>
-                      <Badge
-                        variant="secondary"
-                        className={emptyQty > 0 ? "bg-red-500/15 text-red-600 hover:bg-red-500/20 dark:text-red-400" : "opacity-50"}
-                      >
-                        🔴 Vazio: {emptyQty}
+                      <Badge variant="outline" className={emptyQty > 0 ? "" : "opacity-50"}>
+                        Vazio: {emptyQty}
                       </Badge>
                       {openReq && (
-                        <Badge variant="outline" className="border-amber-500 text-amber-600">
+                        <Badge variant="outline" className="text-[10px]">
                           Solicitação aberta
                         </Badge>
                       )}
                       {inTransit && (
-                        <Badge variant="outline" className="border-blue-500 text-blue-600">
-                          🚚 Em trânsito{inTransitQty ? `: ${inTransitQty}` : ""}
+                        <Badge variant="outline" className="text-[10px]">
+                          Em trânsito{inTransitQty ? `: ${inTransitQty}` : ""}
                         </Badge>
                       )}
                     </div>
