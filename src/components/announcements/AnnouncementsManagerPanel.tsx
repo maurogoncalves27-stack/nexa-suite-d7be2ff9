@@ -54,6 +54,7 @@ interface FormState {
   title: string; message: string; priority: Priority; scope: Scope;
   store_id: string; employee_id: string; is_active: boolean;
   send_push: boolean;
+  send_whatsapp: boolean;
   schedule_start_date: string; schedule_end_date: string;
   recurrence: Recurrence; recurrence_day: string;
 }
@@ -61,6 +62,7 @@ const EMPTY: FormState = {
   title: "", message: "", priority: "info", scope: "global",
   store_id: "", employee_id: "", is_active: true,
   send_push: false,
+  send_whatsapp: false,
   schedule_start_date: "", schedule_end_date: "",
   recurrence: "none", recurrence_day: "",
 };
