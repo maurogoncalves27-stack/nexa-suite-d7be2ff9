@@ -29,6 +29,8 @@ import { useDashboardPrefs } from "@/hooks/useDashboardPrefs";
 import { useDashboardMetrics } from "@/components/dashboard/useDashboardMetrics";
 import { useSegmentMetrics } from "@/components/dashboard/useSegmentMetrics";
 
+
+
 interface TrainingItem {
   id: string;
   full_name: string;
@@ -478,6 +480,8 @@ export default function Dashboard() {
           })}
         </div>
       )}
+      
     </div>
   );
 }
+

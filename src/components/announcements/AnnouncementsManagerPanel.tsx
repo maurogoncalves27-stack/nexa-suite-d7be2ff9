@@ -54,6 +54,7 @@ interface FormState {
   title: string; message: string; priority: Priority; scope: Scope;
   store_id: string; employee_id: string; is_active: boolean;
   send_push: boolean;
+  send_whatsapp: boolean;
   schedule_start_date: string; schedule_end_date: string;
   recurrence: Recurrence; recurrence_day: string;
 }
@@ -61,6 +62,7 @@ const EMPTY: FormState = {
   title: "", message: "", priority: "info", scope: "global",
   store_id: "", employee_id: "", is_active: true,
   send_push: false,
+  send_whatsapp: false,
   schedule_start_date: "", schedule_end_date: "",
   recurrence: "none", recurrence_day: "",
 };
@@ -98,6 +100,7 @@ export default function AnnouncementsManagerPanel() {
       title: a.title, message: a.message, priority: a.priority, scope: a.scope,
       store_id: a.store_id ?? "", employee_id: a.employee_id ?? "", is_active: a.is_active,
       send_push: a.send_push ?? false,
+      send_whatsapp: (a as any).send_whatsapp ?? false,
       schedule_start_date: a.schedule_start_date ?? "",
       schedule_end_date: a.schedule_end_date ?? "",
       recurrence: a.recurrence ?? "none",
@@ -151,6 +154,7 @@ export default function AnnouncementsManagerPanel() {
       employee_id: form.scope === "employee" ? form.employee_id : null,
       is_active: form.is_active, created_by: user?.id ?? null,
       send_push: form.send_push,
+      send_whatsapp: form.send_whatsapp,
       schedule_start_date: form.schedule_start_date || null,
       schedule_end_date: form.schedule_end_date || null,
       recurrence: form.recurrence,
@@ -170,6 +174,18 @@ export default function AnnouncementsManagerPanel() {
             toast({ title: "Aviso salvo, mas push falhou", description: pushErr.message, variant: "destructive" });
           } else if (data?.sent != null) {
             toast({ title: `Push enviado para ${data.sent} dispositivo(s)` });
+          }
+        });
+    }
+
+    if (form.send_whatsapp && form.is_active && saved?.id) {
+      supabase.functions
+        .invoke("send-whatsapp-announcement", { body: { announcement_id: saved.id } })
+        .then(({ data, error: waErr }) => {
+          if (waErr) {
+            toast({ title: "Aviso salvo, mas WhatsApp falhou", description: waErr.message, variant: "destructive" });
+          } else if (data?.sent != null) {
+            toast({ title: `WhatsApp enviado para ${data.sent} colaborador(es)` });
           }
         });
     }
@@ -324,7 +340,7 @@ export default function AnnouncementsManagerPanel() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-6">
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
                 <div className="flex items-center gap-2">
                   <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
                   <Label className="cursor-pointer">Ativo</Label>
@@ -332,6 +348,10 @@ export default function AnnouncementsManagerPanel() {
                 <div className="flex items-center gap-2">
                   <Switch checked={form.send_push} onCheckedChange={(v) => setForm({ ...form, send_push: v })} />
                   <Label className="cursor-pointer">Enviar push</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={form.send_whatsapp} onCheckedChange={(v) => setForm({ ...form, send_whatsapp: v })} />
+                  <Label className="cursor-pointer">Enviar WhatsApp</Label>
                 </div>
               </div>
             </div>

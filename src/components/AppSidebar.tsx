@@ -152,7 +152,7 @@ const operacaoSections: Section[] = [
   ]},
   { label: "NutriControle", items: [
     { title: "NutriControle", url: "/nutricontrol", icon: LabCoatIcon, staffOnly: true },
-    { title: "Visita técnica", url: "/nutri-visita", icon: Stethoscope, staffOnly: true },
+    { title: "Visita técnica", url: "/nutri-visita", icon: ClipboardCheck, staffOnly: true },
     { title: "Relatórios NutriControle", url: "/nutri-relatorios", icon: FileBarChart, staffOnly: true },
     { title: "Manutenções", url: "/nutricontrol?tab=manutencao", icon: Wrench, staffOnly: true },
     { title: "Vale Gás", url: "/financeiro/vale-gas", icon: Flame, staffOnly: false },
@@ -683,13 +683,13 @@ export function AppSidebar() {
                     <Settings className="h-4 w-4" />
                   </NavLink>
                   <NavLink
-                    to="/area-colaborador"
+                    to={isStaff ? "/area-gestor" : "/area-colaborador"}
                     end
-                    onClick={() => { setActiveGrid("link:/area-colaborador"); closeSidebar(); }}
+                    onClick={() => { setActiveGrid(isStaff ? "link:/area-gestor" : "link:/area-colaborador"); closeSidebar(); }}
                     title="Perfil"
                     aria-label="Perfil"
                     className={`flex h-9 w-9 items-center justify-center rounded-md border transition-colors ${
-                      activeGridButton === "link:/area-colaborador"
+                      activeGridButton === (isStaff ? "link:/area-gestor" : "link:/area-colaborador")
                         ? "bg-primary text-primary-foreground border-primary"
                         : "bg-card text-card-foreground border-border hover:bg-muted"
                     }`}
@@ -841,6 +841,9 @@ export function AppSidebar() {
 
               {/* Para colaboradores: link direto para a área */}
               {!isStaff && !isContabilidade && renderItem({ title: "Área do Colaborador", url: "/area-colaborador", icon: UserCircle })}
+
+              {/* Para staff (gestores/admin): atalho para a Área do Gestor */}
+              {isStaff && renderItem({ title: "Área do Gestor", url: "/area-gestor", icon: Briefcase, staffOnly: true })}
 
               {/* Conteúdo do módulo ativo (rolável) */}
               {isStaff && (() => {

@@ -98,15 +98,24 @@ export function DailyAnalytics() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      // Fonte de verdade do diário = daily_revenue.
+      // Filtro server-side por período: evita baixar a tabela inteira (>>1000 linhas).
+      let cutoffStr: string | null = null;
+      if (period !== "all") {
+        const days = parseInt(period, 10);
+        const d = new Date();
+        d.setDate(d.getDate() - days);
+        cutoffStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      }
       const all: any[] = [];
       const step = 1000;
       for (let off = 0; ; off += step) {
-        const { data, error } = await supabase
+        let q = supabase
           .from("daily_revenue")
           .select("sale_date,store_id,brand_id,gross_revenue")
           .order("sale_date")
           .range(off, off + step - 1);
+        if (cutoffStr) q = q.gte("sale_date", cutoffStr);
+        const { data, error } = await q;
         if (error || !data || data.length === 0) break;
         all.push(...data);
         if (data.length < step) break;
@@ -138,7 +147,7 @@ export function DailyAnalytics() {
       }
       setLoading(false);
     })();
-  }, []);
+  }, [period]);
 
   const operationalStores = useMemo(
     () => stores.filter(s => !/escrit|fabri|estoque/i.test(s.name)),

@@ -9,6 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { MaintenancePhotoCaptureButton } from "@/components/nutricontrol/MaintenancePhotoCaptureButton";
 
+const PEST_CERTIFICATE_BUCKET = "nutri-pest-certificates";
+
 interface PestService {
   id: string;
   service_date: string;
@@ -98,7 +100,7 @@ export const NutriPestControl = ({ currentDate, storeId }: Props) => {
     const safeName = sanitizeFileName(certFile.name || "certificado");
     const path = `${storeId}/pest/${Date.now()}-${safeName}`;
     const { error: upErr } = await supabase.storage
-      .from("nutricontrol")
+      .from(PEST_CERTIFICATE_BUCKET)
       .upload(path, certFile, {
         contentType: certFile.type || "application/octet-stream",
         upsert: false,
@@ -159,8 +161,8 @@ export const NutriPestControl = ({ currentDate, storeId }: Props) => {
   };
 
   const openCertificate = async (path: string) => {
-    const { data } = await supabase.storage.from("nutricontrol").createSignedUrl(path, 3600);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+    const { data } = supabase.storage.from(PEST_CERTIFICATE_BUCKET).getPublicUrl(path);
+    if (data?.publicUrl) window.open(data.publicUrl, "_blank");
   };
 
   return (

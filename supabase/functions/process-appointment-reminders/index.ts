@@ -63,6 +63,7 @@ Deno.serve(async (req) => {
             scope: "employee",
             employee_id: empId,
             send_push: true,
+            send_whatsapp: true,
           })
           .select("id")
           .maybeSingle();
@@ -76,6 +77,11 @@ Deno.serve(async (req) => {
             await supabase.functions.invoke("send-push-notification", { body: { announcement_id: ann.id } });
           } catch (e) {
             console.warn("[reminders] push invoke failed", e);
+          }
+          try {
+            await supabase.functions.invoke("send-whatsapp-announcement", { body: { announcement_id: ann.id } });
+          } catch (e) {
+            console.warn("[reminders] whatsapp invoke failed", e);
           }
         }
       }

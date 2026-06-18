@@ -28,6 +28,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { buildRouteSnapshot, isRestorableAppRoute, saveLastAppRoute } from "@/lib/pwaRouteState";
+import VoiceAppointmentFAB from "@/components/announcements/VoiceAppointmentFAB";
 
 type PageMeta = { match: (p: string) => boolean; title: string; group?: string };
 
@@ -39,6 +40,7 @@ const PAGE_TITLES: PageMeta[] = [
   { match: (p) => p === "/admin/migrate-nexa", title: "Migrar para NEXA", group: "Admin" },
   { match: (p) => p === "/dashboard", title: "Dashboard" },
   { match: (p) => p.startsWith("/visualizar-colaborador"), title: "Visualizar colaborador", group: "Pessoas" },
+  { match: (p) => p.startsWith("/area-gestor"), title: "Área do Gestor" },
   { match: (p) => p.startsWith("/area-colaborador"), title: "Área do Colaborador" },
 
   // Pessoas
@@ -369,6 +371,20 @@ export const AppLayout = ({ children }: { children?: ReactNode }) => {
   const isEmployeeMode = viewMode === "colaborador";
   const isNutritionistMode = viewMode === "nutricionista";
 
+  // FAB de voz: apenas na área do gestor (dashboard e avisos/agenda).
+  const isGestorHomeRoute = pathname === "/" || pathname === "/dashboard" || pathname === "/avisos" || pathname.startsWith("/avisos/") || pathname.startsWith("/area-gestor");
+
+  // Rotas onde o FAB de voz NÃO deve aparecer (também cobre refresh/link direto
+  // quando viewMode ainda não está sincronizado no sessionStorage).
+  const isExternalAreaRoute =
+    pathname.startsWith("/area-colaborador") ||
+    pathname.startsWith("/meus-holerites") ||
+    pathname.startsWith("/painel-socio") ||
+    pathname.startsWith("/contabilidade") ||
+    pathname.startsWith("/visualizar-colaborador") ||
+    pathname.startsWith("/nutricionista");
+
+
   // Rotas permitidas no modo colaborador (qualquer outra é redirecionada)
   const EMPLOYEE_ALLOWED_ROUTES = [
     "/area-colaborador",
@@ -468,6 +484,7 @@ export const AppLayout = ({ children }: { children?: ReactNode }) => {
             <WarningSignatureDialog />
             {children ?? <Outlet />}
           </main>
+          {!showPartnerBanner && !isEmployeeMode && !isNutritionistMode && !isExternalAreaRoute && isGestorHomeRoute && <VoiceAppointmentFAB />}
         </div>
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
       </div>

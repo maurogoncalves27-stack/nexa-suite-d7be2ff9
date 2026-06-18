@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,7 +17,13 @@ import {
 import { fmtBRL } from "@/lib/dre";
 import { FileSpreadsheet, RefreshCw, Plus, TrendingUp } from "lucide-react";
 import { ManualRevenueDialog } from "@/components/faturamento/ManualRevenueDialog";
-import { DailyAnalytics } from "@/components/faturamento/DailyAnalytics";
+
+const DailyAnalytics = lazy(() =>
+  import("@/components/faturamento/DailyAnalytics").then(m => ({ default: m.DailyAnalytics }))
+);
+const CurrentMonthVs3Panel = lazy(() =>
+  import("@/components/faturamento/CurrentMonthVs3Panel")
+);
 
 interface Store { id: string; name: string }
 interface Brand { id: string; name: string; color?: string | null }
@@ -37,6 +43,11 @@ function monthTotal(rows: Row[], year: number, month: number): number {
   if (cons) return cons.gross_revenue;
   return rows.filter(r => r.year === year && r.month === month && !r.is_consolidated)
     .reduce((a, r) => a + r.gross_revenue, 0);
+}
+
+function consolidatedMonthTotal(rows: Row[], year: number, month: number): number | null {
+  const cons = rows.find(r => r.year === year && r.month === month && r.is_consolidated);
+  return cons && cons.gross_revenue > 0 ? cons.gross_revenue : null;
 }
 
 const MONTH_LABELS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -133,34 +144,56 @@ export default function Faturamento() {
   const [stores, setStores] = useState<Store[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [ownSales, setOwnSales] = useState<OwnSale[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [year, setYear] = useState<number>(new Date().getFullYear());
 
   async function load() {
     setLoading(true);
-    // Fonte: monthly_revenue (alimentada por daily_revenue via trigger).
-    // PAGINAR — passa de 1000 linhas (Supabase corta o default), por isso 2025 sumia.
-    const all: any[] = [];
-    const step = 1000;
-    for (let off = 0; ; off += step) {
-      const { data, error } = await supabase
-        .from("monthly_revenue")
-        .select("*")
-        .order("year").order("month").order("day")
-        .range(off, off + step - 1);
-      if (error || !data || data.length === 0) break;
-      all.push(...data);
-      if (data.length < step) break;
+    try {
+      // Fonte: monthly_revenue (alimentada por daily_revenue via trigger).
+      // Busca paginada por ano em paralelo para não deixar a tela presa no skeleton.
+      const currentYear = new Date().getFullYear();
+      const targetYears = [currentYear, currentYear - 1, currentYear - 2];
+      const COLS = "id,year,month,store_id,brand_id,gross_revenue,is_consolidated";
+      const step = 1000;
+
+      const fetchYearRows = async (targetYear: number) => {
+        const yearRows: any[] = [];
+        for (let page = 0; page < 20; page++) {
+          const from = page * step;
+          const { data, error } = await supabase
+            .from("monthly_revenue")
+            .select(COLS)
+            .eq("year", targetYear)
+            .order("month")
+            .range(from, from + step - 1);
+
+          if (error) throw error;
+          yearRows.push(...(data ?? []));
+          if (!data || data.length < step) break;
+        }
+        return yearRows;
+      };
+
+      const [s, b] = await Promise.all([
+        supabase.from("stores").select("id,name").eq("is_virtual", false).order("name"),
+        supabase.from("brands").select("id,name").order("name"),
+      ]);
+
+      if (s.data) setStores(s.data as Store[]);
+      if (b.data) setBrands(b.data as Brand[]);
+
+      const yearGroups = await Promise.all(targetYears.map(fetchYearRows));
+
+      const all = yearGroups.flat();
+      setRows(all.map(x => ({ ...x, gross_revenue: Number(x.gross_revenue) })));
+      setOwnSales([]);
+    } catch (e: any) {
+      console.error("Erro ao carregar faturamento", e);
+      toast({ title: "Erro ao carregar faturamento", description: e.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
-    const [s, b] = await Promise.all([
-      supabase.from("stores").select("id,name").eq("is_virtual", false).order("name"),
-      supabase.from("brands").select("id,name").order("name"),
-    ]);
-    setRows(all.map(x => ({ ...x, gross_revenue: Number(x.gross_revenue) })));
-    if (s.data) setStores(s.data as Store[]);
-    if (b.data) setBrands(b.data as Brand[]);
-    setOwnSales([]);
-    setLoading(false);
   }
   useEffect(() => { load(); }, []);
 
@@ -226,9 +259,18 @@ export default function Faturamento() {
     });
   }, [operationalStores, productBrands, detailRows]);
 
-  // Linha mensal do ano (consolidado quando houver)
+  // Linha mensal do ano — quebra no último mês fechado (não inclui o mês corrente em andamento)
   const lineData = useMemo(() => {
-    return MONTH_LABELS.map((label, i) => ({ label, total: monthTotal(rows, year, i + 1) }));
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // 1..12
+    return MONTH_LABELS.map((label, i) => {
+      const m = i + 1;
+      // Para o ano corrente: só meses já encerrados (m < currentMonth). Anos passados: todos.
+      if (year === currentYear && m >= currentMonth) return { label, total: null };
+      const v = monthTotal(rows, year, m);
+      return { label, total: v > 0 ? v : null };
+    });
   }, [rows, year]);
 
   // Comparativo anual (com projeção empilhada para o ano corrente)
@@ -263,25 +305,65 @@ export default function Faturamento() {
     }).filter(d => d.total > 0);
   }, [rows, years]);
 
-  // Comparativo mensal entre anos
+  // Comparativo mensal entre anos (com projeção para o ano corrente)
   const monthlyByYear = useMemo(() => {
+    const CURRENT = new Date().getFullYear();
+    const PREV = CURRENT - 1;
     const yrs = years.slice().sort((a, b) => a - b).filter(y =>
-      MONTH_LABELS.some((_, i) => monthTotal(rows, y, i + 1) > 0)
+      MONTH_LABELS.some((_, i) => consolidatedMonthTotal(rows, y, i + 1) !== null)
     );
-    return { years: yrs, data: MONTH_LABELS.map((label, i) => {
+
+    // Último mês consolidado do ano corrente
+    let lastRealizedMonth = 0;
+    for (let m = 1; m <= 12; m++) {
+      if (consolidatedMonthTotal(rows, CURRENT, m) !== null) lastRealizedMonth = m;
+    }
+
+    // Crescimento YoY observado YTD
+    let sumCur = 0, sumPrev = 0;
+    for (let m = 1; m <= lastRealizedMonth; m++) {
+      const cur = monthTotal(rows, CURRENT, m);
+      const prev = monthTotal(rows, PREV, m);
+      if (prev > 0) { sumCur += cur; sumPrev += prev; }
+    }
+    const growth = sumPrev > 0 ? (sumCur / sumPrev) - 1 : 0;
+
+    const projectionKey = `${CURRENT} projetado`;
+    const hasCurrent = yrs.includes(CURRENT);
+
+    const data = MONTH_LABELS.map((label, i) => {
+      const m = i + 1;
       const item: any = { label };
-      yrs.forEach(y => { item[String(y)] = monthTotal(rows, y, i + 1) || null; });
+      yrs.forEach(y => { item[String(y)] = consolidatedMonthTotal(rows, y, i + 1); });
+
+      if (hasCurrent && m > lastRealizedMonth) {
+        const prev = monthTotal(rows, PREV, m);
+        const projected = prev > 0 ? prev * (1 + growth) : 0;
+        if (projected > 0) {
+          item[projectionKey] = projected;
+        }
+      }
+
       return item;
-    })};
+    });
+
+    return { years: yrs, data, hasCurrent, currentYear: CURRENT, projectionKey };
   }, [rows, years]);
 
   // Projeção 2026 baseada em 2025 + crescimento observado YTD
+  // "Realizado" só conta meses já ENCERRADOS (anteriores ao mês corrente). O mês em
+  // andamento entra como projetado até virar o mês.
   const projection2026 = useMemo(() => {
     const TARGET = 2026;
     const PREV = 2025;
+    const now = new Date();
+    const lastClosedMonth = now.getFullYear() > TARGET ? 12
+      : now.getFullYear() < TARGET ? 0
+      : now.getMonth(); // mês anterior ao corrente (0 se janeiro)
+
     const realized: Array<{ month: number; value: number }> = [];
     let lastRealizedMonth = 0;
-    for (let m = 1; m <= 12; m++) {
+    for (let m = 1; m <= lastClosedMonth; m++) {
       const v = monthTotal(rows, TARGET, m);
       if (v > 0) { realized.push({ month: m, value: v }); lastRealizedMonth = m; }
     }
@@ -295,12 +377,13 @@ export default function Faturamento() {
 
     const data = MONTH_LABELS.map((label, i) => {
       const m = i + 1;
-      const real = monthTotal(rows, TARGET, m);
+      const real = m <= lastRealizedMonth ? monthTotal(rows, TARGET, m) : 0;
       const prev = monthTotal(rows, PREV, m);
       const projected = m > lastRealizedMonth && prev > 0 ? prev * (1 + growth) : 0;
+      const isFirstProjected = m === lastRealizedMonth + 1 && projected > 0;
       return {
         label,
-        realizado: real > 0 ? real : null,
+        realizado: real > 0 ? real : (isFirstProjected ? projected : null),
         projetado: projected > 0 ? projected : null,
         ano2025: prev > 0 ? prev : null,
       };
@@ -461,10 +544,6 @@ export default function Faturamento() {
     }
   }
 
-  if (loading) {
-    return <div className="space-y-4 p-4"><Skeleton className="h-32" /><Skeleton className="h-64" /></div>;
-  }
-
   return (
     <div className="space-y-6 p-3 sm:p-4">
       <div>
@@ -474,6 +553,11 @@ export default function Faturamento() {
         </h1>
         <p className="text-muted-foreground">Receita por loja, marca e canal de venda — consolidado mensal.</p>
       </div>
+      {loading && rows.length === 0 && (
+        <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+          Carregando faturamento...
+        </div>
+      )}
       {/* Header / filtros */}
       <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
 
@@ -517,13 +601,23 @@ export default function Faturamento() {
       <Tabs defaultValue="comparativo">
         <TabsList className="w-full justify-start overflow-x-auto">
           <TabsTrigger value="comparativo">Loja × Marca</TabsTrigger>
-          <TabsTrigger value="evolucao">Evolução mensal</TabsTrigger>
+          <TabsTrigger value="mes-corrente">Mês corrente × 3 últimos</TabsTrigger>
           <TabsTrigger value="anual">Comparativo anual</TabsTrigger>
           <TabsTrigger value="projecao">Projeção 2026</TabsTrigger>
           <TabsTrigger value="marca-loja">Marca × Loja</TabsTrigger>
           <TabsTrigger value="proprias">Vendas próprias</TabsTrigger>
           <TabsTrigger value="tabela">Tabela mensal</TabsTrigger>
+          <TabsTrigger value="diarias">Análises diárias</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="mes-corrente">
+          <Suspense fallback={<Skeleton className="h-[420px] w-full" />}>
+            <CurrentMonthVs3Panel stores={operationalStores} storeColor={storeColor} />
+          </Suspense>
+        </TabsContent>
+
+
+
 
         <TabsContent value="comparativo">
           <Card>
@@ -587,24 +681,6 @@ export default function Faturamento() {
             </CardContent>
           </Card>
         </TabsContent>
-        <TabsContent value="evolucao">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Total mensal {year}</CardTitle></CardHeader>
-            <CardContent>
-              <div className="h-[340px] sm:h-[380px] w-full">
-                <ResponsiveContainer>
-                  <LineChart data={lineData}>
-                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                    <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
-                    <RTooltip formatter={(v: any) => fmtBRL(Number(v))} />
-                    <Line type="monotone" dataKey="total" stroke="hsl(var(--primary))" strokeWidth={2} dot />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="anual">
           <div className="grid gap-3 md:grid-cols-2">
@@ -638,8 +714,11 @@ export default function Faturamento() {
                       <RTooltip formatter={(v: any) => fmtBRL(Number(v))} />
                       <Legend />
                       {monthlyByYear.years.map((y, i) => (
-                        <Line key={y} type="monotone" dataKey={String(y)} stroke={BRAND_COLORS[i % BRAND_COLORS.length]} strokeWidth={2} dot connectNulls />
+                        <Line key={y} type="monotone" dataKey={String(y)} stroke={BRAND_COLORS[i % BRAND_COLORS.length]} strokeWidth={2} dot />
                       ))}
+                      {monthlyByYear.hasCurrent && (
+                        <Line type="monotone" dataKey={monthlyByYear.projectionKey} name={`${monthlyByYear.currentYear} projetado`} stroke={BRAND_COLORS[monthlyByYear.years.indexOf(monthlyByYear.currentYear) % BRAND_COLORS.length]} strokeWidth={2} strokeDasharray="5 5" dot />
+                      )}
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -1063,10 +1142,13 @@ export default function Faturamento() {
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
 
-      {/* Análises diárias (filtro Período + Top 10 + Média por dia da semana + Feriados) */}
-      <DailyAnalytics />
+        <TabsContent value="diarias">
+          <Suspense fallback={<Skeleton className="h-[600px] w-full" />}>
+            <DailyAnalytics />
+          </Suspense>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

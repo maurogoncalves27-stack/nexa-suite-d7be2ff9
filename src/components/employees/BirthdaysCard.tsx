@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Cake, UserCircle } from "lucide-react";
+import { Cake, User } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -75,8 +75,8 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
 
   useEffect(() => {
     if (loading || items.length === 0) return;
-    const fadeTimer = setTimeout(() => setFading(true), 8000);
-    const hideTimer = setTimeout(() => setVisible(false), 8500);
+    const fadeTimer = setTimeout(() => setFading(true), 18000);
+    const hideTimer = setTimeout(() => setVisible(false), 18500);
     return () => { clearTimeout(fadeTimer); clearTimeout(hideTimer); };
   }, [loading, items.length]);
 
@@ -89,44 +89,44 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
 
   return (
     <div
-      className={`transition-opacity duration-500 flex items-center gap-3 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 via-accent/15 to-primary/10 px-3 py-1.5 shadow-sm backdrop-blur-sm ${fading ? "opacity-0" : "opacity-100"}`}
+      className={`transition-opacity duration-500 flex items-center gap-3 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 via-accent/15 to-primary/10 px-3 py-2.5 shadow-sm backdrop-blur-sm ${fading ? "opacity-0" : "opacity-100"}`}
     >
-      <div className="flex items-center gap-1.5 shrink-0 pl-0.5">
+      <div className="flex flex-col items-center gap-0.5 shrink-0 pl-0.5 self-center">
         <div className="rounded-full bg-gradient-to-br from-primary to-accent p-1.5 shadow-sm">
           <Cake className="h-4 w-4 text-primary-foreground" />
         </div>
-        <span className="text-sm font-semibold text-primary capitalize whitespace-nowrap hidden sm:inline">
+        <span className="text-[11px] font-semibold text-primary capitalize whitespace-nowrap leading-tight">
           {monthLabel}
         </span>
       </div>
 
-      <div className="h-10 w-px bg-primary/20 shrink-0" />
+      <div className="h-10 w-px bg-primary/20 shrink-0 self-center" />
 
-      <div className="flex gap-2.5 overflow-x-auto flex-1 min-w-0 scrollbar-none items-center">
+      <div className="flex gap-1.5 overflow-hidden flex-1 min-w-0 items-center">
         {items.map((emp) => {
           const isToday = emp.day === todayDay && parseInt(emp.birth_date.slice(5, 7), 10) === todayMonth;
           const firstName = emp.full_name.split(" ")[0];
           return (
             <div
               key={emp.id}
-              className="flex items-center gap-1.5 shrink-0"
+              className="flex flex-col items-center gap-0.5 shrink-0"
               title={`${emp.full_name} — dia ${String(emp.day).padStart(2, "0")}`}
             >
               <Avatar
-                className={`h-14 w-14 border-2 ${
+                className={`h-10 w-10 rounded-md border-2 ${
                   isToday
                     ? "border-accent ring-2 ring-accent/40 animate-pulse"
                     : "border-primary/40"
                 }`}
               >
-                {emp.photoUrl && <AvatarImage src={emp.photoUrl} alt={emp.full_name} />}
-                <AvatarFallback className="bg-primary/15 text-primary text-sm font-semibold">
-                  {emp.full_name ? emp.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase() : <UserCircle className="h-5 w-5" />}
+                {emp.photoUrl && <AvatarImage src={emp.photoUrl} alt={emp.full_name} className="rounded-md object-cover" />}
+                <AvatarFallback className="bg-primary/15 text-primary text-xs font-semibold rounded-md">
+                  <User className="h-4 w-4" />
                 </AvatarFallback>
               </Avatar>
-              <span className={`text-xs font-medium whitespace-nowrap ${isToday ? "text-accent font-bold" : "text-foreground/85"}`}>
+              <span className={`text-[10px] font-medium text-center leading-tight ${isToday ? "text-accent font-bold" : "text-foreground/85"}`}>
                 {firstName}
-                <span className="text-muted-foreground ml-1">
+                <span className="text-muted-foreground ml-0.5">
                   {isToday ? "🎉" : String(emp.day).padStart(2, "0")}
                 </span>
               </span>

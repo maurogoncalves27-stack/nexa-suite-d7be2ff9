@@ -4832,6 +4832,7 @@ export type Database = {
           schedule_start_date: string | null
           scope: string
           send_push: boolean
+          send_whatsapp: boolean
           store_id: string | null
           title: string
           updated_at: string
@@ -4850,6 +4851,7 @@ export type Database = {
           schedule_start_date?: string | null
           scope?: string
           send_push?: boolean
+          send_whatsapp?: boolean
           store_id?: string | null
           title: string
           updated_at?: string
@@ -4868,6 +4870,7 @@ export type Database = {
           schedule_start_date?: string | null
           scope?: string
           send_push?: boolean
+          send_whatsapp?: boolean
           store_id?: string | null
           title?: string
           updated_at?: string

@@ -7,6 +7,21 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+const WATER_REPORT_BUCKET = "nutri-water-reports";
+
+const sanitizeFileName = (name: string) => {
+  const dot = name.lastIndexOf(".");
+  const ext = dot >= 0 ? name.slice(dot).toLowerCase() : "";
+  const base = (dot >= 0 ? name.slice(0, dot) : name)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "")
+    .slice(0, 60) || "laudo";
+  return `${base}${ext || ""}`;
+};
+
 interface Cleaning {
   id: string;
   cleaning_date: string;
@@ -59,10 +74,12 @@ export const NutriWaterTankControl = ({ currentDate, storeId }: Props) => {
 
     let report_url: string | null = null;
     if (file) {
-      const path = `${storeId}/water-tank/${Date.now()}-${file.name}`;
-      const { error: upErr } = await supabase.storage.from("nutricontrol").upload(path, file);
+      const path = `${storeId}/water-tank/${Date.now()}-${sanitizeFileName(file.name || "laudo")}`;
+      const { error: upErr } = await supabase.storage
+        .from(WATER_REPORT_BUCKET)
+        .upload(path, file, { contentType: file.type || "application/octet-stream", upsert: false });
       if (upErr) {
-        toast.error("Erro ao enviar laudo");
+        toast.error(`Erro ao enviar laudo: ${upErr.message}`);
         return;
       }
       report_url = path;
@@ -95,8 +112,8 @@ export const NutriWaterTankControl = ({ currentDate, storeId }: Props) => {
   };
 
   const openReport = async (path: string) => {
-    const { data } = await supabase.storage.from("nutricontrol").createSignedUrl(path, 3600);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+    const { data } = supabase.storage.from(WATER_REPORT_BUCKET).getPublicUrl(path);
+    if (data?.publicUrl) window.open(data.publicUrl, "_blank");
   };
 
   return (
