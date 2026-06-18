@@ -478,6 +478,8 @@ export default function Dashboard() {
           })}
         </div>
       )}
+      <VoiceAppointmentFAB />
     </div>
   );
 }
+
