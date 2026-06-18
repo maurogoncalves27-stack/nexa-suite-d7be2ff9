@@ -397,14 +397,16 @@ export default function EmployeeArea({ impersonateUserId, managerView = false }:
         allocatedStoreId={employee.allocated_store_id}
       />
 
-      <button
-        type="button"
-        onClick={() => navigate("/financeiro/vale-gas")}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border bg-card px-4 py-3.5 text-sm font-semibold text-muted-foreground shadow-sm transition-all hover:text-foreground"
-      >
-        <Flame className="h-4 w-4 text-warning" />
-        Controle de Gás
-      </button>
+      {!managerView && (
+        <button
+          type="button"
+          onClick={() => navigate("/financeiro/vale-gas")}
+          className="flex w-full items-center justify-center gap-2 rounded-lg border bg-card px-4 py-3.5 text-sm font-semibold text-muted-foreground shadow-sm transition-all hover:text-foreground"
+        >
+          <Flame className="h-4 w-4 text-warning" />
+          Controle de Gás
+        </button>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <div id="employee-tabs-anchor" aria-hidden className="scroll-mt-20" />
