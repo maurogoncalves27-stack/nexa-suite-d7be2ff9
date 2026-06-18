@@ -71,7 +71,7 @@ const MAINTENANCE_TYPES = [
 
 const URGENCY_OPTIONS = [
   { value: "baixa", label: "Baixa", className: "bg-muted text-muted-foreground" },
-  { value: "media", label: "Média", className: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
+  { value: "media", label: "Média", className: "bg-warning/15 text-warning" },
   { value: "alta", label: "Alta", className: "bg-destructive/15 text-destructive" },
 ];
 
@@ -597,34 +597,6 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
                     persistDraft({ reqPhotoName: file.name });
                     toast.success("Foto confirmada.");
                   }}
-                />
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    e.target.value = "";
-                    if (!file) {
-                      setReqPhoto(null);
-                      persistDraft({ reqPhotoName: null });
-                      return;
-                    }
-                    if (!file.type.startsWith("image/")) {
-                      toast.error("Selecione uma imagem válida.");
-                      setReqPhoto(null);
-                      persistDraft({ reqPhotoName: null });
-                      return;
-                    }
-                    if (file.size > 10 * 1024 * 1024) {
-                      toast.error("A foto deve ter no máximo 10MB.");
-                      setReqPhoto(null);
-                      persistDraft({ reqPhotoName: null });
-                      return;
-                    }
-                    setReqPhoto(file);
-                    persistDraft({ reqPhotoName: file.name });
-                  }}
-                  className="h-9 text-sm"
                 />
               </div>
               {reqPhoto && (
