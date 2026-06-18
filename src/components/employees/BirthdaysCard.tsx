@@ -100,9 +100,9 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
         </span>
       </div>
 
-      <div className="h-12 w-px bg-primary/20 shrink-0 self-center" />
+      <div className="h-10 w-px bg-primary/20 shrink-0 self-center" />
 
-      <div className="flex gap-3 overflow-x-auto flex-1 min-w-0 scrollbar-none items-center">
+      <div className="flex gap-1.5 overflow-hidden flex-1 min-w-0 items-center">
         {items.map((emp) => {
           const isToday = emp.day === todayDay && parseInt(emp.birth_date.slice(5, 7), 10) === todayMonth;
           const firstName = emp.full_name.split(" ")[0];
@@ -113,18 +113,18 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
               title={`${emp.full_name} — dia ${String(emp.day).padStart(2, "0")}`}
             >
               <Avatar
-                className={`h-12 w-12 rounded-md border-2 ${
+                className={`h-10 w-10 rounded-md border-2 ${
                   isToday
                     ? "border-accent ring-2 ring-accent/40 animate-pulse"
                     : "border-primary/40"
                 }`}
               >
                 {emp.photoUrl && <AvatarImage src={emp.photoUrl} alt={emp.full_name} className="rounded-md object-cover" />}
-                <AvatarFallback className="bg-primary/15 text-primary text-sm font-semibold rounded-md">
-                  {emp.full_name ? emp.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase() : <UserCircle className="h-5 w-5" />}
+                <AvatarFallback className="bg-primary/15 text-primary text-xs font-semibold rounded-md">
+                  {emp.full_name ? emp.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase() : <UserCircle className="h-4 w-4" />}
                 </AvatarFallback>
               </Avatar>
-              <span className={`text-[11px] font-medium text-center leading-tight ${isToday ? "text-accent font-bold" : "text-foreground/85"}`}>
+              <span className={`text-[10px] font-medium text-center leading-tight ${isToday ? "text-accent font-bold" : "text-foreground/85"}`}>
                 {firstName}
                 <span className="text-muted-foreground ml-0.5">
                   {isToday ? "🎉" : String(emp.day).padStart(2, "0")}
