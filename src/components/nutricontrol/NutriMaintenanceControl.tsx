@@ -71,7 +71,7 @@ const MAINTENANCE_TYPES = [
 
 const URGENCY_OPTIONS = [
   { value: "baixa", label: "Baixa", className: "bg-muted text-muted-foreground" },
-  { value: "media", label: "Média", className: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
+  { value: "media", label: "Média", className: "bg-warning/15 text-warning" },
   { value: "alta", label: "Alta", className: "bg-destructive/15 text-destructive" },
 ];
 
