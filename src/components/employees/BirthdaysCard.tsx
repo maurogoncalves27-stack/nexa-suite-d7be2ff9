@@ -75,8 +75,8 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
 
   useEffect(() => {
     if (loading || items.length === 0) return;
-    const fadeTimer = setTimeout(() => setFading(true), 8000);
-    const hideTimer = setTimeout(() => setVisible(false), 8500);
+    const fadeTimer = setTimeout(() => setFading(true), 13000);
+    const hideTimer = setTimeout(() => setVisible(false), 13500);
     return () => { clearTimeout(fadeTimer); clearTimeout(hideTimer); };
   }, [loading, items.length]);
 
