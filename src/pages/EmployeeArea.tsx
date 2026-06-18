@@ -660,6 +660,7 @@ export default function EmployeeArea({ impersonateUserId, managerView = false }:
           })}
         </div>
       </nav>
+      )}
 
       {/* Refazer tutorial — sempre visível na própria área (oculto só em impersonate de gestor) */}
       {!impersonateUserId && (
