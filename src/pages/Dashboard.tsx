@@ -28,7 +28,7 @@ import MaintenanceSummaryCard from "@/components/dashboard/MaintenanceSummaryCar
 import { useDashboardPrefs } from "@/hooks/useDashboardPrefs";
 import { useDashboardMetrics } from "@/components/dashboard/useDashboardMetrics";
 import { useSegmentMetrics } from "@/components/dashboard/useSegmentMetrics";
-import VoiceAppointmentFAB from "@/components/announcements/VoiceAppointmentFAB";
+
 
 
 interface TrainingItem {
