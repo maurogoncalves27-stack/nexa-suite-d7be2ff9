@@ -154,6 +154,7 @@ export default function AnnouncementsManagerPanel() {
       employee_id: form.scope === "employee" ? form.employee_id : null,
       is_active: form.is_active, created_by: user?.id ?? null,
       send_push: form.send_push,
+      send_whatsapp: form.send_whatsapp,
       schedule_start_date: form.schedule_start_date || null,
       schedule_end_date: form.schedule_end_date || null,
       recurrence: form.recurrence,
@@ -173,6 +174,18 @@ export default function AnnouncementsManagerPanel() {
             toast({ title: "Aviso salvo, mas push falhou", description: pushErr.message, variant: "destructive" });
           } else if (data?.sent != null) {
             toast({ title: `Push enviado para ${data.sent} dispositivo(s)` });
+          }
+        });
+    }
+
+    if (form.send_whatsapp && form.is_active && saved?.id) {
+      supabase.functions
+        .invoke("send-whatsapp-announcement", { body: { announcement_id: saved.id } })
+        .then(({ data, error: waErr }) => {
+          if (waErr) {
+            toast({ title: "Aviso salvo, mas WhatsApp falhou", description: waErr.message, variant: "destructive" });
+          } else if (data?.sent != null) {
+            toast({ title: `WhatsApp enviado para ${data.sent} colaborador(es)` });
           }
         });
     }
