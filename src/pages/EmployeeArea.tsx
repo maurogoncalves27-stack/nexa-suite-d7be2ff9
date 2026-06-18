@@ -326,7 +326,7 @@ export default function EmployeeArea({ impersonateUserId, managerView = false }:
   const lastScore = isManagerPosition ? (teamAvgScore ?? ownScore) : ownScore;
 
   return (
-    <div className="space-y-3 md:space-y-6 pb-28 md:pb-6">
+    <div className={`space-y-3 md:space-y-6 ${managerView ? "pb-6" : "pb-28 md:pb-6"}`}>
       {/* Header card unificado — sticky compacto no mobile */}
       <Card data-tour="employee-header" className="overflow-hidden border-primary/25 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-sm sticky top-12 md:top-14 z-20 md:relative md:top-auto md:bg-card md:backdrop-blur-0 -mx-4 sm:mx-0 rounded-none sm:rounded-lg border-x-0 sm:border-x">
         <CardContent className={`transition-all duration-200 ${headerCompact ? "p-2 md:p-6" : "p-4 md:p-6"}`}>
