@@ -347,17 +347,17 @@ export default function FinanceGasVouchers() {
         {(urgencySummary.emptyCount > 0 || urgencySummary.noReserveCount > 0) && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {urgencySummary.emptyCount > 0 && (
-              <Badge variant="outline" className="border-red-500 text-red-600">
-                🔴 {urgencySummary.emptyCount} loja{urgencySummary.emptyCount > 1 ? "s" : ""} com vazio
+              <Badge variant="destructive" className="text-[10px]">
+                {urgencySummary.emptyCount} loja{urgencySummary.emptyCount > 1 ? "s" : ""} com vazio
               </Badge>
             )}
             {urgencySummary.noReserveCount > 0 && (
-              <Badge variant="outline" className="border-amber-500 text-amber-600">
-                ⚠️ {urgencySummary.noReserveCount} sem reserva
+              <Badge variant="warning" className="text-[10px]">
+                {urgencySummary.noReserveCount} sem reserva
               </Badge>
             )}
-            <Badge variant="outline">
-              <Flame className="mr-1 h-3 w-3 text-orange-500" />
+            <Badge variant="secondary" className="text-[10px]">
+              <Flame className="mr-1 h-3 w-3" />
               {totalAvailable} vale{totalAvailable === 1 ? "" : "s"} disponíve{totalAvailable === 1 ? "l" : "is"}
             </Badge>
           </div>
