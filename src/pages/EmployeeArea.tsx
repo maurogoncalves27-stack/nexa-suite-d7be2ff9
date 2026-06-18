@@ -619,7 +619,8 @@ export default function EmployeeArea({ impersonateUserId, managerView = false }:
         </TabsContent>
       </Tabs>
 
-      {/* Bottom Tab Bar fixa — apenas mobile */}
+      {/* Bottom Tab Bar fixa — apenas mobile, escondida na Área do Gestor */}
+      {!managerView && (
       <nav
         className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-[0_-2px_10px_-4px_rgba(0,0,0,0.1)] dark:bg-[hsl(0_0%_14%)] dark:border-[hsl(0_0%_28%)] dark:shadow-[0_-2px_12px_-2px_rgba(0,0,0,0.6)]"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
