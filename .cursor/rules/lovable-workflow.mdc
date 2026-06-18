@@ -1,0 +1,24 @@
+---
+description: Quando o usuário for mexer no Lovable, preparar o repo automaticamente
+alwaysApply: true
+---
+
+Quando o usuário disser que vai mexer no Lovable (ou equivalente: "vou no lovable", "abrir lovable", "preciso do lovable"):
+
+1. Executar imediatamente:
+   `powershell -ExecutionPolicy Bypass -File scripts/prepare-lovable-work.ps1`
+   no root do repo nexa-suite-d7be2ff9.
+
+2. Confirmar que `main` ficou limpo e informar o nome do branch snapshot criado.
+
+3. Sempre avisar o usuário o que ele deve repassar ao Lovable/Codex se algo quebrar:
+   - `.env` — `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`
+   - `src/integrations/supabase/client.ts` — URL e anon key (projeto ixjgmerxxakdkfdzgumy)
+   - `src/integrations/supabase/types.ts` — regenerar se o schema mudou
+   - `supabase/config.toml` — `project_id`
+   - Secrets das edge functions (iFood, PayGo, Z-API, etc.)
+   - Lembrar: Publish no Lovable atualiza o frontend; migrations/functions no sync
+
+4. Não commitar em `main` trabalho do Cursor — usar branch `feature/cursor-snapshot-*` ou branch de feature existente.
+
+5. Após o Lovable: `git pull origin main`, checkout do branch Cursor, `git merge main`.
