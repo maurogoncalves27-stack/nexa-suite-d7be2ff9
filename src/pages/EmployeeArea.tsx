@@ -86,9 +86,11 @@ const STATUS_BADGE: Record<string, { label: string; variant: "default" | "second
 interface EmployeeAreaProps {
   /** Quando definido, renderiza a área do colaborador correspondente a este user_id (modo visualização para gestores). */
   impersonateUserId?: string;
+  /** Modo "Área do Gestor": esconde bottom nav, Controle de Gás e abas Ponto/Escala; troca abas por cards. */
+  managerView?: boolean;
 }
 
-export default function EmployeeArea({ impersonateUserId }: EmployeeAreaProps = {}) {
+export default function EmployeeArea({ impersonateUserId, managerView = false }: EmployeeAreaProps = {}) {
   const { user, isAdmin, isManager, isSupplier, isImpersonating, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
