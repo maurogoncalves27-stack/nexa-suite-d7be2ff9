@@ -478,6 +478,7 @@ export default function EmployeeArea({ impersonateUserId, managerView = false }:
         )}
 
 
+        {!managerView && (
         <TabsContent value="schedule">
           {!(employee.work_schedule ?? "").toString().trim() ? (
             <Card>
