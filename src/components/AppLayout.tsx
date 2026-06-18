@@ -370,6 +370,17 @@ export const AppLayout = ({ children }: { children?: ReactNode }) => {
   const isEmployeeMode = viewMode === "colaborador";
   const isNutritionistMode = viewMode === "nutricionista";
 
+  // Rotas onde o FAB de voz NÃO deve aparecer (também cobre refresh/link direto
+  // quando viewMode ainda não está sincronizado no sessionStorage).
+  const isExternalAreaRoute =
+    pathname.startsWith("/area-colaborador") ||
+    pathname.startsWith("/meus-holerites") ||
+    pathname.startsWith("/painel-socio") ||
+    pathname.startsWith("/contabilidade") ||
+    pathname.startsWith("/visualizar-colaborador") ||
+    pathname.startsWith("/nutricionista");
+
+
   // Rotas permitidas no modo colaborador (qualquer outra é redirecionada)
   const EMPLOYEE_ALLOWED_ROUTES = [
     "/area-colaborador",
