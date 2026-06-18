@@ -89,7 +89,7 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
 
   return (
     <div
-      className={`transition-opacity duration-500 flex items-center gap-3 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 via-accent/15 to-primary/10 px-3 py-1.5 shadow-sm backdrop-blur-sm ${fading ? "opacity-0" : "opacity-100"}`}
+      className={`transition-opacity duration-500 flex items-center gap-3 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 via-accent/15 to-primary/10 px-3 py-3 shadow-sm backdrop-blur-sm ${fading ? "opacity-0" : "opacity-100"}`}
     >
       <div className="flex items-center gap-1.5 shrink-0 pl-0.5">
         <div className="rounded-full bg-gradient-to-br from-primary to-accent p-1.5 shadow-sm">
