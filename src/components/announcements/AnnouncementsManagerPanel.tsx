@@ -100,6 +100,7 @@ export default function AnnouncementsManagerPanel() {
       title: a.title, message: a.message, priority: a.priority, scope: a.scope,
       store_id: a.store_id ?? "", employee_id: a.employee_id ?? "", is_active: a.is_active,
       send_push: a.send_push ?? false,
+      send_whatsapp: (a as any).send_whatsapp ?? false,
       schedule_start_date: a.schedule_start_date ?? "",
       schedule_end_date: a.schedule_end_date ?? "",
       recurrence: a.recurrence ?? "none",
