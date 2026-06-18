@@ -370,7 +370,7 @@ export default function FinanceGasVouchers() {
           <CardContent className="p-3">
             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Vales disp.</div>
             <div className="mt-0.5 flex items-center gap-1.5">
-              <Flame className="h-4 w-4 text-orange-500" />
+              <Flame className="h-4 w-4 text-muted-foreground" />
               <span className="text-lg font-bold leading-tight">{totalAvailable}</span>
             </div>
           </CardContent>
