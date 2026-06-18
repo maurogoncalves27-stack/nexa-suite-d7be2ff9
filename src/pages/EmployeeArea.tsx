@@ -460,6 +460,7 @@ export default function EmployeeArea({ impersonateUserId, managerView = false }:
         </TabsList>
         )}
 
+        {!managerView && (
         <TabsContent value="timeclock" className="space-y-4">
           {!employee.exempt_from_timeclock && (
             <TimeClockPunch employeeId={employee.id} storeId={employee.store_id} />
@@ -474,6 +475,7 @@ export default function EmployeeArea({ impersonateUserId, managerView = false }:
           <PushNotificationSettings />
           <WhatsAppOptOutCard />
         </TabsContent>
+        )}
 
 
         <TabsContent value="schedule">
