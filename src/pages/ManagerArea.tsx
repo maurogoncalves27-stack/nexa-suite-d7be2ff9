@@ -3,15 +3,11 @@ import EmployeeArea from "./EmployeeArea";
 /**
  * Área do Gestor (/area-gestor)
  *
- * Página dedicada ao gestor, clonada da Área do Colaborador.
- * Reutiliza exatamente o mesmo componente (mesmas regras, cards e
- * funcionalidades), mas vive em uma rota própria — permitindo que o
- * AppLayout exiba o FAB de microfone (voz) somente aqui e na Dashboard.
- *
- * Importante: NÃO duplicar a lógica de EmployeeArea aqui. Qualquer
- * mudança na experiência deve ser feita em src/pages/EmployeeArea.tsx
- * para que as duas rotas continuem espelhadas.
+ * Reusa EmployeeArea com a flag managerView, que esconde a bottom tab bar
+ * fixa, esconde o atalho "Controle de Gás" e troca as abas Ponto/Escala
+ * por um grid de cards (Férias / Uniforme / Docs) seguindo o mesmo padrão
+ * visual dos atalhos rápidos do gestor.
  */
 export default function ManagerArea() {
-  return <EmployeeArea />;
+  return <EmployeeArea managerView />;
 }

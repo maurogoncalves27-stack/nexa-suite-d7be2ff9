@@ -86,9 +86,11 @@ const STATUS_BADGE: Record<string, { label: string; variant: "default" | "second
 interface EmployeeAreaProps {
   /** Quando definido, renderiza a área do colaborador correspondente a este user_id (modo visualização para gestores). */
   impersonateUserId?: string;
+  /** Modo "Área do Gestor": esconde bottom nav, Controle de Gás e abas Ponto/Escala; troca abas por cards. */
+  managerView?: boolean;
 }
 
-export default function EmployeeArea({ impersonateUserId }: EmployeeAreaProps = {}) {
+export default function EmployeeArea({ impersonateUserId, managerView = false }: EmployeeAreaProps = {}) {
   const { user, isAdmin, isManager, isSupplier, isImpersonating, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -108,7 +110,7 @@ export default function EmployeeArea({ impersonateUserId }: EmployeeAreaProps = 
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ request_type: "vacation", subject: "", description: "" });
   const [scheduleWeekStart, setScheduleWeekStart] = useState<Date>(startOfWeek(new Date(), { weekStartsOn: 1 }));
-  const [activeTab, setActiveTab] = useState<string>("timeclock");
+  const [activeTab, setActiveTab] = useState<string>(managerView ? "vacation" : "timeclock");
   const [headerCompact, setHeaderCompact] = useState(false);
 
   useEffect(() => {
@@ -324,7 +326,7 @@ export default function EmployeeArea({ impersonateUserId }: EmployeeAreaProps = 
   const lastScore = isManagerPosition ? (teamAvgScore ?? ownScore) : ownScore;
 
   return (
-    <div className="space-y-3 md:space-y-6 pb-28 md:pb-6">
+    <div className={`space-y-3 md:space-y-6 ${managerView ? "pb-6" : "pb-28 md:pb-6"}`}>
       {/* Header card unificado — sticky compacto no mobile */}
       <Card data-tour="employee-header" className="overflow-hidden border-primary/25 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-sm sticky top-12 md:top-14 z-20 md:relative md:top-auto md:bg-card md:backdrop-blur-0 -mx-4 sm:mx-0 rounded-none sm:rounded-lg border-x-0 sm:border-x">
         <CardContent className={`transition-all duration-200 ${headerCompact ? "p-2 md:p-6" : "p-4 md:p-6"}`}>
@@ -395,17 +397,45 @@ export default function EmployeeArea({ impersonateUserId }: EmployeeAreaProps = 
         allocatedStoreId={employee.allocated_store_id}
       />
 
-      <button
-        type="button"
-        onClick={() => navigate("/financeiro/vale-gas")}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border bg-card px-4 py-3.5 text-sm font-semibold text-muted-foreground shadow-sm transition-all hover:text-foreground"
-      >
-        <Flame className="h-4 w-4 text-warning" />
-        Controle de Gás
-      </button>
+      {!managerView && (
+        <button
+          type="button"
+          onClick={() => navigate("/financeiro/vale-gas")}
+          className="flex w-full items-center justify-center gap-2 rounded-lg border bg-card px-4 py-3.5 text-sm font-semibold text-muted-foreground shadow-sm transition-all hover:text-foreground"
+        >
+          <Flame className="h-4 w-4 text-warning" />
+          Controle de Gás
+        </button>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <div id="employee-tabs-anchor" aria-hidden className="scroll-mt-20" />
+        {managerView ? (
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { value: "vacation", icon: Plane, label: "Férias", color: "text-sky-500" },
+              { value: "uniforms", icon: Shirt, label: "Uniforme", color: "text-success" },
+              { value: "documents", icon: FileText, label: "Docs", color: "text-violet-500" },
+            ].map((t) => {
+              const active = activeTab === t.value;
+              const Icon = t.icon;
+              return (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => setActiveTab(t.value)}
+                  className={`flex flex-col items-center justify-center gap-1.5 rounded-lg border bg-card p-3 text-center transition-colors min-h-[78px] ${
+                    active ? "border-primary/60 ring-1 ring-primary/30 bg-primary/5" : "hover:bg-muted/50 hover:border-primary/40"
+                  }`}
+                  aria-pressed={active}
+                >
+                  <Icon className={`h-5 w-5 ${t.color}`} />
+                  <span className="text-[11px] sm:text-xs font-medium text-foreground leading-tight">{t.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
         <TabsList className="hidden md:grid grid-cols-5 w-full h-auto p-1.5 gap-1 border bg-card rounded-xl shadow-sm">
           <TabsTrigger value="timeclock" data-tour="tab-timeclock" className="flex-col gap-1 py-2.5 px-0.5 h-auto text-[11px] md:text-xs font-semibold rounded-lg text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
             <Clock className="h-5 w-5 md:h-6 md:w-6 text-primary group-data-[state=active]:text-primary-foreground" />
@@ -428,7 +458,9 @@ export default function EmployeeArea({ impersonateUserId }: EmployeeAreaProps = 
             Docs
           </TabsTrigger>
         </TabsList>
+        )}
 
+        {!managerView && (
         <TabsContent value="timeclock" className="space-y-4">
           {!employee.exempt_from_timeclock && (
             <TimeClockPunch employeeId={employee.id} storeId={employee.store_id} />
@@ -443,8 +475,10 @@ export default function EmployeeArea({ impersonateUserId }: EmployeeAreaProps = 
           <PushNotificationSettings />
           <WhatsAppOptOutCard />
         </TabsContent>
+        )}
 
 
+        {!managerView && (
         <TabsContent value="schedule">
           {!(employee.work_schedule ?? "").toString().trim() ? (
             <Card>
@@ -532,6 +566,7 @@ export default function EmployeeArea({ impersonateUserId }: EmployeeAreaProps = 
             fullName={employee.full_name}
           />
         </TabsContent>
+        )}
 
         <TabsContent value="vacation">
           <Card>
@@ -584,7 +619,8 @@ export default function EmployeeArea({ impersonateUserId }: EmployeeAreaProps = 
         </TabsContent>
       </Tabs>
 
-      {/* Bottom Tab Bar fixa — apenas mobile */}
+      {/* Bottom Tab Bar fixa — apenas mobile, escondida na Área do Gestor */}
+      {!managerView && (
       <nav
         className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-[0_-2px_10px_-4px_rgba(0,0,0,0.1)] dark:bg-[hsl(0_0%_14%)] dark:border-[hsl(0_0%_28%)] dark:shadow-[0_-2px_12px_-2px_rgba(0,0,0,0.6)]"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
@@ -624,6 +660,7 @@ export default function EmployeeArea({ impersonateUserId }: EmployeeAreaProps = 
           })}
         </div>
       </nav>
+      )}
 
       {/* Refazer tutorial — sempre visível na própria área (oculto só em impersonate de gestor) */}
       {!impersonateUserId && (
