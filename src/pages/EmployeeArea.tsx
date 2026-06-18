@@ -566,6 +566,7 @@ export default function EmployeeArea({ impersonateUserId, managerView = false }:
             fullName={employee.full_name}
           />
         </TabsContent>
+        )}
 
         <TabsContent value="vacation">
           <Card>
