@@ -209,8 +209,7 @@ export function MaintenancePhotoCaptureButton({
       setDialogOpen(true);
     } catch (error: unknown) {
       console.error("Falha ao abrir câmera inline:", error);
-      toast.error("Não foi possível abrir a câmera. Você pode escolher uma imagem do aparelho.");
-      openFallbackPicker(false);
+      toast.error("Não foi possível abrir a câmera. Use o botão Arquivo para escolher ou tirar uma foto pelo aparelho.");
     } finally {
       setOpeningCamera(false);
     }
@@ -280,12 +279,13 @@ export function MaintenancePhotoCaptureButton({
   const busy = disabled || openingCamera || processing;
 
   return (
-    <div className="inline-block">
+    <div className="flex flex-wrap items-center gap-2">
       <input
         id={id}
         ref={inputRef}
         type="file"
         accept="image/*"
+        capture={captureMode === false ? undefined : captureMode}
         className="sr-only"
         onChange={handleFileChange}
         disabled={busy}
@@ -308,6 +308,19 @@ export function MaintenancePhotoCaptureButton({
         )}
         {openingCamera ? "Abrindo câmera..." : processing ? "Processando..." : "Tirar foto"}
       </button>
+
+      <label
+        htmlFor={id}
+        onClick={() => onOpenIntent?.()}
+        className={cn(
+          buttonVariants({ variant: "outline", size: "sm" }),
+          "gap-1.5 cursor-pointer select-none",
+          busy && "opacity-50 pointer-events-none",
+        )}
+      >
+        <Camera className="h-4 w-4" />
+        Arquivo
+      </label>
 
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) resetDialogState(); }}>
         <DialogContent className="max-w-md p-0 overflow-hidden">
