@@ -1,0 +1,1 @@
+ALTER TABLE public.hr_announcements ADD COLUMN IF NOT EXISTS send_whatsapp boolean NOT NULL DEFAULT false;
