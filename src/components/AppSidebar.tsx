@@ -152,7 +152,7 @@ const operacaoSections: Section[] = [
   ]},
   { label: "NutriControle", items: [
     { title: "NutriControle", url: "/nutricontrol", icon: LabCoatIcon, staffOnly: true },
-    { title: "Visita técnica", url: "/nutri-visita", icon: Stethoscope, staffOnly: true },
+    { title: "Visita técnica", url: "/nutri-visita", icon: ClipboardCheck, staffOnly: true },
     { title: "Relatórios NutriControle", url: "/nutri-relatorios", icon: FileBarChart, staffOnly: true },
     { title: "Manutenções", url: "/nutricontrol?tab=manutencao", icon: Wrench, staffOnly: true },
     { title: "Vale Gás", url: "/financeiro/vale-gas", icon: Flame, staffOnly: false },

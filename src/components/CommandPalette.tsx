@@ -109,7 +109,7 @@ const NAV_ITEMS: Item[] = [
   { title: "Check-lists operacionais", url: "/checklists-gerenciar", icon: ClipboardCheck, group: "Operação", staffOnly: true },
   { title: "Check-lists", url: "/checklists", icon: ClipboardCheck, group: "Operação" },
   { title: "NutriControle", url: "/nutricontrol", icon: LabCoatIcon, group: "Operação", staffOnly: true, keywords: "nutricionista controle" },
-  { title: "Visita técnica", url: "/nutri-visita", icon: Stethoscope, group: "Operação", staffOnly: true },
+  { title: "Visita técnica", url: "/nutri-visita", icon: ClipboardCheck, group: "Operação", staffOnly: true },
   { title: "Relatórios NutriControle", url: "/nutri-relatorios", icon: FileBarChart, group: "Operação", staffOnly: true },
   { title: "Manutenções", url: "/nutricontrol?tab=manutencao", icon: Wrench, group: "Operação", staffOnly: true },
   { title: "Central de Ocorrências", url: "/ocorrencias", icon: Siren, group: "Operação", keywords: "incidentes problemas" },
