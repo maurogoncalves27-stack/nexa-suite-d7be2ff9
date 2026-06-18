@@ -1,4 +1,4 @@
-import { Stethoscope, History, Settings } from "lucide-react";
+import { ClipboardCheck, History, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -65,7 +65,7 @@ export default function NutriVisit() {
     <div className="space-y-4">
       {slot && createPortal(headerContent, slot)}
       <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2 min-w-0">
-        <Stethoscope className="h-6 w-6 md:h-7 md:w-7 text-primary shrink-0" />
+        <ClipboardCheck className="h-6 w-6 md:h-7 md:w-7 text-primary shrink-0" />
         <span className="truncate">Visita técnica</span>
       </h1>
       {inlineFallback && (
