@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { cn } from "@/lib/utils";
 
 const CAMERA_READY_TIMEOUT_MS = 4000;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 async function waitForVideoReady(video: HTMLVideoElement): Promise<void> {
   if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) return;
@@ -156,6 +157,10 @@ export function MaintenancePhotoCaptureButton({
   const runCaptureHandler = async (file: File) => {
     if (!file.type.startsWith("image/")) {
       toast.error("Selecione uma imagem válida.");
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      toast.error("A foto deve ter no máximo 10MB.");
       return;
     }
 
