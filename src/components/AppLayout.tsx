@@ -370,6 +370,9 @@ export const AppLayout = ({ children }: { children?: ReactNode }) => {
   const isEmployeeMode = viewMode === "colaborador";
   const isNutritionistMode = viewMode === "nutricionista";
 
+  // FAB de voz: apenas na área do gestor (dashboard e avisos/agenda).
+  const isGestorHomeRoute = pathname === "/" || pathname === "/dashboard" || pathname === "/avisos" || pathname.startsWith("/avisos/");
+
   // Rotas onde o FAB de voz NÃO deve aparecer (também cobre refresh/link direto
   // quando viewMode ainda não está sincronizado no sessionStorage).
   const isExternalAreaRoute =
