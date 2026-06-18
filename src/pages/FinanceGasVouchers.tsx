@@ -411,8 +411,8 @@ export default function FinanceGasVouchers() {
 
 
       {/* LOJAS */}
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-muted-foreground">Lojas</h2>
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-muted-foreground tracking-wide">Lojas</h2>
         {!isStaff && geofence.loading && (
           <Card>
             <CardContent className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
@@ -473,19 +473,20 @@ export default function FinanceGasVouchers() {
           const isCentralStock = totalQty === 0;
           const vouchersBalance = st?.vouchers_balance ?? 0;
           return (
-            <Card key={s.id}>
-              <CardContent className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
+            <Card key={s.id} className={emptyQty > 0 ? "border-l-4 border-l-rose-400" : reserveQty === 0 ? "border-l-4 border-l-amber-400" : undefined}>
+              <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="font-medium truncate">{s.name}</div>
+                    <div className="text-base font-semibold leading-tight truncate">{s.name}</div>
                     {isCentralStock ? (
                       <Badge variant="secondary" className="shrink-0 text-[10px]">
                         Estoque: {totalAvailable}
                       </Badge>
                     ) : (
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Badge variant="secondary" className="shrink-0 text-[10px]">
-                          Vales: {vouchersBalance}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Badge variant="secondary" className="shrink-0 text-[10px] gap-1">
+                          <Flame className="h-3 w-3 text-muted-foreground" />
+                          {vouchersBalance}
                         </Badge>
                         {isStaff && (
                           <Button
@@ -501,37 +502,58 @@ export default function FinanceGasVouchers() {
                       </div>
                     )}
                   </div>
+
                   {!isCentralStock && (
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      <Badge variant="outline" className={inUseQty === 0 ? "opacity-50" : ""}>
-                        Em uso: {inUseQty}
-                      </Badge>
-                      <Badge variant="outline" className={reserveQty === 0 ? "opacity-60" : ""}>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Badge variant={reserveQty > 0 ? "outline" : "destructive"} className={reserveQty > 0 ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900 text-[10px]" : "text-[10px]"}>
                         Reserva: {reserveQty}
                       </Badge>
-                      <Badge variant="outline" className={emptyQty > 0 ? "" : "opacity-50"}>
+                      <Badge variant="outline" className={inUseQty > 0 ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900 text-[10px]" : "opacity-50 text-[10px]"}>
+                        Em uso: {inUseQty}
+                      </Badge>
+                      <Badge variant="outline" className={emptyQty > 0 ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900 text-[10px]" : "opacity-50 text-[10px]"}>
                         Vazio: {emptyQty}
                       </Badge>
                       {openReq && (
-                        <Badge variant="outline" className="text-[10px]">
+                        <Badge variant="outline" className="text-[10px] bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/30 dark:text-sky-400 dark:border-sky-900">
                           Solicitação aberta
                         </Badge>
                       )}
                       {inTransit && (
-                        <Badge variant="outline" className="text-[10px]">
+                        <Badge variant="outline" className="text-[10px] bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/30 dark:text-violet-400 dark:border-violet-900">
                           Em trânsito{inTransitQty ? `: ${inTransitQty}` : ""}
                         </Badge>
                       )}
                     </div>
                   )}
+
+                  {/* mini barra proporcional */}
+                  {!isCentralStock && totalQty > 0 && (
+                    <div className="mt-3 flex h-1.5 w-full max-w-[280px] overflow-hidden rounded-full">
+                      <div
+                        className="bg-emerald-400 dark:bg-emerald-600"
+                        style={{ width: `${(reserveQty / totalQty) * 100}%` }}
+                      />
+                      <div
+                        className="bg-amber-400 dark:bg-amber-600"
+                        style={{ width: `${(inUseQty / totalQty) * 100}%` }}
+                      />
+                      <div
+                        className="bg-rose-400 dark:bg-rose-600"
+                        style={{ width: `${(emptyQty / totalQty) * 100}%` }}
+                      />
+                    </div>
+                  )}
+
                   {isCentralStock && openReq && (
-                    <div className="mt-1">
-                      <Badge variant="outline" className="text-[10px]">
+                    <div className="mt-2">
+                      <Badge variant="outline" className="text-[10px] bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/30 dark:text-sky-400 dark:border-sky-900">
                         Solicitação aberta
                       </Badge>
                     </div>
                   )}
                 </div>
+
                 {isCentralStock && isStaff && (
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <div className="flex items-center gap-2">
@@ -565,6 +587,7 @@ export default function FinanceGasVouchers() {
                     </Button>
                   </div>
                 )}
+
                 {!isCentralStock && (
                   <div className="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0">
                     {inTransit && (
@@ -573,7 +596,7 @@ export default function FinanceGasVouchers() {
                         variant="outline"
                         disabled={confirmingShipmentId === inTransit.id}
                         onClick={() => confirmShipment(inTransit.id)}
-                        className="h-9 w-full text-sm sm:min-w-[200px]"
+                        className="h-9 w-full text-sm sm:min-w-[200px] border-violet-200 hover:bg-violet-50 dark:border-violet-900 dark:hover:bg-violet-950/30"
                       >
                         {confirmingShipmentId === inTransit.id ? (
                           <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
@@ -590,7 +613,7 @@ export default function FinanceGasVouchers() {
                         disabled={consumingStoreId === s.id || reserveQty <= 0 || inUseQty <= 0}
                         onClick={() => consume(s.id, "reserve")}
                         title={reserveQty <= 0 ? "Sem reserva disponível" : inUseQty <= 0 ? "Nenhum bujão em uso" : ""}
-                        className="h-9 flex-1 px-2 text-xs font-medium sm:flex-none sm:min-w-[100px]"
+                        className="h-9 flex-1 px-2 text-xs font-medium sm:flex-none sm:min-w-[100px] border-emerald-200 hover:bg-emerald-50 dark:border-emerald-900 dark:hover:bg-emerald-950/30"
                       >
                         <Flame className="mr-1 h-3.5 w-3.5" /> Usei reserva
                       </Button>
@@ -600,7 +623,7 @@ export default function FinanceGasVouchers() {
                         disabled={consumingStoreId === s.id || emptyQty <= 0 || vouchersBalance <= 0}
                         onClick={() => consume(s.id, "in_use")}
                         title={emptyQty <= 0 ? "Nenhum vazio para repor" : vouchersBalance <= 0 ? "Sem vales nesta loja" : ""}
-                        className="h-9 flex-1 px-2 text-xs font-medium gap-1 sm:flex-none sm:min-w-[100px]"
+                        className="h-9 flex-1 px-2 text-xs font-medium gap-1 sm:flex-none sm:min-w-[100px] border-amber-200 hover:bg-amber-50 dark:border-amber-900 dark:hover:bg-amber-950/30"
                       >
                         <CreditCard className="h-3.5 w-3.5" /> Usei vale
                       </Button>
@@ -836,7 +859,10 @@ function EditQtyDialog({
         </DialogHeader>
         <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1">
-            <Label className="text-xs">🟢 Reserva</Label>
+            <Label className="text-xs flex items-center gap-1.5">
+              <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+              Reserva
+            </Label>
             <Input
               type="number"
               min={0}
@@ -846,7 +872,10 @@ function EditQtyDialog({
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">🟡 Em uso</Label>
+            <Label className="text-xs flex items-center gap-1.5">
+              <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
+              Em uso
+            </Label>
             <Input
               type="number"
               min={0}
@@ -856,7 +885,10 @@ function EditQtyDialog({
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">🔴 Vazio</Label>
+            <Label className="text-xs flex items-center gap-1.5">
+              <span className="inline-block h-2 w-2 rounded-full bg-rose-500" />
+              Vazio
+            </Label>
             <Input
               type="number"
               min={0}
