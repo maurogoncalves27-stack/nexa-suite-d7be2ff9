@@ -480,7 +480,7 @@ export const AppLayout = ({ children }: { children?: ReactNode }) => {
             <WarningSignatureDialog />
             {children ?? <Outlet />}
           </main>
-          {!showPartnerBanner && !isEmployeeMode && !isNutritionistMode && <VoiceAppointmentFAB />}
+          {!showPartnerBanner && !isEmployeeMode && !isNutritionistMode && !isExternalAreaRoute && <VoiceAppointmentFAB />}
         </div>
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
       </div>
