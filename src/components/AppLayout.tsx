@@ -469,6 +469,7 @@ export const AppLayout = ({ children }: { children?: ReactNode }) => {
             <WarningSignatureDialog />
             {children ?? <Outlet />}
           </main>
+          <VoiceAppointmentFAB />
         </div>
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
       </div>
