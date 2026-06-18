@@ -35,8 +35,9 @@ const speak = (text: string) => {
 };
 
 export default function VoiceAppointmentFAB() {
-  const { isAdmin, isManager, isHR } = useAuth();
-  const canUse = isAdmin || isManager || isHR;
+  const { isAdmin, isManager } = useAuth();
+  const canUse = isAdmin || isManager;
+
 
   const [recording, setRecording] = useState(false);
   const [processing, setProcessing] = useState(false);
