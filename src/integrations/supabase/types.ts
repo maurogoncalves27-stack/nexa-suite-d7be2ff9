@@ -9938,6 +9938,7 @@ export type Database = {
           cancellation_reason: string | null
           cancelled_at: string | null
           chave_acesso: string | null
+          closure_id: string | null
           contingency_attempts: number
           contingency_reason: string | null
           created_at: string
@@ -9965,6 +9966,7 @@ export type Database = {
           cancellation_reason?: string | null
           cancelled_at?: string | null
           chave_acesso?: string | null
+          closure_id?: string | null
           contingency_attempts?: number
           contingency_reason?: string | null
           created_at?: string
@@ -9992,6 +9994,7 @@ export type Database = {
           cancellation_reason?: string | null
           cancelled_at?: string | null
           chave_acesso?: string | null
+          closure_id?: string | null
           contingency_attempts?: number
           contingency_reason?: string | null
           created_at?: string
@@ -10329,6 +10332,10 @@ export type Database = {
           cash_session_id: string | null
           channel_id: string
           closed_at: string | null
+          closure_channel: string | null
+          closure_error: string | null
+          closure_id: string | null
+          closure_status: string | null
           concluded_at: string | null
           confirmed_at: string | null
           created_at: string
@@ -10377,6 +10384,10 @@ export type Database = {
           cash_session_id?: string | null
           channel_id: string
           closed_at?: string | null
+          closure_channel?: string | null
+          closure_error?: string | null
+          closure_id?: string | null
+          closure_status?: string | null
           concluded_at?: string | null
           confirmed_at?: string | null
           created_at?: string
@@ -10425,6 +10436,10 @@ export type Database = {
           cash_session_id?: string | null
           channel_id?: string
           closed_at?: string | null
+          closure_channel?: string | null
+          closure_error?: string | null
+          closure_id?: string | null
+          closure_status?: string | null
           concluded_at?: string | null
           confirmed_at?: string | null
           created_at?: string
@@ -10501,6 +10516,7 @@ export type Database = {
           amount: number
           authorization_code: string | null
           change_amount: number
+          closure_id: string | null
           created_at: string
           external_payment_id: string | null
           id: string
@@ -10512,6 +10528,7 @@ export type Database = {
           amount: number
           authorization_code?: string | null
           change_amount?: number
+          closure_id?: string | null
           created_at?: string
           external_payment_id?: string | null
           id?: string
@@ -10523,6 +10540,7 @@ export type Database = {
           amount?: number
           authorization_code?: string | null
           change_amount?: number
+          closure_id?: string | null
           created_at?: string
           external_payment_id?: string | null
           id?: string
@@ -11039,6 +11057,7 @@ export type Database = {
           cancelled_at: string | null
           card_brand: string | null
           card_last4: string | null
+          closure_id: string | null
           confirmed_at: string | null
           created_at: string
           customer_receipt: string | null
@@ -11068,6 +11087,7 @@ export type Database = {
           cancelled_at?: string | null
           card_brand?: string | null
           card_last4?: string | null
+          closure_id?: string | null
           confirmed_at?: string | null
           created_at?: string
           customer_receipt?: string | null
@@ -11097,6 +11117,7 @@ export type Database = {
           cancelled_at?: string | null
           card_brand?: string | null
           card_last4?: string | null
+          closure_id?: string | null
           confirmed_at?: string | null
           created_at?: string
           customer_receipt?: string | null

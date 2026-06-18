@@ -15,7 +15,8 @@ import { toast } from "@/hooks/use-toast";
 import { TefPaymentDialog } from "@/components/tef/TefPaymentDialog";
 import { VirtualKeyboard } from "@/components/totem/VirtualKeyboard";
 import type { TefPaymentResult } from "@/lib/tef";
-import { isElectron } from "@/lib/electronBridge";
+import { loadTefConfig } from "@/lib/tef";
+import { closeOrder, createTotemOrderAndClose } from "@/lib/order";
 import logoAquelaParme from "@/assets/logo-aquela-parme.png";
 import logoBoxCaipira from "@/assets/logo-box-caipira.png";
 import logoEstrogonofe from "@/assets/logo-estrogonofe.png";
@@ -362,25 +363,6 @@ export default function Totem() {
     setTefOpen(true);
   };
 
-  const emitAndPrintNfce = async (id: string) => {
-    const { data, error } = await supabase.functions.invoke("nfce-emit", { body: { order_id: id } });
-    if (error) throw error;
-    if (!data?.ok) throw new Error(data?.error || "Falha ao emitir cupom fiscal");
-    setNfceEmitted(true);
-    let danfeUrl = data?.danfe_url || null;
-    if (!danfeUrl && data?.status === "processing" && data?.invoice_id) {
-      for (let i = 0; i < 6 && !danfeUrl; i += 1) {
-        await new Promise((resolve) => window.setTimeout(resolve, 1500));
-        const { data: statusData } = await supabase.functions.invoke("nfce-status", { body: { invoice_id: data.invoice_id } });
-        if (statusData?.danfe_url) danfeUrl = statusData.danfe_url;
-      }
-    }
-    if (danfeUrl && isElectron() && window.electron?.printUrl) {
-      await window.electron.printUrl({ url: danfeUrl });
-    }
-    return data;
-  };
-
   const finalizeOrder = async (tef: TefPaymentResult) => {
     setTefOpen(false);
     if (tef.status !== "approved") {
@@ -397,68 +379,25 @@ export default function Totem() {
 
     setBusy(true);
     try {
-      const { data: ch } = await supabase.from("pdv_channels")
-        .select("id").eq("store_id", selectedStore.id).eq("code", "balcao").maybeSingle();
-      let channelId = ch?.id;
-      if (!channelId) {
-        const { data: nc, error: ce } = await supabase.from("pdv_channels")
-          .insert({ store_id: selectedStore.id, code: "balcao", name: "Balcão", sort_order: 0 })
-          .select("id").single();
-        if (ce) throw ce;
-        channelId = nc.id;
-      }
-
-      const code = String(Math.floor(100 + Math.random() * 900));
-      const { data: order, error: oe } = await supabase.from("pdv_orders").insert({
-        store_id: selectedStore.id,
-        channel_id: channelId,
-        status: "confirmed",
-        order_type: orderType === "eat_in" ? "dine_in" : "takeout",
-        subtotal: cartTotal,
-        total: cartTotal,
-        pickup_code: code,
-        notes: `Totem · ${orderType === "eat_in" ? "Comer aqui" : "Para levar"}`,
-        customer_document: cpf ? cpf.replace(/\D/g, "") : null,
-        confirmed_at: new Date().toISOString(),
-      } as any).select("id, order_number").single();
-      if (oe) throw oe;
-
-      const itemsPayload = cart.map(c => ({
-        order_id: order.id,
-        menu_item_id: c.menu_item_id,
-        name: c.name,
-        quantity: c.quantity,
-        unit_price: c.unit_price,
-        total: c.unit_price * c.quantity,
-        notes: c.notes ?? null,
-      }));
-      const { error: ie } = await supabase.from("pdv_order_items").insert(itemsPayload);
-      if (ie) throw ie;
-
-      await supabase.from("pdv_payments").insert({
-        order_id: order.id,
-        method: tef.cardBrand ? "credit" : "credit",
-        amount: cartTotal,
-        status: "approved",
-        external_id: tef.nsu ?? null,
-      } as any);
+      const cfg = await loadTefConfig(selectedStore.id);
+      const result = await createTotemOrderAndClose({
+        storeId: selectedStore.id,
+        storeName: selectedStore.name,
+        orderType,
+        cartTotal,
+        cpf,
+        cart,
+        tef,
+        tefProvider: cfg.provider,
+      });
 
       beep(1200, 120);
       setTimeout(() => beep(1600, 160), 130);
-      setPickupCode(code);
-      setOrderNumber(order.order_number || order.id.slice(0, 8));
-      setOrderId(order.id);
+      setPickupCode(result.pickupCode);
+      setOrderNumber(result.orderNumber);
+      setOrderId(result.orderId);
       setNfceEmitted(false);
       setStep("done");
-
-      // Emite NFC-e automaticamente e imprime somente o DANFE/cupom fiscal.
-      void (async () => {
-        try {
-          await emitAndPrintNfce(order.id);
-        } catch (e) {
-          console.warn("[totem] auto-nfce falhou", e);
-        }
-      })();
     } catch (e: any) {
       console.error(e);
       toast({ title: "Erro ao registrar pedido", description: e.message, variant: "destructive" });
@@ -468,10 +407,18 @@ export default function Totem() {
   };
 
   const handleEmitNfce = async () => {
-    if (!orderId) return;
+    if (!orderId || !selectedStore) return;
     setEmittingNfce(true);
     try {
-      await emitAndPrintNfce(orderId);
+      const result = await closeOrder({
+        orderId,
+        storeId: selectedStore.id,
+        channel: "totem",
+        storeName: selectedStore.name,
+        printTargets: ["nfce", "kitchen"],
+      });
+      if (result.status === "failed_at_step") throw new Error(result.error ?? "Falha no fechamento");
+      setNfceEmitted(true);
       toast({ title: "Cupom fiscal emitido", description: "NFC-e enviada à SEFAZ. Será impressa em instantes." });
     } catch (e: any) {
       toast({ title: "Erro ao emitir cupom fiscal", description: e.message, variant: "destructive" });

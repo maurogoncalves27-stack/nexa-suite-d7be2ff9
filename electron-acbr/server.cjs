@@ -23,6 +23,7 @@ const { spawnSync } = require("child_process");
 
 const nfe = require("./acbr-nfe.cjs");
 const tef = require("./acbr-tefd.cjs");
+const payer = require("./payer-localhost.cjs");
 const pkg = require("./package.json");
 
 const HTTP_PORT = parseInt(process.env.ACBR_AGENT_PORT || "3030", 10);
@@ -333,6 +334,65 @@ async function handle(req, res) {
       const body = await readBody(req);
       const retorno = tef.instalarPdc({ ...body, environment: body.environment, onDisplay: (m) => console.log("[TEF display]", m) });
       return send(res, 200, { ok: true, retorno });
+    }
+
+    // -------- Payer (Checkout API Localhost :6060) --------
+    if (req.method === "GET" && path === "/payer/diagnostics") {
+      try {
+        const d = await payer.diagnostics();
+        return send(res, 200, { ok: true, ...d });
+      } catch (e) {
+        return send(res, 500, { ok: false, error: e.message });
+      }
+    }
+
+    if (req.method === "POST" && path === "/payer/login") {
+      const body = await readBody(req).catch(() => ({}));
+      try {
+        const retorno = await payer.login(body);
+        return send(res, 200, { ok: true, retorno });
+      } catch (e) {
+        return send(res, 500, { ok: false, error: e.message });
+      }
+    }
+
+    if (req.method === "POST" && path === "/payer/logoff") {
+      try {
+        const retorno = await payer.logoff();
+        return send(res, 200, { ok: true, retorno });
+      } catch (e) {
+        return send(res, 500, { ok: false, error: e.message });
+      }
+    }
+
+    if (req.method === "POST" && path === "/payer/payment") {
+      const body = await readBody(req);
+      try {
+        const retorno = body?.wait
+          ? await payer.requestPaymentAndWait(body)
+          : await payer.requestPayment(body);
+        return send(res, 200, { ok: true, retorno });
+      } catch (e) {
+        return send(res, 500, { ok: false, error: e.message });
+      }
+    }
+
+    if (req.method === "GET" && path === "/payer/response") {
+      try {
+        const retorno = await payer.getResponse();
+        return send(res, 200, { ok: true, retorno });
+      } catch (e) {
+        return send(res, 500, { ok: false, error: e.message });
+      }
+    }
+
+    if (req.method === "POST" && path === "/payer/abort") {
+      try {
+        const retorno = await payer.abort();
+        return send(res, 200, { ok: true, retorno });
+      } catch (e) {
+        return send(res, 500, { ok: false, error: e.message });
+      }
     }
 
     // -------- Teste isolado de porta COM do pinpad --------

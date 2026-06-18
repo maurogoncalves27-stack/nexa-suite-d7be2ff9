@@ -38,6 +38,7 @@
       "server.cjs",
       "acbr-nfe.cjs",
       "acbr-tefd.cjs",
+      "payer-localhost.cjs",
       "scripts/**",
       "build/**"
     ],
