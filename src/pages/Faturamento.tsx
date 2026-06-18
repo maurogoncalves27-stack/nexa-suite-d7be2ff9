@@ -144,42 +144,49 @@ export default function Faturamento() {
   const [stores, setStores] = useState<Store[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [ownSales, setOwnSales] = useState<OwnSale[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [year, setYear] = useState<number>(new Date().getFullYear());
 
   async function load() {
     setLoading(true);
     try {
       // Fonte: monthly_revenue (alimentada por daily_revenue via trigger).
-      // Busca paginada sem depender do HEAD/count, que pode falhar e deixar a tela presa no skeleton.
+      // Busca paginada por ano em paralelo para não deixar a tela presa no skeleton.
       const currentYear = new Date().getFullYear();
-      const minYear = currentYear - 2;
+      const targetYears = [currentYear, currentYear - 1, currentYear - 2];
       const COLS = "id,year,month,store_id,brand_id,gross_revenue,is_consolidated";
       const step = 1000;
-      const all: any[] = [];
 
-      for (let page = 0; page < 50; page++) {
-        const from = page * step;
-        const { data, error } = await supabase
-          .from("monthly_revenue")
-          .select(COLS)
-          .gte("year", minYear)
-          .order("year").order("month")
-          .range(from, from + step - 1);
+      const fetchYearRows = async (targetYear: number) => {
+        const yearRows: any[] = [];
+        for (let page = 0; page < 20; page++) {
+          const from = page * step;
+          const { data, error } = await supabase
+            .from("monthly_revenue")
+            .select(COLS)
+            .eq("year", targetYear)
+            .order("month")
+            .range(from, from + step - 1);
 
-        if (error) throw error;
-        all.push(...(data ?? []));
-        if (!data || data.length < step) break;
-      }
+          if (error) throw error;
+          yearRows.push(...(data ?? []));
+          if (!data || data.length < step) break;
+        }
+        return yearRows;
+      };
 
       const [s, b] = await Promise.all([
         supabase.from("stores").select("id,name").eq("is_virtual", false).order("name"),
         supabase.from("brands").select("id,name").order("name"),
       ]);
 
-      setRows(all.map(x => ({ ...x, gross_revenue: Number(x.gross_revenue) })));
       if (s.data) setStores(s.data as Store[]);
       if (b.data) setBrands(b.data as Brand[]);
+
+      const yearGroups = await Promise.all(targetYears.map(fetchYearRows));
+
+      const all = yearGroups.flat();
+      setRows(all.map(x => ({ ...x, gross_revenue: Number(x.gross_revenue) })));
       setOwnSales([]);
     } catch (e: any) {
       console.error("Erro ao carregar faturamento", e);
@@ -537,10 +544,6 @@ export default function Faturamento() {
     }
   }
 
-  if (loading) {
-    return <div className="space-y-4 p-4"><Skeleton className="h-32" /><Skeleton className="h-64" /></div>;
-  }
-
   return (
     <div className="space-y-6 p-3 sm:p-4">
       <div>
@@ -550,6 +553,11 @@ export default function Faturamento() {
         </h1>
         <p className="text-muted-foreground">Receita por loja, marca e canal de venda — consolidado mensal.</p>
       </div>
+      {loading && rows.length === 0 && (
+        <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+          Carregando faturamento...
+        </div>
+      )}
       {/* Header / filtros */}
       <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
 
