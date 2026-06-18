@@ -526,7 +526,7 @@ export default function FinanceGasVouchers() {
                   )}
                   {isCentralStock && openReq && (
                     <div className="mt-1">
-                      <Badge variant="outline" className="border-amber-500 text-amber-600">
+                      <Badge variant="outline" className="text-[10px]">
                         Solicitação aberta
                       </Badge>
                     </div>
