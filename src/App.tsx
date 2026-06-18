@@ -282,6 +282,7 @@ const App = () => (
               <Route path="/painel-socio" element={<ProtectedRoute><PartnerDashboard /></ProtectedRoute>} />
               <Route path="/ranking" element={<Guarded staff partner><EmployeeRanking /></Guarded>} />
               <Route path="/area-colaborador" element={<Guarded><EmployeeArea /></Guarded>} />
+              <Route path="/area-gestor" element={<Guarded staff><ManagerArea /></Guarded>} />
               <Route path="/meus-holerites" element={<Guarded><MyPayslips /></Guarded>} />
               <Route path="/visualizar-colaborador" element={<Guarded staff><ViewEmployee /></Guarded>} />
 

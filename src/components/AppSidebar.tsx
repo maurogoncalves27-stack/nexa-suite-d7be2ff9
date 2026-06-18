@@ -842,6 +842,9 @@ export function AppSidebar() {
               {/* Para colaboradores: link direto para a área */}
               {!isStaff && !isContabilidade && renderItem({ title: "Área do Colaborador", url: "/area-colaborador", icon: UserCircle })}
 
+              {/* Para staff (gestores/admin): atalho para a Área do Gestor */}
+              {isStaff && renderItem({ title: "Área do Gestor", url: "/area-gestor", icon: Briefcase, staffOnly: true })}
+
               {/* Conteúdo do módulo ativo (rolável) */}
               {isStaff && (() => {
                 if (focusMode === "rh") return renderSections(rhSections);

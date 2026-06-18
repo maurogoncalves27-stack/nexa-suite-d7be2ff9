@@ -40,6 +40,7 @@ const PAGE_TITLES: PageMeta[] = [
   { match: (p) => p === "/admin/migrate-nexa", title: "Migrar para NEXA", group: "Admin" },
   { match: (p) => p === "/dashboard", title: "Dashboard" },
   { match: (p) => p.startsWith("/visualizar-colaborador"), title: "Visualizar colaborador", group: "Pessoas" },
+  { match: (p) => p.startsWith("/area-gestor"), title: "Área do Gestor" },
   { match: (p) => p.startsWith("/area-colaborador"), title: "Área do Colaborador" },
 
   // Pessoas
@@ -371,7 +372,7 @@ export const AppLayout = ({ children }: { children?: ReactNode }) => {
   const isNutritionistMode = viewMode === "nutricionista";
 
   // FAB de voz: apenas na área do gestor (dashboard e avisos/agenda).
-  const isGestorHomeRoute = pathname === "/" || pathname === "/dashboard" || pathname === "/avisos" || pathname.startsWith("/avisos/");
+  const isGestorHomeRoute = pathname === "/" || pathname === "/dashboard" || pathname === "/avisos" || pathname.startsWith("/avisos/") || pathname.startsWith("/area-gestor");
 
   // Rotas onde o FAB de voz NÃO deve aparecer (também cobre refresh/link direto
   // quando viewMode ainda não está sincronizado no sessionStorage).
