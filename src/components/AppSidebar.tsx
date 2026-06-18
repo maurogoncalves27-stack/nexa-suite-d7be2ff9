@@ -683,13 +683,13 @@ export function AppSidebar() {
                     <Settings className="h-4 w-4" />
                   </NavLink>
                   <NavLink
-                    to="/area-colaborador"
+                    to={isStaff ? "/area-gestor" : "/area-colaborador"}
                     end
-                    onClick={() => { setActiveGrid("link:/area-colaborador"); closeSidebar(); }}
+                    onClick={() => { setActiveGrid(isStaff ? "link:/area-gestor" : "link:/area-colaborador"); closeSidebar(); }}
                     title="Perfil"
                     aria-label="Perfil"
                     className={`flex h-9 w-9 items-center justify-center rounded-md border transition-colors ${
-                      activeGridButton === "link:/area-colaborador"
+                      activeGridButton === (isStaff ? "link:/area-gestor" : "link:/area-colaborador")
                         ? "bg-primary text-primary-foreground border-primary"
                         : "bg-card text-card-foreground border-border hover:bg-muted"
                     }`}
