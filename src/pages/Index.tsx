@@ -71,7 +71,7 @@ const Index = () => {
 
   // Respeita modo escolhido na sessão (apenas para o usuário autorizado)
   if (canChooseProfile && mode === "gestor" && canGestor) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/area-gestor" replace />;
   }
   if (canChooseProfile && mode === "socio" && canSocio) {
     return <Navigate to="/painel-socio" replace />;
