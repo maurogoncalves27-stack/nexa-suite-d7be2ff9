@@ -89,7 +89,7 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
 
   return (
     <div
-      className={`transition-opacity duration-500 flex items-center gap-3 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 via-accent/15 to-primary/10 px-3 py-4 shadow-sm backdrop-blur-sm ${fading ? "opacity-0" : "opacity-100"}`}
+      className={`transition-opacity duration-500 flex items-center gap-3 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 via-accent/15 to-primary/10 px-3 py-2.5 shadow-sm backdrop-blur-sm ${fading ? "opacity-0" : "opacity-100"}`}
     >
       <div className="flex flex-col items-center gap-0.5 shrink-0 pl-0.5 self-center">
         <div className="rounded-full bg-gradient-to-br from-primary to-accent p-1.5 shadow-sm">
@@ -100,20 +100,20 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
         </span>
       </div>
 
-      <div className="h-16 w-px bg-primary/20 shrink-0 self-center" />
+      <div className="h-12 w-px bg-primary/20 shrink-0 self-center" />
 
-      <div className="flex gap-4 overflow-x-auto flex-1 min-w-0 scrollbar-none items-center py-1">
+      <div className="flex gap-3 overflow-x-auto flex-1 min-w-0 scrollbar-none items-center">
         {items.map((emp) => {
           const isToday = emp.day === todayDay && parseInt(emp.birth_date.slice(5, 7), 10) === todayMonth;
           const firstName = emp.full_name.split(" ")[0];
           return (
             <div
               key={emp.id}
-              className="flex flex-col items-center gap-1 shrink-0"
+              className="flex flex-col items-center gap-0.5 shrink-0"
               title={`${emp.full_name} — dia ${String(emp.day).padStart(2, "0")}`}
             >
               <Avatar
-                className={`h-14 w-14 rounded-md border-2 ${
+                className={`h-12 w-12 rounded-md border-2 ${
                   isToday
                     ? "border-accent ring-2 ring-accent/40 animate-pulse"
                     : "border-primary/40"
