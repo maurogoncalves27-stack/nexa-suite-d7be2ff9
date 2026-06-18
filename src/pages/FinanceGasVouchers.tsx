@@ -473,7 +473,7 @@ export default function FinanceGasVouchers() {
           const isCentralStock = totalQty === 0;
           const vouchersBalance = st?.vouchers_balance ?? 0;
           return (
-            <Card key={s.id} className={borderClass}>
+            <Card key={s.id}>
               <CardContent className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <div className="flex items-center justify-between gap-2">
