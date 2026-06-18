@@ -598,34 +598,6 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
                     toast.success("Foto confirmada.");
                   }}
                 />
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    e.target.value = "";
-                    if (!file) {
-                      setReqPhoto(null);
-                      persistDraft({ reqPhotoName: null });
-                      return;
-                    }
-                    if (!file.type.startsWith("image/")) {
-                      toast.error("Selecione uma imagem válida.");
-                      setReqPhoto(null);
-                      persistDraft({ reqPhotoName: null });
-                      return;
-                    }
-                    if (file.size > 10 * 1024 * 1024) {
-                      toast.error("A foto deve ter no máximo 10MB.");
-                      setReqPhoto(null);
-                      persistDraft({ reqPhotoName: null });
-                      return;
-                    }
-                    setReqPhoto(file);
-                    persistDraft({ reqPhotoName: file.name });
-                  }}
-                  className="h-9 text-sm"
-                />
               </div>
               {reqPhoto && (
                 <p className="text-xs text-muted-foreground mt-1">{reqPhoto.name}</p>
