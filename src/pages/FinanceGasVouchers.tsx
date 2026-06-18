@@ -859,7 +859,10 @@ function EditQtyDialog({
         </DialogHeader>
         <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1">
-            <Label className="text-xs">🟢 Reserva</Label>
+            <Label className="text-xs flex items-center gap-1.5">
+              <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+              Reserva
+            </Label>
             <Input
               type="number"
               min={0}
@@ -869,7 +872,10 @@ function EditQtyDialog({
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">🟡 Em uso</Label>
+            <Label className="text-xs flex items-center gap-1.5">
+              <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
+              Em uso
+            </Label>
             <Input
               type="number"
               min={0}
@@ -879,7 +885,10 @@ function EditQtyDialog({
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">🔴 Vazio</Label>
+            <Label className="text-xs flex items-center gap-1.5">
+              <span className="inline-block h-2 w-2 rounded-full bg-rose-500" />
+              Vazio
+            </Label>
             <Input
               type="number"
               min={0}
