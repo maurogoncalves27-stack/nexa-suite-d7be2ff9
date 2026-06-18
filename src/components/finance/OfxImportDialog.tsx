@@ -31,14 +31,32 @@ export default function OfxImportDialog({ accounts, open, onOpenChange, onImport
       toast({ title: "Selecione conta e arquivo", variant: "destructive" });
       return;
     }
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (ext !== "ofx") {
+      toast({
+        title: "Formato inválido",
+        description: `Apenas arquivos .ofx são aceitos. Você selecionou um arquivo .${ext || "?"}. Baixe o extrato no formato OFX pelo internet banking.`,
+        variant: "destructive",
+      });
+      return;
+    }
     setSubmitting(true);
     let createdStatementId: string | null = null;
     let inserted = 0;
     try {
       const text = await file.text();
-      const parsed = parseOfx(text);
+      let parsed;
+      try {
+        parsed = parseOfx(text);
+      } catch (parseErr: any) {
+        throw new Error(
+          "Não foi possível ler o arquivo. Verifique se é um OFX válido exportado do internet banking."
+        );
+      }
       if (parsed.transactions.length === 0) {
-        throw new Error("Nenhuma transação encontrada no arquivo OFX");
+        throw new Error(
+          "Nenhuma transação encontrada. Confirme se o arquivo é um extrato OFX válido (não um XLSX ou PDF renomeado)."
+        );
       }
 
       const fileDuplicatesByFitId = new Set<string>();
