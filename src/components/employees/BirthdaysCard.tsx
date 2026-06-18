@@ -121,7 +121,7 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
               >
                 {emp.photoUrl && <AvatarImage src={emp.photoUrl} alt={emp.full_name} className="rounded-md object-cover" />}
                 <AvatarFallback className="bg-primary/15 text-primary text-xs font-semibold rounded-md">
-                  {emp.full_name ? emp.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase() : <UserCircle className="h-4 w-4" />}
+                  <Camera className="h-4 w-4" />
                 </AvatarFallback>
               </Avatar>
               <span className={`text-[10px] font-medium text-center leading-tight ${isToday ? "text-accent font-bold" : "text-foreground/85"}`}>
