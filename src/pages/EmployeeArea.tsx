@@ -410,6 +410,32 @@ export default function EmployeeArea({ impersonateUserId, managerView = false }:
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <div id="employee-tabs-anchor" aria-hidden className="scroll-mt-20" />
+        {managerView ? (
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { value: "vacation", icon: Plane, label: "Férias", color: "text-sky-500" },
+              { value: "uniforms", icon: Shirt, label: "Uniforme", color: "text-success" },
+              { value: "documents", icon: FileText, label: "Docs", color: "text-violet-500" },
+            ].map((t) => {
+              const active = activeTab === t.value;
+              const Icon = t.icon;
+              return (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => setActiveTab(t.value)}
+                  className={`flex flex-col items-center justify-center gap-1.5 rounded-lg border bg-card p-3 text-center transition-colors min-h-[78px] ${
+                    active ? "border-primary/60 ring-1 ring-primary/30 bg-primary/5" : "hover:bg-muted/50 hover:border-primary/40"
+                  }`}
+                  aria-pressed={active}
+                >
+                  <Icon className={`h-5 w-5 ${t.color}`} />
+                  <span className="text-[11px] sm:text-xs font-medium text-foreground leading-tight">{t.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
         <TabsList className="hidden md:grid grid-cols-5 w-full h-auto p-1.5 gap-1 border bg-card rounded-xl shadow-sm">
           <TabsTrigger value="timeclock" data-tour="tab-timeclock" className="flex-col gap-1 py-2.5 px-0.5 h-auto text-[11px] md:text-xs font-semibold rounded-lg text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
             <Clock className="h-5 w-5 md:h-6 md:w-6 text-primary group-data-[state=active]:text-primary-foreground" />
@@ -432,6 +458,7 @@ export default function EmployeeArea({ impersonateUserId, managerView = false }:
             Docs
           </TabsTrigger>
         </TabsList>
+        )}
 
         <TabsContent value="timeclock" className="space-y-4">
           {!employee.exempt_from_timeclock && (
