@@ -110,7 +110,7 @@ export default function EmployeeArea({ impersonateUserId, managerView = false }:
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ request_type: "vacation", subject: "", description: "" });
   const [scheduleWeekStart, setScheduleWeekStart] = useState<Date>(startOfWeek(new Date(), { weekStartsOn: 1 }));
-  const [activeTab, setActiveTab] = useState<string>("timeclock");
+  const [activeTab, setActiveTab] = useState<string>(managerView ? "vacation" : "timeclock");
   const [headerCompact, setHeaderCompact] = useState(false);
 
   useEffect(() => {
