@@ -472,14 +472,6 @@ export default function FinanceGasVouchers() {
           // Loja sem bujões = estoque central de vales gás
           const isCentralStock = totalQty === 0;
           const vouchersBalance = st?.vouchers_balance ?? 0;
-          // Borda esquerda por urgência
-          const borderClass = isCentralStock
-            ? ""
-            : emptyQty > 0
-            ? "border-l-4 border-l-red-500"
-            : !hasReserve
-            ? "border-l-4 border-l-amber-500"
-            : "border-l-4 border-l-green-500";
           return (
             <Card key={s.id} className={borderClass}>
               <CardContent className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
