@@ -199,6 +199,22 @@ export default function VoiceAppointmentFAB() {
       toast({ title: "Preencha título e início", variant: "destructive" });
       return;
     }
+    let scopeExtra: { scope: string; employee_id?: string | null; store_id?: string | null };
+    if (scopeMode === "self") {
+      if (!myEmployeeId) {
+        toast({ title: "Seu usuário não está vinculado a um colaborador", description: "Escolha outro destinatário para o lembrete.", variant: "destructive" });
+        return;
+      }
+      scopeExtra = { scope: "employee", employee_id: myEmployeeId };
+    } else if (scopeMode === "employee") {
+      if (!selectedEmployeeId) { toast({ title: "Escolha um colaborador", variant: "destructive" }); return; }
+      scopeExtra = { scope: "employee", employee_id: selectedEmployeeId };
+    } else if (scopeMode === "store") {
+      if (!selectedStoreId) { toast({ title: "Escolha uma loja", variant: "destructive" }); return; }
+      scopeExtra = { scope: "store", store_id: selectedStoreId };
+    } else {
+      scopeExtra = { scope: "all" };
+    }
     setSaving(true);
     try {
       const { error } = await supabase.from("appointments").insert({
@@ -208,9 +224,9 @@ export default function VoiceAppointmentFAB() {
         meeting_url: parsed.meeting_url?.trim() || null,
         start_at: new Date(parsed.start_at).toISOString(),
         end_at: parsed.end_at ? new Date(parsed.end_at).toISOString() : null,
-        scope: "all",
         reminder_offsets_min: [60, 1440],
         status: "scheduled",
+        ...scopeExtra,
       });
       if (error) throw error;
       toast({ title: "Compromisso agendado", description: parsed.title });
@@ -224,6 +240,7 @@ export default function VoiceAppointmentFAB() {
       setSaving(false);
     }
   };
+
 
   const reRecord = () => {
     try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
