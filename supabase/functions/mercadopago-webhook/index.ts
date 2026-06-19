@@ -5,6 +5,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const MP_TOKEN = Deno.env.get('MERCADOPAGO_ACCESS_TOKEN') || '';
+const MP_WEBHOOK_SECRET = Deno.env.get('MERCADOPAGO_WEBHOOK_SECRET') || '';
 
 const ZAPI_INSTANCE = Deno.env.get('ZAPI_CUSTOMER_INSTANCE_ID') || '';
 const ZAPI_TOKEN = Deno.env.get('ZAPI_CUSTOMER_TOKEN') || '';
@@ -20,14 +21,81 @@ async function sendWhatsApp(phone: string, message: string) {
   }).catch((e) => console.error('zapi send err', e));
 }
 
+// Valida x-signature do Mercado Pago (HMAC-SHA256).
+// Formato do header: "ts=<timestamp>,v1=<hex_hmac>"
+// Manifest assinado: "id:<data.id>;request-id:<x-request-id>;ts:<timestamp>;"
+async function verifyMpSignature(
+  req: Request,
+  url: URL,
+  dataId: string | null,
+): Promise<boolean> {
+  if (!MP_WEBHOOK_SECRET) return false;
+  const sigHeader = req.headers.get('x-signature') || '';
+  const requestId = req.headers.get('x-request-id') || '';
+  if (!sigHeader || !dataId) return false;
+
+  const parts = Object.fromEntries(
+    sigHeader.split(',').map((p) => {
+      const [k, ...rest] = p.trim().split('=');
+      return [k.trim(), rest.join('=').trim()];
+    }),
+  );
+  const ts = parts['ts'];
+  const v1 = parts['v1'];
+  if (!ts || !v1) return false;
+
+  const manifest = `id:${dataId.toLowerCase()};request-id:${requestId};ts:${ts};`;
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(MP_WEBHOOK_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const sigBuf = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(manifest));
+  const hex = Array.from(new Uint8Array(sigBuf))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+  // timing-safe compare
+  if (hex.length !== v1.length) return false;
+  let diff = 0;
+  for (let i = 0; i < hex.length; i++) diff |= hex.charCodeAt(i) ^ v1.charCodeAt(i);
+  return diff === 0;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  if (req.method === 'GET') return new Response('ok', { headers: corsHeaders }); // back_urls
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'method_not_allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 
   try {
     const url = new URL(req.url);
     const body = await req.json().catch(() => ({}));
     console.log('[mp-webhook] body', JSON.stringify(body).slice(0, 400));
+
+    // Extrai id pra validar assinatura antes de qualquer chamada externa
+    const sigDataId =
+      String(body?.data?.id || url.searchParams.get('data.id') || url.searchParams.get('id') || '');
+
+    if (!MP_WEBHOOK_SECRET) {
+      console.error('[mp-webhook] MERCADOPAGO_WEBHOOK_SECRET not configured');
+      return new Response(JSON.stringify({ error: 'webhook_secret_not_configured' }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const valid = await verifyMpSignature(req, url, sigDataId);
+    if (!valid) {
+      console.warn('[mp-webhook] invalid signature');
+      return new Response(JSON.stringify({ error: 'invalid_signature' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const type = body?.type || body?.action?.split('.')[0] || url.searchParams.get('type');
     const paymentId =
