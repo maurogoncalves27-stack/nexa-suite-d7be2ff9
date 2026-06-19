@@ -1,57 +1,72 @@
-# Escopo do compromisso por voz: perguntar no diálogo
+# Clone do aquelaparme.com.br no Lovable
 
-## Problema
+## Decisões já tomadas
+- **Projeto separado** (não mexe na NEXA Suite).
+- **Publicar primeiro em subdomínio de teste** (ex: `novo.aquelaparme.com.br`); WordPress atual continua no ar até você aprovar.
+- **Escopo completo**: home + páginas internas das 3 marcas + popups + animações.
 
-Hoje, todo compromisso criado pelo botão flutuante de voz é salvo com `scope: "all"`. O cron `process-appointment-reminders` então cria um aviso urgente + push + WhatsApp para **todos os colaboradores ativos da empresa**. Não é o comportamento desejado para a maioria dos compromissos pessoais ("dentista amanhã 10h", "reunião com fornecedor").
+## Como começar (você precisa fazer 1 passo)
+Este plano não roda neste projeto (NEXA). Você precisa criar o projeto novo:
 
-## Solução
+1. Vá em **Dashboard Lovable → New Project** (em branco).
+2. Nomeie algo tipo **"aquelaparme-site"**.
+3. Abra o projeto novo, cole esta mensagem no chat e me peça pra executar este plano lá:
+   > "Executa o plano clone-aquelaparme: clonar 100% de aquelaparme.com.br, mesmo design, fontes, cores, imagens, popups e animações."
 
-Adicionar um seletor de escopo dentro do `<Dialog>` de confirmação em `src/components/announcements/VoiceAppointmentFAB.tsx`, com **"Somente eu"** como padrão. O usuário pode alterar antes de salvar.
+A partir daí, no projeto novo, eu executo os passos abaixo.
 
-### Opções do seletor
+---
 
-- **Somente eu** (default) — `scope='employee'`, `employee_id` = meu próprio cadastro (resolvido via `employees.user_id = auth.uid()`).
-- **Uma loja** — `scope='store'` + dropdown de lojas físicas (`stores.is_virtual = false`).
-- **Um colaborador** — `scope='employee'` + busca de colaborador ativo.
-- **Todos os colaboradores** — `scope='all'` (comportamento atual, mas agora explícito).
+## O que vou fazer no projeto novo
 
-### UX
+### Fase 1 — Coleta (1 turno)
+- Fetch das 5 URLs: `/`, `/aquela-parme`, `/aquele-estrogonofe`, `/box-caipira`, `/sobre`.
+- Baixar via `curl` **todos os `.webp/.png/.svg`** do site (logo, pratos, estrelas, círculos decorativos, selos das marcas, backgrounds) — estão todos em `aquelaparme.com.br/wp-content/uploads/2025/12/`.
+- Subir as imagens como **Lovable Assets** (CDN), pra não depender do WordPress ficar no ar.
+- Extrair as **fontes reais** do CSS do Elementor (a serifa do "Aquela Parmê" parece **Recoleta** ou similar; vou identificar e usar `@fontsource` equivalente ou Adobe Fonts se for proprietária).
 
-- Bloco novo no topo do diálogo, acima do campo "Título":
-  - Label: "Quem recebe o lembrete?"
-  - `Select` com as 4 opções acima.
-  - Quando "Uma loja" → mostra `Select` de lojas logo abaixo.
-  - Quando "Um colaborador" → mostra `Combobox` de colaboradores (reaproveitar padrão já usado em outros lugares; se não houver, usar um `Select` simples com busca por nome).
-- Se o usuário escolher "Somente eu" mas o `auth.uid()` não tiver um `employees.user_id` correspondente → mostrar toast amigável ("Seu usuário não está vinculado a um colaborador") e bloquear o salvar até trocar o escopo.
-- O resumo lido em voz alta (`speak(...)`) ganha sufixo: "… Lembrete só para você" / "… para a loja Asa Sul" / "… para Fulano" / "… para todos".
+### Fase 2 — Design system (1 turno)
+- `tailwind.config.ts` + `index.css` com os tokens já mapeados:
+  - Creme `#fbf3e1`, Vermelho `#7a1416`, Laranja-tomate `#e6532a`, Marrom `#5a3a28`, Ink `#1a1410`.
+  - Tokens semânticos (`--ap-cream`, `--ap-red`, etc.) — sem cor hardcoded.
+- Componentes base: `ApHeader` (pílula preta flutuante), `ApFooter` (laranja com "drip" preto), `ApButton` (creme + ícone seta arredondada), `ApCard`, `ApDisplay` (serifa).
 
-### Mudança no `save()`
+### Fase 3 — Páginas (2-3 turnos)
+- **Home** (`/`): header + 3 cards grandes (Aquela Parmê vermelho, Box Caipira laranja, Estrogonofe marrom/bege) com pratos + estrelas decorativas rotacionadas + selos das marcas. Carrossel auto em mobile.
+- **/aquela-parme**, **/aquele-estrogonofe**, **/box-caipira**: páginas individuais com hero, história, galeria, CTA iFood.
+- **/sobre**: institucional.
 
-Montar o payload de `appointments.insert` de acordo com o escopo selecionado:
+### Fase 4 — Interações
+- **Lenis** (smooth scroll) — `npm i @studio-freight/lenis`.
+- **Framer Motion** pros `fadeIn` no scroll (Elementor usa `animated fadeIn`).
+- **Popups**: "Trabalhe Conosco" → link pra `nexa.aquelaparme.com.br/vagas` (reaproveita o portal de vagas que já existe na NEXA). "iFood" → modal com cards das 4 lojas linkando pros respectivos cardápios iFood.
 
-```ts
-const base = { title, description, location, meeting_url, start_at, end_at,
-               reminder_offsets_min: [60, 1440], status: "scheduled" };
-let extra;
-if (scope === "self")     extra = { scope: "employee", employee_id: myEmployeeId };
-if (scope === "employee") extra = { scope: "employee", employee_id: selectedEmployeeId };
-if (scope === "store")    extra = { scope: "store",    store_id: selectedStoreId };
-if (scope === "all")      extra = { scope: "all" };
-```
+### Fase 5 — SEO + Publicação
+- `index.html` com title, meta description, OG tags, favicon (logo Aquela Parmê).
+- `robots.txt` + `sitemap.xml`.
+- Publicar via Lovable → URL `aquelaparme-site.lovable.app`.
+- Você adiciona o subdomínio **`novo.aquelaparme.com.br`** no painel do registrador (CNAME ou A `185.158.133.1` + TXT `_lovable`). Eu te passo os valores exatos.
 
-### Dados a carregar
+### Fase 6 — Cutover (quando você aprovar)
+- Você troca o A record do `aquelaparme.com.br` (apex) pra apontar pro Lovable.
+- WordPress sai do ar. Sem volta automática — recomendo backup do WP antes (export XML pelo `/wp-admin`).
 
-Ao abrir o diálogo (uma vez):
-- `myEmployeeId`: `select id from employees where user_id = auth.uid() limit 1`.
-- Lojas físicas: `select id, name from stores where is_virtual = false order by name`.
-- Colaboradores ativos: `select id, full_name from employees where status='active' order by full_name` (lazy — só quando escolher "Um colaborador").
+---
 
-## Fora de escopo
+## Detalhes técnicos
+- **Stack**: React 18 + Vite + Tailwind + shadcn (padrão Lovable).
+- **Fontes**: `@fontsource` (sem `<link>` no HTML, sem `@import` no CSS).
+- **Imagens**: todas via `.asset.json` no CDN Lovable (zero binário no repo).
+- **Animações**: Framer Motion (`whileInView`) + Lenis pro scroll.
+- **Sem backend**: site institucional é 100% estático. "Trabalhe conosco" reaproveita backend NEXA (link externo).
 
-- Não mexer no cron `process-appointment-reminders` — a lógica de `scope` já resolve corretamente os três casos.
-- Não mexer no parser de voz (`parse-appointment-voice`) — o escopo é decisão humana no diálogo, não inferência da IA.
-- Não alterar `AppointmentsManagerPanel` nem outras telas de agenda.
+## O que NÃO está incluído
+- Painel admin de conteúdo (tipo WordPress). Conteúdo fica versionado no código — mudanças = nova publicação.
+- Migração de posts/blog (o site atual não tem blog visível).
+- Integração de iFood real (apenas links externos pros 4 cardápios).
 
-## Arquivos afetados
+## Riscos
+- **Fontes proprietárias** (Recoleta): se for paga, vou usar substituta open-source visualmente próxima (DM Serif Display ou Fraunces) e te avisar.
+- **Cutover de DNS**: 1-72h de propagação; subdomínio de teste evita downtime no domínio principal.
 
-- `src/components/announcements/VoiceAppointmentFAB.tsx` (único arquivo)
+Aprova pra eu seguir? Quando aprovar, te passo os 3 cliques pra criar o projeto novo.
