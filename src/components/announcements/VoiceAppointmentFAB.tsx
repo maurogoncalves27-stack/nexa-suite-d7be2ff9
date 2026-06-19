@@ -67,7 +67,25 @@ export default function VoiceAppointmentFAB() {
     try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
   }, []);
 
+  useEffect(() => {
+    if (!canUse || !user?.id) return;
+    let cancelled = false;
+    (async () => {
+      const [meRes, storesRes, empsRes] = await Promise.all([
+        supabase.from("employees").select("id").eq("user_id", user.id).maybeSingle(),
+        supabase.from("stores").select("id, name").eq("is_virtual", false).order("name"),
+        supabase.from("employees").select("id, full_name").eq("status", "active").order("full_name"),
+      ]);
+      if (cancelled) return;
+      setMyEmployeeId(meRes.data?.id ?? null);
+      setStores(storesRes.data ?? []);
+      setEmployees(empsRes.data ?? []);
+    })();
+    return () => { cancelled = true; };
+  }, [canUse, user?.id]);
+
   if (!canUse) return null;
+
 
   const stopTracks = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
