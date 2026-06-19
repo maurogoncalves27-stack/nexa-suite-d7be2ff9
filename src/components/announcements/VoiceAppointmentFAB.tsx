@@ -308,10 +308,48 @@ export default function VoiceAppointmentFAB() {
                   </div>
                 </div>
               )}
+              <div className="rounded-md border p-3 space-y-2 bg-card">
+                <Label className="flex items-center gap-2 text-sm">
+                  <Users className="h-4 w-4 text-primary" />
+                  Quem recebe o lembrete?
+                </Label>
+                <Select value={scopeMode} onValueChange={(v) => setScopeMode(v as ScopeMode)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="self">Somente eu</SelectItem>
+                    <SelectItem value="store">Uma loja</SelectItem>
+                    <SelectItem value="employee">Um colaborador</SelectItem>
+                    <SelectItem value="all">Todos os colaboradores</SelectItem>
+                  </SelectContent>
+                </Select>
+                {scopeMode === "store" && (
+                  <Select value={selectedStoreId} onValueChange={setSelectedStoreId}>
+                    <SelectTrigger><SelectValue placeholder="Selecione a loja" /></SelectTrigger>
+                    <SelectContent>
+                      {stores.map((s) => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {scopeMode === "employee" && (
+                  <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o colaborador" /></SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      {employees.map((e) => (<SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {scopeMode === "self" && !myEmployeeId && (
+                  <p className="text-xs text-destructive">Seu usuário não está vinculado a um colaborador. Escolha outro destinatário.</p>
+                )}
+                {scopeMode === "all" && (
+                  <p className="text-xs text-warning">Aviso urgente + push + WhatsApp para todos os colaboradores ativos.</p>
+                )}
+              </div>
               <div>
                 <Label>Título</Label>
                 <Input value={parsed.title} onChange={(e) => update("title", e.target.value)} />
               </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label>Início</Label>
