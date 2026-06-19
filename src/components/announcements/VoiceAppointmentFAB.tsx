@@ -39,7 +39,7 @@ const speak = (text: string) => {
 };
 
 export default function VoiceAppointmentFAB() {
-  const { isAdmin, isManager } = useAuth();
+  const { user, isAdmin, isManager } = useAuth();
   const canUse = isAdmin || isManager;
 
 
@@ -50,8 +50,16 @@ export default function VoiceAppointmentFAB() {
   const [parsed, setParsed] = useState<Parsed | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const [scopeMode, setScopeMode] = useState<ScopeMode>("self");
+  const [myEmployeeId, setMyEmployeeId] = useState<string | null>(null);
+  const [stores, setStores] = useState<Array<{ id: string; name: string }>>([]);
+  const [employees, setEmployees] = useState<Array<{ id: string; full_name: string }>>([]);
+  const [selectedStoreId, setSelectedStoreId] = useState<string>("");
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
+
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<number | null>(null);
 
