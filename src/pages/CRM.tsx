@@ -458,14 +458,15 @@ export default function CRM() {
     <div className="space-y-6 p-4 md:p-6">
       {/* Header */}
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-      <div className="space-y-1">
-        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-          <Headset className="h-6 w-6 md:h-7 md:w-7 text-primary" />
-          CRM
-        </h1>
-        <p className="text-muted-foreground">
-          Reservas, tickets e conversas extraídas pela Giana (Parmê).
-        </p>
+        <div className="space-y-1">
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+            <Headset className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+            CRM
+          </h1>
+          <p className="text-muted-foreground">
+            Reservas, tickets e conversas extraídas pela Giana (Parmê).
+          </p>
+        </div>
       </div>
 
       {/* Toolbar sticky: busca + filtro */}
