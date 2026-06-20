@@ -1,6 +1,7 @@
 // Envia mensagem WhatsApp via provedor configurado (Z-API por padrão).
 // Adapter-pattern para permitir trocar para Meta Cloud API no futuro sem refactor.
 import { createClient } from "npm:@supabase/supabase-js@2.45.0";
+import { requireRole } from "../_shared/requireRole.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
