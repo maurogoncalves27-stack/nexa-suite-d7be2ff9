@@ -195,18 +195,6 @@ export default function CRM() {
       setReservations(mappedRes as Reservation[]);
       setTickets(mappedTickets as Ticket[]);
       setConversations(mappedConvs as Conversation[]);
-
-      const allDates = [
-        ...mappedRes.map((x: any) => x.synced_at),
-        ...mappedTickets.map((x: any) => x.synced_at),
-        ...mappedConvs.map((x: any) => x.synced_at),
-      ].filter(Boolean);
-      if (allDates.length) {
-        const max = allDates.reduce((a, b) => (a > b ? a : b));
-        setLastSync(max);
-      } else {
-        setLastSync(null);
-      }
     } catch (e: any) {
       toast.error("Erro ao carregar dados", { description: e.message });
     } finally {
