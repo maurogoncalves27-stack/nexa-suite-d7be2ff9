@@ -23,7 +23,7 @@ export function SiteHeader() {
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       className="sticky top-0 z-40 bg-brand-ink text-brand-cream"
     >
-      <div className="mx-auto grid max-w-[1400px] grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-3 md:gap-4 md:px-6 md:py-4">
+      <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4 px-4 py-3 md:px-6 md:py-4">
         <Link to="/parme" className="flex items-center justify-start" onClick={() => setOpen(false)}>
           <img src={logo} alt="Aquela Parmê" className="h-10 w-auto md:h-14" />
         </Link>
