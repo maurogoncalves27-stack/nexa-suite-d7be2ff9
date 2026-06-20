@@ -1,12 +1,12 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { MapPin, ExternalLink, Clock, UtensilsCrossed, ShoppingBag, Truck, Phone } from "lucide-react";
+import { MapPin, ExternalLink, Clock, UtensilsCrossed, ShoppingBag, Bike, Phone } from "lucide-react";
 import { SiteLayout } from "@/components/parme-site/SiteLayout";
 import { STORES } from "@/components/parme/stores";
 
-const serviceLabels: Record<string, { label: string; icon: React.ReactNode }> = {
-  mesa: { label: "Atendimento de mesa", icon: <UtensilsCrossed className="h-3.5 w-3.5" /> },
-  delivery: { label: "Delivery iFood / WhatsApp em breve", icon: <Truck className="h-3.5 w-3.5" /> },
+const serviceLabels: Record<string, { label: string; icon: React.ReactNode; highlighted?: boolean }> = {
+  mesa: { label: "Atendimento de mesa", icon: <UtensilsCrossed className="h-3.5 w-3.5" />, highlighted: true },
+  delivery: { label: "Delivery iFood / WhatsApp em breve", icon: <Bike className="h-3.5 w-3.5" /> },
   retirada: { label: "Retirada na loja", icon: <ShoppingBag className="h-3.5 w-3.5" /> },
 };
 
@@ -61,7 +61,15 @@ export default function EnderecosPage() {
                             const info = serviceLabels[svc];
                             if (!info) return null;
                             return (
-                              <span key={svc} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium" style={{ background: "rgba(232,35,31,0.1)", color: "#e8231f" }}>
+                              <span
+                                key={svc}
+                                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium"
+                                style={
+                                  info.highlighted
+                                    ? { background: "#e8231f", color: "#fff" }
+                                    : { background: "rgba(232,35,31,0.1)", color: "#e8231f" }
+                                }
+                              >
                                 {info.icon}
                                 {info.label}
                               </span>
