@@ -558,10 +558,10 @@ export default function CRM() {
                                     variant="ghost"
                                     size="icon"
                                     disabled={confirmingId === r.parme_id}
-                                    className="h-8 w-8 text-success hover:text-success"
+                                    className="text-success hover:text-success"
                                     title="Confirmar reserva"
                                   >
-                                    <CheckCircle2 className="h-4 w-4" />
+                                    <CheckCircle2 className="h-5 w-5" />
                                   </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
