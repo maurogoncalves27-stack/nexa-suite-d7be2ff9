@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Headset, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, Clock, Palette, Bot, Plug } from "lucide-react";
+import { Headset, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, Clock, Palette, Bot, Plug, Globe } from "lucide-react";
 import { PersonalizePanel, AgentPanel, IntegrationsPanel } from "@/components/crm/ParmeSettingsPanels";
 import {
   BarChart,
@@ -455,6 +455,12 @@ export default function CRM() {
             Reservas, tickets e conversas extraídas pela Giana (Parmê).
           </p>
         </div>
+        <Button asChild variant="outline" className="gap-2 shrink-0">
+          <a href="https://aquelaparme.com.br" target="_blank" rel="noopener noreferrer">
+            <Globe className="h-4 w-4" />
+            Ver site
+          </a>
+        </Button>
       </div>
 
       {/* Toolbar sticky: busca + filtro */}
