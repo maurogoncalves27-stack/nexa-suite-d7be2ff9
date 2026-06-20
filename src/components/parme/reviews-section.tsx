@@ -27,12 +27,23 @@ const FALLBACK_REVIEWS: Review[] = [
   { name: "Alderir Amaral", initials: "AA", timeAgo: "6 meses atrás", rating: 5, text: "O melhor de Brasília. Recomendo!" },
 ];
 
-const UNITS = [
-  { label: "Águas Claras", url: "https://g.page/r/CQ..." },
-  { label: "Asa Sul", url: "https://g.page/r/CQ..." },
-  { label: "Asa Norte", url: "https://g.page/r/CQ..." },
-  { label: "Lago Sul", url: "https://g.page/r/CQ..." },
+type Unit = { label: string; place_id?: string };
+
+const DEFAULT_UNITS: Unit[] = [
+  { label: "Águas Claras" },
+  { label: "Asa Sul" },
+  { label: "Asa Norte" },
+  { label: "Lago Sul" },
 ];
+
+function reviewUrl(u: Unit) {
+  if (u.place_id) {
+    // Link oficial do Google que abre direto o formulário "escrever avaliação"
+    return `https://search.google.com/local/writereview?placeid=${encodeURIComponent(u.place_id)}`;
+  }
+  const q = encodeURIComponent(`Aquela Parmê ${u.label} Brasília`);
+  return `https://www.google.com/maps/search/?api=1&query=${q}`;
+}
 
 function initialsOf(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
