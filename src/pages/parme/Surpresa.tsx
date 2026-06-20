@@ -10,10 +10,8 @@ type Brand = {
   name: string;
   tagline: string;
   accent: string;
-  stores: string[];
+  stores: { name: string; placeId: string }[];
 };
-
-const STORES = ["Águas Claras", "Asa Sul", "Asa Norte", "Lago Sul"];
 
 const BRANDS: Brand[] = [
   {
@@ -21,27 +19,41 @@ const BRANDS: Brand[] = [
     name: "Aquela Parmê",
     tagline: "Filé à parmegiana e clássicos italianos",
     accent: "bg-brand-parme",
-    stores: STORES,
+    stores: [
+      { name: "Águas Claras", placeId: "ChIJtaJIPHczWpMR-k0p94ja4KI" },
+      { name: "Asa Sul", placeId: "ChIJrYqYlpExWpMR-v9-pH56row" },
+      { name: "Asa Norte", placeId: "ChIJw8Jb7Xg7WpMRYZIa58HXbyc" },
+      { name: "Lago Sul", placeId: "ChIJ62XjjFkjWpMREBQa2gN55ec" },
+    ],
   },
   {
     id: "estrogonofe",
     name: "Aquele Estrogonofe",
     tagline: "O verdadeiro estrogonofe cremoso",
     accent: "bg-brand-estrogonofe",
-    stores: STORES,
+    stores: [
+      { name: "Águas Claras", placeId: "ChIJayPUuysrWpMRsj-SqOOif_8" },
+      { name: "Asa Sul", placeId: "ChIJq4Z11psvWpMROrKQsMdRoEc" },
+      { name: "Asa Norte", placeId: "ChIJyfNVG507WpMRndOUsqI0hMU" },
+      { name: "Lago Sul", placeId: "ChIJWfdI-xsjWpMRX9ZtpBCsAUA" },
+    ],
   },
   {
     id: "box-caipira",
     name: "Box Caipira",
     tagline: "Comida raiz, tempero de fogão de lenha",
     accent: "bg-brand-box",
-    stores: STORES,
+    stores: [
+      { name: "Águas Claras", placeId: "ChIJeYVe1HIzWpMRatSF4PCtSdk" },
+      { name: "Asa Sul", placeId: "ChIJQf2-BPAvWpMRD95YLKZl4R8" },
+      { name: "Asa Norte", placeId: "ChIJ1_4mvgwvWpMRTkk89EfzSEg" },
+      { name: "Lago Sul", placeId: "ChIJNUHYnFwjWpMRxGOECViUezY" },
+    ],
   },
 ];
 
-function reviewUrl(brand: string, store: string) {
-  const query = encodeURIComponent(`${brand} ${store} Brasília`);
-  return `https://www.google.com/maps/search/?api=1&query=${query}`;
+function reviewUrl(placeId: string) {
+  return `https://search.google.com/local/writereview?placeid=${placeId}`;
 }
 
 export default function SurpresaPage() {
@@ -273,13 +285,13 @@ function BrandStoreSelector() {
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               {selected.stores.map((store) => (
                 <a
-                  key={store}
-                  href={reviewUrl(selected.name, store)}
+                  key={store.placeId}
+                  href={reviewUrl(store.placeId)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 rounded-full bg-card px-6 py-2.5 text-sm font-semibold text-foreground shadow-sm ring-1 ring-border transition hover:bg-muted"
                 >
-                  {store}
+                  {store.name}
                   <ExternalLink className="h-4 w-4 opacity-70" />
                 </a>
               ))}
