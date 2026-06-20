@@ -199,19 +199,12 @@ export default function CRM() {
     setDeletingId(parmeId);
     const tid = toast.loading("Excluindo reserva no Parmê…");
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const url = `https://ixjgmerxxakdkfdzgumy.supabase.co/functions/v1/parme-delete-reservation`;
-      const resp = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.access_token ?? ""}`,
-        },
-        body: JSON.stringify({ parme_id: parmeId }),
-      });
-      const payload = await resp.json().catch(() => ({}));
+      const { data: payload, error } = await supabase.functions.invoke(
+        "parme-delete-reservation",
+        { body: { parme_id: parmeId } },
+      );
 
-      if (resp.status === 503 || payload?.error === "parme_endpoint_unavailable") {
+      if (payload?.error === "parme_endpoint_unavailable") {
         toast.warning("Parmê ainda não expõe DELETE público", {
           id: tid,
           description:
@@ -220,8 +213,8 @@ export default function CRM() {
         });
         return;
       }
-      if (!resp.ok) {
-        throw new Error(payload?.message ?? `HTTP ${resp.status}`);
+      if (error) {
+        throw new Error((payload as any)?.message ?? error.message);
       }
 
       toast.success("Reserva excluída", {
