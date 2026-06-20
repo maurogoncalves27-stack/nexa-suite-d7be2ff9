@@ -27,23 +27,6 @@ const FALLBACK_REVIEWS: Review[] = [
   { name: "Alderir Amaral", initials: "AA", timeAgo: "6 meses atrás", rating: 5, text: "O melhor de Brasília. Recomendo!" },
 ];
 
-type Unit = { label: string; place_id?: string };
-
-const DEFAULT_UNITS: Unit[] = [
-  { label: "Águas Claras" },
-  { label: "Asa Sul" },
-  { label: "Asa Norte" },
-  { label: "Lago Sul" },
-];
-
-function reviewUrl(u: Unit) {
-  if (u.place_id) {
-    // Link oficial do Google que abre direto o formulário "escrever avaliação"
-    return `https://search.google.com/local/writereview?placeid=${encodeURIComponent(u.place_id)}`;
-  }
-  const q = encodeURIComponent(`Aquela Parmê ${u.label} Brasília`);
-  return `https://www.google.com/maps/search/?api=1&query=${q}`;
-}
 
 function initialsOf(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
@@ -113,32 +96,11 @@ async function fetchReviews(): Promise<Review[]> {
   return FALLBACK_REVIEWS;
 }
 
-async function fetchUnits(): Promise<Unit[]> {
-  try {
-    const { data } = await supabase
-      .from("parme_site_settings")
-      .select("value")
-      .eq("key", "google_places")
-      .maybeSingle();
-    const units = (data?.value as any)?.units as Unit[] | undefined;
-    if (Array.isArray(units) && units.length > 0) {
-      return units.map((u) => ({ label: u.label, place_id: u.place_id || undefined }));
-    }
-  } catch {
-    // ignore
-  }
-  return DEFAULT_UNITS;
-}
 
 export function ReviewsSection() {
   const { data: reviews = FALLBACK_REVIEWS } = useQuery({
     queryKey: ["parme-google-reviews"],
     queryFn: fetchReviews,
-    staleTime: 1000 * 60 * 30,
-  });
-  const { data: units = DEFAULT_UNITS } = useQuery({
-    queryKey: ["parme-google-units"],
-    queryFn: fetchUnits,
     staleTime: 1000 * 60 * 30,
   });
 
@@ -161,28 +123,6 @@ export function ReviewsSection() {
           ))}
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          className="mt-14 text-center"
-        >
-          <h3 className="font-display text-[clamp(1.5rem,3vw,2.25rem)] leading-tight text-brand-ink">Me avalia, please!</h3>
-          <div className="mt-6 flex flex-wrap justify-center gap-3">
-            {units.map((unit) => (
-              <a
-                key={unit.label}
-                href={reviewUrl(unit)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center rounded-full bg-[#e63946] px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#d62839] hover:shadow-md"
-              >
-                {unit.label}
-              </a>
-            ))}
-          </div>
-        </motion.div>
       </div>
     </section>
   );
