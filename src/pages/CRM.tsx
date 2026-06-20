@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Headset, RefreshCw, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, Clock, Palette, Bot, Plug } from "lucide-react";
+import { Headset, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, Clock, Palette, Bot, Plug } from "lucide-react";
 import { PersonalizePanel, AgentPanel, IntegrationsPanel } from "@/components/crm/ParmeSettingsPanels";
 import {
   BarChart,
@@ -133,7 +133,6 @@ export default function CRM() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [expandedTicketId, setExpandedTicketId] = useState<string | null>(null);
@@ -146,7 +145,6 @@ export default function CRM() {
   const [convMsgsError, setConvMsgsError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [brand, setBrand] = useState<string>("all");
-  const [lastSync, setLastSync] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -321,18 +319,6 @@ export default function CRM() {
     };
   }, [expandedConvId, conversations]);
 
-  async function handleSync() {
-    // A sincronização externa foi aposentada — agora o Nexa é fonte da verdade.
-    // O botão Atualizar apenas recarrega do banco local.
-    setSyncing(true);
-    try {
-      await load();
-      toast.success("Atualizado");
-    } finally {
-      setSyncing(false);
-    }
-  }
-
   async function handleDeleteReservation(parmeId: string) {
     setDeletingId(parmeId);
     const tid = toast.loading("Excluindo reserva no Parmê…");
@@ -472,29 +458,14 @@ export default function CRM() {
     <div className="space-y-6 p-4 md:p-6">
       {/* Header */}
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-            <Headset className="h-6 w-6 md:h-7 md:w-7 text-primary" />
-            CRM
-          </h1>
-          <p className="text-muted-foreground">
-            Reservas, tickets e conversas extraídas pela Giana (Parmê).
-          </p>
-          {lastSync && (
-            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-              <Clock className="h-3 w-3" />
-              Sincronizado{" "}
-              {formatDistanceToNow(new Date(lastSync), {
-                addSuffix: true,
-                locale: ptBR,
-              })}
-            </p>
-          )}
-        </div>
-        <Button onClick={handleSync} disabled={syncing} className="gap-2 shrink-0">
-          <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-          Sincronizar
-        </Button>
+      <div className="space-y-1">
+        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+          <Headset className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+          CRM
+        </h1>
+        <p className="text-muted-foreground">
+          Reservas, tickets e conversas extraídas pela Giana (Parmê).
+        </p>
       </div>
 
       {/* Toolbar sticky: busca + filtro */}
