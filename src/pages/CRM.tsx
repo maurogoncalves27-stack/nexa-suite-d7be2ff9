@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { Headset, RefreshCw, Search, Calendar, Ticket, MessageSquare } from "lucide-react";
+import { Headset, RefreshCw, Search, Calendar, Ticket, MessageSquare, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -87,6 +98,7 @@ export default function CRM() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [brand, setBrand] = useState<string>("all");
   const [lastSync, setLastSync] = useState<string | null>(null);
@@ -180,6 +192,47 @@ export default function CRM() {
       toast.error("Falha ao sincronizar", { id: tid, description: e.message });
     } finally {
       setSyncing(false);
+    }
+  }
+
+  async function handleDeleteReservation(parmeId: string) {
+    setDeletingId(parmeId);
+    const tid = toast.loading("Excluindo reserva no Parmê…");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const url = `https://ixjgmerxxakdkfdzgumy.supabase.co/functions/v1/parme-delete-reservation`;
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token ?? ""}`,
+        },
+        body: JSON.stringify({ parme_id: parmeId }),
+      });
+      const payload = await resp.json().catch(() => ({}));
+
+      if (resp.status === 503 || payload?.error === "parme_endpoint_unavailable") {
+        toast.warning("Parmê ainda não expõe DELETE público", {
+          id: tid,
+          description:
+            "Peça ao time do Parmê para implementar DELETE /api/public/reservations/:id.",
+          duration: 8000,
+        });
+        return;
+      }
+      if (!resp.ok) {
+        throw new Error(payload?.message ?? `HTTP ${resp.status}`);
+      }
+
+      toast.success("Reserva excluída", {
+        id: tid,
+        description: "Removida no Parmê e sincronizada aqui.",
+      });
+      setReservations((prev) => prev.filter((r) => r.parme_id !== parmeId));
+    } catch (e: any) {
+      toast.error("Falha ao excluir", { id: tid, description: e.message });
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -352,18 +405,19 @@ export default function CRM() {
                     <TableHead>Hora</TableHead>
                     <TableHead>Pessoas</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         Carregando…
                       </TableCell>
                     </TableRow>
                   ) : filteredReservations.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         Nenhuma reserva.
                       </TableCell>
                     </TableRow>
@@ -382,6 +436,38 @@ export default function CRM() {
                         <TableCell>{r.party_size ?? "—"}</TableCell>
                         <TableCell>
                           {r.status ? <Badge variant="outline">{r.status}</Badge> : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={deletingId === r.parme_id}
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Excluir reserva?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Isso vai excluir a reserva de <strong>{r.name ?? "—"}</strong>{" "}
+                                  também no Parmê (sistema de origem). A ação não pode ser desfeita.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteReservation(r.parme_id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Excluir
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </TableCell>
                       </TableRow>
                     ))

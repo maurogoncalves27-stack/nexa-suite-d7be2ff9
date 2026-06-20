@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.parme-backfill]
 verify_jwt = true
+
+[functions.parme-delete-reservation]
+verify_jwt = true
