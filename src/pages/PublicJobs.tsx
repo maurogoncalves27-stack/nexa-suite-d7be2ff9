@@ -89,6 +89,15 @@ export default function PublicJobs() {
                             src={j.public_image_url}
                             alt={j.title}
                             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            onError={(e) => {
+                              const img = e.currentTarget;
+                              const parent = img.parentElement;
+                              if (parent) {
+                                parent.classList.add("flex", "items-center", "justify-center");
+                                parent.style.background = "rgba(239,107,58,0.25)";
+                                parent.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="rgba(232,35,31,0.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>';
+                              }
+                            }}
                           />
                         </div>
                       ) : (
