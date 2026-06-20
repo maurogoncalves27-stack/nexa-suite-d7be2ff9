@@ -2,7 +2,19 @@ import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { SiteLayout } from "@/components/parme-site/SiteLayout";
 import { Reveal } from "@/components/parme/reveal";
-import { Gift, Star, MapPin } from "lucide-react";
+import { Gift, Star, MapPin, ExternalLink } from "lucide-react";
+import churrosAsset from "@/assets/churros.avif.asset.json";
+
+const UNITS = [
+  { label: "Águas Claras", query: "Aquela%20Parmê%20Águas%20Claras%20Brasília" },
+  { label: "Asa Sul", query: "Aquela%20Parmê%20Asa%20Sul%20Brasília" },
+  { label: "Asa Norte", query: "Aquela%20Parmê%20Asa%20Norte%20Brasília" },
+  { label: "Lago Sul", query: "Aquela%20Parmê%20Lago%20Sul%20Brasília" },
+];
+
+function reviewUrl(query: string) {
+  return `https://www.google.com/maps/search/?api=1&query=${query}`;
+}
 
 export default function SurpresaPage() {
   useEffect(() => {
@@ -12,99 +24,92 @@ export default function SurpresaPage() {
   return (
     <SiteLayout>
       {/* HERO */}
-      <section className="relative isolate overflow-hidden bg-black">
-        <div
-          className="absolute inset-0 opacity-70"
-          style={{
-            background:
-              "radial-gradient(1200px 600px at 20% 20%, #e8231f 0%, transparent 60%), radial-gradient(900px 500px at 80% 80%, #ef6b3a 0%, transparent 55%), #1a0808",
-          }}
-        />
-        <div className="relative z-10 mx-auto max-w-5xl px-5 py-20 text-center text-brand-cream md:px-6 md:py-28">
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.7 }}
-            className="font-script text-3xl"
-            style={{ color: "#ffd66b" }}
-          >
-            uma surpresinha pra você
-          </motion.p>
-          <motion.h1
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-            className="mt-3 font-display text-[clamp(2.25rem,5.5vw,4.5rem)] leading-[1.02]"
-          >
-            Avaliou a Parmê?
-            <br />
-            Ganhou churros. 🍩
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.2 }}
-            className="mx-auto mt-5 max-w-2xl text-base md:text-lg text-brand-cream/85"
-          >
-            Como agradecimento pela sua avaliação, a gente te entrega uma porção
-            de churros quentinha na nossa loja física da Asa Norte. Sem pegadinha.
-          </motion.p>
+      <section className="relative overflow-hidden bg-brand-parme py-16 md:py-24">
+        <div className="relative z-10 mx-auto max-w-6xl px-5 md:px-6">
+          <div className="grid items-center gap-10 md:grid-cols-2">
+            <div className="text-center md:text-left">
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.7 }}
+                className="text-lg font-medium text-brand-parme-foreground/80"
+              >
+                uma surpresinha pra você
+              </motion.p>
+              <motion.h1
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+                className="mt-3 font-display text-[clamp(2rem,5vw,3.5rem)] leading-tight text-brand-parme-foreground"
+              >
+                Avaliou a Parmê?
+                <br />
+                Ganhou churros.
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.9, delay: 0.2 }}
+                className="mx-auto mt-5 max-w-md text-base text-brand-parme-foreground/85 md:mx-0"
+              >
+                Como agradecimento pela sua avaliação, a gente te entrega uma porção
+                de churros quentinha na nossa loja física da Asa Norte.
+              </motion.p>
+            </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8, delay: 0.15 }}
+              className="mx-auto max-w-sm md:max-w-none"
+            >
+              <img
+                src={churrosAsset.url}
+                alt="Porção de churros da Aquela Parmê"
+                className="rounded-2xl shadow-lg"
+                loading="eager"
+              />
+            </motion.div>
+          </div>
         </div>
       </section>
 
       {/* COMO FUNCIONA */}
-      <section className="bg-brand-cream py-16 md:py-24">
+      <section className="bg-background py-16 md:py-24">
         <div className="mx-auto max-w-6xl px-5 md:px-6">
           <Reveal>
-            <p className="font-script text-3xl" style={{ color: "#e8231f" }}>
-              como funciona
-            </p>
-            <h2
-              className="mt-1 font-display text-4xl md:text-5xl"
-              style={{ color: "#7a0c0c" }}
-            >
+            <p className="text-lg font-medium text-muted-foreground">como funciona</p>
+            <h2 className="mt-1 font-display text-3xl md:text-4xl text-foreground">
               Três passos e o churros é seu
             </h2>
           </Reveal>
 
-          <div className="mt-12 grid gap-6 md:grid-cols-3">
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {[
               {
                 icon: Star,
                 titulo: "1. Avalie a gente",
-                texto:
-                  "Deixe sua avaliação honesta no Google sobre a Aquela Parmê.",
+                texto: "Deixe sua avaliação honesta no Google sobre a Aquela Parmê.",
               },
               {
                 icon: Gift,
                 titulo: "2. Mostre na loja",
-                texto:
-                  "Apresente a avaliação no caixa da nossa loja física da Asa Norte.",
+                texto: "Apresente a avaliação no caixa da nossa loja física da Asa Norte.",
               },
               {
                 icon: MapPin,
                 titulo: "3. Receba o churros",
-                texto:
-                  "A gente prepara uma porção fresquinha pra você saborear na hora.",
+                texto: "A gente prepara uma porção fresquinha pra você saborear na hora.",
               },
             ].map((p, i) => (
               <Reveal key={p.titulo} delay={i * 0.1}>
-                <article className="h-full rounded-3xl bg-white p-8 shadow-md ring-1 ring-black/5">
-                  <div
-                    className="flex h-12 w-12 items-center justify-center rounded-2xl"
-                    style={{ background: "#fff1d6" }}
-                  >
-                    <p.icon className="h-6 w-6" style={{ color: "#e8231f" }} />
+                <article className="h-full rounded-2xl bg-card p-6 shadow-card ring-1 ring-border">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-parme/10">
+                    <p.icon className="h-5 w-5 text-brand-parme" />
                   </div>
-                  <h3
-                    className="mt-5 font-display text-2xl"
-                    style={{ color: "#e8231f" }}
-                  >
+                  <h3 className="mt-4 font-display text-xl text-foreground">
                     {p.titulo}
                   </h3>
-                  <p className="mt-3" style={{ color: "rgba(0,0,0,0.7)" }}>
-                    {p.texto}
-                  </p>
+                  <p className="mt-2 text-sm text-muted-foreground">{p.texto}</p>
                 </article>
               </Reveal>
             ))}
@@ -112,37 +117,58 @@ export default function SurpresaPage() {
         </div>
       </section>
 
+      {/* AVALIE A GENTE */}
+      <section className="bg-muted py-16 md:py-20">
+        <div className="mx-auto max-w-4xl px-5 text-center md:px-6">
+          <Reveal>
+            <Star className="mx-auto h-8 w-8 text-brand-parme" />
+            <h2 className="mt-4 font-display text-2xl md:text-3xl text-foreground">
+              Me avalia, please!
+            </h2>
+            <p className="mx-auto mt-2 max-w-lg text-muted-foreground">
+              Escolha a loja que você visitou e deixe sua avaliação no Google. Depois é só vir buscar o churros.
+            </p>
+          </Reveal>
+
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            {UNITS.map((unit) => (
+              <a
+                key={unit.label}
+                href={reviewUrl(unit.query)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full bg-brand-parme px-6 py-2.5 text-sm font-semibold text-brand-parme-foreground shadow-sm transition hover:bg-brand-parme/90"
+              >
+                {unit.label}
+                <ExternalLink className="h-4 w-4 opacity-80" />
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ONDE RESGATAR */}
-      <section className="py-16 md:py-24" style={{ background: "#fff1d6" }}>
+      <section className="bg-store-asa-norte py-16 md:py-24">
         <div className="mx-auto grid max-w-6xl gap-10 px-5 md:px-6 md:grid-cols-2 md:items-center">
           <Reveal>
-            <p className="font-script text-3xl" style={{ color: "#ef6b3a" }}>
+            <p className="text-lg font-medium text-store-asa-norte-foreground/80">
               onde resgatar
             </p>
-            <h2
-              className="mt-1 font-display text-4xl md:text-5xl"
-              style={{ color: "#7a0c0c" }}
-            >
+            <h2 className="mt-1 font-display text-3xl md:text-4xl text-store-asa-norte-foreground">
               Aquela Parmê — Asa Norte
             </h2>
-            <p className="mt-5 text-lg" style={{ color: "rgba(0,0,0,0.7)" }}>
+            <p className="mt-4 text-store-asa-norte-foreground/85">
               Passe na nossa loja física da Asa Norte, mostre sua avaliação pro
               atendente e leve o churros. Válido enquanto durarem as porções do
               dia, um por cliente.
             </p>
           </Reveal>
           <Reveal delay={0.1}>
-            <div className="rounded-3xl bg-white p-8 shadow-md ring-1 ring-black/5">
-              <h3
-                className="font-display text-2xl"
-                style={{ color: "#7a0c0c" }}
-              >
+            <div className="rounded-2xl bg-card p-6 shadow-card ring-1 ring-border">
+              <h3 className="font-display text-xl text-foreground">
                 Regrinhas básicas
               </h3>
-              <ul
-                className="mt-4 space-y-3 text-base"
-                style={{ color: "rgba(0,0,0,0.75)" }}
-              >
+              <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
                 <li>• 1 porção de churros por cliente.</li>
                 <li>• Resgate presencial na loja da Asa Norte.</li>
                 <li>• Necessário mostrar a avaliação publicada.</li>
