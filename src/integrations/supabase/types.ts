@@ -16372,6 +16372,15 @@ export type Database = {
         Args: { _store_id: string; _user_id: string }
         Returns: boolean
       }
+      outsourced_self_update_keeps_approval: {
+        Args: {
+          _approval_status: string
+          _approved_at: string
+          _approved_by: string
+          _id: string
+        }
+        Returns: boolean
+      }
       pdv_advance_order_status: {
         Args: {
           p_event_code?: string
