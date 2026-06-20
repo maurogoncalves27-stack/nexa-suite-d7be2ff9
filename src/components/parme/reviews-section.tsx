@@ -113,10 +113,32 @@ async function fetchReviews(): Promise<Review[]> {
   return FALLBACK_REVIEWS;
 }
 
+async function fetchUnits(): Promise<Unit[]> {
+  try {
+    const { data } = await supabase
+      .from("parme_site_settings")
+      .select("value")
+      .eq("key", "google_places")
+      .maybeSingle();
+    const units = (data?.value as any)?.units as Unit[] | undefined;
+    if (Array.isArray(units) && units.length > 0) {
+      return units.map((u) => ({ label: u.label, place_id: u.place_id || undefined }));
+    }
+  } catch {
+    // ignore
+  }
+  return DEFAULT_UNITS;
+}
+
 export function ReviewsSection() {
   const { data: reviews = FALLBACK_REVIEWS } = useQuery({
     queryKey: ["parme-google-reviews"],
     queryFn: fetchReviews,
+    staleTime: 1000 * 60 * 30,
+  });
+  const { data: units = DEFAULT_UNITS } = useQuery({
+    queryKey: ["parme-google-units"],
+    queryFn: fetchUnits,
     staleTime: 1000 * 60 * 30,
   });
 
@@ -148,10 +170,10 @@ export function ReviewsSection() {
         >
           <h3 className="font-display text-[clamp(1.5rem,3vw,2.25rem)] leading-tight text-brand-ink">Me avalia, please!</h3>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
-            {UNITS.map((unit) => (
+            {units.map((unit) => (
               <a
                 key={unit.label}
-                href={unit.url}
+                href={reviewUrl(unit)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center rounded-full bg-[#e63946] px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#d62839] hover:shadow-md"
