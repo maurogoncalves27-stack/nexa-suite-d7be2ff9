@@ -1,4 +1,4 @@
-import { MapPin, UtensilsCrossed, ShoppingBag, Truck } from "lucide-react";
+import { MapPin, UtensilsCrossed, ShoppingBag, Bike } from "lucide-react";
 import { Reveal } from "./reveal";
 
 export type Service = "mesa" | "delivery" | "retirada";
@@ -10,9 +10,9 @@ export const STORES: { name: string; address: string; services: readonly Service
   { name: "Lago Sul", address: "SMDB Conj. 12, PAC 2 Parte 2 – Lago Sul, Brasília-DF · CEP 71680-116", services: ["delivery", "retirada"] },
 ];
 
-const serviceLabels: Record<string, { label: string; icon: React.ReactNode }> = {
-  mesa: { label: "Atendimento de mesa", icon: <UtensilsCrossed className="h-3.5 w-3.5" /> },
-  delivery: { label: "Delivery (iFood / em breve WhatsApp)", icon: <Truck className="h-3.5 w-3.5" /> },
+const serviceLabels: Record<string, { label: string; icon: React.ReactNode; highlighted?: boolean }> = {
+  mesa: { label: "Atendimento de mesa", icon: <UtensilsCrossed className="h-3.5 w-3.5" />, highlighted: true },
+  delivery: { label: "Delivery (iFood / em breve WhatsApp)", icon: <Bike className="h-3.5 w-3.5" /> },
   retirada: { label: "Retirada na loja", icon: <ShoppingBag className="h-3.5 w-3.5" /> },
 };
 
