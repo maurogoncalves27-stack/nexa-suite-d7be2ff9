@@ -139,6 +139,10 @@ export default function CRM() {
   const [threadLoading, setThreadLoading] = useState(false);
   const [threadMessages, setThreadMessages] = useState<any[] | null>(null);
   const [threadError, setThreadError] = useState<string | null>(null);
+  const [expandedConvId, setExpandedConvId] = useState<string | null>(null);
+  const [convMsgsLoading, setConvMsgsLoading] = useState(false);
+  const [convMsgs, setConvMsgs] = useState<any[] | null>(null);
+  const [convMsgsError, setConvMsgsError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [brand, setBrand] = useState<string>("all");
   const [lastSync, setLastSync] = useState<string | null>(null);
