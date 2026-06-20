@@ -197,3 +197,91 @@ export default function SurpresaPage() {
     </SiteLayout>
   );
 }
+
+function BrandStoreSelector() {
+  const [selected, setSelected] = useState<Brand | null>(null);
+
+  return (
+    <div className="mt-10">
+      <AnimatePresence mode="wait" initial={false}>
+        {!selected ? (
+          <motion.div
+            key="brands"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            className="grid gap-4 sm:grid-cols-3"
+          >
+            {BRANDS.map((brand) => (
+              <button
+                key={brand.id}
+                onClick={() => setSelected(brand)}
+                className="group rounded-2xl bg-card p-6 text-left shadow-card ring-1 ring-border transition hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <span
+                  className={`inline-block h-2 w-10 rounded-full ${brand.accent}`}
+                  aria-hidden
+                />
+                <h3 className="mt-4 font-display text-xl text-foreground">
+                  {brand.name}
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {brand.tagline}
+                </p>
+                <p className="mt-4 text-xs font-medium uppercase tracking-wide text-muted-foreground/80 group-hover:text-foreground">
+                  escolher loja →
+                </p>
+              </button>
+            ))}
+          </motion.div>
+        ) : (
+          <motion.div
+            key={`stores-${selected.id}`}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="flex flex-col items-center gap-3">
+              <button
+                onClick={() => setSelected(null)}
+                className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeft className="h-4 w-4" /> trocar marca
+              </button>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-block h-2 w-2 rounded-full ${selected.accent}`}
+                  aria-hidden
+                />
+                <p className="font-display text-lg text-foreground">
+                  {selected.name}
+                </p>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Em qual loja você nos visitou?
+              </p>
+            </div>
+
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              {selected.stores.map((store) => (
+                <a
+                  key={store}
+                  href={reviewUrl(selected.name, store)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full bg-card px-6 py-2.5 text-sm font-semibold text-foreground shadow-sm ring-1 ring-border transition hover:bg-muted"
+                >
+                  {store}
+                  <ExternalLink className="h-4 w-4 opacity-70" />
+                </a>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
