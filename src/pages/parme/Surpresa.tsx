@@ -186,6 +186,7 @@ export default function SurpresaPage() {
                 Regrinhas básicas
               </h3>
               <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+                <li>• Consumo mínimo de R$ 50,00.</li>
                 <li>• 1 porção de churros por cliente.</li>
                 <li>• Resgate presencial na loja da Asa Norte.</li>
                 <li>• Necessário mostrar a avaliação publicada.</li>
