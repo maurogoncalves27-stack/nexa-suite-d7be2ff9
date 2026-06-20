@@ -98,6 +98,7 @@ export default function CRM() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [brand, setBrand] = useState<string>("all");
   const [lastSync, setLastSync] = useState<string | null>(null);
