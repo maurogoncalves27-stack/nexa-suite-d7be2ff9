@@ -236,7 +236,7 @@ export default function FinanceStatementPanel({
       const supplier =
         p.inventory_invoices?.supplier_name || p.supplier_name || p.beneficiary || null;
       const competence =
-        p.inventory_invoices?.issue_date ?? paidDate ?? p.due_date ?? null;
+        p.competence_date ?? p.inventory_invoices?.issue_date ?? paidDate ?? p.due_date ?? null;
       merged.push({
         id: `pay-${p.id}`,
         kind: "payable",
@@ -529,6 +529,7 @@ export default function FinanceStatementPanel({
 
   const exportXlsx = () => {
     const data = filtered.map((r) => ({
+      Competência: fmtDate(r.competence_date),
       Vencimento: fmtDate(r.due_date),
       Pagamento: fmtDate(r.paid_date),
       Tipo: r.kind === "payable" ? "A pagar" : r.kind === "receivable" ? "A receber" : r.kind === "transfer" ? "Transferência" : "Banco",
