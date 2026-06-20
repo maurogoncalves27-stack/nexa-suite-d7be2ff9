@@ -296,15 +296,14 @@ export const NutriOilDisposalControl = ({ storeId }: Props) => {
               )}
               <div className="ml-auto flex items-center gap-1">
                 {r.receipt_path && (
-                  <a
-                    href={getReceiptUrl(r.receipt_path)}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => openReceipt(r.receipt_path!)}
                     className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                   >
                     <FileText className="h-3.5 w-3.5" />
                     Recibo
-                  </a>
+                  </button>
                 )}
                 <Button
                   variant="ghost"
