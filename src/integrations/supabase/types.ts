@@ -8832,6 +8832,195 @@ export type Database = {
           },
         ]
       }
+      parme_conversations: {
+        Row: {
+          brand: string | null
+          channel: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          extracted_at: string | null
+          id: string
+          intent: string | null
+          message_count: number | null
+          parme_id: string
+          raw: Json
+          received_at: string
+          sentiment: string | null
+          started_at: string | null
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          brand?: string | null
+          channel?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          extracted_at?: string | null
+          id?: string
+          intent?: string | null
+          message_count?: number | null
+          parme_id: string
+          raw: Json
+          received_at?: string
+          sentiment?: string | null
+          started_at?: string | null
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brand?: string | null
+          channel?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          extracted_at?: string | null
+          id?: string
+          intent?: string | null
+          message_count?: number | null
+          parme_id?: string
+          raw?: Json
+          received_at?: string
+          sentiment?: string | null
+          started_at?: string | null
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      parme_events: {
+        Row: {
+          event_id: string
+          event_type: string
+          id: string
+          payload: Json
+          process_error: string | null
+          processed_at: string | null
+          received_at: string
+        }
+        Insert: {
+          event_id: string
+          event_type: string
+          id?: string
+          payload: Json
+          process_error?: string | null
+          processed_at?: string | null
+          received_at?: string
+        }
+        Update: {
+          event_id?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          process_error?: string | null
+          processed_at?: string | null
+          received_at?: string
+        }
+        Relationships: []
+      }
+      parme_reservations: {
+        Row: {
+          brand: string | null
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          id: string
+          notes: string | null
+          parme_id: string
+          party_size: number | null
+          raw: Json
+          received_at: string
+          reservation_at: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          brand?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          id?: string
+          notes?: string | null
+          parme_id: string
+          party_size?: number | null
+          raw: Json
+          received_at?: string
+          reservation_at?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brand?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          id?: string
+          notes?: string | null
+          parme_id?: string
+          party_size?: number | null
+          raw?: Json
+          received_at?: string
+          reservation_at?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      parme_tickets: {
+        Row: {
+          brand: string | null
+          channel: string | null
+          closed_at: string | null
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          description: string | null
+          id: string
+          opened_at: string | null
+          parme_id: string
+          priority: string | null
+          raw: Json
+          received_at: string
+          status: string | null
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          brand?: string | null
+          channel?: string | null
+          closed_at?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          description?: string | null
+          id?: string
+          opened_at?: string | null
+          parme_id: string
+          priority?: string | null
+          raw: Json
+          received_at?: string
+          status?: string | null
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brand?: string | null
+          channel?: string | null
+          closed_at?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          description?: string | null
+          id?: string
+          opened_at?: string | null
+          parme_id?: string
+          priority?: string | null
+          raw?: Json
+          received_at?: string
+          status?: string | null
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payroll_advance_installments: {
         Row: {
           advance_id: string
