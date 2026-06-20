@@ -134,8 +134,16 @@ export const NutriOilDisposalControl = ({ storeId }: Props) => {
     fetchRecords();
   };
 
-  const getReceiptUrl = (path: string) =>
-    supabase.storage.from(RECEIPT_BUCKET).getPublicUrl(path).data.publicUrl;
+  const openReceipt = async (path: string) => {
+    const { data, error } = await supabase.storage
+      .from(RECEIPT_BUCKET)
+      .createSignedUrl(path, 60 * 10); // 10 min
+    if (error || !data?.signedUrl) {
+      toast.error("Não foi possível abrir o recibo");
+      return;
+    }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  };
 
   const totalAmount = records.reduce((sum, r) => sum + Number(r.amount_received || 0), 0);
 
