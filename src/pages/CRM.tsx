@@ -502,8 +502,12 @@ export default function CRM() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="reservations" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs defaultValue="dashboard" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+          <TabsTrigger value="dashboard" className="gap-1">
+            <LayoutDashboard className="h-4 w-4" />
+            <span className="hidden sm:inline">Dashboard</span>
+          </TabsTrigger>
           <TabsTrigger value="reservations">
             Reservas ({filteredReservations.length})
           </TabsTrigger>
@@ -514,6 +518,16 @@ export default function CRM() {
             Conversas ({filteredConversations.length})
           </TabsTrigger>
         </TabsList>
+
+        {/* Dashboard */}
+        <TabsContent value="dashboard" className="mt-4">
+          <CRMDashboard
+            reservations={filteredReservations}
+            tickets={filteredTickets}
+            conversations={filteredConversations}
+          />
+        </TabsContent>
+
 
         {/* Reservas */}
         <TabsContent value="reservations" className="mt-4">
