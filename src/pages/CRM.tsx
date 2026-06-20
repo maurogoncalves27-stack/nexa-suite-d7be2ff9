@@ -144,11 +144,33 @@ export default function CRM() {
     setSyncing(true);
     const tid = toast.loading("Sincronizando histórico do Parmê…");
     try {
-      const { data, error } = await supabase.functions.invoke("parme-backfill", {
-        body: {},
+      // Não usar supabase.functions.invoke para conseguir ler o status 503
+      const { data: { session } } = await supabase.auth.getSession();
+      const url = `https://ixjgmerxxakdkfdzgumy.supabase.co/functions/v1/parme-backfill`;
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token ?? ""}`,
+        },
+        body: "{}",
       });
-      if (error) throw error;
-      const counts = (data as any)?.counts ?? {};
+      const payload = await resp.json().catch(() => ({}));
+
+      if (resp.status === 503 || payload?.error === "parme_endpoint_unavailable") {
+        toast.warning("Parmê ainda não expõe o export público", {
+          id: tid,
+          description:
+            "Peça ao time do Parmê para implementar GET /api/public/export/{reservations,tickets,conversations}. O webhook já está funcionando para eventos novos.",
+          duration: 8000,
+        });
+        return;
+      }
+      if (!resp.ok) {
+        throw new Error(payload?.message ?? `HTTP ${resp.status}`);
+      }
+
+      const counts = payload?.counts ?? {};
       toast.success("Sincronização concluída", {
         id: tid,
         description: `Reservas: ${counts.reservations ?? 0} · Tickets: ${counts.tickets ?? 0} · Conversas: ${counts.conversations ?? 0}`,

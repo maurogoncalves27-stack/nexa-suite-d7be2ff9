@@ -90,12 +90,31 @@ async function backfillOne(resource: Resource) {
 
     if (!resp.ok) {
       const text = await resp.text();
+      const looksLikeHtml = text.trimStart().startsWith("<");
+      if (resp.status === 404 || looksLikeHtml) {
+        const err: any = new Error(
+          `O endpoint público do Parmê para "${resource}" ainda não está disponível (HTTP ${resp.status}). Peça ao time do Parmê para implementar GET /api/public/export/${resource}.`,
+        );
+        err.code = "parme_endpoint_unavailable";
+        err.resource = resource;
+        throw err;
+      }
       throw new Error(
         `Parmê ${resource} [${resp.status}]: ${text.slice(0, 300)}`,
       );
     }
 
-    const json = await resp.json();
+    let json: any;
+    try {
+      json = await resp.json();
+    } catch {
+      const err: any = new Error(
+        `Resposta inválida do Parmê em "${resource}" (não é JSON). Endpoint provavelmente não implementado.`,
+      );
+      err.code = "parme_endpoint_unavailable";
+      err.resource = resource;
+      throw err;
+    }
     const items: any[] = json.data ?? json.items ?? json.results ?? [];
     if (items.length > 0) {
       const rows = items.map((r) => mapRow(resource, r));
@@ -178,12 +197,17 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
     );
-  } catch (e) {
+  } catch (e: any) {
     console.error("backfill error", e);
+    const code = e?.code === "parme_endpoint_unavailable" ? 503 : 500;
     return new Response(
-      JSON.stringify({ error: "backfill_failed", message: String(e) }),
+      JSON.stringify({
+        error: e?.code ?? "backfill_failed",
+        resource: e?.resource,
+        message: e?.message ?? String(e),
+      }),
       {
-        status: 500,
+        status: code,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
     );
