@@ -34,7 +34,7 @@ const BRANDS: Brand[] = [
     id: "box-caipira",
     name: "Box Caipira",
     tagline: "Comida raiz, tempero de fogão de lenha",
-    accent: "bg-brand-box-caipira",
+    accent: "bg-brand-box",
     stores: STORES,
   },
 ];
