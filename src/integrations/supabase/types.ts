@@ -994,6 +994,7 @@ export type Database = {
       }
       chat_conversations: {
         Row: {
+          client_meta: Json | null
           created_at: string
           id: string
           last_message_at: string
@@ -1003,6 +1004,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          client_meta?: Json | null
           created_at?: string
           id?: string
           last_message_at?: string
@@ -1012,6 +1014,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          client_meta?: Json | null
           created_at?: string
           id?: string
           last_message_at?: string
