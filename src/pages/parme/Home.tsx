@@ -51,7 +51,7 @@ function BrandCard({ card, index }: { card: Card; index: number }) {
       <Sparkle className="right-6 bottom-[34%]" size={24} />
       <Sparkle className="left-[42%] top-[35%]" size={14} />
 
-      <div className="relative z-10 mt-4 flex flex-1 items-center justify-center px-4">
+      <div className="relative z-10 mt-auto flex flex-1 items-center justify-center px-4">
         <img
           src={card.dish}
           alt={`Prato em destaque de ${card.title}`}
