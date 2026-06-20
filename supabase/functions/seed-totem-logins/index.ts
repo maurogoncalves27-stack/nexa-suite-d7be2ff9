@@ -23,6 +23,13 @@ Deno.serve(async (req) => {
   const auth = await requireRole(req, ["admin"], corsHeaders);
   if (!auth.ok) return auth.response!;
 
+  if (!PASSWORD) {
+    return new Response(
+      JSON.stringify({ error: "TOTEM_SEED_PASSWORD não configurada" }),
+      { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
   const admin = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
