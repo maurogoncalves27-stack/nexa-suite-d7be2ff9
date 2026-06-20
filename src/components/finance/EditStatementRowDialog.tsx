@@ -351,12 +351,17 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            {showInvoiceDate && (
+            {showInvoiceDate ? (
               <div className="space-y-1">
                 <Label>Data competência (NF)</Label>
                 <Input type="date" value={issueDate} disabled />
               </div>
-            )}
+            ) : kind === "payable" ? (
+              <div className="space-y-1">
+                <Label>Data competência</Label>
+                <Input type="date" value={competenceDate} onChange={(e) => setCompetenceDate(e.target.value)} />
+              </div>
+            ) : null}
             {(kind === "payable" || kind === "receivable") && (
               <div className="space-y-1">
                 <Label>Vencimento</Label>
