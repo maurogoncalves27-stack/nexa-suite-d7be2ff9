@@ -61,7 +61,15 @@ export default function EnderecosPage() {
                             const info = serviceLabels[svc];
                             if (!info) return null;
                             return (
-                              <span key={svc} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium" style={{ background: "rgba(232,35,31,0.1)", color: "#e8231f" }}>
+                              <span
+                                key={svc}
+                                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium"
+                                style={
+                                  info.highlighted
+                                    ? { background: "#e8231f", color: "#fff" }
+                                    : { background: "rgba(232,35,31,0.1)", color: "#e8231f" }
+                                }
+                              >
                                 {info.icon}
                                 {info.label}
                               </span>
