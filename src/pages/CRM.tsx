@@ -164,6 +164,46 @@ export default function CRM() {
     load();
   }, []);
 
+  // Buscar thread bruto do Parmê ao abrir um ticket
+  useEffect(() => {
+    if (!openTicket) {
+      setThreadMessages(null);
+      setThreadError(null);
+      setThreadLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setThreadLoading(true);
+    setThreadMessages(null);
+    setThreadError(null);
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke(
+          "parme-get-ticket-conversation",
+          { body: { ticket_id: openTicket.parme_id } },
+        );
+        if (cancelled) return;
+        if ((data as any)?.error === "parme_endpoint_unavailable") {
+          setThreadError("parme_endpoint_unavailable");
+          return;
+        }
+        if (error) {
+          setThreadError((data as any)?.message ?? error.message);
+          return;
+        }
+        const msgs = (data as any)?.messages;
+        setThreadMessages(Array.isArray(msgs) ? msgs : []);
+      } catch (e: any) {
+        if (!cancelled) setThreadError(e?.message ?? "fetch_error");
+      } finally {
+        if (!cancelled) setThreadLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [openTicket]);
+
   async function handleSync() {
     setSyncing(true);
     const tid = toast.loading("Sincronizando histórico do Parmê…");
