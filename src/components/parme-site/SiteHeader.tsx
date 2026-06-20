@@ -48,14 +48,7 @@ export function SiteHeader() {
           </Link>
         </nav>
 
-        <div className="hidden items-center justify-end gap-3 lg:flex">
-          <Link
-            to="/vagas"
-            className="text-[15px] font-semibold transition hover:opacity-80"
-            style={{ color: "rgba(255,247,230,0.9)" }}
-          >
-            Junte-se a nós
-          </Link>
+        <div className="hidden items-center gap-3 lg:flex">
           <Link
             to="/parme/reservar"
             className="inline-flex items-center gap-2 rounded-full border bg-transparent px-4 py-2 text-sm font-semibold transition"
