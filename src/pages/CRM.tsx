@@ -195,6 +195,47 @@ export default function CRM() {
     }
   }
 
+  async function handleDeleteReservation(parmeId: string) {
+    setDeletingId(parmeId);
+    const tid = toast.loading("Excluindo reserva no Parmê…");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const url = `https://ixjgmerxxakdkfdzgumy.supabase.co/functions/v1/parme-delete-reservation`;
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token ?? ""}`,
+        },
+        body: JSON.stringify({ parme_id: parmeId }),
+      });
+      const payload = await resp.json().catch(() => ({}));
+
+      if (resp.status === 503 || payload?.error === "parme_endpoint_unavailable") {
+        toast.warning("Parmê ainda não expõe DELETE público", {
+          id: tid,
+          description:
+            "Peça ao time do Parmê para implementar DELETE /api/public/reservations/:id.",
+          duration: 8000,
+        });
+        return;
+      }
+      if (!resp.ok) {
+        throw new Error(payload?.message ?? `HTTP ${resp.status}`);
+      }
+
+      toast.success("Reserva excluída", {
+        id: tid,
+        description: "Removida no Parmê e sincronizada aqui.",
+      });
+      setReservations((prev) => prev.filter((r) => r.parme_id !== parmeId));
+    } catch (e: any) {
+      toast.error("Falha ao excluir", { id: tid, description: e.message });
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   // brands (extraídos das conversas)
   const brands = useMemo(() => {
     const set = new Set<string>();
