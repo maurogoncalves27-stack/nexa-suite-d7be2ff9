@@ -1,24 +1,38 @@
-# Migração Parmê → Nexa
+# Avaliação em duas etapas: Marca → Loja
 
-## Status
+Substituir os 4 botões atuais por um fluxo de duas etapas, mantendo tudo dentro da página `/surpresa` (sem rota nova, sem reload) e no mesmo padrão visual sóbrio do site.
 
-- ✅ **Fase 1** — Schema canônico (`reservations`, `support_tickets`, `chat_conversations`, `google_reviews`, `parme_site_settings`) + 4 edge functions locais (`parme-confirm-reservation`, `parme-delete-reservation`, `parme-get-conversation-messages`, `parme-get-ticket-conversation`). `parme-webhook` e `parme-backfill` removidos. `CRM.tsx` apontando para tabelas locais.
-- ✅ **Fase 2** — `parme-chat` (streaming + 5 tools: cardápio, recomendação, reserva, problema de pedido, sugerir iFood), `parme-reservation-create` (POST público) e `parme-google-reviews` (GET público) deployadas e validadas.
-- ✅ **Fase 3** — Site público fidelidade total em `/parme/*`:
-  - 52 assets `.asset.json` copiados de `src/assets/parme/*` + `src/assets/giana-avatar.png.asset.json` (CDN da plataforma).
-  - `src/assets/parme-assets.ts` (índice tipado) e `src/components/parme/*` (12 componentes: brand-theme, collage-hero, big-title-section, dish-grid, dish-carousel, dripping-wave, instagram-strip, long-copy, marquee, reveal, reviews-section, reviews, stores, + smooth-scroll com Lenis).
-  - `src/components/parme-site/SiteLayout|SiteHeader|SiteFooter|ChatWidget|HostnameGuard` agora renderizam o shell completo (Lenis smooth scroll + chat lazy + sticky header preto + footer laranja com onda).
-  - 5 páginas em `src/pages/parme/`: `Home` (3 brand cards + reviews), `Brand` (rota dinâmica `:slug` para aquela-parme/box-caipira/aquele-estrogonofe), `Sobre`, `Reservar` (chama `parme-reservation-create`), `Enderecos`.
-  - Adaptações cross-stack: `@tanstack/react-router` Link → `react-router-dom` Link, `useServerFn` → `supabase.functions.invoke()`, todas as rotas prefixadas com `/parme/*`.
-  - CSS escopado em `.parme-site` em `src/styles/parme-site.css` (não vaza no RH).
-  - Deps instaladas: `lenis`, `framer-motion`.
-  - **Pendente opcional:** Avigea em `/public/fonts/Avigea.woff2` (fallback Alfa Slab One). Painel admin TanStack-only (`admin.tsx`/abas `*.tsx`) e libs server-side (`whatsapp.server.ts`, `uazapi.server.ts`, `zapi.server.ts`, `dashboard.functions.ts`, etc.) **não foram portadas** — equivalentes já vivem no Nexa (CRM em `/crm`, edge functions, integração WhatsApp em `/configuracoes/whatsapp`).
-  - `HostnameGuard` redireciona `aquelaparme.com.br` / `www.aquelaparme.com.br` para `/parme/*` automaticamente.
-- ✅ **Fase 4** — CRM completo com 7 abas (Dashboard, Reservas, Tickets, Conversas, Personalizar, Agente IA, Integrações) via `ParmeSettingsPanels.tsx` persistindo em `parme_site_settings`.
-- 🟡 **Fase 5 — Cutover de domínio (parcial / operacional):**
-  - ✅ SEO básico pronto: `public/robots.txt` libera site público e bloqueia rotas privadas do RH (`/crm`, `/dashboard`, `/employees`, etc.); `scripts/generate-sitemap.ts` gera `public/sitemap.xml` com as 7 rotas públicas no `predev`/`prebuild`.
-  - ⏳ **Você precisa fazer manualmente:**
-    1. Project Settings → Domains: conectar `aquelaparme.com.br` (primary) e `www.aquelaparme.com.br` neste projeto. Manter `nexa.aquelaparme.com.br` / `nexasuite.aquelaparme.com.br` como estão.
-    2. Despublicar e deletar o projeto Parmê antigo no seu painel.
-    3. Z-API webhook do cliente já aponta pra `nexa.aquelaparme.com.br/functions/v1/whatsapp-customer-webhook` — nada a mudar.
-  - ⏸️ **Opcional, não bloqueante:** prerender SSG das 7 rotas públicas. Hoje é SPA puro (Google indexa via JS). Se quiser HTML estático no first paint, configurar `vite-plugin-ssg` ou script de prerender — fica pra depois do cutover pra não arriscar a build atual.
+## Etapa 1 — Escolha da marca
+Seção "Me avalia, please!" passa a mostrar **3 cards grandes**, um por marca:
+
+- Aquela Parmê
+- Estrogonofe (Estrogonofe de Carne)
+- Box Caipira
+
+Cada card tem: nome da marca, uma frase curta ("4 unidades" / "3 unidades" etc.) e um ícone discreto. Ao clicar, a etapa 2 aparece logo abaixo com transição suave (fade/slide via `Reveal` ou framer-motion já usado).
+
+## Etapa 2 — Escolha da loja
+Aparece abaixo dos cards de marca, mostrando apenas as lojas onde aquela marca opera, como pills (mesmo estilo dos botões atuais):
+
+- Aquela Parmê: Águas Claras, Asa Sul, Asa Norte, Lago Sul
+- Estrogonofe: (definir lojas — provavelmente as mesmas 4)
+- Box Caipira: (definir lojas)
+
+Cada pill abre o link de busca no Google Maps em nova aba (`reviewUrl(marca, loja)` ajustado para incluir o nome da marca na query, ex.: `Aquela Parmê Asa Norte`).
+
+Botão discreto "← trocar marca" volta para a etapa 1 sem perder contexto.
+
+## Visual
+- Mesmos tokens já em uso (`bg-card`, `shadow-card`, `rounded-2xl`, `ring-border`, `text-store-*`).
+- Cards de marca podem usar a cor fixa da marca (vermelho/marrom/laranja) apenas como acento sutil (borda ou ícone), nunca fundo chapado, para manter sobriedade.
+- Mantém ícone ⭐ e subtítulo atuais.
+
+## Estrutura técnica
+- Arquivo único editado: `src/pages/parme/Surpresa.tsx`.
+- Estado local `selectedBrand` (`useState<Brand | null>`).
+- Constante `BRANDS` com `{ id, name, stores: string[] }`.
+- Função `reviewUrl(brandName, storeName)` monta a URL do Google Maps.
+- Sem mudanças em rotas, hostname guard, ou backend.
+
+## Pergunta aberta
+Confirme as lojas de **Estrogonofe** e **Box Caipira** (assumo as 4 mesmas de Aquela Parmê se não disser nada — totalizando 12 links).

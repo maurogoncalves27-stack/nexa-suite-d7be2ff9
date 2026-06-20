@@ -1,18 +1,46 @@
-import { useEffect } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { SiteLayout } from "@/components/parme-site/SiteLayout";
 import { Reveal } from "@/components/parme/reveal";
-import { Gift, Star, MapPin, ExternalLink } from "lucide-react";
+import { ArrowLeft, Gift, Star, MapPin, ExternalLink } from "lucide-react";
 import churrosAsset from "@/assets/churros.avif.asset.json";
 
-const UNITS = [
-  { label: "Águas Claras", query: "Aquela%20Parmê%20Águas%20Claras%20Brasília" },
-  { label: "Asa Sul", query: "Aquela%20Parmê%20Asa%20Sul%20Brasília" },
-  { label: "Asa Norte", query: "Aquela%20Parmê%20Asa%20Norte%20Brasília" },
-  { label: "Lago Sul", query: "Aquela%20Parmê%20Lago%20Sul%20Brasília" },
+type Brand = {
+  id: string;
+  name: string;
+  tagline: string;
+  accent: string;
+  stores: string[];
+};
+
+const STORES = ["Águas Claras", "Asa Sul", "Asa Norte", "Lago Sul"];
+
+const BRANDS: Brand[] = [
+  {
+    id: "parme",
+    name: "Aquela Parmê",
+    tagline: "Filé à parmegiana e clássicos italianos",
+    accent: "bg-brand-parme",
+    stores: STORES,
+  },
+  {
+    id: "estrogonofe",
+    name: "Estrogonofe de Carne",
+    tagline: "O verdadeiro estrogonofe cremoso",
+    accent: "bg-brand-estrogonofe",
+    stores: STORES,
+  },
+  {
+    id: "box-caipira",
+    name: "Box Caipira",
+    tagline: "Comida raiz, tempero de fogão de lenha",
+    accent: "bg-brand-box",
+    stores: STORES,
+  },
 ];
 
-function reviewUrl(query: string) {
+function reviewUrl(brand: string, store: string) {
+  const query = encodeURIComponent(`${brand} ${store} Brasília`);
   return `https://www.google.com/maps/search/?api=1&query=${query}`;
 }
 
@@ -130,22 +158,10 @@ export default function SurpresaPage() {
             </p>
           </Reveal>
 
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            {UNITS.map((unit) => (
-              <a
-                key={unit.label}
-                href={reviewUrl(unit.query)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full bg-brand-parme px-6 py-2.5 text-sm font-semibold text-brand-parme-foreground shadow-sm transition hover:bg-brand-parme/90"
-              >
-                {unit.label}
-                <ExternalLink className="h-4 w-4 opacity-80" />
-              </a>
-            ))}
-          </div>
+          <BrandStoreSelector />
         </div>
       </section>
+
 
       {/* ONDE RESGATAR */}
       <section className="bg-store-asa-norte py-16 md:py-24">
@@ -181,3 +197,91 @@ export default function SurpresaPage() {
     </SiteLayout>
   );
 }
+
+function BrandStoreSelector() {
+  const [selected, setSelected] = useState<Brand | null>(null);
+
+  return (
+    <div className="mt-10">
+      <AnimatePresence mode="wait" initial={false}>
+        {!selected ? (
+          <motion.div
+            key="brands"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            className="grid gap-4 sm:grid-cols-3"
+          >
+            {BRANDS.map((brand) => (
+              <button
+                key={brand.id}
+                onClick={() => setSelected(brand)}
+                className="group rounded-2xl bg-card p-6 text-left shadow-card ring-1 ring-border transition hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <span
+                  className={`inline-block h-2 w-10 rounded-full ${brand.accent}`}
+                  aria-hidden
+                />
+                <h3 className="mt-4 font-display text-xl text-foreground">
+                  {brand.name}
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {brand.tagline}
+                </p>
+                <p className="mt-4 text-xs font-medium uppercase tracking-wide text-muted-foreground/80 group-hover:text-foreground">
+                  escolher loja →
+                </p>
+              </button>
+            ))}
+          </motion.div>
+        ) : (
+          <motion.div
+            key={`stores-${selected.id}`}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="flex flex-col items-center gap-3">
+              <button
+                onClick={() => setSelected(null)}
+                className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeft className="h-4 w-4" /> trocar marca
+              </button>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-block h-2 w-2 rounded-full ${selected.accent}`}
+                  aria-hidden
+                />
+                <p className="font-display text-lg text-foreground">
+                  {selected.name}
+                </p>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Em qual loja você nos visitou?
+              </p>
+            </div>
+
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              {selected.stores.map((store) => (
+                <a
+                  key={store}
+                  href={reviewUrl(selected.name, store)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full bg-card px-6 py-2.5 text-sm font-semibold text-foreground shadow-sm ring-1 ring-border transition hover:bg-muted"
+                >
+                  {store}
+                  <ExternalLink className="h-4 w-4 opacity-70" />
+                </a>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
