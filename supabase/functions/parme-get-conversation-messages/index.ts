@@ -1,3 +1,5 @@
+// Retorna as mensagens de uma conversa local (chat_conversations.messages).
+// Aceita `conversation_id` (id local) ou `session_id`.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -7,7 +9,44 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const PARME_BASE = "https://parme.lovable.app";
+type MsgOut = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+};
+
+function extractMessages(convo: {
+  id: string;
+  messages: unknown;
+  created_at: string;
+  last_message_at: string | null;
+}): MsgOut[] {
+  const raw = Array.isArray(convo.messages)
+    ? (convo.messages as Array<Record<string, unknown>>)
+    : [];
+  const out: MsgOut[] = [];
+  for (let i = 0; i < raw.length; i++) {
+    const m = raw[i] ?? {};
+    const roleRaw = String(m.role ?? "").toLowerCase();
+    if (roleRaw !== "user" && roleRaw !== "assistant") continue;
+    const content = typeof m.content === "string" ? m.content.trim() : "";
+    if (!content) continue;
+    const rawId = typeof m.id === "string" && m.id.trim() ? m.id.trim() : "";
+    out.push({
+      id: rawId || `${convo.id}-${i}`,
+      role: roleRaw as "user" | "assistant",
+      content,
+      created_at:
+        (typeof m.ts === "string" && m.ts) ||
+        (typeof m.created_at === "string" && m.created_at) ||
+        (typeof m.timestamp === "string" && m.timestamp) ||
+        convo.last_message_at ||
+        convo.created_at,
+    });
+  }
+  return out;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -40,11 +79,11 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const conversationId: string | undefined =
-      body?.conversation_id ?? body?.session_id;
-    if (!conversationId || typeof conversationId !== "string") {
+    const conversationId: string | undefined = body?.conversation_id;
+    const sessionId: string | undefined = body?.session_id;
+    if (!conversationId && !sessionId) {
       return new Response(
-        JSON.stringify({ error: "conversation_id is required" }),
+        JSON.stringify({ error: "conversation_id or session_id is required" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -52,72 +91,33 @@ Deno.serve(async (req) => {
       );
     }
 
-    const consumerId = Deno.env.get("PARME_CONSUMER_ID");
-    const consumerSecret = Deno.env.get("PARME_CONSUMER_SECRET");
-    if (!consumerId || !consumerSecret) {
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    let query = admin
+      .from("chat_conversations")
+      .select("id, session_id, messages, created_at, last_message_at");
+    if (conversationId) {
+      query = query.eq("id", conversationId);
+    } else {
+      query = query.eq("session_id", sessionId!);
+    }
+
+    const { data: convo, error: cErr } = await query.maybeSingle();
+    if (cErr) {
       return new Response(
-        JSON.stringify({ error: "missing_parme_credentials" }),
+        JSON.stringify({ error: "db_error", message: cErr.message }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
     }
-
-    // Tenta /conversations/:id/messages e cai pra /sessions/:id/messages
-    const candidates = [
-      `${PARME_BASE}/api/public/conversations/${encodeURIComponent(conversationId)}/messages`,
-      `${PARME_BASE}/api/public/sessions/${encodeURIComponent(conversationId)}/messages`,
-    ];
-
-    let lastStatus = 0;
-    let lastBody = "";
-    for (const url of candidates) {
-      const resp = await fetch(url, {
-        method: "GET",
-        headers: {
-          "X-Consumer-Id": consumerId,
-          "X-Consumer-Secret": consumerSecret,
-          Accept: "application/json",
-        },
-      });
-      const text = await resp.text();
-      const isHtml = text.trimStart().startsWith("<");
-      const isHtmlOnlyError = text.includes("Only HTML requests are supported");
-      lastStatus = resp.status;
-      lastBody = text;
-
-      if (resp.status === 404 || isHtml || isHtmlOnlyError) continue;
-
-      if (!resp.ok) {
-        return new Response(
-          JSON.stringify({
-            error: "parme_fetch_failed",
-            status: resp.status,
-            body: text.slice(0, 500),
-          }),
-          {
-            status: 502,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          },
-        );
-      }
-
-      let payload: any = {};
-      try {
-        payload = JSON.parse(text);
-      } catch {
-        payload = { raw: text };
-      }
-      const messages = Array.isArray(payload)
-        ? payload
-        : (payload.messages ?? payload.data ?? []);
+    if (!convo) {
       return new Response(
-        JSON.stringify({
-          ok: true,
-          conversation_id: conversationId,
-          messages,
-        }),
+        JSON.stringify({ ok: true, messages: [] }),
         {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -127,13 +127,13 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        error: "parme_endpoint_unavailable",
-        message:
-          "O Parmê ainda não expõe GET /api/public/conversations/:id/messages.",
-        last_status: lastStatus,
+        ok: true,
+        conversation_id: convo.id,
+        session_id: convo.session_id,
+        messages: extractMessages(convo as any),
       }),
       {
-        status: 503,
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
     );

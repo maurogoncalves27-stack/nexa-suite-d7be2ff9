@@ -1,3 +1,5 @@
+// Confirma uma reserva local e dispara WhatsApp via Z-API Cliente.
+// Aceita `id` (preferido) ou `parme_id` (retrocompat) — ambos tratados como id local.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -6,8 +8,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-
-const PARME_BASE = "https://parme.lovable.app";
 
 function normalizePhone(raw: string | null | undefined): string | null {
   const digits = (raw || "").replace(/\D+/g, "");
@@ -105,24 +105,12 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const parmeId: string | undefined = body?.parme_id;
-    if (!parmeId || typeof parmeId !== "string") {
-      return new Response(JSON.stringify({ error: "parme_id is required" }), {
+    const id: string | undefined = body?.id ?? body?.parme_id;
+    if (!id || typeof id !== "string") {
+      return new Response(JSON.stringify({ error: "id is required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-    }
-
-    const consumerId = Deno.env.get("PARME_CONSUMER_ID");
-    const consumerSecret = Deno.env.get("PARME_CONSUMER_SECRET");
-    if (!consumerId || !consumerSecret) {
-      return new Response(
-        JSON.stringify({ error: "missing_parme_credentials" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
     }
 
     const admin = createClient(
@@ -130,18 +118,17 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // Pegar dados da reserva para montar a mensagem
     const { data: reservation, error: resErr } = await admin
-      .from("parme_reservations")
-      .select("name, phone, reservation_date, reservation_time, party_size")
-      .eq("parme_id", parmeId)
+      .from("reservations")
+      .select("id, name, phone, reservation_date, reservation_time, party_size")
+      .eq("id", id)
       .maybeSingle();
 
     if (resErr || !reservation) {
       return new Response(
         JSON.stringify({
           error: "reservation_not_found",
-          message: resErr?.message ?? "Reserva não encontrada localmente.",
+          message: resErr?.message ?? "Reserva não encontrada.",
         }),
         {
           status: 404,
@@ -150,55 +137,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // PATCH no Parmê
-    const url = `${PARME_BASE}/api/public/reservations/${encodeURIComponent(parmeId)}`;
-    const resp = await fetch(url, {
-      method: "PATCH",
-      headers: {
-        "X-Consumer-Id": consumerId,
-        "X-Consumer-Secret": consumerSecret,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({ status: "confirmed" }),
-    });
-
-    const text = await resp.text();
-    const isHtml = text.trimStart().startsWith("<");
-
-    if (resp.status === 404 || resp.status === 405 || isHtml) {
-      return new Response(
-        JSON.stringify({
-          error: "parme_endpoint_unavailable",
-          message:
-            "O Parmê ainda não expõe PATCH /api/public/reservations/:id.",
-        }),
-        {
-          status: 503,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    if (!resp.ok) {
-      return new Response(
-        JSON.stringify({
-          error: "parme_confirm_failed",
-          status: resp.status,
-          body: text.slice(0, 500),
-        }),
-        {
-          status: 502,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    // Atualizar status local
     const { error: updErr } = await admin
-      .from("parme_reservations")
+      .from("reservations")
       .update({ status: "confirmed" })
-      .eq("parme_id", parmeId);
+      .eq("id", id);
 
     if (updErr) {
       return new Response(
@@ -213,7 +155,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Enviar WhatsApp ao cliente
     const phone = normalizePhone(reservation.phone);
     let whatsapp_sent = false;
     let whatsapp_error: string | undefined;
@@ -229,7 +170,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         ok: true,
-        parme_id: parmeId,
+        id,
         whatsapp_sent,
         whatsapp_error,
       }),
