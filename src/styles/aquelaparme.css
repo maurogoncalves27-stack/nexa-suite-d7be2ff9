@@ -2,6 +2,15 @@
  * Espelha o site refeito em aquelaparme.com.br (Lovable - parme.lovable.app).
  * Aplicado via classe .ap-brand no wrapper raiz da página.
  */
+@font-face {
+  font-family: "Avigea";
+  src: url("https://aquelaparme.com.br/fonts/Avigea.woff2") format("woff2"),
+       url("https://aquelaparme.com.br/fonts/Avigea.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 .ap-brand {
   /* Paleta extraída do CSS oficial */
   --ap-cream: 41 95% 93%;          /* #fef4df fundo principal */
@@ -75,7 +84,7 @@
   text-decoration-color: #fff;
 }
 .ap-brand .ap-footer h4 {
-  font-family: "Alfa Slab One", ui-serif, Georgia, serif;
+  font-family: "Avigea", "Alfa Slab One", Georgia, serif;
   font-weight: 400;
   color: hsl(var(--ap-cream));
   letter-spacing: -0.01em;
@@ -127,7 +136,7 @@
 
 /* Headlines / display em Alfa Slab One (vermelho da marca) */
 .ap-brand .ap-display {
-  font-family: "Alfa Slab One", ui-serif, Georgia, serif;
+  font-family: "Avigea", "Alfa Slab One", Georgia, serif;
   font-weight: 400;
   letter-spacing: -0.01em;
   color: hsl(var(--ap-red));
