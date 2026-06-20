@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Instagram, Facebook, Mail, Calendar } from "lucide-react";
+import { Instagram, Facebook, Mail, Calendar, MapPin, Clock } from "lucide-react";
 
 // Logo do site refeito (servido pela CDN do Lovable em aquelaparme.com.br)
 const LOGO_URL =
