@@ -988,3 +988,364 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
     </div>
   );
 }
+
+// ---------- CRM Dashboard ----------
+
+const CHART_COLORS = [
+  "hsl(var(--primary))",
+  "hsl(var(--success))",
+  "hsl(var(--warning))",
+  "hsl(var(--destructive))",
+  "hsl(var(--accent))",
+  "hsl(var(--muted-foreground))",
+];
+
+function CRMDashboard({
+  reservations,
+  tickets,
+  conversations,
+}: {
+  reservations: Reservation[];
+  tickets: Ticket[];
+  conversations: Conversation[];
+}) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Status breakdown reservas
+  const resByStatus = useMemo(() => {
+    const m = new Map<string, number>();
+    reservations.forEach((r) => {
+      const k = (r.status ?? "—").toLowerCase();
+      m.set(k, (m.get(k) ?? 0) + 1);
+    });
+    return Array.from(m.entries()).map(([status, count]) => ({
+      status: translateStatus(status),
+      count,
+    }));
+  }, [reservations]);
+
+  // Status breakdown tickets
+  const ticketsByStatus = useMemo(() => {
+    const m = new Map<string, number>();
+    tickets.forEach((t) => {
+      const k = (t.status ?? "—").toLowerCase();
+      m.set(k, (m.get(k) ?? 0) + 1);
+    });
+    return Array.from(m.entries()).map(([status, count]) => ({
+      status: translateStatus(status),
+      count,
+    }));
+  }, [tickets]);
+
+  // Reservas próximas (a partir de hoje)
+  const upcoming = useMemo(() => {
+    return reservations
+      .filter((r) => {
+        if (!r.reservation_date) return false;
+        const d = new Date(r.reservation_date);
+        d.setHours(0, 0, 0, 0);
+        return d >= today;
+      })
+      .sort((a, b) => (a.reservation_date! > b.reservation_date! ? 1 : -1))
+      .slice(0, 6);
+  }, [reservations]);
+
+  // Reservas por dia (próximos 14 dias)
+  const resPerDay = useMemo(() => {
+    const buckets: { day: string; count: number; label: string }[] = [];
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() + i);
+      const key = d.toISOString().slice(0, 10);
+      buckets.push({
+        day: key,
+        label: format(d, "dd/MM", { locale: ptBR }),
+        count: 0,
+      });
+    }
+    reservations.forEach((r) => {
+      if (!r.reservation_date) return;
+      const key = r.reservation_date.slice(0, 10);
+      const b = buckets.find((x) => x.day === key);
+      if (b) b.count++;
+    });
+    return buckets;
+  }, [reservations]);
+
+  // Tickets criados últimos 14 dias
+  const ticketsPerDay = useMemo(() => {
+    const buckets: { day: string; label: string; count: number }[] = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      buckets.push({
+        day: key,
+        label: format(d, "dd/MM", { locale: ptBR }),
+        count: 0,
+      });
+    }
+    tickets.forEach((t) => {
+      if (!t.created_at) return;
+      const key = t.created_at.slice(0, 10);
+      const b = buckets.find((x) => x.day === key);
+      if (b) b.count++;
+    });
+    return buckets;
+  }, [tickets]);
+
+  // Conversas por marca
+  const convByBrand = useMemo(() => {
+    const m = new Map<string, number>();
+    conversations.forEach((c) => {
+      const marca = (c.extracted?.marca as string) ?? "Sem marca";
+      m.set(marca, (m.get(marca) ?? 0) + 1);
+    });
+    return Array.from(m.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 6);
+  }, [conversations]);
+
+  const pendingRes = resByStatus.find((s) => s.status === "Pendente")?.count ?? 0;
+  const openTickets = ticketsByStatus.find((s) => s.status === "Aberto")?.count ?? 0;
+
+  return (
+    <div className="space-y-4">
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+              <Clock className="h-4 w-4" /> Reservas pendentes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-warning">{pendingRes}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+              <Calendar className="h-4 w-4" /> Próximas reservas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{upcoming.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+              <Ticket className="h-4 w-4" /> Tickets abertos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-destructive">{openTickets}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" /> Conversas (total)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{conversations.length}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Reservas — próximos 14 dias</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={resPerDay}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <ReTooltip
+                    contentStyle={{
+                      background: "hsl(var(--popover))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: 8,
+                    }}
+                  />
+                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Tickets — últimos 14 dias</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={ticketsPerDay}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <ReTooltip
+                    contentStyle={{
+                      background: "hsl(var(--popover))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: 8,
+                    }}
+                  />
+                  <Bar dataKey="count" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Status das reservas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 w-full">
+              {resByStatus.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                  Sem dados
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={resByStatus}
+                      dataKey="count"
+                      nameKey="status"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      label={(e) => `${e.status}: ${e.count}`}
+                    >
+                      {resByStatus.map((_, i) => (
+                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <ReTooltip
+                      contentStyle={{
+                        background: "hsl(var(--popover))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: 8,
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Conversas por marca</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 w-full">
+              {convByBrand.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                  Sem dados
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={convByBrand} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      tick={{ fontSize: 11 }}
+                      width={110}
+                    />
+                    <ReTooltip
+                      contentStyle={{
+                        background: "hsl(var(--popover))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: 8,
+                      }}
+                    />
+                    <Bar dataKey="value" fill="hsl(var(--accent))" radius={[0, 4, 4, 0]}>
+                      {convByBrand.map((_, i) => (
+                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Próximas reservas */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Calendar className="h-4 w-4" /> Próximas reservas
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {upcoming.length === 0 ? (
+            <div className="p-6 text-center text-sm text-muted-foreground">
+              Nenhuma reserva futura.
+            </div>
+          ) : (
+            <div className="divide-y">
+              {upcoming.map((r) => (
+                <div
+                  key={r.id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3"
+                >
+                  <div>
+                    <div className="font-medium">{r.name ?? "—"}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {r.phone ?? "—"} · {r.party_size ?? "?"} pessoas
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-sm">
+                      {fmtDate(r.reservation_date)}{" "}
+                      <span className="text-muted-foreground">
+                        {r.reservation_time?.slice(0, 5) ?? ""}
+                      </span>
+                    </div>
+                    <Badge
+                      variant={
+                        r.status === "confirmed"
+                          ? "default"
+                          : r.status === "cancelled"
+                            ? "destructive"
+                            : "outline"
+                      }
+                      className={
+                        r.status === "confirmed"
+                          ? "bg-success text-success-foreground hover:bg-success/90"
+                          : undefined
+                      }
+                    >
+                      {translateStatus(r.status)}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
