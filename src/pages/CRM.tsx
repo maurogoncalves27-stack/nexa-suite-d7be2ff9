@@ -574,19 +574,147 @@ export default function CRM() {
         {/* Reservas */}
         <TabsContent value="reservations" className="mt-4">
           <Card>
-            <CardContent className="p-0 overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Contato</TableHead>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Hora</TableHead>
-                    <TableHead>Pessoas</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-24 text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
+            <CardContent className="p-0">
+              {/* Mobile: cards */}
+              <div className="md:hidden divide-y">
+                {loading ? (
+                  <div className="p-8 text-center text-sm text-muted-foreground">Carregando…</div>
+                ) : filteredReservations.length === 0 ? (
+                  <div className="p-8 text-center text-sm text-muted-foreground">Nenhuma reserva.</div>
+                ) : (
+                  filteredReservations.map((r) => (
+                    <div key={r.id} className="p-4 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="font-medium truncate">{r.name ?? "—"}</div>
+                          <div className="text-xs text-muted-foreground">{r.phone ?? "—"}</div>
+                          {r.email && (
+                            <div className="text-xs text-muted-foreground truncate">{r.email}</div>
+                          )}
+                        </div>
+                        {r.status && (
+                          <Badge
+                            variant={
+                              r.status === "confirmed"
+                                ? "default"
+                                : r.status === "cancelled"
+                                  ? "destructive"
+                                  : "outline"
+                            }
+                            className={
+                              r.status === "confirmed"
+                                ? "bg-success text-success-foreground hover:bg-success/90 shrink-0"
+                                : "shrink-0"
+                            }
+                          >
+                            {translateStatus(r.status)}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3.5 w-3.5" />
+                          {fmtDate(r.reservation_date)} · {r.reservation_time?.slice(0, 5) ?? "—"}
+                        </span>
+                        <span>· {r.party_size ?? "?"} pess.</span>
+                      </div>
+                      <div className="flex items-center gap-2 pt-1">
+                        {r.status !== "confirmed" && r.status !== "cancelled" && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={confirmingId === r.parme_id}
+                                className="border-success text-success hover:bg-success hover:text-success-foreground gap-1 flex-1"
+                              >
+                                <CheckCircle2 className="h-4 w-4" />
+                                Confirmar
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Confirmar reserva?</AlertDialogTitle>
+                                <AlertDialogDescription asChild>
+                                  <div className="space-y-2">
+                                    <p>
+                                      Vamos marcar a reserva de{" "}
+                                      <strong>{r.name ?? "—"}</strong> como confirmada no Parmê
+                                      e enviar este WhatsApp ao cliente
+                                      {r.phone ? ` (${r.phone})` : ""}:
+                                    </p>
+                                    <pre className="whitespace-pre-wrap rounded-md bg-muted p-3 text-xs text-foreground">
+{`Olá, ${(r.name || "").split(" ")[0] || "tudo bem"}! 👋
+
+Sua reserva no *Aquela Parmê* está *confirmada* para *${fmtDate(r.reservation_date)}* às *${r.reservation_time?.slice(0, 5) ?? "—"}*${r.party_size ? ` para ${r.party_size} ${r.party_size === 1 ? "pessoa" : "pessoas"}` : ""}.
+
+Qualquer alteração é só responder por aqui. Até logo! 🍝`}
+                                    </pre>
+                                  </div>
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleConfirmReservation(r.parme_id)}
+                                  className="bg-success text-success-foreground hover:bg-success/90"
+                                >
+                                  Confirmar e enviar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              disabled={deletingId === r.parme_id}
+                              className="h-9 w-9 text-destructive hover:text-destructive shrink-0"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir reserva?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Isso vai excluir a reserva de <strong>{r.name ?? "—"}</strong>{" "}
+                                também no Parmê. A ação não pode ser desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteReservation(r.parme_id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Desktop: tabela */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Contato</TableHead>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Hora</TableHead>
+                      <TableHead>Pessoas</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="w-24 text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
@@ -721,6 +849,7 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                   )}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
