@@ -1,34 +1,56 @@
-import { Link } from "react-router-dom";
-import { Instagram, Facebook, Mail, Calendar, MapPin, Clock } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { useState } from "react";
+import { Menu, X, ChevronRight, MessageCircle, CalendarDays, AtSign, Globe, Mail, MapPin, Clock } from "lucide-react";
 
-// Logo do site refeito (servido pela CDN do Lovable em aquelaparme.com.br)
+/* ─── Logo da CDN do site oficial ─── */
 const LOGO_URL =
   "https://aquelaparme.com.br/__l5e/assets-v1/08f2d7b0-9a37-450b-91db-83362d133960/Logo-Aquela-Parme.webp";
 const SITE = "https://aquelaparme.com.br";
+const WHATSAPP_URL = "https://wa.me/5561999999999";
 
-const NAV = [
-  { label: "Home", href: SITE },
-  { label: "Aquela Parmê", href: `${SITE}/aquela-parme` },
-  { label: "Aquele estrogonofe", href: `${SITE}/aquele-estrogonofe` },
-  { label: "Box caipira", href: `${SITE}/box-caipira` },
-  { label: "Sobre", href: `${SITE}/sobre` },
-];
+const leftLinks = [
+  { to: SITE + "/", label: "Home", external: true },
+  { to: SITE + "/aquela-parme", label: "Aquela Parmê", external: true },
+  { to: SITE + "/aquele-estrogonofe", label: "Aquele estrogonofe", external: true },
+  { to: SITE + "/box-caipira", label: "Box caipira", external: true },
+  { to: SITE + "/sobre", label: "Sobre", external: true },
+] as const;
 
-export function ApFloatingHeader() {
+/* ─── Onda do rodapé (DrippingWave) — igual ao site oficial ─── */
+function DrippingWave({ color = "#ef6b3a", bg = "#fff7e6" }: { color?: string; bg?: string }) {
   return (
-    <header className="ap-header-floating">
-      <div className="mx-auto max-w-7xl flex items-center justify-between gap-3">
-        {/* Nav esquerda */}
-        <nav className="hidden lg:flex items-center gap-6 text-sm">
-          {NAV.map((n) => (
+    <div aria-hidden style={{ background: bg }}>
+      <svg viewBox="0 0 1440 180" preserveAspectRatio="none" style={{ display: "block", height: "clamp(7rem, 10vw, 9rem)", width: "100%" }}>
+        <path
+          d="M0,105 C 48,105 96,75 144,75 C 192,75 240,105 288,105 C 336,105 384,75 432,75 C 480,75 528,105 576,105 C 624,105 672,75 720,75 C 768,75 816,105 864,105 C 912,105 960,75 1008,75 C 1056,75 1104,105 1152,105 C 1200,105 1248,75 1296,75 C 1344,75 1392,105 1440,105 L 1440,180 L 0,180 Z"
+          fill={color}
+        />
+      </svg>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   HEADER  —  cópia fiel do site oficial
+   ═══════════════════════════════════════════════════════════ */
+export function ApFloatingHeader() {
+  const [open, setOpen] = useState(false);
+  const location = useLocation();
+  const isVagas = location.pathname.startsWith("/vagas");
+
+  return (
+    <header className="ap-header">
+      <div className="ap-header-inner">
+        {/* Nav esquerda — desktop */}
+        <nav className="ap-header-nav">
+          {leftLinks.map((l) => (
             <a
-              key={n.label}
-              href={n.href}
+              key={l.label}
+              href={l.to}
               target="_blank"
               rel="noopener noreferrer"
-              className="ap-nav-link"
             >
-              {n.label}
+              {l.label}
             </a>
           ))}
         </nav>
@@ -38,165 +60,225 @@ export function ApFloatingHeader() {
           href={SITE}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center"
+          className="ap-header-logo"
+          onClick={() => setOpen(false)}
         >
-          <img
-            src={LOGO_URL}
-            alt="Aquela Parmê"
-            className="h-12 md:h-14 w-auto"
-          />
+          <img src={LOGO_URL} alt="Aquela Parmê" />
         </a>
 
-        {/* Lado direito */}
-        <div className="flex items-center gap-3 md:gap-5">
-          <Link to="/vagas" className="ap-nav-link active hidden sm:inline">
+        {/* Lado direito — desktop */}
+        <div className="ap-header-right">
+          <Link
+            to="/vagas"
+            style={{ fontSize: "15px", fontWeight: 600, textDecoration: "none", color: isVagas ? "hsl(var(--ap-red-soft))" : "hsl(var(--ap-cream-2) / .9)" }}
+            className="ap-hover-text-red"
+          >
             Trabalhe conosco
           </Link>
           <a
-            href={SITE}
+            href={SITE + "/reservar"}
             target="_blank"
             rel="noopener noreferrer"
-            className="ap-btn-outline inline-flex items-center gap-2 text-sm whitespace-nowrap"
+            className="ap-header-btn-outline"
           >
-            <Calendar className="h-4 w-4" />
-            <span className="hidden sm:inline">Faça sua reserva</span>
-            <span className="sm:hidden">Reservar</span>
+            <CalendarDays style={{ height: "1rem", width: "1rem" }} />
+            Faça sua reserva
+          </a>
+          <a
+            href={WHATSAPP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ display: "none" }}
+          >
+            <MessageCircle style={{ height: "1rem", width: "1rem" }} />
+            Peça pelo WhatsApp
+            <span>
+              <ChevronRight style={{ height: "0.75rem", width: "0.75rem" }} />
+            </span>
           </a>
         </div>
+
+        {/* Hamburger — mobile */}
+        <button
+          type="button"
+          className="ap-header-hamburger"
+          onClick={() => setOpen((v) => !v)}
+          aria-label={open ? "Fechar menu" : "Abrir menu"}
+          aria-expanded={open}
+        >
+          {open ? <X style={{ height: "1.5rem", width: "1.5rem" }} /> : <Menu style={{ height: "1.5rem", width: "1.5rem" }} />}
+        </button>
       </div>
 
-      {/* Nav mobile */}
-      <nav className="lg:hidden mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs">
-        {NAV.map((n) => (
-          <a
-            key={n.label}
-            href={n.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="ap-nav-link"
-          >
-            {n.label}
-          </a>
-        ))}
-      </nav>
-    </header>
-  );
-}
-
-export function ApFooter() {
-  return (
-    <footer className="ap-footer">
-      <div className="ap-footer-wave" aria-hidden="true" />
-      <div className="max-w-6xl mx-auto px-6 md:px-10 pt-10 pb-10 grid gap-10 md:grid-cols-3">
-        {/* Coluna 1 — Contato */}
-        <div>
-          <h4 className="text-3xl md:text-4xl mb-6">Entre em contato</h4>
-          <ul className="flex flex-wrap items-center gap-x-6 gap-y-3">
-            <li>
-              <a
-                href="https://www.instagram.com/aquelaparme"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ap-footer-link inline-flex items-center gap-2"
-              >
-                Instagram <Instagram className="h-4 w-4" />
-              </a>
-            </li>
-            <li>
-              <a
-                href="https://www.facebook.com/aquelaparme"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ap-footer-link inline-flex items-center gap-2"
-              >
-                Facebook <Facebook className="h-4 w-4" />
-              </a>
-            </li>
-            <li>
-              <a
-                href="mailto:contato@aquelaparme.com.br"
-                className="ap-footer-link inline-flex items-center gap-2"
-              >
-                E-mail <Mail className="h-4 w-4" />
-              </a>
-            </li>
-          </ul>
-        </div>
-
-        {/* Coluna 2 — Onde estamos */}
-        <div>
-          <h4 className="text-3xl md:text-4xl mb-6">Onde estamos</h4>
-          <ul className="space-y-4 ap-sans text-sm" style={{ color: "hsl(var(--ap-cream))" }}>
-            <li className="flex gap-3">
-              <MapPin className="h-4 w-4 mt-1 shrink-0" />
-              <div>
-                <p className="font-semibold">Unidade Asa Norte</p>
-                <p>114 Norte, Asa Norte, Brasília/DF</p>
+      {/* Menu mobile */}
+      {open && (
+        <nav className="ap-header-mobile">
+          <ul>
+            {leftLinks.map((l) => (
+              <li key={l.label}>
                 <a
-                  href="https://maps.google.com/?q=Aquela+Parme+Asa+Norte+Brasilia"
+                  href={l.to}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="ap-footer-link inline-block mt-1"
+                  onClick={() => setOpen(false)}
                 >
-                  Ver no Google Maps
-                </a>
-              </div>
-            </li>
-            <li className="flex gap-3">
-              <Clock className="h-4 w-4 mt-1 shrink-0" />
-              <div>
-                <p className="font-semibold">Horário de funcionamento</p>
-                <p>Seg a Qui: 11h30 – 23h</p>
-                <p>Sex e Sáb: 11h30 – 00h</p>
-                <p>Dom: 11h30 – 22h</p>
-              </div>
-            </li>
-          </ul>
-        </div>
-
-        {/* Coluna 3 — Navegue pelo site */}
-        <div>
-          <h4 className="text-3xl md:text-4xl mb-6">Navegue pelo site</h4>
-          <ul className="flex flex-wrap gap-x-6 gap-y-3">
-            {NAV.map((n) => (
-              <li key={n.label}>
-                <a
-                  href={n.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="ap-footer-link"
-                >
-                  {n.label}
+                  {l.label}
                 </a>
               </li>
             ))}
             <li>
-              <a
-                href={SITE}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ap-footer-link"
-              >
-                Reservar mesa
-              </a>
-            </li>
-            <li>
-              <Link to="/vagas" className="ap-footer-link">
+              <Link to="/vagas" onClick={() => setOpen(false)} style={{ color: isVagas ? "hsl(var(--ap-red-soft))" : undefined }}>
                 Trabalhe conosco
               </Link>
             </li>
+            <li>
+              <a
+                href={SITE + "/reservar"}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setOpen(false)}
+                className="ap-header-btn-outline"
+              >
+                Faça sua reserva
+              </a>
+            </li>
+            <li>
+              <a
+                href={WHATSAPP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: "none" }}
+              >
+                Peça pelo WhatsApp
+              </a>
+            </li>
           </ul>
-        </div>
-      </div>
-
-      <div
-        className="max-w-6xl mx-auto px-6 md:px-10 pb-6 ap-sans text-xs flex flex-col md:flex-row gap-2 md:items-center md:justify-between"
-        style={{ color: "hsl(var(--ap-cream) / .9)" }}
-      >
-        <span>Política de Privacidade · Termos de Serviço</span>
-        <span>{new Date().getFullYear()} · Aquela Parmê. Todos os direitos reservados.</span>
-      </div>
-    </footer>
+        </nav>
+      )}
+    </header>
   );
 }
 
+/* ═══════════════════════════════════════════════════════════
+   FOOTER  —  cópia fiel do site oficial
+   ═══════════════════════════════════════════════════════════ */
+const navLinks = [
+  { to: SITE + "/", label: "Home", external: true },
+  { to: SITE + "/aquela-parme", label: "Aquela Parme", external: true },
+  { to: SITE + "/aquele-estrogonofe", label: "Aquele estrogonofe", external: true },
+  { to: SITE + "/box-caipira", label: "Box caipira", external: true },
+  { to: SITE + "/sobre", label: "Sobre", external: true },
+  { to: SITE + "/reservar", label: "Reservar mesa", external: true },
+  { to: "/vagas", label: "Trabalhe conosco", external: false },
+] as const;
+
+export function ApFooter() {
+  return (
+    <>
+      <DrippingWave color="#ef6b3a" bg="#fff7e6" />
+      <footer className="ap-footer">
+        <div className="ap-footer-inner">
+          <h3>Entre em contato</h3>
+
+          <div style={{ marginTop: "1.25rem", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "1.5rem 1.5rem" }}>
+            <a
+              href="https://instagram.com/aquelaparme"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Instagram do Aquela Parmê"
+              className="ap-footer-link"
+              style={{ borderBottom: "1px solid hsl(var(--ap-cream) / .7)", paddingBottom: "0.25rem" }}
+            >
+              Instagram <AtSign style={{ height: "1rem", width: "1rem" }} aria-hidden />
+            </a>
+            <a
+              href="https://facebook.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Facebook do Aquela Parmê"
+              className="ap-footer-link"
+              style={{ borderBottom: "1px solid hsl(var(--ap-cream) / .7)", paddingBottom: "0.25rem" }}
+            >
+              Facebook <Globe style={{ height: "1rem", width: "1rem" }} aria-hidden />
+            </a>
+            <a
+              href="mailto:contato@aquelaparme.com.br"
+              aria-label="E-mail para contato"
+              className="ap-footer-link"
+              style={{ borderBottom: "1px solid hsl(var(--ap-cream) / .7)", paddingBottom: "0.25rem" }}
+            >
+              E-mail <Mail style={{ height: "1rem", width: "1rem" }} aria-hidden />
+            </a>
+          </div>
+
+          <div className="ap-footer-grid">
+            <div>
+              <h4>Onde estamos</h4>
+              <div style={{ marginTop: "1rem", display: "flex", flexDirection: "column", gap: "0.75rem", fontSize: "0.875rem" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
+                  <MapPin style={{ marginTop: "0.125rem", height: "1rem", width: "1rem", flexShrink: 0 }} aria-hidden />
+                  <div>
+                    <p style={{ fontWeight: 600, margin: 0 }}>Unidade Asa Norte</p>
+                    <p style={{ color: "hsl(var(--ap-cream) / .9)", margin: 0 }}>114 Norte, Asa Norte, Brasília — DF</p>
+                    <a
+                      href="https://maps.google.com/?q=Aquela+Parme+Asa+Norte+Brasilia"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ap-footer-link"
+                      style={{ marginTop: "0.25rem", fontSize: "0.875rem" }}
+                    >
+                      Ver no Google Maps
+                    </a>
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
+                  <Clock style={{ marginTop: "0.125rem", height: "1rem", width: "1rem", flexShrink: 0 }} aria-hidden />
+                  <div>
+                    <p style={{ fontWeight: 600, margin: 0 }}>Horário de funcionamento</p>
+                    <p style={{ color: "hsl(var(--ap-cream) / .9)", margin: 0 }}>Seg a Qui: 11h30 – 23h</p>
+                    <p style={{ color: "hsl(var(--ap-cream) / .9)", margin: 0 }}>Sex e Sáb: 11h30 – 00h</p>
+                    <p style={{ color: "hsl(var(--ap-cream) / .9)", margin: 0 }}>Dom: 11h30 – 22h</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4>Navegue pelo site</h4>
+              <nav style={{ marginTop: "1rem", display: "flex", flexWrap: "wrap", gap: "2rem 2rem", fontSize: "1rem", fontWeight: 600 }} aria-label="Rodapé">
+                {navLinks.map((l) =>
+                  l.external ? (
+                    <a
+                      key={l.label}
+                      href={l.to}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ap-footer-link"
+                      style={{ borderBottom: "1px solid hsl(var(--ap-cream) / .7)", paddingBottom: "0.25rem" }}
+                    >
+                      {l.label}
+                    </a>
+                  ) : (
+                    <Link
+                      key={l.label}
+                      to={l.to}
+                      className="ap-footer-link"
+                      style={{ borderBottom: "1px solid hsl(var(--ap-cream) / .7)", paddingBottom: "0.25rem" }}
+                    >
+                      {l.label}
+                    </Link>
+                  )
+                )}
+              </nav>
+            </div>
+          </div>
+
+          <div className="ap-footer-bottom">
+            <p style={{ margin: 0 }}>Política de Privacidade · Termos de Serviço</p>
+            <p style={{ margin: 0 }}>{new Date().getFullYear()} · Aquela Parmê. Todos direitos reservados.</p>
+          </div>
+        </div>
+      </footer>
+    </>
+  );
+}
