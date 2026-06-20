@@ -82,6 +82,7 @@ export default function SurpresaPage() {
               >
                 Como agradecimento pela sua avaliação, a gente te entrega uma porção
                 de churros quentinha na nossa loja física da Asa Norte.
+                <span className="block mt-2 font-medium">Válido para consumo a partir de R$ 50,00.</span>
               </motion.p>
             </div>
             <motion.div
@@ -185,6 +186,7 @@ export default function SurpresaPage() {
                 Regrinhas básicas
               </h3>
               <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+                <li>• Consumo mínimo de R$ 50,00.</li>
                 <li>• 1 porção de churros por cliente.</li>
                 <li>• Resgate presencial na loja da Asa Norte.</li>
                 <li>• Necessário mostrar a avaliação publicada.</li>
