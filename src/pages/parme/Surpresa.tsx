@@ -1,18 +1,46 @@
-import { useEffect } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { SiteLayout } from "@/components/parme-site/SiteLayout";
 import { Reveal } from "@/components/parme/reveal";
-import { Gift, Star, MapPin, ExternalLink } from "lucide-react";
+import { ArrowLeft, Gift, Star, MapPin, ExternalLink } from "lucide-react";
 import churrosAsset from "@/assets/churros.avif.asset.json";
 
-const UNITS = [
-  { label: "Águas Claras", query: "Aquela%20Parmê%20Águas%20Claras%20Brasília" },
-  { label: "Asa Sul", query: "Aquela%20Parmê%20Asa%20Sul%20Brasília" },
-  { label: "Asa Norte", query: "Aquela%20Parmê%20Asa%20Norte%20Brasília" },
-  { label: "Lago Sul", query: "Aquela%20Parmê%20Lago%20Sul%20Brasília" },
+type Brand = {
+  id: string;
+  name: string;
+  tagline: string;
+  accent: string;
+  stores: string[];
+};
+
+const STORES = ["Águas Claras", "Asa Sul", "Asa Norte", "Lago Sul"];
+
+const BRANDS: Brand[] = [
+  {
+    id: "parme",
+    name: "Aquela Parmê",
+    tagline: "Filé à parmegiana e clássicos italianos",
+    accent: "bg-brand-parme",
+    stores: STORES,
+  },
+  {
+    id: "estrogonofe",
+    name: "Estrogonofe de Carne",
+    tagline: "O verdadeiro estrogonofe cremoso",
+    accent: "bg-brand-estrogonofe",
+    stores: STORES,
+  },
+  {
+    id: "box-caipira",
+    name: "Box Caipira",
+    tagline: "Comida raiz, tempero de fogão de lenha",
+    accent: "bg-brand-box-caipira",
+    stores: STORES,
+  },
 ];
 
-function reviewUrl(query: string) {
+function reviewUrl(brand: string, store: string) {
+  const query = encodeURIComponent(`${brand} ${store} Brasília`);
   return `https://www.google.com/maps/search/?api=1&query=${query}`;
 }
 
