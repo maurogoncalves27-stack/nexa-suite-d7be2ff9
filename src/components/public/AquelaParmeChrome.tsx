@@ -86,10 +86,12 @@ export function ApFloatingHeader() {
 export function ApFooter() {
   return (
     <footer className="ap-footer">
-      <div className="max-w-6xl mx-auto px-6 md:px-10 py-12 grid gap-12 md:grid-cols-2">
+      <div className="ap-footer-wave" aria-hidden="true" />
+      <div className="max-w-6xl mx-auto px-6 md:px-10 pt-10 pb-10 grid gap-10 md:grid-cols-3">
+        {/* Coluna 1 — Contato */}
         <div>
           <h4 className="text-3xl md:text-4xl mb-6">Entre em contato</h4>
-          <ul className="space-y-4">
+          <ul className="flex flex-wrap items-center gap-x-6 gap-y-3">
             <li>
               <a
                 href="https://www.instagram.com/aquelaparme"
@@ -120,9 +122,42 @@ export function ApFooter() {
             </li>
           </ul>
         </div>
+
+        {/* Coluna 2 — Onde estamos */}
+        <div>
+          <h4 className="text-3xl md:text-4xl mb-6">Onde estamos</h4>
+          <ul className="space-y-4 ap-sans text-sm" style={{ color: "hsl(var(--ap-cream))" }}>
+            <li className="flex gap-3">
+              <MapPin className="h-4 w-4 mt-1 shrink-0" />
+              <div>
+                <p className="font-semibold">Unidade Asa Norte</p>
+                <p>114 Norte, Asa Norte, Brasília/DF</p>
+                <a
+                  href="https://maps.google.com/?q=Aquela+Parme+Asa+Norte+Brasilia"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ap-footer-link inline-block mt-1"
+                >
+                  Ver no Google Maps
+                </a>
+              </div>
+            </li>
+            <li className="flex gap-3">
+              <Clock className="h-4 w-4 mt-1 shrink-0" />
+              <div>
+                <p className="font-semibold">Horário de funcionamento</p>
+                <p>Seg a Qui: 11h30 – 23h</p>
+                <p>Sex e Sáb: 11h30 – 00h</p>
+                <p>Dom: 11h30 – 22h</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        {/* Coluna 3 — Navegue pelo site */}
         <div>
           <h4 className="text-3xl md:text-4xl mb-6">Navegue pelo site</h4>
-          <ul className="grid grid-cols-2 gap-x-6 gap-y-4">
+          <ul className="flex flex-wrap gap-x-6 gap-y-3">
             {NAV.map((n) => (
               <li key={n.label}>
                 <a
@@ -136,6 +171,16 @@ export function ApFooter() {
               </li>
             ))}
             <li>
+              <a
+                href={SITE}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ap-footer-link"
+              >
+                Reservar mesa
+              </a>
+            </li>
+            <li>
               <Link to="/vagas" className="ap-footer-link">
                 Trabalhe conosco
               </Link>
@@ -143,15 +188,15 @@ export function ApFooter() {
           </ul>
         </div>
       </div>
-      <div className="border-t" style={{ borderColor: "hsl(var(--ap-cream-2) / .25)" }}>
-        <div
-          className="max-w-6xl mx-auto px-6 md:px-10 py-5 ap-sans text-xs flex flex-col md:flex-row gap-2 md:items-center md:justify-between"
-          style={{ color: "hsl(var(--ap-cream-2) / .85)" }}
-        >
-          <span>Política de Privacidade · Termos de Serviço</span>
-          <span>© {new Date().getFullYear()} Aquela Parmê. Todos os direitos reservados.</span>
-        </div>
+
+      <div
+        className="max-w-6xl mx-auto px-6 md:px-10 pb-6 ap-sans text-xs flex flex-col md:flex-row gap-2 md:items-center md:justify-between"
+        style={{ color: "hsl(var(--ap-cream) / .9)" }}
+      >
+        <span>Política de Privacidade · Termos de Serviço</span>
+        <span>{new Date().getFullYear()} · Aquela Parmê. Todos os direitos reservados.</span>
       </div>
     </footer>
   );
 }
+
