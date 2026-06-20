@@ -995,38 +995,170 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                       const marca = c.extracted?.marca ?? "—";
                       const intent = c.extracted?.intent ?? c.extracted?.intencao;
                       const phone = c.extracted?.telefone ?? c.client_meta?.phone;
+                      const isOpen = expandedConvId === c.id;
                       return (
-                        <TableRow key={c.id}>
-                          <TableCell>
-                            {marca !== "—" ? <Badge>{marca}</Badge> : "—"}
-                          </TableCell>
-                          <TableCell className="font-mono text-xs">
-                            {c.session_id?.slice(0, 12) ?? "—"}
-                          </TableCell>
-                          <TableCell>{c.message_count ?? "—"}</TableCell>
-                          <TableCell className="max-w-md">
-                            <div className="text-sm space-y-0.5">
-                              {intent && (
-                                <div>
-                                  <span className="text-muted-foreground">intent:</span>{" "}
-                                  {String(intent)}
+                        <Fragment key={c.id}>
+                          <TableRow
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => setExpandedConvId(isOpen ? null : c.id)}
+                          >
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {isOpen ? (
+                                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                )}
+                                {marca !== "—" ? <Badge>{marca}</Badge> : "—"}
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-mono text-xs">
+                              {c.session_id?.slice(0, 12) ?? "—"}
+                            </TableCell>
+                            <TableCell>{c.message_count ?? "—"}</TableCell>
+                            <TableCell className="max-w-md">
+                              <div className="text-sm space-y-0.5">
+                                {intent && (
+                                  <div>
+                                    <span className="text-muted-foreground">intent:</span>{" "}
+                                    {String(intent)}
+                                  </div>
+                                )}
+                                {phone && (
+                                  <div>
+                                    <span className="text-muted-foreground">tel:</span>{" "}
+                                    {String(phone)}
+                                  </div>
+                                )}
+                                {!intent && !phone && (
+                                  <div className="text-muted-foreground line-clamp-2 font-mono text-xs">
+                                    {JSON.stringify(c.extracted ?? {}).slice(0, 160)}
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>{fmtDateTime(c.extracted_at)}</TableCell>
+                          </TableRow>
+                          {isOpen && (
+                            <TableRow className="hover:bg-transparent">
+                              <TableCell colSpan={5} className="p-0">
+                                <div className="p-4 space-y-4 bg-muted/20 border-t">
+                                  <div className="flex flex-wrap gap-2 text-sm">
+                                    {marca !== "—" && (
+                                      <Badge>{String(marca)}</Badge>
+                                    )}
+                                    <Badge variant="outline" className="font-mono">
+                                      sessão: {c.session_id?.slice(0, 16) ?? "—"}
+                                    </Badge>
+                                    <Badge variant="outline">
+                                      {c.message_count ?? 0} mensagens
+                                    </Badge>
+                                    <Badge variant="outline">
+                                      {fmtDateTime(c.extracted_at)}
+                                    </Badge>
+                                  </div>
+
+                                  {/* Resumo extraído */}
+                                  {c.extracted && Object.keys(c.extracted).length > 0 && (
+                                    <div>
+                                      <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+                                        Resumo extraído pela IA
+                                      </div>
+                                      <div className="rounded bg-muted/40 p-3 text-xs space-y-0.5">
+                                        {Object.entries(c.extracted).map(([k, v]) => (
+                                          <div key={k}>
+                                            <span className="text-muted-foreground">{k}:</span>{" "}
+                                            <span className="font-mono">
+                                              {typeof v === "string" ? v : JSON.stringify(v)}
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Mensagens trocadas */}
+                                  <div>
+                                    <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-2">
+                                      <MessageSquare className="h-3.5 w-3.5" />
+                                      Mensagens trocadas (Parmê)
+                                      {convMsgs && ` (${convMsgs.length})`}
+                                    </div>
+                                    {convMsgsLoading ? (
+                                      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground flex items-center gap-2">
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Buscando mensagens no Parmê…
+                                      </div>
+                                    ) : convMsgsError === "parme_endpoint_unavailable" ? (
+                                      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                                        O Parmê ainda não expõe{" "}
+                                        <code className="font-mono text-xs">
+                                          GET /api/public/conversations/:id/messages
+                                        </code>
+                                        . Peça ao time do Parmê para implementar este endpoint.
+                                      </div>
+                                    ) : convMsgsError ? (
+                                      <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+                                        Falha ao buscar mensagens: {convMsgsError}
+                                      </div>
+                                    ) : convMsgs && convMsgs.length === 0 ? (
+                                      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                                        Nenhuma mensagem retornada para esta conversa.
+                                      </div>
+                                    ) : convMsgs ? (
+                                      <div className="space-y-2 max-h-96 overflow-y-auto rounded-md border p-3 bg-muted/20">
+                                        {convMsgs.map((m: any, i: number) => {
+                                          const role =
+                                            m.role ?? m.author ?? m.from ?? "user";
+                                          const isAssistant =
+                                            role === "assistant" ||
+                                            role === "ai" ||
+                                            role === "bot";
+                                          const content =
+                                            typeof m.content === "string"
+                                              ? m.content
+                                              : (m.message ?? m.text ?? JSON.stringify(m.content ?? m));
+                                          const ts = m.created_at ?? m.timestamp ?? m.time;
+                                          return (
+                                            <div
+                                              key={m.id ?? i}
+                                              className={`flex flex-col ${isAssistant ? "items-start" : "items-end"}`}
+                                            >
+                                              <div
+                                                className={`max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
+                                                  isAssistant
+                                                    ? "bg-background border"
+                                                    : "bg-primary text-primary-foreground"
+                                                }`}
+                                              >
+                                                {content}
+                                              </div>
+                                              <div className="text-[10px] text-muted-foreground mt-0.5 px-1">
+                                                {role}
+                                                {ts ? ` · ${fmtDateTime(ts)}` : ""}
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    ) : null}
+                                  </div>
+
+                                  {c.client_meta && Object.keys(c.client_meta).length > 0 && (
+                                    <details className="text-xs">
+                                      <summary className="cursor-pointer text-muted-foreground">
+                                        metadados do cliente
+                                      </summary>
+                                      <pre className="mt-1 rounded bg-muted/40 p-2 overflow-x-auto">
+                                        {JSON.stringify(c.client_meta, null, 2)}
+                                      </pre>
+                                    </details>
+                                  )}
                                 </div>
-                              )}
-                              {phone && (
-                                <div>
-                                  <span className="text-muted-foreground">tel:</span>{" "}
-                                  {String(phone)}
-                                </div>
-                              )}
-                              {!intent && !phone && (
-                                <div className="text-muted-foreground line-clamp-2 font-mono text-xs">
-                                  {JSON.stringify(c.extracted ?? {}).slice(0, 160)}
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>{fmtDateTime(c.extracted_at)}</TableCell>
-                        </TableRow>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </Fragment>
                       );
                     })
                   )}
