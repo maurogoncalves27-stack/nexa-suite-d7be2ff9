@@ -9,7 +9,7 @@ const navLinks = [
   { to: "/parme/box-caipira", label: "Box caipira" },
   { to: "/parme/sobre", label: "Nossa história" },
   { to: "/parme/reservar", label: "Reservar mesa" },
-  { href: "https://nexasuite.aquelaparme.com.br/vagas", label: "Junte-se a nós" },
+  { to: "/vagas", label: "Junte-se a nós" },
 ] as const;
 
 export function SiteFooter() {
@@ -78,17 +78,11 @@ export function SiteFooter() {
             <div>
               <h4 className="font-display text-xl md:text-3xl">Navegue pelo site</h4>
               <nav className="mt-4 flex flex-wrap gap-x-8 gap-y-3 text-base font-semibold" aria-label="Rodapé">
-                {navLinks.map((l) =>
-                  "href" in l ? (
-                    <a key={l.href} href={l.href} className="border-b pb-1 transition hover:opacity-80" style={{ borderColor: "rgba(255,247,230,0.7)" }}>
-                      {l.label}
-                    </a>
-                  ) : (
-                    <Link key={l.to} to={l.to} className="border-b pb-1 transition hover:opacity-80" style={{ borderColor: "rgba(255,247,230,0.7)" }}>
-                      {l.label}
-                    </Link>
-                  )
-                )}
+                {navLinks.map((l) => (
+                  <Link key={l.to} to={l.to} className="border-b pb-1 transition hover:opacity-80" style={{ borderColor: "rgba(255,247,230,0.7)" }}>
+                    {l.label}
+                  </Link>
+                ))}
               </nav>
             </div>
           </div>
