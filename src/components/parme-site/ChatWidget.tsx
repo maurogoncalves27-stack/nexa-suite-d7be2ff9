@@ -95,6 +95,12 @@ function extractStreamText(data: string) {
   return "";
 }
 
+function readStreamEvent(line: string) {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith("data:")) return "";
+  return trimmed.slice(5).trim();
+}
+
 type ChatMsg = { id: string; role: "user" | "assistant"; content: string };
 
 export function ChatWidget() {
@@ -154,14 +160,19 @@ export function ChatWidget() {
           parts: [{ type: "text", text: m.content }],
         })),
       };
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 45_000);
       const res = await fetch(FN_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(ANON ? { apikey: ANON } : {}),
           ...(ANON ? { Authorization: `Bearer ${ANON}` } : {}),
         },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       });
+      window.clearTimeout(timeout);
       if (!res.ok || !res.body) {
         throw new Error(`HTTP ${res.status}`);
       }
@@ -176,8 +187,7 @@ export function ChatWidget() {
         const lines = buffer.split("\n");
         buffer = lines.pop() ?? "";
         for (const line of lines) {
-          if (!line.startsWith("data:")) continue;
-          const data = line.slice(5).trim();
+          const data = readStreamEvent(line);
           if (!data || data === "[DONE]") continue;
           const delta = extractStreamText(data);
           if (delta) {
@@ -188,6 +198,15 @@ export function ChatWidget() {
           }
         }
       }
+      const finalData = readStreamEvent(buffer);
+      const finalDelta = extractStreamText(finalData);
+      if (finalDelta) {
+        acc += finalDelta;
+        setMessages((m) =>
+          m.map((x) => (x.id === assistantId ? { ...x, content: acc } : x))
+        );
+      }
+      if (!acc.trim()) throw new Error("Resposta vazia da Giana");
     } catch (e) {
       console.error("[ChatWidget] err:", e);
       setMessages((m) =>
