@@ -8,7 +8,6 @@ const corsHeaders = {
 };
 
 const PARME_BASE = "https://parme.lovable.app";
-// deploy trigger
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -78,13 +77,12 @@ Deno.serve(async (req) => {
     const text = await resp.text();
     const isHtml = text.trimStart().startsWith("<");
 
-    // Endpoint ainda não existe no Parmê
     if (resp.status === 404 || isHtml) {
       return new Response(
         JSON.stringify({
           error: "parme_endpoint_unavailable",
           message:
-            "O Parmê ainda não expõe DELETE /api/public/reservations/:id. Peça ao time do Parmê para implementar.",
+            "O Parmê ainda não expõe DELETE /api/public/reservations/:id.",
         }),
         {
           status: 503,
@@ -107,7 +105,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Sucesso no Parmê → remover localmente usando service role
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
