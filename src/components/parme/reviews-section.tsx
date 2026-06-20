@@ -103,11 +103,6 @@ export function ReviewsSection() {
     queryFn: fetchReviews,
     staleTime: 1000 * 60 * 30,
   });
-  const { data: units = DEFAULT_UNITS } = useQuery({
-    queryKey: ["parme-google-units"],
-    queryFn: fetchUnits,
-    staleTime: 1000 * 60 * 30,
-  });
 
   return (
     <section className="bg-brand-cream py-16 md:py-24">
