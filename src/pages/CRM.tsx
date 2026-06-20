@@ -212,20 +212,27 @@ export default function CRM() {
     setThreadError(null);
     (async () => {
       try {
-        const { data, error } = await supabase.functions.invoke(
-          "parme-get-ticket-conversation",
-          { body: { ticket_id: ticket.parme_id } },
-        );
+        const { data: { session } } = await supabase.auth.getSession();
+        const url = `https://ixjgmerxxakdkfdzgumy.supabase.co/functions/v1/parme-get-ticket-conversation`;
+        const resp = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token ?? ""}`,
+          },
+          body: JSON.stringify({ ticket_id: ticket.parme_id }),
+        });
+        const data = await resp.json().catch(() => ({}));
         if (cancelled) return;
-        if ((data as any)?.error === "parme_endpoint_unavailable") {
+        if (data?.error === "parme_endpoint_unavailable") {
           setThreadError("parme_endpoint_unavailable");
           return;
         }
-        if (error) {
-          setThreadError((data as any)?.message ?? error.message);
+        if (!resp.ok) {
+          setThreadError(data?.message ?? `HTTP ${resp.status}`);
           return;
         }
-        const msgs = (data as any)?.messages;
+        const msgs = data?.messages;
         setThreadMessages(Array.isArray(msgs) ? msgs : []);
       } catch (e: any) {
         if (!cancelled) setThreadError(e?.message ?? "fetch_error");
@@ -254,25 +261,30 @@ export default function CRM() {
     setConvMsgsError(null);
     (async () => {
       try {
-        const { data, error } = await supabase.functions.invoke(
-          "parme-get-conversation-messages",
-          {
-            body: {
-              conversation_id: conv.parme_id,
-              session_id: conv.session_id,
-            },
+        const { data: { session } } = await supabase.auth.getSession();
+        const url = `https://ixjgmerxxakdkfdzgumy.supabase.co/functions/v1/parme-get-conversation-messages`;
+        const resp = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token ?? ""}`,
           },
-        );
+          body: JSON.stringify({
+            conversation_id: conv.parme_id,
+            session_id: conv.session_id,
+          }),
+        });
+        const data = await resp.json().catch(() => ({}));
         if (cancelled) return;
-        if ((data as any)?.error === "parme_endpoint_unavailable") {
+        if (data?.error === "parme_endpoint_unavailable") {
           setConvMsgsError("parme_endpoint_unavailable");
           return;
         }
-        if (error) {
-          setConvMsgsError((data as any)?.message ?? error.message);
+        if (!resp.ok) {
+          setConvMsgsError(data?.message ?? `HTTP ${resp.status}`);
           return;
         }
-        const msgs = (data as any)?.messages;
+        const msgs = data?.messages;
         setConvMsgs(Array.isArray(msgs) ? msgs : []);
       } catch (e: any) {
         if (!cancelled) setConvMsgsError(e?.message ?? "fetch_error");
