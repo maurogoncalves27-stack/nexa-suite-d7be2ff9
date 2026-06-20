@@ -147,10 +147,14 @@ export default function SurpresaPage() {
       </section>
 
       {/* AVALIE A GENTE */}
-      <section className="bg-muted py-16 md:py-20">
+      <section className="bg-muted pt-8 pb-16 md:pt-10 md:pb-20">
         <div className="mx-auto max-w-4xl px-5 text-center md:px-6">
           <Reveal>
-            <Star className="mx-auto h-8 w-8 text-brand-parme" />
+            <div className="flex justify-center gap-1">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star key={i} className="h-6 w-6 text-brand-parme fill-brand-parme" />
+              ))}
+            </div>
             <h2 className="mt-4 font-display text-2xl md:text-3xl text-foreground">
               Me avalia, please!
             </h2>
