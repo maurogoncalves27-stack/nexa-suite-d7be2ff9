@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Headset, RefreshCw, Search, Calendar, Ticket, MessageSquare, Trash2 } from "lucide-react";
+import { Headset, RefreshCw, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -99,6 +99,7 @@ export default function CRM() {
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [brand, setBrand] = useState<string>("all");
   const [lastSync, setLastSync] = useState<string | null>(null);
