@@ -44,34 +44,43 @@
   }
 }
 
-/* Rodapé creme com texto escuro (alinhado ao site refeito) */
+/* Rodapé laranja com onda no topo (igual ao site oficial) */
 .ap-brand .ap-footer {
   position: relative;
-  margin-top: 4rem;
-  background: hsl(var(--ap-ink));
-  color: hsl(var(--ap-cream-2));
+  margin-top: 0;
+  background: hsl(var(--ap-orange));
+  color: hsl(var(--ap-cream));
   border-radius: 0;
   overflow: hidden;
 }
+.ap-brand .ap-footer-wave {
+  display: block;
+  width: 100%;
+  height: clamp(40px, 7vw, 90px);
+  background: hsl(var(--ap-cream));
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 90' preserveAspectRatio='none'><path d='M0,90 L0,40 C160,0 320,80 540,55 C760,30 900,75 1080,55 C1240,38 1340,60 1440,30 L1440,90 Z' fill='black'/></svg>") no-repeat center / 100% 100%;
+          mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 90' preserveAspectRatio='none'><path d='M0,90 L0,40 C160,0 320,80 540,55 C760,30 900,75 1080,55 C1240,38 1340,60 1440,30 L1440,90 Z' fill='black'/></svg>") no-repeat center / 100% 100%;
+}
 .ap-brand .ap-footer a.ap-footer-link {
-  color: hsl(var(--ap-cream-2));
+  color: hsl(var(--ap-cream));
   text-decoration: underline;
   text-underline-offset: 4px;
-  text-decoration-color: hsl(var(--ap-cream-2) / .5);
+  text-decoration-color: hsl(var(--ap-cream) / .55);
   font-family: "Bitter", ui-serif, Georgia, serif;
   font-weight: 500;
   font-size: 1rem;
 }
 .ap-brand .ap-footer a.ap-footer-link:hover {
-  color: hsl(var(--ap-red-soft));
-  text-decoration-color: hsl(var(--ap-red-soft));
+  color: #fff;
+  text-decoration-color: #fff;
 }
 .ap-brand .ap-footer h4 {
   font-family: "Alfa Slab One", ui-serif, Georgia, serif;
   font-weight: 400;
-  color: hsl(var(--ap-cream-2));
+  color: hsl(var(--ap-cream));
   letter-spacing: -0.01em;
 }
+
 
 /* Botões — pílula vermelha (CTA) e outline creme */
 .ap-brand .ap-btn-primary {
