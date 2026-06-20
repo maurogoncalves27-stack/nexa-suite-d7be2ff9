@@ -158,22 +158,10 @@ export default function SurpresaPage() {
             </p>
           </Reveal>
 
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            {UNITS.map((unit) => (
-              <a
-                key={unit.label}
-                href={reviewUrl(unit.query)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full bg-brand-parme px-6 py-2.5 text-sm font-semibold text-brand-parme-foreground shadow-sm transition hover:bg-brand-parme/90"
-              >
-                {unit.label}
-                <ExternalLink className="h-4 w-4 opacity-80" />
-              </a>
-            ))}
-          </div>
+          <BrandStoreSelector />
         </div>
       </section>
+
 
       {/* ONDE RESGATAR */}
       <section className="bg-store-asa-norte py-16 md:py-24">
