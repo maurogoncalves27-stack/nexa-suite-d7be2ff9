@@ -817,6 +817,74 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                     </div>
                   </div>
 
+                  {/* Thread bruto do Parmê */}
+                  <div>
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-2">
+                      <Download className="h-3.5 w-3.5" />
+                      Conversa completa (Parmê)
+                      {threadMessages && ` (${threadMessages.length})`}
+                    </div>
+                    {threadLoading ? (
+                      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Buscando mensagens no Parmê…
+                      </div>
+                    ) : threadError === "parme_endpoint_unavailable" ? (
+                      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                        O Parmê ainda não expõe{" "}
+                        <code className="font-mono text-xs">
+                          GET /api/public/tickets/:id/messages
+                        </code>
+                        . Peça ao time do Parmê para implementar este endpoint.
+                      </div>
+                    ) : threadError ? (
+                      <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+                        Falha ao buscar conversa: {threadError}
+                      </div>
+                    ) : threadMessages && threadMessages.length === 0 ? (
+                      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                        Nenhuma mensagem retornada para este ticket.
+                      </div>
+                    ) : threadMessages ? (
+                      <div className="space-y-2 max-h-80 overflow-y-auto rounded-md border p-3 bg-muted/20">
+                        {threadMessages.map((m: any, i: number) => {
+                          const role =
+                            m.role ?? m.author ?? m.from ?? "user";
+                          const isAssistant =
+                            role === "assistant" ||
+                            role === "ai" ||
+                            role === "bot";
+                          const content =
+                            typeof m.content === "string"
+                              ? m.content
+                              : (m.message ?? m.text ?? JSON.stringify(m.content ?? m));
+                          const ts = m.created_at ?? m.timestamp ?? m.time;
+                          return (
+                            <div
+                              key={m.id ?? i}
+                              className={`flex flex-col ${isAssistant ? "items-start" : "items-end"}`}
+                            >
+                              <div
+                                className={`max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
+                                  isAssistant
+                                    ? "bg-background border"
+                                    : "bg-primary text-primary-foreground"
+                                }`}
+                              >
+                                {content}
+                              </div>
+                              <div className="text-[10px] text-muted-foreground mt-0.5 px-1">
+                                {role}
+                                {ts ? ` · ${fmtDateTime(ts)}` : ""}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </div>
+
+
                   <div>
                     <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-2">
                       <MessageSquare className="h-3.5 w-3.5" />
