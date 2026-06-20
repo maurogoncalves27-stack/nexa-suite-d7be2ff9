@@ -8,7 +8,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const PASSWORD = "Senha@123";
+const PASSWORD = Deno.env.get("TOTEM_SEED_PASSWORD");
 
 const LOGINS = [
   { email: "totemas@aquelaparme.com.br", name: "TOTEM ASA SUL", store: "asa sul" },
@@ -22,6 +22,13 @@ Deno.serve(async (req) => {
 
   const auth = await requireRole(req, ["admin"], corsHeaders);
   if (!auth.ok) return auth.response!;
+
+  if (!PASSWORD) {
+    return new Response(
+      JSON.stringify({ error: "TOTEM_SEED_PASSWORD não configurada" }),
+      { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
 
   const admin = createClient(
     Deno.env.get("SUPABASE_URL")!,
