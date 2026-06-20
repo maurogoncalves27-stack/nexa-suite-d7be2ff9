@@ -99,6 +99,21 @@ function fmtDateTime(d?: string | null) {
   }
 }
 
+function translateStatus(s?: string | null) {
+  const map: Record<string, string> = {
+    pending: "Pendente",
+    confirmed: "Confirmada",
+    cancelled: "Cancelada",
+    open: "Aberto",
+    closed: "Fechado",
+    resolved: "Resolvido",
+    waiting: "Aguardando",
+    in_progress: "Em andamento",
+  };
+  if (!s) return "—";
+  return map[s.toLowerCase()] ?? s;
+}
+
 export default function CRM() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -545,7 +560,7 @@ export default function CRM() {
                                   : undefined
                               }
                             >
-                              {r.status}
+                              {translateStatus(r.status)}
                             </Badge>
                           ) : (
                             "—"
@@ -708,7 +723,7 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                               <div className="line-clamp-2 text-sm">{t.description ?? "—"}</div>
                             </TableCell>
                             <TableCell>
-                              {t.status ? <Badge variant="outline">{t.status}</Badge> : "—"}
+                              {t.status ? <Badge variant="outline">{translateStatus(t.status)}</Badge> : "—"}
                             </TableCell>
                             <TableCell>{fmtDateTime(t.created_at)}</TableCell>
                           </TableRow>
@@ -718,7 +733,7 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                                 <div className="p-4 space-y-4 bg-muted/20 border-t">
                                   <div className="flex flex-wrap gap-2 text-sm">
                                     {t.status && (
-                                      <Badge variant="outline">status: {t.status}</Badge>
+                                      <Badge variant="outline">status: {translateStatus(t.status)}</Badge>
                                     )}
                                     <Badge variant="outline" className="font-mono">
                                       id: {t.parme_id.slice(0, 8)}
