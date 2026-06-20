@@ -51,7 +51,7 @@ function BrandCard({ card, index }: { card: Card; index: number }) {
       <Sparkle className="right-6 bottom-[34%]" size={24} />
       <Sparkle className="left-[42%] top-[35%]" size={14} />
 
-      <div className="relative z-10 mt-4 flex flex-1 items-center justify-center px-4">
+      <div className="relative z-10 flex flex-1 items-center justify-center px-4">
         <img
           src={card.dish}
           alt={`Prato em destaque de ${card.title}`}
@@ -65,7 +65,7 @@ function BrandCard({ card, index }: { card: Card; index: number }) {
         <img src={card.stamp2} alt="" aria-hidden loading="lazy" decoding="async" className="absolute bottom-2 right-2 z-20 w-[26%] rotate-6 object-contain drop-shadow-md" />
       </div>
 
-      <div className="relative z-10 mb-6 flex pl-6 md:mb-8 md:pl-8">
+      <div className="relative z-10 mt-auto mb-6 flex pl-6 md:mb-8 md:pl-8">
         <span className="inline-flex items-center gap-2 rounded-full bg-brand-cream px-6 py-3 text-sm font-bold text-brand-ink shadow-md transition group-hover:-translate-y-0.5">
           Saiba mais
           <span className="grid h-5 w-5 place-items-center rounded-full border border-current">
