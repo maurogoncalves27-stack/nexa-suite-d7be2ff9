@@ -179,19 +179,12 @@ export function ChatWidget() {
           if (!line.startsWith("data:")) continue;
           const data = line.slice(5).trim();
           if (!data || data === "[DONE]") continue;
-          try {
-            const ev = JSON.parse(data) as {
-              type?: string;
-              delta?: string;
-            };
-            if (ev.type === "text-delta" && ev.delta) {
-              acc += ev.delta;
-              setMessages((m) =>
-                m.map((x) => (x.id === assistantId ? { ...x, content: acc } : x))
-              );
-            }
-          } catch {
-            /* ignore non-JSON keep-alives */
+          const delta = extractStreamText(data);
+          if (delta) {
+            acc += delta;
+            setMessages((m) =>
+              m.map((x) => (x.id === assistantId ? { ...x, content: acc } : x))
+            );
           }
         }
       }
@@ -265,8 +258,13 @@ export function ChatWidget() {
       {open && (
         <div className="fixed bottom-24 right-5 z-50 flex h-[70vh] max-h-[600px] w-[min(380px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border border-[hsl(var(--parme-border))] bg-white shadow-2xl">
           <header className="flex items-center gap-3 border-b border-[hsl(var(--parme-border))] bg-brand-red px-4 py-3 text-white">
-            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/20 font-display text-xl">
-              G
+            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-white/20 ring-2 ring-white/35">
+              <img
+                src={gianaAvatar.url}
+                alt="Giana"
+                className="h-full w-full object-cover"
+                loading="eager"
+              />
             </div>
             <div className="flex-1">
               <p className="font-display text-base leading-tight">Giana</p>
