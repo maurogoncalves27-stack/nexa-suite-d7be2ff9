@@ -1,0 +1,101 @@
+/* Estilos do site público Aquela Parmê — escopados em `.parme-site`
+   pra não vazar tokens/cores no RH/Nexa Suite. Tailwind v3 compatível.
+   Coloque a Avigea em /public/fonts/Avigea.woff2 para usar a fonte original;
+   enquanto ausente, cai pra Alfa Slab One (Google Fonts). */
+
+@font-face {
+  font-family: "Avigea";
+  src: url("/fonts/Avigea.woff2") format("woff2"),
+       url("/fonts/Avigea.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+.parme-site {
+  /* Tokens da marca (HSL — Tailwind v3 friendly) */
+  --parme-cream: 40 80% 96%;
+  --parme-ink: 0 0% 8%;
+  --parme-red: 2 79% 51%;
+  --parme-red-dark: 0 80% 27%;
+  --parme-mustard: 36 87% 60%;
+  --parme-orange: 18 87% 60%;
+  --parme-brown: 30 30% 60%;
+
+  --parme-bg: hsl(var(--parme-cream));
+  --parme-fg: hsl(28 30% 18%);
+  --parme-primary: hsl(var(--parme-red));
+  --parme-primary-fg: hsl(var(--parme-cream));
+  --parme-card: hsl(40 90% 98%);
+  --parme-muted: hsl(40 25% 50%);
+  --parme-border: hsl(40 30% 80%);
+
+  background: var(--parme-bg);
+  color: var(--parme-fg);
+  font-family: "Bitter", Georgia, serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.parme-site h1,
+.parme-site h2,
+.parme-site h3,
+.parme-site .font-display {
+  font-family: "Avigea", "Alfa Slab One", Georgia, serif;
+  letter-spacing: 0.01em;
+}
+
+.parme-site .font-script {
+  font-family: "Caveat", cursive;
+}
+
+.parme-site .font-serif {
+  font-family: "Bitter", Georgia, serif;
+}
+
+/* Utilitários de cor da marca (usados via className no JSX) */
+.parme-site .bg-brand-cream { background-color: hsl(var(--parme-cream)); }
+.parme-site .bg-brand-ink { background-color: hsl(var(--parme-ink)); }
+.parme-site .bg-brand-red { background-color: hsl(var(--parme-red)); }
+.parme-site .bg-brand-red-dark { background-color: hsl(var(--parme-red-dark)); }
+.parme-site .bg-brand-mustard { background-color: hsl(var(--parme-mustard)); }
+.parme-site .bg-brand-orange { background-color: hsl(var(--parme-orange)); }
+.parme-site .text-brand-cream { color: hsl(var(--parme-cream)); }
+.parme-site .text-brand-ink { color: hsl(var(--parme-ink)); }
+.parme-site .text-brand-red { color: hsl(var(--parme-red)); }
+.parme-site .text-brand-red-dark { color: hsl(var(--parme-red-dark)); }
+.parme-site .text-brand-orange { color: hsl(var(--parme-orange)); }
+.parme-site .border-brand-cream\/70 { border-color: hsl(var(--parme-cream) / 0.7); }
+.parme-site .border-brand-cream\/80 { border-color: hsl(var(--parme-cream) / 0.8); }
+
+/* Reset suave dos botões do site público */
+.parme-site button,
+.parme-site a {
+  font-family: inherit;
+}
+
+/* Faixa ondulada do rodapé */
+.parme-wave {
+  display: block;
+  width: 100%;
+  height: 28px;
+  background: hsl(var(--parme-cream));
+  position: relative;
+}
+.parme-wave::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 12px 0, hsl(var(--parme-orange)) 12px, transparent 13px) repeat-x;
+  background-size: 24px 28px;
+  background-position: 0 100%;
+}
+
+/* Animação shimmer simples para "Pensando..." */
+@keyframes parme-shimmer {
+  0% { opacity: 0.4; }
+  50% { opacity: 1; }
+  100% { opacity: 0.4; }
+}
+.parme-site .parme-shimmer {
+  animation: parme-shimmer 1.4s ease-in-out infinite;
+}
