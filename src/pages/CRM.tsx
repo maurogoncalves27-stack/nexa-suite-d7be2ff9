@@ -477,8 +477,9 @@ export default function CRM() {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
-      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-        <div>
+      {/* Header */}
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="space-y-1">
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
             <Headset className="h-6 w-6 md:h-7 md:w-7 text-primary" />
             CRM
@@ -487,36 +488,36 @@ export default function CRM() {
             Reservas, tickets e conversas extraídas pela Giana (Parmê).
           </p>
           {lastSync && (
-            <p className="text-xs text-muted-foreground mt-1">
-              Última sincronização:{" "}
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <Clock className="h-3 w-3" />
+              Sincronizado{" "}
               {formatDistanceToNow(new Date(lastSync), {
                 addSuffix: true,
                 locale: ptBR,
-              })}{" "}
-              ({fmtDateTime(lastSync)})
+              })}
             </p>
           )}
         </div>
-        <Button onClick={handleSync} disabled={syncing} className="gap-2">
+        <Button onClick={handleSync} disabled={syncing} className="gap-2 shrink-0">
           <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-          Sincronizar histórico
+          Sincronizar
         </Button>
       </div>
 
-      {/* Filtros */}
-      <Card>
-        <CardContent className="pt-6 flex flex-col md:flex-row gap-3">
+      {/* Toolbar sticky: busca + filtro */}
+      <div className="sticky top-0 z-10 -mx-4 md:-mx-6 px-4 md:px-6 py-3 bg-background/85 backdrop-blur border-y">
+        <div className="flex flex-col md:flex-row gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar por nome, telefone, e-mail, pedido…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8"
+              className="pl-9 h-10"
             />
           </div>
           <Select value={brand} onValueChange={setBrand}>
-            <SelectTrigger className="md:w-56">
+            <SelectTrigger className="md:w-56 h-10">
               <SelectValue placeholder="Marca (conversas)" />
             </SelectTrigger>
             <SelectContent>
@@ -528,23 +529,35 @@ export default function CRM() {
               ))}
             </SelectContent>
           </Select>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
-          <TabsTrigger value="dashboard" className="gap-1">
+        <TabsList className="w-full h-auto p-1 grid grid-cols-2 md:grid-cols-4 gap-1 bg-muted">
+          <TabsTrigger value="dashboard" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
             <LayoutDashboard className="h-4 w-4" />
-            <span className="hidden sm:inline">Dashboard</span>
+            <span>Dashboard</span>
           </TabsTrigger>
-          <TabsTrigger value="reservations">
-            Reservas ({filteredReservations.length})
+          <TabsTrigger value="reservations" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
+            <Calendar className="h-4 w-4" />
+            <span>Reservas</span>
+            <Badge variant="secondary" className="ml-0.5 h-5 px-1.5 text-[10px] font-semibold tabular-nums">
+              {filteredReservations.length}
+            </Badge>
           </TabsTrigger>
-          <TabsTrigger value="tickets">
-            Tickets ({filteredTickets.length})
+          <TabsTrigger value="tickets" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
+            <Ticket className="h-4 w-4" />
+            <span>Tickets</span>
+            <Badge variant="secondary" className="ml-0.5 h-5 px-1.5 text-[10px] font-semibold tabular-nums">
+              {filteredTickets.length}
+            </Badge>
           </TabsTrigger>
-          <TabsTrigger value="conversations">
-            Conversas ({filteredConversations.length})
+          <TabsTrigger value="conversations" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
+            <MessageSquare className="h-4 w-4" />
+            <span>Conversas</span>
+            <Badge variant="secondary" className="ml-0.5 h-5 px-1.5 text-[10px] font-semibold tabular-nums">
+              {filteredConversations.length}
+            </Badge>
           </TabsTrigger>
         </TabsList>
 
