@@ -72,6 +72,16 @@ async function sendByProvider(phone: string, message: string) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  // Only allow service_role callers (other edge functions). Authenticated end-users
+  // must not be able to invoke this endpoint with arbitrary phone/message payloads.
+  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  if (!SERVICE_ROLE || token !== SERVICE_ROLE) {
+    return new Response(JSON.stringify({ error: "forbidden" }), {
+      status: 403,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   try {
     const body = (await req.json()) as Body;
     if (!body?.message) {
