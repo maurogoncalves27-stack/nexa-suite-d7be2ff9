@@ -164,14 +164,16 @@ export default function CRM() {
     load();
   }, []);
 
-  // Buscar thread bruto do Parmê ao abrir um ticket
+  // Buscar thread bruto do Parmê ao expandir um ticket
   useEffect(() => {
-    if (!openTicket) {
+    if (!expandedTicketId) {
       setThreadMessages(null);
       setThreadError(null);
       setThreadLoading(false);
       return;
     }
+    const ticket = tickets.find((t) => t.id === expandedTicketId);
+    if (!ticket) return;
     let cancelled = false;
     setThreadLoading(true);
     setThreadMessages(null);
@@ -180,7 +182,7 @@ export default function CRM() {
       try {
         const { data, error } = await supabase.functions.invoke(
           "parme-get-ticket-conversation",
-          { body: { ticket_id: openTicket.parme_id } },
+          { body: { ticket_id: ticket.parme_id } },
         );
         if (cancelled) return;
         if ((data as any)?.error === "parme_endpoint_unavailable") {
@@ -202,7 +204,7 @@ export default function CRM() {
     return () => {
       cancelled = true;
     };
-  }, [openTicket]);
+  }, [expandedTicketId, tickets]);
 
   async function handleSync() {
     setSyncing(true);
