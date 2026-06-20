@@ -8834,190 +8834,142 @@ export type Database = {
       }
       parme_conversations: {
         Row: {
-          brand: string | null
-          channel: string | null
-          customer_name: string | null
-          customer_phone: string | null
+          client_meta: Json | null
+          created_at: string | null
+          extracted: Json | null
           extracted_at: string | null
           id: string
-          intent: string | null
+          last_message_at: string | null
           message_count: number | null
           parme_id: string
-          raw: Json
-          received_at: string
-          sentiment: string | null
-          started_at: string | null
-          summary: string | null
-          updated_at: string
+          session_id: string | null
+          synced_at: string
         }
         Insert: {
-          brand?: string | null
-          channel?: string | null
-          customer_name?: string | null
-          customer_phone?: string | null
+          client_meta?: Json | null
+          created_at?: string | null
+          extracted?: Json | null
           extracted_at?: string | null
           id?: string
-          intent?: string | null
+          last_message_at?: string | null
           message_count?: number | null
           parme_id: string
-          raw: Json
-          received_at?: string
-          sentiment?: string | null
-          started_at?: string | null
-          summary?: string | null
-          updated_at?: string
+          session_id?: string | null
+          synced_at?: string
         }
         Update: {
-          brand?: string | null
-          channel?: string | null
-          customer_name?: string | null
-          customer_phone?: string | null
+          client_meta?: Json | null
+          created_at?: string | null
+          extracted?: Json | null
           extracted_at?: string | null
           id?: string
-          intent?: string | null
+          last_message_at?: string | null
           message_count?: number | null
           parme_id?: string
-          raw?: Json
-          received_at?: string
-          sentiment?: string | null
-          started_at?: string | null
-          summary?: string | null
-          updated_at?: string
+          session_id?: string | null
+          synced_at?: string
         }
         Relationships: []
       }
       parme_events: {
         Row: {
           event_id: string
-          event_type: string
+          event_type: string | null
           id: string
-          payload: Json
-          process_error: string | null
-          processed_at: string | null
+          payload: Json | null
           received_at: string
         }
         Insert: {
           event_id: string
-          event_type: string
+          event_type?: string | null
           id?: string
-          payload: Json
-          process_error?: string | null
-          processed_at?: string | null
+          payload?: Json | null
           received_at?: string
         }
         Update: {
           event_id?: string
-          event_type?: string
+          event_type?: string | null
           id?: string
-          payload?: Json
-          process_error?: string | null
-          processed_at?: string | null
+          payload?: Json | null
           received_at?: string
         }
         Relationships: []
       }
       parme_reservations: {
         Row: {
-          brand: string | null
-          customer_email: string | null
-          customer_name: string | null
-          customer_phone: string | null
+          created_at: string | null
+          email: string | null
           id: string
+          name: string | null
           notes: string | null
           parme_id: string
           party_size: number | null
-          raw: Json
-          received_at: string
-          reservation_at: string | null
+          phone: string | null
+          reservation_date: string | null
+          reservation_time: string | null
           status: string | null
-          updated_at: string
+          synced_at: string
         }
         Insert: {
-          brand?: string | null
-          customer_email?: string | null
-          customer_name?: string | null
-          customer_phone?: string | null
+          created_at?: string | null
+          email?: string | null
           id?: string
+          name?: string | null
           notes?: string | null
           parme_id: string
           party_size?: number | null
-          raw: Json
-          received_at?: string
-          reservation_at?: string | null
+          phone?: string | null
+          reservation_date?: string | null
+          reservation_time?: string | null
           status?: string | null
-          updated_at?: string
+          synced_at?: string
         }
         Update: {
-          brand?: string | null
-          customer_email?: string | null
-          customer_name?: string | null
-          customer_phone?: string | null
+          created_at?: string | null
+          email?: string | null
           id?: string
+          name?: string | null
           notes?: string | null
           parme_id?: string
           party_size?: number | null
-          raw?: Json
-          received_at?: string
-          reservation_at?: string | null
+          phone?: string | null
+          reservation_date?: string | null
+          reservation_time?: string | null
           status?: string | null
-          updated_at?: string
+          synced_at?: string
         }
         Relationships: []
       }
       parme_tickets: {
         Row: {
-          brand: string | null
-          channel: string | null
-          closed_at: string | null
-          customer_email: string | null
-          customer_name: string | null
-          customer_phone: string | null
+          contact: string | null
+          created_at: string | null
           description: string | null
           id: string
-          opened_at: string | null
+          order_number: string | null
           parme_id: string
-          priority: string | null
-          raw: Json
-          received_at: string
           status: string | null
-          subject: string | null
-          updated_at: string
+          synced_at: string
         }
         Insert: {
-          brand?: string | null
-          channel?: string | null
-          closed_at?: string | null
-          customer_email?: string | null
-          customer_name?: string | null
-          customer_phone?: string | null
+          contact?: string | null
+          created_at?: string | null
           description?: string | null
           id?: string
-          opened_at?: string | null
+          order_number?: string | null
           parme_id: string
-          priority?: string | null
-          raw: Json
-          received_at?: string
           status?: string | null
-          subject?: string | null
-          updated_at?: string
+          synced_at?: string
         }
         Update: {
-          brand?: string | null
-          channel?: string | null
-          closed_at?: string | null
-          customer_email?: string | null
-          customer_name?: string | null
-          customer_phone?: string | null
+          contact?: string | null
+          created_at?: string | null
           description?: string | null
           id?: string
-          opened_at?: string | null
+          order_number?: string | null
           parme_id?: string
-          priority?: string | null
-          raw?: Json
-          received_at?: string
           status?: string | null
-          subject?: string | null
-          updated_at?: string
+          synced_at?: string
         }
         Relationships: []
       }
