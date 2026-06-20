@@ -44,7 +44,11 @@ export function StoresSection() {
                         <span
                           key={svc}
                           className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
-                          style={{ background: "rgba(232,35,31,0.1)", color: "#e8231f" }}
+                          style={
+                            info.highlighted
+                              ? { background: "#e8231f", color: "#fff" }
+                              : { background: "rgba(232,35,31,0.1)", color: "#e8231f" }
+                          }
                         >
                           {info.icon}
                           {info.label}
