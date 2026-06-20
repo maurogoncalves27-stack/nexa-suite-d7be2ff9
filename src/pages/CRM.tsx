@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Headset, RefreshCw, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download } from "lucide-react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { Headset, RefreshCw, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -107,7 +107,7 @@ export default function CRM() {
   const [syncing, setSyncing] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
-  const [openTicket, setOpenTicket] = useState<Ticket | null>(null);
+  const [expandedTicketId, setExpandedTicketId] = useState<string | null>(null);
   const [threadLoading, setThreadLoading] = useState(false);
   const [threadMessages, setThreadMessages] = useState<any[] | null>(null);
   const [threadError, setThreadError] = useState<string | null>(null);
@@ -164,14 +164,16 @@ export default function CRM() {
     load();
   }, []);
 
-  // Buscar thread bruto do Parmê ao abrir um ticket
+  // Buscar thread bruto do Parmê ao expandir um ticket
   useEffect(() => {
-    if (!openTicket) {
+    if (!expandedTicketId) {
       setThreadMessages(null);
       setThreadError(null);
       setThreadLoading(false);
       return;
     }
+    const ticket = tickets.find((t) => t.id === expandedTicketId);
+    if (!ticket) return;
     let cancelled = false;
     setThreadLoading(true);
     setThreadMessages(null);
@@ -180,7 +182,7 @@ export default function CRM() {
       try {
         const { data, error } = await supabase.functions.invoke(
           "parme-get-ticket-conversation",
-          { body: { ticket_id: openTicket.parme_id } },
+          { body: { ticket_id: ticket.parme_id } },
         );
         if (cancelled) return;
         if ((data as any)?.error === "parme_endpoint_unavailable") {
@@ -202,7 +204,7 @@ export default function CRM() {
     return () => {
       cancelled = true;
     };
-  }, [openTicket]);
+  }, [expandedTicketId, tickets]);
 
   async function handleSync() {
     setSyncing(true);
@@ -667,23 +669,200 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredTickets.map((t) => (
-                      <TableRow
-                        key={t.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => setOpenTicket(t)}
-                      >
-                        <TableCell className="font-medium">{t.order_number ?? "—"}</TableCell>
-                        <TableCell>{t.contact ?? "—"}</TableCell>
-                        <TableCell className="max-w-md">
-                          <div className="line-clamp-2 text-sm">{t.description ?? "—"}</div>
-                        </TableCell>
-                        <TableCell>
-                          {t.status ? <Badge variant="outline">{t.status}</Badge> : "—"}
-                        </TableCell>
-                        <TableCell>{fmtDateTime(t.created_at)}</TableCell>
-                      </TableRow>
-                    ))
+                    filteredTickets.map((t) => {
+                      const isOpen = expandedTicketId === t.id;
+                      const digits = (t.contact ?? "").replace(/\D+/g, "");
+                      const related = digits
+                        ? conversations.filter((c) => {
+                            const candidates = [
+                              c.extracted?.telefone,
+                              c.extracted?.phone,
+                              c.client_meta?.phone,
+                              c.client_meta?.telefone,
+                            ]
+                              .filter(Boolean)
+                              .map((v: any) => String(v).replace(/\D+/g, ""));
+                            return candidates.some(
+                              (x) => x === digits || x.endsWith(digits) || digits.endsWith(x),
+                            );
+                          })
+                        : [];
+                      return (
+                        <Fragment key={t.id}>
+                          <TableRow
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => setExpandedTicketId(isOpen ? null : t.id)}
+                          >
+                            <TableCell className="font-medium">
+                              <div className="flex items-center gap-2">
+                                {isOpen ? (
+                                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                )}
+                                {t.order_number ?? "—"}
+                              </div>
+                            </TableCell>
+                            <TableCell>{t.contact ?? "—"}</TableCell>
+                            <TableCell className="max-w-md">
+                              <div className="line-clamp-2 text-sm">{t.description ?? "—"}</div>
+                            </TableCell>
+                            <TableCell>
+                              {t.status ? <Badge variant="outline">{t.status}</Badge> : "—"}
+                            </TableCell>
+                            <TableCell>{fmtDateTime(t.created_at)}</TableCell>
+                          </TableRow>
+                          {isOpen && (
+                            <TableRow className="hover:bg-transparent">
+                              <TableCell colSpan={5} className="p-0">
+                                <div className="p-4 space-y-4 bg-muted/20 border-t">
+                                  <div className="flex flex-wrap gap-2 text-sm">
+                                    {t.status && (
+                                      <Badge variant="outline">status: {t.status}</Badge>
+                                    )}
+                                    <Badge variant="outline" className="font-mono">
+                                      id: {t.parme_id.slice(0, 8)}
+                                    </Badge>
+                                  </div>
+
+                                  <div>
+                                    <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+                                      Descrição
+                                    </div>
+                                    <div className="rounded-md border bg-muted/40 p-3 text-sm whitespace-pre-wrap">
+                                      {t.description ?? "—"}
+                                    </div>
+                                  </div>
+
+                                  {/* Thread bruto do Parmê */}
+                                  <div>
+                                    <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-2">
+                                      <Download className="h-3.5 w-3.5" />
+                                      Conversa completa (Parmê)
+                                      {threadMessages && ` (${threadMessages.length})`}
+                                    </div>
+                                    {threadLoading ? (
+                                      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground flex items-center gap-2">
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Buscando mensagens no Parmê…
+                                      </div>
+                                    ) : threadError === "parme_endpoint_unavailable" ? (
+                                      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                                        O Parmê ainda não expõe{" "}
+                                        <code className="font-mono text-xs">
+                                          GET /api/public/tickets/:id/messages
+                                        </code>
+                                        . Peça ao time do Parmê para implementar este endpoint.
+                                      </div>
+                                    ) : threadError ? (
+                                      <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+                                        Falha ao buscar conversa: {threadError}
+                                      </div>
+                                    ) : threadMessages && threadMessages.length === 0 ? (
+                                      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                                        Nenhuma mensagem retornada para este ticket.
+                                      </div>
+                                    ) : threadMessages ? (
+                                      <div className="space-y-2 max-h-80 overflow-y-auto rounded-md border p-3 bg-muted/20">
+                                        {threadMessages.map((m: any, i: number) => {
+                                          const role =
+                                            m.role ?? m.author ?? m.from ?? "user";
+                                          const isAssistant =
+                                            role === "assistant" ||
+                                            role === "ai" ||
+                                            role === "bot";
+                                          const content =
+                                            typeof m.content === "string"
+                                              ? m.content
+                                              : (m.message ?? m.text ?? JSON.stringify(m.content ?? m));
+                                          const ts = m.created_at ?? m.timestamp ?? m.time;
+                                          return (
+                                            <div
+                                              key={m.id ?? i}
+                                              className={`flex flex-col ${isAssistant ? "items-start" : "items-end"}`}
+                                            >
+                                              <div
+                                                className={`max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
+                                                  isAssistant
+                                                    ? "bg-background border"
+                                                    : "bg-primary text-primary-foreground"
+                                                }`}
+                                              >
+                                                {content}
+                                              </div>
+                                              <div className="text-[10px] text-muted-foreground mt-0.5 px-1">
+                                                {role}
+                                                {ts ? ` · ${fmtDateTime(ts)}` : ""}
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    ) : null}
+                                  </div>
+
+                                  <div>
+                                    <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-2">
+                                      <MessageSquare className="h-3.5 w-3.5" />
+                                      Conversa(s) relacionada(s) {related.length > 0 && `(${related.length})`}
+                                    </div>
+                                    {related.length === 0 ? (
+                                      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                                        Nenhuma conversa do Parmê encontrada para este contato.
+                                        {!t.contact && " O ticket não tem telefone associado."}
+                                      </div>
+                                    ) : (
+                                      <div className="space-y-3">
+                                        {related.map((c) => (
+                                          <div key={c.id} className="rounded-md border p-3 space-y-2">
+                                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                              {c.extracted?.marca && (
+                                                <Badge>{String(c.extracted.marca)}</Badge>
+                                              )}
+                                              <span className="font-mono">
+                                                sessão: {c.session_id?.slice(0, 16) ?? "—"}
+                                              </span>
+                                              <span>· {c.message_count ?? 0} mensagens</span>
+                                              <span>· {fmtDateTime(c.extracted_at)}</span>
+                                            </div>
+                                            {c.extracted && Object.keys(c.extracted).length > 0 && (
+                                              <div className="rounded bg-muted/40 p-2 text-xs space-y-0.5">
+                                                {Object.entries(c.extracted).map(([k, v]) => (
+                                                  <div key={k}>
+                                                    <span className="text-muted-foreground">{k}:</span>{" "}
+                                                    <span className="font-mono">
+                                                      {typeof v === "string" ? v : JSON.stringify(v)}
+                                                    </span>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            )}
+                                            {c.client_meta && Object.keys(c.client_meta).length > 0 && (
+                                              <details className="text-xs">
+                                                <summary className="cursor-pointer text-muted-foreground">
+                                                  metadados do cliente
+                                                </summary>
+                                                <pre className="mt-1 rounded bg-muted/40 p-2 overflow-x-auto">
+                                                  {JSON.stringify(c.client_meta, null, 2)}
+                                                </pre>
+                                              </details>
+                                            )}
+                                          </div>
+                                        ))}
+                                        <p className="text-xs text-muted-foreground">
+                                          As mensagens individuais ficam no Parmê — aqui guardamos só o
+                                          resumo extraído pela IA.
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </Fragment>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
@@ -764,188 +943,6 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Modal de detalhes do ticket */}
-      <Dialog open={!!openTicket} onOpenChange={(o) => !o && setOpenTicket(null)}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          {openTicket && (() => {
-            const digits = (openTicket.contact ?? "").replace(/\D+/g, "");
-            const related = digits
-              ? conversations.filter((c) => {
-                  const candidates = [
-                    c.extracted?.telefone,
-                    c.extracted?.phone,
-                    c.client_meta?.phone,
-                    c.client_meta?.telefone,
-                  ]
-                    .filter(Boolean)
-                    .map((v: any) => String(v).replace(/\D+/g, ""));
-                  return candidates.some(
-                    (x) => x === digits || x.endsWith(digits) || digits.endsWith(x),
-                  );
-                })
-              : [];
-            return (
-              <>
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <Ticket className="h-5 w-5 text-primary" />
-                    Ticket {openTicket.order_number ? `#${openTicket.order_number}` : ""}
-                  </DialogTitle>
-                  <DialogDescription>
-                    Criado {fmtDateTime(openTicket.created_at)}
-                    {openTicket.contact ? ` · ${openTicket.contact}` : ""}
-                  </DialogDescription>
-                </DialogHeader>
-
-                <div className="space-y-4">
-                  <div className="flex flex-wrap gap-2 text-sm">
-                    {openTicket.status && (
-                      <Badge variant="outline">status: {openTicket.status}</Badge>
-                    )}
-                    <Badge variant="outline" className="font-mono">
-                      id: {openTicket.parme_id.slice(0, 8)}
-                    </Badge>
-                  </div>
-
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
-                      Descrição
-                    </div>
-                    <div className="rounded-md border bg-muted/40 p-3 text-sm whitespace-pre-wrap">
-                      {openTicket.description ?? "—"}
-                    </div>
-                  </div>
-
-                  {/* Thread bruto do Parmê */}
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-2">
-                      <Download className="h-3.5 w-3.5" />
-                      Conversa completa (Parmê)
-                      {threadMessages && ` (${threadMessages.length})`}
-                    </div>
-                    {threadLoading ? (
-                      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Buscando mensagens no Parmê…
-                      </div>
-                    ) : threadError === "parme_endpoint_unavailable" ? (
-                      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                        O Parmê ainda não expõe{" "}
-                        <code className="font-mono text-xs">
-                          GET /api/public/tickets/:id/messages
-                        </code>
-                        . Peça ao time do Parmê para implementar este endpoint.
-                      </div>
-                    ) : threadError ? (
-                      <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
-                        Falha ao buscar conversa: {threadError}
-                      </div>
-                    ) : threadMessages && threadMessages.length === 0 ? (
-                      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                        Nenhuma mensagem retornada para este ticket.
-                      </div>
-                    ) : threadMessages ? (
-                      <div className="space-y-2 max-h-80 overflow-y-auto rounded-md border p-3 bg-muted/20">
-                        {threadMessages.map((m: any, i: number) => {
-                          const role =
-                            m.role ?? m.author ?? m.from ?? "user";
-                          const isAssistant =
-                            role === "assistant" ||
-                            role === "ai" ||
-                            role === "bot";
-                          const content =
-                            typeof m.content === "string"
-                              ? m.content
-                              : (m.message ?? m.text ?? JSON.stringify(m.content ?? m));
-                          const ts = m.created_at ?? m.timestamp ?? m.time;
-                          return (
-                            <div
-                              key={m.id ?? i}
-                              className={`flex flex-col ${isAssistant ? "items-start" : "items-end"}`}
-                            >
-                              <div
-                                className={`max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
-                                  isAssistant
-                                    ? "bg-background border"
-                                    : "bg-primary text-primary-foreground"
-                                }`}
-                              >
-                                {content}
-                              </div>
-                              <div className="text-[10px] text-muted-foreground mt-0.5 px-1">
-                                {role}
-                                {ts ? ` · ${fmtDateTime(ts)}` : ""}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : null}
-                  </div>
-
-
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-2">
-                      <MessageSquare className="h-3.5 w-3.5" />
-                      Conversa(s) relacionada(s) {related.length > 0 && `(${related.length})`}
-                    </div>
-                    {related.length === 0 ? (
-                      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                        Nenhuma conversa do Parmê encontrada para este contato.
-                        {!openTicket.contact && " O ticket não tem telefone associado."}
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {related.map((c) => (
-                          <div key={c.id} className="rounded-md border p-3 space-y-2">
-                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                              {c.extracted?.marca && (
-                                <Badge>{String(c.extracted.marca)}</Badge>
-                              )}
-                              <span className="font-mono">
-                                sessão: {c.session_id?.slice(0, 16) ?? "—"}
-                              </span>
-                              <span>· {c.message_count ?? 0} mensagens</span>
-                              <span>· {fmtDateTime(c.extracted_at)}</span>
-                            </div>
-                            {c.extracted && Object.keys(c.extracted).length > 0 && (
-                              <div className="rounded bg-muted/40 p-2 text-xs space-y-0.5">
-                                {Object.entries(c.extracted).map(([k, v]) => (
-                                  <div key={k}>
-                                    <span className="text-muted-foreground">{k}:</span>{" "}
-                                    <span className="font-mono">
-                                      {typeof v === "string" ? v : JSON.stringify(v)}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            {c.client_meta && Object.keys(c.client_meta).length > 0 && (
-                              <details className="text-xs">
-                                <summary className="cursor-pointer text-muted-foreground">
-                                  metadados do cliente
-                                </summary>
-                                <pre className="mt-1 rounded bg-muted/40 p-2 overflow-x-auto">
-                                  {JSON.stringify(c.client_meta, null, 2)}
-                                </pre>
-                              </details>
-                            )}
-                          </div>
-                        ))}
-                        <p className="text-xs text-muted-foreground">
-                          As mensagens individuais ficam no Parmê — aqui guardamos só o
-                          resumo extraído pela IA.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
-            );
-          })()}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
