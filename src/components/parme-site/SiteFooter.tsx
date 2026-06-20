@@ -9,7 +9,7 @@ const navLinks = [
   { to: "/parme/box-caipira", label: "Box caipira" },
   { to: "/parme/sobre", label: "Nossa história" },
   { to: "/parme/reservar", label: "Reservar mesa" },
-  { href: "https://nexasuite.aquelaparme.com.br/vagas", label: "Junte-se a nós" },
+  { to: "/vagas", label: "Junte-se a nós" },
 ] as const;
 
 export function SiteFooter() {

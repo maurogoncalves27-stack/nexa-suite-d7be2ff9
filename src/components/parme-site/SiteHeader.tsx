@@ -42,13 +42,13 @@ export function SiteHeader() {
         </Link>
 
         <div className="hidden items-center justify-end gap-3 lg:flex">
-          <a
-            href="https://nexasuite.aquelaparme.com.br/vagas"
+          <Link
+            to="/vagas"
             className="text-[15px] font-semibold transition hover:opacity-80"
             style={{ color: "rgba(255,247,230,0.9)" }}
           >
             Junte-se a nós
-          </a>
+          </Link>
           <Link
             to="/parme/reservar"
             className="inline-flex items-center gap-2 rounded-full border bg-transparent px-4 py-2 text-sm font-semibold transition"
@@ -85,9 +85,9 @@ export function SiteHeader() {
               </li>
             ))}
             <li>
-              <a href="https://nexasuite.aquelaparme.com.br/vagas" className="block rounded-md px-3 py-3 text-base font-semibold">
+              <Link to="/vagas" onClick={() => setOpen(false)} className="block rounded-md px-3 py-3 text-base font-semibold">
                 Junte-se a nós
-              </a>
+              </Link>
             </li>
             <li>
               <Link
