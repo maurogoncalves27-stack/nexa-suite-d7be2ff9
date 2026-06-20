@@ -477,8 +477,9 @@ export default function CRM() {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
-      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-        <div>
+      {/* Header */}
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="space-y-1">
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
             <Headset className="h-6 w-6 md:h-7 md:w-7 text-primary" />
             CRM
@@ -487,36 +488,36 @@ export default function CRM() {
             Reservas, tickets e conversas extraídas pela Giana (Parmê).
           </p>
           {lastSync && (
-            <p className="text-xs text-muted-foreground mt-1">
-              Última sincronização:{" "}
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <Clock className="h-3 w-3" />
+              Sincronizado{" "}
               {formatDistanceToNow(new Date(lastSync), {
                 addSuffix: true,
                 locale: ptBR,
-              })}{" "}
-              ({fmtDateTime(lastSync)})
+              })}
             </p>
           )}
         </div>
-        <Button onClick={handleSync} disabled={syncing} className="gap-2">
+        <Button onClick={handleSync} disabled={syncing} className="gap-2 shrink-0">
           <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-          Sincronizar histórico
+          Sincronizar
         </Button>
       </div>
 
-      {/* Filtros */}
-      <Card>
-        <CardContent className="pt-6 flex flex-col md:flex-row gap-3">
+      {/* Toolbar sticky: busca + filtro */}
+      <div className="sticky top-0 z-10 -mx-4 md:-mx-6 px-4 md:px-6 py-3 bg-background/85 backdrop-blur border-y">
+        <div className="flex flex-col md:flex-row gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar por nome, telefone, e-mail, pedido…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8"
+              className="pl-9 h-10"
             />
           </div>
           <Select value={brand} onValueChange={setBrand}>
-            <SelectTrigger className="md:w-56">
+            <SelectTrigger className="md:w-56 h-10">
               <SelectValue placeholder="Marca (conversas)" />
             </SelectTrigger>
             <SelectContent>
@@ -528,23 +529,35 @@ export default function CRM() {
               ))}
             </SelectContent>
           </Select>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
-          <TabsTrigger value="dashboard" className="gap-1">
+        <TabsList className="w-full h-auto p-1 grid grid-cols-2 md:grid-cols-4 gap-1 bg-muted">
+          <TabsTrigger value="dashboard" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
             <LayoutDashboard className="h-4 w-4" />
-            <span className="hidden sm:inline">Dashboard</span>
+            <span>Dashboard</span>
           </TabsTrigger>
-          <TabsTrigger value="reservations">
-            Reservas ({filteredReservations.length})
+          <TabsTrigger value="reservations" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
+            <Calendar className="h-4 w-4" />
+            <span>Reservas</span>
+            <Badge variant="secondary" className="ml-0.5 h-5 px-1.5 text-[10px] font-semibold tabular-nums">
+              {filteredReservations.length}
+            </Badge>
           </TabsTrigger>
-          <TabsTrigger value="tickets">
-            Tickets ({filteredTickets.length})
+          <TabsTrigger value="tickets" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
+            <Ticket className="h-4 w-4" />
+            <span>Tickets</span>
+            <Badge variant="secondary" className="ml-0.5 h-5 px-1.5 text-[10px] font-semibold tabular-nums">
+              {filteredTickets.length}
+            </Badge>
           </TabsTrigger>
-          <TabsTrigger value="conversations">
-            Conversas ({filteredConversations.length})
+          <TabsTrigger value="conversations" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
+            <MessageSquare className="h-4 w-4" />
+            <span>Conversas</span>
+            <Badge variant="secondary" className="ml-0.5 h-5 px-1.5 text-[10px] font-semibold tabular-nums">
+              {filteredConversations.length}
+            </Badge>
           </TabsTrigger>
         </TabsList>
 
@@ -561,19 +574,147 @@ export default function CRM() {
         {/* Reservas */}
         <TabsContent value="reservations" className="mt-4">
           <Card>
-            <CardContent className="p-0 overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Contato</TableHead>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Hora</TableHead>
-                    <TableHead>Pessoas</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-24 text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
+            <CardContent className="p-0">
+              {/* Mobile: cards */}
+              <div className="md:hidden divide-y">
+                {loading ? (
+                  <div className="p-8 text-center text-sm text-muted-foreground">Carregando…</div>
+                ) : filteredReservations.length === 0 ? (
+                  <div className="p-8 text-center text-sm text-muted-foreground">Nenhuma reserva.</div>
+                ) : (
+                  filteredReservations.map((r) => (
+                    <div key={r.id} className="p-4 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="font-medium truncate">{r.name ?? "—"}</div>
+                          <div className="text-xs text-muted-foreground">{r.phone ?? "—"}</div>
+                          {r.email && (
+                            <div className="text-xs text-muted-foreground truncate">{r.email}</div>
+                          )}
+                        </div>
+                        {r.status && (
+                          <Badge
+                            variant={
+                              r.status === "confirmed"
+                                ? "default"
+                                : r.status === "cancelled"
+                                  ? "destructive"
+                                  : "outline"
+                            }
+                            className={
+                              r.status === "confirmed"
+                                ? "bg-success text-success-foreground hover:bg-success/90 shrink-0"
+                                : "shrink-0"
+                            }
+                          >
+                            {translateStatus(r.status)}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3.5 w-3.5" />
+                          {fmtDate(r.reservation_date)} · {r.reservation_time?.slice(0, 5) ?? "—"}
+                        </span>
+                        <span>· {r.party_size ?? "?"} pess.</span>
+                      </div>
+                      <div className="flex items-center gap-2 pt-1">
+                        {r.status !== "confirmed" && r.status !== "cancelled" && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={confirmingId === r.parme_id}
+                                className="border-success text-success hover:bg-success hover:text-success-foreground gap-1 flex-1"
+                              >
+                                <CheckCircle2 className="h-4 w-4" />
+                                Confirmar
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Confirmar reserva?</AlertDialogTitle>
+                                <AlertDialogDescription asChild>
+                                  <div className="space-y-2">
+                                    <p>
+                                      Vamos marcar a reserva de{" "}
+                                      <strong>{r.name ?? "—"}</strong> como confirmada no Parmê
+                                      e enviar este WhatsApp ao cliente
+                                      {r.phone ? ` (${r.phone})` : ""}:
+                                    </p>
+                                    <pre className="whitespace-pre-wrap rounded-md bg-muted p-3 text-xs text-foreground">
+{`Olá, ${(r.name || "").split(" ")[0] || "tudo bem"}! 👋
+
+Sua reserva no *Aquela Parmê* está *confirmada* para *${fmtDate(r.reservation_date)}* às *${r.reservation_time?.slice(0, 5) ?? "—"}*${r.party_size ? ` para ${r.party_size} ${r.party_size === 1 ? "pessoa" : "pessoas"}` : ""}.
+
+Qualquer alteração é só responder por aqui. Até logo! 🍝`}
+                                    </pre>
+                                  </div>
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleConfirmReservation(r.parme_id)}
+                                  className="bg-success text-success-foreground hover:bg-success/90"
+                                >
+                                  Confirmar e enviar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              disabled={deletingId === r.parme_id}
+                              className="h-9 w-9 text-destructive hover:text-destructive shrink-0"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir reserva?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Isso vai excluir a reserva de <strong>{r.name ?? "—"}</strong>{" "}
+                                também no Parmê. A ação não pode ser desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteReservation(r.parme_id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Desktop: tabela */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Contato</TableHead>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Hora</TableHead>
+                      <TableHead>Pessoas</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="w-24 text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
@@ -708,6 +849,7 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                   )}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
