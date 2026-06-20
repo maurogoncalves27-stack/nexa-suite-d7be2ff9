@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { MapPin, ExternalLink, Clock, UtensilsCrossed, ShoppingBag, Truck, Phone } from "lucide-react";
+import { MapPin, ExternalLink, Clock, UtensilsCrossed, ShoppingBag, Bike, Phone } from "lucide-react";
 import { SiteLayout } from "@/components/parme-site/SiteLayout";
 import { STORES } from "@/components/parme/stores";
 
