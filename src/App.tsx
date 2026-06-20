@@ -147,6 +147,15 @@ const PartnerDashboard = lazy(() => import("./pages/PartnerDashboard.tsx"));
 const SelectAccess = lazy(() => import("./pages/SelectAccess.tsx"));
 const MigrateNexa = lazy(() => import("./pages/admin/MigrateNexa.tsx"));
 
+// Site público Aquela Parmê (servido sob /parme/* — e na raiz quando
+// hostname for aquelaparme.com.br via HostnameGuard).
+const ParmeHome = lazy(() => import("./pages/parme/Home.tsx"));
+const ParmeBrand = lazy(() => import("./pages/parme/Brand.tsx"));
+const ParmeSobre = lazy(() => import("./pages/parme/Sobre.tsx"));
+const ParmeReservar = lazy(() => import("./pages/parme/Reservar.tsx"));
+const ParmeEnderecos = lazy(() => import("./pages/parme/Enderecos.tsx"));
+import { HostnameGuard } from "@/components/parme-site/HostnameGuard";
+
 const queryClient = new QueryClient();
 
 const STAFF = ["admin", "manager"] as const;
@@ -202,8 +211,16 @@ const App = () => (
         <AuthProvider>
           
           <InactivityWatcher />
+          <HostnameGuard />
           <Suspense fallback={<RouteFallback />}>
           <Routes>
+            {/* Site público Aquela Parmê */}
+            <Route path="/parme" element={<ParmeHome />} />
+            <Route path="/parme/sobre" element={<ParmeSobre />} />
+            <Route path="/parme/reservar" element={<ParmeReservar />} />
+            <Route path="/parme/enderecos" element={<ParmeEnderecos />} />
+            <Route path="/parme/:slug" element={<ParmeBrand />} />
+
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/verificar/:type/:id" element={<VerifySignature />} />
