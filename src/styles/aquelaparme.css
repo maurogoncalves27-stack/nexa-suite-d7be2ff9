@@ -6,8 +6,8 @@
 /* ─── Fonte de display (Avigea) ─── */
 @font-face {
   font-family: "Avigea";
-  src: url("/fonts/Avigea.woff2") format("woff2"),
-       url("/fonts/Avigea.woff") format("woff");
+  src: url("/__l5e/assets-v1/9abc8ad8-d4e9-42f3-9813-d248eb466ce4/Avigea.woff2") format("woff2"),
+       url("/__l5e/assets-v1/b28ddee6-9701-4f0c-9ec9-3fca49da1075/Avigea.woff") format("woff");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
