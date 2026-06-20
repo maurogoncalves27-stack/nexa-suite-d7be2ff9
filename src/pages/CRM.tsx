@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Headset, RefreshCw, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, Clock } from "lucide-react";
+import { Headset, RefreshCw, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, Clock, Palette, Bot, Plug } from "lucide-react";
+import { PersonalizePanel, AgentPanel, IntegrationsPanel } from "@/components/crm/ParmeSettingsPanels";
 import {
   BarChart,
   Bar,
@@ -525,7 +526,7 @@ export default function CRM() {
       </div>
 
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="w-full h-auto p-1 grid grid-cols-2 md:grid-cols-4 gap-1 bg-muted">
+        <TabsList className="w-full h-auto p-1 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-1 bg-muted">
           <TabsTrigger value="dashboard" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
             <LayoutDashboard className="h-4 w-4" />
             <span>Dashboard</span>
@@ -550,6 +551,18 @@ export default function CRM() {
             <Badge variant="secondary" className="ml-0.5 h-5 px-1.5 text-[10px] font-semibold tabular-nums">
               {filteredConversations.length}
             </Badge>
+          </TabsTrigger>
+          <TabsTrigger value="personalize" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
+            <Palette className="h-4 w-4" />
+            <span>Personalizar</span>
+          </TabsTrigger>
+          <TabsTrigger value="agent" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
+            <Bot className="h-4 w-4" />
+            <span>Agente IA</span>
+          </TabsTrigger>
+          <TabsTrigger value="integrations" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
+            <Plug className="h-4 w-4" />
+            <span>Integrações</span>
           </TabsTrigger>
         </TabsList>
 
@@ -1278,6 +1291,18 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
               </Table>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="personalize" className="mt-4">
+          <PersonalizePanel />
+        </TabsContent>
+
+        <TabsContent value="agent" className="mt-4">
+          <AgentPanel />
+        </TabsContent>
+
+        <TabsContent value="integrations" className="mt-4">
+          <IntegrationsPanel />
         </TabsContent>
       </Tabs>
     </div>
