@@ -219,6 +219,8 @@ const App = () => (
             <Route path="/parme/sobre" element={<ParmeSobre />} />
             <Route path="/parme/reservar" element={<ParmeReservar />} />
             <Route path="/parme/enderecos" element={<ParmeEnderecos />} />
+            <Route path="/parme/vagas" element={<PublicJobs />} />
+            <Route path="/parme/vagas/:id" element={<PublicJobDetail />} />
             <Route path="/parme/:slug" element={<ParmeBrand />} />
 
             <Route path="/auth" element={<Auth />} />

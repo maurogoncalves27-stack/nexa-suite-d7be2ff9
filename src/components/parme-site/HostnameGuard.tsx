@@ -20,7 +20,13 @@ const SITE_ALIASES: Record<string, string> = {
   "/sobre": "/parme/sobre",
   "/reservar": "/parme/reservar",
   "/enderecos": "/parme/enderecos",
+  "/vagas": "/parme/vagas",
 };
+
+// Prefixos que também devem ser reescritos para /parme/* (rotas dinâmicas).
+const SITE_PREFIX_ALIASES: Array<[string, string]> = [
+  ["/vagas/", "/parme/vagas/"],
+];
 
 export function HostnameGuard() {
   const loc = useLocation();
@@ -31,7 +37,16 @@ export function HostnameGuard() {
     if (!SITE_HOSTS.has(window.location.hostname)) return;
     if (loc.pathname.startsWith("/parme")) return;
     const target = SITE_ALIASES[loc.pathname];
-    if (target) nav(target + loc.search + loc.hash, { replace: true });
+    if (target) {
+      nav(target + loc.search + loc.hash, { replace: true });
+      return;
+    }
+    for (const [from, to] of SITE_PREFIX_ALIASES) {
+      if (loc.pathname.startsWith(from)) {
+        nav(to + loc.pathname.slice(from.length) + loc.search + loc.hash, { replace: true });
+        return;
+      }
+    }
   }, [loc, nav]);
 
   return null;
