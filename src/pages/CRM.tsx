@@ -11,6 +11,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -100,6 +107,7 @@ export default function CRM() {
   const [syncing, setSyncing] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [openTicket, setOpenTicket] = useState<Ticket | null>(null);
   const [search, setSearch] = useState("");
   const [brand, setBrand] = useState<string>("all");
   const [lastSync, setLastSync] = useState<string | null>(null);
