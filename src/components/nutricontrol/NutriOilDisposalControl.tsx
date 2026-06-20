@@ -134,8 +134,16 @@ export const NutriOilDisposalControl = ({ storeId }: Props) => {
     fetchRecords();
   };
 
-  const getReceiptUrl = (path: string) =>
-    supabase.storage.from(RECEIPT_BUCKET).getPublicUrl(path).data.publicUrl;
+  const openReceipt = async (path: string) => {
+    const { data, error } = await supabase.storage
+      .from(RECEIPT_BUCKET)
+      .createSignedUrl(path, 60 * 10); // 10 min
+    if (error || !data?.signedUrl) {
+      toast.error("Não foi possível abrir o recibo");
+      return;
+    }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  };
 
   const totalAmount = records.reduce((sum, r) => sum + Number(r.amount_received || 0), 0);
 
@@ -288,15 +296,14 @@ export const NutriOilDisposalControl = ({ storeId }: Props) => {
               )}
               <div className="ml-auto flex items-center gap-1">
                 {r.receipt_path && (
-                  <a
-                    href={getReceiptUrl(r.receipt_path)}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => openReceipt(r.receipt_path!)}
                     className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                   >
                     <FileText className="h-3.5 w-3.5" />
                     Recibo
-                  </a>
+                  </button>
                 )}
                 <Button
                   variant="ghost"
