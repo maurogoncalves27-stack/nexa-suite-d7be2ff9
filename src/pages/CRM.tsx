@@ -1292,6 +1292,18 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="personalize" className="mt-4">
+          <PersonalizePanel />
+        </TabsContent>
+
+        <TabsContent value="agent" className="mt-4">
+          <AgentPanel />
+        </TabsContent>
+
+        <TabsContent value="integrations" className="mt-4">
+          <IntegrationsPanel />
+        </TabsContent>
       </Tabs>
     </div>
   );
