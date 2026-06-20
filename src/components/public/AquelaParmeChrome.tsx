@@ -256,20 +256,19 @@ export function ApFooter() {
                       className="ap-footer-link"
                       style={{ borderBottom: "1px solid hsl(var(--ap-cream) / .7)", paddingBottom: "0.25rem" }}
                     >
-                      {l.label}
-                    </a>
-                  ) : (
-                    <Link
-                      key={l.label}
-                      to={l.to}
-                      className="ap-footer-link"
-                      style={{ borderBottom: "1px solid hsl(var(--ap-cream) / .7)", paddingBottom: "0.25rem" }}
-                    >
-                      {l.label}
-                    </Link>
-                  )
-                )}
-              </nav>
+                  {l.label}
+                </a>
+              ) : (
+                <Link
+                  key={l.label}
+                  to={l.to}
+                  className="ap-footer-link"
+                >
+                  {l.label}
+                </Link>
+              )
+            )}
+          </nav>
             </div>
           </div>
 
