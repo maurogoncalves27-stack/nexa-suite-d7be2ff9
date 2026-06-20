@@ -24,7 +24,11 @@ export function SiteHeader() {
       className="sticky top-0 z-40 bg-brand-ink text-brand-cream"
     >
       <div className="mx-auto grid max-w-[1400px] grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-3 md:gap-4 md:px-6 md:py-4">
-        <nav className="hidden items-center gap-7 lg:flex">
+        <Link to="/parme" className="flex items-center justify-start" onClick={() => setOpen(false)}>
+          <img src={logo} alt="Aquela Parmê" className="h-10 w-auto md:h-14" />
+        </Link>
+
+        <nav className="hidden items-center justify-center gap-6 lg:flex xl:gap-8">
           {leftLinks.map((l) => (
             <Link
               key={l.to}
@@ -35,11 +39,14 @@ export function SiteHeader() {
               {l.label}
             </Link>
           ))}
+          <Link
+            to="/vagas"
+            className="text-[15px] font-semibold transition hover:opacity-80"
+            style={{ color: "rgba(255,247,230,0.9)" }}
+          >
+            Junte-se a nós
+          </Link>
         </nav>
-
-        <Link to="/parme" className="flex items-center justify-center" onClick={() => setOpen(false)}>
-          <img src={logo} alt="Aquela Parmê" className="h-10 w-auto md:h-14" />
-        </Link>
 
         <div className="hidden items-center justify-end gap-3 lg:flex">
           <Link
