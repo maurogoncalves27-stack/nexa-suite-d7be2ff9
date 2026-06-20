@@ -187,7 +187,6 @@ export function ApFooter() {
               rel="noopener noreferrer"
               aria-label="Instagram do Aquela Parmê"
               className="ap-footer-link"
-              style={{ borderBottom: "1px solid hsl(var(--ap-cream) / .7)", paddingBottom: "0.25rem" }}
             >
               Instagram <AtSign style={{ height: "1rem", width: "1rem" }} aria-hidden />
             </a>
@@ -197,7 +196,6 @@ export function ApFooter() {
               rel="noopener noreferrer"
               aria-label="Facebook do Aquela Parmê"
               className="ap-footer-link"
-              style={{ borderBottom: "1px solid hsl(var(--ap-cream) / .7)", paddingBottom: "0.25rem" }}
             >
               Facebook <Globe style={{ height: "1rem", width: "1rem" }} aria-hidden />
             </a>
@@ -205,7 +203,6 @@ export function ApFooter() {
               href="mailto:contato@aquelaparme.com.br"
               aria-label="E-mail para contato"
               className="ap-footer-link"
-              style={{ borderBottom: "1px solid hsl(var(--ap-cream) / .7)", paddingBottom: "0.25rem" }}
             >
               E-mail <Mail style={{ height: "1rem", width: "1rem" }} aria-hidden />
             </a>
