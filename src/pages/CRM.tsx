@@ -625,7 +625,11 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                     </TableRow>
                   ) : (
                     filteredTickets.map((t) => (
-                      <TableRow key={t.id}>
+                      <TableRow
+                        key={t.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => setOpenTicket(t)}
+                      >
                         <TableCell className="font-medium">{t.order_number ?? "—"}</TableCell>
                         <TableCell>{t.contact ?? "—"}</TableCell>
                         <TableCell className="max-w-md">
