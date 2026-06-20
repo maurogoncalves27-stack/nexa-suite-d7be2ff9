@@ -4,9 +4,9 @@ import { MapPin, ExternalLink, Clock, UtensilsCrossed, ShoppingBag, Bike, Phone 
 import { SiteLayout } from "@/components/parme-site/SiteLayout";
 import { STORES } from "@/components/parme/stores";
 
-const serviceLabels: Record<string, { label: string; icon: React.ReactNode }> = {
-  mesa: { label: "Atendimento de mesa", icon: <UtensilsCrossed className="h-3.5 w-3.5" /> },
-  delivery: { label: "Delivery iFood / WhatsApp em breve", icon: <Truck className="h-3.5 w-3.5" /> },
+const serviceLabels: Record<string, { label: string; icon: React.ReactNode; highlighted?: boolean }> = {
+  mesa: { label: "Atendimento de mesa", icon: <UtensilsCrossed className="h-3.5 w-3.5" />, highlighted: true },
+  delivery: { label: "Delivery iFood / WhatsApp em breve", icon: <Bike className="h-3.5 w-3.5" /> },
   retirada: { label: "Retirada na loja", icon: <ShoppingBag className="h-3.5 w-3.5" /> },
 };
 
