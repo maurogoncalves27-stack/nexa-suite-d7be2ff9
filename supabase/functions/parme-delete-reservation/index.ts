@@ -8,6 +8,7 @@ const corsHeaders = {
 };
 
 const PARME_BASE = "https://parme.lovable.app";
+// deploy trigger
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
