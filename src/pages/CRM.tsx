@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Headset, RefreshCw, Search, Calendar, Ticket, MessageSquare, Trash2 } from "lucide-react";
+import { Headset, RefreshCw, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -99,6 +99,7 @@ export default function CRM() {
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [brand, setBrand] = useState<string>("all");
   const [lastSync, setLastSync] = useState<string | null>(null);
@@ -226,6 +227,54 @@ export default function CRM() {
       toast.error("Falha ao excluir", { id: tid, description: e.message });
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  async function handleConfirmReservation(parmeId: string) {
+    setConfirmingId(parmeId);
+    const tid = toast.loading("Confirmando reserva e enviando WhatsApp…");
+    try {
+      const { data: payload, error } = await supabase.functions.invoke(
+        "parme-confirm-reservation",
+        { body: { parme_id: parmeId } },
+      );
+
+      if ((payload as any)?.error === "parme_endpoint_unavailable") {
+        toast.warning("Parmê ainda não expõe PATCH público", {
+          id: tid,
+          description:
+            "Peça ao time do Parmê para implementar PATCH /api/public/reservations/:id.",
+          duration: 8000,
+        });
+        return;
+      }
+      if (error) {
+        throw new Error((payload as any)?.message ?? error.message);
+      }
+
+      setReservations((prev) =>
+        prev.map((r) =>
+          r.parme_id === parmeId ? { ...r, status: "confirmed" } : r,
+        ),
+      );
+
+      if ((payload as any)?.whatsapp_sent) {
+        toast.success("Reserva confirmada", {
+          id: tid,
+          description: "WhatsApp enviado ao cliente.",
+        });
+      } else {
+        toast.warning("Reserva confirmada, mas WhatsApp falhou", {
+          id: tid,
+          description:
+            (payload as any)?.whatsapp_error ?? "Sem detalhes do provedor.",
+          duration: 8000,
+        });
+      }
+    } catch (e: any) {
+      toast.error("Falha ao confirmar", { id: tid, description: e.message });
+    } finally {
+      setConfirmingId(null);
     }
   }
 
@@ -398,7 +447,7 @@ export default function CRM() {
                     <TableHead>Hora</TableHead>
                     <TableHead>Pessoas</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="w-12"></TableHead>
+                    <TableHead className="w-24 text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -428,39 +477,107 @@ export default function CRM() {
                         <TableCell>{r.reservation_time?.slice(0, 5) ?? "—"}</TableCell>
                         <TableCell>{r.party_size ?? "—"}</TableCell>
                         <TableCell>
-                          {r.status ? <Badge variant="outline">{r.status}</Badge> : "—"}
+                          {r.status ? (
+                            <Badge
+                              variant={
+                                r.status === "confirmed"
+                                  ? "default"
+                                  : r.status === "cancelled"
+                                    ? "destructive"
+                                    : "outline"
+                              }
+                              className={
+                                r.status === "confirmed"
+                                  ? "bg-success text-success-foreground hover:bg-success/90"
+                                  : undefined
+                              }
+                            >
+                              {r.status}
+                            </Badge>
+                          ) : (
+                            "—"
+                          )}
                         </TableCell>
                         <TableCell>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                disabled={deletingId === r.parme_id}
-                                className="h-8 w-8 text-destructive hover:text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Excluir reserva?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Isso vai excluir a reserva de <strong>{r.name ?? "—"}</strong>{" "}
-                                  também no Parmê (sistema de origem). A ação não pode ser desfeita.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteReservation(r.parme_id)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          <div className="flex items-center justify-end gap-1">
+                            {r.status !== "confirmed" && r.status !== "cancelled" && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    disabled={confirmingId === r.parme_id}
+                                    className="h-8 w-8 text-success hover:text-success"
+                                    title="Confirmar reserva"
+                                  >
+                                    <CheckCircle2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Confirmar reserva?</AlertDialogTitle>
+                                    <AlertDialogDescription asChild>
+                                      <div className="space-y-2">
+                                        <p>
+                                          Vamos marcar a reserva de{" "}
+                                          <strong>{r.name ?? "—"}</strong> como confirmada no Parmê
+                                          e enviar este WhatsApp ao cliente
+                                          {r.phone ? ` (${r.phone})` : ""}:
+                                        </p>
+                                        <pre className="whitespace-pre-wrap rounded-md bg-muted p-3 text-xs text-foreground">
+{`Olá, ${(r.name || "").split(" ")[0] || "tudo bem"}! 👋
+
+Sua reserva no *Aquela Parmê* está *confirmada* para *${fmtDate(r.reservation_date)}* às *${r.reservation_time?.slice(0, 5) ?? "—"}*${r.party_size ? ` para ${r.party_size} ${r.party_size === 1 ? "pessoa" : "pessoas"}` : ""}.
+
+Qualquer alteração é só responder por aqui. Até logo! 🍝`}
+                                        </pre>
+                                      </div>
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleConfirmReservation(r.parme_id)}
+                                      className="bg-success text-success-foreground hover:bg-success/90"
+                                    >
+                                      Confirmar e enviar
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  disabled={deletingId === r.parme_id}
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                  title="Excluir reserva"
                                 >
-                                  Excluir
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Excluir reserva?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Isso vai excluir a reserva de <strong>{r.name ?? "—"}</strong>{" "}
+                                    também no Parmê (sistema de origem). A ação não pode ser desfeita.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteReservation(r.parme_id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Excluir
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))

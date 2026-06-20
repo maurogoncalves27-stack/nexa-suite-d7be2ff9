@@ -1,72 +1,43 @@
-# Clone do aquelaparme.com.br no Lovable
+## Objetivo
+Adicionar ação **Confirmar** em cada linha da aba *Reservas* do CRM (`/crm`). Ao clicar:
+1. Status local `parme_reservations.status = 'confirmed'`.
+2. PATCH no Parmê (`/api/public/reservations/:id`) para refletir lá.
+3. Envia WhatsApp automático ao cliente pela instância Z-API **Cliente** (mesma já usada em `whatsapp-customer-ai-reply`).
 
-## Decisões já tomadas
-- **Projeto separado** (não mexe na NEXA Suite).
-- **Publicar primeiro em subdomínio de teste** (ex: `novo.aquelaparme.com.br`); WordPress atual continua no ar até você aprovar.
-- **Escopo completo**: home + páginas internas das 3 marcas + popups + animações.
+## UI — `src/pages/CRM.tsx`
+- Nova coluna/ação na tabela de reservas: botão `CheckCircle2` verde ao lado do lixeira, escondido quando `status === 'confirmed' | 'cancelled'`.
+- AlertDialog "Confirmar reserva?" mostrando preview da mensagem (read-only) com nome, data, hora e party_size.
+- Handler `handleConfirmReservation(parmeId)` → `supabase.functions.invoke("parme-confirm-reservation", { body: { parme_id } })`.
+- Toasts: loading / sucesso ("Reserva confirmada e WhatsApp enviado") / warning se Parmê ainda não tiver PATCH público (`parme_endpoint_unavailable`) / warning se WhatsApp falhar mas status confirmado (`whatsapp_failed`).
+- Badge de status ganha cor: `confirmed` → verde, `cancelled` → destrutivo, demais → outline.
 
-## Como começar (você precisa fazer 1 passo)
-Este plano não roda neste projeto (NEXA). Você precisa criar o projeto novo:
+## Edge function nova — `supabase/functions/parme-confirm-reservation/index.ts`
+- Valida JWT (`supabase.auth.getClaims`) + CORS via `npm:@supabase/supabase-js@2/cors`.
+- Body: `{ parme_id: string }` (Zod).
+- Busca a reserva local (service_role) para obter `name/phone/reservation_date/reservation_time/party_size`.
+- `PATCH https://parme.lovable.app/api/public/reservations/:parme_id` com `X-Consumer-Id/Secret` e `{ status: "confirmed" }`.
+  - 404/HTML → responde `{ error: "parme_endpoint_unavailable" }` (503) e **não** confirma local (mesma semântica do delete).
+  - 2xx → segue.
+- `UPDATE parme_reservations SET status='confirmed', updated_at=now() WHERE parme_id=?`.
+- Monta mensagem padrão em PT-BR:
+  > Olá {nome}! Sua reserva no Aquela Parmê está **confirmada** para {data} às {hora} para {n} pessoa(s). Qualquer mudança é só responder por aqui. 🍝
+- Envia via Z-API **Cliente** usando `ZAPI_CUSTOMER_INSTANCE_ID / ZAPI_CUSTOMER_TOKEN / ZAPI_CUSTOMER_CLIENT_TOKEN` (já configurados). Normaliza telefone (E.164 BR, prefixo 55).
+- Resposta: `{ ok: true, whatsapp_sent: boolean, whatsapp_error?: string }`. Falha de WhatsApp **não** reverte confirmação — UI mostra warning.
+- Sem `verify_jwt = false` (default Lovable Cloud já cobre a chamada autenticada do app).
 
-1. Vá em **Dashboard Lovable → New Project** (em branco).
-2. Nomeie algo tipo **"aquelaparme-site"**.
-3. Abra o projeto novo, cole esta mensagem no chat e me peça pra executar este plano lá:
-   > "Executa o plano clone-aquelaparme: clonar 100% de aquelaparme.com.br, mesmo design, fontes, cores, imagens, popups e animações."
+## Projeto Parmê (você precisa pedir lá)
+Expor no projeto de origem:
+```
+PATCH /api/public/reservations/:id
+Headers: X-Consumer-Id, X-Consumer-Secret
+Body: { status: "confirmed" | "cancelled" | "pending" }
+```
+- Atualiza o registro e retorna 200 com a reserva.
+- 404 se id inexistente; 401 se credenciais inválidas.
+- (Análogo ao DELETE já implementado.)
 
-A partir daí, no projeto novo, eu executo os passos abaixo.
+## Sem mudanças de schema
+`parme_reservations.status` já existe (TEXT). Nada de migration.
 
----
-
-## O que vou fazer no projeto novo
-
-### Fase 1 — Coleta (1 turno)
-- Fetch das 5 URLs: `/`, `/aquela-parme`, `/aquele-estrogonofe`, `/box-caipira`, `/sobre`.
-- Baixar via `curl` **todos os `.webp/.png/.svg`** do site (logo, pratos, estrelas, círculos decorativos, selos das marcas, backgrounds) — estão todos em `aquelaparme.com.br/wp-content/uploads/2025/12/`.
-- Subir as imagens como **Lovable Assets** (CDN), pra não depender do WordPress ficar no ar.
-- Extrair as **fontes reais** do CSS do Elementor (a serifa do "Aquela Parmê" parece **Recoleta** ou similar; vou identificar e usar `@fontsource` equivalente ou Adobe Fonts se for proprietária).
-
-### Fase 2 — Design system (1 turno)
-- `tailwind.config.ts` + `index.css` com os tokens já mapeados:
-  - Creme `#fbf3e1`, Vermelho `#7a1416`, Laranja-tomate `#e6532a`, Marrom `#5a3a28`, Ink `#1a1410`.
-  - Tokens semânticos (`--ap-cream`, `--ap-red`, etc.) — sem cor hardcoded.
-- Componentes base: `ApHeader` (pílula preta flutuante), `ApFooter` (laranja com "drip" preto), `ApButton` (creme + ícone seta arredondada), `ApCard`, `ApDisplay` (serifa).
-
-### Fase 3 — Páginas (2-3 turnos)
-- **Home** (`/`): header + 3 cards grandes (Aquela Parmê vermelho, Box Caipira laranja, Estrogonofe marrom/bege) com pratos + estrelas decorativas rotacionadas + selos das marcas. Carrossel auto em mobile.
-- **/aquela-parme**, **/aquele-estrogonofe**, **/box-caipira**: páginas individuais com hero, história, galeria, CTA iFood.
-- **/sobre**: institucional.
-
-### Fase 4 — Interações
-- **Lenis** (smooth scroll) — `npm i @studio-freight/lenis`.
-- **Framer Motion** pros `fadeIn` no scroll (Elementor usa `animated fadeIn`).
-- **Popups**: "Trabalhe Conosco" → link pra `nexa.aquelaparme.com.br/vagas` (reaproveita o portal de vagas que já existe na NEXA). "iFood" → modal com cards das 4 lojas linkando pros respectivos cardápios iFood.
-
-### Fase 5 — SEO + Publicação
-- `index.html` com title, meta description, OG tags, favicon (logo Aquela Parmê).
-- `robots.txt` + `sitemap.xml`.
-- Publicar via Lovable → URL `aquelaparme-site.lovable.app`.
-- Você adiciona o subdomínio **`novo.aquelaparme.com.br`** no painel do registrador (CNAME ou A `185.158.133.1` + TXT `_lovable`). Eu te passo os valores exatos.
-
-### Fase 6 — Cutover (quando você aprovar)
-- Você troca o A record do `aquelaparme.com.br` (apex) pra apontar pro Lovable.
-- WordPress sai do ar. Sem volta automática — recomendo backup do WP antes (export XML pelo `/wp-admin`).
-
----
-
-## Detalhes técnicos
-- **Stack**: React 18 + Vite + Tailwind + shadcn (padrão Lovable).
-- **Fontes**: `@fontsource` (sem `<link>` no HTML, sem `@import` no CSS).
-- **Imagens**: todas via `.asset.json` no CDN Lovable (zero binário no repo).
-- **Animações**: Framer Motion (`whileInView`) + Lenis pro scroll.
-- **Sem backend**: site institucional é 100% estático. "Trabalhe conosco" reaproveita backend NEXA (link externo).
-
-## O que NÃO está incluído
-- Painel admin de conteúdo (tipo WordPress). Conteúdo fica versionado no código — mudanças = nova publicação.
-- Migração de posts/blog (o site atual não tem blog visível).
-- Integração de iFood real (apenas links externos pros 4 cardápios).
-
-## Riscos
-- **Fontes proprietárias** (Recoleta): se for paga, vou usar substituta open-source visualmente próxima (DM Serif Display ou Fraunces) e te avisar.
-- **Cutover de DNS**: 1-72h de propagação; subdomínio de teste evita downtime no domínio principal.
-
-Aprova pra eu seguir? Quando aprovar, te passo os 3 cliques pra criar o projeto novo.
+## Sem novos secrets
+`ZAPI_CUSTOMER_*` e `PARME_CONSUMER_ID/SECRET` já estão no projeto (usados por `whatsapp-customer-ai-reply` e `parme-delete-reservation`).
