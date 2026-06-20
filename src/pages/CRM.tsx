@@ -555,13 +555,13 @@ export default function CRM() {
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                   <Button
-                                    variant="ghost"
-                                    size="icon"
+                                    variant="outline"
+                                    size="sm"
                                     disabled={confirmingId === r.parme_id}
-                                    className="text-success hover:text-success"
-                                    title="Confirmar reserva"
+                                    className="border-success text-success hover:bg-success hover:text-success-foreground gap-1"
                                   >
-                                    <CheckCircle2 className="h-5 w-5" />
+                                    <CheckCircle2 className="h-4 w-4" />
+                                    Confirmar
                                   </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
