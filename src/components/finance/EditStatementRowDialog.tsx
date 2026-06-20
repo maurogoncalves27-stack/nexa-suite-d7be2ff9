@@ -37,6 +37,7 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
   const [dueDate, setDueDate] = useState("");
   const [settledDate, setSettledDate] = useState(""); // paid_at / received_at
   const [issueDate, setIssueDate] = useState(""); // for invoices (read-only display)
+  const [competenceDate, setCompetenceDate] = useState(""); // editable competence (payable/receivable sem NF)
   const [amount, setAmount] = useState<string>("");
 
   const reloadCategories = async () => {
