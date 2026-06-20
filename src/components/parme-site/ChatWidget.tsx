@@ -2,14 +2,20 @@
 // /functions/v1/parme-chat. Sem dependência do @ai-sdk/react.
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { MessageCircle, X, Send } from "lucide-react";
+import gianaAvatar from "@/assets/giana-avatar.png.asset.json";
 
 const SESSION_KEY = "parme_chat_session_id";
 const DISMISS_KEY = "parme_chat_proactive_dismissed";
 const PROACTIVE_DELAY_MS = 20_000;
 const URL_REGEX = /((?:https?:\/\/|www\.)[^\s)]+)/gi;
 
-const FN_URL = `${import.meta.env.VITE_SUPABASE_URL ?? ""}/functions/v1/parme-chat`;
-const ANON = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "") as string;
+const FN_URL = `${
+  import.meta.env.VITE_SUPABASE_URL ?? "https://ixjgmerxxakdkfdzgumy.supabase.co"
+}/functions/v1/parme-chat`;
+const ANON = (
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4amdtZXJ4eGFrZGtmZHpndW15Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3Nzc0MDcsImV4cCI6MjA5NTM1MzQwN30.P6TOFgTyYCz1BpDiPZKucHwBAE8CMo8JqId7s4sYtAA"
+) as string;
 
 function getSessionId() {
   if (typeof window === "undefined") return "ssr";
@@ -61,6 +67,32 @@ function linkify(text: string): ReactNode[] {
     }
   });
   return out;
+}
+
+function extractStreamText(data: string) {
+  if (!data || data === "[DONE]") return "";
+  try {
+    const ev = JSON.parse(data) as {
+      type?: string;
+      delta?: string;
+      text?: string;
+      part?: { type?: string; text?: string };
+    };
+    if (ev.type === "text-delta" && ev.delta) return ev.delta;
+    if ((ev.type === "text" || ev.type === "text-start") && ev.text) return ev.text;
+    if (ev.part?.type === "text" && ev.part.text) return ev.part.text;
+  } catch {
+    const legacy = data.match(/^\d+:(.*)$/s);
+    if (legacy?.[1]) {
+      try {
+        const decoded = JSON.parse(legacy[1]) as string;
+        return typeof decoded === "string" ? decoded : "";
+      } catch {
+        return legacy[1];
+      }
+    }
+  }
+  return "";
 }
 
 type ChatMsg = { id: string; role: "user" | "assistant"; content: string };
@@ -147,19 +179,12 @@ export function ChatWidget() {
           if (!line.startsWith("data:")) continue;
           const data = line.slice(5).trim();
           if (!data || data === "[DONE]") continue;
-          try {
-            const ev = JSON.parse(data) as {
-              type?: string;
-              delta?: string;
-            };
-            if (ev.type === "text-delta" && ev.delta) {
-              acc += ev.delta;
-              setMessages((m) =>
-                m.map((x) => (x.id === assistantId ? { ...x, content: acc } : x))
-              );
-            }
-          } catch {
-            /* ignore non-JSON keep-alives */
+          const delta = extractStreamText(data);
+          if (delta) {
+            acc += delta;
+            setMessages((m) =>
+              m.map((x) => (x.id === assistantId ? { ...x, content: acc } : x))
+            );
           }
         }
       }
@@ -233,8 +258,13 @@ export function ChatWidget() {
       {open && (
         <div className="fixed bottom-24 right-5 z-50 flex h-[70vh] max-h-[600px] w-[min(380px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border border-[hsl(var(--parme-border))] bg-white shadow-2xl">
           <header className="flex items-center gap-3 border-b border-[hsl(var(--parme-border))] bg-brand-red px-4 py-3 text-white">
-            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/20 font-display text-xl">
-              G
+            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-white/20 ring-2 ring-white/35">
+              <img
+                src={gianaAvatar.url}
+                alt="Giana"
+                className="h-full w-full object-cover"
+                loading="eager"
+              />
             </div>
             <div className="flex-1">
               <p className="font-display text-base leading-tight">Giana</p>
