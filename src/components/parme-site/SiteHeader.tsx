@@ -61,7 +61,7 @@ export function SiteHeader() {
 
         <button
           type="button"
-          className="col-start-3 ml-auto -mr-1 grid h-11 w-11 place-items-center rounded-md lg:hidden"
+          className="ml-auto -mr-1 grid h-11 w-11 place-items-center rounded-md lg:hidden"
           onClick={() => setOpen((v) => !v)}
           aria-label={open ? "Fechar menu" : "Abrir menu"}
           aria-expanded={open}
