@@ -161,28 +161,6 @@ export function ReviewsSection() {
           ))}
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          className="mt-14 text-center"
-        >
-          <h3 className="font-display text-[clamp(1.5rem,3vw,2.25rem)] leading-tight text-brand-ink">Me avalia, please!</h3>
-          <div className="mt-6 flex flex-wrap justify-center gap-3">
-            {units.map((unit) => (
-              <a
-                key={unit.label}
-                href={reviewUrl(unit)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center rounded-full bg-[#e63946] px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#d62839] hover:shadow-md"
-              >
-                {unit.label}
-              </a>
-            ))}
-          </div>
-        </motion.div>
       </div>
     </section>
   );
