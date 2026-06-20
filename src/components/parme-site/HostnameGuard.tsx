@@ -20,6 +20,7 @@ const SITE_ALIASES: Record<string, string> = {
   "/sobre": "/parme/sobre",
   "/reservar": "/parme/reservar",
   "/enderecos": "/parme/enderecos",
+  "/surpresa": "/parme/surpresa",
   "/vagas": "/parme/vagas",
 };
 

@@ -154,6 +154,7 @@ const ParmeBrand = lazy(() => import("./pages/parme/Brand.tsx"));
 const ParmeSobre = lazy(() => import("./pages/parme/Sobre.tsx"));
 const ParmeReservar = lazy(() => import("./pages/parme/Reservar.tsx"));
 const ParmeEnderecos = lazy(() => import("./pages/parme/Enderecos.tsx"));
+const ParmeSurpresa = lazy(() => import("./pages/parme/Surpresa.tsx"));
 import { HostnameGuard } from "@/components/parme-site/HostnameGuard";
 
 const queryClient = new QueryClient();
@@ -219,6 +220,7 @@ const App = () => (
             <Route path="/parme/sobre" element={<ParmeSobre />} />
             <Route path="/parme/reservar" element={<ParmeReservar />} />
             <Route path="/parme/enderecos" element={<ParmeEnderecos />} />
+            <Route path="/parme/surpresa" element={<ParmeSurpresa />} />
             <Route path="/parme/vagas" element={<PublicJobs />} />
             <Route path="/parme/vagas/:id" element={<PublicJobDetail />} />
             <Route path="/parme/:slug" element={<ParmeBrand />} />
