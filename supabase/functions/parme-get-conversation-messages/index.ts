@@ -83,10 +83,11 @@ Deno.serve(async (req) => {
       });
       const text = await resp.text();
       const isHtml = text.trimStart().startsWith("<");
+      const isHtmlOnlyError = text.includes("Only HTML requests are supported");
       lastStatus = resp.status;
       lastBody = text;
 
-      if (resp.status === 404 || isHtml) continue;
+      if (resp.status === 404 || isHtml || isHtmlOnlyError) continue;
 
       if (!resp.ok) {
         return new Response(
