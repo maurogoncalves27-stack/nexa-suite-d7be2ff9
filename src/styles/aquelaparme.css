@@ -1,7 +1,9 @@
 /* Identidade visual Aquela Parmê — escopo público (vagas).
- * Espelha o site refeito em aquelaparme.com.br (Lovable - parme.lovable.app).
+ * Cópia fiel do site refeito em aquelaparme.com.br (Lovable - AqueleParme Reimagined).
  * Aplicado via classe .ap-brand no wrapper raiz da página.
  */
+
+/* ─── Fonte de display (Avigea) ─── */
 @font-face {
   font-family: "Avigea";
   src: url("https://aquelaparme.com.br/fonts/Avigea.woff2") format("woff2"),
@@ -11,8 +13,9 @@
   font-display: swap;
 }
 
+/* ─── Variáveis de marca (espelho do CSS oficial) ─── */
 .ap-brand {
-  /* Paleta extraída do CSS oficial */
+  /* Paleta */
   --ap-cream: 41 95% 93%;          /* #fef4df fundo principal */
   --ap-cream-2: 39 86% 92%;        /* #fef0d4 fundo de cards/header text */
   --ap-red: 3 65% 47%;             /* #c93029 vermelho de marca */
@@ -23,17 +26,38 @@
   --ap-ink: 0 0% 0%;               /* preto puro do header */
   --ap-orange: 18 82% 58%;         /* #ed6f3a laranja do rodapé */
 
+  /* Variáveis espelhando o @theme inline do site oficial */
+  --brand-ink: #000000;
+  --brand-cream: #fff7e6;
+  --brand-red: #c93029;
+  --brand-mustard: #f2a618;
 
   background: hsl(var(--ap-cream));
   color: hsl(var(--ap-brown));
   font-family: "Bitter", ui-serif, Georgia, serif;
   font-weight: 400;
 }
-.ap-brand .ap-sans {
-  font-family: "Bitter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+/* ─── Classes utilitárias (espelho do site oficial) ─── */
+.ap-brand .bg-brand-ink   { background-color: var(--brand-ink); }
+.ap-brand .text-brand-ink { color: var(--brand-ink); }
+.ap-brand .bg-brand-cream { background-color: var(--brand-cream); }
+.ap-brand .text-brand-cream { color: var(--brand-cream); }
+.ap-brand .text-primary   { color: var(--brand-red); }
+.ap-brand .hover\:text-primary:hover { color: var(--brand-red); }
+.ap-brand .hover\:text-brand-ink:hover { color: var(--brand-ink); }
+.ap-brand .border-brand-cream\/.80 { border-color: rgba(255, 247, 230, 0.80); }
+.ap-brand .border-brand-cream\/.10 { border-color: rgba(255, 247, 230, 0.10); }
+.ap-brand .font-display {
+  font-family: "Avigea", "Alfa Slab One", Georgia, serif;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+.ap-brand .font-serif {
+  font-family: "Bitter", Georgia, serif;
 }
 
-/* Header preto fixo no topo (igual ao site oficial) */
+/* ─── Header preto fixo no topo (igual ao site oficial) ─── */
 .ap-brand .ap-header-floating {
   position: sticky;
   top: 0;
@@ -45,19 +69,13 @@
   color: hsl(var(--ap-cream-2));
   border-radius: 0;
   box-shadow: 0 4px 16px -6px hsl(var(--ap-ink) / .35);
-  padding: 1rem 1.5rem;
-}
-@media (max-width: 640px) {
-  .ap-brand .ap-header-floating {
-    padding: 0.65rem 0.9rem;
-  }
 }
 
-/* Rodapé laranja com onda no topo (igual ao site oficial) */
+/* ─── Rodapé laranja com onda SVG no topo (igual ao site oficial) ─── */
 .ap-brand .ap-footer {
   position: relative;
   margin-top: 0;
-  background: hsl(var(--ap-orange));
+  background: #ef6b3a;
   color: hsl(var(--ap-cream));
   border-radius: 0;
   overflow: hidden;
@@ -74,7 +92,7 @@
   color: hsl(var(--ap-cream));
   text-decoration: underline;
   text-underline-offset: 4px;
-  text-decoration-color: hsl(var(--ap-cream) / .55);
+  text-decoration-color: rgba(255, 247, 230, 0.55);
   font-family: "Bitter", ui-serif, Georgia, serif;
   font-weight: 500;
   font-size: 1rem;
@@ -83,15 +101,21 @@
   color: #fff;
   text-decoration-color: #fff;
 }
+.ap-brand .ap-footer h3,
 .ap-brand .ap-footer h4 {
   font-family: "Avigea", "Alfa Slab One", Georgia, serif;
   font-weight: 400;
   color: hsl(var(--ap-cream));
   letter-spacing: -0.01em;
+  line-height: 1.05;
+}
+.ap-brand .ap-footer .ap-footer-bottom {
+  font-family: "Bitter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.75rem;
+  color: rgba(255, 247, 230, 0.9);
 }
 
-
-/* Botões — pílula vermelha (CTA) e outline creme */
+/* ─── Botões — pílula vermelha (CTA) e outline creme ─── */
 .ap-brand .ap-btn-primary {
   background: hsl(var(--ap-red));
   color: #fff;
@@ -111,7 +135,7 @@
 .ap-brand .ap-btn-outline {
   background: transparent;
   color: hsl(var(--ap-cream-2));
-  border: 1px solid hsl(var(--ap-cream-2) / .85);
+  border: 1px solid rgba(255, 247, 230, 0.85);
   border-radius: 999px;
   padding: 0.5rem 1rem;
   font-family: "Bitter", ui-sans-serif, system-ui, sans-serif;
@@ -122,7 +146,7 @@
   color: hsl(var(--ap-ink));
 }
 
-/* Cards no estilo do site */
+/* ─── Cards no estilo do site ─── */
 .ap-brand .ap-card {
   background: hsl(var(--ap-cream-2) / .55);
   border: 1px solid hsl(var(--ap-brown) / .12);
@@ -134,7 +158,7 @@
   color: hsl(var(--ap-cream-2));
 }
 
-/* Headlines / display em Alfa Slab One (vermelho da marca) */
+/* ─── Headlines / display em Avigea (vermelho da marca) ─── */
 .ap-brand .ap-display {
   font-family: "Avigea", "Alfa Slab One", Georgia, serif;
   font-weight: 400;
@@ -145,14 +169,15 @@
 .ap-brand .ap-display-light {
   color: hsl(var(--ap-cream-2));
 }
-/* Texto manuscrito (igual "a nossa história") */
+
+/* ─── Texto manuscrito ─── */
 .ap-brand .ap-script {
   font-family: "Caveat", "Bradley Hand", cursive;
   font-weight: 600;
   color: hsl(var(--ap-red));
 }
 
-/* Links de menu (Bitter, peso médio, hover vermelho) */
+/* ─── Links de menu (Bitter, peso médio, hover vermelho) ─── */
 .ap-brand .ap-nav-link {
   font-family: "Bitter", ui-sans-serif, system-ui, sans-serif;
   font-weight: 500;
@@ -164,7 +189,7 @@
   color: hsl(var(--ap-red-soft));
 }
 
-/* Badges/tag */
+/* ─── Badges/tag ─── */
 .ap-brand .ap-tag {
   display: inline-flex;
   align-items: center;
@@ -184,13 +209,13 @@
   border-color: hsl(var(--ap-brown) / .2);
 }
 
-/* Divider sutil */
+/* ─── Divider sutil ─── */
 .ap-brand .ap-divider {
   height: 1px;
   background: hsl(var(--ap-brown) / .15);
 }
 
-/* Inputs/labels com tipografia limpa */
+/* ─── Inputs/labels com tipografia limpa ─── */
 .ap-brand .ap-form label,
 .ap-brand .ap-form input,
 .ap-brand .ap-form textarea,
