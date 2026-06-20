@@ -73,14 +73,14 @@ async function sendByProvider(phone: string, message: string) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  // Only allow service_role callers (other edge functions). Authenticated end-users
-  // must not be able to invoke this endpoint with arbitrary phone/message payloads.
+  // Authorize caller: allow internal service_role invocations (other edge functions)
+  // OR authenticated users with admin/manager/hr role. Block plain employees from
+  // sending arbitrary WhatsApp messages to any phone number.
   const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
-  if (!SERVICE_ROLE || token !== SERVICE_ROLE) {
-    return new Response(JSON.stringify({ error: "forbidden" }), {
-      status: 403,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  const isServiceRole = !!SERVICE_ROLE && token === SERVICE_ROLE;
+  if (!isServiceRole) {
+    const authCheck = await requireRole(req, ["admin", "manager", "hr"], corsHeaders);
+    if (!authCheck.ok) return authCheck.response!;
   }
 
   try {
