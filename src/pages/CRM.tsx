@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Headset, RefreshCw, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, Clock } from "lucide-react";
+import { Headset, RefreshCw, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, Clock, Palette, Bot, Plug } from "lucide-react";
+import { PersonalizePanel, AgentPanel, IntegrationsPanel } from "@/components/crm/ParmeSettingsPanels";
 import {
   BarChart,
   Bar,
