@@ -96,22 +96,6 @@ async function fetchReviews(): Promise<Review[]> {
   return FALLBACK_REVIEWS;
 }
 
-async function fetchUnits(): Promise<Unit[]> {
-  try {
-    const { data } = await supabase
-      .from("parme_site_settings")
-      .select("value")
-      .eq("key", "google_places")
-      .maybeSingle();
-    const units = (data?.value as any)?.units as Unit[] | undefined;
-    if (Array.isArray(units) && units.length > 0) {
-      return units.map((u) => ({ label: u.label, place_id: u.place_id || undefined }));
-    }
-  } catch {
-    // ignore
-  }
-  return DEFAULT_UNITS;
-}
 
 export function ReviewsSection() {
   const { data: reviews = FALLBACK_REVIEWS } = useQuery({
