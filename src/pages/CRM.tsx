@@ -152,35 +152,58 @@ export default function CRM() {
     try {
       const [r, t, c] = await Promise.all([
         supabase
-          .from("parme_reservations")
+          .from("reservations")
           .select("*")
           .order("reservation_date", { ascending: false, nullsFirst: false })
           .limit(500),
         supabase
-          .from("parme_tickets")
+          .from("support_tickets")
           .select("*")
           .order("created_at", { ascending: false, nullsFirst: false })
           .limit(500),
         supabase
-          .from("parme_conversations")
+          .from("chat_conversations")
           .select("*")
-          .order("extracted_at", { ascending: false, nullsFirst: false })
+          .order("last_message_at", { ascending: false, nullsFirst: false })
           .limit(500),
       ]);
       if (r.error) throw r.error;
       if (t.error) throw t.error;
       if (c.error) throw c.error;
-      setReservations((r.data as Reservation[]) ?? []);
-      setTickets((t.data as Ticket[]) ?? []);
-      setConversations((c.data as Conversation[]) ?? []);
 
-      const allSyncs = [
-        ...(r.data ?? []).map((x: any) => x.synced_at),
-        ...(t.data ?? []).map((x: any) => x.synced_at),
-        ...(c.data ?? []).map((x: any) => x.synced_at),
+      // Compat: o resto da UI ainda referencia parme_id/synced_at/extracted/etc.
+      // Mapeamos aqui para evitar uma reescrita maior. As fontes de verdade agora
+      // são as tabelas canônicas locais (reservations/support_tickets/chat_conversations).
+      const mappedRes = (r.data ?? []).map((x: any) => ({
+        ...x,
+        parme_id: x.id,
+        synced_at: x.created_at,
+      }));
+      const mappedTickets = (t.data ?? []).map((x: any) => ({
+        ...x,
+        parme_id: x.id,
+        synced_at: x.created_at,
+      }));
+      const mappedConvs = (c.data ?? []).map((x: any) => ({
+        ...x,
+        parme_id: x.id,
+        synced_at: x.created_at ?? x.last_message_at,
+        extracted: x.extracted ?? {},
+        extracted_at: x.extracted_at ?? x.last_message_at,
+        client_meta: x.client_meta ?? {},
+      }));
+
+      setReservations(mappedRes as Reservation[]);
+      setTickets(mappedTickets as Ticket[]);
+      setConversations(mappedConvs as Conversation[]);
+
+      const allDates = [
+        ...mappedRes.map((x: any) => x.synced_at),
+        ...mappedTickets.map((x: any) => x.synced_at),
+        ...mappedConvs.map((x: any) => x.synced_at),
       ].filter(Boolean);
-      if (allSyncs.length) {
-        const max = allSyncs.reduce((a, b) => (a > b ? a : b));
+      if (allDates.length) {
+        const max = allDates.reduce((a, b) => (a > b ? a : b));
         setLastSync(max);
       } else {
         setLastSync(null);
@@ -298,43 +321,12 @@ export default function CRM() {
   }, [expandedConvId, conversations]);
 
   async function handleSync() {
+    // A sincronização externa foi aposentada — agora o Nexa é fonte da verdade.
+    // O botão Atualizar apenas recarrega do banco local.
     setSyncing(true);
-    const tid = toast.loading("Sincronizando histórico do Parmê…");
     try {
-      // Não usar supabase.functions.invoke para conseguir ler o status 503
-      const { data: { session } } = await supabase.auth.getSession();
-      const url = `https://ixjgmerxxakdkfdzgumy.supabase.co/functions/v1/parme-backfill`;
-      const resp = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.access_token ?? ""}`,
-        },
-        body: "{}",
-      });
-      const payload = await resp.json().catch(() => ({}));
-
-      if (resp.status === 503 || payload?.error === "parme_endpoint_unavailable") {
-        toast.warning("Parmê ainda não expõe o export público", {
-          id: tid,
-          description:
-            "Peça ao time do Parmê para implementar GET /api/public/export/{reservations,tickets,conversations}. O webhook já está funcionando para eventos novos.",
-          duration: 8000,
-        });
-        return;
-      }
-      if (!resp.ok) {
-        throw new Error(payload?.message ?? `HTTP ${resp.status}`);
-      }
-
-      const counts = payload?.counts ?? {};
-      toast.success("Sincronização concluída", {
-        id: tid,
-        description: `Reservas: ${counts.reservations ?? 0} · Tickets: ${counts.tickets ?? 0} · Conversas: ${counts.conversations ?? 0}`,
-      });
       await load();
-    } catch (e: any) {
-      toast.error("Falha ao sincronizar", { id: tid, description: e.message });
+      toast.success("Atualizado");
     } finally {
       setSyncing(false);
     }

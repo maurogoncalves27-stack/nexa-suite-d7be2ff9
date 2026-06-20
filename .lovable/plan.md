@@ -1,43 +1,54 @@
-## Objetivo
-Adicionar ação **Confirmar** em cada linha da aba *Reservas* do CRM (`/crm`). Ao clicar:
-1. Status local `parme_reservations.status = 'confirmed'`.
-2. PATCH no Parmê (`/api/public/reservations/:id`) para refletir lá.
-3. Envia WhatsApp automático ao cliente pela instância Z-API **Cliente** (mesma já usada em `whatsapp-customer-ai-reply`).
 
-## UI — `src/pages/CRM.tsx`
-- Nova coluna/ação na tabela de reservas: botão `CheckCircle2` verde ao lado do lixeira, escondido quando `status === 'confirmed' | 'cancelled'`.
-- AlertDialog "Confirmar reserva?" mostrando preview da mensagem (read-only) com nome, data, hora e party_size.
-- Handler `handleConfirmReservation(parmeId)` → `supabase.functions.invoke("parme-confirm-reservation", { body: { parme_id } })`.
-- Toasts: loading / sucesso ("Reserva confirmada e WhatsApp enviado") / warning se Parmê ainda não tiver PATCH público (`parme_endpoint_unavailable`) / warning se WhatsApp falhar mas status confirmado (`whatsapp_failed`).
-- Badge de status ganha cor: `confirmed` → verde, `cancelled` → destrutivo, demais → outline.
+# Migração Parmê → Nexa
 
-## Edge function nova — `supabase/functions/parme-confirm-reservation/index.ts`
-- Valida JWT (`supabase.auth.getClaims`) + CORS via `npm:@supabase/supabase-js@2/cors`.
-- Body: `{ parme_id: string }` (Zod).
-- Busca a reserva local (service_role) para obter `name/phone/reservation_date/reservation_time/party_size`.
-- `PATCH https://parme.lovable.app/api/public/reservations/:parme_id` com `X-Consumer-Id/Secret` e `{ status: "confirmed" }`.
-  - 404/HTML → responde `{ error: "parme_endpoint_unavailable" }` (503) e **não** confirma local (mesma semântica do delete).
-  - 2xx → segue.
-- `UPDATE parme_reservations SET status='confirmed', updated_at=now() WHERE parme_id=?`.
-- Monta mensagem padrão em PT-BR:
-  > Olá {nome}! Sua reserva no Aquela Parmê está **confirmada** para {data} às {hora} para {n} pessoa(s). Qualquer mudança é só responder por aqui. 🍝
-- Envia via Z-API **Cliente** usando `ZAPI_CUSTOMER_INSTANCE_ID / ZAPI_CUSTOMER_TOKEN / ZAPI_CUSTOMER_CLIENT_TOKEN` (já configurados). Normaliza telefone (E.164 BR, prefixo 55).
-- Resposta: `{ ok: true, whatsapp_sent: boolean, whatsapp_error?: string }`. Falha de WhatsApp **não** reverte confirmação — UI mostra warning.
-- Sem `verify_jwt = false` (default Lovable Cloud já cobre a chamada autenticada do app).
+Trabalho grande (5 tabelas, 1 edge function de chat com 5 tools, 7 páginas públicas, CRM com 8 abas, ajustes de domínio). Vou fazer em fases sequenciais para você revisar entre cada uma. Cada fase termina entregável e testável.
 
-## Projeto Parmê (você precisa pedir lá)
-Expor no projeto de origem:
-```
-PATCH /api/public/reservations/:id
-Headers: X-Consumer-Id, X-Consumer-Secret
-Body: { status: "confirmed" | "cancelled" | "pending" }
-```
-- Atualiza o registro e retorna 200 com a reserva.
-- 404 se id inexistente; 401 se credenciais inválidas.
-- (Análogo ao DELETE já implementado.)
+Decisões já fechadas: tabelas com nomes canônicos (`reservations`, `support_tickets`, `chat_conversations`, `google_reviews`, `site_settings`), CRM dentro da auth do Nexa (aposenta `ADMIN_PASSWORD`), rotas do site na raiz com guard de hostname.
 
-## Sem mudanças de schema
-`parme_reservations.status` já existe (TEXT). Nada de migration.
+## Fase 1 — Schema canônico + edge functions locais
 
-## Sem novos secrets
-`ZAPI_CUSTOMER_*` e `PARME_CONSUMER_ID/SECRET` já estão no projeto (usados por `whatsapp-customer-ai-reply` e `parme-delete-reservation`).
+- Migration criando: `reservations`, `support_tickets`, `chat_conversations`, `google_reviews`, `site_settings` com mesmo schema do Parmê (campos, tipos, RLS, GRANTs).
+- Policies:
+  - `reservations`/`support_tickets`/`chat_conversations`: INSERT público (anon) para o chat e formulário, SELECT/UPDATE/DELETE só para `authenticated` com role admin/manager.
+  - `google_reviews`: SELECT público (anon).
+  - `site_settings`: SELECT público (anon), UPDATE só admin.
+- Reescrita das 4 edge functions proxy (`parme-confirm-reservation`, `parme-delete-reservation`, `parme-get-conversation-messages`, `parme-get-ticket-conversation`) para ler/escrever direto nas novas tabelas locais — sem fetch externo, mantendo Z-API para WhatsApp na confirmação.
+- Delete de `parme-webhook` e `parme-backfill`.
+- Atualização do `src/pages/CRM.tsx` para apontar para `reservations`/`support_tickets`/`chat_conversations` (mantém todo o layout novo já feito).
+
+## Fase 2 — Edge function `parme-chat` + auxiliares
+
+- Port de `src/routes/api.chat.ts` do Parmê (455 linhas, streaming AI SDK + 5 tools: `consultar_cardapio`, `recomendar_prato`, `criar_reserva`, `registrar_problema_pedido`, `sugerir_ifood`) para `supabase/functions/parme-chat/index.ts`. Usa `LOVABLE_API_KEY` via gateway, grava em `chat_conversations`/`reservations`/`support_tickets`.
+- `parme-reservation-create` (POST público) e `parme-google-reviews` (GET público). `site_settings` lida direto pelo cliente via supabase-js (RLS public read).
+
+## Fase 3 — Páginas públicas + identidade visual
+
+- Copia fontes Avigea (`public/fonts/Avigea.woff/woff2`) já presentes.
+- Cria `src/pages/parme/` com: `Home`, `AquelaParme`, `AqueleEstrogonofe`, `BoxCaipira`, `Sobre`, `Enderecos`, `Reservar`.
+- Porta componentes de `src/components/parme/*` e `src/components/admin/conversas-tab` reusáveis (carousel, marquee, reveal, hero etc).
+- Layout/Header/Footer/ChatWidget (`/components/parme/SiteLayout.tsx`).
+- Adapta Tailwind v4 (`@theme`) do Parmê → tokens v3 no `index.css`/`tailwind.config.ts` deste projeto, isolados em scope `.parme-site` para não vazar no app RH.
+- Roteamento em `src/App.tsx`: rotas `/`, `/aquela-parme`, `/aquele-estrogonofe`, `/box-caipira`, `/sobre`, `/enderecos`, `/reservar` envoltas num `<HostnameGuard>` — quando `window.location.hostname === 'aquelaparme.com.br' | 'www.aquelaparme.com.br'` renderiza site Parmê; senão renderiza o app RH normal (atual rota `/` → `Index`).
+
+## Fase 4 — CRM expandido (8 abas do Parmê)
+
+- Mantém `/crm` atual como entrada e converte em layout 8 tabs migrando `src/components/admin/*` do Parmê: Dashboard, CRM, Reservas (já tem), Conversas (já tem), Configurações (site_settings), Personalizar (theme/site_settings), Agente IA (system prompt), Integrações.
+- Restringido a usuários autenticados com role admin/manager via `ProtectedRoute`.
+
+## Fase 5 — Cutover
+
+- Prerender SSG das 7 rotas públicas (`vite-plugin-prerender` ou configuração estática) para SEO.
+- Conectar domínios `aquelaparme.com.br` + `www` no Nexa e `nexa.aquelaparme.com.br` (esta já está conectada).
+- Reapontar webhook Z-API para `https://nexa.aquelaparme.com.br/functions/v1/whatsapp-customer-webhook`.
+- Aposentar secrets `PARME_CONSUMER_ID/SECRET` e `ADMIN_PASSWORD` (você remove depois do go-live).
+
+## Pontos técnicos
+
+- Secrets necessárias já presentes: `LOVABLE_API_KEY`, `ZAPI_*`, `ZAPI_CUSTOMER_*`. Nada a adicionar.
+- RLS: tabelas públicas (anon INSERT para chat/reservations/support_tickets) precisam de campos rate-limit/captcha futuro — fora do escopo dessa migração.
+- Identidade visual do site Parmê fica em CSS escopado `.parme-site { ... }` no `index.css` para não contaminar tokens do app RH (regra imutável do projeto).
+- Footer legal do site público continua com "Aquela Parmê" / "Estrogonofe" / "Box Caipira" — não usa branding NEXA.
+
+## Entregável agora
+
+Se você aprovar, começo pela **Fase 1** nesta mensma resposta seguinte (migration + 4 edge functions reescritas + ajuste do `CRM.tsx`). Confirmo cada fase antes de seguir para a próxima.

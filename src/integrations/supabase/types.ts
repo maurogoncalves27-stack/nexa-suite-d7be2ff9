@@ -992,6 +992,36 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          last_message_at: string
+          message_count: number
+          messages: Json
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          message_count?: number
+          messages?: Json
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          message_count?: number
+          messages?: Json
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       checklist_answers: {
         Row: {
           checked: boolean
@@ -4709,6 +4739,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      google_reviews: {
+        Row: {
+          author_name: string
+          author_photo_url: string | null
+          fetched_at: string
+          id: string
+          language: string | null
+          place_id: string
+          published_at: string | null
+          rating: number
+          relative_time: string | null
+          text: string
+          unit_label: string
+        }
+        Insert: {
+          author_name: string
+          author_photo_url?: string | null
+          fetched_at?: string
+          id?: string
+          language?: string | null
+          place_id: string
+          published_at?: string | null
+          rating: number
+          relative_time?: string | null
+          text: string
+          unit_label: string
+        }
+        Update: {
+          author_name?: string
+          author_photo_url?: string | null
+          fetched_at?: string
+          id?: string
+          language?: string | null
+          place_id?: string
+          published_at?: string | null
+          rating?: number
+          relative_time?: string | null
+          text?: string
+          unit_label?: string
+        }
+        Relationships: []
       }
       holidays: {
         Row: {
@@ -8940,6 +9012,24 @@ export type Database = {
         }
         Relationships: []
       }
+      parme_site_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value?: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       parme_tickets: {
         Row: {
           contact: string | null
@@ -12927,6 +13017,45 @@ export type Database = {
           },
         ]
       }
+      reservations: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          party_size: number
+          phone: string
+          reservation_date: string
+          reservation_time: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          party_size: number
+          phone: string
+          reservation_date: string
+          reservation_time: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          party_size?: number
+          phone?: string
+          reservation_date?: string
+          reservation_time?: string
+          status?: string
+        }
+        Relationships: []
+      }
       shift_swap_requests: {
         Row: {
           created_at: string
@@ -13464,6 +13593,33 @@ export type Database = {
           trade_name?: string | null
           updated_at?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      support_tickets: {
+        Row: {
+          contact: string
+          created_at: string
+          description: string
+          id: string
+          order_number: string | null
+          status: string
+        }
+        Insert: {
+          contact: string
+          created_at?: string
+          description: string
+          id?: string
+          order_number?: string | null
+          status?: string
+        }
+        Update: {
+          contact?: string
+          created_at?: string
+          description?: string
+          id?: string
+          order_number?: string | null
+          status?: string
         }
         Relationships: []
       }
