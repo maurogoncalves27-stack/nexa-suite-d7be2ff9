@@ -251,10 +251,9 @@ export function ApFooter() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="ap-footer-link"
-                      style={{ borderBottom: "1px solid hsl(var(--ap-cream) / .7)", paddingBottom: "0.25rem" }}
                     >
-                  {l.label}
-                </a>
+                      {l.label}
+                    </a>
               ) : (
                 <Link
                   key={l.label}
