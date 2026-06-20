@@ -560,7 +560,7 @@ export default function CRM() {
                                   : undefined
                               }
                             >
-                              {r.status}
+                              {translateStatus(r.status)}
                             </Badge>
                           ) : (
                             "—"
