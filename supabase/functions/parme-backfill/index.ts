@@ -197,12 +197,17 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
     );
-  } catch (e) {
+  } catch (e: any) {
     console.error("backfill error", e);
+    const code = e?.code === "parme_endpoint_unavailable" ? 503 : 500;
     return new Response(
-      JSON.stringify({ error: "backfill_failed", message: String(e) }),
+      JSON.stringify({
+        error: e?.code ?? "backfill_failed",
+        resource: e?.resource,
+        message: e?.message ?? String(e),
+      }),
       {
-        status: 500,
+        status: code,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
     );
