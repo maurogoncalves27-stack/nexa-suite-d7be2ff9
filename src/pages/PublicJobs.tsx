@@ -79,7 +79,9 @@ export default function PublicJobs() {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              {jobs.map((j, i) => (
+              {jobs.map((j, i) => {
+                const bannerHtml = `<div class="relative flex aspect-[16/9] items-center justify-center overflow-hidden" style="background: linear-gradient(135deg, #e8231f 0%, #ef6b3a 60%, #f4a261 100%);"><div class="absolute inset-0 opacity-20" style="background-image: radial-gradient(circle at 20% 30%, rgba(255,255,255,0.4) 0%, transparent 40%), radial-gradient(circle at 80% 70%, rgba(255,255,255,0.3) 0%, transparent 40%);"></div><div class="relative z-10 flex flex-col items-center gap-2 px-6 text-center"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg><span class="font-display text-xl leading-tight text-white drop-shadow-md md:text-2xl">${j.title.replace(/</g,'&lt;')}</span></div></div>`;
+                return (
                 <Reveal key={j.id} delay={i * 0.05}>
                   <Link to={`/vagas/${j.id}`} className="group block h-full">
                     <article className="flex h-full flex-col overflow-hidden rounded-3xl bg-white shadow-md ring-1 ring-black/5 transition-all hover:-translate-y-1 hover:shadow-xl">
@@ -92,20 +94,20 @@ export default function PublicJobs() {
                             onError={(e) => {
                               const img = e.currentTarget;
                               const parent = img.parentElement;
-                              if (parent) {
-                                parent.classList.add("flex", "items-center", "justify-center");
-                                parent.style.background = "rgba(239,107,58,0.25)";
-                                parent.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="rgba(232,35,31,0.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>';
-                              }
+                              if (parent) parent.outerHTML = bannerHtml;
                             }}
                           />
                         </div>
                       ) : (
                         <div
-                          className="flex aspect-[16/9] items-center justify-center"
-                          style={{ background: "rgba(239,107,58,0.25)" }}
+                          className="relative flex aspect-[16/9] items-center justify-center overflow-hidden"
+                          style={{ background: "linear-gradient(135deg, #e8231f 0%, #ef6b3a 60%, #f4a261 100%)" }}
                         >
-                          <Briefcase className="h-16 w-16" style={{ color: "rgba(232,35,31,0.5)" }} />
+                          <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 20% 30%, rgba(255,255,255,0.4) 0%, transparent 40%), radial-gradient(circle at 80% 70%, rgba(255,255,255,0.3) 0%, transparent 40%)" }} />
+                          <div className="relative z-10 flex flex-col items-center gap-2 px-6 text-center">
+                            <Briefcase className="h-10 w-10 text-white/95" />
+                            <span className="font-display text-xl leading-tight text-white drop-shadow-md md:text-2xl">{j.title}</span>
+                          </div>
                         </div>
                       )}
                       <div className="flex flex-1 flex-col gap-3 p-6">
