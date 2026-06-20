@@ -208,7 +208,9 @@ Deno.serve(async (req) => {
     }
 
     // Persistência imediata (pré-stream) para não perder o turno se a aba fechar.
-    if (sessionId) {
+    // Só grava no CRM a partir da 2ª interação do usuário com a Giana.
+    const userMsgCount = messages.filter((m) => m.role === "user").length;
+    if (sessionId && userMsgCount >= 2) {
       try {
         const supabase = sb();
         const now = new Date().toISOString();
@@ -540,6 +542,8 @@ Deno.serve(async (req) => {
       headers: corsHeaders,
       onFinish: async ({ messages: finalMessages }) => {
         if (!sessionId) return;
+        const finalUserCount = finalMessages.filter((m) => m.role === "user").length;
+        if (finalUserCount < 2) return;
         try {
           const supabase = sb();
           const now = new Date().toISOString();
