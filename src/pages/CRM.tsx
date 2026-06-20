@@ -721,6 +721,120 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Modal de detalhes do ticket */}
+      <Dialog open={!!openTicket} onOpenChange={(o) => !o && setOpenTicket(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          {openTicket && (() => {
+            const digits = (openTicket.contact ?? "").replace(/\D+/g, "");
+            const related = digits
+              ? conversations.filter((c) => {
+                  const candidates = [
+                    c.extracted?.telefone,
+                    c.extracted?.phone,
+                    c.client_meta?.phone,
+                    c.client_meta?.telefone,
+                  ]
+                    .filter(Boolean)
+                    .map((v: any) => String(v).replace(/\D+/g, ""));
+                  return candidates.some(
+                    (x) => x === digits || x.endsWith(digits) || digits.endsWith(x),
+                  );
+                })
+              : [];
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Ticket className="h-5 w-5 text-primary" />
+                    Ticket {openTicket.order_number ? `#${openTicket.order_number}` : ""}
+                  </DialogTitle>
+                  <DialogDescription>
+                    Criado {fmtDateTime(openTicket.created_at)}
+                    {openTicket.contact ? ` · ${openTicket.contact}` : ""}
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-2 text-sm">
+                    {openTicket.status && (
+                      <Badge variant="outline">status: {openTicket.status}</Badge>
+                    )}
+                    <Badge variant="outline" className="font-mono">
+                      id: {openTicket.parme_id.slice(0, 8)}
+                    </Badge>
+                  </div>
+
+                  <div>
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+                      Descrição
+                    </div>
+                    <div className="rounded-md border bg-muted/40 p-3 text-sm whitespace-pre-wrap">
+                      {openTicket.description ?? "—"}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-2">
+                      <MessageSquare className="h-3.5 w-3.5" />
+                      Conversa(s) relacionada(s) {related.length > 0 && `(${related.length})`}
+                    </div>
+                    {related.length === 0 ? (
+                      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                        Nenhuma conversa do Parmê encontrada para este contato.
+                        {!openTicket.contact && " O ticket não tem telefone associado."}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {related.map((c) => (
+                          <div key={c.id} className="rounded-md border p-3 space-y-2">
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                              {c.extracted?.marca && (
+                                <Badge>{String(c.extracted.marca)}</Badge>
+                              )}
+                              <span className="font-mono">
+                                sessão: {c.session_id?.slice(0, 16) ?? "—"}
+                              </span>
+                              <span>· {c.message_count ?? 0} mensagens</span>
+                              <span>· {fmtDateTime(c.extracted_at)}</span>
+                            </div>
+                            {c.extracted && Object.keys(c.extracted).length > 0 && (
+                              <div className="rounded bg-muted/40 p-2 text-xs space-y-0.5">
+                                {Object.entries(c.extracted).map(([k, v]) => (
+                                  <div key={k}>
+                                    <span className="text-muted-foreground">{k}:</span>{" "}
+                                    <span className="font-mono">
+                                      {typeof v === "string" ? v : JSON.stringify(v)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {c.client_meta && Object.keys(c.client_meta).length > 0 && (
+                              <details className="text-xs">
+                                <summary className="cursor-pointer text-muted-foreground">
+                                  metadados do cliente
+                                </summary>
+                                <pre className="mt-1 rounded bg-muted/40 p-2 overflow-x-auto">
+                                  {JSON.stringify(c.client_meta, null, 2)}
+                                </pre>
+                              </details>
+                            )}
+                          </div>
+                        ))}
+                        <p className="text-xs text-muted-foreground">
+                          As mensagens individuais ficam no Parmê — aqui guardamos só o
+                          resumo extraído pela IA.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
