@@ -2,7 +2,7 @@ import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Users, GraduationCap, Award, Wallet, BookOpen, Briefcase, LogOut, CalendarClock, UserCircle, HeartHandshake, Plane, Shirt, Clock, FolderOpen, Fingerprint, UserSearch, Settings, ChevronRight, Megaphone, ShieldAlert, FileText, Stethoscope, ClipboardCheck, Gift, ReceiptText, Bus, ListChecks, FileSignature, Wrench, RefreshCw, Package, ShoppingCart, DollarSign, Truck, ShoppingBag, TrendingUp, FileBarChart, Landmark, Lock, ChefHat, ScanText, Layers, Send, UsersRound, AlertTriangle, Monitor, ShieldCheck, Factory, Search, Siren, Boxes, PackageCheck, CalendarDays, ClipboardList, Tags, ScrollText, BadgePercent, Coins, Building2, Scale, BookMarked, Archive, FolderLock, ArrowLeftRight, Calculator, Flame, Hourglass, Trophy, Star, Percent, HandCoins, UserX, Sparkles, Activity , BarChart2 , History , CalendarRange , Receipt , Building , FileSpreadsheet , PiggyBank , BadgeCheck , Banknote , XCircle, MessageCircle, Smartphone, Bike, CreditCard } from "lucide-react";
+import { LayoutDashboard, Users, GraduationCap, Award, Wallet, BookOpen, Briefcase, LogOut, CalendarClock, UserCircle, HeartHandshake, Plane, Shirt, Clock, FolderOpen, Fingerprint, UserSearch, Settings, ChevronRight, Megaphone, ShieldAlert, FileText, Stethoscope, ClipboardCheck, Gift, ReceiptText, Bus, ListChecks, FileSignature, Wrench, RefreshCw, Package, ShoppingCart, DollarSign, Truck, ShoppingBag, TrendingUp, FileBarChart, Landmark, Lock, ChefHat, ScanText, Layers, Send, UsersRound, AlertTriangle, Monitor, ShieldCheck, Factory, Search, Siren, Boxes, PackageCheck, CalendarDays, ClipboardList, Tags, ScrollText, BadgePercent, Coins, Building2, Scale, BookMarked, Archive, FolderLock, ArrowLeftRight, Calculator, Flame, Hourglass, Trophy, Star, Percent, HandCoins, UserX, Sparkles, Activity , BarChart2 , History , CalendarRange , Receipt , Building , FileSpreadsheet , PiggyBank , BadgeCheck , Banknote , XCircle, MessageCircle, Smartphone, Bike, CreditCard, Headset } from "lucide-react";
 import { openCommandPalette } from "@/components/CommandPalette";
 import { toast } from "@/hooks/use-toast";
 
@@ -209,6 +209,7 @@ const pdvSections: Section[] = [
     { title: "Totem", url: "/configuracoes/totem", icon: Monitor, staffOnly: true },
     { title: "WhatsApp", url: "/whatsapp", icon: MessageCircle, staffOnly: true },
     { title: "Entregas", url: "/configuracoes/entregas", icon: Bike, staffOnly: true },
+    { title: "CRM", url: "/crm", icon: Headset, staffOnly: true },
   ]},
   { label: "Cardápio", items: [
     { title: "Cardápio", url: "/cardapio", icon: ScanText, staffOnly: true },
