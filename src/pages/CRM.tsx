@@ -107,7 +107,7 @@ export default function CRM() {
   const [syncing, setSyncing] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
-  const [openTicket, setOpenTicket] = useState<Ticket | null>(null);
+  const [expandedTicketId, setExpandedTicketId] = useState<string | null>(null);
   const [threadLoading, setThreadLoading] = useState(false);
   const [threadMessages, setThreadMessages] = useState<any[] | null>(null);
   const [threadError, setThreadError] = useState<string | null>(null);
