@@ -12,9 +12,8 @@
   - Adaptações cross-stack: `@tanstack/react-router` Link → `react-router-dom` Link, `useServerFn` → `supabase.functions.invoke()`, todas as rotas prefixadas com `/parme/*`.
   - CSS escopado em `.parme-site` em `src/styles/parme-site.css` (não vaza no RH).
   - Deps instaladas: `lenis`, `framer-motion`.
-  - 7 páginas em `src/pages/parme/`: `Home`, `Brand` (dinâmica p/ aquela-parme / box-caipira / aquele-estrogonofe), `Sobre`, `Reservar`, `Enderecos`.
+  - **Pendente opcional:** Avigea em `/public/fonts/Avigea.woff2` (fallback Alfa Slab One). Painel admin TanStack-only (`admin.tsx`/abas `*.tsx`) e libs server-side (`whatsapp.server.ts`, `uazapi.server.ts`, `zapi.server.ts`, `dashboard.functions.ts`, etc.) **não foram portadas** — equivalentes já vivem no Nexa (CRM em `/crm`, edge functions, integração WhatsApp em `/configuracoes/whatsapp`).
   - `HostnameGuard` redireciona `aquelaparme.com.br` / `www.aquelaparme.com.br` para `/parme/*` automaticamente.
-  - **Pendente (opcional, visual):** fontes Avigea em `/public/fonts/Avigea.woff2` (hoje cai pra Alfa Slab One). Imagens dos pratos não foram copiadas; visual usa emojis grandes + tipografia. Pra fidelidade total, pode-se copiar `/src/assets/parme/*` do projeto Parmê (~50 imagens) e voltar pros componentes `collage-hero/dish-grid/dripping-wave/etc` do original.
 - ✅ **Fase 4** — CRM completo com 7 abas (Dashboard, Reservas, Tickets, Conversas, Personalizar, Agente IA, Integrações) via `ParmeSettingsPanels.tsx` persistindo em `parme_site_settings`.
 - 🟡 **Fase 5 — Cutover de domínio (parcial / operacional):**
   - ✅ SEO básico pronto: `public/robots.txt` libera site público e bloqueia rotas privadas do RH (`/crm`, `/dashboard`, `/employees`, etc.); `scripts/generate-sitemap.ts` gera `public/sitemap.xml` com as 7 rotas públicas no `predev`/`prebuild`.
