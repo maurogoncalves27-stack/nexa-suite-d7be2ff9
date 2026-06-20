@@ -43,21 +43,21 @@ export default function PublicJobs() {
   return (
     <SiteLayout>
       {/* Hero */}
-      <section className="bg-brand-cream py-16 md:py-24">
+      <section className="bg-brand-cream py-8 md:py-12">
         <div className="mx-auto max-w-5xl px-5 text-center md:px-6">
           <Reveal>
-            <p className="font-script text-3xl" style={{ color: "#ef6b3a" }}>
+            <p className="font-script text-xl" style={{ color: "#ef6b3a" }}>
               estamos contratando
             </p>
             <h1
-              className="mt-2 font-display text-[clamp(2.5rem,6vw,5rem)] leading-[1.02]"
+              className="mt-1 font-display text-[clamp(2rem,4vw,3.5rem)] leading-[1.05]"
               style={{ color: "#7a0c0c" }}
             >
               Venha fazer parte
               <br />
               da Aquela Parmê
             </h1>
-            <p className="mx-auto mt-5 max-w-2xl text-lg" style={{ color: "rgba(0,0,0,0.7)" }}>
+            <p className="mx-auto mt-3 max-w-2xl text-base" style={{ color: "rgba(0,0,0,0.7)" }}>
               Processo simples e transparente. Confira as vagas abertas e candidate-se em poucos minutos.
             </p>
           </Reveal>
