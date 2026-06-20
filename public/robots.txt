@@ -12,3 +12,18 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /crm
+Disallow: /admin
+Disallow: /auth
+Disallow: /dashboard
+Disallow: /employees
+Disallow: /payroll
+Disallow: /finance
+Disallow: /pdv
+Disallow: /pdv-novo
+Disallow: /totem
+Disallow: /nutricontrol
+Disallow: /configuracoes
+Disallow: /settings
+
+Sitemap: https://aquelaparme.com.br/sitemap.xml
