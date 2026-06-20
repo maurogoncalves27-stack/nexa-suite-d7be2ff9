@@ -99,6 +99,21 @@ function fmtDateTime(d?: string | null) {
   }
 }
 
+function translateStatus(s?: string | null) {
+  const map: Record<string, string> = {
+    pending: "Pendente",
+    confirmed: "Confirmada",
+    cancelled: "Cancelada",
+    open: "Aberto",
+    closed: "Fechado",
+    resolved: "Resolvido",
+    waiting: "Aguardando",
+    in_progress: "Em andamento",
+  };
+  if (!s) return "—";
+  return map[s.toLowerCase()] ?? s;
+}
+
 export default function CRM() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
