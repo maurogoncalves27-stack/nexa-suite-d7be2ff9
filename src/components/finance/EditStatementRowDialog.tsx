@@ -148,6 +148,7 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
         store_id: storeId || raw.store_id,
         category_id: categoryId || null,
         due_date: dueDate || null,
+        competence_date: competenceDate || null,
         paid_at: settledDate ? new Date(settledDate + "T12:00:00").toISOString() : null,
         amount: Number(amount) || 0,
       }).eq("id", raw.id);
