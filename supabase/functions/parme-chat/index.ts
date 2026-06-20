@@ -542,6 +542,8 @@ Deno.serve(async (req) => {
       headers: corsHeaders,
       onFinish: async ({ messages: finalMessages }) => {
         if (!sessionId) return;
+        const finalUserCount = finalMessages.filter((m) => m.role === "user").length;
+        if (finalUserCount < 2) return;
         try {
           const supabase = sb();
           const now = new Date().toISOString();
