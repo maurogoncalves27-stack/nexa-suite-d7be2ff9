@@ -238,6 +238,53 @@ export default function CRM() {
     };
   }, [expandedTicketId, tickets]);
 
+  // Buscar mensagens da conversa ao expandir
+  useEffect(() => {
+    if (!expandedConvId) {
+      setConvMsgs(null);
+      setConvMsgsError(null);
+      setConvMsgsLoading(false);
+      return;
+    }
+    const conv = conversations.find((c) => c.id === expandedConvId);
+    if (!conv) return;
+    let cancelled = false;
+    setConvMsgsLoading(true);
+    setConvMsgs(null);
+    setConvMsgsError(null);
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke(
+          "parme-get-conversation-messages",
+          {
+            body: {
+              conversation_id: conv.parme_id,
+              session_id: conv.session_id,
+            },
+          },
+        );
+        if (cancelled) return;
+        if ((data as any)?.error === "parme_endpoint_unavailable") {
+          setConvMsgsError("parme_endpoint_unavailable");
+          return;
+        }
+        if (error) {
+          setConvMsgsError((data as any)?.message ?? error.message);
+          return;
+        }
+        const msgs = (data as any)?.messages;
+        setConvMsgs(Array.isArray(msgs) ? msgs : []);
+      } catch (e: any) {
+        if (!cancelled) setConvMsgsError(e?.message ?? "fetch_error");
+      } finally {
+        if (!cancelled) setConvMsgsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [expandedConvId, conversations]);
+
   async function handleSync() {
     setSyncing(true);
     const tid = toast.loading("Sincronizando histórico do Parmê…");
