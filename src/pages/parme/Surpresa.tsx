@@ -82,6 +82,7 @@ export default function SurpresaPage() {
               >
                 Como agradecimento pela sua avaliação, a gente te entrega uma porção
                 de churros quentinha na nossa loja física da Asa Norte.
+                <span className="block mt-2 font-medium">Válido para consumo a partir de R$ 50,00.</span>
               </motion.p>
             </div>
             <motion.div
