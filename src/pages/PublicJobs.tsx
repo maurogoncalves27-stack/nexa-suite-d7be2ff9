@@ -23,7 +23,7 @@ export default function PublicJobs() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    document.title = "Trabalhe na Aquela Parmê — Vagas abertas";
+    document.title = "Junte-se a nós — Aquela Parmê";
     (async () => {
       const [{ data: js }, { data: sto }] = await Promise.all([
         supabase
