@@ -79,6 +79,7 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
       : ""
     );
     setIssueDate(raw.inventory_invoices?.issue_date ?? "");
+    setCompetenceDate(raw.competence_date ? String(raw.competence_date).slice(0, 10) : "");
     setAmount(String(Math.abs(Number(raw.amount ?? 0))));
     setManagingCategories(false);
     setNewCategoryName("");
