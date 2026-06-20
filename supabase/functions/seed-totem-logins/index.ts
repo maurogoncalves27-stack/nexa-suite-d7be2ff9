@@ -8,7 +8,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const PASSWORD = "Senha@123";
+const PASSWORD = Deno.env.get("TOTEM_SEED_PASSWORD");
 
 const LOGINS = [
   { email: "totemas@aquelaparme.com.br", name: "TOTEM ASA SUL", store: "asa sul" },
