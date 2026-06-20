@@ -25,7 +25,7 @@ const BRANDS: Brand[] = [
   },
   {
     id: "estrogonofe",
-    name: "Estrogonofe de Carne",
+    name: "Aquele Estrogonofe",
     tagline: "O verdadeiro estrogonofe cremoso",
     accent: "bg-brand-estrogonofe",
     stores: STORES,
