@@ -12,6 +12,8 @@
   --ap-brown: 17 56% 11%;          /* #2a140c marrom escuro / foreground */
   --ap-brown-2: 21 30% 30%;        /* #654438 muted */
   --ap-ink: 0 0% 0%;               /* preto puro do header */
+  --ap-orange: 18 82% 58%;         /* #ed6f3a laranja do rodapé */
+
 
   background: hsl(var(--ap-cream));
   color: hsl(var(--ap-brown));
