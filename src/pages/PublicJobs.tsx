@@ -160,7 +160,8 @@ export default function PublicJobs() {
                     </article>
                   </Link>
                 </Reveal>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
