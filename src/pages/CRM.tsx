@@ -688,7 +688,7 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                           })
                         : [];
                       return (
-                        <React.Fragment key={t.id}>
+                        <Fragment key={t.id}>
                           <TableRow
                             className="cursor-pointer hover:bg-muted/50"
                             onClick={() => setExpandedTicketId(isOpen ? null : t.id)}
@@ -860,7 +860,7 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                               </TableCell>
                             </TableRow>
                           )}
-                        </React.Fragment>
+                        </Fragment>
                       );
                     })
                   )}
