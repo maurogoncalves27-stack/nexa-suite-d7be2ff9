@@ -2,11 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, MapPin, Briefcase, ArrowRight } from "lucide-react";
-import "@/styles/aquelaparme.css";
-import { useBrandFavicon } from "@/hooks/useBrandFavicon";
-import { ApFloatingHeader, ApFooter } from "@/components/public/AquelaParmeChrome";
-
-const AP_FAVICON = "https://aquelaparme.com.br/wp-content/uploads/2026/01/cropped-Icon-Aquela-parme-1-192x192.webp";
+import { SiteLayout } from "@/components/parme-site/SiteLayout";
+import { Reveal } from "@/components/parme/reveal";
 
 interface PublicJob {
   id: string;
@@ -25,15 +22,15 @@ export default function PublicJobs() {
   const [stores, setStores] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
-  useBrandFavicon(AP_FAVICON);
-
   useEffect(() => {
     document.title = "Trabalhe na Aquela Parmê — Vagas abertas";
     (async () => {
       const [{ data: js }, { data: sto }] = await Promise.all([
-        supabase.from("job_openings")
+        supabase
+          .from("job_openings")
           .select("id, title, position, store_id, description, public_image_url, positions_count, salary_min, salary_max")
-          .eq("is_public", true).eq("status", "open")
+          .eq("is_public", true)
+          .eq("status", "open")
           .order("opened_at", { ascending: false }),
         supabase.from("stores").select("id, name"),
       ]);
@@ -44,75 +41,119 @@ export default function PublicJobs() {
   }, []);
 
   return (
-    <div className="ap-brand min-h-screen">
-      <ApFloatingHeader />
-
+    <SiteLayout>
       {/* Hero */}
-      <section className="max-w-5xl mx-auto px-4 pt-12 pb-8 md:pt-20 md:pb-12 text-center">
-        <span className="ap-tag mb-4">★ Estamos contratando</span>
-        <h1 className="ap-display text-4xl md:text-6xl mt-4 leading-tight">
-          Venha fazer parte<br className="hidden md:block" /> da Aquela Parmê
-        </h1>
-        <p className="ap-sans text-base md:text-lg mt-5 max-w-2xl mx-auto" style={{ color: "hsl(var(--ap-brown))" }}>
-          Processo simples e transparente. Confira as vagas abertas e candidate-se em poucos minutos.
-        </p>
+      <section className="bg-brand-cream py-16 md:py-24">
+        <div className="mx-auto max-w-5xl px-5 text-center md:px-6">
+          <Reveal>
+            <p className="font-script text-3xl" style={{ color: "#ef6b3a" }}>
+              estamos contratando
+            </p>
+            <h1
+              className="mt-2 font-display text-[clamp(2.5rem,6vw,5rem)] leading-[1.02]"
+              style={{ color: "#7a0c0c" }}
+            >
+              Venha fazer parte
+              <br />
+              da Aquela Parmê
+            </h1>
+            <p className="mx-auto mt-5 max-w-2xl text-lg" style={{ color: "rgba(0,0,0,0.7)" }}>
+              Processo simples e transparente. Confira as vagas abertas e candidate-se em poucos minutos.
+            </p>
+          </Reveal>
+        </div>
       </section>
 
-      <main className="max-w-5xl mx-auto px-4 pb-16">
-        {loading ? (
-          <div className="flex justify-center p-12"><Loader2 className="h-6 w-6 animate-spin" style={{ color: "hsl(var(--ap-red))" }} /></div>
-        ) : jobs.length === 0 ? (
-          <div className="ap-card py-16 text-center">
-            <p className="ap-sans" style={{ color: "hsl(var(--ap-brown))" }}>
-              No momento não temos vagas abertas — volte em breve!
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {jobs.map((j) => (
-              <Link key={j.id} to={`/vagas/${j.id}`} className="group block">
-                <article className="ap-card h-full transition-all hover:-translate-y-1 hover:shadow-xl">
-                  {j.public_image_url ? (
-                    <div className="aspect-[16/9] overflow-hidden" style={{ background: "hsl(var(--ap-orange) / .15)" }}>
-                      <img src={j.public_image_url} alt={j.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    </div>
-                  ) : (
-                    <div className="aspect-[16/9] flex items-center justify-center" style={{ background: "hsl(var(--ap-orange) / .25)" }}>
-                      <Briefcase className="h-16 w-16" style={{ color: "hsl(var(--ap-red) / .5)" }} />
-                    </div>
-                  )}
-                  <div className="p-5 space-y-3">
-                    <div>
-                      <h3 className="ap-display text-2xl leading-tight">{j.title}</h3>
-                      <p className="ap-sans text-sm mt-1" style={{ color: "hsl(var(--ap-brown))" }}>{j.position}</p>
-                    </div>
-                    {j.description && (
-                      <p className="ap-sans text-sm line-clamp-2" style={{ color: "hsl(var(--ap-ink) / .8)" }}>{j.description}</p>
-                    )}
-                    <div className="flex flex-wrap gap-2">
-                      {j.store_id && stores[j.store_id] && (
-                        <span className="ap-tag ap-tag-soft"><MapPin className="h-3 w-3" />{stores[j.store_id]}</span>
+      {/* Lista */}
+      <section className="py-16 md:py-20" style={{ background: "#fff1d6" }}>
+        <div className="mx-auto max-w-6xl px-5 md:px-6">
+          {loading ? (
+            <div className="flex justify-center p-12">
+              <Loader2 className="h-6 w-6 animate-spin" style={{ color: "#e8231f" }} />
+            </div>
+          ) : jobs.length === 0 ? (
+            <div className="rounded-3xl bg-white p-16 text-center shadow-md ring-1 ring-black/5">
+              <p className="text-lg" style={{ color: "rgba(0,0,0,0.7)" }}>
+                No momento não temos vagas abertas — volte em breve!
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              {jobs.map((j, i) => (
+                <Reveal key={j.id} delay={i * 0.05}>
+                  <Link to={`/vagas/${j.id}`} className="group block h-full">
+                    <article className="flex h-full flex-col overflow-hidden rounded-3xl bg-white shadow-md ring-1 ring-black/5 transition-all hover:-translate-y-1 hover:shadow-xl">
+                      {j.public_image_url ? (
+                        <div className="aspect-[16/9] overflow-hidden" style={{ background: "rgba(239,107,58,0.15)" }}>
+                          <img
+                            src={j.public_image_url}
+                            alt={j.title}
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          className="flex aspect-[16/9] items-center justify-center"
+                          style={{ background: "rgba(239,107,58,0.25)" }}
+                        >
+                          <Briefcase className="h-16 w-16" style={{ color: "rgba(232,35,31,0.5)" }} />
+                        </div>
                       )}
-                      <span className="ap-tag ap-tag-soft">{j.positions_count} {j.positions_count === 1 ? "vaga" : "vagas"}</span>
-                      {j.salary_min && (
-                        <span className="ap-tag ap-tag-soft">
-                          R$ {j.salary_min.toLocaleString("pt-BR")}
-                          {j.salary_max ? ` – ${j.salary_max.toLocaleString("pt-BR")}` : "+"}
-                        </span>
-                      )}
-                    </div>
-                    <div className="ap-sans flex items-center font-semibold text-sm pt-3 group-hover:gap-3 gap-2 transition-all" style={{ color: "hsl(var(--ap-red))" }}>
-                      Ver vaga e candidatar-se <ArrowRight className="h-4 w-4" />
-                    </div>
-                  </div>
-                </article>
-              </Link>
-            ))}
-          </div>
-        )}
-      </main>
-
-      <ApFooter />
-    </div>
+                      <div className="flex flex-1 flex-col gap-3 p-6">
+                        <div>
+                          <h3 className="font-display text-2xl leading-tight" style={{ color: "#7a0c0c" }}>
+                            {j.title}
+                          </h3>
+                          <p className="mt-1 text-sm" style={{ color: "rgba(0,0,0,0.6)" }}>
+                            {j.position}
+                          </p>
+                        </div>
+                        {j.description && (
+                          <p className="line-clamp-2 text-sm" style={{ color: "rgba(0,0,0,0.7)" }}>
+                            {j.description}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap gap-2">
+                          {j.store_id && stores[j.store_id] && (
+                            <span
+                              className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold"
+                              style={{ background: "rgba(232,35,31,0.1)", color: "#7a0c0c" }}
+                            >
+                              <MapPin className="h-3 w-3" />
+                              {stores[j.store_id]}
+                            </span>
+                          )}
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold"
+                            style={{ background: "rgba(239,107,58,0.15)", color: "#7a0c0c" }}
+                          >
+                            {j.positions_count} {j.positions_count === 1 ? "vaga" : "vagas"}
+                          </span>
+                          {j.salary_min && (
+                            <span
+                              className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold"
+                              style={{ background: "rgba(187,160,122,0.2)", color: "#7a0c0c" }}
+                            >
+                              R$ {j.salary_min.toLocaleString("pt-BR")}
+                              {j.salary_max ? ` – ${j.salary_max.toLocaleString("pt-BR")}` : "+"}
+                            </span>
+                          )}
+                        </div>
+                        <div
+                          className="mt-auto flex items-center gap-2 pt-3 text-sm font-semibold transition-all group-hover:gap-3"
+                          style={{ color: "#e8231f" }}
+                        >
+                          Ver vaga e candidatar-se <ArrowRight className="h-4 w-4" />
+                        </div>
+                      </div>
+                    </article>
+                  </Link>
+                </Reveal>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+    </SiteLayout>
   );
 }
