@@ -37,6 +37,7 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
   const [dueDate, setDueDate] = useState("");
   const [settledDate, setSettledDate] = useState(""); // paid_at / received_at
   const [issueDate, setIssueDate] = useState(""); // for invoices (read-only display)
+  const [competenceDate, setCompetenceDate] = useState(""); // editable competence (payable/receivable sem NF)
   const [amount, setAmount] = useState<string>("");
 
   const reloadCategories = async () => {
@@ -78,6 +79,7 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
       : ""
     );
     setIssueDate(raw.inventory_invoices?.issue_date ?? "");
+    setCompetenceDate(raw.competence_date ? String(raw.competence_date).slice(0, 10) : "");
     setAmount(String(Math.abs(Number(raw.amount ?? 0))));
     setManagingCategories(false);
     setNewCategoryName("");
@@ -146,6 +148,7 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
         store_id: storeId || raw.store_id,
         category_id: categoryId || null,
         due_date: dueDate || null,
+        competence_date: competenceDate || null,
         paid_at: settledDate ? new Date(settledDate + "T12:00:00").toISOString() : null,
         amount: Number(amount) || 0,
       }).eq("id", raw.id);
@@ -348,12 +351,17 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            {showInvoiceDate && (
+            {showInvoiceDate ? (
               <div className="space-y-1">
                 <Label>Data competência (NF)</Label>
                 <Input type="date" value={issueDate} disabled />
               </div>
-            )}
+            ) : kind === "payable" ? (
+              <div className="space-y-1">
+                <Label>Data competência</Label>
+                <Input type="date" value={competenceDate} onChange={(e) => setCompetenceDate(e.target.value)} />
+              </div>
+            ) : null}
             {(kind === "payable" || kind === "receivable") && (
               <div className="space-y-1">
                 <Label>Vencimento</Label>
