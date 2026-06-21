@@ -401,11 +401,13 @@ export default function CRM() {
         client_meta: x.client_meta ?? {},
         source: "chat" as const,
       })) as Conversation[];
-      const mappedTickets = (t.data ?? []).map((x: any) => ({
-        ...x,
-        parme_id: x.id,
-        synced_at: x.created_at,
-      })) as Ticket[];
+      const mappedTickets = (t.data ?? [])
+        .filter((x: any) => typeof x.contact === "string" && x.contact.replace(/\D/g, "").length >= 8)
+        .map((x: any) => ({
+          ...x,
+          parme_id: x.id,
+          synced_at: x.created_at,
+        })) as Ticket[];
       const ticketsByConversation = new Map<string, Ticket[]>();
       for (const ticket of mappedTickets) {
         const match = baseConvs.find((conv) => ticketMatchesConversation(ticket, conv));
