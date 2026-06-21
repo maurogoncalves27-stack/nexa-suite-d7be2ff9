@@ -185,7 +185,8 @@ export default function UsefulLinks() {
                     if (title && !form.title.trim()) {
                       setForm(prev => ({ ...prev, title }));
                     }
-                  } catch {
+                  } catch (err) {
+                    console.error("Erro ao buscar título:", err);
                     // silent fail — usuário preenche manualmente
                   }
                 }}
