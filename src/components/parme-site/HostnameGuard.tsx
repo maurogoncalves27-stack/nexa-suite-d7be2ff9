@@ -57,7 +57,7 @@ export function HostnameGuard() {
     if (!SITE_HOSTS.has(host)) return;
     if (loc.pathname.startsWith("/parme")) return;
     if (loc.pathname === "/nexa") return; // atalho para o app NEXA — não reescrever
-    if (isPwaLaunch) return; // PWA instalada — não reescrever para /parme
+    if (isPwaLaunch || isNexaMode) return; // PWA instalada ou modo NEXA — não reescrever
     const target = SITE_ALIASES[loc.pathname];
     if (target) {
       nav(target + loc.search + loc.hash, { replace: true });
