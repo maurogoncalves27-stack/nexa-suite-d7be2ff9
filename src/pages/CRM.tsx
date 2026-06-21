@@ -1126,6 +1126,7 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Cliente</TableHead>
                     <TableHead>Contato</TableHead>
                     <TableHead>Mensagens</TableHead>
                     <TableHead>Última mensagem</TableHead>
@@ -1134,13 +1135,13 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                         Carregando…
                       </TableCell>
                     </TableRow>
                   ) : filteredConversations.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                         Nenhuma conversa.
                       </TableCell>
                     </TableRow>
@@ -1149,14 +1150,15 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                       const phone =
                         c.client_meta?.phone ??
                         c.client_meta?.telefone ??
-                        c.client_meta?.name ??
                         "—";
+                      const nome = pickClientName(c);
                       return (
                         <TableRow
                           key={c.id}
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={() => setExpandedConvId(c.id)}
                         >
+                          <TableCell className="text-sm font-medium">{String(nome)}</TableCell>
                           <TableCell className="text-sm">{String(phone)}</TableCell>
                           <TableCell>{c.message_count ?? "—"}</TableCell>
                           <TableCell>{fmtDateTime(c.last_message_at)}</TableCell>
