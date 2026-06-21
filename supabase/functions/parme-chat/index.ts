@@ -422,9 +422,11 @@ Deno.serve(async (req) => {
         if (userMsgCount < 2) {
           console.log("[parme-chat] conversa ainda oculta no CRM: menos de 2 entradas do cliente", { sessionId, userMsgCount });
         }
-        const finalClientMeta =
-          (existing as { client_meta?: unknown } | null)?.client_meta ??
-            (body?.clientMeta ?? null);
+        const finalClientMeta = mergeClientMeta(
+          (existing as { client_meta?: unknown } | null)?.client_meta,
+          body?.clientMeta,
+          flatNow,
+        );
         await supabase.from("chat_conversations").upsert(
           {
             session_id: sessionId,
@@ -819,7 +821,7 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
           const now = new Date().toISOString();
           const { data: existing } = await supabase
             .from("chat_conversations")
-            .select("messages")
+            .select("client_meta, messages")
             .eq("session_id", sessionId)
             .maybeSingle();
           const existingMessages = existingFlatMessages((existing as { messages?: unknown } | null)?.messages);
@@ -835,6 +837,7 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
               message_count: flat.length,
               last_message_at: now,
               updated_at: now,
+              client_meta: mergeClientMeta((existing as { client_meta?: unknown } | null)?.client_meta, null, flat) as unknown as never,
             },
             { onConflict: "session_id" },
           );
