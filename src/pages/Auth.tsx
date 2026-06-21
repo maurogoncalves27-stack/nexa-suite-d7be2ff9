@@ -28,7 +28,6 @@ const nameSchema = z.string().trim().min(2, "Nome muito curto").max(100);
 
 const LAST_EMAIL_KEY = "rhplus:lastEmail";
 const KNOWN_EMAILS_KEY = "rhplus:knownEmails";
-const BIO_PREF_PREFIX = "rhplus:bioPref:";
 
 function loadKnownEmails(): string[] {
   try {
@@ -43,16 +42,6 @@ function rememberEmail(email: string) {
     localStorage.setItem(KNOWN_EMAILS_KEY, JSON.stringify([...set]));
   } catch {}
 }
-function getBioPref(email: string): boolean {
-  try { return localStorage.getItem(BIO_PREF_PREFIX + email.toLowerCase()) === "1"; } catch { return false; }
-}
-function setBioPref(email: string, value: boolean) {
-  try {
-    if (value) localStorage.setItem(BIO_PREF_PREFIX + email.toLowerCase(), "1");
-    else localStorage.removeItem(BIO_PREF_PREFIX + email.toLowerCase());
-  } catch {}
-}
-
 type Mode = "signin" | "signup";
 
 export default function Auth() {
@@ -426,27 +415,12 @@ export default function Auth() {
                       Entrar com Digital
                     </Button>
 
-                    {isPreviewDomain ? (
+                    {isPreviewDomain && (
                       <p className="text-xs text-muted-foreground text-center leading-relaxed">
                         A biometria está vinculada ao domínio onde foi cadastrada
                         (<span className="font-mono">nexasuite.aquelaparme.com.br</span>).
                         Acesse pelo app publicado para usar a digital.
                       </p>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          id="bio-pref"
-                          checked={bioPrefEnabled}
-                          onCheckedChange={(c) => {
-                            const v = c === true;
-                            setBioPrefEnabled(v);
-                            setBioPref(email, v);
-                          }}
-                        />
-                        <Label htmlFor="bio-pref" className="text-xs font-normal cursor-pointer">
-                          Usar biometria automaticamente neste dispositivo
-                        </Label>
-                      </div>
                     )}
                   </>
                 )}
