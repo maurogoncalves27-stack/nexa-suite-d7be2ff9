@@ -88,6 +88,7 @@ type Conversation = {
   id: string;
   parme_id: string;
   session_id: string | null;
+  messages?: any[];
   message_count: number | null;
   last_message_at: string | null;
   extracted: any;
@@ -95,7 +96,52 @@ type Conversation = {
   client_meta: any;
   created_at: string | null;
   synced_at: string;
+  source?: "chat" | "ticket";
+  related_ticket?: Ticket;
+  related_tickets?: Ticket[];
 };
+
+const NON_CLIENT_ROLES = new Set(["assistant", "ai", "bot", "system", "model", "tool"]);
+
+function messageText(m: any) {
+  return String(typeof m?.content === "string" ? m.content : (m?.message ?? m?.text ?? ""));
+}
+
+function isClientMessage(m: any) {
+  const role = String(m?.role ?? m?.author ?? m?.from ?? "user").toLowerCase();
+  return !NON_CLIENT_ROLES.has(role) && messageText(m).trim().length > 0;
+}
+
+function onlyDigits(v?: string | null) {
+  return String(v ?? "").replace(/\D+/g, "");
+}
+
+function ticketSessionId(t: Ticket) {
+  return t.description?.match(/Conversa\s+([A-Za-z0-9_-]+)/i)?.[1] ?? null;
+}
+
+function ticketMessages(t: Ticket) {
+  const lines = String(t.description ?? "")
+    .replace(/^Conversa\s+[A-Za-z0-9_-]+:\s*/i, "")
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const base = lines.length > 0 ? lines : [t.description ?? "Ticket registrado sem transcrição."];
+  return base.map((content, index) => ({
+    id: `${t.id}:${index}`,
+    role: "user",
+    content,
+    ts: t.created_at,
+  }));
+}
+
+function ticketMatchesConversation(t: Ticket, c: Conversation) {
+  const session = ticketSessionId(t);
+  if (session && c.session_id === session) return true;
+  // Não vincula só por telefone: o mesmo cliente pode ter vários tickets distintos.
+  // Sem o session_id explícito no texto do ticket, exibimos o ticket como conversa própria.
+  return false;
+}
 
 function fmtDate(d?: string | null) {
   if (!d) return "—";
@@ -346,19 +392,50 @@ export default function CRM() {
         parme_id: x.id,
         synced_at: x.created_at,
       }));
-      const mappedTickets = (t.data ?? []).map((x: any) => ({
-        ...x,
-        parme_id: x.id,
-        synced_at: x.created_at,
-      }));
-      const mappedConvs = (c.data ?? []).map((x: any) => ({
+      const baseConvs = (c.data ?? []).map((x: any) => ({
         ...x,
         parme_id: x.id,
         synced_at: x.created_at ?? x.last_message_at,
         extracted: x.extracted ?? {},
         extracted_at: x.extracted_at ?? x.last_message_at,
         client_meta: x.client_meta ?? {},
-      }));
+        source: "chat" as const,
+      })) as Conversation[];
+      const mappedTickets = (t.data ?? []).map((x: any) => ({
+        ...x,
+        parme_id: x.id,
+        synced_at: x.created_at,
+      })) as Ticket[];
+      const ticketsByConversation = new Map<string, Ticket[]>();
+      for (const ticket of mappedTickets) {
+        const match = baseConvs.find((conv) => ticketMatchesConversation(ticket, conv));
+        if (match) ticketsByConversation.set(match.id, [...(ticketsByConversation.get(match.id) ?? []), ticket]);
+      }
+      const ticketOnlyConvs = mappedTickets
+        .filter((ticket) => !baseConvs.some((conv) => ticketMatchesConversation(ticket, conv)))
+        .map((ticket) => ({
+          id: `ticket-${ticket.id}`,
+          parme_id: ticket.id,
+          session_id: ticketSessionId(ticket) ?? `ticket-${ticket.id.slice(0, 8)}`,
+          messages: ticketMessages(ticket),
+          message_count: ticketMessages(ticket).length,
+          last_message_at: ticket.created_at,
+          extracted: {},
+          extracted_at: ticket.created_at,
+          client_meta: { phone: ticket.contact },
+          created_at: ticket.created_at,
+          synced_at: ticket.created_at ?? "",
+          source: "ticket" as const,
+          related_ticket: ticket,
+          related_tickets: [ticket],
+        })) as Conversation[];
+      const mappedConvs = [
+        ...baseConvs.map((conv) => ({
+          ...conv,
+          related_tickets: ticketsByConversation.get(conv.id) ?? [],
+        })),
+        ...ticketOnlyConvs,
+      ].sort((a, b) => new Date(b.last_message_at ?? b.created_at ?? 0).getTime() - new Date(a.last_message_at ?? a.created_at ?? 0).getTime());
 
       setReservations(mappedRes as Reservation[]);
       setTickets(mappedTickets as Ticket[]);
@@ -530,14 +607,12 @@ export default function CRM() {
     return conversations.filter((c: any) => {
       const msgs = Array.isArray(c.messages) ? c.messages : [];
       // Conta qualquer entrada que NÃO seja assistant/ai/bot/system como mensagem do cliente.
-      const userMsgs = msgs.filter((m: any) => {
-        const role = String(m?.role ?? m?.author ?? m?.from ?? "user").toLowerCase();
-        return role !== "assistant" && role !== "ai" && role !== "bot" && role !== "system";
-      });
-      // Esconde só conversas com 0 ou 1 entrada do cliente (ex.: cliente só falou "oi").
-      if (userMsgs.length <= 1) return false;
+      const userMsgs = msgs.filter(isClientMessage);
+      const hasTicket = (c.related_tickets?.length ?? 0) > 0 || c.source === "ticket";
+      // Conversas com ticket precisam aparecer mesmo quando o histórico completo antigo não existe.
+      if (!hasTicket && userMsgs.length <= 1) return false;
       if (q) {
-        const blob = JSON.stringify({ m: c.client_meta, msgs }).toLowerCase();
+        const blob = JSON.stringify({ m: c.client_meta, msgs, tickets: c.related_tickets }).toLowerCase();
         if (!blob.includes(q)) return false;
       }
       return true;
