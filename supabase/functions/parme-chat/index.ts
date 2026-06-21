@@ -747,7 +747,7 @@ Deno.serve(async (req) => {
     systemPrompt += `
 
 REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
-- Se o cliente reportar QUALQUER problema com pedido (faltou item, veio errado, frio, atrasado, cobrança, qualidade, "não veio a coca", etc.) você é OBRIGADA a chamar a ferramenta registrar_problema_pedido. Pode chamar com numero_pedido=undefined se ainda não souber. NÃO espere ter todos os dados.
+- Se o cliente reportar QUALQUER problema com pedido (faltou item, veio errado, frio, atrasado, cobrança, qualidade, "não veio a coca", etc.) você DEVE registrar via registrar_problema_pedido — MAS só após ter o TELEFONE do cliente. Sem contato, NÃO chame o tool: peça o telefone com DDD primeiro ("Pra abrir o chamado e te retornar, qual seu telefone com DDD?"). Sem telefone, não há ticket, fica só a conversa.
 - NUNCA diga "registrei", "anotei no sistema", "passei pra equipe" sem que a ferramenta registrar_problema_pedido tenha sido executada com sucesso=true naquele turno.
 - Se a ferramenta retornar sucesso=false, diga claramente que houve falha técnica e que vai tentar de novo.
 - Para reservas, SEMPRE chamar criar_reserva quando tiver nome+telefone+data+horário+quantidade.
