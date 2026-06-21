@@ -289,9 +289,9 @@ Deno.serve(async (req) => {
     }
 
     // Persistência imediata (pré-stream) para não perder o turno se a aba fechar.
-    // Só grava no CRM a partir da 2ª interação do usuário com a Giana.
-    const userMsgCount = messages.filter((m) => m.role === "user").length;
-    if (sessionId && userMsgCount >= 2) {
+    // Faz merge com o histórico salvo: se o cliente volta/recarrega a página, a UI pode
+    // enviar só a mensagem nova, mas a conversa inteira continua sendo preservada.
+    if (sessionId) {
       try {
         const supabase = sb();
         const now = new Date().toISOString();
@@ -300,30 +300,16 @@ Deno.serve(async (req) => {
           .select("client_meta, messages")
           .eq("session_id", sessionId)
           .maybeSingle();
-        const existingMessages = Array.isArray(
-            (existing as { messages?: unknown } | null)?.messages,
-          )
-          ? (existing as { messages: Array<Record<string, unknown>> }).messages
-          : [];
+        const existingMessages = existingFlatMessages((existing as { messages?: unknown } | null)?.messages);
         const tsById = new Map<string, string>();
         for (const e of existingMessages) {
-          const id = typeof e?.id === "string" ? e.id : "";
-          const ts = typeof e?.ts === "string" ? e.ts : "";
+          const id = e.id;
+          const ts = e.ts;
           if (id && ts) tsById.set(id, ts);
         }
-        const flatNow = messages.map((m) => {
-          const parts = (m.parts ?? []) as Array<{ type: string; text?: string }>;
-          const text = parts.filter((p) => p.type === "text").map((p) => p.text ?? "")
-            .join("");
-          const toolParts = parts.filter((p) => p.type.startsWith("tool-"));
-          return {
-            id: m.id,
-            role: m.role,
-            content: text,
-            tools: toolParts,
-            ts: tsById.get(m.id) ?? now,
-          };
-        });
+        const flatNow = mergeFlatMessages(existingMessages, flattenUIMessages(messages, now, tsById));
+        const userMsgCount = clientMessageCount(flatNow);
+        if (userMsgCount < 2) return;
         const finalClientMeta =
           (existing as { client_meta?: unknown } | null)?.client_meta ??
             (body?.clientMeta ?? null);
