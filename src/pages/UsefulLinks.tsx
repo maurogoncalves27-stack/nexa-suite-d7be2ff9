@@ -256,7 +256,6 @@ function LinkCard({ link, onEdit, onDelete, editable }: { link: LinkRow; onEdit?
             <div className="text-xs text-muted-foreground truncate">{host}</div>
           </div>
         </a>
-        {link.is_shared && <Badge variant="secondary" className="shrink-0 text-[10px]">Compart.</Badge>}
         {editable && (
           <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
             <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={onEdit}>
