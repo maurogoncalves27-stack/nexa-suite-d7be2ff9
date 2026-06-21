@@ -477,7 +477,7 @@ export default function CRM() {
       </div>
 
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="w-full h-auto p-1 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-1 bg-muted">
+        <TabsList className="w-full h-auto p-1 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-1 bg-muted">
           <TabsTrigger value="dashboard" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
             <LayoutDashboard className="h-4 w-4" />
             <span>Dashboard</span>
@@ -502,6 +502,10 @@ export default function CRM() {
             <Badge variant="secondary" className="ml-0.5 h-5 px-1.5 text-[10px] font-semibold tabular-nums">
               {filteredConversations.length}
             </Badge>
+          </TabsTrigger>
+          <TabsTrigger value="reviews" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
+            <Star className="h-4 w-4" />
+            <span>Avaliações</span>
           </TabsTrigger>
           <TabsTrigger value="personalize" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
             <Palette className="h-4 w-4" />
