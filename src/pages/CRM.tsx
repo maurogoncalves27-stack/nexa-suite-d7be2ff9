@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Headset, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, Clock, Palette, Bot, Plug, Globe } from "lucide-react";
+import { Headset, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, Clock, Palette, Bot, Plug, Globe, Star, ArrowRight } from "lucide-react";
 import { PersonalizePanel, AgentPanel, IntegrationsPanel } from "@/components/crm/ParmeSettingsPanels";
 import {
   BarChart,
@@ -477,7 +477,7 @@ export default function CRM() {
       </div>
 
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="w-full h-auto p-1 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-1 bg-muted">
+        <TabsList className="w-full h-auto p-1 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-1 bg-muted">
           <TabsTrigger value="dashboard" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
             <LayoutDashboard className="h-4 w-4" />
             <span>Dashboard</span>
@@ -502,6 +502,10 @@ export default function CRM() {
             <Badge variant="secondary" className="ml-0.5 h-5 px-1.5 text-[10px] font-semibold tabular-nums">
               {filteredConversations.length}
             </Badge>
+          </TabsTrigger>
+          <TabsTrigger value="reviews" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
+            <Star className="h-4 w-4" />
+            <span>Avaliações</span>
           </TabsTrigger>
           <TabsTrigger value="personalize" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
             <Palette className="h-4 w-4" />
@@ -1191,6 +1195,28 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                   )}
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="reviews" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Star className="h-5 w-5 text-primary" />
+                Avaliações de clientes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <p className="text-muted-foreground mb-4">
+                Acesse as avaliações e feedbacks deixados pelos clientes nas plataformas de delivery e no site.
+              </p>
+              <Button asChild className="gap-2">
+                <a href="/avaliacoes-clientes">
+                  Abrir avaliações
+                  <ArrowRight className="h-4 w-4" />
+                </a>
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

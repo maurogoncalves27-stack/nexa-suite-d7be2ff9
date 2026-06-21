@@ -159,7 +159,6 @@ const operacaoSections: Section[] = [
   ]},
   { label: "Atendimento", items: [
     { title: "Central de Ocorrências", url: "/ocorrencias", icon: Siren },
-    { title: "Avaliações de clientes", url: "/avaliacoes-clientes", icon: Star, staffOnly: true },
   ]},
 ];
 
