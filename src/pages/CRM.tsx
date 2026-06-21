@@ -155,25 +155,81 @@ function extractClientInfo(conv: any, msgs: any[] | null): Record<string, string
     return info;
   }
 
-  // Nome ("meu nome é X", "sou X", "aqui é o/a X", "me chamo X", "é a X", "aqui quem fala é X")
+  // Nome — frases comuns + tokens soltos após a IA perguntar o nome
   if (!info["Nome"]) {
+    const stop = new Set([
+      "que","de","do","da","para","pra","com","por","um","uma","o","a","os","as",
+      "aqui","cliente","gerente","atendente","sim","nao","não","ok","oi","olá","ola",
+      "bom","dia","tarde","noite","ola!","obrigado","obrigada","blz","beleza",
+      "pedido","pedi","quero","comprar","ifood","whatsapp","asa","sul","norte",
+      "lago","aguas","águas","claras","fabrica","fábrica","parme","parmê","box","caipira",
+      "estrogonofe","retirada","delivery","entrega","mesa","reserva","cardapio","cardápio",
+    ]);
+    const isNameToken = (t: string) =>
+      /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.-]{1,}$/.test(t) && !stop.has(t.toLowerCase()) && !/^\d/.test(t);
+    const cap = (s: string) =>
+      s.toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase());
+
     const patterns = [
       /\bmeu\s+nome\s+(?:é|eh|e)\s+(?:o\s+|a\s+)?([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.-]+(?:\s+[A-Za-zÀ-ÿ'.-]+){0,3})/i,
       /\bme\s+chamo\s+(?:o\s+|a\s+)?([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.-]+(?:\s+[A-Za-zÀ-ÿ'.-]+){0,3})/i,
       /\baqui\s+(?:é|eh|e|quem\s+fala\s+é)\s+(?:o\s+|a\s+)?([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.-]+(?:\s+[A-Za-zÀ-ÿ'.-]+){0,3})/i,
       /\bsou\s+(?:o\s+|a\s+)?([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.-]+(?:\s+[A-Za-zÀ-ÿ'.-]+){0,3})/i,
-      /\b(?:é|eh)\s+(?:o|a)\s+([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.-]+)/i,
     ];
-    const stop = /^(que|de|do|da|para|pra|com|por|um|uma|o|a|os|as|aqui|cliente|gerente|atendente|funcion[aá]rio)$/i;
     for (const re of patterns) {
       const m = userText.match(re);
       if (m) {
-        const tokens = m[1].trim().split(/\s+/).filter((t) => !stop.test(t));
+        const tokens = m[1].trim().split(/\s+/).filter(isNameToken);
         const name = tokens.slice(0, 3).join(" ").trim();
         if (name.length >= 2) {
-          info["Nome (inferido)"] = name.replace(/\b\w/g, (l) => l.toUpperCase());
+          info["Nome (inferido)"] = cap(name);
           break;
         }
+      }
+    }
+
+    // Fallback 1: a IA perguntou o nome → próxima resposta do cliente
+    if (!info["Nome (inferido)"]) {
+      const nameAsk = /\b(?:qual\s+(?:o\s+)?seu\s+nome|como\s+(?:posso\s+)?(?:te\s+)?chamar|seu\s+nome\??|me\s+(?:diz|fala)\s+seu\s+nome)\b/i;
+      for (let i = 0; i < (msgs?.length ?? 0) - 1; i++) {
+        const cur = msgs![i];
+        const next = msgs![i + 1];
+        const curRole = cur.role ?? cur.author ?? cur.from ?? "user";
+        const nextRole = next.role ?? next.author ?? next.from ?? "user";
+        const isAssistant = curRole === "assistant" || curRole === "ai" || curRole === "bot";
+        const isUser = !(nextRole === "assistant" || nextRole === "ai" || nextRole === "bot");
+        if (!isAssistant || !isUser) continue;
+        const curText = typeof cur.content === "string" ? cur.content : (cur.message ?? cur.text ?? "");
+        if (!nameAsk.test(curText)) continue;
+        const reply = String(typeof next.content === "string" ? next.content : (next.message ?? next.text ?? ""));
+        const tok = reply.split(/[\s,.!?]+/).filter(isNameToken);
+        if (tok.length >= 1) {
+          info["Nome (inferido)"] = cap(tok.slice(0, 3).join(" "));
+          break;
+        }
+      }
+    }
+
+    // Fallback 2: token solto em qualquer mensagem curta do cliente que pareça um nome próprio
+    if (!info["Nome (inferido)"]) {
+      const userMsgs = (msgs ?? []).filter((m: any) => {
+        const role = m.role ?? m.author ?? m.from ?? "user";
+        return role !== "assistant" && role !== "ai" && role !== "bot";
+      });
+      for (const um of userMsgs) {
+        const txt = String(typeof um.content === "string" ? um.content : (um.message ?? um.text ?? ""));
+        const tokens = txt.split(/[\s,.!?]+/).filter(Boolean);
+        for (const t of tokens) {
+          // token tipo "Mauro", "Thiara" — começa com letra, 3+ chars, não está no stop list
+          if (/^[A-Za-zÀ-ÿ][a-zà-ÿ]{2,}$/.test(t) && !stop.has(t.toLowerCase())) {
+            // exige pelo menos uma vogal pra evitar "kkkk"
+            if (/[aeiouáéíóúâêôãõ]/i.test(t)) {
+              info["Nome (inferido)"] = cap(t);
+              break;
+            }
+          }
+        }
+        if (info["Nome (inferido)"]) break;
       }
     }
   }
