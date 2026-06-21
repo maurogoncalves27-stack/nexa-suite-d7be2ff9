@@ -475,7 +475,10 @@ export default function CRM() {
         })),
         ...ticketOnlyConvs,
         ...contactlessTicketConvs,
-      ].sort((a, b) => new Date(b.last_message_at ?? b.created_at ?? 0).getTime() - new Date(a.last_message_at ?? a.created_at ?? 0).getTime());
+      ]
+        .filter((c) => isRelevantConversation(c))
+        .sort((a, b) => new Date(b.last_message_at ?? b.created_at ?? 0).getTime() - new Date(a.last_message_at ?? a.created_at ?? 0).getTime());
+
 
       setReservations(mappedRes as Reservation[]);
       setTickets(mappedTickets as Ticket[]);
