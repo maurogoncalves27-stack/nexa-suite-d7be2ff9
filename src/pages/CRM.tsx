@@ -199,13 +199,9 @@ function isRelevantConversation(c: Conversation) {
   if (anyC.related_tickets?.length || anyC.related_ticket) return true;
   const msgs = Array.isArray(c.messages) ? c.messages : [];
   const clientMsgs = msgs.filter((m) => isClientMessage(m)).map((m) => messageText(m).trim());
-  // Só esconde quando há exatamente UMA entrada do cliente E ela é trivial (saudação/única palavra).
-  if (clientMsgs.length === 0) return false;
-  if (clientMsgs.length >= 2) return true;
-  const only = clientMsgs[0].toLowerCase().replace(/[^\p{L}\p{N}\s?!.]/gu, "").trim();
-  const tokens = only.split(/\s+/).filter(Boolean);
-  if (tokens.length >= 3) return true;
-  return tokens.some((t) => !TRIVIAL_TOKENS.has(t));
+  // Mantém TODAS as conversas que tiveram pelo menos uma entrada do cliente.
+  // (antes filtrávamos saudações soltas, mas isso escondia conversas reais)
+  return clientMsgs.length >= 1;
 }
 
 
