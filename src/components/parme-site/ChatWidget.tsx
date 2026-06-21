@@ -365,7 +365,7 @@ export function ChatWidget() {
                           : "rounded-bl-sm bg-white text-gray-800"
                       }`}
                     >
-                      {linkify(c)}
+                      {parseInline(c)}
                     </div>
                   </div>
                 ));
