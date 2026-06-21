@@ -213,7 +213,7 @@ async function ensureComplaintTicket(
   const looseOrder = fullText.match(/(?:^|\D)(\d{3,6})(?:\D|$)/);
   const phoneMatch = userTexts.match(/(?:\(?\d{2}\)?\s?)?9?\d{4}[-\s]?\d{4}/);
   const numeroPedido = explicitOrder?.[1] ?? looseOrder?.[1] ?? null;
-  const contato = phoneMatch ? phoneMatch[0].replace(/\D/g, "") : "não informado";
+  const contato = phoneMatch ? phoneMatch[0].replace(/\D/g, "") : null;
   const descricao = `Conversa ${sessionId}:\n${userTexts.slice(-900) || "Reclamação detectada na conversa."}`;
 
   const { data: bySession } = await supabase
@@ -225,11 +225,20 @@ async function ensureComplaintTicket(
     .maybeSingle();
 
   if (bySession?.id) {
+    // Já existe ticket: pode atualizar com novos dados (mesmo sem contato novo).
     await supabase.from("support_tickets").update({
       order_number: bySession.order_number ?? numeroPedido,
-      contact: bySession.contact && bySession.contact !== "não informado" ? bySession.contact : contato,
+      contact: bySession.contact && bySession.contact !== "não informado"
+        ? bySession.contact
+        : (contato ?? bySession.contact),
       description: descricao,
     }).eq("id", bySession.id);
+    return;
+  }
+
+  // Sem contato do cliente NÃO cria ticket — fica só como conversa.
+  if (!contato) {
+    console.log("[parme-chat safety-net] sem contato — conversa preservada, ticket NÃO criado:", sessionId);
     return;
   }
 
