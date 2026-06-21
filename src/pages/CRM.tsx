@@ -129,6 +129,92 @@ function translateStatus(s?: string | null) {
   return map[s.toLowerCase()] ?? s;
 }
 
+// Heurística: extrai informações do cliente a partir de client_meta + mensagens da conversa,
+// inferindo dados que ele não disse explicitamente (telefone digitado, loja mencionada, canal, etc).
+function extractClientInfo(conv: any, msgs: any[] | null): Record<string, string> {
+  const info: Record<string, string> = {};
+  const meta = conv?.client_meta ?? {};
+  const ext = conv?.extracted ?? {};
+  const pick = (k: string) => meta?.[k] ?? ext?.[k];
+
+  if (pick("name") || pick("nome")) info["Nome"] = String(pick("name") ?? pick("nome"));
+  if (pick("phone") || pick("telefone")) info["Telefone"] = String(pick("phone") ?? pick("telefone"));
+  if (pick("email")) info["E-mail"] = String(pick("email"));
+  if (pick("address") || pick("endereco")) info["Endereço"] = String(pick("address") ?? pick("endereco"));
+
+  const userText = (msgs ?? [])
+    .filter((m: any) => {
+      const role = m.role ?? m.author ?? m.from ?? "user";
+      return role !== "assistant" && role !== "ai" && role !== "bot";
+    })
+    .map((m: any) => (typeof m.content === "string" ? m.content : (m.message ?? m.text ?? "")))
+    .join("\n");
+
+  if (!userText) {
+    if (conv?.session_id) info["Sessão"] = String(conv.session_id);
+    return info;
+  }
+
+  // Nome ("meu nome é X", "sou o/a X", "aqui é a X", "me chamo X")
+  if (!info["Nome"]) {
+    const m = userText.match(/(?:meu nome (?:é|eh)|me chamo|aqui (?:é|eh) (?:o|a)|sou (?:o|a))\s+([A-ZÀ-Úa-zà-ú]{2,}(?:\s+[A-ZÀ-Úa-zà-ú]+){0,2})/i);
+    if (m) info["Nome (inferido)"] = m[1].trim();
+  }
+  // Telefone
+  if (!info["Telefone"]) {
+    const m = userText.match(/(?:\(?\d{2}\)?\s?)?9?\d{4}[-\s]?\d{4}/);
+    if (m) info["Telefone (inferido)"] = m[0].trim();
+  }
+  // E-mail
+  if (!info["E-mail"]) {
+    const m = userText.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
+    if (m) info["E-mail (inferido)"] = m[0];
+  }
+  // Endereço
+  const endMatch = userText.match(/\b(?:rua|av\.?|avenida|qd\.?|quadra|sqn|sqs|sqsw|qnp|cln|cls|conjunto)\s+[^\n,.;]{3,80}/i);
+  if (endMatch) info["Endereço mencionado"] = endMatch[0].trim();
+
+  // Loja mencionada
+  const lojas = ["Asa Norte", "Asa Sul", "Águas Claras", "Aguas Claras", "Lago Sul"];
+  const lojaHit = lojas.find((l) => new RegExp(l, "i").test(userText));
+  if (lojaHit) info["Loja mencionada"] = lojaHit;
+
+  // Canal preferido
+  if (/\bretira(?:r|da)\b/i.test(userText)) info["Interesse"] = "Retirada";
+  else if (/\bdelivery|entrega\b/i.test(userText)) info["Interesse"] = "Delivery";
+  else if (/\bsal(?:ã|a)o|reserva|mesa\b/i.test(userText)) info["Interesse"] = "Salão / Reserva";
+
+  // Pedido referenciado
+  const pedido = userText.match(/(?:pedido\s*#?\s*|#)(\d{3,})/i);
+  if (pedido) info["Pedido referenciado"] = `#${pedido[1]}`;
+
+  // Sentimento (super simples)
+  if (/\b(reclama|reclamação|ruim|p[eé]ssimo|horr[ií]vel|frio|errado|atrasou|demorou)\b/i.test(userText))
+    info["Tom"] = "Reclamação";
+  else if (/\b(parab[eé]ns|ador(?:o|ei)|excelente|maravilh|elogio|gostei)\b/i.test(userText))
+    info["Tom"] = "Elogio";
+
+  // Quantidade de mensagens do cliente
+  const userMsgsCount = (msgs ?? []).filter((m: any) => {
+    const role = m.role ?? m.author ?? m.from ?? "user";
+    return role !== "assistant" && role !== "ai" && role !== "bot";
+  }).length;
+  if (userMsgsCount) info["Mensagens do cliente"] = String(userMsgsCount);
+
+  if (conv?.session_id) info["Sessão"] = String(conv.session_id);
+  return info;
+}
+
+function pickClientName(c: any): string {
+  return (
+    c?.client_meta?.name ??
+    c?.client_meta?.nome ??
+    c?.extracted?.name ??
+    c?.extracted?.nome ??
+    "—"
+  );
+}
+
 export default function CRM() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
