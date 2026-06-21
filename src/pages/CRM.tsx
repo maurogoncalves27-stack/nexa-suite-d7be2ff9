@@ -1183,17 +1183,53 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                   c.client_meta?.telefone ??
                   c.client_meta?.name ??
                   "—";
+                const nome = pickClientName(c);
+                const clientInfo = extractClientInfo(c, convMsgs);
                 return (
                   <>
                     <DialogHeader>
                       <DialogTitle className="flex items-center gap-2">
                         <MessageSquare className="h-5 w-5 text-primary" />
-                        {String(phone)}
+                        {nome !== "—" ? nome : String(phone)}
                       </DialogTitle>
-                      <DialogDescription>
-                        {c.message_count ?? 0} mensagens · {fmtDateTime(c.last_message_at)}
+                      <DialogDescription className="flex items-center justify-between gap-2 flex-wrap">
+                        <span>
+                          {c.message_count ?? 0} mensagens · {fmtDateTime(c.last_message_at)}
+                          {nome !== "—" && phone !== "—" ? ` · ${String(phone)}` : ""}
+                        </span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={showClientInfo ? "secondary" : "outline"}
+                          onClick={() => setShowClientInfo((v) => !v)}
+                          className="h-7 text-xs"
+                        >
+                          {showClientInfo ? "Ocultar dados do cliente" : "Ver dados do cliente"}
+                        </Button>
                       </DialogDescription>
                     </DialogHeader>
+
+                    {showClientInfo && (
+                      <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-1">
+                        <div className="font-medium text-sm mb-2 text-foreground">
+                          Informações capturadas
+                        </div>
+                        {Object.keys(clientInfo).length === 0 ? (
+                          <div className="text-muted-foreground">
+                            Nenhuma informação adicional identificada.
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+                            {Object.entries(clientInfo).map(([k, v]) => (
+                              <div key={k} className="flex flex-col">
+                                <span className="text-muted-foreground">{k}</span>
+                                <span className="font-medium text-foreground break-words">{v}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <div className="flex-1 overflow-y-auto -mx-6 px-6">
                       {convMsgsLoading ? (
@@ -1251,17 +1287,6 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                           })}
                         </div>
                       ) : null}
-
-                      {c.client_meta && Object.keys(c.client_meta).length > 0 && (
-                        <details className="text-xs mt-4">
-                          <summary className="cursor-pointer text-muted-foreground">
-                            metadados do cliente
-                          </summary>
-                          <pre className="mt-1 rounded bg-muted/40 p-2 overflow-x-auto">
-                            {JSON.stringify(c.client_meta, null, 2)}
-                          </pre>
-                        </details>
-                      )}
                     </div>
                   </>
                 );
