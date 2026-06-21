@@ -129,6 +129,92 @@ function translateStatus(s?: string | null) {
   return map[s.toLowerCase()] ?? s;
 }
 
+// Heurística: extrai informações do cliente a partir de client_meta + mensagens da conversa,
+// inferindo dados que ele não disse explicitamente (telefone digitado, loja mencionada, canal, etc).
+function extractClientInfo(conv: any, msgs: any[] | null): Record<string, string> {
+  const info: Record<string, string> = {};
+  const meta = conv?.client_meta ?? {};
+  const ext = conv?.extracted ?? {};
+  const pick = (k: string) => meta?.[k] ?? ext?.[k];
+
+  if (pick("name") || pick("nome")) info["Nome"] = String(pick("name") ?? pick("nome"));
+  if (pick("phone") || pick("telefone")) info["Telefone"] = String(pick("phone") ?? pick("telefone"));
+  if (pick("email")) info["E-mail"] = String(pick("email"));
+  if (pick("address") || pick("endereco")) info["Endereço"] = String(pick("address") ?? pick("endereco"));
+
+  const userText = (msgs ?? [])
+    .filter((m: any) => {
+      const role = m.role ?? m.author ?? m.from ?? "user";
+      return role !== "assistant" && role !== "ai" && role !== "bot";
+    })
+    .map((m: any) => (typeof m.content === "string" ? m.content : (m.message ?? m.text ?? "")))
+    .join("\n");
+
+  if (!userText) {
+    if (conv?.session_id) info["Sessão"] = String(conv.session_id);
+    return info;
+  }
+
+  // Nome ("meu nome é X", "sou o/a X", "aqui é a X", "me chamo X")
+  if (!info["Nome"]) {
+    const m = userText.match(/(?:meu nome (?:é|eh)|me chamo|aqui (?:é|eh) (?:o|a)|sou (?:o|a))\s+([A-ZÀ-Úa-zà-ú]{2,}(?:\s+[A-ZÀ-Úa-zà-ú]+){0,2})/i);
+    if (m) info["Nome (inferido)"] = m[1].trim();
+  }
+  // Telefone
+  if (!info["Telefone"]) {
+    const m = userText.match(/(?:\(?\d{2}\)?\s?)?9?\d{4}[-\s]?\d{4}/);
+    if (m) info["Telefone (inferido)"] = m[0].trim();
+  }
+  // E-mail
+  if (!info["E-mail"]) {
+    const m = userText.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
+    if (m) info["E-mail (inferido)"] = m[0];
+  }
+  // Endereço
+  const endMatch = userText.match(/\b(?:rua|av\.?|avenida|qd\.?|quadra|sqn|sqs|sqsw|qnp|cln|cls|conjunto)\s+[^\n,.;]{3,80}/i);
+  if (endMatch) info["Endereço mencionado"] = endMatch[0].trim();
+
+  // Loja mencionada
+  const lojas = ["Asa Norte", "Asa Sul", "Águas Claras", "Aguas Claras", "Lago Sul"];
+  const lojaHit = lojas.find((l) => new RegExp(l, "i").test(userText));
+  if (lojaHit) info["Loja mencionada"] = lojaHit;
+
+  // Canal preferido
+  if (/\bretira(?:r|da)\b/i.test(userText)) info["Interesse"] = "Retirada";
+  else if (/\bdelivery|entrega\b/i.test(userText)) info["Interesse"] = "Delivery";
+  else if (/\bsal(?:ã|a)o|reserva|mesa\b/i.test(userText)) info["Interesse"] = "Salão / Reserva";
+
+  // Pedido referenciado
+  const pedido = userText.match(/(?:pedido\s*#?\s*|#)(\d{3,})/i);
+  if (pedido) info["Pedido referenciado"] = `#${pedido[1]}`;
+
+  // Sentimento (super simples)
+  if (/\b(reclama|reclamação|ruim|p[eé]ssimo|horr[ií]vel|frio|errado|atrasou|demorou)\b/i.test(userText))
+    info["Tom"] = "Reclamação";
+  else if (/\b(parab[eé]ns|ador(?:o|ei)|excelente|maravilh|elogio|gostei)\b/i.test(userText))
+    info["Tom"] = "Elogio";
+
+  // Quantidade de mensagens do cliente
+  const userMsgsCount = (msgs ?? []).filter((m: any) => {
+    const role = m.role ?? m.author ?? m.from ?? "user";
+    return role !== "assistant" && role !== "ai" && role !== "bot";
+  }).length;
+  if (userMsgsCount) info["Mensagens do cliente"] = String(userMsgsCount);
+
+  if (conv?.session_id) info["Sessão"] = String(conv.session_id);
+  return info;
+}
+
+function pickClientName(c: any): string {
+  return (
+    c?.client_meta?.name ??
+    c?.client_meta?.nome ??
+    c?.extracted?.name ??
+    c?.extracted?.nome ??
+    "—"
+  );
+}
+
 export default function CRM() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -144,6 +230,7 @@ export default function CRM() {
   const [convMsgsLoading, setConvMsgsLoading] = useState(false);
   const [convMsgs, setConvMsgs] = useState<any[] | null>(null);
   const [convMsgsError, setConvMsgsError] = useState<string | null>(null);
+  const [showClientInfo, setShowClientInfo] = useState(false);
   const [search, setSearch] = useState("");
 
   async function load() {
@@ -1040,6 +1127,7 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Cliente</TableHead>
                     <TableHead>Contato</TableHead>
                     <TableHead>Mensagens</TableHead>
                     <TableHead>Última mensagem</TableHead>
@@ -1048,13 +1136,13 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                         Carregando…
                       </TableCell>
                     </TableRow>
                   ) : filteredConversations.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                         Nenhuma conversa.
                       </TableCell>
                     </TableRow>
@@ -1063,14 +1151,15 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                       const phone =
                         c.client_meta?.phone ??
                         c.client_meta?.telefone ??
-                        c.client_meta?.name ??
                         "—";
+                      const nome = pickClientName(c);
                       return (
                         <TableRow
                           key={c.id}
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={() => setExpandedConvId(c.id)}
                         >
+                          <TableCell className="text-sm font-medium">{String(nome)}</TableCell>
                           <TableCell className="text-sm">{String(phone)}</TableCell>
                           <TableCell>{c.message_count ?? "—"}</TableCell>
                           <TableCell>{fmtDateTime(c.last_message_at)}</TableCell>
@@ -1094,17 +1183,53 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                   c.client_meta?.telefone ??
                   c.client_meta?.name ??
                   "—";
+                const nome = pickClientName(c);
+                const clientInfo = extractClientInfo(c, convMsgs);
                 return (
                   <>
                     <DialogHeader>
                       <DialogTitle className="flex items-center gap-2">
                         <MessageSquare className="h-5 w-5 text-primary" />
-                        {String(phone)}
+                        {nome !== "—" ? nome : String(phone)}
                       </DialogTitle>
-                      <DialogDescription>
-                        {c.message_count ?? 0} mensagens · {fmtDateTime(c.last_message_at)}
+                      <DialogDescription className="flex items-center justify-between gap-2 flex-wrap">
+                        <span>
+                          {c.message_count ?? 0} mensagens · {fmtDateTime(c.last_message_at)}
+                          {nome !== "—" && phone !== "—" ? ` · ${String(phone)}` : ""}
+                        </span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={showClientInfo ? "secondary" : "outline"}
+                          onClick={() => setShowClientInfo((v) => !v)}
+                          className="h-7 text-xs"
+                        >
+                          {showClientInfo ? "Ocultar dados do cliente" : "Ver dados do cliente"}
+                        </Button>
                       </DialogDescription>
                     </DialogHeader>
+
+                    {showClientInfo && (
+                      <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-1">
+                        <div className="font-medium text-sm mb-2 text-foreground">
+                          Informações capturadas
+                        </div>
+                        {Object.keys(clientInfo).length === 0 ? (
+                          <div className="text-muted-foreground">
+                            Nenhuma informação adicional identificada.
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+                            {Object.entries(clientInfo).map(([k, v]) => (
+                              <div key={k} className="flex flex-col">
+                                <span className="text-muted-foreground">{k}</span>
+                                <span className="font-medium text-foreground break-words">{v}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <div className="flex-1 overflow-y-auto -mx-6 px-6">
                       {convMsgsLoading ? (
@@ -1162,17 +1287,6 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                           })}
                         </div>
                       ) : null}
-
-                      {c.client_meta && Object.keys(c.client_meta).length > 0 && (
-                        <details className="text-xs mt-4">
-                          <summary className="cursor-pointer text-muted-foreground">
-                            metadados do cliente
-                          </summary>
-                          <pre className="mt-1 rounded bg-muted/40 p-2 overflow-x-auto">
-                            {JSON.stringify(c.client_meta, null, 2)}
-                          </pre>
-                        </details>
-                      )}
                     </div>
                   </>
                 );
