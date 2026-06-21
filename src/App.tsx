@@ -11,6 +11,7 @@ import { ThemeProvider } from "@/hooks/useTheme";
 import { useInactivityLogout } from "@/hooks/useInactivityLogout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/AppLayout";
+import { RoleManifest } from "@/components/pwa/RoleManifest";
 
 // Eager: rotas críticas de boot (auth + landing)
 import Index from "./pages/Index.tsx";
