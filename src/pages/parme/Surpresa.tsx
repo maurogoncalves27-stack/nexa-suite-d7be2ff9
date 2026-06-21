@@ -281,18 +281,33 @@ function BrandStoreSelector() {
             </div>
 
             <div className="mt-6 flex flex-wrap justify-center gap-3">
-              {selected.stores.map((store) => (
-                <a
-                  key={store.reviewUrl}
-                  href={`/redirect.html?url=${encodeURIComponent(store.reviewUrl)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full bg-card px-6 py-2.5 text-sm font-semibold text-foreground shadow-sm ring-1 ring-border transition hover:bg-muted"
-                >
-                  {store.name}
-                  <ExternalLink className="h-4 w-4 opacity-70" />
-                </a>
-              ))}
+              {selected.stores.map((store) => {
+                const redirectUrl = `/redirect.html?url=${encodeURIComponent(store.reviewUrl)}`;
+                return (
+                  <a
+                    key={store.reviewUrl}
+                    href={redirectUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const win = window.open(redirectUrl, "_blank", "noopener,noreferrer");
+                      if (!win || win.closed || typeof win.closed === "undefined") {
+                        // popup bloqueada (ex.: iframe do preview) — navega no topo
+                        try {
+                          window.top!.location.href = redirectUrl;
+                        } catch {
+                          window.location.href = redirectUrl;
+                        }
+                      }
+                    }}
+                    className="inline-flex items-center gap-2 rounded-full bg-card px-6 py-2.5 text-sm font-semibold text-foreground shadow-sm ring-1 ring-border transition hover:bg-muted"
+                  >
+                    {store.name}
+                    <ExternalLink className="h-4 w-4 opacity-70" />
+                  </a>
+                );
+              })}
             </div>
           </motion.div>
         )}
