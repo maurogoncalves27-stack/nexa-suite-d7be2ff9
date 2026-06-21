@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link2, Plus, Pencil, Trash2, ExternalLink, Star, Globe } from "lucide-react";
+import { Link2, Plus, Pencil, Trash2, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 
 type LinkRow = {
   id: string;
