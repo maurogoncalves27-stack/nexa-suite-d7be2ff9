@@ -53,9 +53,9 @@ const BRANDS: Brand[] = [
 ];
 
 function reviewUrl(placeId: string) {
-  // Abre a ficha da loja no Google Maps já com botão "Avaliar".
-  // Mais confiável que search.google.com/local/writereview, que costuma exigir login e abrir em branco.
-  return `https://www.google.com/maps/search/?api=1&query=Google&query_place_id=${placeId}`;
+  // URL oficial do Google "Pedir avaliações" — abre direto o formulário de estrelas.
+  // Requer login Google (esperado para qualquer avaliação).
+  return `https://search.google.com/local/writereview?placeid=${placeId}`;
 }
 
 export default function SurpresaPage() {
