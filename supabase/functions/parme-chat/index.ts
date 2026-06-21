@@ -562,6 +562,15 @@ Deno.serve(async (req) => {
       if (custom && custom.trim().length > 0) systemPrompt = custom;
     } catch { /* keep default */ }
 
+    // Regras críticas não-sobrescrevíveis (sempre acrescentadas ao final).
+    systemPrompt += `
+
+REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
+- Se o cliente reportar QUALQUER problema com pedido (faltou item, veio errado, frio, atrasado, cobrança, qualidade, "não veio a coca", etc.) você é OBRIGADA a chamar a ferramenta registrar_problema_pedido. Pode chamar com numero_pedido=undefined se ainda não souber. NÃO espere ter todos os dados.
+- NUNCA diga "registrei", "anotei no sistema", "passei pra equipe" sem que a ferramenta registrar_problema_pedido tenha sido executada com sucesso=true naquele turno.
+- Se a ferramenta retornar sucesso=false, diga claramente que houve falha técnica e que vai tentar de novo.
+- Para reservas, SEMPRE chamar criar_reserva quando tiver nome+telefone+data+horário+quantidade.`;
+
     const result = streamText({
       model,
       system: systemPrompt,
@@ -569,6 +578,7 @@ Deno.serve(async (req) => {
       tools,
       stopWhen: stepCountIs(50),
     });
+
 
     return result.toUIMessageStreamResponse({
       originalMessages: messages,
