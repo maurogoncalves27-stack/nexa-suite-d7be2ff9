@@ -64,29 +64,6 @@ export default function UsefulLinks() {
 
   useEffect(() => { load(); }, []);
 
-  // Auto-fetch page title when URL changes (debounced)
-  const titleFetchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    const raw = form.url.trim();
-    if (!raw || form.title.trim()) {
-      if (titleFetchRef.current) { clearTimeout(titleFetchRef.current); titleFetchRef.current = null; }
-      return;
-    }
-    if (titleFetchRef.current) clearTimeout(titleFetchRef.current);
-    titleFetchRef.current = setTimeout(async () => {
-      const url = normalizeUrl(raw);
-      try {
-        const res = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(8000) });
-        const json = await res.json();
-        const title = json?.data?.title?.replace(/\s+/g, ' ').trim();
-        if (title) setForm(prev => ({ ...prev, title }));
-      } catch {
-        // silent fail
-      }
-    }, 800);
-    return () => { if (titleFetchRef.current) clearTimeout(titleFetchRef.current); };
-  }, [form.url, form.title]);
-
   const openNew = () => { setForm(emptyForm); setOpen(true); };
   const openEdit = (l: LinkRow) => {
     setForm({ id: l.id, title: l.title, url: l.url, is_shared: l.is_shared });
