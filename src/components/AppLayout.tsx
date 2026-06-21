@@ -105,6 +105,7 @@ const PAGE_TITLES: PageMeta[] = [
   
   { match: (p) => p.startsWith("/pasta-colaborador"), title: "Pasta do Colaborador", group: "Documentos" },
   { match: (p) => p.startsWith("/cofre"), title: "Cofre (logins e contatos)", group: "Documentos" },
+  { match: (p) => p.startsWith("/links-uteis"), title: "Links úteis", group: "Documentos" },
 
   // Estoque
   { match: (p) => p === "/nf-arquivadas", title: "NF arquivadas", group: "Estoque" },
