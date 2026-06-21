@@ -562,6 +562,15 @@ Deno.serve(async (req) => {
       if (custom && custom.trim().length > 0) systemPrompt = custom;
     } catch { /* keep default */ }
 
+    // Regras críticas não-sobrescrevíveis (sempre acrescentadas ao final).
+    systemPrompt += `
+
+REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
+- Se o cliente reportar QUALQUER problema com pedido (faltou item, veio errado, frio, atrasado, cobrança, qualidade, "não veio a coca", etc.) você é OBRIGADA a chamar a ferramenta registrar_problema_pedido. Pode chamar com numero_pedido=undefined se ainda não souber. NÃO espere ter todos os dados.
+- NUNCA diga "registrei", "anotei no sistema", "passei pra equipe" sem que a ferramenta registrar_problema_pedido tenha sido executada com sucesso=true naquele turno.
+- Se a ferramenta retornar sucesso=false, diga claramente que houve falha técnica e que vai tentar de novo.
+- Para reservas, SEMPRE chamar criar_reserva quando tiver nome+telefone+data+horário+quantidade.`;
+
     const result = streamText({
       model,
       system: systemPrompt,
@@ -569,6 +578,7 @@ Deno.serve(async (req) => {
       tools,
       stopWhen: stepCountIs(50),
     });
+
 
     return result.toUIMessageStreamResponse({
       originalMessages: messages,
@@ -620,11 +630,68 @@ Deno.serve(async (req) => {
             },
             { onConflict: "session_id" },
           );
+
+          // Safety-net: se houve reclamação na conversa e nenhum ticket foi criado
+          // (a IA não chamou registrar_problema_pedido), criamos aqui.
+          try {
+            const userTexts = flat
+              .filter((m) => m.role === "user")
+              .map((m) => String(m.content || ""))
+              .join("\n");
+            const fullText = flat.map((m) => String(m.content || "")).join("\n");
+            const COMPLAINT_RE =
+              /\b(n[ãa]o\s+veio|faltou|faltando|errad[oa]|fri[oa]|atras(?:ou|ado|o)|demor(?:ou|ado)|reclama[cç][ãa]o|reclamar|cobran[cç]a|p[ée]ssim[oa]|horr[ií]vel|estragad[oa]|queim(?:ado|a)|cru|sem\s+sabor|sumiu|esqueceram|n[ãa]o\s+chegou|veio\s+errad)/i;
+            const hasComplaint = COMPLAINT_RE.test(userTexts);
+            const alreadyRegistered =
+              /registrar_problema_pedido/i.test(JSON.stringify(flat));
+
+            if (hasComplaint && !alreadyRegistered) {
+              const orderMatch = fullText.match(/(?:pedido\s*#?\s*|n[uú]mero\s*[:#]?\s*|#)?(\b\d{3,6}\b)/i);
+              const phoneMatch = userTexts.match(/(?:\(?\d{2}\)?\s?)?9?\d{4}[-\s]?\d{4}/);
+              const numero_pedido = orderMatch ? orderMatch[1] : null;
+              const contato = phoneMatch ? phoneMatch[0].replace(/\D/g, "") : "não informado";
+              const descricao = userTexts.slice(-800) || "Reclamação detectada na conversa.";
+
+              // Evita duplicar: já existe ticket recente com mesmo contato/pedido?
+              let dup = false;
+              if (numero_pedido || contato !== "não informado") {
+                const { data: recent } = await supabase
+                  .from("support_tickets")
+                  .select("id, order_number, contact, created_at")
+                  .gte("created_at", new Date(Date.now() - 24 * 3600_000).toISOString())
+                  .limit(50);
+                dup = (recent ?? []).some((t: any) =>
+                  (numero_pedido && t.order_number === numero_pedido) ||
+                  (contato !== "não informado" && (t.contact || "").replace(/\D/g, "") === contato)
+                );
+              }
+
+              if (!dup) {
+                const { data: ticket, error: tErr } = await supabase
+                  .from("support_tickets")
+                  .insert({
+                    order_number: numero_pedido,
+                    description: descricao,
+                    contact: contato,
+                  })
+                  .select("id")
+                  .single();
+                if (tErr) {
+                  console.error("[parme-chat safety-net] ticket err:", tErr);
+                } else {
+                  console.log("[parme-chat safety-net] ticket criado:", ticket?.id);
+                }
+              }
+            }
+          } catch (e) {
+            console.error("[parme-chat safety-net] err:", e);
+          }
         } catch (e) {
           console.error("[parme-chat] onFinish persist err:", e);
         }
       },
     });
+
   } catch (e) {
     console.error("[parme-chat] fatal:", e);
     return new Response(
