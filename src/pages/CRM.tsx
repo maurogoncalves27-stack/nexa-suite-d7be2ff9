@@ -395,7 +395,7 @@ export default function CRM() {
       if (order && blob.includes(order)) return true;
       return false;
     });
-    const msgs = matched?.messages;
+    const msgs = (matched as any)?.messages;
     setThreadMessages(Array.isArray(msgs) ? msgs : []);
   }, [expandedTicketId, tickets, conversations]);
 
