@@ -179,7 +179,15 @@ export default function UsefulLinks() {
               <Input
                 id="url"
                 value={form.url}
-                onChange={e => setForm({ ...form, url: e.target.value })}
+                onChange={e => {
+                  const url = e.target.value;
+                  const next: FormState = { ...form, url };
+                  if (!form.title.trim() && url.trim()) {
+                    const guessed = suggestTitle(url);
+                    if (guessed) next.title = guessed;
+                  }
+                  setForm(next);
+                }}
                 placeholder="exemplo.com.br"
               />
               {form.url && (
