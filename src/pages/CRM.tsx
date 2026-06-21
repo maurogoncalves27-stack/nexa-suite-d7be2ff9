@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Headset, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, Clock, Palette, Bot, Plug, Globe, Star, ArrowRight } from "lucide-react";
-import { PersonalizePanel, AgentPanel, IntegrationsPanel } from "@/components/crm/ParmeSettingsPanels";
+import { Headset, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, Clock, Bot, Plug, Globe, Star, ArrowRight } from "lucide-react";
+import { AgentPanel, IntegrationsPanel } from "@/components/crm/ParmeSettingsPanels";
 import CustomerReviews from "@/pages/CustomerReviews";
 import {
   BarChart,
@@ -500,10 +500,6 @@ export default function CRM() {
           <TabsTrigger value="reviews" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
             <Star className="h-4 w-4" />
             <span>Avaliações</span>
-          </TabsTrigger>
-          <TabsTrigger value="personalize" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
-            <Palette className="h-4 w-4" />
-            <span>Personalizar</span>
           </TabsTrigger>
           <TabsTrigger value="agent" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
             <Bot className="h-4 w-4" />
@@ -1192,10 +1188,6 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
           <CustomerReviews embedded />
         </TabsContent>
 
-
-        <TabsContent value="personalize" className="mt-4">
-          <PersonalizePanel />
-        </TabsContent>
 
         <TabsContent value="agent" className="mt-4">
           <AgentPanel />
