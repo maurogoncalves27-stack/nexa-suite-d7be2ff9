@@ -124,9 +124,8 @@ export default function UsefulLinks() {
     load();
   };
 
-  const myPrivateLinks = links.filter(l => l.user_id === user?.id && !l.is_shared);
-  const mySharedLinks   = links.filter(l => l.user_id === user?.id && l.is_shared);
-  const otherSharedLinks = links.filter(l => l.user_id !== user?.id && l.is_shared);
+  const privateLinks = links.filter(l => l.user_id === user?.id && !l.is_shared);
+  const sharedLinks  = links.filter(l => l.is_shared);
 
   return (
     <div className="space-y-6">
@@ -149,45 +148,40 @@ export default function UsefulLinks() {
         <p className="text-sm text-muted-foreground">Carregando…</p>
       ) : (
         <>
-          {myPrivateLinks.length > 0 && (
+          {privateLinks.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {myPrivateLinks.map(l => (
+              {privateLinks.map(l => (
                 <LinkCard key={l.id} link={l} onEdit={() => openEdit(l)} onDelete={() => handleDelete(l.id)} editable />
               ))}
             </div>
           )}
 
-          {myPrivateLinks.length > 0 && mySharedLinks.length > 0 && (
+          {privateLinks.length > 0 && sharedLinks.length > 0 && (
             <hr className="border-border" />
           )}
 
-          {mySharedLinks.length > 0 && (
+          {sharedLinks.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {mySharedLinks.map(l => (
-                <LinkCard key={l.id} link={l} onEdit={() => openEdit(l)} onDelete={() => handleDelete(l.id)} editable />
+              {sharedLinks.map(l => (
+                <LinkCard
+                  key={l.id}
+                  link={l}
+                  onEdit={l.user_id === user?.id ? () => openEdit(l) : undefined}
+                  onDelete={l.user_id === user?.id ? () => handleDelete(l.id) : undefined}
+                  editable={l.user_id === user?.id}
+                />
               ))}
             </div>
           )}
 
-          {(myPrivateLinks.length > 0 || mySharedLinks.length > 0) && otherSharedLinks.length > 0 && (
-            <hr className="border-border" />
-          )}
-
-          {otherSharedLinks.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {otherSharedLinks.map(l => (
-                <LinkCard key={l.id} link={l} />
-              ))}
-            </div>
-          )}
-
-          {myPrivateLinks.length === 0 && mySharedLinks.length === 0 && otherSharedLinks.length === 0 && (
+          {privateLinks.length === 0 && sharedLinks.length === 0 && (
             <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">
               Você ainda não salvou nenhum link. Clique em <strong>Novo link</strong> para começar.
             </CardContent></Card>
           )}
         </>
       )}
+
 
 
       <Dialog open={open} onOpenChange={setOpen}>
