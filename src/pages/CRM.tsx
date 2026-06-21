@@ -402,14 +402,50 @@ export default function CRM() {
         parme_id: x.id,
         synced_at: x.created_at,
       }));
-      const mappedConvs = (c.data ?? []).map((x: any) => ({
+      const baseConvs = (c.data ?? []).map((x: any) => ({
         ...x,
         parme_id: x.id,
         synced_at: x.created_at ?? x.last_message_at,
         extracted: x.extracted ?? {},
         extracted_at: x.extracted_at ?? x.last_message_at,
         client_meta: x.client_meta ?? {},
-      }));
+        source: "chat" as const,
+      })) as Conversation[];
+      const mappedTickets = (t.data ?? []).map((x: any) => ({
+        ...x,
+        parme_id: x.id,
+        synced_at: x.created_at,
+      })) as Ticket[];
+      const ticketsByConversation = new Map<string, Ticket[]>();
+      for (const ticket of mappedTickets) {
+        const match = baseConvs.find((conv) => ticketMatchesConversation(ticket, conv));
+        if (match) ticketsByConversation.set(match.id, [...(ticketsByConversation.get(match.id) ?? []), ticket]);
+      }
+      const ticketOnlyConvs = mappedTickets
+        .filter((ticket) => !baseConvs.some((conv) => ticketMatchesConversation(ticket, conv)))
+        .map((ticket) => ({
+          id: `ticket-${ticket.id}`,
+          parme_id: ticket.id,
+          session_id: ticketSessionId(ticket) ?? `ticket-${ticket.id.slice(0, 8)}`,
+          messages: ticketMessages(ticket),
+          message_count: ticketMessages(ticket).length,
+          last_message_at: ticket.created_at,
+          extracted: {},
+          extracted_at: ticket.created_at,
+          client_meta: { phone: ticket.contact },
+          created_at: ticket.created_at,
+          synced_at: ticket.created_at ?? "",
+          source: "ticket" as const,
+          related_ticket: ticket,
+          related_tickets: [ticket],
+        })) as Conversation[];
+      const mappedConvs = [
+        ...baseConvs.map((conv) => ({
+          ...conv,
+          related_tickets: ticketsByConversation.get(conv.id) ?? [],
+        })),
+        ...ticketOnlyConvs,
+      ].sort((a, b) => new Date(b.last_message_at ?? b.created_at ?? 0).getTime() - new Date(a.last_message_at ?? a.created_at ?? 0).getTime());
 
       setReservations(mappedRes as Reservation[]);
       setTickets(mappedTickets as Ticket[]);
