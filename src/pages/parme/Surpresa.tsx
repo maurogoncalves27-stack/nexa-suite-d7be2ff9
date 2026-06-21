@@ -290,8 +290,8 @@ function BrandStoreSelector() {
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               {selected.stores.map((store) => (
                 <a
-                  key={store.reviewUrl}
-                  href={store.reviewUrl}
+                  key={store.placeId}
+                  href={reviewUrl(store.placeId)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 rounded-full bg-card px-6 py-2.5 text-sm font-semibold text-foreground shadow-sm ring-1 ring-border transition hover:bg-muted"
