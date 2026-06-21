@@ -1,0 +1,18 @@
+{
+  "name": "NEXA Fornecedor",
+  "short_name": "Fornecedor",
+  "description": "Portal do fornecedor — NEXA Suite.",
+  "id": "/portal-fornecedor?source=pwa",
+  "start_url": "/portal-fornecedor?source=pwa",
+  "scope": "/portal-fornecedor",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1e3a8a",
+  "theme_color": "#475569",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "/icons/nexa-fornecedor-512.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/nexa-fornecedor-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/nexa-fornecedor-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
