@@ -433,17 +433,6 @@ export function IntegrationsPanel() {
             docs="https://z-api.io/"
           />
           <Row
-            label="WhatsApp Z-API (notificações da loja)"
-            status={reservations.whatsappStorePhone ? "ok" : "warn"}
-            hint="Configurar número acima"
-            secrets={[
-              { name: "ZAPI_CUSTOMER_INSTANCE_ID" },
-              { name: "ZAPI_CUSTOMER_TOKEN" },
-              { name: "ZAPI_CUSTOMER_CLIENT_TOKEN" },
-            ]}
-            docs="https://z-api.io/"
-          />
-          <Row
             label="WhatsApp UAZAPI"
             status="warn"
             hint="Configurar token da instância"
