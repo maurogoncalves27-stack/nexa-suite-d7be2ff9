@@ -231,7 +231,7 @@ export function inferClientName(flat: FlatChatMessage[]) {
   return null;
 }
 
-function mergeClientMeta(current: unknown, fallback: unknown, flat: FlatChatMessage[]) {
+export function mergeClientMeta(current: unknown, fallback: unknown, flat: FlatChatMessage[]) {
   const base = (typeof current === "object" && current !== null ? current :
     typeof fallback === "object" && fallback !== null ? fallback : {}) as Record<string, unknown>;
   const inferredName = inferClientName(flat);
