@@ -344,13 +344,11 @@ Deno.serve(async (req) => {
         },
       }),
       registrar_problema_pedido: tool({
-        description: "Registra um problema com um pedido do cliente.",
+        description: "Registra um problema/reclamação de um pedido do cliente (ex.: item faltando, item errado, atraso). Sempre chame este tool quando o cliente reportar um problema, mesmo que ele não tenha um número de pedido — passe apenas o que ele informou.",
         inputSchema: z.object({
-          numero_pedido: z.string().regex(/^\d{4}$/).optional(),
-          descricao: z.string().min(5).max(1000),
-          contato: z.string().regex(
-            /^\+?55?[\s\-]?\(?\d{2}\)?[\s\-]?9?\d{4}[\s\-]?\d{4}$/,
-          ),
+          numero_pedido: z.string().min(2).max(20).optional(),
+          descricao: z.string().min(3).max(1000),
+          contato: z.string().min(8).max(30).optional(),
         }),
         execute: async ({ numero_pedido, descricao, contato }) => {
           const supabase = sb();
@@ -359,13 +357,15 @@ Deno.serve(async (req) => {
             .insert({
               order_number: numero_pedido ?? null,
               description: descricao,
-              contact: contato,
+              contact: contato ?? "não informado",
             })
             .select("id")
             .single();
           if (error || !row) {
+            console.error("[registrar_problema_pedido] erro:", error);
             return { sucesso: false, erro: "Não foi possível concluir a operação." };
           }
+          console.log("[registrar_problema_pedido] ticket criado:", row.id);
           return {
             sucesso: true,
             id: row.id,
