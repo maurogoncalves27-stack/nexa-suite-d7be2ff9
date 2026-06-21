@@ -808,10 +808,8 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
       stopWhen: stepCountIs(50),
     });
 
-
-    return result.toUIMessageStreamResponse({
+    const response = result.toUIMessageStreamResponse({
       originalMessages: messages,
-      headers: corsHeaders,
       onFinish: async ({ messages: finalMessages }) => {
         if (!sessionId) return;
         let flat: ReturnType<typeof mergeFlatMessages> = [];
@@ -852,6 +850,8 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
         }
       },
     });
+    for (const [key, value] of Object.entries(corsHeaders)) response.headers.set(key, value);
+    return response;
 
   } catch (e) {
     console.error("[parme-chat] fatal:", e);
