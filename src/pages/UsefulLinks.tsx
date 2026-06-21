@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link2, Plus, Pencil, Trash2, ExternalLink, Star, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -63,6 +63,29 @@ export default function UsefulLinks() {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Auto-fetch page title when URL changes (debounced)
+  const titleFetchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    const raw = form.url.trim();
+    if (!raw || form.title.trim()) {
+      if (titleFetchRef.current) { clearTimeout(titleFetchRef.current); titleFetchRef.current = null; }
+      return;
+    }
+    if (titleFetchRef.current) clearTimeout(titleFetchRef.current);
+    titleFetchRef.current = setTimeout(async () => {
+      const url = normalizeUrl(raw);
+      try {
+        const res = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(8000) });
+        const json = await res.json();
+        const title = json?.data?.title?.replace(/\s+/g, ' ').trim();
+        if (title) setForm(prev => ({ ...prev, title }));
+      } catch {
+        // silent fail
+      }
+    }, 800);
+    return () => { if (titleFetchRef.current) clearTimeout(titleFetchRef.current); };
+  }, [form.url, form.title]);
 
   const openNew = () => { setForm(emptyForm); setOpen(true); };
   const openEdit = (l: LinkRow) => {
@@ -167,18 +190,23 @@ export default function UsefulLinks() {
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="title">Nome</Label>
-              <Input id="title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Ex.: Painel iFood" />
-            </div>
-            <div className="space-y-1.5">
               <Label htmlFor="url">URL</Label>
-              <Input id="url" value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} placeholder="exemplo.com.br" />
+              <Input
+                id="url"
+                value={form.url}
+                onChange={e => setForm({ ...form, url: e.target.value })}
+                placeholder="exemplo.com.br"
+              />
               {form.url && (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
                   <img src={faviconFor(normalizeUrl(form.url))} alt="" className="w-4 h-4 rounded-sm" onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }} />
                   Ícone detectado automaticamente
                 </div>
               )}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="title">Nome</Label>
+              <Input id="title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Ex.: Painel iFood" />
             </div>
             <div className="flex items-center justify-between rounded-md border p-3">
               <div>
