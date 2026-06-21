@@ -44,7 +44,16 @@ const suggestTitle = (url: string) => {
 const faviconFor = (url: string) => {
   try {
     const host = new URL(url).hostname;
-    return `https://www.google.com/s2/favicons?domain=${host}&sz=64`;
+    return `https://icons.duckduckgo.com/ip3/${host}.ico`;
+  } catch {
+    return "";
+  }
+};
+
+const faviconFallback = (url: string) => {
+  try {
+    const host = new URL(url).hostname;
+    return `https://www.google.com/s2/favicons?sz=64&domain=${host}`;
   } catch {
     return "";
   }
