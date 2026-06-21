@@ -402,5 +402,23 @@
     © Aquela Parmê — <a href="/">aquelaparme.com.br</a>
   </footer>
 
+  <script>
+    (function() {
+      var btn = document.getElementById('menuBtn');
+      var nav = document.getElementById('mobileNav');
+      var iconOpen = document.getElementById('menuIconOpen');
+      var iconClose = document.getElementById('menuIconClose');
+      if (!btn || !nav) return;
+      btn.addEventListener('click', function() {
+        var isOpen = nav.style.display !== 'none';
+        nav.style.display = isOpen ? 'none' : 'block';
+        iconOpen.style.display = isOpen ? 'block' : 'none';
+        iconClose.style.display = isOpen ? 'none' : 'block';
+        btn.setAttribute('aria-expanded', String(!isOpen));
+        btn.setAttribute('aria-label', isOpen ? 'Abrir menu' : 'Fechar menu');
+      });
+    })();
+  </script>
+
 </body>
 </html>
