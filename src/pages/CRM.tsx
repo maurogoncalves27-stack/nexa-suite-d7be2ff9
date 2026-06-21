@@ -88,6 +88,7 @@ type Conversation = {
   id: string;
   parme_id: string;
   session_id: string | null;
+  messages?: any[];
   message_count: number | null;
   last_message_at: string | null;
   extracted: any;
@@ -95,7 +96,57 @@ type Conversation = {
   client_meta: any;
   created_at: string | null;
   synced_at: string;
+  source?: "chat" | "ticket";
+  related_ticket?: Ticket;
+  related_tickets?: Ticket[];
 };
+
+const NON_CLIENT_ROLES = new Set(["assistant", "ai", "bot", "system", "model", "tool"]);
+
+function messageText(m: any) {
+  return String(typeof m?.content === "string" ? m.content : (m?.message ?? m?.text ?? ""));
+}
+
+function isClientMessage(m: any) {
+  const role = String(m?.role ?? m?.author ?? m?.from ?? "user").toLowerCase();
+  return !NON_CLIENT_ROLES.has(role) && messageText(m).trim().length > 0;
+}
+
+function onlyDigits(v?: string | null) {
+  return String(v ?? "").replace(/\D+/g, "");
+}
+
+function ticketSessionId(t: Ticket) {
+  return t.description?.match(/Conversa\s+([A-Za-z0-9_-]+)/i)?.[1] ?? null;
+}
+
+function ticketMessages(t: Ticket) {
+  const lines = String(t.description ?? "")
+    .replace(/^Conversa\s+[A-Za-z0-9_-]+:\s*/i, "")
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const base = lines.length > 0 ? lines : [t.description ?? "Ticket registrado sem transcrição."];
+  return base.map((content, index) => ({
+    id: `${t.id}:${index}`,
+    role: "user",
+    content,
+    ts: t.created_at,
+  }));
+}
+
+function ticketMatchesConversation(t: Ticket, c: Conversation) {
+  const session = ticketSessionId(t);
+  if (session && c.session_id === session) return true;
+  const digits = onlyDigits(t.contact);
+  if (digits.length < 8) return false;
+  const blobDigits = onlyDigits(JSON.stringify({
+    meta: c.client_meta,
+    extracted: c.extracted,
+    messages: c.messages ?? [],
+  }));
+  return blobDigits.includes(digits.slice(-8));
+}
 
 function fmtDate(d?: string | null) {
   if (!d) return "—";
