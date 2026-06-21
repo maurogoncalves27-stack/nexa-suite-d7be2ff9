@@ -280,16 +280,14 @@ function BrandStoreSelector() {
               </p>
             </div>
 
-            <div className="mt-6 flex justify-center">
-              <a
-                href="/avaliacoes.html"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full bg-card px-7 py-3 text-sm font-semibold text-foreground shadow-sm ring-1 ring-border transition hover:bg-muted"
-              >
-                Escolher loja para avaliar
-                <ExternalLink className="h-4 w-4 opacity-70" />
-              </a>
+            <div className="mt-6 w-full">
+              <iframe
+                src="/avaliacoes.html"
+                title="Deixar avaliação no Google"
+                className="w-full rounded-2xl border border-border bg-white shadow-sm"
+                style={{ height: "420px" }}
+                loading="lazy"
+              />
             </div>
           </motion.div>
         )}
