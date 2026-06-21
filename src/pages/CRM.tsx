@@ -138,14 +138,9 @@ function ticketMessages(t: Ticket) {
 function ticketMatchesConversation(t: Ticket, c: Conversation) {
   const session = ticketSessionId(t);
   if (session && c.session_id === session) return true;
-  const digits = onlyDigits(t.contact);
-  if (digits.length < 8) return false;
-  const blobDigits = onlyDigits(JSON.stringify({
-    meta: c.client_meta,
-    extracted: c.extracted,
-    messages: c.messages ?? [],
-  }));
-  return blobDigits.includes(digits.slice(-8));
+  // Não vincula só por telefone: o mesmo cliente pode ter vários tickets distintos.
+  // Sem o session_id explícito no texto do ticket, exibimos o ticket como conversa própria.
+  return false;
 }
 
 function fmtDate(d?: string | null) {
