@@ -145,24 +145,23 @@ export default function UsefulLinks() {
         </Button>
       </div>
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-          <Star className="h-4 w-4" /> Meus favoritos
-        </h2>
-        {loading ? (
-          <p className="text-sm text-muted-foreground">Carregando…</p>
-        ) : myLinks.length === 0 ? (
-          <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">
-            Você ainda não salvou nenhum link. Clique em <strong>Novo link</strong> para começar.
-          </CardContent></Card>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {myLinks.map(l => (
-              <LinkCard key={l.id} link={l} onEdit={() => openEdit(l)} onDelete={() => handleDelete(l.id)} editable />
-            ))}
-          </div>
-        )}
-      </section>
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Carregando…</p>
+      ) : myLinks.length === 0 ? (
+        <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">
+          Você ainda não salvou nenhum link. Clique em <strong>Novo link</strong> para começar.
+        </CardContent></Card>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {myLinks.map(l => (
+            <LinkCard key={l.id} link={l} onEdit={() => openEdit(l)} onDelete={() => handleDelete(l.id)} editable />
+          ))}
+        </div>
+      )}
+
+      {myLinks.length > 0 && sharedLinks.length > 0 && (
+        <hr className="border-border" />
+      )}
 
       {sharedLinks.length > 0 && (
         <section className="space-y-3">
