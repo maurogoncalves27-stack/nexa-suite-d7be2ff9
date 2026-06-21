@@ -217,6 +217,18 @@ export default function SurpresaPage() {
 function BrandStoreSelector() {
   const [selected, setSelected] = useState<Brand | null>(null);
 
+  const handleReviewClick = (event: React.MouseEvent<HTMLAnchorElement>, url: string) => {
+    event.preventDefault();
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
 
   return (
     <div className="mt-10">
@@ -288,6 +300,7 @@ function BrandStoreSelector() {
                     href={store.reviewUrl}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={(event) => handleReviewClick(event, store.reviewUrl)}
                     className="inline-flex items-center gap-2 rounded-full bg-card px-6 py-2.5 text-sm font-semibold text-foreground shadow-sm ring-1 ring-border transition hover:bg-muted"
                   >
 
