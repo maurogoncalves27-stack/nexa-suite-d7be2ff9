@@ -444,11 +444,9 @@ export function IntegrationsPanel() {
             docs="https://docs.uazapi.com/"
           />
           <Row
-            label="Google Reviews"
-            status={(google.units ?? []).some((u) => u.place_id) ? "ok" : "warn"}
-            hint="Adicionar Place IDs"
-            secrets={[{ name: "GOOGLE_PLACES_API_KEY", note: "Chave da Places API (New)" }]}
-            docs="https://developers.google.com/maps/documentation/places/web-service/overview"
+            label="Reservas (banco local)"
+            status="ok"
+            hint="Tabela reservations"
           />
           <Row
             label="Reservas (banco local)"
