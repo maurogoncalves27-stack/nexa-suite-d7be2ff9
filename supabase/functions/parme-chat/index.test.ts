@@ -36,8 +36,8 @@ Deno.test("inferClientName: 'meu nome é Mauro'", () => {
   assertEquals(name(conv(["user", "oi, meu nome é Mauro"])), "Mauro");
 });
 
-Deno.test("inferClientName: 'me chamo João Silva'", () => {
-  assertEquals(name(conv(["user", "me chamo João Silva"])), "João Silva");
+Deno.test("inferClientName: 'me chamo Carlos Silva'", () => {
+  assertEquals(name(conv(["user", "me chamo Carlos Silva"])), "Carlos Silva");
 });
 
 Deno.test("inferClientName: 'aqui é o Pedro'", () => {
