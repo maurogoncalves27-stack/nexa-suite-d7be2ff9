@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link2, Plus, Pencil, Trash2, ExternalLink, Star, Globe } from "lucide-react";
+import { Link2, Plus, Pencil, Trash2, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 
 type LinkRow = {
   id: string;
@@ -145,36 +144,30 @@ export default function UsefulLinks() {
         </Button>
       </div>
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-          <Star className="h-4 w-4" /> Meus favoritos
-        </h2>
-        {loading ? (
-          <p className="text-sm text-muted-foreground">Carregando…</p>
-        ) : myLinks.length === 0 ? (
-          <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">
-            Você ainda não salvou nenhum link. Clique em <strong>Novo link</strong> para começar.
-          </CardContent></Card>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {myLinks.map(l => (
-              <LinkCard key={l.id} link={l} onEdit={() => openEdit(l)} onDelete={() => handleDelete(l.id)} editable />
-            ))}
-          </div>
-        )}
-      </section>
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Carregando…</p>
+      ) : myLinks.length === 0 ? (
+        <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">
+          Você ainda não salvou nenhum link. Clique em <strong>Novo link</strong> para começar.
+        </CardContent></Card>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {myLinks.map(l => (
+            <LinkCard key={l.id} link={l} onEdit={() => openEdit(l)} onDelete={() => handleDelete(l.id)} editable />
+          ))}
+        </div>
+      )}
+
+      {myLinks.length > 0 && sharedLinks.length > 0 && (
+        <hr className="border-border" />
+      )}
 
       {sharedLinks.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-            <Globe className="h-4 w-4" /> Compartilhados pela equipe
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {sharedLinks.map(l => (
-              <LinkCard key={l.id} link={l} />
-            ))}
-          </div>
-        </section>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {sharedLinks.map(l => (
+            <LinkCard key={l.id} link={l} />
+          ))}
+        </div>
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -263,7 +256,6 @@ function LinkCard({ link, onEdit, onDelete, editable }: { link: LinkRow; onEdit?
             <div className="text-xs text-muted-foreground truncate">{host}</div>
           </div>
         </a>
-        {link.is_shared && <Badge variant="secondary" className="shrink-0 text-[10px]">Compart.</Badge>}
         {editable && (
           <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
             <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={onEdit}>
