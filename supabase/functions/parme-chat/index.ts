@@ -487,13 +487,21 @@ Deno.serve(async (req) => {
         },
       }),
       registrar_problema_pedido: tool({
-        description: "Registra um problema/reclamação de um pedido do cliente (ex.: item faltando, item errado, atraso). Sempre chame este tool quando o cliente reportar um problema, mesmo que ele não tenha um número de pedido — passe apenas o que ele informou.",
+        description: "Registra um problema/reclamação de pedido. EXIGE telefone/contato do cliente — sem contato NÃO é possível registrar (peça antes de chamar).",
         inputSchema: z.object({
           numero_pedido: z.string().min(2).max(20).optional(),
           descricao: z.string().min(3).max(1000),
-          contato: z.string().min(8).max(30).optional(),
+          contato: z.string().min(8).max(30),
         }),
         execute: async ({ numero_pedido, descricao, contato }) => {
+          const contatoLimpo = (contato ?? "").replace(/\D/g, "");
+          if (contatoLimpo.length < 8) {
+            return {
+              sucesso: false,
+              erro: "contato_obrigatorio",
+              mensagem: "Preciso do seu telefone com DDD antes de abrir o chamado — sem contato não conseguimos retornar.",
+            };
+          }
           const supabase = sb();
           const descricaoFinal = sessionId ? `Conversa ${sessionId}:\n${descricao}` : descricao;
           if (sessionId) {
@@ -512,7 +520,7 @@ Deno.serve(async (req) => {
                   description: descricaoFinal,
                   contact: existing.contact && existing.contact !== "não informado"
                     ? existing.contact
-                    : contato ?? "não informado",
+                    : contatoLimpo,
                 })
                 .eq("id", existing.id);
               if (error) {
@@ -532,7 +540,7 @@ Deno.serve(async (req) => {
             .insert({
               order_number: numero_pedido ?? null,
               description: descricaoFinal,
-              contact: contato ?? "não informado",
+              contact: contatoLimpo,
             })
             .select("id")
             .single();
