@@ -182,7 +182,6 @@ export function AgentPanel() {
     }
   };
 
-  const restoreDefault = () => setData((d) => ({ ...d, systemPrompt: DEFAULT_PROMPT }));
 
   if (loading) {
     return <div className="flex justify-center p-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
@@ -208,12 +207,7 @@ export function AgentPanel() {
             />
           </div>
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label>System prompt</Label>
-              <Button type="button" variant="ghost" size="sm" onClick={restoreDefault}>
-                <RefreshCw className="h-3.5 w-3.5 mr-1" /> Restaurar padrão
-              </Button>
-            </div>
+            <Label>System prompt</Label>
             <Textarea
               rows={14}
               value={data.systemPrompt ?? ""}
