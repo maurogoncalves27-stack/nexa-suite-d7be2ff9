@@ -177,7 +177,7 @@ export default function UsefulLinks() {
                   if (!raw) return;
                   const url = normalizeUrl(raw);
                   try {
-                    const proxy = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+                    const proxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
                     const res = await fetch(proxy, { signal: AbortSignal.timeout(8000) });
                     const html = await res.text();
                     const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
