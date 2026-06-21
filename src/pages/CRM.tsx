@@ -151,13 +151,43 @@ function ticketMessages(t: Ticket) {
   }));
 }
 
+function conversationPhones(c: Conversation): Set<string> {
+  const phones = new Set<string>();
+  const meta = (c.client_meta ?? {}) as Record<string, unknown>;
+  for (const k of ["phone", "telefone", "whatsapp", "contact"]) {
+    const v = onlyDigits(String(meta[k] ?? ""));
+    if (v.length >= 8) phones.add(v);
+  }
+  const ex = (c.extracted ?? {}) as Record<string, unknown>;
+  for (const k of ["phone", "telefone", "whatsapp", "contact"]) {
+    const v = onlyDigits(String(ex[k] ?? ""));
+    if (v.length >= 8) phones.add(v);
+  }
+  const msgs = Array.isArray(c.messages) ? c.messages : [];
+  for (const m of msgs) {
+    const text = messageText(m);
+    const matches = text.match(/(?:\(?\d{2}\)?\s?)?9?\d{4}[-\s]?\d{4}/g) ?? [];
+    for (const raw of matches) {
+      const digits = onlyDigits(raw);
+      if (digits.length >= 10) phones.add(digits);
+    }
+  }
+  return phones;
+}
+
 function ticketMatchesConversation(t: Ticket, c: Conversation) {
   const session = ticketSessionId(t);
   if (session && c.session_id === session) return true;
-  // Não vincula só por telefone: o mesmo cliente pode ter vários tickets distintos.
-  // Sem o session_id explícito no texto do ticket, exibimos o ticket como conversa própria.
-  return false;
+  // Sem session_id explícito, casamos por telefone + proximidade temporal (±2h).
+  const ticketPhone = onlyDigits(t.contact);
+  if (ticketPhone.length < 8) return false;
+  if (!conversationPhones(c).has(ticketPhone)) return false;
+  const tTime = new Date(t.created_at ?? 0).getTime();
+  const cTime = new Date(c.last_message_at ?? c.created_at ?? 0).getTime();
+  if (!tTime || !cTime) return false;
+  return Math.abs(tTime - cTime) <= 2 * 60 * 60 * 1000;
 }
+
 
 function fmtDate(d?: string | null) {
   if (!d) return "—";
