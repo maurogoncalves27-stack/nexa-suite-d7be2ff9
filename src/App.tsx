@@ -16,6 +16,7 @@ import { RoleManifest } from "@/components/pwa/RoleManifest";
 // Eager: rotas críticas de boot (auth + landing)
 import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
+import NexaEntry from "./pages/NexaEntry.tsx";
 
 // Lazy: demais páginas só carregam ao acessar a rota
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
