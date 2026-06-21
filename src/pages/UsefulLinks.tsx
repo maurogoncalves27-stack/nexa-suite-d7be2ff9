@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Link2, Plus, Pencil, Trash2, ExternalLink, Star, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,6 +33,14 @@ const emptyForm: FormState = { title: "", url: "", is_shared: false };
 
 const normalizeUrl = (u: string) => /^https?:\/\//i.test(u) ? u : `https://${u}`;
 
+const suggestTitle = (url: string) => {
+  try {
+    return new URL(normalizeUrl(url)).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+};
+
 const faviconFor = (url: string) => {
   try {
     const host = new URL(url).hostname;
@@ -63,29 +71,6 @@ export default function UsefulLinks() {
   };
 
   useEffect(() => { load(); }, []);
-
-  // Auto-fetch page title when URL changes (debounced)
-  const titleFetchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    const raw = form.url.trim();
-    if (!raw || form.title.trim()) {
-      if (titleFetchRef.current) { clearTimeout(titleFetchRef.current); titleFetchRef.current = null; }
-      return;
-    }
-    if (titleFetchRef.current) clearTimeout(titleFetchRef.current);
-    titleFetchRef.current = setTimeout(async () => {
-      const url = normalizeUrl(raw);
-      try {
-        const res = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(8000) });
-        const json = await res.json();
-        const title = json?.data?.title?.replace(/\s+/g, ' ').trim();
-        if (title) setForm(prev => ({ ...prev, title }));
-      } catch {
-        // silent fail
-      }
-    }, 800);
-    return () => { if (titleFetchRef.current) clearTimeout(titleFetchRef.current); };
-  }, [form.url, form.title]);
 
   const openNew = () => { setForm(emptyForm); setOpen(true); };
   const openEdit = (l: LinkRow) => {
@@ -194,7 +179,15 @@ export default function UsefulLinks() {
               <Input
                 id="url"
                 value={form.url}
-                onChange={e => setForm({ ...form, url: e.target.value })}
+                onChange={e => {
+                  const url = e.target.value;
+                  const next: FormState = { ...form, url };
+                  if (!form.title.trim() && url.trim()) {
+                    const guessed = suggestTitle(url);
+                    if (guessed) next.title = guessed;
+                  }
+                  setForm(next);
+                }}
                 placeholder="exemplo.com.br"
               />
               {form.url && (
