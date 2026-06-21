@@ -116,6 +116,10 @@ function onlyDigits(v?: string | null) {
   return String(v ?? "").replace(/\D+/g, "");
 }
 
+function hasValidContact(v?: string | null) {
+  return onlyDigits(v).length >= 8;
+}
+
 function ticketSessionId(t: Ticket) {
   return t.description?.match(/Conversa\s+([A-Za-z0-9_-]+)/i)?.[1] ?? null;
 }
@@ -383,13 +387,12 @@ export default function CRM() {
         client_meta: x.client_meta ?? {},
         source: "chat" as const,
       })) as Conversation[];
-      const mappedTickets = (t.data ?? [])
-        .filter((x: any) => typeof x.contact === "string" && x.contact.replace(/\D/g, "").length >= 8)
-        .map((x: any) => ({
-          ...x,
-          parme_id: x.id,
-          synced_at: x.created_at,
-        })) as Ticket[];
+      const rawTickets = (t.data ?? []).map((x: any) => ({
+        ...x,
+        parme_id: x.id,
+        synced_at: x.created_at,
+      })) as Ticket[];
+      const mappedTickets = rawTickets.filter((x) => hasValidContact(x.contact));
       const ticketsByConversation = new Map<string, Ticket[]>();
       for (const ticket of mappedTickets) {
         const match = baseConvs.find((conv) => ticketMatchesConversation(ticket, conv));
@@ -413,12 +416,30 @@ export default function CRM() {
           related_ticket: ticket,
           related_tickets: [ticket],
         })) as Conversation[];
+      const contactlessTicketConvs = rawTickets
+        .filter((ticket) => !hasValidContact(ticket.contact))
+        .filter((ticket) => !baseConvs.some((conv) => ticketMatchesConversation(ticket, conv)))
+        .map((ticket) => ({
+          id: `ticket-conversation-${ticket.id}`,
+          parme_id: ticket.id,
+          session_id: ticketSessionId(ticket) ?? `ticket-${ticket.id.slice(0, 8)}`,
+          messages: ticketMessages(ticket),
+          message_count: ticketMessages(ticket).length,
+          last_message_at: ticket.created_at,
+          extracted: {},
+          extracted_at: ticket.created_at,
+          client_meta: {},
+          created_at: ticket.created_at,
+          synced_at: ticket.created_at ?? "",
+          source: "chat" as const,
+        })) as Conversation[];
       const mappedConvs = [
         ...baseConvs.map((conv) => ({
           ...conv,
           related_tickets: ticketsByConversation.get(conv.id) ?? [],
         })),
         ...ticketOnlyConvs,
+        ...contactlessTicketConvs,
       ].sort((a, b) => new Date(b.last_message_at ?? b.created_at ?? 0).getTime() - new Date(a.last_message_at ?? a.created_at ?? 0).getTime());
 
       setReservations(mappedRes as Reservation[]);
