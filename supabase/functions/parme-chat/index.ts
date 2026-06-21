@@ -383,9 +383,21 @@ Deno.serve(async (req) => {
           },
           { onConflict: "session_id" },
         );
-        await ensureComplaintTicket(supabase, flatNow, sessionId);
       } catch (e) {
-        console.warn("[parme-chat] pre-stream upsert err:", e);
+        console.warn("[parme-chat] pre-stream conversa upsert err:", e);
+      }
+      // Ticket é independente: se falhar, a conversa já está salva.
+      try {
+        const supabase = sb();
+        const { data: cur } = await supabase
+          .from("chat_conversations")
+          .select("messages")
+          .eq("session_id", sessionId)
+          .maybeSingle();
+        const flatNow = existingFlatMessages((cur as { messages?: unknown } | null)?.messages);
+        if (flatNow.length) await ensureComplaintTicket(supabase, flatNow, sessionId);
+      } catch (e) {
+        console.warn("[parme-chat] pre-stream ticket err:", e);
       }
     }
 
