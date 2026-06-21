@@ -422,11 +422,15 @@ export function IntegrationsPanel() {
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <Row
-            label="Chat Giana (Lovable AI / Gemini 3 Flash)"
-            status="ok"
-            hint="Ativo via LOVABLE_API_KEY"
-            secrets={[{ name: "LOVABLE_API_KEY", note: "Gerenciada automaticamente pelo Lovable Cloud (não editar)." }]}
-            docs="https://docs.lovable.dev/features/cloud"
+            label="WhatsApp Z-API (notificações da loja)"
+            status={reservations.whatsappStorePhone ? "ok" : "warn"}
+            hint="Configurar número acima"
+            secrets={[
+              { name: "ZAPI_CUSTOMER_INSTANCE_ID" },
+              { name: "ZAPI_CUSTOMER_TOKEN" },
+              { name: "ZAPI_CUSTOMER_CLIENT_TOKEN" },
+            ]}
+            docs="https://z-api.io/"
           />
           <Row
             label="WhatsApp Z-API (notificações da loja)"
