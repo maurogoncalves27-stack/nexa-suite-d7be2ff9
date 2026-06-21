@@ -1057,31 +1057,32 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Marca</TableHead>
-                    <TableHead>Sessão</TableHead>
+                    <TableHead className="w-10"></TableHead>
+                    <TableHead>Contato</TableHead>
                     <TableHead>Mensagens</TableHead>
-                    <TableHead>Resumo extraído</TableHead>
-                    <TableHead>Extraído em</TableHead>
+                    <TableHead>Última mensagem</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                         Carregando…
                       </TableCell>
                     </TableRow>
                   ) : filteredConversations.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                         Nenhuma conversa.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredConversations.map((c) => {
-                      const marca = c.extracted?.marca ?? "—";
-                      const intent = c.extracted?.intent ?? c.extracted?.intencao;
-                      const phone = c.extracted?.telefone ?? c.client_meta?.phone;
+                    filteredConversations.map((c: any) => {
+                      const phone =
+                        c.client_meta?.phone ??
+                        c.client_meta?.telefone ??
+                        c.client_meta?.name ??
+                        "—";
                       const isOpen = expandedConvId === c.id;
                       return (
                         <Fragment key={c.id}>
@@ -1090,41 +1091,15 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                             onClick={() => setExpandedConvId(isOpen ? null : c.id)}
                           >
                             <TableCell>
-                              <div className="flex items-center gap-2">
-                                {isOpen ? (
-                                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                                ) : (
-                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                )}
-                                {marca !== "—" ? <Badge>{marca}</Badge> : "—"}
-                              </div>
+                              {isOpen ? (
+                                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                              )}
                             </TableCell>
-                            <TableCell className="font-mono text-xs">
-                              {c.session_id?.slice(0, 12) ?? "—"}
-                            </TableCell>
+                            <TableCell className="text-sm">{String(phone)}</TableCell>
                             <TableCell>{c.message_count ?? "—"}</TableCell>
-                            <TableCell className="max-w-md">
-                              <div className="text-sm space-y-0.5">
-                                {intent && (
-                                  <div>
-                                    <span className="text-muted-foreground">intent:</span>{" "}
-                                    {String(intent)}
-                                  </div>
-                                )}
-                                {phone && (
-                                  <div>
-                                    <span className="text-muted-foreground">tel:</span>{" "}
-                                    {String(phone)}
-                                  </div>
-                                )}
-                                {!intent && !phone && (
-                                  <div className="text-muted-foreground line-clamp-2 font-mono text-xs">
-                                    {JSON.stringify(c.extracted ?? {}).slice(0, 160)}
-                                  </div>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>{fmtDateTime(c.extracted_at)}</TableCell>
+                            <TableCell>{fmtDateTime(c.last_message_at)}</TableCell>
                           </TableRow>
                           {isOpen && (
                             <TableRow className="hover:bg-transparent">
