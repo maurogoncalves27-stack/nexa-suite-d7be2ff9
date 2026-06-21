@@ -390,9 +390,6 @@ export default function CRM() {
 
   const q = search.trim().toLowerCase();
 
-
-  const q = search.trim().toLowerCase();
-
   const filteredReservations = useMemo(() => {
     return reservations.filter((r) => {
       if (q) {
