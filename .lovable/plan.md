@@ -1,38 +1,59 @@
-# Avaliação em duas etapas: Marca → Loja
 
-Substituir os 4 botões atuais por um fluxo de duas etapas, mantendo tudo dentro da página `/surpresa` (sem rota nova, sem reload) e no mesmo padrão visual sóbrio do site.
+# PWAs separados por papel (Opção C)
 
-## Etapa 1 — Escolha da marca
-Seção "Me avalia, please!" passa a mostrar **3 cards grandes**, um por marca:
+Hoje existe **um único** manifest (`public/manifest.json`) chamado "NEXA Suite" servindo todas as áreas. Vamos criar **manifests dedicados** para cada perfil externo, com nome/ícone próprios e `start_url` apontando direto pra área da pessoa.
 
-- Aquela Parmê
-- Estrogonofe (Estrogonofe de Carne)
-- Box Caipira
+## Escopo
 
-Cada card tem: nome da marca, uma frase curta ("4 unidades" / "3 unidades" etc.) e um ícone discreto. Ao clicar, a etapa 2 aparece logo abaixo com transição suave (fade/slide via `Reveal` ou framer-motion já usado).
+| Papel | Rota base | Nome do app | Short name | start_url |
+|---|---|---|---|---|
+| Gestor / colaborador (atual) | `/` | NEXA Suite | NEXA | `/?source=pwa` |
+| Sócio | `/area-socio` | NEXA Sócio | Sócio | `/area-socio?source=pwa` |
+| Freelancer | `/area-freelancer` | NEXA Freelancer | Freela | `/area-freelancer?source=pwa` |
+| Nutricionista | `/area-nutricionista` | NEXA Nutri | Nutri | `/area-nutricionista?source=pwa` |
+| Fornecedor | `/portal-fornecedor` | NEXA Fornecedor | Fornecedor | `/portal-fornecedor?source=pwa` |
 
-## Etapa 2 — Escolha da loja
-Aparece abaixo dos cards de marca, mostrando apenas as lojas onde aquela marca opera, como pills (mesmo estilo dos botões atuais):
+**Fora de escopo:** Totem e PDV continuam como apps Electron (`.exe`), não viram PWA. Áreas internas (Gestor/Colaborador/RH/Contabilidade) continuam no PWA principal "NEXA Suite".
 
-- Aquela Parmê: Águas Claras, Asa Sul, Asa Norte, Lago Sul
-- Estrogonofe: (definir lojas — provavelmente as mesmas 4)
-- Box Caipira: (definir lojas)
+## O que será feito
 
-Cada pill abre o link de busca no Google Maps em nova aba (`reviewUrl(marca, loja)` ajustado para incluir o nome da marca na query, ex.: `Aquela Parmê Asa Norte`).
+1. **Criar 4 novos manifests** em `public/`:
+   - `manifest-socio.json`
+   - `manifest-freelancer.json`
+   - `manifest-nutricionista.json`
+   - `manifest-fornecedor.json`
+   
+   Cada um com `name`, `short_name`, `start_url`, `scope` próprio (ex.: `scope: "/area-socio"`), `theme_color`, `background_color` e referência ao ícone correspondente.
 
-Botão discreto "← trocar marca" volta para a etapa 1 sem perder contexto.
+2. **Gerar 4 ícones diferenciados** (mantendo a identidade NEXA — base do `icones/nexa_icone.png` com badge/cor por papel):
+   - `public/icons/nexa-socio-192.png` / `-512.png`
+   - `public/icons/nexa-freelancer-192.png` / `-512.png`
+   - `public/icons/nexa-nutri-192.png` / `-512.png`
+   - `public/icons/nexa-fornecedor-192.png` / `-512.png`
 
-## Visual
-- Mesmos tokens já em uso (`bg-card`, `shadow-card`, `rounded-2xl`, `ring-border`, `text-store-*`).
-- Cards de marca podem usar a cor fixa da marca (vermelho/marrom/laranja) apenas como acento sutil (borda ou ícone), nunca fundo chapado, para manter sobriedade.
-- Mantém ícone ⭐ e subtítulo atuais.
+3. **Injetar `<link rel="manifest">` dinâmico por rota.** Como o `index.html` é único, criar um componente `RoleManifest` (em `src/components/pwa/RoleManifest.tsx`) que detecta a rota atual e troca a tag `<link rel="manifest" href="...">` + `<meta name="theme-color">` + `<link rel="apple-touch-icon">` apropriados. Montar o componente uma vez no `App.tsx`.
 
-## Estrutura técnica
-- Arquivo único editado: `src/pages/parme/Surpresa.tsx`.
-- Estado local `selectedBrand` (`useState<Brand | null>`).
-- Constante `BRANDS` com `{ id, name, stores: string[] }`.
-- Função `reviewUrl(brandName, storeName)` monta a URL do Google Maps.
-- Sem mudanças em rotas, hostname guard, ou backend.
+4. **Atualizar memória** (`mem://features/pwa-por-papel`) registrando a estratégia para futuros perfis.
 
-## Pergunta aberta
-Confirme as lojas de **Estrogonofe** e **Box Caipira** (assumo as 4 mesmas de Aquela Parmê se não disser nada — totalizando 12 links).
+## Como o usuário instala
+
+- **Sócio** acessa `aquelaparme.com.br/area-socio` no celular → "Adicionar à tela inicial" → instala "NEXA Sócio" com ícone próprio, abre direto no painel do sócio.
+- Mesma lógica para Freelancer (`/area-freelancer`), Nutricionista (`/area-nutricionista`) e Fornecedor (`/portal-fornecedor`).
+- Gestor/colaborador continua instalando pela home (`/`) o "NEXA Suite" como hoje.
+
+## Detalhes técnicos
+
+- **`scope` restritivo por manifest:** garante que, mesmo se o usuário navegar fora da área dele, o PWA instalado continua identificando aquela área como o "app".
+- **iOS/Android cacheiam `start_url` e `scope` no momento da instalação** — se mudarmos depois, instalações antigas precisam reinstalar. Por isso definir bem agora.
+- **Sem service worker novo.** Mantém regra do projeto (manifest-only, sem offline), conforme skill PWA.
+- **Sem mexer em Totem/PDV/Electron** nem em `electron-*/build/icon.*`.
+- **Ícones:** gerar 4 variantes (cores/badges sutis) a partir do ícone oficial NEXA para manter coerência visual sem violar a memória de "ícone oficial NEXA".
+
+## Pergunta aberta (posso decidir depois, na execução)
+
+Diferenciação visual dos ícones — opções:
+- (a) mesma letra N azul + faixa colorida embaixo com o papel (Sócio/Freela/Nutri/Forn);
+- (b) mesma letra N com cor de fundo distinta por papel;
+- (c) letra N + ícone pequeno sobreposto (👤 sócio, 🧑‍🍳 freela, 🥗 nutri, 📦 fornecedor).
+
+Sugestão: **(a)** — mantém identidade NEXA forte e diferencia sutilmente.
