@@ -226,6 +226,7 @@ const App = () => (
             <Route path="/parme/:slug" element={<ParmeBrand />} />
 
             <Route path="/auth" element={<Auth />} />
+            <Route path="/nexa" element={<Navigate to="/auth" replace />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/verificar/:type/:id" element={<VerifySignature />} />
             <Route path="/termos" element={<LegalPage variant="terms" />} />
