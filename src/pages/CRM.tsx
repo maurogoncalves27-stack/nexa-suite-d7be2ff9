@@ -397,11 +397,6 @@ export default function CRM() {
         parme_id: x.id,
         synced_at: x.created_at,
       }));
-      const mappedTickets = (t.data ?? []).map((x: any) => ({
-        ...x,
-        parme_id: x.id,
-        synced_at: x.created_at,
-      }));
       const baseConvs = (c.data ?? []).map((x: any) => ({
         ...x,
         parme_id: x.id,
