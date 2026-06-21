@@ -433,17 +433,6 @@ export function IntegrationsPanel() {
             docs="https://z-api.io/"
           />
           <Row
-            label="WhatsApp Z-API (notificações da loja)"
-            status={reservations.whatsappStorePhone ? "ok" : "warn"}
-            hint="Configurar número acima"
-            secrets={[
-              { name: "ZAPI_CUSTOMER_INSTANCE_ID" },
-              { name: "ZAPI_CUSTOMER_TOKEN" },
-              { name: "ZAPI_CUSTOMER_CLIENT_TOKEN" },
-            ]}
-            docs="https://z-api.io/"
-          />
-          <Row
             label="WhatsApp UAZAPI"
             status="warn"
             hint="Configurar token da instância"
@@ -453,13 +442,6 @@ export function IntegrationsPanel() {
               { name: "UAZAPI_ADMIN_TOKEN", note: "Opcional, p/ criar/gerenciar instâncias" },
             ]}
             docs="https://docs.uazapi.com/"
-          />
-          <Row
-            label="Google Reviews"
-            status={(google.units ?? []).some((u) => u.place_id) ? "ok" : "warn"}
-            hint="Adicionar Place IDs"
-            secrets={[{ name: "GOOGLE_PLACES_API_KEY", note: "Chave da Places API (New)" }]}
-            docs="https://developers.google.com/maps/documentation/places/web-service/overview"
           />
           <Row
             label="Reservas (banco local)"
