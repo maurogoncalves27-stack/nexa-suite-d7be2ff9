@@ -1103,41 +1103,17 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                           </TableRow>
                           {isOpen && (
                             <TableRow className="hover:bg-transparent">
-                              <TableCell colSpan={5} className="p-0">
+                              <TableCell colSpan={4} className="p-0">
                                 <div className="p-4 space-y-4 bg-muted/20 border-t">
                                   <div className="flex flex-wrap gap-2 text-sm">
-                                    {marca !== "—" && (
-                                      <Badge>{String(marca)}</Badge>
-                                    )}
-                                    <Badge variant="outline" className="font-mono">
-                                      sessão: {c.session_id?.slice(0, 16) ?? "—"}
-                                    </Badge>
                                     <Badge variant="outline">
                                       {c.message_count ?? 0} mensagens
                                     </Badge>
                                     <Badge variant="outline">
-                                      {fmtDateTime(c.extracted_at)}
+                                      {fmtDateTime(c.last_message_at)}
                                     </Badge>
                                   </div>
 
-                                  {/* Resumo extraído */}
-                                  {c.extracted && Object.keys(c.extracted).length > 0 && (
-                                    <div>
-                                      <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
-                                        Resumo extraído pela IA
-                                      </div>
-                                      <div className="rounded bg-muted/40 p-3 text-xs space-y-0.5">
-                                        {Object.entries(c.extracted).map(([k, v]) => (
-                                          <div key={k}>
-                                            <span className="text-muted-foreground">{k}:</span>{" "}
-                                            <span className="font-mono">
-                                              {typeof v === "string" ? v : JSON.stringify(v)}
-                                            </span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
 
                                   {/* Mensagens trocadas */}
                                   <div>
