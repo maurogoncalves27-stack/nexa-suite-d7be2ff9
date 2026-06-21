@@ -388,15 +388,8 @@ export default function CRM() {
     }
   }
 
-  // brands (extraídos das conversas)
-  const brands = useMemo(() => {
-    const set = new Set<string>();
-    conversations.forEach((c) => {
-      const m = c.extracted?.marca;
-      if (m && typeof m === "string") set.add(m);
-    });
-    return Array.from(set).sort();
-  }, [conversations]);
+  const q = search.trim().toLowerCase();
+
 
   const q = search.trim().toLowerCase();
 
