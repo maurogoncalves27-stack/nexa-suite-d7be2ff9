@@ -269,7 +269,6 @@ export default function Auth() {
       });
       if (otpErr) throw new Error(otpErr.message);
       rememberEmail(ep.data);
-      setBioPref(ep.data, true);
       navigate(redirectAfterLogin, { replace: true });
     } catch (e: any) {
       toast({
