@@ -211,7 +211,7 @@ const App = () => (
       <BrowserRouter>
         <ThemeProvider>
         <AuthProvider>
-          
+          <RoleManifest />
           <InactivityWatcher />
           <HostnameGuard />
           <Suspense fallback={<RouteFallback />}>
