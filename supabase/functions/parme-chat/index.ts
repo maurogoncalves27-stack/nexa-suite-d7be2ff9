@@ -371,7 +371,9 @@ Deno.serve(async (req) => {
         }
         const flatNow = mergeFlatMessages(existingMessages, flattenUIMessages(messages, now, tsById));
         const userMsgCount = clientMessageCount(flatNow);
-        if (userMsgCount < 2) return;
+        if (userMsgCount < 2) {
+          console.log("[parme-chat] conversa ainda oculta no CRM: menos de 2 entradas do cliente", { sessionId, userMsgCount });
+        }
         const finalClientMeta =
           (existing as { client_meta?: unknown } | null)?.client_meta ??
             (body?.clientMeta ?? null);
@@ -386,6 +388,7 @@ Deno.serve(async (req) => {
           },
           { onConflict: "session_id" },
         );
+        await ensureComplaintTicket(supabase, flatNow, sessionId);
       } catch (e) {
         console.warn("[parme-chat] pre-stream upsert err:", e);
       }
