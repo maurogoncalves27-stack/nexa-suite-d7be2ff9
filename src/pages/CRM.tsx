@@ -374,7 +374,7 @@ export default function CRM() {
     load();
   }, []);
 
-  // Buscar thread bruto do Parmê ao expandir um ticket
+  // Mensagens do ticket: agora vêm do conversation match local (sem fetch externo).
   useEffect(() => {
     if (!expandedTicketId) {
       setThreadMessages(null);
@@ -384,46 +384,22 @@ export default function CRM() {
     }
     const ticket = tickets.find((t) => t.id === expandedTicketId);
     if (!ticket) return;
-    let cancelled = false;
-    setThreadLoading(true);
-    setThreadMessages(null);
+    setThreadLoading(false);
     setThreadError(null);
-    (async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const url = `https://ixjgmerxxakdkfdzgumy.supabase.co/functions/v1/parme-get-ticket-conversation`;
-        const resp = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token ?? ""}`,
-          },
-          body: JSON.stringify({ ticket_id: ticket.parme_id }),
-        });
-        const data = await resp.json().catch(() => ({}));
-        if (cancelled) return;
-        if (data?.error === "parme_endpoint_unavailable") {
-          setThreadError("parme_endpoint_unavailable");
-          return;
-        }
-        if (!resp.ok) {
-          setThreadError(data?.message ?? `HTTP ${resp.status}`);
-          return;
-        }
-        const msgs = data?.messages;
-        setThreadMessages(Array.isArray(msgs) ? msgs : []);
-      } catch (e: any) {
-        if (!cancelled) setThreadError(e?.message ?? "fetch_error");
-      } finally {
-        if (!cancelled) setThreadLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [expandedTicketId, tickets]);
+    const digits = (ticket.contact ?? "").replace(/\D+/g, "");
+    const order = (ticket.order_number ?? "").trim();
+    const matched = conversations.find((c: any) => {
+      const blob = JSON.stringify(c.messages ?? []);
+      const blobDigits = blob.replace(/\D/g, "");
+      if (digits.length >= 8 && blobDigits.includes(digits.slice(-8))) return true;
+      if (order && blob.includes(order)) return true;
+      return false;
+    });
+    const msgs = matched?.messages;
+    setThreadMessages(Array.isArray(msgs) ? msgs : []);
+  }, [expandedTicketId, tickets, conversations]);
 
-  // Buscar mensagens da conversa ao expandir
+  // Mensagens da conversa: leitura local direto de chat_conversations.messages.
   useEffect(() => {
     if (!expandedConvId) {
       setConvMsgs(null);
@@ -433,47 +409,12 @@ export default function CRM() {
     }
     const conv = conversations.find((c) => c.id === expandedConvId);
     if (!conv) return;
-    let cancelled = false;
-    setConvMsgsLoading(true);
-    setConvMsgs(null);
+    setConvMsgsLoading(false);
     setConvMsgsError(null);
-    (async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const url = `https://ixjgmerxxakdkfdzgumy.supabase.co/functions/v1/parme-get-conversation-messages`;
-        const resp = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token ?? ""}`,
-          },
-          body: JSON.stringify({
-            conversation_id: conv.parme_id,
-            session_id: conv.session_id,
-          }),
-        });
-        const data = await resp.json().catch(() => ({}));
-        if (cancelled) return;
-        if (data?.error === "parme_endpoint_unavailable") {
-          setConvMsgsError("parme_endpoint_unavailable");
-          return;
-        }
-        if (!resp.ok) {
-          setConvMsgsError(data?.message ?? `HTTP ${resp.status}`);
-          return;
-        }
-        const msgs = data?.messages;
-        setConvMsgs(Array.isArray(msgs) ? msgs : []);
-      } catch (e: any) {
-        if (!cancelled) setConvMsgsError(e?.message ?? "fetch_error");
-      } finally {
-        if (!cancelled) setConvMsgsLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    const msgs = (conv as any).messages;
+    setConvMsgs(Array.isArray(msgs) ? msgs : []);
   }, [expandedConvId, conversations]);
+
 
   async function handleDeleteReservation(parmeId: string) {
     setDeletingId(parmeId);
@@ -588,19 +529,21 @@ export default function CRM() {
   const filteredConversations = useMemo(() => {
     return conversations.filter((c: any) => {
       const msgs = Array.isArray(c.messages) ? c.messages : [];
-      // Não mostrar conversas com apenas 1 interação do cliente
-      const userMsgs = msgs.filter((m: any) => m.role === "user");
+      // Conta qualquer entrada que NÃO seja assistant/ai/bot/system como mensagem do cliente.
+      const userMsgs = msgs.filter((m: any) => {
+        const role = String(m?.role ?? m?.author ?? m?.from ?? "user").toLowerCase();
+        return role !== "assistant" && role !== "ai" && role !== "bot" && role !== "system";
+      });
+      // Esconde só conversas com 0 ou 1 entrada do cliente (ex.: cliente só falou "oi").
       if (userMsgs.length <= 1) return false;
       if (q) {
-        const blob = JSON.stringify({
-          m: c.client_meta,
-          msgs,
-        }).toLowerCase();
+        const blob = JSON.stringify({ m: c.client_meta, msgs }).toLowerCase();
         if (!blob.includes(q)) return false;
       }
       return true;
     });
   }, [conversations, q]);
+
 
   return (
     <div className="space-y-6 p-4 md:p-6">
