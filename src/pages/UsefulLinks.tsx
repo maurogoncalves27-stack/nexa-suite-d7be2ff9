@@ -167,18 +167,40 @@ export default function UsefulLinks() {
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="title">Nome</Label>
-              <Input id="title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Ex.: Painel iFood" />
-            </div>
-            <div className="space-y-1.5">
               <Label htmlFor="url">URL</Label>
-              <Input id="url" value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} placeholder="exemplo.com.br" />
+              <Input
+                id="url"
+                value={form.url}
+                onChange={e => setForm({ ...form, url: e.target.value })}
+                onBlur={async () => {
+                  const raw = form.url.trim();
+                  if (!raw) return;
+                  const url = normalizeUrl(raw);
+                  try {
+                    const proxy = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+                    const res = await fetch(proxy, { signal: AbortSignal.timeout(8000) });
+                    const html = await res.text();
+                    const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+                    const title = match?.[1]?.replace(/\s+/g, ' ').trim();
+                    if (title && !form.title.trim()) {
+                      setForm(prev => ({ ...prev, title }));
+                    }
+                  } catch {
+                    // silent fail — usuário preenche manualmente
+                  }
+                }}
+                placeholder="exemplo.com.br"
+              />
               {form.url && (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
                   <img src={faviconFor(normalizeUrl(form.url))} alt="" className="w-4 h-4 rounded-sm" onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }} />
                   Ícone detectado automaticamente
                 </div>
               )}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="title">Nome</Label>
+              <Input id="title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Ex.: Painel iFood" />
             </div>
             <div className="flex items-center justify-between rounded-md border p-3">
               <div>
