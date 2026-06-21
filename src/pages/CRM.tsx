@@ -223,13 +223,21 @@ function extractClientInfo(conv: any, msgs: any[] | null): Record<string, string
 }
 
 function pickClientName(c: any): string {
-  return (
+  const direct =
     c?.client_meta?.name ??
     c?.client_meta?.nome ??
     c?.extracted?.name ??
-    c?.extracted?.nome ??
-    "—"
-  );
+    c?.extracted?.nome;
+  if (direct) return String(direct);
+  // fallback: tenta inferir a partir das mensagens já gravadas no banco
+  const msgs = Array.isArray(c?.messages) ? c.messages : null;
+  if (msgs && msgs.length) {
+    const info = extractClientInfo(c, msgs);
+    if (info["Nome"] || info["Nome (inferido)"]) {
+      return info["Nome"] ?? info["Nome (inferido)"];
+    }
+  }
+  return "—";
 }
 
 export default function CRM() {
