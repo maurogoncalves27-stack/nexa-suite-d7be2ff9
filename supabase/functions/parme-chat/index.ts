@@ -186,7 +186,7 @@ function flatToUIMessages(flat: FlatChatMessage[]) {
   })) as unknown as UIMessage[];
 }
 
-function clientMessageCount(messages: FlatChatMessage[]) {
+export function clientMessageCount(messages: FlatChatMessage[]) {
   return messages.filter((m) => {
     const role = String(m.role || "user").toLowerCase();
     return !["assistant", "ai", "bot", "system", "model", "tool"].includes(role) &&
@@ -194,7 +194,7 @@ function clientMessageCount(messages: FlatChatMessage[]) {
   }).length;
 }
 
-function inferClientName(flat: FlatChatMessage[]) {
+export function inferClientName(flat: FlatChatMessage[]) {
   const stop = new Set([
     "que", "de", "do", "da", "para", "pra", "com", "por", "um", "uma", "o", "a", "os", "as",
     "aqui", "cliente", "gerente", "atendente", "sim", "nao", "não", "ok", "oi", "olá", "ola",
@@ -231,7 +231,7 @@ function inferClientName(flat: FlatChatMessage[]) {
   return null;
 }
 
-function mergeClientMeta(current: unknown, fallback: unknown, flat: FlatChatMessage[]) {
+export function mergeClientMeta(current: unknown, fallback: unknown, flat: FlatChatMessage[]) {
   const base = (typeof current === "object" && current !== null ? current :
     typeof fallback === "object" && fallback !== null ? fallback : {}) as Record<string, unknown>;
   const inferredName = inferClientName(flat);
