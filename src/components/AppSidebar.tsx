@@ -174,6 +174,7 @@ const documentosSections: Section[] = [
   ]},
   { label: "Acessos", items: [
     { title: "Cofre (logins e contatos)", url: "/cofre", icon: FolderLock, staffOnly: true },
+    { title: "Links úteis", url: "/links-uteis", icon: Link2 },
   ]},
 ];
 
