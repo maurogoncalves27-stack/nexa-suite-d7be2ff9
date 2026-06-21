@@ -225,20 +225,6 @@ async function ensureComplaintTicket(
     return;
   }
 
-  let duplicate = false;
-  if (numeroPedido || contato !== "não informado") {
-    const { data: recent } = await supabase
-      .from("support_tickets")
-      .select("id, order_number, contact, created_at")
-      .gte("created_at", new Date(Date.now() - 24 * 3600_000).toISOString())
-      .limit(80);
-    duplicate = (recent ?? []).some((t: any) =>
-      (numeroPedido && t.order_number === numeroPedido) ||
-      (contato !== "não informado" && (t.contact || "").replace(/\D/g, "") === contato)
-    );
-  }
-  if (duplicate) return;
-
   const { error } = await supabase.from("support_tickets").insert({
     order_number: numeroPedido,
     description: descricao,
