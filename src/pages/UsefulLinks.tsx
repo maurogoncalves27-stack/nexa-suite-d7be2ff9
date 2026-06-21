@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -27,11 +26,21 @@ type FormState = {
   id?: string;
   title: string;
   url: string;
-  description: string;
   is_shared: boolean;
 };
 
-const emptyForm: FormState = { title: "", url: "", description: "", is_shared: false };
+const emptyForm: FormState = { title: "", url: "", is_shared: false };
+
+const normalizeUrl = (u: string) => /^https?:\/\//i.test(u) ? u : `https://${u}`;
+
+const faviconFor = (url: string) => {
+  try {
+    const host = new URL(url).hostname;
+    return `https://www.google.com/s2/favicons?domain=${host}&sz=64`;
+  } catch {
+    return "";
+  }
+};
 
 export default function UsefulLinks() {
   const { user } = useAuth();
@@ -57,23 +66,21 @@ export default function UsefulLinks() {
 
   const openNew = () => { setForm(emptyForm); setOpen(true); };
   const openEdit = (l: LinkRow) => {
-    setForm({ id: l.id, title: l.title, url: l.url, description: l.description ?? "", is_shared: l.is_shared });
+    setForm({ id: l.id, title: l.title, url: l.url, is_shared: l.is_shared });
     setOpen(true);
   };
-
-  const normalizeUrl = (u: string) => /^https?:\/\//i.test(u) ? u : `https://${u}`;
 
   const handleSave = async () => {
     if (!user) return;
     if (!form.title.trim() || !form.url.trim()) {
-      toast({ title: "Preencha título e URL", variant: "destructive" });
+      toast({ title: "Preencha nome e URL", variant: "destructive" });
       return;
     }
     setSaving(true);
     const payload = {
       title: form.title.trim(),
       url: normalizeUrl(form.url.trim()),
-      description: form.description.trim() || null,
+      description: null,
       is_shared: form.is_shared,
       user_id: user.id,
     };
@@ -113,7 +120,7 @@ export default function UsefulLinks() {
             Links úteis
           </h1>
           <p className="text-muted-foreground">
-            Salve atalhos para sites, planilhas e ferramentas que você usa no dia a dia. Marque como compartilhado para a equipe também ver.
+            Salve atalhos para sites e ferramentas que você usa no dia a dia. O ícone do site é incluído automaticamente.
           </p>
         </div>
         <Button onClick={openNew} className="gap-2">
@@ -160,21 +167,23 @@ export default function UsefulLinks() {
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="title">Título</Label>
+              <Label htmlFor="title">Nome</Label>
               <Input id="title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Ex.: Painel iFood" />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="url">URL</Label>
-              <Input id="url" value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} placeholder="https://…" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="desc">Descrição (opcional)</Label>
-              <Textarea id="desc" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} />
+              <Input id="url" value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} placeholder="exemplo.com.br" />
+              {form.url && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
+                  <img src={faviconFor(normalizeUrl(form.url))} alt="" className="w-4 h-4 rounded-sm" onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }} />
+                  Ícone detectado automaticamente
+                </div>
+              )}
             </div>
             <div className="flex items-center justify-between rounded-md border p-3">
               <div>
                 <Label htmlFor="shared" className="cursor-pointer">Compartilhar com a equipe</Label>
-                <p className="text-xs text-muted-foreground">Outros usuários autenticados verão este link.</p>
+                <p className="text-xs text-muted-foreground">Outros usuários verão este link.</p>
               </div>
               <Switch id="shared" checked={form.is_shared} onCheckedChange={v => setForm({ ...form, is_shared: v })} />
             </div>
@@ -192,27 +201,43 @@ export default function UsefulLinks() {
 function LinkCard({ link, onEdit, onDelete, editable }: { link: LinkRow; onEdit?: () => void; onDelete?: () => void; editable?: boolean }) {
   let host = "";
   try { host = new URL(link.url).hostname.replace(/^www\./, ""); } catch { host = link.url; }
+  const favicon = faviconFor(link.url);
   return (
     <Card className="group hover:border-primary/50 transition-colors">
-      <CardContent className="p-4 space-y-2">
-        <div className="flex items-start justify-between gap-2">
-          <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0">
-            <div className="font-semibold flex items-center gap-1.5 hover:text-primary">
+      <CardContent className="p-3 flex items-center gap-3">
+        <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+            {favicon ? (
+              <img
+                src={favicon}
+                alt=""
+                className="w-6 h-6"
+                onError={(e) => {
+                  const img = e.currentTarget as HTMLImageElement;
+                  img.style.display = "none";
+                  img.parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
+                }}
+              />
+            ) : (
+              <Link2 className="w-5 h-5 text-muted-foreground" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="font-semibold flex items-center gap-1.5 hover:text-primary truncate">
               <span className="truncate">{link.title}</span>
               <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-60" />
             </div>
             <div className="text-xs text-muted-foreground truncate">{host}</div>
-          </a>
-          {link.is_shared && <Badge variant="secondary" className="shrink-0 text-[10px]">Compartilhado</Badge>}
-        </div>
-        {link.description && <p className="text-xs text-muted-foreground line-clamp-2">{link.description}</p>}
+          </div>
+        </a>
+        {link.is_shared && <Badge variant="secondary" className="shrink-0 text-[10px]">Compart.</Badge>}
         {editable && (
-          <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button size="sm" variant="ghost" className="h-7 px-2" onClick={onEdit}>
-              <Pencil className="h-3.5 w-3.5" />
+          <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={onEdit}>
+              <Pencil className="h-3 w-3" />
             </Button>
-            <Button size="sm" variant="ghost" className="h-7 px-2 text-destructive" onClick={onDelete}>
-              <Trash2 className="h-3.5 w-3.5" />
+            <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive" onClick={onDelete}>
+              <Trash2 className="h-3 w-3" />
             </Button>
           </div>
         )}
