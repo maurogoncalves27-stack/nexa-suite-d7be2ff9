@@ -465,11 +465,43 @@ Deno.serve(async (req) => {
         }),
         execute: async ({ numero_pedido, descricao, contato }) => {
           const supabase = sb();
+          const descricaoFinal = sessionId ? `Conversa ${sessionId}:\n${descricao}` : descricao;
+          if (sessionId) {
+            const { data: existing } = await supabase
+              .from("support_tickets")
+              .select("id, order_number, contact")
+              .ilike("description", `%${sessionId}%`)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (existing?.id) {
+              const { error } = await supabase
+                .from("support_tickets")
+                .update({
+                  order_number: existing.order_number ?? numero_pedido ?? null,
+                  description: descricaoFinal,
+                  contact: existing.contact && existing.contact !== "não informado"
+                    ? existing.contact
+                    : contato ?? "não informado",
+                })
+                .eq("id", existing.id);
+              if (error) {
+                console.error("[registrar_problema_pedido] update erro:", error);
+                return { sucesso: false, erro: "Não foi possível concluir a operação." };
+              }
+              console.log("[registrar_problema_pedido] ticket atualizado:", existing.id);
+              return {
+                sucesso: true,
+                id: existing.id,
+                mensagem: "Problema registrado. Vamos entrar em contato.",
+              };
+            }
+          }
           const { data: row, error } = await supabase
             .from("support_tickets")
             .insert({
               order_number: numero_pedido ?? null,
-              description: descricao,
+              description: descricaoFinal,
               contact: contato ?? "não informado",
             })
             .select("id")
