@@ -164,16 +164,11 @@ export default function UsefulLinks() {
       )}
 
       {sharedLinks.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-            <Globe className="h-4 w-4" /> Compartilhados pela equipe
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {sharedLinks.map(l => (
-              <LinkCard key={l.id} link={l} />
-            ))}
-          </div>
-        </section>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {sharedLinks.map(l => (
+            <LinkCard key={l.id} link={l} />
+          ))}
+        </div>
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
