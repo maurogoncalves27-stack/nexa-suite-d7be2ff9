@@ -44,7 +44,7 @@ const BRANDS: Brand[] = [
     tagline: "Comida raiz, tempero de fogão de lenha",
     accent: "bg-brand-box",
     stores: [
-      { name: "Águas Claras", reviewUrl: "https://g.page/r/CWrUheDwrUnZEAE/review" },
+      { name: "Águas Claras", reviewUrl: "https://www.google.com/maps/place/Box+Caipira+-+%C3%81guas+Claras/@-15.8310581,-48.0109409,17z/data=!3m1!4b1!4m6!3m5!1s0x935a3372d45e8579:0xd949adf0e085d46a!8m2!3d-15.8310581!4d-48.0109409!16s%2Fg%2F11ld_r1hn_?entry=ttu&g_ep=EgoyMDI2MDYxNi4wIKXMDSoASAFQAw%3D%3D" },
       { name: "Asa Sul", reviewUrl: "https://g.page/r/CQ_eWCymZeEfEAE/review" },
       { name: "Asa Norte", reviewUrl: "https://g.page/r/CU5JPPRH80hIEAE/review" },
       { name: "Lago Sul", reviewUrl: "https://g.page/r/CcRjhAlYlHs2EAE/review" },
