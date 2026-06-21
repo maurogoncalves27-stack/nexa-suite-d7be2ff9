@@ -217,6 +217,14 @@ export default function SurpresaPage() {
 function BrandStoreSelector() {
   const [selected, setSelected] = useState<Brand | null>(null);
 
+  const openReviewInNewTab = (url: string) => {
+    const newTab = window.open(url, "_blank", "noopener,noreferrer");
+
+    if (newTab) {
+      newTab.opener = null;
+    }
+  };
+
   return (
     <div className="mt-10">
       <AnimatePresence mode="wait" initial={false}>
@@ -287,6 +295,10 @@ function BrandStoreSelector() {
                   href={store.reviewUrl}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    openReviewInNewTab(store.reviewUrl);
+                  }}
                   className="inline-flex items-center gap-2 rounded-full bg-card px-6 py-2.5 text-sm font-semibold text-foreground shadow-sm ring-1 ring-border transition hover:bg-muted"
                 >
 
