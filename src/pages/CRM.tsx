@@ -144,7 +144,6 @@ export default function CRM() {
   const [convMsgs, setConvMsgs] = useState<any[] | null>(null);
   const [convMsgsError, setConvMsgsError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [brand, setBrand] = useState<string>("all");
 
   async function load() {
     setLoading(true);
@@ -389,16 +388,6 @@ export default function CRM() {
     }
   }
 
-  // brands (extraídos das conversas)
-  const brands = useMemo(() => {
-    const set = new Set<string>();
-    conversations.forEach((c) => {
-      const m = c.extracted?.marca;
-      if (m && typeof m === "string") set.add(m);
-    });
-    return Array.from(set).sort();
-  }, [conversations]);
-
   const q = search.trim().toLowerCase();
 
   const filteredReservations = useMemo(() => {
@@ -428,19 +417,28 @@ export default function CRM() {
   }, [tickets, q]);
 
   const filteredConversations = useMemo(() => {
-    return conversations.filter((c) => {
-      if (brand !== "all" && c.extracted?.marca !== brand) return false;
+    return conversations.filter((c: any) => {
+      // Só conversas com pelo menos 2 entradas do usuário
+      const msgs = Array.isArray(c.messages) ? c.messages : [];
+      const userCount = msgs.filter(
+        (m: any) => (m?.role ?? m?.author ?? m?.from) === "user",
+      ).length;
+      if (msgs.length > 0) {
+        if (userCount < 2) return false;
+      } else {
+        // fallback quando o array não está populado: aproxima 2 turnos do usuário ~= 4 msgs
+        if ((c.message_count ?? 0) < 4) return false;
+      }
       if (q) {
         const blob = JSON.stringify({
-          s: c.session_id,
-          e: c.extracted,
           m: c.client_meta,
+          msgs,
         }).toLowerCase();
         if (!blob.includes(q)) return false;
       }
       return true;
     });
-  }, [conversations, brand, q]);
+  }, [conversations, q]);
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -463,7 +461,7 @@ export default function CRM() {
         </Button>
       </div>
 
-      {/* Toolbar sticky: busca + filtro */}
+      {/* Toolbar sticky: busca */}
       <div className="sticky top-0 z-10 -mx-4 md:-mx-6 px-4 md:px-6 py-3 bg-background/85 backdrop-blur border-y">
         <div className="flex flex-col md:flex-row gap-2">
           <div className="relative flex-1">
@@ -475,19 +473,6 @@ export default function CRM() {
               className="pl-9 h-10"
             />
           </div>
-          <Select value={brand} onValueChange={setBrand}>
-            <SelectTrigger className="md:w-56 h-10">
-              <SelectValue placeholder="Marca (conversas)" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as marcas</SelectItem>
-              {brands.map((b) => (
-                <SelectItem key={b} value={b}>
-                  {b}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
       </div>
 
@@ -1061,31 +1046,32 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Marca</TableHead>
-                    <TableHead>Sessão</TableHead>
+                    <TableHead className="w-10"></TableHead>
+                    <TableHead>Contato</TableHead>
                     <TableHead>Mensagens</TableHead>
-                    <TableHead>Resumo extraído</TableHead>
-                    <TableHead>Extraído em</TableHead>
+                    <TableHead>Última mensagem</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                         Carregando…
                       </TableCell>
                     </TableRow>
                   ) : filteredConversations.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                         Nenhuma conversa.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredConversations.map((c) => {
-                      const marca = c.extracted?.marca ?? "—";
-                      const intent = c.extracted?.intent ?? c.extracted?.intencao;
-                      const phone = c.extracted?.telefone ?? c.client_meta?.phone;
+                    filteredConversations.map((c: any) => {
+                      const phone =
+                        c.client_meta?.phone ??
+                        c.client_meta?.telefone ??
+                        c.client_meta?.name ??
+                        "—";
                       const isOpen = expandedConvId === c.id;
                       return (
                         <Fragment key={c.id}>
@@ -1094,79 +1080,29 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                             onClick={() => setExpandedConvId(isOpen ? null : c.id)}
                           >
                             <TableCell>
-                              <div className="flex items-center gap-2">
-                                {isOpen ? (
-                                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                                ) : (
-                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                )}
-                                {marca !== "—" ? <Badge>{marca}</Badge> : "—"}
-                              </div>
+                              {isOpen ? (
+                                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                              )}
                             </TableCell>
-                            <TableCell className="font-mono text-xs">
-                              {c.session_id?.slice(0, 12) ?? "—"}
-                            </TableCell>
+                            <TableCell className="text-sm">{String(phone)}</TableCell>
                             <TableCell>{c.message_count ?? "—"}</TableCell>
-                            <TableCell className="max-w-md">
-                              <div className="text-sm space-y-0.5">
-                                {intent && (
-                                  <div>
-                                    <span className="text-muted-foreground">intent:</span>{" "}
-                                    {String(intent)}
-                                  </div>
-                                )}
-                                {phone && (
-                                  <div>
-                                    <span className="text-muted-foreground">tel:</span>{" "}
-                                    {String(phone)}
-                                  </div>
-                                )}
-                                {!intent && !phone && (
-                                  <div className="text-muted-foreground line-clamp-2 font-mono text-xs">
-                                    {JSON.stringify(c.extracted ?? {}).slice(0, 160)}
-                                  </div>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>{fmtDateTime(c.extracted_at)}</TableCell>
+                            <TableCell>{fmtDateTime(c.last_message_at)}</TableCell>
                           </TableRow>
                           {isOpen && (
                             <TableRow className="hover:bg-transparent">
-                              <TableCell colSpan={5} className="p-0">
+                              <TableCell colSpan={4} className="p-0">
                                 <div className="p-4 space-y-4 bg-muted/20 border-t">
                                   <div className="flex flex-wrap gap-2 text-sm">
-                                    {marca !== "—" && (
-                                      <Badge>{String(marca)}</Badge>
-                                    )}
-                                    <Badge variant="outline" className="font-mono">
-                                      sessão: {c.session_id?.slice(0, 16) ?? "—"}
-                                    </Badge>
                                     <Badge variant="outline">
                                       {c.message_count ?? 0} mensagens
                                     </Badge>
                                     <Badge variant="outline">
-                                      {fmtDateTime(c.extracted_at)}
+                                      {fmtDateTime(c.last_message_at)}
                                     </Badge>
                                   </div>
 
-                                  {/* Resumo extraído */}
-                                  {c.extracted && Object.keys(c.extracted).length > 0 && (
-                                    <div>
-                                      <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
-                                        Resumo extraído pela IA
-                                      </div>
-                                      <div className="rounded bg-muted/40 p-3 text-xs space-y-0.5">
-                                        {Object.entries(c.extracted).map(([k, v]) => (
-                                          <div key={k}>
-                                            <span className="text-muted-foreground">{k}:</span>{" "}
-                                            <span className="font-mono">
-                                              {typeof v === "string" ? v : JSON.stringify(v)}
-                                            </span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
 
                                   {/* Mensagens trocadas */}
                                   <div>
