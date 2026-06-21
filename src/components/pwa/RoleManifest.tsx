@@ -16,7 +16,7 @@ const DEFAULT_CONFIG: RoleManifestConfig = {
 // Ordem importa: a primeira rota que casar (prefixo) define o manifest.
 const ROLE_MAP: Array<{ prefix: string; config: RoleManifestConfig }> = [
   {
-    prefix: "/area-socio",
+    prefix: "/painel-socio",
     config: {
       manifest: "/manifest-socio.json",
       themeColor: "#7c3aed",
@@ -24,7 +24,7 @@ const ROLE_MAP: Array<{ prefix: string; config: RoleManifestConfig }> = [
     },
   },
   {
-    prefix: "/area-freelancer",
+    prefix: "/freelancer/painel",
     config: {
       manifest: "/manifest-freelancer.json",
       themeColor: "#f97316",
@@ -32,7 +32,7 @@ const ROLE_MAP: Array<{ prefix: string; config: RoleManifestConfig }> = [
     },
   },
   {
-    prefix: "/area-nutricionista",
+    prefix: "/nutricionista/painel",
     config: {
       manifest: "/manifest-nutricionista.json",
       themeColor: "#16a34a",
@@ -40,7 +40,7 @@ const ROLE_MAP: Array<{ prefix: string; config: RoleManifestConfig }> = [
     },
   },
   {
-    prefix: "/portal-fornecedor",
+    prefix: "/fornecedor/painel",
     config: {
       manifest: "/manifest-fornecedor.json",
       themeColor: "#475569",
