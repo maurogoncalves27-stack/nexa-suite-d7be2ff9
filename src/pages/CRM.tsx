@@ -420,6 +420,9 @@ export default function CRM() {
   const filteredConversations = useMemo(() => {
     return conversations.filter((c: any) => {
       const msgs = Array.isArray(c.messages) ? c.messages : [];
+      // Não mostrar conversas com apenas 1 interação do cliente
+      const userMsgs = msgs.filter((m: any) => m.role === "user");
+      if (userMsgs.length <= 1) return false;
       if (q) {
         const blob = JSON.stringify({
           m: c.client_meta,
