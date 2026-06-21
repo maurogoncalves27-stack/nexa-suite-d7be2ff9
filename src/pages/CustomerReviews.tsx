@@ -80,7 +80,7 @@ function Stars({ n }: { n: number | null }) {
   );
 }
 
-export default function CustomerReviews() {
+export default function CustomerReviews({ embedded = false }: { embedded?: boolean } = {}) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [reviews, setReviews] = useState<Review[]>([]);
