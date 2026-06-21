@@ -112,6 +112,80 @@ function sb() {
   );
 }
 
+type FlatChatMessage = {
+  id: string;
+  role: string;
+  content: string;
+  tools: unknown[];
+  ts: string;
+};
+
+function textFromUIMessage(m: UIMessage) {
+  const parts = (m.parts ?? []) as Array<{ type?: string; text?: string }>;
+  return parts.filter((p) => p.type === "text").map((p) => p.text ?? "").join("");
+}
+
+function flattenUIMessages(messages: UIMessage[], now: string, tsById = new Map<string, string>()) {
+  return messages.map((m, index) => {
+    const parts = (m.parts ?? []) as Array<{ type?: string; text?: string }>;
+    const toolParts = parts.filter((p) => typeof p.type === "string" && p.type.startsWith("tool-"));
+    const fallbackId = `${m.role}_${index}_${textFromUIMessage(m).slice(0, 40)}`;
+    const id = typeof m.id === "string" && m.id ? m.id : fallbackId;
+    return {
+      id,
+      role: String(m.role),
+      content: textFromUIMessage(m),
+      tools: toolParts,
+      ts: tsById.get(id) ?? now,
+    } satisfies FlatChatMessage;
+  });
+}
+
+function existingFlatMessages(raw: unknown) {
+  if (!Array.isArray(raw)) return [] as FlatChatMessage[];
+  return raw.map((m, index) => {
+    const row = (m ?? {}) as Record<string, unknown>;
+    return {
+      id: typeof row.id === "string" && row.id ? row.id : `stored_${index}`,
+      role: typeof row.role === "string" ? row.role : "user",
+      content: typeof row.content === "string"
+        ? row.content
+        : typeof row.message === "string"
+        ? row.message
+        : typeof row.text === "string"
+        ? row.text
+        : "",
+      tools: Array.isArray(row.tools) ? row.tools : [],
+      ts: typeof row.ts === "string" ? row.ts : new Date().toISOString(),
+    } satisfies FlatChatMessage;
+  });
+}
+
+function mergeFlatMessages(existing: FlatChatMessage[], incoming: FlatChatMessage[]) {
+  const merged: FlatChatMessage[] = [];
+  const indexByKey = new Map<string, number>();
+  const keyFor = (m: FlatChatMessage) => m.id || `${m.role}:${m.content}:${m.ts}`;
+  for (const msg of [...existing, ...incoming]) {
+    const key = keyFor(msg);
+    const found = indexByKey.get(key);
+    if (found === undefined) {
+      indexByKey.set(key, merged.length);
+      merged.push(msg);
+    } else {
+      merged[found] = { ...merged[found], ...msg, ts: merged[found].ts || msg.ts };
+    }
+  }
+  return merged;
+}
+
+function clientMessageCount(messages: FlatChatMessage[]) {
+  return messages.filter((m) => {
+    const role = String(m.role || "user").toLowerCase();
+    return !["assistant", "ai", "bot", "system", "model", "tool"].includes(role) &&
+      String(m.content || "").trim().length > 0;
+  }).length;
+}
+
 async function notifyStoreReservation(
   nome: string,
   telefone: string,
