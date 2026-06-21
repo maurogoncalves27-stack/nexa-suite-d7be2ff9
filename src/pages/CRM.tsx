@@ -419,17 +419,7 @@ export default function CRM() {
 
   const filteredConversations = useMemo(() => {
     return conversations.filter((c: any) => {
-      // Só conversas com pelo menos 2 entradas do usuário
       const msgs = Array.isArray(c.messages) ? c.messages : [];
-      const userCount = msgs.filter(
-        (m: any) => (m?.role ?? m?.author ?? m?.from) === "user",
-      ).length;
-      if (msgs.length > 0) {
-        if (userCount < 2) return false;
-      } else {
-        // fallback quando o array não está populado: aproxima 2 turnos do usuário ~= 4 msgs
-        if ((c.message_count ?? 0) < 4) return false;
-      }
       if (q) {
         const blob = JSON.stringify({
           m: c.client_meta,
