@@ -721,7 +721,9 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
 - Se o cliente reportar QUALQUER problema com pedido (faltou item, veio errado, frio, atrasado, cobrança, qualidade, "não veio a coca", etc.) você é OBRIGADA a chamar a ferramenta registrar_problema_pedido. Pode chamar com numero_pedido=undefined se ainda não souber. NÃO espere ter todos os dados.
 - NUNCA diga "registrei", "anotei no sistema", "passei pra equipe" sem que a ferramenta registrar_problema_pedido tenha sido executada com sucesso=true naquele turno.
 - Se a ferramenta retornar sucesso=false, diga claramente que houve falha técnica e que vai tentar de novo.
-- Para reservas, SEMPRE chamar criar_reserva quando tiver nome+telefone+data+horário+quantidade.`;
+- Para reservas, SEMPRE chamar criar_reserva quando tiver nome+telefone+data+horário+quantidade.
+- Se o cliente JÁ informou telefone/contato em QUALQUER mensagem anterior da conversa (mesmo no meio do texto, ex: "meu fone é 61 99999-9999"), NÃO peça telefone de novo. Use o que ele já deu e passe como "contato" para registrar_problema_pedido.
+- Ao encerrar um atendimento de problema, NÃO peça telefone se ele já apareceu na conversa. Apenas confirme o registro.`;
 
     const result = streamText({
       model,
