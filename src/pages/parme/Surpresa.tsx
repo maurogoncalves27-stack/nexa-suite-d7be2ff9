@@ -10,9 +10,11 @@ type Brand = {
   name: string;
   tagline: string;
   accent: string;
-  stores: { name: string; placeId: string }[];
+  stores: { name: string; reviewUrl: string }[];
 };
 
+// Links curtos oficiais do Google Business Profile ("Pedir avaliações" → "Compartilhar link").
+// Vão direto pro formulário de estrelas da loja correta.
 const BRANDS: Brand[] = [
   {
     id: "parme",
@@ -20,10 +22,10 @@ const BRANDS: Brand[] = [
     tagline: "Filé à parmegiana e clássicos italianos",
     accent: "bg-brand-parme",
     stores: [
-      { name: "Águas Claras", placeId: "ChIJtaJIPHczWpMR-k0p94ja4KI" },
-      { name: "Asa Sul", placeId: "ChIJrYqYlpExWpMR-v9-pH56row" },
-      { name: "Asa Norte", placeId: "ChIJw8Jb7Xg7WpMRYZIa58HXbyc" },
-      { name: "Lago Sul", placeId: "ChIJ62XjjFkjWpMREBQa2gN55ec" },
+      { name: "Águas Claras", reviewUrl: "https://g.page/r/CfpNKfeI2uCiEAE/review" },
+      { name: "Asa Sul", reviewUrl: "https://g.page/r/Cfr_fqR-eq6MEAE/review" },
+      { name: "Asa Norte", reviewUrl: "https://g.page/r/CWGSGufB128nEAE/review" },
+      { name: "Lago Sul", reviewUrl: "https://g.page/r/CRAUGtoDeeXnEAE/review" },
     ],
   },
   {
@@ -32,10 +34,10 @@ const BRANDS: Brand[] = [
     tagline: "O verdadeiro estrogonofe cremoso",
     accent: "bg-brand-estrogonofe",
     stores: [
-      { name: "Águas Claras", placeId: "ChIJayPUuysrWpMRsj-SqOOif_8" },
-      { name: "Asa Sul", placeId: "ChIJq4Z11psvWpMROrKQsMdRoEc" },
-      { name: "Asa Norte", placeId: "ChIJyfNVG507WpMRndOUsqI0hMU" },
-      { name: "Lago Sul", placeId: "ChIJWfdI-xsjWpMRX9ZtpBCsAUA" },
+      { name: "Águas Claras", reviewUrl: "https://g.page/r/CbI_kqjjon__EAE/review" },
+      { name: "Asa Sul", reviewUrl: "https://g.page/r/CTqykLDHUaBHEAE/review" },
+      { name: "Asa Norte", reviewUrl: "https://g.page/r/CZ3TlLKiNITFEAE/review" },
+      { name: "Lago Sul", reviewUrl: "https://g.page/r/CV_WbaQQrAFAEAE/review" },
     ],
   },
   {
@@ -44,19 +46,14 @@ const BRANDS: Brand[] = [
     tagline: "Comida raiz, tempero de fogão de lenha",
     accent: "bg-brand-box",
     stores: [
-      { name: "Águas Claras", placeId: "ChIJeYVe1HIzWpMRatSF4PCtSdk" },
-      { name: "Asa Sul", placeId: "ChIJQf2-BPAvWpMRD95YLKZl4R8" },
-      { name: "Asa Norte", placeId: "ChIJ1_4mvgwvWpMRTkk89EfzSEg" },
-      { name: "Lago Sul", placeId: "ChIJNUHYnFwjWpMRxGOECViUezY" },
+      { name: "Águas Claras", reviewUrl: "https://g.page/r/CWrUheDwrUnZEAE/review" },
+      { name: "Asa Sul", reviewUrl: "https://g.page/r/CQ_eWCymZeEfEAE/review" },
+      { name: "Asa Norte", reviewUrl: "https://g.page/r/CU5JPPRH80hIEAE/review" },
+      { name: "Lago Sul", reviewUrl: "https://g.page/r/CcRjhAlYlHs2EAE/review" },
     ],
   },
 ];
 
-function reviewUrl(placeId: string) {
-  // URL oficial do Google "Pedir avaliações" — abre direto o formulário de estrelas.
-  // Requer login Google (esperado para qualquer avaliação).
-  return `https://search.google.com/local/writereview?placeid=${placeId}`;
-}
 
 export default function SurpresaPage() {
   useEffect(() => {
@@ -287,12 +284,13 @@ function BrandStoreSelector() {
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               {selected.stores.map((store) => (
                 <a
-                  key={store.placeId}
-                  href={reviewUrl(store.placeId)}
+                  key={store.reviewUrl}
+                  href={store.reviewUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 rounded-full bg-card px-6 py-2.5 text-sm font-semibold text-foreground shadow-sm ring-1 ring-border transition hover:bg-muted"
                 >
+
                   {store.name}
                   <ExternalLink className="h-4 w-4 opacity-70" />
                 </a>
