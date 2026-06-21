@@ -1190,6 +1190,9 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
               })()}
             </DialogContent>
           </Dialog>
+        </TabsContent>
+
+
 
 
         <TabsContent value="reviews" className="mt-4">
