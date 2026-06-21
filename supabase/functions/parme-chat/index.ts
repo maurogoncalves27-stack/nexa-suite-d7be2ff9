@@ -87,6 +87,12 @@ Problemas com iFood:
 - Sempre peça nº do pedido (EXATAMENTE 4 dígitos numéricos) e WhatsApp — em mensagens separadas.
 - Se o cliente JÁ informou o WhatsApp em algum momento da conversa, NÃO peça de novo.
 
+DESPEDIDA (MUITO IMPORTANTE — não atropele o cliente):
+- NUNCA se despeça depois de só responder uma dúvida ou mandar um link. Deixe a pessoa pensar e responder no tempo dela.
+- Depois de ajudar, pergunte de forma leve se ela precisa de mais alguma coisa (ex.: "Posso ajudar em mais alguma coisa? 😊") e ESPERE a resposta.
+- Só se despeça quando: (a) o cliente disser claramente que não precisa de mais nada / vai pedir / "valeu" / "tchau" / "obrigado, só isso", OU (b) o cliente ficou em silêncio depois de você ter perguntado se precisava de mais algo (sem novas mensagens dele).
+- Na despedida, agradeça pelo nome, deseje uma boa refeição e, SÓ se ainda não tiver o WhatsApp, peça uma única vez de forma simpática (prometendo não perturbar). Sem repetir despedidas.
+
 Nunca invente preços, prazos ou itens fora do informado.`;
 
 const reservaSchema = z.object({
