@@ -35,7 +35,18 @@ export function HostnameGuard() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!SITE_HOSTS.has(window.location.hostname)) return;
+    const host = window.location.hostname;
+
+    // Subdomínios do app NEXA: nunca redirecionar para /parme.
+    // Se cair em uma rota do site Parmê, manda pro /auth.
+    if (host.startsWith("nexa.") || host.startsWith("nexasuite.")) {
+      if (loc.pathname === "/" || loc.pathname.startsWith("/parme")) {
+        nav("/auth", { replace: true });
+      }
+      return;
+    }
+
+    if (!SITE_HOSTS.has(host)) return;
     if (loc.pathname.startsWith("/parme")) return;
     const target = SITE_ALIASES[loc.pathname];
     if (target) {
