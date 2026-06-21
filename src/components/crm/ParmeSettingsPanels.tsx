@@ -8,7 +8,8 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Save, Bot, Palette, Plug, Star, MessageCircle, RefreshCw, Trash2, Plus } from "lucide-react";
+import { Loader2, Save, Bot, Palette, Plug, Star, MessageCircle, RefreshCw, Trash2, Plus, Settings, Copy, ExternalLink } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type SettingsKey = "branding" | "agent" | "reservations" | "google_places";
 
@@ -417,13 +418,50 @@ export function IntegrationsPanel() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base"><Plug className="h-4 w-4 text-primary" />Status das integrações</CardTitle>
-          <CardDescription>Resumo do que está ativo no backend.</CardDescription>
+          <CardDescription>Clique na engrenagem para ver/configurar as credenciais de cada integração.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
-          <Row label="Chat Giana (Lovable AI / Gemini 3 Flash)" status="ok" hint="Ativo via LOVABLE_API_KEY" />
-          <Row label="WhatsApp Z-API (notificações)" status={reservations.whatsappStorePhone ? "ok" : "warn"} hint="Configurar número acima" />
-          <Row label="Google Reviews" status={(google.units ?? []).some((u) => u.place_id) ? "ok" : "warn"} hint="Adicionar Place IDs" />
-          <Row label="Reservas (banco local)" status="ok" hint="Tabela reservations" />
+          <Row
+            label="Chat Giana (Lovable AI / Gemini 3 Flash)"
+            status="ok"
+            hint="Ativo via LOVABLE_API_KEY"
+            secrets={[{ name: "LOVABLE_API_KEY", note: "Gerenciada automaticamente pelo Lovable Cloud (não editar)." }]}
+            docs="https://docs.lovable.dev/features/cloud"
+          />
+          <Row
+            label="WhatsApp Z-API (notificações da loja)"
+            status={reservations.whatsappStorePhone ? "ok" : "warn"}
+            hint="Configurar número acima"
+            secrets={[
+              { name: "ZAPI_CUSTOMER_INSTANCE_ID" },
+              { name: "ZAPI_CUSTOMER_TOKEN" },
+              { name: "ZAPI_CUSTOMER_CLIENT_TOKEN" },
+            ]}
+            docs="https://z-api.io/"
+          />
+          <Row
+            label="WhatsApp UAZAPI"
+            status="warn"
+            hint="Configurar token da instância"
+            secrets={[
+              { name: "UAZAPI_BASE_URL", note: "Ex.: https://free.uazapi.com" },
+              { name: "UAZAPI_INSTANCE_TOKEN", note: "Token da instância (Bearer)" },
+              { name: "UAZAPI_ADMIN_TOKEN", note: "Opcional, p/ criar/gerenciar instâncias" },
+            ]}
+            docs="https://docs.uazapi.com/"
+          />
+          <Row
+            label="Google Reviews"
+            status={(google.units ?? []).some((u) => u.place_id) ? "ok" : "warn"}
+            hint="Adicionar Place IDs"
+            secrets={[{ name: "GOOGLE_PLACES_API_KEY", note: "Chave da Places API (New)" }]}
+            docs="https://developers.google.com/maps/documentation/places/web-service/overview"
+          />
+          <Row
+            label="Reservas (banco local)"
+            status="ok"
+            hint="Tabela reservations"
+          />
         </CardContent>
       </Card>
 
@@ -437,19 +475,102 @@ export function IntegrationsPanel() {
   );
 }
 
-function Row({ label, status, hint }: { label: string; status: "ok" | "warn" | "off"; hint: string }) {
+type RowSecret = { name: string; note?: string };
+
+function Row({
+  label,
+  status,
+  hint,
+  secrets,
+  docs,
+}: {
+  label: string;
+  status: "ok" | "warn" | "off";
+  hint: string;
+  secrets?: RowSecret[];
+  docs?: string;
+}) {
   const map = {
     ok: { dot: "bg-success", text: "text-success" },
     warn: { dot: "bg-warning", text: "text-warning" },
     off: { dot: "bg-muted-foreground", text: "text-muted-foreground" },
   } as const;
+  const [open, setOpen] = useState(false);
+  const hasConfig = !!secrets && secrets.length > 0;
+
   return (
-    <div className="flex items-center justify-between rounded-md border p-2.5">
-      <div className="flex items-center gap-2">
-        <span className={`h-2 w-2 rounded-full ${map[status].dot}`} />
-        <span className="text-sm">{label}</span>
+    <>
+      <div className="flex items-center justify-between rounded-md border p-2.5">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={`h-2 w-2 rounded-full shrink-0 ${map[status].dot}`} />
+          <span className="text-sm truncate">{label}</span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs text-muted-foreground hidden sm:inline">{hint}</span>
+          {hasConfig && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => setOpen(true)}
+              aria-label={`Configurar ${label}`}
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
-      <span className="text-xs text-muted-foreground">{hint}</span>
-    </div>
+
+      {hasConfig && (
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{label}</DialogTitle>
+              <DialogDescription>
+                Credenciais usadas pelo backend (edge functions). As chaves ficam em <strong>Backend → Secrets</strong> e nunca aparecem no app.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-2">
+              {secrets!.map((s) => (
+                <div key={s.name} className="rounded-md border p-2.5 space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <code className="text-xs font-mono break-all">{s.name}</code>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 shrink-0"
+                      onClick={() => {
+                        navigator.clipboard.writeText(s.name);
+                        toast.success("Nome copiado");
+                      }}
+                      aria-label="Copiar nome"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  {s.note && <p className="text-xs text-muted-foreground">{s.note}</p>}
+                </div>
+              ))}
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Para adicionar ou trocar um secret, abra <strong>Backend → Secrets</strong>, cole o nome acima e o novo valor. Depois recarregue a página.
+            </p>
+
+            <DialogFooter className="flex gap-2 sm:justify-between">
+              {docs ? (
+                <Button asChild variant="outline" size="sm">
+                  <a href={docs} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-3.5 w-3.5 mr-1" /> Documentação
+                  </a>
+                </Button>
+              ) : <span />}
+              <Button size="sm" onClick={() => setOpen(false)}>Fechar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   );
 }
