@@ -230,6 +230,7 @@ export default function CRM() {
   const [convMsgsLoading, setConvMsgsLoading] = useState(false);
   const [convMsgs, setConvMsgs] = useState<any[] | null>(null);
   const [convMsgsError, setConvMsgsError] = useState<string | null>(null);
+  const [showClientInfo, setShowClientInfo] = useState(false);
   const [search, setSearch] = useState("");
 
   async function load() {
