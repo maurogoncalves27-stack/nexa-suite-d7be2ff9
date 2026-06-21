@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { SiteLayout } from "@/components/parme-site/SiteLayout";
 import { Reveal } from "@/components/parme/reveal";
@@ -217,7 +217,7 @@ export default function SurpresaPage() {
 function BrandStoreSelector() {
   const [selected, setSelected] = useState<Brand | null>(null);
 
-  const handleReviewClick = (event: React.MouseEvent<HTMLAnchorElement>, url: string) => {
+  const handleReviewClick = (event: MouseEvent<HTMLAnchorElement>, url: string) => {
     event.preventDefault();
 
     const link = document.createElement("a");
