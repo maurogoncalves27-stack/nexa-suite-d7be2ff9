@@ -177,11 +177,9 @@ export default function UsefulLinks() {
                   if (!raw) return;
                   const url = normalizeUrl(raw);
                   try {
-                    const proxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-                    const res = await fetch(proxy, { signal: AbortSignal.timeout(8000) });
-                    const html = await res.text();
-                    const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-                    const title = match?.[1]?.replace(/\s+/g, ' ').trim();
+                    const res = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(8000) });
+                    const json = await res.json();
+                    const title = json?.data?.title?.replace(/\s+/g, ' ').trim();
                     if (title && !form.title.trim()) {
                       setForm(prev => ({ ...prev, title }));
                     }
