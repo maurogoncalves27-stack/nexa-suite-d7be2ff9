@@ -112,6 +112,136 @@ function sb() {
   );
 }
 
+type FlatChatMessage = {
+  id: string;
+  role: string;
+  content: string;
+  tools: unknown[];
+  ts: string;
+};
+
+function textFromUIMessage(m: UIMessage) {
+  const parts = (m.parts ?? []) as Array<{ type?: string; text?: string }>;
+  return parts.filter((p) => p.type === "text").map((p) => p.text ?? "").join("");
+}
+
+function flattenUIMessages(messages: UIMessage[], now: string, tsById = new Map<string, string>()) {
+  return messages.map((m, index) => {
+    const parts = (m.parts ?? []) as Array<{ type?: string; text?: string }>;
+    const toolParts = parts.filter((p) => typeof p.type === "string" && p.type.startsWith("tool-"));
+    const fallbackId = `${m.role}_${index}_${textFromUIMessage(m).slice(0, 40)}`;
+    const id = typeof m.id === "string" && m.id ? m.id : fallbackId;
+    return {
+      id,
+      role: String(m.role),
+      content: textFromUIMessage(m),
+      tools: toolParts,
+      ts: tsById.get(id) ?? now,
+    } satisfies FlatChatMessage;
+  });
+}
+
+function existingFlatMessages(raw: unknown) {
+  if (!Array.isArray(raw)) return [] as FlatChatMessage[];
+  return raw.map((m, index) => {
+    const row = (m ?? {}) as Record<string, unknown>;
+    return {
+      id: typeof row.id === "string" && row.id ? row.id : `stored_${index}`,
+      role: typeof row.role === "string" ? row.role : "user",
+      content: typeof row.content === "string"
+        ? row.content
+        : typeof row.message === "string"
+        ? row.message
+        : typeof row.text === "string"
+        ? row.text
+        : "",
+      tools: Array.isArray(row.tools) ? row.tools : [],
+      ts: typeof row.ts === "string" ? row.ts : new Date().toISOString(),
+    } satisfies FlatChatMessage;
+  });
+}
+
+function mergeFlatMessages(existing: FlatChatMessage[], incoming: FlatChatMessage[]) {
+  const merged: FlatChatMessage[] = [];
+  const indexByKey = new Map<string, number>();
+  const keyFor = (m: FlatChatMessage) => m.id || `${m.role}:${m.content}:${m.ts}`;
+  for (const msg of [...existing, ...incoming]) {
+    const key = keyFor(msg);
+    const found = indexByKey.get(key);
+    if (found === undefined) {
+      indexByKey.set(key, merged.length);
+      merged.push(msg);
+    } else {
+      merged[found] = { ...merged[found], ...msg, ts: merged[found].ts || msg.ts };
+    }
+  }
+  return merged;
+}
+
+function flatToUIMessages(flat: FlatChatMessage[]) {
+  return flat.map((m) => ({
+    id: m.id,
+    role: m.role === "assistant" ? "assistant" : m.role === "system" ? "system" : "user",
+    parts: [{ type: "text", text: m.content }],
+  })) as unknown as UIMessage[];
+}
+
+function clientMessageCount(messages: FlatChatMessage[]) {
+  return messages.filter((m) => {
+    const role = String(m.role || "user").toLowerCase();
+    return !["assistant", "ai", "bot", "system", "model", "tool"].includes(role) &&
+      String(m.content || "").trim().length > 0;
+  }).length;
+}
+
+async function ensureComplaintTicket(
+  supabase: ReturnType<typeof sb>,
+  flat: FlatChatMessage[],
+  sessionId: string,
+) {
+  const userTexts = flat
+    .filter((m) => String(m.role).toLowerCase() === "user")
+    .map((m) => String(m.content || "").trim())
+    .filter(Boolean)
+    .join("\n");
+  const COMPLAINT_RE =
+    /\b(n[ãa]o\s+veio|faltou|faltando|errad[oa]|fri[oa]|atras(?:ou|ado|o)|demor(?:ou|ado)|reclama[cç][ãa]o|reclamar|cobran[cç]a|p[ée]ssim[oa]|horr[ií]vel|estragad[oa]|queim(?:ado|a)|cru|sem\s+sabor|sumiu|esqueceram|n[ãa]o\s+chegou|veio\s+errad)/i;
+  if (!COMPLAINT_RE.test(userTexts)) return;
+
+  const fullText = flat.map((m) => String(m.content || "")).join("\n");
+  const explicitOrder = fullText.match(/(?:pedido\s*#?\s*|n[uú]mero\s*(?:do\s+pedido)?\s*[:#]?\s*)(\d{2,10})/i);
+  const looseOrder = fullText.match(/(?:^|\D)(\d{3,6})(?:\D|$)/);
+  const phoneMatch = userTexts.match(/(?:\(?\d{2}\)?\s?)?9?\d{4}[-\s]?\d{4}/);
+  const numeroPedido = explicitOrder?.[1] ?? looseOrder?.[1] ?? null;
+  const contato = phoneMatch ? phoneMatch[0].replace(/\D/g, "") : "não informado";
+  const descricao = `Conversa ${sessionId}:\n${userTexts.slice(-900) || "Reclamação detectada na conversa."}`;
+
+  const { data: bySession } = await supabase
+    .from("support_tickets")
+    .select("id, order_number, contact")
+    .ilike("description", `%${sessionId}%`)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (bySession?.id) {
+    await supabase.from("support_tickets").update({
+      order_number: bySession.order_number ?? numeroPedido,
+      contact: bySession.contact && bySession.contact !== "não informado" ? bySession.contact : contato,
+      description: descricao,
+    }).eq("id", bySession.id);
+    return;
+  }
+
+  const { error } = await supabase.from("support_tickets").insert({
+    order_number: numeroPedido,
+    description: descricao,
+    contact: contato,
+  });
+  if (error) console.error("[parme-chat safety-net] ticket err:", error);
+  else console.log("[parme-chat safety-net] ticket garantido para sessão:", sessionId);
+}
+
 async function notifyStoreReservation(
   nome: string,
   telefone: string,
@@ -204,7 +334,7 @@ Deno.serve(async (req) => {
     if (totalChars > 20000) {
       return new Response("Payload too large", { status: 413, headers: corsHeaders });
     }
-    const messages = parsed.data as unknown as UIMessage[];
+    let messages = parsed.data as unknown as UIMessage[];
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) {
@@ -215,9 +345,9 @@ Deno.serve(async (req) => {
     }
 
     // Persistência imediata (pré-stream) para não perder o turno se a aba fechar.
-    // Só grava no CRM a partir da 2ª interação do usuário com a Giana.
-    const userMsgCount = messages.filter((m) => m.role === "user").length;
-    if (sessionId && userMsgCount >= 2) {
+    // Faz merge com o histórico salvo: se o cliente volta/recarrega a página, a UI pode
+    // enviar só a mensagem nova, mas a conversa inteira continua sendo preservada.
+    if (sessionId) {
       try {
         const supabase = sb();
         const now = new Date().toISOString();
@@ -226,30 +356,19 @@ Deno.serve(async (req) => {
           .select("client_meta, messages")
           .eq("session_id", sessionId)
           .maybeSingle();
-        const existingMessages = Array.isArray(
-            (existing as { messages?: unknown } | null)?.messages,
-          )
-          ? (existing as { messages: Array<Record<string, unknown>> }).messages
-          : [];
+        const existingMessages = existingFlatMessages((existing as { messages?: unknown } | null)?.messages);
         const tsById = new Map<string, string>();
         for (const e of existingMessages) {
-          const id = typeof e?.id === "string" ? e.id : "";
-          const ts = typeof e?.ts === "string" ? e.ts : "";
+          const id = e.id;
+          const ts = e.ts;
           if (id && ts) tsById.set(id, ts);
         }
-        const flatNow = messages.map((m) => {
-          const parts = (m.parts ?? []) as Array<{ type: string; text?: string }>;
-          const text = parts.filter((p) => p.type === "text").map((p) => p.text ?? "")
-            .join("");
-          const toolParts = parts.filter((p) => p.type.startsWith("tool-"));
-          return {
-            id: m.id,
-            role: m.role,
-            content: text,
-            tools: toolParts,
-            ts: tsById.get(m.id) ?? now,
-          };
-        });
+        const flatNow = mergeFlatMessages(existingMessages, flattenUIMessages(messages, now, tsById));
+        if (flatNow.length > messages.length) messages = flatToUIMessages(flatNow);
+        const userMsgCount = clientMessageCount(flatNow);
+        if (userMsgCount < 2) {
+          console.log("[parme-chat] conversa ainda oculta no CRM: menos de 2 entradas do cliente", { sessionId, userMsgCount });
+        }
         const finalClientMeta =
           (existing as { client_meta?: unknown } | null)?.client_meta ??
             (body?.clientMeta ?? null);
@@ -264,6 +383,7 @@ Deno.serve(async (req) => {
           },
           { onConflict: "session_id" },
         );
+        await ensureComplaintTicket(supabase, flatNow, sessionId);
       } catch (e) {
         console.warn("[parme-chat] pre-stream upsert err:", e);
       }
@@ -354,11 +474,43 @@ Deno.serve(async (req) => {
         }),
         execute: async ({ numero_pedido, descricao, contato }) => {
           const supabase = sb();
+          const descricaoFinal = sessionId ? `Conversa ${sessionId}:\n${descricao}` : descricao;
+          if (sessionId) {
+            const { data: existing } = await supabase
+              .from("support_tickets")
+              .select("id, order_number, contact")
+              .ilike("description", `%${sessionId}%`)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (existing?.id) {
+              const { error } = await supabase
+                .from("support_tickets")
+                .update({
+                  order_number: existing.order_number ?? numero_pedido ?? null,
+                  description: descricaoFinal,
+                  contact: existing.contact && existing.contact !== "não informado"
+                    ? existing.contact
+                    : contato ?? "não informado",
+                })
+                .eq("id", existing.id);
+              if (error) {
+                console.error("[registrar_problema_pedido] update erro:", error);
+                return { sucesso: false, erro: "Não foi possível concluir a operação." };
+              }
+              console.log("[registrar_problema_pedido] ticket atualizado:", existing.id);
+              return {
+                sucesso: true,
+                id: existing.id,
+                mensagem: "Problema registrado. Vamos entrar em contato.",
+              };
+            }
+          }
           const { data: row, error } = await supabase
             .from("support_tickets")
             .insert({
               order_number: numero_pedido ?? null,
-              description: descricao,
+              description: descricaoFinal,
               contact: contato ?? "não informado",
             })
             .select("id")
@@ -585,8 +737,6 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
       headers: corsHeaders,
       onFinish: async ({ messages: finalMessages }) => {
         if (!sessionId) return;
-        const finalUserCount = finalMessages.filter((m) => m.role === "user").length;
-        if (finalUserCount < 2) return;
         try {
           const supabase = sb();
           const now = new Date().toISOString();
@@ -595,31 +745,14 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
             .select("messages")
             .eq("session_id", sessionId)
             .maybeSingle();
-          const existingMessages = Array.isArray(
-              (existing as { messages?: unknown } | null)?.messages,
-            )
-            ? (existing as { messages: Array<Record<string, unknown>> }).messages
-            : [];
+          const existingMessages = existingFlatMessages((existing as { messages?: unknown } | null)?.messages);
           const tsById = new Map<string, string>();
           for (const e of existingMessages) {
-            const id = typeof e?.id === "string" ? e.id : "";
-            const ts = typeof e?.ts === "string" ? e.ts : "";
+            const id = e.id;
+            const ts = e.ts;
             if (id && ts) tsById.set(id, ts);
           }
-          const flat = finalMessages.map((m) => {
-            const parts = (m.parts ?? []) as Array<{ type: string; text?: string }>;
-            const text = parts.filter((p) => p.type === "text").map((p) =>
-              p.text ?? ""
-            ).join("");
-            const toolParts = parts.filter((p) => p.type.startsWith("tool-"));
-            return {
-              id: m.id,
-              role: m.role,
-              content: text,
-              tools: toolParts,
-              ts: tsById.get(m.id) ?? now,
-            };
-          });
+          const flat = mergeFlatMessages(existingMessages, flattenUIMessages(finalMessages, now, tsById));
           await supabase.from("chat_conversations").upsert(
             {
               session_id: sessionId,
@@ -631,61 +764,7 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
             { onConflict: "session_id" },
           );
 
-          // Safety-net: se houve reclamação na conversa e nenhum ticket foi criado
-          // (a IA não chamou registrar_problema_pedido), criamos aqui.
-          try {
-            const userTexts = flat
-              .filter((m) => m.role === "user")
-              .map((m) => String(m.content || ""))
-              .join("\n");
-            const fullText = flat.map((m) => String(m.content || "")).join("\n");
-            const COMPLAINT_RE =
-              /\b(n[ãa]o\s+veio|faltou|faltando|errad[oa]|fri[oa]|atras(?:ou|ado|o)|demor(?:ou|ado)|reclama[cç][ãa]o|reclamar|cobran[cç]a|p[ée]ssim[oa]|horr[ií]vel|estragad[oa]|queim(?:ado|a)|cru|sem\s+sabor|sumiu|esqueceram|n[ãa]o\s+chegou|veio\s+errad)/i;
-            const hasComplaint = COMPLAINT_RE.test(userTexts);
-            const alreadyRegistered =
-              /registrar_problema_pedido/i.test(JSON.stringify(flat));
-
-            if (hasComplaint && !alreadyRegistered) {
-              const orderMatch = fullText.match(/(?:pedido\s*#?\s*|n[uú]mero\s*[:#]?\s*|#)?(\b\d{3,6}\b)/i);
-              const phoneMatch = userTexts.match(/(?:\(?\d{2}\)?\s?)?9?\d{4}[-\s]?\d{4}/);
-              const numero_pedido = orderMatch ? orderMatch[1] : null;
-              const contato = phoneMatch ? phoneMatch[0].replace(/\D/g, "") : "não informado";
-              const descricao = userTexts.slice(-800) || "Reclamação detectada na conversa.";
-
-              // Evita duplicar: já existe ticket recente com mesmo contato/pedido?
-              let dup = false;
-              if (numero_pedido || contato !== "não informado") {
-                const { data: recent } = await supabase
-                  .from("support_tickets")
-                  .select("id, order_number, contact, created_at")
-                  .gte("created_at", new Date(Date.now() - 24 * 3600_000).toISOString())
-                  .limit(50);
-                dup = (recent ?? []).some((t: any) =>
-                  (numero_pedido && t.order_number === numero_pedido) ||
-                  (contato !== "não informado" && (t.contact || "").replace(/\D/g, "") === contato)
-                );
-              }
-
-              if (!dup) {
-                const { data: ticket, error: tErr } = await supabase
-                  .from("support_tickets")
-                  .insert({
-                    order_number: numero_pedido,
-                    description: descricao,
-                    contact: contato,
-                  })
-                  .select("id")
-                  .single();
-                if (tErr) {
-                  console.error("[parme-chat safety-net] ticket err:", tErr);
-                } else {
-                  console.log("[parme-chat safety-net] ticket criado:", ticket?.id);
-                }
-              }
-            }
-          } catch (e) {
-            console.error("[parme-chat safety-net] err:", e);
-          }
+          await ensureComplaintTicket(supabase, flat, sessionId);
         } catch (e) {
           console.error("[parme-chat] onFinish persist err:", e);
         }
