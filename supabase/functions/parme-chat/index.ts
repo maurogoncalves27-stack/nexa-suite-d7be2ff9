@@ -710,8 +710,6 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
       headers: corsHeaders,
       onFinish: async ({ messages: finalMessages }) => {
         if (!sessionId) return;
-        const finalUserCount = finalMessages.filter((m) => m.role === "user").length;
-        if (finalUserCount < 2) return;
         try {
           const supabase = sb();
           const now = new Date().toISOString();
@@ -720,31 +718,14 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
             .select("messages")
             .eq("session_id", sessionId)
             .maybeSingle();
-          const existingMessages = Array.isArray(
-              (existing as { messages?: unknown } | null)?.messages,
-            )
-            ? (existing as { messages: Array<Record<string, unknown>> }).messages
-            : [];
+          const existingMessages = existingFlatMessages((existing as { messages?: unknown } | null)?.messages);
           const tsById = new Map<string, string>();
           for (const e of existingMessages) {
-            const id = typeof e?.id === "string" ? e.id : "";
-            const ts = typeof e?.ts === "string" ? e.ts : "";
+            const id = e.id;
+            const ts = e.ts;
             if (id && ts) tsById.set(id, ts);
           }
-          const flat = finalMessages.map((m) => {
-            const parts = (m.parts ?? []) as Array<{ type: string; text?: string }>;
-            const text = parts.filter((p) => p.type === "text").map((p) =>
-              p.text ?? ""
-            ).join("");
-            const toolParts = parts.filter((p) => p.type.startsWith("tool-"));
-            return {
-              id: m.id,
-              role: m.role,
-              content: text,
-              tools: toolParts,
-              ts: tsById.get(m.id) ?? now,
-            };
-          });
+          const flat = mergeFlatMessages(existingMessages, flattenUIMessages(finalMessages, now, tsById));
           await supabase.from("chat_conversations").upsert(
             {
               session_id: sessionId,
@@ -756,61 +737,7 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
             { onConflict: "session_id" },
           );
 
-          // Safety-net: se houve reclamação na conversa e nenhum ticket foi criado
-          // (a IA não chamou registrar_problema_pedido), criamos aqui.
-          try {
-            const userTexts = flat
-              .filter((m) => m.role === "user")
-              .map((m) => String(m.content || ""))
-              .join("\n");
-            const fullText = flat.map((m) => String(m.content || "")).join("\n");
-            const COMPLAINT_RE =
-              /\b(n[ãa]o\s+veio|faltou|faltando|errad[oa]|fri[oa]|atras(?:ou|ado|o)|demor(?:ou|ado)|reclama[cç][ãa]o|reclamar|cobran[cç]a|p[ée]ssim[oa]|horr[ií]vel|estragad[oa]|queim(?:ado|a)|cru|sem\s+sabor|sumiu|esqueceram|n[ãa]o\s+chegou|veio\s+errad)/i;
-            const hasComplaint = COMPLAINT_RE.test(userTexts);
-            const alreadyRegistered =
-              /registrar_problema_pedido/i.test(JSON.stringify(flat));
-
-            if (hasComplaint && !alreadyRegistered) {
-              const orderMatch = fullText.match(/(?:pedido\s*#?\s*|n[uú]mero\s*[:#]?\s*|#)?(\b\d{3,6}\b)/i);
-              const phoneMatch = userTexts.match(/(?:\(?\d{2}\)?\s?)?9?\d{4}[-\s]?\d{4}/);
-              const numero_pedido = orderMatch ? orderMatch[1] : null;
-              const contato = phoneMatch ? phoneMatch[0].replace(/\D/g, "") : "não informado";
-              const descricao = userTexts.slice(-800) || "Reclamação detectada na conversa.";
-
-              // Evita duplicar: já existe ticket recente com mesmo contato/pedido?
-              let dup = false;
-              if (numero_pedido || contato !== "não informado") {
-                const { data: recent } = await supabase
-                  .from("support_tickets")
-                  .select("id, order_number, contact, created_at")
-                  .gte("created_at", new Date(Date.now() - 24 * 3600_000).toISOString())
-                  .limit(50);
-                dup = (recent ?? []).some((t: any) =>
-                  (numero_pedido && t.order_number === numero_pedido) ||
-                  (contato !== "não informado" && (t.contact || "").replace(/\D/g, "") === contato)
-                );
-              }
-
-              if (!dup) {
-                const { data: ticket, error: tErr } = await supabase
-                  .from("support_tickets")
-                  .insert({
-                    order_number: numero_pedido,
-                    description: descricao,
-                    contact: contato,
-                  })
-                  .select("id")
-                  .single();
-                if (tErr) {
-                  console.error("[parme-chat safety-net] ticket err:", tErr);
-                } else {
-                  console.log("[parme-chat safety-net] ticket criado:", ticket?.id);
-                }
-              }
-            }
-          } catch (e) {
-            console.error("[parme-chat safety-net] err:", e);
-          }
+          await ensureComplaintTicket(supabase, flat, sessionId);
         } catch (e) {
           console.error("[parme-chat] onFinish persist err:", e);
         }
