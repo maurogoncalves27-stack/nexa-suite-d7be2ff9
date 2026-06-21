@@ -448,11 +448,6 @@ export function IntegrationsPanel() {
             status="ok"
             hint="Tabela reservations"
           />
-          <Row
-            label="Reservas (banco local)"
-            status="ok"
-            hint="Tabela reservations"
-          />
         </CardContent>
       </Card>
 
