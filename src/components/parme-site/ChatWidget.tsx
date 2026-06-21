@@ -225,6 +225,30 @@ export function ChatWidget() {
     }
   }
 
+  function parseInline(text: string): ReactNode[] {
+    const nodes: ReactNode[] = [];
+    const pattern = /(\*\*[\s\S]+?\*\*|\*[\s\S]+?\*)/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        nodes.push(...linkify(text.slice(lastIndex, match.index)));
+      }
+      const raw = match[0];
+      const isBold = raw.startsWith("**");
+      const content = raw.slice(isBold ? 2 : 1, isBold ? -2 : -1);
+      const el = isBold
+        ? <strong key={`b-${match.index}`} className="font-semibold">{content}</strong>
+        : <em key={`i-${match.index}`} className="italic">{content}</em>;
+      nodes.push(el);
+      lastIndex = pattern.lastIndex;
+    }
+    if (lastIndex < text.length) {
+      nodes.push(...linkify(text.slice(lastIndex)));
+    }
+    return nodes;
+  }
+
   function renderChunks(text: string) {
     return text
       .split(/\n{2,}/)
