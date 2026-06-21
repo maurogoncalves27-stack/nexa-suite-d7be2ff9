@@ -35,23 +35,23 @@ const flat = (m: Msg[]) => m as any;
 
 Deno.test("inferClientName: 'meu nome é Mauro'", () => {
   const flat = conv(["user", "oi, meu nome é Mauro"]);
-  assertEquals(inferClientName(flat), "Mauro");
+  assertEquals(inferClientName(flat(flatMsgs)), "Mauro");
 });
 
 Deno.test("inferClientName: 'me chamo João Silva'", () => {
-  assertEquals(inferClientName(conv(["user", "me chamo João Silva"])), "João Silva");
+  assertEquals(inferClientName(flat(conv(["user", "me chamo João Silva"])), "João Silva");
 });
 
 Deno.test("inferClientName: 'aqui é o Pedro'", () => {
-  assertEquals(inferClientName(conv(["user", "aqui é o Pedro"])), "Pedro");
+  assertEquals(inferClientName(flat(conv(["user", "aqui é o Pedro"])), "Pedro");
 });
 
 Deno.test("inferClientName: 'sou a Ana'", () => {
-  assertEquals(inferClientName(conv(["user", "sou a Ana"])), "Ana");
+  assertEquals(inferClientName(flat(conv(["user", "sou a Ana"])), "Ana");
 });
 
 Deno.test("inferClientName: nome com dígitos (teste1)", () => {
-  assertEquals(inferClientName(conv(["user", "meu nome é teste1"])), "Teste1");
+  assertEquals(inferClientName(flat(conv(["user", "meu nome é teste1"])), "Teste1");
 });
 
 Deno.test("inferClientName: pergunta+resposta curta 'Mauro'", () => {
@@ -59,7 +59,7 @@ Deno.test("inferClientName: pergunta+resposta curta 'Mauro'", () => {
     ["assistant", "Qual é seu nome?"],
     ["user", "Mauro"],
   );
-  assertEquals(inferClientName(flat), "Mauro");
+  assertEquals(inferClientName(flat(flatMsgs)), "Mauro");
 });
 
 Deno.test("inferClientName: pergunta+resposta 'teste1'", () => {
@@ -67,46 +67,46 @@ Deno.test("inferClientName: pergunta+resposta 'teste1'", () => {
     ["assistant", "Olá! Qual é o seu nome?"],
     ["user", "teste1"],
   );
-  assertEquals(inferClientName(flat), "Teste1");
+  assertEquals(inferClientName(flat(flatMsgs)), "Teste1");
 });
 
 Deno.test("inferClientName: ignora stopwords (sim/ok/obrigado)", () => {
-  assertStrictEquals(inferClientName(conv(["user", "ok"])), null);
-  assertStrictEquals(inferClientName(conv(["user", "obrigado"])), null);
+  assertStrictEquals(inferClientName(flat(conv(["user", "ok"])), null);
+  assertStrictEquals(inferClientName(flat(conv(["user", "obrigado"])), null);
 });
 
 Deno.test("inferClientName: ignora puramente numérico", () => {
   const flat = conv(["assistant", "qual seu nome?"], ["user", "12345"]);
-  assertStrictEquals(inferClientName(flat), null);
+  assertStrictEquals(inferClientName(flat(flatMsgs)), null);
 });
 
 Deno.test("inferClientName: sem nenhuma pista retorna null", () => {
-  assertStrictEquals(inferClientName(conv(["user", "quero pedir uma pizza"])), null);
+  assertStrictEquals(inferClientName(flat(conv(["user", "quero pedir uma pizza"])), null);
 });
 
 // ---------------- mergeClientMeta ----------------
 
 Deno.test("mergeClientMeta: preenche name a partir das mensagens", () => {
   const flat = conv(["user", "meu nome é Mauro"]);
-  const merged = mergeClientMeta(null, null, flat) as Record<string, unknown>;
+  const merged = mergeClientMeta(null, null, flat(flatMsgs)) as Record<string, unknown>;
   assertEquals(merged.name, "Mauro");
 });
 
 Deno.test("mergeClientMeta: NÃO sobrescreve name existente", () => {
   const flat = conv(["user", "meu nome é Outro"]);
-  const merged = mergeClientMeta({ name: "Mauro" }, null, flat) as Record<string, unknown>;
+  const merged = mergeClientMeta({ name: "Mauro" }, null, flat(flatMsgs)) as Record<string, unknown>;
   assertEquals(merged.name, "Mauro");
 });
 
 Deno.test("mergeClientMeta: respeita 'nome' (PT) já existente", () => {
   const flat = conv(["user", "meu nome é Outro"]);
-  const merged = mergeClientMeta({ nome: "Mauro" }, null, flat) as Record<string, unknown>;
+  const merged = mergeClientMeta({ nome: "Mauro" }, null, flat(flatMsgs)) as Record<string, unknown>;
   assertEquals(merged.nome, "Mauro");
   assertEquals(merged.name, undefined);
 });
 
 Deno.test("mergeClientMeta: usa fallback quando current vazio", () => {
-  const merged = mergeClientMeta(null, { telefone: "61999999999" }, []) as Record<string, unknown>;
+  const merged = mergeClientMeta(null, { telefone: "61999999999" }, flat([])) as Record<string, unknown>;
   assertEquals(merged.telefone, "61999999999");
 });
 
@@ -122,7 +122,7 @@ Deno.test("clientMessageCount: conta só mensagens de cliente não vazias", () =
     ["user", "quero pedir"],
     ["tool", "{}"],
   );
-  assertEquals(clientMessageCount(flat), 2);
+  assertEquals(clientMessageCount(flat(flatMsgs)), 2);
 });
 
 // ---------------- detectComplaint ----------------
