@@ -33,6 +33,14 @@ const emptyForm: FormState = { title: "", url: "", is_shared: false };
 
 const normalizeUrl = (u: string) => /^https?:\/\//i.test(u) ? u : `https://${u}`;
 
+const suggestTitle = (url: string) => {
+  try {
+    return new URL(normalizeUrl(url)).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+};
+
 const faviconFor = (url: string) => {
   try {
     const host = new URL(url).hostname;
