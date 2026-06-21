@@ -104,7 +104,19 @@ type Conversation = {
 const NON_CLIENT_ROLES = new Set(["assistant", "ai", "bot", "system", "model", "tool"]);
 
 function messageText(m: any) {
+  if (Array.isArray(m?.parts)) {
+    const text = m.parts
+      .filter((p: any) => p?.type === "text")
+      .map((p: any) => p?.text ?? "")
+      .join("");
+    if (text.trim()) return text;
+  }
   return String(typeof m?.content === "string" ? m.content : (m?.message ?? m?.text ?? ""));
+}
+
+function isAssistantMessage(m: any) {
+  const role = String(m?.role ?? m?.author ?? m?.from ?? "user").toLowerCase();
+  return NON_CLIENT_ROLES.has(role);
 }
 
 function isClientMessage(m: any) {
@@ -193,11 +205,8 @@ function extractClientInfo(conv: any, msgs: any[] | null): Record<string, string
   if (pick("address") || pick("endereco")) info["Endereço"] = String(pick("address") ?? pick("endereco"));
 
   const userText = (msgs ?? [])
-    .filter((m: any) => {
-      const role = m.role ?? m.author ?? m.from ?? "user";
-      return role !== "assistant" && role !== "ai" && role !== "bot";
-    })
-    .map((m: any) => (typeof m.content === "string" ? m.content : (m.message ?? m.text ?? "")))
+    .filter(isClientMessage)
+    .map(messageText)
     .join("\n");
 
   if (!userText) {
@@ -241,18 +250,14 @@ function extractClientInfo(conv: any, msgs: any[] | null): Record<string, string
 
     // Fallback 1: a IA perguntou o nome → próxima resposta do cliente
     if (!info["Nome (inferido)"]) {
-      const nameAsk = /\b(?:qual\s+(?:o\s+)?seu\s+nome|como\s+(?:posso\s+)?(?:te\s+)?chamar|seu\s+nome\??|me\s+(?:diz|fala)\s+seu\s+nome)\b/i;
+      const nameAsk = /\b(?:qual\s+(?:é|eh|e)?\s*(?:o\s+)?seu\s+nome|como\s+(?:posso\s+)?(?:te\s+)?chamar|seu\s+nome\??|me\s+(?:diz|fala)\s+seu\s+nome)\b/i;
       for (let i = 0; i < (msgs?.length ?? 0) - 1; i++) {
         const cur = msgs![i];
         const next = msgs![i + 1];
-        const curRole = cur.role ?? cur.author ?? cur.from ?? "user";
-        const nextRole = next.role ?? next.author ?? next.from ?? "user";
-        const isAssistant = curRole === "assistant" || curRole === "ai" || curRole === "bot";
-        const isUser = !(nextRole === "assistant" || nextRole === "ai" || nextRole === "bot");
-        if (!isAssistant || !isUser) continue;
-        const curText = typeof cur.content === "string" ? cur.content : (cur.message ?? cur.text ?? "");
+        if (!isAssistantMessage(cur) || !isClientMessage(next)) continue;
+        const curText = messageText(cur);
         if (!nameAsk.test(curText)) continue;
-        const reply = String(typeof next.content === "string" ? next.content : (next.message ?? next.text ?? ""));
+        const reply = messageText(next);
         const tok = reply.split(/[\s,.!?]+/).filter(isNameToken);
         if (tok.length >= 1) {
           info["Nome (inferido)"] = cap(tok.slice(0, 3).join(" "));
@@ -302,8 +307,7 @@ function extractClientInfo(conv: any, msgs: any[] | null): Record<string, string
 
   // Quantidade de mensagens do cliente
   const userMsgsCount = (msgs ?? []).filter((m: any) => {
-    const role = m.role ?? m.author ?? m.from ?? "user";
-    return role !== "assistant" && role !== "ai" && role !== "bot";
+    return isClientMessage(m);
   }).length;
   if (userMsgsCount) info["Mensagens do cliente"] = String(userMsgsCount);
 
