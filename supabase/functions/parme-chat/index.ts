@@ -194,6 +194,50 @@ function clientMessageCount(messages: FlatChatMessage[]) {
   }).length;
 }
 
+function inferClientName(flat: FlatChatMessage[]) {
+  const stop = new Set([
+    "que", "de", "do", "da", "para", "pra", "com", "por", "um", "uma", "o", "a", "os", "as",
+    "aqui", "cliente", "gerente", "atendente", "sim", "nao", "não", "ok", "oi", "olá", "ola",
+    "bom", "dia", "tarde", "noite", "obrigado", "obrigada", "pedido", "pedi", "ifood", "whatsapp",
+  ]);
+  const isNameToken = (t: string) => /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9'.-]*$/.test(t) && !stop.has(t.toLowerCase()) && !/^\d/.test(t);
+  const cap = (s: string) => s.toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase());
+  const nameAtom = "[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9'.-]*";
+  const userText = flat
+    .filter((m) => String(m.role || "user").toLowerCase() === "user")
+    .map((m) => String(m.content || "").trim())
+    .filter(Boolean)
+    .join("\n");
+  const patterns = [
+    new RegExp(`\\bmeu\\s+nome\\s+(?:é|eh|e)\\s+(?:o\\s+|a\\s+)?(${nameAtom}(?:\\s+${nameAtom}){0,3})`, "i"),
+    new RegExp(`\\bme\\s+chamo\\s+(?:o\\s+|a\\s+)?(${nameAtom}(?:\\s+${nameAtom}){0,3})`, "i"),
+    new RegExp(`\\baqui\\s+(?:é|eh|e|quem\\s+fala\\s+é)\\s+(?:o\\s+|a\\s+)?(${nameAtom}(?:\\s+${nameAtom}){0,3})`, "i"),
+    new RegExp(`\\bsou\\s+(?:o\\s+|a\\s+)?(${nameAtom}(?:\\s+${nameAtom}){0,3})`, "i"),
+  ];
+  for (const re of patterns) {
+    const match = userText.match(re);
+    const tokens = match?.[1]?.trim().split(/\s+/).filter(isNameToken) ?? [];
+    if (tokens.length) return cap(tokens.slice(0, 3).join(" "));
+  }
+  const nameAsk = /\b(?:qual\s+(?:é|eh|e)?\s*(?:o\s+)?seu\s+nome|como\s+(?:posso\s+)?(?:te\s+)?chamar|seu\s+nome\??|me\s+(?:diz|fala)\s+seu\s+nome)\b/i;
+  for (let i = 0; i < flat.length - 1; i++) {
+    const cur = flat[i];
+    const next = flat[i + 1];
+    if (String(cur.role || "").toLowerCase() !== "assistant" || String(next.role || "").toLowerCase() !== "user") continue;
+    if (!nameAsk.test(String(cur.content || ""))) continue;
+    const tokens = String(next.content || "").split(/[\s,.!?]+/).filter(isNameToken);
+    if (tokens.length) return cap(tokens.slice(0, 3).join(" "));
+  }
+  return null;
+}
+
+function mergeClientMeta(current: unknown, fallback: unknown, flat: FlatChatMessage[]) {
+  const base = (typeof current === "object" && current !== null ? current :
+    typeof fallback === "object" && fallback !== null ? fallback : {}) as Record<string, unknown>;
+  const inferredName = inferClientName(flat);
+  return inferredName && !base.name && !base.nome ? { ...base, name: inferredName } : base;
+}
+
 async function ensureComplaintTicket(
   supabase: ReturnType<typeof sb>,
   flat: FlatChatMessage[],
