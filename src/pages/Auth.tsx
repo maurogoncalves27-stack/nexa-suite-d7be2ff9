@@ -85,9 +85,7 @@ export default function Auth() {
   const [fullName, setFullName] = useState("");
   const [busy, setBusy] = useState(false);
   const [hasPasskey, setHasPasskey] = useState(false);
-  const [bioPrefEnabled, setBioPrefEnabled] = useState(false);
   const [bioBusy, setBioBusy] = useState(false);
-  const [autoTried, setAutoTried] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const [resetOpen, setResetOpen] = useState(false);
@@ -111,11 +109,9 @@ export default function Auth() {
     const parsed = emailSchema.safeParse(email);
     if (!parsed.success) {
       setHasPasskey(false);
-      setBioPrefEnabled(false);
       return;
     }
     const normalized = parsed.data.toLowerCase();
-    setBioPrefEnabled(getBioPref(normalized));
     const t = setTimeout(async () => {
       try {
         const { data } = await supabase.functions.invoke("auth-methods-available", { body: { email: normalized } });
@@ -133,17 +129,6 @@ export default function Auth() {
     (window.location.hostname.includes("lovableproject.com") ||
       window.location.hostname.includes("id-preview--"));
 
-  // Auto-disparar passkey se o usuário marcou "usar sempre"
-  // (não dispara em domínios de preview pra evitar popup "nenhuma chave disponível")
-  useEffect(() => {
-    if (mode !== "signin" || autoTried) return;
-    if (!bioPrefEnabled || !hasPasskey || !webAuthnOk) return;
-    if (isPreviewDomain) return;
-    setAutoTried(true);
-    void loginWithPasskey();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, bioPrefEnabled, hasPasskey, webAuthnOk]);
-
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const ep = emailSchema.safeParse(email);
@@ -160,7 +145,6 @@ export default function Auth() {
       return;
     }
     rememberEmail(ep.data);
-    setBioPref(ep.data, bioPrefEnabled);
     navigate(computeRedirect(signInData.user?.id, signInData.user?.user_metadata as Record<string, unknown> | null), { replace: true });
   };
 
