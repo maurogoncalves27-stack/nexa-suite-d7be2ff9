@@ -7,7 +7,7 @@ import gianaAvatar from "@/assets/giana-avatar.png.asset.json";
 const SESSION_KEY = "parme_chat_session_id";
 const DISMISS_KEY = "parme_chat_proactive_dismissed";
 const PROACTIVE_DELAY_MS = 20_000;
-const URL_REGEX = /((?:https?:\/\/|www\.)[^\s)]+)/gi;
+const URL_REGEX = /(?:https?:\/\/|www\.)[^\s)]+/gi;
 
 const FN_URL = `${
   import.meta.env.VITE_SUPABASE_URL ?? "https://ixjgmerxxakdkfdzgumy.supabase.co"
