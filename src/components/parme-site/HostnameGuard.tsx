@@ -41,6 +41,10 @@ export function HostnameGuard() {
     // independente do host. Se cair na raiz, manda pro fluxo de auth/restauração.
     const isPwaLaunch = new URLSearchParams(loc.search).get("source") === "pwa";
 
+    // Modo NEXA: usuário entrou por aquelaparme.com.br/nexa — não reescrever para /parme
+    let isNexaMode = false;
+    try { isNexaMode = sessionStorage.getItem("nexa-app-mode") === "1"; } catch { /* ignore */ }
+
     // Subdomínios do app NEXA: nunca redirecionar para /parme.
     // Se cair em uma rota do site Parmê, manda pro /auth.
     if (host.startsWith("nexa.") || host.startsWith("nexasuite.")) {
