@@ -14892,6 +14892,45 @@ export type Database = {
         }
         Relationships: []
       }
+      user_useful_links: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_shared: boolean
+          sort_order: number
+          title: string
+          updated_at: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_shared?: boolean
+          sort_order?: number
+          title: string
+          updated_at?: string
+          url: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_shared?: boolean
+          sort_order?: number
+          title?: string
+          updated_at?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       vacation_schedules: {
         Row: {
           acquisition_end: string

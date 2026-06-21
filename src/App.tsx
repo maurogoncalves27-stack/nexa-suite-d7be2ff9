@@ -133,6 +133,7 @@ const Occurrences = lazy(() => import("./pages/Occurrences.tsx"));
 const OccurrencesReport = lazy(() => import("./pages/OccurrencesReport.tsx"));
 
 const Vault = lazy(() => import("./pages/Vault.tsx"));
+const UsefulLinks = lazy(() => import("./pages/UsefulLinks.tsx"));
 const EquipmentWarranties = lazy(() => import("./pages/EquipmentWarranties.tsx"));
 const AssetInventory = lazy(() => import("./pages/AssetInventory.tsx"));
 const PartnerAuth = lazy(() => import("./pages/PartnerAuth.tsx"));
@@ -412,6 +413,7 @@ const App = () => (
               <Route path="/ocorrencias/relatorio" element={<Guarded staff partner><OccurrencesReport /></Guarded>} />
               
               <Route path="/cofre" element={<Guarded staff><Vault /></Guarded>} />
+              <Route path="/links-uteis" element={<Guarded><UsefulLinks /></Guarded>} />
               <Route path="/garantias" element={<Guarded><EquipmentWarranties /></Guarded>} />
               <Route path="/patrimonio" element={<Guarded staff><AssetInventory /></Guarded>} />
             </Route>
