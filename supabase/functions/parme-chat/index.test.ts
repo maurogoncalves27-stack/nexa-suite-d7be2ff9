@@ -23,10 +23,13 @@ import {
   isValidReservation,
 } from "./extractors.ts";
 
-type Msg = { id?: string; role: string; content: string };
+type Msg = { id?: string; role: string; content: string; tools?: unknown; ts?: number };
 
 const conv = (...pairs: Array<[string, string]>): Msg[] =>
-  pairs.map(([role, content], i) => ({ id: String(i), role, content }));
+  pairs.map(([role, content], i) => ({ id: String(i), role, content, ts: i }));
+
+// deno-lint-ignore no-explicit-any
+const flat = (m: Msg[]) => m as any;
 
 // ---------------- inferClientName ----------------
 
