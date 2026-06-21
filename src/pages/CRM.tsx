@@ -1199,6 +1199,28 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
           </Card>
         </TabsContent>
 
+        <TabsContent value="reviews" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Star className="h-5 w-5 text-primary" />
+                Avaliações de clientes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <p className="text-muted-foreground mb-4">
+                Acesse as avaliações e feedbacks deixados pelos clientes nas plataformas de delivery e no site.
+              </p>
+              <Button asChild className="gap-2">
+                <a href="/avaliacoes-clientes">
+                  Abrir avaliações
+                  <ArrowRight className="h-4 w-4" />
+                </a>
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="personalize" className="mt-4">
           <PersonalizePanel />
         </TabsContent>
