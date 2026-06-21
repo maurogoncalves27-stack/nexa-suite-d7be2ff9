@@ -612,14 +612,12 @@ export default function CRM() {
     return conversations.filter((c: any) => {
       const msgs = Array.isArray(c.messages) ? c.messages : [];
       // Conta qualquer entrada que NÃO seja assistant/ai/bot/system como mensagem do cliente.
-      const userMsgs = msgs.filter((m: any) => {
-        const role = String(m?.role ?? m?.author ?? m?.from ?? "user").toLowerCase();
-        return role !== "assistant" && role !== "ai" && role !== "bot" && role !== "system";
-      });
-      // Esconde só conversas com 0 ou 1 entrada do cliente (ex.: cliente só falou "oi").
-      if (userMsgs.length <= 1) return false;
+      const userMsgs = msgs.filter(isClientMessage);
+      const hasTicket = (c.related_tickets?.length ?? 0) > 0 || c.source === "ticket";
+      // Conversas com ticket precisam aparecer mesmo quando o histórico completo antigo não existe.
+      if (!hasTicket && userMsgs.length <= 1) return false;
       if (q) {
-        const blob = JSON.stringify({ m: c.client_meta, msgs }).toLowerCase();
+        const blob = JSON.stringify({ m: c.client_meta, msgs, tickets: c.related_tickets }).toLowerCase();
         if (!blob.includes(q)) return false;
       }
       return true;
