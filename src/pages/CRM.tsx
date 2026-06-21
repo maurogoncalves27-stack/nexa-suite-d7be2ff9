@@ -155,10 +155,27 @@ function extractClientInfo(conv: any, msgs: any[] | null): Record<string, string
     return info;
   }
 
-  // Nome ("meu nome é X", "sou o/a X", "aqui é a X", "me chamo X")
+  // Nome ("meu nome é X", "sou X", "aqui é o/a X", "me chamo X", "é a X", "aqui quem fala é X")
   if (!info["Nome"]) {
-    const m = userText.match(/(?:meu nome (?:é|eh)|me chamo|aqui (?:é|eh) (?:o|a)|sou (?:o|a))\s+([A-ZÀ-Úa-zà-ú]{2,}(?:\s+[A-ZÀ-Úa-zà-ú]+){0,2})/i);
-    if (m) info["Nome (inferido)"] = m[1].trim();
+    const patterns = [
+      /\bmeu\s+nome\s+(?:é|eh|e)\s+(?:o\s+|a\s+)?([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.-]+(?:\s+[A-Za-zÀ-ÿ'.-]+){0,3})/i,
+      /\bme\s+chamo\s+(?:o\s+|a\s+)?([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.-]+(?:\s+[A-Za-zÀ-ÿ'.-]+){0,3})/i,
+      /\baqui\s+(?:é|eh|e|quem\s+fala\s+é)\s+(?:o\s+|a\s+)?([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.-]+(?:\s+[A-Za-zÀ-ÿ'.-]+){0,3})/i,
+      /\bsou\s+(?:o\s+|a\s+)?([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.-]+(?:\s+[A-Za-zÀ-ÿ'.-]+){0,3})/i,
+      /\b(?:é|eh)\s+(?:o|a)\s+([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.-]+)/i,
+    ];
+    const stop = /^(que|de|do|da|para|pra|com|por|um|uma|o|a|os|as|aqui|cliente|gerente|atendente|funcion[aá]rio)$/i;
+    for (const re of patterns) {
+      const m = userText.match(re);
+      if (m) {
+        const tokens = m[1].trim().split(/\s+/).filter((t) => !stop.test(t));
+        const name = tokens.slice(0, 3).join(" ").trim();
+        if (name.length >= 2) {
+          info["Nome (inferido)"] = name.replace(/\b\w/g, (l) => l.toUpperCase());
+          break;
+        }
+      }
+    }
   }
   // Telefone
   if (!info["Telefone"]) {
@@ -206,13 +223,21 @@ function extractClientInfo(conv: any, msgs: any[] | null): Record<string, string
 }
 
 function pickClientName(c: any): string {
-  return (
+  const direct =
     c?.client_meta?.name ??
     c?.client_meta?.nome ??
     c?.extracted?.name ??
-    c?.extracted?.nome ??
-    "—"
-  );
+    c?.extracted?.nome;
+  if (direct) return String(direct);
+  // fallback: tenta inferir a partir das mensagens já gravadas no banco
+  const msgs = Array.isArray(c?.messages) ? c.messages : null;
+  if (msgs && msgs.length) {
+    const info = extractClientInfo(c, msgs);
+    if (info["Nome"] || info["Nome (inferido)"]) {
+      return info["Nome"] ?? info["Nome (inferido)"];
+    }
+  }
+  return "—";
 }
 
 export default function CRM() {
@@ -1184,7 +1209,10 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                   c.client_meta?.name ??
                   "—";
                 const nome = pickClientName(c);
-                const clientInfo = extractClientInfo(c, convMsgs);
+                const msgsForInfo = (convMsgs && convMsgs.length > 0)
+                  ? convMsgs
+                  : (Array.isArray(c.messages) ? c.messages : null);
+                const clientInfo = extractClientInfo(c, msgsForInfo);
                 return (
                   <>
                     <DialogHeader>
