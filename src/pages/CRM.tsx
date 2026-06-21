@@ -216,15 +216,16 @@ function extractClientInfo(conv: any, msgs: any[] | null): Record<string, string
       "estrogonofe","retirada","delivery","entrega","mesa","reserva","cardapio","cardápio",
     ]);
     const isNameToken = (t: string) =>
-      /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.-]{1,}$/.test(t) && !stop.has(t.toLowerCase()) && !/^\d/.test(t);
+      /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9'.-]*$/.test(t) && !stop.has(t.toLowerCase()) && !/^\d/.test(t);
     const cap = (s: string) =>
       s.toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase());
+    const nameAtom = "[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9'.-]*";
 
     const patterns = [
-      /\bmeu\s+nome\s+(?:é|eh|e)\s+(?:o\s+|a\s+)?([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.-]+(?:\s+[A-Za-zÀ-ÿ'.-]+){0,3})/i,
-      /\bme\s+chamo\s+(?:o\s+|a\s+)?([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.-]+(?:\s+[A-Za-zÀ-ÿ'.-]+){0,3})/i,
-      /\baqui\s+(?:é|eh|e|quem\s+fala\s+é)\s+(?:o\s+|a\s+)?([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.-]+(?:\s+[A-Za-zÀ-ÿ'.-]+){0,3})/i,
-      /\bsou\s+(?:o\s+|a\s+)?([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.-]+(?:\s+[A-Za-zÀ-ÿ'.-]+){0,3})/i,
+      new RegExp(`\\bmeu\\s+nome\\s+(?:é|eh|e)\\s+(?:o\\s+|a\\s+)?(${nameAtom}(?:\\s+${nameAtom}){0,3})`, "i"),
+      new RegExp(`\\bme\\s+chamo\\s+(?:o\\s+|a\\s+)?(${nameAtom}(?:\\s+${nameAtom}){0,3})`, "i"),
+      new RegExp(`\\baqui\\s+(?:é|eh|e|quem\\s+fala\\s+é)\\s+(?:o\\s+|a\\s+)?(${nameAtom}(?:\\s+${nameAtom}){0,3})`, "i"),
+      new RegExp(`\\bsou\\s+(?:o\\s+|a\\s+)?(${nameAtom}(?:\\s+${nameAtom}){0,3})`, "i"),
     ];
     for (const re of patterns) {
       const m = userText.match(re);
