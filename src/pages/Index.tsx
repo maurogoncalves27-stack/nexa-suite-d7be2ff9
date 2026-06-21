@@ -102,11 +102,10 @@ const Index = () => {
     }
   }
 
-  return (
-    <AppLayout>
-      <EmployeeArea />
-    </AppLayout>
-  );
+  // Colaborador comum (sem perfil de gestão): manda para a Área do Colaborador
+  // com rota dedicada, pra não ficar "preso" em "/" depois do login (especialmente
+  // quando entra via PWA instalado, cujo start_url é "/").
+  return <Navigate to="/area-colaborador" replace />;
 };
 
 export default Index;
