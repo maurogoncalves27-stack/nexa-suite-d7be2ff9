@@ -256,28 +256,10 @@ function extractClientInfo(conv: any, msgs: any[] | null): Record<string, string
       }
     }
 
-    // Fallback 2: token solto em qualquer mensagem curta do cliente que pareça um nome próprio
-    if (!info["Nome (inferido)"]) {
-      const userMsgs = (msgs ?? []).filter((m: any) => {
-        const role = m.role ?? m.author ?? m.from ?? "user";
-        return role !== "assistant" && role !== "ai" && role !== "bot";
-      });
-      for (const um of userMsgs) {
-        const txt = String(typeof um.content === "string" ? um.content : (um.message ?? um.text ?? ""));
-        const tokens = txt.split(/[\s,.!?]+/).filter(Boolean);
-        for (const t of tokens) {
-          // token tipo "Mauro", "Thiara" — começa com letra, 3+ chars, não está no stop list
-          if (/^[A-Za-zÀ-ÿ][a-zà-ÿ]{2,}$/.test(t) && !stop.has(t.toLowerCase())) {
-            // exige pelo menos uma vogal pra evitar "kkkk"
-            if (/[aeiouáéíóúâêôãõ]/i.test(t)) {
-              info["Nome (inferido)"] = cap(t);
-              break;
-            }
-          }
-        }
-        if (info["Nome (inferido)"]) break;
-      }
-    }
+    // Fallback 2 removido: pegar token solto de qualquer mensagem produzia "nomes"
+    // falsos como "Veio", "Informou", "Pedi". Só inferimos nome via padrões explícitos
+    // ("meu nome é…", "me chamo…") ou quando a IA pergunta o nome.
+
   }
   // Telefone
   if (!info["Telefone"]) {
