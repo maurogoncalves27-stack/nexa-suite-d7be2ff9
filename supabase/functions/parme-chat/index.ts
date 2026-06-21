@@ -751,6 +751,8 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
       headers: corsHeaders,
       onFinish: async ({ messages: finalMessages }) => {
         if (!sessionId) return;
+        let flat: ReturnType<typeof mergeFlatMessages> = [];
+        // 1) Persistir conversa SEMPRE — independente de qualquer falha de ticket.
         try {
           const supabase = sb();
           const now = new Date().toISOString();
@@ -762,11 +764,9 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
           const existingMessages = existingFlatMessages((existing as { messages?: unknown } | null)?.messages);
           const tsById = new Map<string, string>();
           for (const e of existingMessages) {
-            const id = e.id;
-            const ts = e.ts;
-            if (id && ts) tsById.set(id, ts);
+            if (e.id && e.ts) tsById.set(e.id, e.ts);
           }
-          const flat = mergeFlatMessages(existingMessages, flattenUIMessages(finalMessages, now, tsById));
+          flat = mergeFlatMessages(existingMessages, flattenUIMessages(finalMessages, now, tsById));
           await supabase.from("chat_conversations").upsert(
             {
               session_id: sessionId,
@@ -777,10 +777,14 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
             },
             { onConflict: "session_id" },
           );
-
-          await ensureComplaintTicket(supabase, flat, sessionId);
         } catch (e) {
-          console.error("[parme-chat] onFinish persist err:", e);
+          console.error("[parme-chat] onFinish conversa upsert err:", e);
+        }
+        // 2) Ticket é independente: falhas aqui NÃO afetam a conversa.
+        try {
+          if (flat.length) await ensureComplaintTicket(sb(), flat, sessionId);
+        } catch (e) {
+          console.error("[parme-chat] onFinish ticket err:", e);
         }
       },
     });
