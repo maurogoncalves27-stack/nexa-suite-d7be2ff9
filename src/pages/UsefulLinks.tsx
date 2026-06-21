@@ -195,23 +195,6 @@ export default function UsefulLinks() {
                 id="url"
                 value={form.url}
                 onChange={e => setForm({ ...form, url: e.target.value })}
-                onBlur={async () => {
-                  console.log("blur triggered");
-                  const raw = form.url.trim();
-                  if (!raw) return;
-                  const url = normalizeUrl(raw);
-                  try {
-                    const res = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(8000) });
-                    const json = await res.json();
-                    console.log("microlink response", json);
-                    const title = json?.data?.title?.replace(/\s+/g, ' ').trim();
-                    if (title && !form.title.trim()) {
-                      setForm(prev => ({ ...prev, title }));
-                    }
-                  } catch (err) {
-                    console.error("Erro ao buscar título:", err);
-                  }
-                }}
                 placeholder="exemplo.com.br"
               />
               {form.url && (
