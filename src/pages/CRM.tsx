@@ -1209,7 +1209,10 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                   c.client_meta?.name ??
                   "—";
                 const nome = pickClientName(c);
-                const clientInfo = extractClientInfo(c, convMsgs);
+                const msgsForInfo = (convMsgs && convMsgs.length > 0)
+                  ? convMsgs
+                  : (Array.isArray(c.messages) ? c.messages : null);
+                const clientInfo = extractClientInfo(c, msgsForInfo);
                 return (
                   <>
                     <DialogHeader>
