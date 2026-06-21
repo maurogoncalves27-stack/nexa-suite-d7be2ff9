@@ -463,7 +463,7 @@ export default function CRM() {
         </Button>
       </div>
 
-      {/* Toolbar sticky: busca + filtro */}
+      {/* Toolbar sticky: busca */}
       <div className="sticky top-0 z-10 -mx-4 md:-mx-6 px-4 md:px-6 py-3 bg-background/85 backdrop-blur border-y">
         <div className="flex flex-col md:flex-row gap-2">
           <div className="relative flex-1">
@@ -475,19 +475,6 @@ export default function CRM() {
               className="pl-9 h-10"
             />
           </div>
-          <Select value={brand} onValueChange={setBrand}>
-            <SelectTrigger className="md:w-56 h-10">
-              <SelectValue placeholder="Marca (conversas)" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as marcas</SelectItem>
-              {brands.map((b) => (
-                <SelectItem key={b} value={b}>
-                  {b}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
       </div>
 
