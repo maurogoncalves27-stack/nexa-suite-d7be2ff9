@@ -178,6 +178,14 @@ function mergeFlatMessages(existing: FlatChatMessage[], incoming: FlatChatMessag
   return merged;
 }
 
+function flatToUIMessages(flat: FlatChatMessage[]) {
+  return flat.map((m) => ({
+    id: m.id,
+    role: m.role === "assistant" ? "assistant" : m.role === "system" ? "system" : "user",
+    parts: [{ type: "text", text: m.content }],
+  })) as unknown as UIMessage[];
+}
+
 function clientMessageCount(messages: FlatChatMessage[]) {
   return messages.filter((m) => {
     const role = String(m.role || "user").toLowerCase();
@@ -326,7 +334,7 @@ Deno.serve(async (req) => {
     if (totalChars > 20000) {
       return new Response("Payload too large", { status: 413, headers: corsHeaders });
     }
-    const messages = parsed.data as unknown as UIMessage[];
+    let messages = parsed.data as unknown as UIMessage[];
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) {
@@ -356,6 +364,7 @@ Deno.serve(async (req) => {
           if (id && ts) tsById.set(id, ts);
         }
         const flatNow = mergeFlatMessages(existingMessages, flattenUIMessages(messages, now, tsById));
+        if (flatNow.length > messages.length) messages = flatToUIMessages(flatNow);
         const userMsgCount = clientMessageCount(flatNow);
         if (userMsgCount < 2) {
           console.log("[parme-chat] conversa ainda oculta no CRM: menos de 2 entradas do cliente", { sessionId, userMsgCount });
