@@ -133,6 +133,7 @@ const Occurrences = lazy(() => import("./pages/Occurrences.tsx"));
 const OccurrencesReport = lazy(() => import("./pages/OccurrencesReport.tsx"));
 
 const Vault = lazy(() => import("./pages/Vault.tsx"));
+const UsefulLinks = lazy(() => import("./pages/UsefulLinks.tsx"));
 const EquipmentWarranties = lazy(() => import("./pages/EquipmentWarranties.tsx"));
 const AssetInventory = lazy(() => import("./pages/AssetInventory.tsx"));
 const PartnerAuth = lazy(() => import("./pages/PartnerAuth.tsx"));
