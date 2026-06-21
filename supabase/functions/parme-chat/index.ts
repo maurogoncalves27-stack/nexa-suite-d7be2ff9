@@ -213,7 +213,7 @@ async function ensureComplaintTicket(
   const looseOrder = fullText.match(/(?:^|\D)(\d{3,6})(?:\D|$)/);
   const phoneMatch = userTexts.match(/(?:\(?\d{2}\)?\s?)?9?\d{4}[-\s]?\d{4}/);
   const numeroPedido = explicitOrder?.[1] ?? looseOrder?.[1] ?? null;
-  const contato = phoneMatch ? phoneMatch[0].replace(/\D/g, "") : "não informado";
+  const contato = phoneMatch ? phoneMatch[0].replace(/\D/g, "") : null;
   const descricao = `Conversa ${sessionId}:\n${userTexts.slice(-900) || "Reclamação detectada na conversa."}`;
 
   const { data: bySession } = await supabase
@@ -225,11 +225,20 @@ async function ensureComplaintTicket(
     .maybeSingle();
 
   if (bySession?.id) {
+    // Já existe ticket: pode atualizar com novos dados (mesmo sem contato novo).
     await supabase.from("support_tickets").update({
       order_number: bySession.order_number ?? numeroPedido,
-      contact: bySession.contact && bySession.contact !== "não informado" ? bySession.contact : contato,
+      contact: bySession.contact && bySession.contact !== "não informado"
+        ? bySession.contact
+        : (contato ?? bySession.contact),
       description: descricao,
     }).eq("id", bySession.id);
+    return;
+  }
+
+  // Sem contato do cliente NÃO cria ticket — fica só como conversa.
+  if (!contato) {
+    console.log("[parme-chat safety-net] sem contato — conversa preservada, ticket NÃO criado:", sessionId);
     return;
   }
 
@@ -478,13 +487,21 @@ Deno.serve(async (req) => {
         },
       }),
       registrar_problema_pedido: tool({
-        description: "Registra um problema/reclamação de um pedido do cliente (ex.: item faltando, item errado, atraso). Sempre chame este tool quando o cliente reportar um problema, mesmo que ele não tenha um número de pedido — passe apenas o que ele informou.",
+        description: "Registra um problema/reclamação de pedido. EXIGE telefone/contato do cliente — sem contato NÃO é possível registrar (peça antes de chamar).",
         inputSchema: z.object({
           numero_pedido: z.string().min(2).max(20).optional(),
           descricao: z.string().min(3).max(1000),
-          contato: z.string().min(8).max(30).optional(),
+          contato: z.string().min(8).max(30),
         }),
         execute: async ({ numero_pedido, descricao, contato }) => {
+          const contatoLimpo = (contato ?? "").replace(/\D/g, "");
+          if (contatoLimpo.length < 8) {
+            return {
+              sucesso: false,
+              erro: "contato_obrigatorio",
+              mensagem: "Preciso do seu telefone com DDD antes de abrir o chamado — sem contato não conseguimos retornar.",
+            };
+          }
           const supabase = sb();
           const descricaoFinal = sessionId ? `Conversa ${sessionId}:\n${descricao}` : descricao;
           if (sessionId) {
@@ -503,7 +520,7 @@ Deno.serve(async (req) => {
                   description: descricaoFinal,
                   contact: existing.contact && existing.contact !== "não informado"
                     ? existing.contact
-                    : contato ?? "não informado",
+                    : contatoLimpo,
                 })
                 .eq("id", existing.id);
               if (error) {
@@ -523,7 +540,7 @@ Deno.serve(async (req) => {
             .insert({
               order_number: numero_pedido ?? null,
               description: descricaoFinal,
-              contact: contato ?? "não informado",
+              contact: contatoLimpo,
             })
             .select("id")
             .single();
@@ -730,7 +747,7 @@ Deno.serve(async (req) => {
     systemPrompt += `
 
 REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
-- Se o cliente reportar QUALQUER problema com pedido (faltou item, veio errado, frio, atrasado, cobrança, qualidade, "não veio a coca", etc.) você é OBRIGADA a chamar a ferramenta registrar_problema_pedido. Pode chamar com numero_pedido=undefined se ainda não souber. NÃO espere ter todos os dados.
+- Se o cliente reportar QUALQUER problema com pedido (faltou item, veio errado, frio, atrasado, cobrança, qualidade, "não veio a coca", etc.) você DEVE registrar via registrar_problema_pedido — MAS só após ter o TELEFONE do cliente. Sem contato, NÃO chame o tool: peça o telefone com DDD primeiro ("Pra abrir o chamado e te retornar, qual seu telefone com DDD?"). Sem telefone, não há ticket, fica só a conversa.
 - NUNCA diga "registrei", "anotei no sistema", "passei pra equipe" sem que a ferramenta registrar_problema_pedido tenha sido executada com sucesso=true naquele turno.
 - Se a ferramenta retornar sucesso=false, diga claramente que houve falha técnica e que vai tentar de novo.
 - Para reservas, SEMPRE chamar criar_reserva quando tiver nome+telefone+data+horário+quantidade.
