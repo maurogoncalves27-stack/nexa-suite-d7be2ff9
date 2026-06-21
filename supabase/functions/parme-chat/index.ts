@@ -186,6 +186,68 @@ function clientMessageCount(messages: FlatChatMessage[]) {
   }).length;
 }
 
+async function ensureComplaintTicket(
+  supabase: ReturnType<typeof sb>,
+  flat: FlatChatMessage[],
+  sessionId: string,
+) {
+  const userTexts = flat
+    .filter((m) => String(m.role).toLowerCase() === "user")
+    .map((m) => String(m.content || "").trim())
+    .filter(Boolean)
+    .join("\n");
+  const COMPLAINT_RE =
+    /\b(n[ãa]o\s+veio|faltou|faltando|errad[oa]|fri[oa]|atras(?:ou|ado|o)|demor(?:ou|ado)|reclama[cç][ãa]o|reclamar|cobran[cç]a|p[ée]ssim[oa]|horr[ií]vel|estragad[oa]|queim(?:ado|a)|cru|sem\s+sabor|sumiu|esqueceram|n[ãa]o\s+chegou|veio\s+errad)/i;
+  if (!COMPLAINT_RE.test(userTexts)) return;
+
+  const fullText = flat.map((m) => String(m.content || "")).join("\n");
+  const explicitOrder = fullText.match(/(?:pedido\s*#?\s*|n[uú]mero\s*(?:do\s+pedido)?\s*[:#]?\s*)(\d{2,10})/i);
+  const looseOrder = fullText.match(/(?:^|\D)(\d{3,6})(?:\D|$)/);
+  const phoneMatch = userTexts.match(/(?:\(?\d{2}\)?\s?)?9?\d{4}[-\s]?\d{4}/);
+  const numeroPedido = explicitOrder?.[1] ?? looseOrder?.[1] ?? null;
+  const contato = phoneMatch ? phoneMatch[0].replace(/\D/g, "") : "não informado";
+  const descricao = `Conversa ${sessionId}:\n${userTexts.slice(-900) || "Reclamação detectada na conversa."}`;
+
+  const { data: bySession } = await supabase
+    .from("support_tickets")
+    .select("id, order_number, contact")
+    .ilike("description", `%${sessionId}%`)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (bySession?.id) {
+    await supabase.from("support_tickets").update({
+      order_number: bySession.order_number ?? numeroPedido,
+      contact: bySession.contact && bySession.contact !== "não informado" ? bySession.contact : contato,
+      description: descricao,
+    }).eq("id", bySession.id);
+    return;
+  }
+
+  let duplicate = false;
+  if (numeroPedido || contato !== "não informado") {
+    const { data: recent } = await supabase
+      .from("support_tickets")
+      .select("id, order_number, contact, created_at")
+      .gte("created_at", new Date(Date.now() - 24 * 3600_000).toISOString())
+      .limit(80);
+    duplicate = (recent ?? []).some((t: any) =>
+      (numeroPedido && t.order_number === numeroPedido) ||
+      (contato !== "não informado" && (t.contact || "").replace(/\D/g, "") === contato)
+    );
+  }
+  if (duplicate) return;
+
+  const { error } = await supabase.from("support_tickets").insert({
+    order_number: numeroPedido,
+    description: descricao,
+    contact: contato,
+  });
+  if (error) console.error("[parme-chat safety-net] ticket err:", error);
+  else console.log("[parme-chat safety-net] ticket garantido para sessão:", sessionId);
+}
+
 async function notifyStoreReservation(
   nome: string,
   telefone: string,
