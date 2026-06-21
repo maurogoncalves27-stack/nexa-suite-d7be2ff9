@@ -8,7 +8,8 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Save, Bot, Palette, Plug, Star, MessageCircle, RefreshCw, Trash2, Plus } from "lucide-react";
+import { Loader2, Save, Bot, Palette, Plug, Star, MessageCircle, RefreshCw, Trash2, Plus, Settings, Copy, ExternalLink } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type SettingsKey = "branding" | "agent" | "reservations" | "google_places";
 
