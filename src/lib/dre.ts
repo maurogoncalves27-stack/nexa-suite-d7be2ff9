@@ -39,6 +39,10 @@ export const DRE_GROUP_OPTIONS: { value: DreGroup; label: string; kind: "income"
   { value: "excluded", label: DRE_GROUP_LABELS.excluded, kind: "any" },
 ];
 
+export type DreBreakdown = Partial<
+  Record<DreGroup, Record<string, { name: string; amount: number }>>
+>;
+
 export interface DreColumn {
   key: string;
   label: string;
@@ -63,6 +67,8 @@ export interface DreColumn {
   non_operational: number;
   // Resultado
   net_result: number;
+  // Detalhamento por categoria (para drill-down de despesas)
+  breakdown: DreBreakdown;
 }
 
 export const emptyDreColumn = (key: string, label: string): DreColumn => ({
@@ -83,7 +89,23 @@ export const emptyDreColumn = (key: string, label: string): DreColumn => ({
   expense_tax: 0,
   non_operational: 0,
   net_result: 0,
+  breakdown: {},
 });
+
+export const addBreakdown = (
+  col: DreColumn,
+  group: DreGroup,
+  categoryId: string | null,
+  categoryName: string | null,
+  amount: number,
+) => {
+  if (!amount) return;
+  const id = categoryId ?? "__sem_categoria__";
+  const name = categoryName ?? "Sem categoria";
+  const bucket = (col.breakdown[group] ??= {});
+  if (!bucket[id]) bucket[id] = { name, amount: 0 };
+  bucket[id].amount += amount;
+};
 
 export const finalizeDreColumn = (col: DreColumn): DreColumn => {
   col.revenue_net = col.revenue_gross - col.revenue_deduction;

@@ -1,14 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, FileBarChart, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, ChevronRight } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
   DRE_GROUP_LABELS,
+  addBreakdown,
   emptyDreColumn,
   finalizeDreColumn,
   fmtBRL,
@@ -19,17 +20,15 @@ import {
 import DreAllocatedPanel from "./DreAllocatedPanel";
 import DreByStorePanel from "./DreByStorePanel";
 
-type CategoryMap = Record<string, { dre_group: DreGroup | null; kind: string }>;
+type CategoryInfo = { dre_group: DreGroup | null; kind: string; name: string };
+type CategoryMap = Record<string, CategoryInfo>;
 
-interface SaleRow { id: string; sold_at: string; total_amount: number; status: string; dre_excluded: boolean; order_number: string | null }
+interface SaleRow { sale_date: string; gross_revenue: number }
 interface PayableRow {
   id: string;
   paid_at: string | null;
   amount: number;
   category_id: string | null;
-  description: string | null;
-  supplier_name: string | null;
-  beneficiary: string | null;
   status: string;
 }
 interface ReceivableRow {
@@ -37,8 +36,6 @@ interface ReceivableRow {
   received_at: string | null;
   amount: number;
   category_id: string | null;
-  description: string;
-  payer_name: string | null;
   status: string;
 }
 
@@ -62,27 +59,32 @@ interface ComputeArgs {
   payables: PayableRow[];
   receivables: ReceivableRow[];
   catMap: CategoryMap;
+  deductionsByMonth: Record<string, number>;
   columnFor: (date: string) => string | null;
+  columnMonths: Record<string, string[]>; // key -> meses YYYY-MM cobertos
   columns: { key: string; label: string }[];
 }
 
-const computeDre = ({ sales, payables, receivables, catMap, columnFor, columns }: ComputeArgs): DreColumn[] => {
+const computeDre = ({
+  sales,
+  payables,
+  receivables,
+  catMap,
+  deductionsByMonth,
+  columnFor,
+  columnMonths,
+  columns,
+}: ComputeArgs): DreColumn[] => {
   const cols = new Map<string, DreColumn>(
     columns.map((c) => [c.key, emptyDreColumn(c.key, c.label)]),
   );
 
   for (const s of sales) {
-    if (s.dre_excluded) continue;
-    const key = columnFor(s.sold_at.slice(0, 10));
+    const key = columnFor(s.sale_date.slice(0, 10));
     if (!key) continue;
     const col = cols.get(key);
     if (!col) continue;
-    const amt = Number(s.total_amount) || 0;
-    if (s.status === "cancelled" || s.status === "refunded") {
-      col.revenue_deduction += amt;
-    } else {
-      col.revenue_gross += amt;
-    }
+    col.revenue_gross += Number(s.gross_revenue) || 0;
   }
 
   // Despesas — contas a pagar com status "paid"
@@ -93,21 +95,39 @@ const computeDre = ({ sales, payables, receivables, catMap, columnFor, columns }
     const col = cols.get(key);
     if (!col) continue;
     const debit = Number(p.amount) || 0;
-    const group = p.category_id ? catMap[p.category_id]?.dre_group ?? null : null;
+    const info = p.category_id ? catMap[p.category_id] : null;
+    const group = info?.dre_group ?? null;
+    const catName = info?.name ?? null;
 
     if (group === "excluded") continue;
-    if (group === "non_operational") { col.non_operational -= debit; continue; }
-    if (group === "revenue_deduction") { col.revenue_deduction += debit; continue; }
-    if (group === "cmv") { col.cmv += debit; continue; }
-    if (group === "expense_personnel") col.expense_personnel += debit;
-    else if (group === "expense_admin") col.expense_admin += debit;
-    else if (group === "expense_marketing") col.expense_marketing += debit;
-    else if (group === "expense_financial") col.expense_financial += debit;
-    else if (group === "expense_tax") col.expense_tax += debit;
-    else col.expense_other += debit;
+    if (group === "non_operational") {
+      col.non_operational -= debit;
+      addBreakdown(col, "non_operational", p.category_id, catName, -debit);
+      continue;
+    }
+    if (group === "revenue_deduction") {
+      col.revenue_deduction += debit;
+      addBreakdown(col, "revenue_deduction", p.category_id, catName, debit);
+      continue;
+    }
+    if (group === "cmv") {
+      col.cmv += debit;
+      addBreakdown(col, "cmv", p.category_id, catName, debit);
+      continue;
+    }
+    const target: DreGroup =
+      group === "expense_personnel" ||
+      group === "expense_admin" ||
+      group === "expense_marketing" ||
+      group === "expense_financial" ||
+      group === "expense_tax"
+        ? group
+        : "expense_other";
+    (col as any)[target] += debit;
+    addBreakdown(col, target, p.category_id, catName, debit);
   }
 
-  // Receitas extra-PDV — contas a receber com status "received"
+  // Receitas extra-PDV
   for (const r of receivables) {
     if (r.status !== "received" || !r.received_at) continue;
     const key = columnFor(r.received_at.slice(0, 10));
@@ -115,16 +135,48 @@ const computeDre = ({ sales, payables, receivables, catMap, columnFor, columns }
     const col = cols.get(key);
     if (!col) continue;
     const credit = Number(r.amount) || 0;
-    const group = r.category_id ? catMap[r.category_id]?.dre_group ?? null : null;
+    const info = r.category_id ? catMap[r.category_id] : null;
+    const group = info?.dre_group ?? null;
+    const catName = info?.name ?? null;
 
     if (group === "excluded") continue;
-    if (group === "non_operational") { col.non_operational += credit; continue; }
-    if (group === "revenue_deduction") { col.revenue_deduction -= credit; continue; }
-    // Padrão: trata como receita bruta adicional
+    if (group === "non_operational") {
+      col.non_operational += credit;
+      addBreakdown(col, "non_operational", r.category_id, catName, credit);
+      continue;
+    }
+    if (group === "revenue_deduction") {
+      col.revenue_deduction -= credit;
+      addBreakdown(col, "revenue_deduction", r.category_id, catName, -credit);
+      continue;
+    }
     col.revenue_gross += credit;
   }
 
+  // Deduções vindas da planilha (Vendas iFood — coluna M)
+  for (const col of cols.values()) {
+    const months = columnMonths[col.key] ?? [];
+    let total = 0;
+    for (const m of months) total += deductionsByMonth[m] ?? 0;
+    if (total > 0) {
+      col.revenue_deduction += total;
+      addBreakdown(col, "revenue_deduction", "__ifood_planilha__", "Custos iFood (planilha)", total);
+    }
+  }
+
   return columns.map((c) => finalizeDreColumn(cols.get(c.key)!));
+};
+
+const monthsInRange = (start: string, end: string): string[] => {
+  const out: string[] = [];
+  const s = new Date(`${start}T00:00:00`);
+  const e = new Date(`${end}T00:00:00`);
+  const cur = new Date(s.getFullYear(), s.getMonth(), 1);
+  while (cur <= e) {
+    out.push(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, "0")}`);
+    cur.setMonth(cur.getMonth() + 1);
+  }
+  return out;
 };
 
 export default function DrePanel() {
@@ -138,6 +190,7 @@ export default function DrePanel() {
   const [payables, setPayables] = useState<PayableRow[]>([]);
   const [receivables, setReceivables] = useState<ReceivableRow[]>([]);
   const [catMap, setCatMap] = useState<CategoryMap>({});
+  const [deductionsByMonth, setDeductionsByMonth] = useState<Record<string, number>>({});
 
   const periodStart = useMemo(() => {
     if (tab === "monthly") return monthsAgoISO(monthsBack - 1);
@@ -148,25 +201,26 @@ export default function DrePanel() {
   const load = async () => {
     setLoading(true);
     try {
-      const [salesRes, payRes, recRes, catRes] = await Promise.all([
+      const [salesRes, payRes, recRes, catRes, dedRes] = await Promise.all([
         supabase
           .from("daily_revenue")
-          .select("id,sale_date,gross_revenue")
+          .select("sale_date,gross_revenue")
           .gte("sale_date", periodStart)
           .lte("sale_date", periodEnd),
         supabase
           .from("accounts_payable")
-          .select("id,paid_at,amount,category_id,description,supplier_name,beneficiary,status")
+          .select("id,paid_at,amount,category_id,status")
           .eq("status", "paid")
           .gte("paid_at", periodStart)
           .lte("paid_at", periodEnd),
         supabase
           .from("accounts_receivable")
-          .select("id,received_at,amount,category_id,description,payer_name,status")
+          .select("id,received_at,amount,category_id,status")
           .eq("status", "received")
           .gte("received_at", periodStart)
           .lte("received_at", periodEnd),
-        supabase.from("finance_categories").select("id,dre_group,kind"),
+        supabase.from("finance_categories").select("id,name,dre_group,kind"),
+        supabase.functions.invoke("dre-ifood-deductions"),
       ]);
 
       if (salesRes.error) throw salesRes.error;
@@ -175,19 +229,23 @@ export default function DrePanel() {
       if (catRes.error) throw catRes.error;
 
       const cm: CategoryMap = {};
-      for (const c of catRes.data ?? []) cm[c.id] = { dre_group: c.dre_group as DreGroup | null, kind: c.kind };
+      for (const c of catRes.data ?? []) {
+        cm[c.id] = {
+          dre_group: c.dre_group as DreGroup | null,
+          kind: c.kind,
+          name: c.name,
+        };
+      }
 
-      setSales(((salesRes.data ?? []) as any[]).map((r) => ({
-        id: r.id,
-        sold_at: r.sale_date,
-        total_amount: Number(r.gross_revenue ?? 0),
-        status: "concluded",
-        dre_excluded: false,
-        order_number: null,
-      })) as SaleRow[]);
+      setSales((salesRes.data ?? []) as SaleRow[]);
       setPayables((payRes.data ?? []) as PayableRow[]);
       setReceivables((recRes.data ?? []) as ReceivableRow[]);
       setCatMap(cm);
+      if (!dedRes.error && dedRes.data?.by_month) {
+        setDeductionsByMonth(dedRes.data.by_month as Record<string, number>);
+      } else if (dedRes.error) {
+        console.warn("Falha ao carregar deduções iFood:", dedRes.error);
+      }
     } catch (e: any) {
       toast({ title: "Erro ao carregar DRE", description: e.message, variant: "destructive" });
     } finally {
@@ -200,44 +258,49 @@ export default function DrePanel() {
   const columns = useMemo<DreColumn[]>(() => {
     if (tab === "monthly") {
       const cols: { key: string; label: string }[] = [];
+      const colMonths: Record<string, string[]> = {};
       const d = new Date();
       d.setDate(1);
       for (let i = monthsBack - 1; i >= 0; i--) {
         const x = new Date(d.getFullYear(), d.getMonth() - i, 1);
         const key = `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}`;
         cols.push({ key, label: monthLabel(key) });
+        colMonths[key] = [key];
       }
       return computeDre({
         sales,
         payables,
         receivables,
         catMap,
+        deductionsByMonth,
         columnFor: (date) => {
           const k = monthKey(date);
           return cols.find((c) => c.key === k)?.key ?? null;
         },
+        columnMonths: colMonths,
         columns: cols,
       });
     }
     const cols = [{ key: "period", label: "Período selecionado" }];
+    const colMonths = { period: monthsInRange(periodStart, periodEnd) };
     return computeDre({
       sales,
       payables,
       receivables,
       catMap,
+      deductionsByMonth,
       columnFor: () => "period",
+      columnMonths: colMonths,
       columns: cols,
     });
-  }, [tab, monthsBack, sales, payables, receivables, catMap]);
+  }, [tab, monthsBack, sales, payables, receivables, catMap, deductionsByMonth, periodStart, periodEnd]);
 
   return (
     <Card>
       <CardContent className="pt-4 sm:pt-6 space-y-4">
         <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-          Receita bruta vem do lançamento manual diário em Faturamento (até as integrações com iFood/Totem/Salão entrarem). Despesas e receitas extras pelas contas a pagar/receber pagas.
+          Receita bruta vem do faturamento manual diário. Deduções vêm da planilha "Vendas iFood" (coluna M). Clique nas linhas de despesa para ver as categorias.
         </p>
-
-
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
           <TabsList className="flex-wrap h-auto w-full justify-start overflow-x-auto">
@@ -293,89 +356,8 @@ export default function DrePanel() {
             <DreAllocatedPanel />
           </TabsContent>
         </Tabs>
-
-        
       </CardContent>
     </Card>
-  );
-}
-
-function ExclusionsSection({
-  sales,
-  onChanged,
-}: {
-  sales: SaleRow[];
-  onChanged: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [busyId, setBusyId] = useState<string | null>(null);
-
-  const toggleSale = async (id: string, value: boolean) => {
-    setBusyId(id);
-    const { error } = await supabase.from("pdv_orders").update({ dre_excluded: value }).eq("id", id);
-    setBusyId(null);
-    if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
-    else onChanged();
-  };
-
-  const saleExcluded = sales.filter((s) => s.dre_excluded);
-  const totalExcluded = saleExcluded.length;
-
-  return (
-    <div className="border rounded-md">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium hover:bg-muted/50"
-      >
-        <span>Gerenciar exclusões da DRE {totalExcluded > 0 && <span className="text-muted-foreground">({totalExcluded} excluídos)</span>}</span>
-        <span className="text-muted-foreground text-xs">{open ? "Ocultar" : "Mostrar"}</span>
-      </button>
-      {open && (
-        <div className="p-3 space-y-4 border-t">
-          <p className="text-xs text-muted-foreground">
-            Despesas e receitas vêm das contas a pagar/receber pagas no período. Para excluí-las da DRE, cancele ou ajuste a categoria em <strong>Financeiro</strong>.
-          </p>
-          <div>
-            <h4 className="text-xs font-semibold text-muted-foreground mb-2">Vendas do PDV no período</h4>
-            <div className="max-h-64 overflow-auto border rounded-md">
-              <table className="w-full text-xs">
-                <thead className="bg-muted/40 sticky top-0">
-                  <tr>
-                    <th className="text-left px-2 py-1.5">Data</th>
-                    <th className="text-left px-2 py-1.5">Pedido</th>
-                    <th className="text-right px-2 py-1.5">Valor</th>
-                    <th className="text-center px-2 py-1.5">Na DRE?</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sales.length === 0 ? (
-                    <tr><td colSpan={4} className="text-center py-3 text-muted-foreground">Nenhuma venda.</td></tr>
-                  ) : sales.map((s) => (
-                    <tr key={s.id} className="border-t">
-                      <td className="px-2 py-1.5 whitespace-nowrap">{new Date(s.sold_at).toLocaleDateString("pt-BR")}</td>
-                      <td className="px-2 py-1.5">{s.order_number || s.id.slice(0, 8)}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{fmtBRL(s.total_amount)}</td>
-                      <td className="px-2 py-1.5 text-center">
-                        <Button
-                          size="sm"
-                          variant={s.dre_excluded ? "outline" : "ghost"}
-                          className="h-6 text-[11px] px-2"
-                          disabled={busyId === s.id}
-                          onClick={() => toggleSale(s.id, !s.dre_excluded)}
-                        >
-                          {s.dre_excluded ? "Excluído" : "Incluído"}
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -385,27 +367,30 @@ interface RowDef {
   variant?: "header" | "subtotal" | "total" | "deduction" | "normal";
   refField?: keyof DreColumn; // base para %
   indent?: boolean;
+  group?: DreGroup; // se presente, linha tem drill-down por categoria
 }
 
 const ROWS: RowDef[] = [
   { label: "Receita bruta", field: "revenue_gross", variant: "header" },
-  { label: "(−) Deduções", field: "revenue_deduction", variant: "deduction", indent: true },
+  { label: "(−) Deduções", field: "revenue_deduction", variant: "deduction", indent: true, group: "revenue_deduction" },
   { label: "= Receita líquida", field: "revenue_net", variant: "subtotal", refField: "revenue_gross" },
-  { label: "(−) CMV", field: "cmv", variant: "deduction" },
+  { label: "(−) CMV", field: "cmv", variant: "deduction", group: "cmv" },
   { label: "= Lucro bruto", field: "gross_profit", variant: "subtotal", refField: "revenue_net" },
-  { label: DRE_GROUP_LABELS.expense_personnel, field: "expense_personnel", variant: "deduction", indent: true },
-  { label: DRE_GROUP_LABELS.expense_admin, field: "expense_admin", variant: "deduction", indent: true },
-  { label: DRE_GROUP_LABELS.expense_marketing, field: "expense_marketing", variant: "deduction", indent: true },
-  { label: DRE_GROUP_LABELS.expense_other, field: "expense_other", variant: "deduction", indent: true },
+  { label: DRE_GROUP_LABELS.expense_personnel, field: "expense_personnel", variant: "deduction", indent: true, group: "expense_personnel" },
+  { label: DRE_GROUP_LABELS.expense_admin, field: "expense_admin", variant: "deduction", indent: true, group: "expense_admin" },
+  { label: DRE_GROUP_LABELS.expense_marketing, field: "expense_marketing", variant: "deduction", indent: true, group: "expense_marketing" },
+  { label: DRE_GROUP_LABELS.expense_other, field: "expense_other", variant: "deduction", indent: true, group: "expense_other" },
   { label: "(−) Despesas operacionais", field: "operational_total", variant: "subtotal" },
   { label: "= EBITDA", field: "ebitda", variant: "subtotal", refField: "revenue_net" },
-  { label: "(−) Despesas financeiras", field: "expense_financial", variant: "deduction", indent: true },
-  { label: "(−) Impostos", field: "expense_tax", variant: "deduction", indent: true },
-  { label: "(±) Resultado não operacional", field: "non_operational", variant: "normal", indent: true },
+  { label: "(−) Despesas financeiras", field: "expense_financial", variant: "deduction", indent: true, group: "expense_financial" },
+  { label: "(−) Impostos", field: "expense_tax", variant: "deduction", indent: true, group: "expense_tax" },
+  { label: "(±) Resultado não operacional", field: "non_operational", variant: "normal", indent: true, group: "non_operational" },
   { label: "= Resultado líquido", field: "net_result", variant: "total", refField: "revenue_net" },
 ];
 
 function DreTable({ columns, loading }: { columns: DreColumn[]; loading: boolean }) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -416,6 +401,26 @@ function DreTable({ columns, loading }: { columns: DreColumn[]; loading: boolean
   if (columns.length === 0) {
     return <p className="text-sm text-muted-foreground py-6 text-center">Sem dados no período.</p>;
   }
+
+  const toggle = (label: string) =>
+    setExpanded((s) => ({ ...s, [label]: !s[label] }));
+
+  // Agregação dos itens de breakdown para uma linha (uniao das categorias entre colunas)
+  const breakdownItems = (row: RowDef) => {
+    if (!row.group) return [];
+    const map = new Map<string, { name: string; perCol: Record<string, number>; total: number }>();
+    for (const col of columns) {
+      const bucket = col.breakdown[row.group] ?? {};
+      for (const [id, entry] of Object.entries(bucket)) {
+        const cur = map.get(id) ?? { name: entry.name, perCol: {}, total: 0 };
+        cur.perCol[col.key] = (cur.perCol[col.key] ?? 0) + entry.amount;
+        cur.total += entry.amount;
+        map.set(id, cur);
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
+  };
+
   return (
     <>
       {/* Mobile: cards por coluna */}
@@ -427,18 +432,44 @@ function DreTable({ columns, loading }: { columns: DreColumn[]; loading: boolean
               {ROWS.map((row) => {
                 const value = col[row.field] as number;
                 const ref = row.refField ? (col[row.refField] as number) : undefined;
+                const hasDrill = !!row.group;
+                const isOpen = expanded[row.label];
+                const items = isOpen && hasDrill
+                  ? Object.values(col.breakdown[row.group!] ?? {}).sort(
+                      (a, b) => Math.abs(b.amount) - Math.abs(a.amount),
+                    )
+                  : [];
                 return (
-                  <div
-                    key={row.label}
-                    className={`flex items-center justify-between gap-2 px-3 py-1.5 text-xs ${rowClass(row.variant)}`}
-                  >
-                    <span className={row.indent ? "pl-3" : ""}>{row.label}</span>
-                    <span className="text-right tabular-nums whitespace-nowrap">
-                      {fmtBRL(value)}
-                      {ref !== undefined && (
-                        <span className="ml-1 text-[10px] text-muted-foreground">{pct(value, ref)}</span>
-                      )}
-                    </span>
+                  <div key={row.label}>
+                    <button
+                      type="button"
+                      disabled={!hasDrill}
+                      onClick={() => hasDrill && toggle(row.label)}
+                      className={`w-full flex items-center justify-between gap-2 px-3 py-1.5 text-xs ${rowClass(row.variant)} ${hasDrill ? "hover:bg-muted/40" : ""}`}
+                    >
+                      <span className={`flex items-center gap-1 ${row.indent ? "pl-3" : ""}`}>
+                        {hasDrill && (
+                          <ChevronRight className={`h-3 w-3 transition-transform ${isOpen ? "rotate-90" : ""}`} />
+                        )}
+                        {row.label}
+                      </span>
+                      <span className="text-right tabular-nums whitespace-nowrap">
+                        {fmtBRL(value)}
+                        {ref !== undefined && (
+                          <span className="ml-1 text-[10px] text-muted-foreground">{pct(value, ref)}</span>
+                        )}
+                      </span>
+                    </button>
+                    {isOpen && items.length > 0 && (
+                      <div className="bg-muted/20 px-3 py-1.5 space-y-1">
+                        {items.map((it, idx) => (
+                          <div key={idx} className="flex justify-between text-[11px] text-muted-foreground">
+                            <span className="pl-5 truncate">{it.name}</span>
+                            <span className="tabular-nums">{fmtBRL(it.amount)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -452,32 +483,64 @@ function DreTable({ columns, loading }: { columns: DreColumn[]; loading: boolean
         <table className="w-full text-xs sm:text-sm">
           <thead className="bg-muted/40 text-muted-foreground">
             <tr>
-              <th className="text-left px-2 sm:px-3 py-2 font-medium sticky left-0 bg-muted/40 z-10 min-w-[140px] sm:min-w-[220px]">Linha</th>
+              <th className="text-left px-2 sm:px-3 py-2 font-medium sticky left-0 bg-muted/40 z-10 min-w-[200px] sm:min-w-[260px]">Linha</th>
               {columns.map((c) => (
                 <th key={c.key} className="text-right px-2 sm:px-3 py-2 font-medium whitespace-nowrap">{c.label}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {ROWS.map((row) => (
-              <tr key={row.label} className={rowClass(row.variant)}>
-                <td className={`px-2 sm:px-3 py-1.5 sticky left-0 z-10 ${rowBg(row.variant)} ${row.indent ? "pl-4 sm:pl-6" : ""}`}>
-                  {row.label}
-                </td>
-                {columns.map((col) => {
-                  const value = col[row.field] as number;
-                  const ref = row.refField ? (col[row.refField] as number) : undefined;
-                  return (
-                    <td key={col.key} className="px-2 sm:px-3 py-1.5 text-right tabular-nums whitespace-nowrap">
-                      <div>{fmtBRL(value)}</div>
-                      {ref !== undefined && (
-                        <div className="text-[10px] text-muted-foreground">{pct(value, ref)}</div>
-                      )}
+            {ROWS.map((row) => {
+              const hasDrill = !!row.group;
+              const isOpen = expanded[row.label];
+              const items = isOpen && hasDrill ? breakdownItems(row) : [];
+              return (
+                <Fragment key={row.label}>
+                  <tr className={`${rowClass(row.variant)} ${hasDrill ? "cursor-pointer hover:bg-muted/30" : ""}`}
+                      onClick={() => hasDrill && toggle(row.label)}>
+                    <td className={`px-2 sm:px-3 py-1.5 sticky left-0 z-10 ${rowBg(row.variant)} ${row.indent ? "pl-4 sm:pl-6" : ""}`}>
+                      <span className="inline-flex items-center gap-1">
+                        {hasDrill && (
+                          <ChevronRight className={`h-3 w-3 transition-transform ${isOpen ? "rotate-90" : ""}`} />
+                        )}
+                        {row.label}
+                      </span>
                     </td>
-                  );
-                })}
-              </tr>
-            ))}
+                    {columns.map((col) => {
+                      const value = col[row.field] as number;
+                      const ref = row.refField ? (col[row.refField] as number) : undefined;
+                      return (
+                        <td key={col.key} className="px-2 sm:px-3 py-1.5 text-right tabular-nums whitespace-nowrap">
+                          <div>{fmtBRL(value)}</div>
+                          {ref !== undefined && (
+                            <div className="text-[10px] text-muted-foreground">{pct(value, ref)}</div>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                  {isOpen && items.map((it, idx) => (
+                    <tr key={`${row.label}-${idx}`} className="bg-muted/10 text-xs">
+                      <td className={`px-2 sm:px-3 py-1 sticky left-0 z-10 bg-muted/10 ${row.indent ? "pl-8 sm:pl-12" : "pl-6 sm:pl-10"} text-muted-foreground`}>
+                        {it.name}
+                      </td>
+                      {columns.map((col) => (
+                        <td key={col.key} className="px-2 sm:px-3 py-1 text-right tabular-nums whitespace-nowrap text-muted-foreground">
+                          {it.perCol[col.key] ? fmtBRL(it.perCol[col.key]) : "—"}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                  {isOpen && items.length === 0 && (
+                    <tr className="bg-muted/10 text-xs">
+                      <td colSpan={columns.length + 1} className="px-3 py-1 text-center text-muted-foreground italic">
+                        Sem lançamentos.
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
