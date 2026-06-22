@@ -84,13 +84,7 @@ export default function PublicJobDetail() {
           .eq("id", j.store_id).maybeSingle();
         setStoreInfo((s as StoreInfo) ?? null);
       }
-      const { data: sl } = await supabase.from("interview_slots")
-        .select("id, start_at, duration_min, location")
-        .eq("is_available", true)
-        .is("booked_by_candidate_id", null)
-        .gt("start_at", new Date().toISOString())
-        .order("start_at", { ascending: true })
-        .limit(60);
+      const { data: sl } = await supabase.rpc("list_public_interview_slots");
       setSlots((sl ?? []) as Slot[]);
       setLoading(false);
     })();
