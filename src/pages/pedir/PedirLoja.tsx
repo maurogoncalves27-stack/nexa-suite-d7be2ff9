@@ -147,7 +147,7 @@ export default function PedirLoja() {
       {/* Tabs por marca */}
       <div
         className="sticky top-[3.75rem] z-20 -mx-4 mb-5 flex gap-2 overflow-x-auto px-4 py-2 md:top-[5rem]"
-        style={{ background: "hsl(var(--ap-cream) / .92)", backdropFilter: "blur(6px)" }}
+        style={{ background: "rgba(255,255,255,.92)", backdropFilter: "blur(6px)" }}
       >
         {TABS.map((t) => {
           const active = tab === t.code;
