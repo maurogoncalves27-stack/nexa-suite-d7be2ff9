@@ -107,10 +107,10 @@ export default function DreByStorePanel() {
       }
       setSales(((salesRes.data ?? []) as any[]).map((r) => ({
         id: r.id,
-        sold_at: r.concluded_at ?? new Date().toISOString(),
-        total_amount: Number(r.total ?? 0),
-        status: r.status,
-        dre_excluded: !!r.dre_excluded,
+        sold_at: r.sale_date,
+        total_amount: Number(r.gross_revenue ?? 0),
+        status: "concluded",
+        dre_excluded: false,
         store_id: r.store_id,
       })) as SaleRow[]);
       setPayables((payRes.data ?? []) as PayableRow[]);
