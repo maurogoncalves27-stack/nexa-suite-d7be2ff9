@@ -47,6 +47,7 @@ export default function CreateFinanceFromTxDialog({ tx, onOpenChange, onCreated 
   const [description, setDescription] = useState("");
   const [partyName, setPartyName] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [competenceDate, setCompetenceDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [managingCategories, setManagingCategories] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -77,6 +78,7 @@ export default function CreateFinanceFromTxDialog({ tx, onOpenChange, onCreated 
       setDescription(tx.memo || tx.payee || "");
       setPartyName(tx.payee || "");
       setCategoryId("");
+      setCompetenceDate(tx.posted_at ? String(tx.posted_at).slice(0, 10) : "");
       setManagingCategories(false);
       setNewCategoryName("");
       setEditingCategoryId(null);
@@ -144,8 +146,8 @@ export default function CreateFinanceFromTxDialog({ tx, onOpenChange, onCreated 
     setSubmitting(true);
     const fnName = isCredit ? "create_receivable_from_bank_tx" : "create_payable_from_bank_tx";
     const params = isCredit
-      ? { _transaction_id: tx.id, _store_id: storeId, _description: description, _payer_name: partyName || null, _category_id: categoryId || null }
-      : { _transaction_id: tx.id, _store_id: storeId, _description: description, _supplier_name: partyName || null, _category_id: categoryId || null };
+      ? { _transaction_id: tx.id, _store_id: storeId, _description: description, _payer_name: partyName || null, _category_id: categoryId || null, _competence_date: competenceDate || null }
+      : { _transaction_id: tx.id, _store_id: storeId, _description: description, _supplier_name: partyName || null, _category_id: categoryId || null, _competence_date: competenceDate || null };
     const { error } = await supabase.rpc(fnName as any, params as any);
     setSubmitting(false);
     if (error) {
@@ -274,13 +276,19 @@ export default function CreateFinanceFromTxDialog({ tx, onOpenChange, onCreated 
               )}
             </div>
           </div>
-          <div className="space-y-1">
-            <Label>Loja *</Label>
-            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              value={storeId} onChange={(e) => setStoreId(e.target.value)}>
-              <option value="">Selecione...</option>
-              {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Loja *</Label>
+              <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                value={storeId} onChange={(e) => setStoreId(e.target.value)}>
+                <option value="">Selecione...</option>
+                {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label>Data de competência</Label>
+              <Input type="date" value={competenceDate} onChange={(e) => setCompetenceDate(e.target.value)} />
+            </div>
           </div>
         </div>
 
