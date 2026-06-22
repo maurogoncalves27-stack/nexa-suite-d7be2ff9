@@ -164,6 +164,7 @@ export type Database = {
           bank_account_id: string | null
           bank_transaction_id: string | null
           category_id: string | null
+          competence_date: string | null
           created_at: string
           created_by: string
           description: string
@@ -183,6 +184,7 @@ export type Database = {
           bank_account_id?: string | null
           bank_transaction_id?: string | null
           category_id?: string | null
+          competence_date?: string | null
           created_at?: string
           created_by: string
           description: string
@@ -202,6 +204,7 @@ export type Database = {
           bank_account_id?: string | null
           bank_transaction_id?: string | null
           category_id?: string | null
+          competence_date?: string | null
           created_at?: string
           created_by?: string
           description?: string
@@ -16198,26 +16201,50 @@ export type Database = {
         }
         Returns: string
       }
-      create_payable_from_bank_tx: {
-        Args: {
-          _category_id: string
-          _description: string
-          _store_id: string
-          _supplier_name: string
-          _transaction_id: string
-        }
-        Returns: string
-      }
-      create_receivable_from_bank_tx: {
-        Args: {
-          _category_id: string
-          _description: string
-          _payer_name: string
-          _store_id: string
-          _transaction_id: string
-        }
-        Returns: string
-      }
+      create_payable_from_bank_tx:
+        | {
+            Args: {
+              _category_id: string
+              _description: string
+              _store_id: string
+              _supplier_name: string
+              _transaction_id: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              _category_id: string
+              _competence_date?: string
+              _description: string
+              _store_id: string
+              _supplier_name: string
+              _transaction_id: string
+            }
+            Returns: string
+          }
+      create_receivable_from_bank_tx:
+        | {
+            Args: {
+              _category_id: string
+              _description: string
+              _payer_name: string
+              _store_id: string
+              _transaction_id: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              _category_id: string
+              _competence_date?: string
+              _description: string
+              _payer_name: string
+              _store_id: string
+              _transaction_id: string
+            }
+            Returns: string
+          }
       create_transfer_from_bank_txs: {
         Args: { _description: string; _from_tx_id: string; _to_tx_id: string }
         Returns: string
