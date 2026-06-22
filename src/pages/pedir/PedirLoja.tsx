@@ -38,7 +38,6 @@ export default function PedirLoja() {
   const [store, setStore] = useState<EStore | null>(null);
   const [items, setItems] = useState<MenuRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<BrandCode>("all");
   const cart = useEcommerceCart(slug);
 
   useEffect(() => {
