@@ -132,6 +132,12 @@ Deno.serve(async (req) => {
     const payment = await mpResp.json();
     if (!mpResp.ok) {
       console.error('[mp-webhook] mp fetch err', mpResp.status, payment);
+      // Test pings do Mercado Pago usam data.id fake (ex: 123456) — responder 200 pra simulador aceitar
+      if (mpResp.status === 404 || mpResp.status === 401 || body?.live_mode === false) {
+        return new Response(JSON.stringify({ ok: true, skipped: 'mp_fetch_failed', mp_status: mpResp.status }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       return new Response(JSON.stringify({ error: 'mp_fetch_failed' }), {
         status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
