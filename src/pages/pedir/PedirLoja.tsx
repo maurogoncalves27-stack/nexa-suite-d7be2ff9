@@ -106,16 +106,17 @@ export default function PedirLoja() {
     })();
   }, [slug]);
 
+  // Dedup por nome+preço (mesmo prato compartilhado entre marcas aparece 1x)
   const filtered = useMemo(() => {
-    if (tab === "all") {
-      return items.filter((i) =>
-        i.brand_codes.some((b) =>
-          ["aquela-parme", "aquele-estrogonofe", "box-caipira"].includes(b),
-        ),
-      );
+    const validBrands = ["aquela-parme", "aquele-estrogonofe", "box-caipira"];
+    const seen = new Map<string, MenuRow>();
+    for (const i of items) {
+      if (!i.brand_codes.some((b) => validBrands.includes(b))) continue;
+      const key = `${i.name.trim().toLowerCase()}|${i.price}`;
+      if (!seen.has(key)) seen.set(key, i);
     }
-    return items.filter((i) => i.brand_codes.includes(tab));
-  }, [items, tab]);
+    return Array.from(seen.values());
+  }, [items]);
 
   const grouped = useMemo(() => {
     const g = new Map<string, { sort: number; items: MenuRow[] }>();
