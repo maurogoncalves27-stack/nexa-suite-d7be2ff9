@@ -44,7 +44,7 @@ export default function CrmTests() {
   // Carrega cenários
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase.functions.invoke("parme-chat-simulate", { method: "GET" });
+      const { data, error } = await supabase.functions.invoke("parme-chat-simulate", { body: { list: true } });
       if (error) { toast.error("Erro ao listar cenários"); return; }
       const list = (data as { scenarios?: ScenarioOpt[] })?.scenarios ?? [];
       setScenarios(list);
