@@ -1289,20 +1289,21 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                   <TableRow>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Contato</TableHead>
-                    <TableHead>Mensagens</TableHead>
+                    <TableHead className="hidden md:table-cell">Prévia</TableHead>
+                    <TableHead>Msgs</TableHead>
                     <TableHead>Última mensagem</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                         Carregando…
                       </TableCell>
                     </TableRow>
                   ) : filteredConversations.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                         Nenhuma conversa.
                       </TableCell>
                     </TableRow>
@@ -1313,14 +1314,47 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                         c.client_meta?.telefone ??
                         "—";
                       const nome = pickClientName(c);
+                      const msgs = Array.isArray(c.messages) ? c.messages : [];
+                      const clientMsgs = msgs.filter((m: any) => isClientMessage(m));
+                      const preview = clientMsgs.length
+                        ? messageText(clientMsgs[clientMsgs.length - 1]).slice(0, 80)
+                        : "—";
+                      const ticketsCount = c.related_tickets?.length ?? 0;
+                      const reservPhone = onlyDigits(String(phone));
+                      const reservCount = reservPhone.length >= 8
+                        ? reservations.filter((r) => {
+                            const rp = onlyDigits(r.phone);
+                            return rp.length >= 8 && (rp.endsWith(reservPhone) || reservPhone.endsWith(rp));
+                          }).length
+                        : 0;
                       return (
                         <TableRow
                           key={c.id}
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={() => setExpandedConvId(c.id)}
                         >
-                          <TableCell className="text-sm font-medium">{String(nome)}</TableCell>
+                          <TableCell className="text-sm font-medium">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span>{String(nome)}</span>
+                              {ticketsCount > 0 && (
+                                <Badge variant="outline" className="text-[10px] h-5">
+                                  <Ticket className="h-3 w-3 mr-1" />{ticketsCount}
+                                </Badge>
+                              )}
+                              {reservCount > 0 && (
+                                <Badge variant="outline" className="text-[10px] h-5">
+                                  <Calendar className="h-3 w-3 mr-1" />{reservCount}
+                                </Badge>
+                              )}
+                              {clientMsgs.length === 1 && (
+                                <Badge variant="secondary" className="text-[10px] h-5">curta</Badge>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell className="text-sm">{String(phone)}</TableCell>
+                          <TableCell className="hidden md:table-cell text-xs text-muted-foreground max-w-xs truncate">
+                            {preview}
+                          </TableCell>
                           <TableCell>{c.message_count ?? "—"}</TableCell>
                           <TableCell>{fmtDateTime(c.last_message_at)}</TableCell>
                         </TableRow>
