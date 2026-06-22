@@ -129,7 +129,7 @@ export default function PedirLoja() {
   }, [filtered]);
 
   return (
-    <PedirLayout brand={tab} cartCount={cart.totalItems} cartHref={`/pedir/${slug}/carrinho`}>
+    <PedirLayout brand="all" cartCount={cart.totalItems} cartHref={`/pedir/${slug}/carrinho`}>
       {/* Cabeçalho */}
       <div className="mb-5">
         <span className="ap-tag">Retirada no balcão</span>
@@ -138,39 +138,6 @@ export default function PedirLoja() {
         </h1>
       </div>
 
-      {/* Tabs por marca */}
-      <div
-        className="sticky top-[3.75rem] z-20 -mx-4 mb-5 flex gap-2 overflow-x-auto px-4 py-2 md:top-[5rem]"
-        style={{ background: "rgba(255,255,255,.92)", backdropFilter: "blur(6px)" }}
-      >
-        {TABS.map((t) => {
-          const active = tab === t.code;
-          return (
-            <button
-              key={t.code}
-              onClick={() => setTab(t.code)}
-              className="flex shrink-0 items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-semibold transition"
-              style={{
-                background: active ? t.bg : "transparent",
-                color: active ? "#fff" : "hsl(var(--ap-brown))",
-                border: `1px solid ${active ? t.bg : "hsl(var(--ap-brown) / .25)"}`,
-                fontFamily: "Bitter, sans-serif",
-                boxShadow: active ? `0 6px 16px -8px ${t.bg}` : "none",
-              }}
-            >
-              {t.logo && (
-                <span
-                  className="grid h-5 w-5 place-items-center overflow-hidden rounded-full p-0.5"
-                  style={{ background: active ? "rgba(255,255,255,.18)" : t.bg }}
-                >
-                  <img src={t.logo} alt="" className="max-h-full max-w-full object-contain" />
-                </span>
-              )}
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
 
       {/* Lista */}
       <div className="space-y-8 pb-28">
