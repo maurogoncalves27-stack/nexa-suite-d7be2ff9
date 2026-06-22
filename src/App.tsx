@@ -233,6 +233,12 @@ const App = () => (
             <Route path="/parme/vagas/:id" element={<PublicJobDetail />} />
             <Route path="/parme/:slug" element={<ParmeBrand />} />
 
+            {/* E-commerce Grupo Aquela Parmê (pedir.aquelaparme.com.br) */}
+            <Route path="/pedir" element={<PedirHome />} />
+            <Route path="/pedir/pedido/:id" element={<PedirPedido />} />
+            <Route path="/pedir/:slug" element={<PedirLoja />} />
+            <Route path="/pedir/:slug/carrinho" element={<PedirCarrinho />} />
+
             <Route path="/auth" element={<Auth />} />
             <Route path="/nexa" element={<NexaEntry />} />
             <Route path="/reset-password" element={<ResetPassword />} />
