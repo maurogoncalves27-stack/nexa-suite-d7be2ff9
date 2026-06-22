@@ -5,7 +5,12 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const MP_TOKEN = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN') || Deno.env.get('MERCADOPAGO_ACCESS_TOKEN') || '';
-const MP_WEBHOOK_SECRET = Deno.env.get('MERCADO_PAGO_WEBHOOK_SECRET') || Deno.env.get('MERCADOPAGO_WEBHOOK_SECRET') || '';
+const MP_WEBHOOK_SECRETS = [
+  Deno.env.get('MERCADO_PAGO_PROD_WEBHOOK_SECRET') || '',
+  Deno.env.get('MERCADO_PAGO_WEBHOOK_SECRET') || '',
+  Deno.env.get('MERCADOPAGO_WEBHOOK_SECRET') || '',
+].filter(Boolean);
+const MP_WEBHOOK_SECRET = MP_WEBHOOK_SECRETS[0] || '';
 
 const ZAPI_INSTANCE = Deno.env.get('ZAPI_CUSTOMER_INSTANCE_ID') || '';
 const ZAPI_TOKEN = Deno.env.get('ZAPI_CUSTOMER_TOKEN') || '';
