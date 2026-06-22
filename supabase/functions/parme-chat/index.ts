@@ -477,17 +477,9 @@ Deno.serve(async (req) => {
     }
     let messages = parsed.data as unknown as UIMessage[];
 
-    const apiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!apiKey) {
-      return new Response("Missing LOVABLE_API_KEY", {
-        status: 500,
-        headers: corsHeaders,
-      });
-    }
-
-    // Persistência imediata (pré-stream) para não perder o turno se a aba fechar.
-    // Faz merge com o histórico salvo: se o cliente volta/recarrega a página, a UI pode
-    // enviar só a mensagem nova, mas a conversa inteira continua sendo preservada.
+    // Persistência imediata (pré-validação de chave/IA) — toda interação do cliente
+    // com a Giana é gravada em chat_conversations, mesmo que a IA falhe depois,
+    // a aba feche, a chave esteja ausente, ou o turno tenha só uma mensagem.
     if (sessionId) {
       try {
         const supabase = sb();
@@ -506,16 +498,12 @@ Deno.serve(async (req) => {
         }
         const flatNow = mergeFlatMessages(existingMessages, flattenUIMessages(messages, now, tsById));
         if (flatNow.length > messages.length) messages = flatToUIMessages(flatNow);
-        const userMsgCount = clientMessageCount(flatNow);
-        if (userMsgCount < 2) {
-          console.log("[parme-chat] conversa ainda oculta no CRM: menos de 2 entradas do cliente", { sessionId, userMsgCount });
-        }
         const finalClientMeta = mergeClientMeta(
           (existing as { client_meta?: unknown } | null)?.client_meta,
           body?.clientMeta,
           flatNow,
         );
-        await supabase.from("chat_conversations").upsert(
+        const { error: upsertErr } = await supabase.from("chat_conversations").upsert(
           {
             session_id: sessionId,
             messages: flatNow as unknown as never,
@@ -526,8 +514,9 @@ Deno.serve(async (req) => {
           },
           { onConflict: "session_id" },
         );
+        if (upsertErr) console.error("[parme-chat] pre-stream upsert error:", upsertErr);
       } catch (e) {
-        console.warn("[parme-chat] pre-stream conversa upsert err:", e);
+        console.error("[parme-chat] pre-stream conversa upsert err:", e);
       }
       // Ticket é independente: se falhar, a conversa já está salva.
       try {
@@ -542,7 +531,19 @@ Deno.serve(async (req) => {
       } catch (e) {
         console.warn("[parme-chat] pre-stream ticket err:", e);
       }
+    } else {
+      console.warn("[parme-chat] turno SEM sessionId — interação não pôde ser gravada");
     }
+
+    const apiKey = Deno.env.get("LOVABLE_API_KEY");
+    if (!apiKey) {
+      return new Response("Missing LOVABLE_API_KEY", {
+        status: 500,
+        headers: corsHeaders,
+      });
+    }
+
+
 
     const provider = createOpenAICompatible({
       name: "lovable",
