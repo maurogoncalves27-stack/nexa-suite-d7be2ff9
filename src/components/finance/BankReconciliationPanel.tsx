@@ -664,6 +664,8 @@ export default function BankReconciliationPanel() {
                 <TableBody>
                   {filteredTx.map((tx) => {
                     const sug = suggestionMap.get(tx.id);
+                    const c6cands = c6CandidatesMap.get(tx.id) ?? [];
+                    const hasC6 = c6cands.length > 0;
                     const isReconciled = !!tx.reconciled_at;
                     return (
                       <TableRow key={tx.id} data-posted-at={tx.posted_at} className={isReconciled ? "opacity-60" : undefined}>
@@ -676,6 +678,11 @@ export default function BankReconciliationPanel() {
                         <TableCell>
                           {isReconciled ? (
                             <Badge variant="outline" className="gap-1"><CheckCircle2 className="h-3 w-3" /> Conciliada</Badge>
+                          ) : hasC6 ? (
+                            <Badge variant="secondary" className="gap-1">
+                              <Boxes className="h-3 w-3" />
+                              Lote C6{c6cands.length > 1 ? ` (${c6cands.length})` : ""}
+                            </Badge>
                           ) : sug ? (
                             <div className="text-xs">
                               <div className="font-medium flex items-center gap-1">
@@ -703,21 +710,28 @@ export default function BankReconciliationPanel() {
                               <Button size="sm" variant="ghost" disabled={submitting} onClick={() => undo(tx.id)} className="gap-1">
                                 <RotateCcw className="h-3 w-3" /> Desfazer
                               </Button>
-                            ) : sug ? (
-                              <>
-                                <Button size="sm" disabled={submitting} onClick={() => reconcileCandidate(tx.id, sug)} className="gap-1">
-                                  <CheckCircle2 className="h-3 w-3" /> Aceitar
-                                </Button>
-                                <Button size="sm" variant="outline" onClick={() => { setMatchSearch(""); setMatchTarget(tx); }}>Outra</Button>
-                                <Button size="sm" variant="ghost" onClick={() => setCreateTarget(tx)} className="gap-1">
-                                  <Plus className="h-3 w-3" /> Gerar
-                                </Button>
-                              </>
                             ) : (
                               <>
-                                <Button size="sm" variant="outline" onClick={() => { setMatchSearch(""); setMatchTarget(tx); }}>Vincular</Button>
-                                <Button size="sm" onClick={() => setCreateTarget(tx)} className="gap-1">
-                                  <Plus className="h-3 w-3" /> Gerar lançamento
+                                {hasC6 && (
+                                  <Button size="sm" variant="default" onClick={() => openC6Picker(tx)} className="gap-1">
+                                    <Boxes className="h-3 w-3" /> Conciliar lote
+                                  </Button>
+                                )}
+                                {sug ? (
+                                  <>
+                                    <Button size="sm" disabled={submitting} onClick={() => reconcileCandidate(tx.id, sug)} className="gap-1">
+                                      <CheckCircle2 className="h-3 w-3" /> Aceitar
+                                    </Button>
+                                    <Button size="sm" variant="outline" onClick={() => { setMatchSearch(""); setMatchTarget(tx); }}>Outra</Button>
+                                    <Button size="sm" variant="ghost" onClick={() => setCreateTarget(tx)} className="gap-1">
+                                      <Plus className="h-3 w-3" /> Gerar
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Button size="sm" variant="outline" onClick={() => { setMatchSearch(""); setMatchTarget(tx); }}>Vincular</Button>
+                                    <Button size="sm" onClick={() => setCreateTarget(tx)} className="gap-1">
+                                      <Plus className="h-3 w-3" /> Gerar lançamento
                                 </Button>
                               </>
                             )}
