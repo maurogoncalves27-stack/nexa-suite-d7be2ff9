@@ -2586,6 +2586,226 @@ export type Database = {
           },
         ]
       }
+      ecommerce_cart_items: {
+        Row: {
+          brand_code: string | null
+          cart_id: string
+          complements: Json
+          created_at: string
+          id: string
+          item_name: string
+          menu_item_id: string | null
+          notes: string | null
+          quantity: number
+          total_price: number
+          unit_price: number
+        }
+        Insert: {
+          brand_code?: string | null
+          cart_id: string
+          complements?: Json
+          created_at?: string
+          id?: string
+          item_name: string
+          menu_item_id?: string | null
+          notes?: string | null
+          quantity?: number
+          total_price: number
+          unit_price: number
+        }
+        Update: {
+          brand_code?: string | null
+          cart_id?: string
+          complements?: Json
+          created_at?: string
+          id?: string
+          item_name?: string
+          menu_item_id?: string | null
+          notes?: string | null
+          quantity?: number
+          total_price?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ecommerce_cart_items_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "ecommerce_carts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ecommerce_cart_items_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ecommerce_carts: {
+        Row: {
+          brand_breakdown: Json
+          created_at: string
+          customer_document: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          ecommerce_store_id: string | null
+          expires_at: string
+          id: string
+          pickup_eta: string | null
+          session_token: string
+          status: string
+          subtotal: number
+          updated_at: string
+          whatsapp_phone: string | null
+        }
+        Insert: {
+          brand_breakdown?: Json
+          created_at?: string
+          customer_document?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          ecommerce_store_id?: string | null
+          expires_at?: string
+          id?: string
+          pickup_eta?: string | null
+          session_token: string
+          status?: string
+          subtotal?: number
+          updated_at?: string
+          whatsapp_phone?: string | null
+        }
+        Update: {
+          brand_breakdown?: Json
+          created_at?: string
+          customer_document?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          ecommerce_store_id?: string | null
+          expires_at?: string
+          id?: string
+          pickup_eta?: string | null
+          session_token?: string
+          status?: string
+          subtotal?: number
+          updated_at?: string
+          whatsapp_phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ecommerce_carts_ecommerce_store_id_fkey"
+            columns: ["ecommerce_store_id"]
+            isOneToOne: false
+            referencedRelation: "ecommerce_stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ecommerce_events: {
+        Row: {
+          brand_code: string | null
+          cart_id: string | null
+          created_at: string
+          ecommerce_store_id: string | null
+          event_name: string
+          id: string
+          menu_item_id: string | null
+          metadata: Json
+          order_id: string | null
+          session_token: string | null
+          user_agent: string | null
+          value: number | null
+        }
+        Insert: {
+          brand_code?: string | null
+          cart_id?: string | null
+          created_at?: string
+          ecommerce_store_id?: string | null
+          event_name: string
+          id?: string
+          menu_item_id?: string | null
+          metadata?: Json
+          order_id?: string | null
+          session_token?: string | null
+          user_agent?: string | null
+          value?: number | null
+        }
+        Update: {
+          brand_code?: string | null
+          cart_id?: string | null
+          created_at?: string
+          ecommerce_store_id?: string | null
+          event_name?: string
+          id?: string
+          menu_item_id?: string | null
+          metadata?: Json
+          order_id?: string | null
+          session_token?: string | null
+          user_agent?: string | null
+          value?: number | null
+        }
+        Relationships: []
+      }
+      ecommerce_stores: {
+        Row: {
+          accepts_delivery: boolean
+          accepts_pickup: boolean
+          active: boolean
+          address: string | null
+          created_at: string
+          display_name: string
+          hours: Json
+          id: string
+          is_open: boolean
+          min_pickup_minutes: number
+          phone: string | null
+          slug: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          accepts_delivery?: boolean
+          accepts_pickup?: boolean
+          active?: boolean
+          address?: string | null
+          created_at?: string
+          display_name: string
+          hours?: Json
+          id?: string
+          is_open?: boolean
+          min_pickup_minutes?: number
+          phone?: string | null
+          slug: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          accepts_delivery?: boolean
+          accepts_pickup?: boolean
+          active?: boolean
+          address?: string | null
+          created_at?: string
+          display_name?: string
+          hours?: Json
+          id?: string
+          is_open?: boolean
+          min_pickup_minutes?: number
+          phone?: string | null
+          slug?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ecommerce_stores_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -10457,6 +10677,7 @@ export type Database = {
       }
       pdv_orders: {
         Row: {
+          brand_breakdown: Json | null
           cancellation_reason_code: string | null
           cancellation_reason_text: string | null
           cancelled_at: string | null
@@ -10487,14 +10708,18 @@ export type Database = {
           has_unread_chat: boolean
           id: string
           last_synced_at: string | null
+          mp_payment_id: string | null
+          mp_preference_id: string | null
           notes: string | null
           opened_at: string
           order_number: string | null
           order_type: string
           packed_at: string | null
           pickup_code: string | null
+          pickup_eta: string | null
           preparation_started_at: string | null
           ready_at: string | null
+          source: string | null
           source_payload: Json | null
           status: string
           stock_consumed_at: string | null
@@ -10505,6 +10730,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          brand_breakdown?: Json | null
           cancellation_reason_code?: string | null
           cancellation_reason_text?: string | null
           cancelled_at?: string | null
@@ -10535,14 +10761,18 @@ export type Database = {
           has_unread_chat?: boolean
           id?: string
           last_synced_at?: string | null
+          mp_payment_id?: string | null
+          mp_preference_id?: string | null
           notes?: string | null
           opened_at?: string
           order_number?: string | null
           order_type?: string
           packed_at?: string | null
           pickup_code?: string | null
+          pickup_eta?: string | null
           preparation_started_at?: string | null
           ready_at?: string | null
+          source?: string | null
           source_payload?: Json | null
           status?: string
           stock_consumed_at?: string | null
@@ -10553,6 +10783,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          brand_breakdown?: Json | null
           cancellation_reason_code?: string | null
           cancellation_reason_text?: string | null
           cancelled_at?: string | null
@@ -10583,14 +10814,18 @@ export type Database = {
           has_unread_chat?: boolean
           id?: string
           last_synced_at?: string | null
+          mp_payment_id?: string | null
+          mp_preference_id?: string | null
           notes?: string | null
           opened_at?: string
           order_number?: string | null
           order_type?: string
           packed_at?: string | null
           pickup_code?: string | null
+          pickup_eta?: string | null
           preparation_started_at?: string | null
           ready_at?: string | null
+          source?: string | null
           source_payload?: Json | null
           status?: string
           stock_consumed_at?: string | null
@@ -16338,6 +16573,7 @@ export type Database = {
           p_source?: string
         }
         Returns: {
+          brand_breakdown: Json | null
           cancellation_reason_code: string | null
           cancellation_reason_text: string | null
           cancelled_at: string | null
@@ -16368,14 +16604,18 @@ export type Database = {
           has_unread_chat: boolean
           id: string
           last_synced_at: string | null
+          mp_payment_id: string | null
+          mp_preference_id: string | null
           notes: string | null
           opened_at: string
           order_number: string | null
           order_type: string
           packed_at: string | null
           pickup_code: string | null
+          pickup_eta: string | null
           preparation_started_at: string | null
           ready_at: string | null
+          source: string | null
           source_payload: Json | null
           status: string
           stock_consumed_at: string | null
