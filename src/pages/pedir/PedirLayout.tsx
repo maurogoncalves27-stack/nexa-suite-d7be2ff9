@@ -35,7 +35,7 @@ export function PedirLayout({
 
   return (
     <div
-      className="ap-brand min-h-screen flex flex-col"
+      className="ap-brand min-h-screen flex flex-col bg-white"
       style={{ ["--brand-accent" as never]: accent }}
     >
       {/* Header preto fixo, espelhando o site */}
