@@ -276,13 +276,19 @@ export default function CreateFinanceFromTxDialog({ tx, onOpenChange, onCreated 
               )}
             </div>
           </div>
-          <div className="space-y-1">
-            <Label>Loja *</Label>
-            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              value={storeId} onChange={(e) => setStoreId(e.target.value)}>
-              <option value="">Selecione...</option>
-              {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Loja *</Label>
+              <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                value={storeId} onChange={(e) => setStoreId(e.target.value)}>
+                <option value="">Selecione...</option>
+                {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label>Data de competência</Label>
+              <Input type="date" value={competenceDate} onChange={(e) => setCompetenceDate(e.target.value)} />
+            </div>
           </div>
         </div>
 
