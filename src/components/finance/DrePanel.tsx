@@ -538,7 +538,7 @@ function DreTable({ columns, loading }: { columns: DreColumn[]; loading: boolean
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               );
             })}
           </tbody>
