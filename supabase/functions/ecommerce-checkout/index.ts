@@ -10,6 +10,19 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const MP_TOKEN = Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN") || Deno.env.get("MERCADOPAGO_ACCESS_TOKEN") || "";
+const CHECKOUT_ORIGIN = "https://www.aquelaparme.com.br";
+
+function resolveCheckoutOrigin(originHeader: string | null) {
+  if (!originHeader) return CHECKOUT_ORIGIN;
+  try {
+    const origin = new URL(originHeader);
+    const isLocal = ["localhost", "127.0.0.1", "0.0.0.0"].includes(origin.hostname);
+    if (origin.protocol !== "https:" || isLocal) return CHECKOUT_ORIGIN;
+    return origin.origin;
+  } catch {
+    return CHECKOUT_ORIGIN;
+  }
+}
 
 type Item = {
   menu_item_id?: string;
@@ -158,7 +171,7 @@ Deno.serve(async (req) => {
     }
 
     const webhookUrl = `${SUPABASE_URL}/functions/v1/mercadopago-webhook`;
-    const origin = req.headers.get("origin") || "https://pedir.aquelaparme.com.br";
+    const origin = resolveCheckoutOrigin(req.headers.get("origin"));
 
     const mpItems = items.map((it) => ({
       title: String(it.name).slice(0, 250),
