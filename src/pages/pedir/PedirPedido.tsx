@@ -44,28 +44,19 @@ export default function PedirPedido() {
     let alive = true;
     async function load() {
       try {
-        const { data, error } = await supabase.functions.invoke("ecommerce-order-status", {
-          method: "GET" as any,
-          // workaround: invoke não passa query — usamos fetch direto
+        const url = `https://ixjgmerxxakdkfdzgumy.supabase.co/functions/v1/ecommerce-order-status?id=${id}`;
+        const r = await fetch(url, {
+          headers: {
+            apikey:
+              "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4amdtZXJ4eGFrZGtmZHpndW15Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3Nzc0MDcsImV4cCI6MjA5NTM1MzQwN30.P6TOFgTyYCz1BpDiPZKucHwBAE8CMo8JqId7s4sYtAA",
+          },
         });
-        if (error) throw error;
-        if (alive && data?.order) setOrder(data.order);
+        const j = await r.json();
+        if (!alive) return;
+        if (j?.order) setOrder(j.order);
+        else setErr(j?.error || "Pedido não encontrado");
       } catch (e: any) {
-        // fallback fetch direto
-        try {
-          const url = `https://ixjgmerxxakdkfdzgumy.supabase.co/functions/v1/ecommerce-order-status?id=${id}`;
-          const r = await fetch(url, {
-            headers: {
-              apikey:
-                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4amdtZXJ4eGFrZGtmZHpndW15Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3Nzc0MDcsImV4cCI6MjA5NTM1MzQwN30.P6TOFgTyYCz1BpDiPZKucHwBAE8CMo8JqId7s4sYtAA",
-            },
-          });
-          const j = await r.json();
-          if (alive && j?.order) setOrder(j.order);
-          else if (alive) setErr(j?.error || "Pedido não encontrado");
-        } catch (e2: any) {
-          if (alive) setErr(e2?.message || "Erro ao carregar pedido");
-        }
+        if (alive) setErr(e?.message || "Erro ao carregar pedido");
       } finally {
         if (alive) setLoading(false);
       }
