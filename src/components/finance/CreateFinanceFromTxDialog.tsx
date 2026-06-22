@@ -146,8 +146,8 @@ export default function CreateFinanceFromTxDialog({ tx, onOpenChange, onCreated 
     setSubmitting(true);
     const fnName = isCredit ? "create_receivable_from_bank_tx" : "create_payable_from_bank_tx";
     const params = isCredit
-      ? { _transaction_id: tx.id, _store_id: storeId, _description: description, _payer_name: partyName || null, _category_id: categoryId || null }
-      : { _transaction_id: tx.id, _store_id: storeId, _description: description, _supplier_name: partyName || null, _category_id: categoryId || null };
+      ? { _transaction_id: tx.id, _store_id: storeId, _description: description, _payer_name: partyName || null, _category_id: categoryId || null, _competence_date: competenceDate || null }
+      : { _transaction_id: tx.id, _store_id: storeId, _description: description, _supplier_name: partyName || null, _category_id: categoryId || null, _competence_date: competenceDate || null };
     const { error } = await supabase.rpc(fnName as any, params as any);
     setSubmitting(false);
     if (error) {
