@@ -16223,6 +16223,10 @@ export type Database = {
             }
             Returns: string
           }
+      create_payables_from_bank_tx: {
+        Args: { _lines: Json; _transaction_id: string }
+        Returns: string[]
+      }
       create_receivable_from_bank_tx:
         | {
             Args: {
@@ -16245,6 +16249,10 @@ export type Database = {
             }
             Returns: string
           }
+      create_receivables_from_bank_tx: {
+        Args: { _lines: Json; _transaction_id: string }
+        Returns: string[]
+      }
       create_transfer_from_bank_txs: {
         Args: { _description: string; _from_tx_id: string; _to_tx_id: string }
         Returns: string
