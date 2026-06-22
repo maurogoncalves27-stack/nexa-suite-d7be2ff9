@@ -134,6 +134,10 @@ export default function BankReconciliationPanel() {
   const [allocTarget, setAllocTarget] = useState<BankTx | null>(null);
   const [allocSplits, setAllocSplits] = useState<AllocationSplit[]>([]);
   const [allocLoading, setAllocLoading] = useState(false);
+  // Lotes C6 abertos (não conciliados ainda) — usados para detectar "Pagamento de lote"
+  const [c6Batches, setC6Batches] = useState<C6BatchCandidate[]>([]);
+  const [c6Target, setC6Target] = useState<BankTx | null>(null);
+  const [c6Candidates, setC6Candidates] = useState<C6BatchCandidate[]>([]);
 
   const loadAccounts = useCallback(async () => {
     const { data } = await supabase.from("bank_accounts").select("*").order("name");
