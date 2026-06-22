@@ -150,11 +150,10 @@ export default function DrePanel() {
     try {
       const [salesRes, payRes, recRes, catRes] = await Promise.all([
         supabase
-          .from("pdv_orders")
-          .select("id,concluded_at,total,status,dre_excluded,order_number")
-          .in("status", ["concluded", "cancelled"])
-          .gte("concluded_at", `${periodStart}T00:00:00`)
-          .lte("concluded_at", `${periodEnd}T23:59:59`),
+          .from("daily_revenue")
+          .select("id,sale_date,gross_revenue")
+          .gte("sale_date", periodStart)
+          .lte("sale_date", periodEnd),
         supabase
           .from("accounts_payable")
           .select("id,paid_at,amount,category_id,description,supplier_name,beneficiary,status")
@@ -180,11 +179,11 @@ export default function DrePanel() {
 
       setSales(((salesRes.data ?? []) as any[]).map((r) => ({
         id: r.id,
-        sold_at: r.concluded_at ?? r.opened_at ?? new Date().toISOString(),
-        total_amount: Number(r.total ?? 0),
-        status: r.status,
-        dre_excluded: !!r.dre_excluded,
-        order_number: r.order_number ?? null,
+        sold_at: r.sale_date,
+        total_amount: Number(r.gross_revenue ?? 0),
+        status: "concluded",
+        dre_excluded: false,
+        order_number: null,
       })) as SaleRow[]);
       setPayables((payRes.data ?? []) as PayableRow[]);
       setReceivables((recRes.data ?? []) as ReceivableRow[]);
@@ -235,8 +234,9 @@ export default function DrePanel() {
     <Card>
       <CardContent className="pt-4 sm:pt-6 space-y-4">
         <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-          Receita pela data da venda no PDV. Despesas e receitas extras pelas contas a pagar/receber pagas (data de pagamento).
+          Receita bruta vem do lançamento manual diário em Faturamento (até as integrações com iFood/Totem/Salão entrarem). Despesas e receitas extras pelas contas a pagar/receber pagas.
         </p>
+
 
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
@@ -294,7 +294,7 @@ export default function DrePanel() {
           </TabsContent>
         </Tabs>
 
-        <ExclusionsSection sales={sales} onChanged={load} />
+        
       </CardContent>
     </Card>
   );

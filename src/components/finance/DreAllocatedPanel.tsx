@@ -72,11 +72,10 @@ export default function DreAllocatedPanel() {
       const [storesRes, salesRes, payRes, recRes, catRes] = await Promise.all([
         supabase.from("stores").select("id,name,is_virtual"),
         supabase
-          .from("pdv_orders")
-          .select("id,concluded_at,total,status,dre_excluded,store_id")
-          .in("status", ["concluded", "cancelled"])
-          .gte("concluded_at", `${start}T00:00:00`)
-          .lte("concluded_at", `${end}T23:59:59`),
+          .from("daily_revenue")
+          .select("id,sale_date,gross_revenue,store_id")
+          .gte("sale_date", start)
+          .lte("sale_date", end),
         supabase
           .from("accounts_payable")
           .select("id,paid_at,amount,category_id,status,store_id")
@@ -104,10 +103,10 @@ export default function DreAllocatedPanel() {
       setStores((storesRes.data ?? []) as StoreRow[]);
       setSales(((salesRes.data ?? []) as any[]).map((r) => ({
         id: r.id,
-        sold_at: r.concluded_at ?? new Date().toISOString(),
-        total_amount: Number(r.total ?? 0),
-        status: r.status,
-        dre_excluded: !!r.dre_excluded,
+        sold_at: r.sale_date,
+        total_amount: Number(r.gross_revenue ?? 0),
+        status: "concluded",
+        dre_excluded: false,
         store_id: r.store_id,
       })) as SaleRow[]);
       setPayables((payRes.data ?? []) as PayableRow[]);
