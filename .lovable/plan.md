@@ -1,89 +1,81 @@
-## Objetivo
-Rodar uma bateria de "clientes fictícios" conversando com a Giana (mesmo endpoint `parme-chat` que o site usa), com cenários variados (dúvidas, reclamações, reservas, delivery). Cada conversa é gravada normalmente em `chat_conversations` (mesma pipeline real), aparece na aba **Conversas** do CRM com badge identificadora de teste, e gera um relatório resumido para você inspecionar.
+# E-commerce Grupo Aquela Parmê — Plano de Implementação
 
-## Como funciona
-Nada de mock paralelo: o teste chama o edge function `parme-chat` real, com `session_id` próprio prefixado `test-YYYYMMDD-HHMM-<cenario>-<n>`. Assim:
-- A conversa entra em `chat_conversations` como qualquer outra.
-- Tickets/reservas que a Giana criar são reais (em ambiente de dev) — por isso marcamos com tag.
-- O CRM já mostra tudo na aba Conversas (independente, com badges 🎫/📅).
+Subdomínio `pedir.aquelaparme.com.br`. Marca-mãe **Grupo Aquela Parmê** com 3 abas internas (Parmê / Estrogonofe / Box). 1 CNPJ, 1 cozinha, 1 impressora, 1 pedido, 1 pagamento. Início **somente retirada**, preparado para delivery futuro.
 
-## Componentes
+## Decisões já fechadas
+- Pagamento: **Mercado Pago** (PIX + cartão). Pedido só vai pro PDV após `payment.status=approved`.
+- WhatsApp: Giana monta o pedido no chat e envia link de pagamento MP.
+- Analytics: **GA4** em `aquelaparme.com.br` e `pedir.aquelaparme.com.br` + dashboard interno no NEXA.
+- Drive: conector já ligado. Eu **não** vou varrer automaticamente — você me aponta cada imagem quando precisar; eu busco via gateway e subo como asset.
+- NFC-e: fora desta fase (avaliar após MP→PDV→impressão estarem estáveis). 1 nota por pedido quando entrar.
+- Fora do escopo: delivery, login/fidelidade, cupons, app nativo.
 
-### 1. Edge function nova `parme-chat-simulate`
-`supabase/functions/parme-chat-simulate/index.ts`
+## Modelo de dados (migrations)
 
-Recebe:
-```json
-{ "scenarios": ["duvida_cardapio","reclamacao_atraso","reserva_sabado","delivery_asa_norte"], "runs_per_scenario": 3 }
-```
+**Tabelas novas** (todas com GRANT + RLS):
+- `ecommerce_stores` — 4 lojas físicas com slug, endereço, horário, telefone, status (aberta/fechada).
+- `ecommerce_carts` — efêmero (24h), chave `session_token` OU `whatsapp_phone`, RLS por token.
+- `ecommerce_cart_items` — item + brand + qtd + obs + complementos.
+- `pdv_orders` ganha colunas: `source` ('site'|'whatsapp'), `brand_breakdown jsonb`, `mp_preference_id`, `mp_payment_id`, `customer_phone`, `customer_name`, `pickup_eta`.
+- `ecommerce_events` — log de eventos (view_item, add_to_cart, begin_checkout, purchase) para o dashboard interno.
 
-Para cada cenário:
-1. Gera `session_id = test-<timestamp>-<cenario>-<n>`.
-2. Usa um **roteirista** (chamada à Lovable AI Gateway com `google/gemini-3-flash-preview`) que gera 3-6 turnos de cliente, um por vez, **reagindo** à resposta anterior da Giana. Cada cenário tem persona (nome fictício, telefone fictício 6199990000+n, bairro, problema).
-3. Para cada turno do cliente: POST em `parme-chat` com o histórico acumulado e o `session_id`. Lê a resposta da Giana (stream → texto). Acumula no histórico. Espera 1s entre turnos.
-4. No fim do cenário, marca `chat_conversations.client_meta.test_run = { run_id, scenario, started_at, finished_at, persona }`.
-5. Avalia automaticamente (gemini julgando): `passed: bool`, `score: 0-10`, `issues: string[]` — comparando o que a Giana fez vs o esperado do cenário (ex.: cenário `reserva_sabado` deveria chamar a tool `agendar_reserva`).
+**Reuso**: `menu_items` + `menu_item_brands` (já existe), `pdv_channels` (1 entry "Site Direto" × 4 lojas reais).
 
-Retorna JSON com `run_id` e resultados consolidados (cenário, score, issues, link interno).
+## Edge functions
 
-Cenários de partida (catálogo no arquivo `scenarios.ts`):
-- `duvida_cardapio` — "vocês têm opção sem glúten?"
-- `duvida_horario` — "que horas abrem domingo?"
-- `reclamacao_atraso` — "pedi às 19h e até agora nada, pedido #" + número aleatório
-- `reclamacao_item_faltando` — "faltou a batata no meu pedido"
-- `reclamacao_frio` — "o estrogonofe chegou frio"
-- `reserva_completa` — fornece todos os dados de uma vez
-- `reserva_pingada` — só "quero reservar", força Giana a perguntar campo por campo
-- `delivery_asa_norte` / `delivery_lago_sul` — pede sugestão de loja
-- `oi_curto` — só "oi" e fecha (testa modo compacto)
-- `troll` — pergunta fora de escopo ("qual a capital da França?")
+| Função | Papel |
+|---|---|
+| `ecommerce-cart` | CRUD do carrinho (token-based, sem auth) |
+| `mp-create-preference` | Cria preferência MP, retorna init_point |
+| `mp-webhook` | Recebe notificação MP, valida assinatura, chama dispatch |
+| `dispatch-paid-order` | Cria `pdv_orders` status='received', dispara impressão e notificação gestor |
+| `whatsapp-cliente-order-tools` | Tools da Giana: list_menu, add_to_cart, checkout (gera link MP) |
+| `ecommerce-order-status` | Página pública de status do pedido |
+| `ga4-server-event` | (opcional) Measurement Protocol para eventos server-side |
 
-### 2. Página `/crm-tests` no app
-`src/pages/CrmTests.tsx` + rota em `App.tsx` + entrada no `AppSidebar.tsx` (módulo CRM, ícone `FlaskConical` — verificar que não duplica).
+## Frontend (`pedir.aquelaparme.com.br`)
 
-UI mobile-first usando o cabeçalho padrão (h1 + ícone `text-primary`):
-- Botão **"Rodar bateria de testes"** com seletor de cenários (multi-check) e nº de runs por cenário (slider 1-5).
-- Lista de execuções anteriores (lê de uma nova tabela `chat_test_runs`).
-- Cada execução expande mostrando: cenário, persona, score, issues, link "Ver conversa" que abre a conversa no modal existente do CRM (reaproveita `parme-get-conversation-messages`).
-- Badge de filtro em `/crm`: chip "Testes" para mostrar/esconder conversas com `client_meta.test_run`.
+Rotas:
+- `/` → seletor de loja (4 lojas físicas, mostra qual está aberta)
+- `/loja/:slug` → cardápio unificado com abas "Tudo / Parmê / Estrogonofe / Box"
+- `/loja/:slug/carrinho` → revisão + nome/telefone + horário retirada
+- `/loja/:slug/pagamento` → embed MP (Checkout Pro)
+- `/pedido/:id` → status (aguardando pagamento → recebido → preparando → pronto)
 
-### 3. Tabela `chat_test_runs`
-Migration mínima:
-```sql
-create table public.chat_test_runs(
-  id uuid primary key default gen_random_uuid(),
-  run_id text not null,
-  scenario text not null,
-  session_id text not null,
-  persona jsonb,
-  passed boolean,
-  score numeric,
-  issues jsonb,
-  evaluator_notes text,
-  created_at timestamptz default now()
-);
-grant select, insert on public.chat_test_runs to authenticated;
-grant all on public.chat_test_runs to service_role;
-alter table public.chat_test_runs enable row level security;
-create policy "test_runs_super_user_all" on public.chat_test_runs
-  for all to authenticated using (public.is_super_user(auth.uid())) with check (public.is_super_user(auth.uid()));
-```
+Aliases SEO (mesmo conteúdo, meta diferente): `/parme/:loja`, `/estrogonofe/:loja`, `/box/:loja`.
 
-### 4. Ajustes pequenos
-- `CRM.tsx`: badge "🧪 Teste" quando `client_meta?.test_run` existe; filtro padrão **esconde** testes (toggle "Mostrar testes").
-- `PAGE_TITLES` em `AppLayout.tsx` recebe `/crm-tests`.
+Tema: CSS variables trocam por aba (vermelho/marrom/laranja). Logo do **Grupo Aquela Parmê** no header (você me envia).
 
-## Não vai mexer
-- Não toca em `parme-chat/index.ts` (a pipeline real precisa continuar idêntica).
-- Não toca em tools da Giana, reservas, tickets.
-- Não cria mock de Giana — usa o agente real, garantindo que o teste reflete o comportamento de produção.
+## Cozinha (impressão)
 
-## Validação
-1. Abrir `/crm-tests` → marcar 4 cenários × 2 runs → rodar.
-2. Esperar ~1 min → tabela mostra 8 execuções com score e issues.
-3. Clicar em "Ver conversa" → modal abre com histórico completo de cliente↔Giana.
-4. Ir em `/crm`, alternar "Mostrar testes" → conversas aparecem com badge 🧪.
-5. Confirmar que conversa de cenário `reserva_completa` tem badge 📅 e que `reclamacao_*` tem 🎫.
+Single comanda agrupada por marca com cabeçalho colorido. Reusa infra de impressão do PDV (mesma impressora). Sem KDS.
 
-## Custo
-Cada bateria de 10 cenários × 2 runs ≈ 20 conversas × ~4 turnos × 2 chamadas Gemini Flash (cliente + Giana) + 20 avaliações = ~180 chamadas Flash. Barato, mas avisa o usuário antes de rodar grande.
+## Notificação ao gestor
+
+Push + sino (NotificationsBell) quando `dispatch-paid-order` roda.
+
+## Dashboard interno NEXA
+
+Nova rota `/ecommerce` com: pedidos do dia por loja/marca, ticket médio, taxa de cross-brand, funil (view→cart→checkout→pago), top items. Lê `pdv_orders` + `ecommerce_events`.
+
+## Ordem de implementação
+
+1. Migrations + seed das 4 lojas + 1 `pdv_channels` "Site Direto"
+2. Storefront completo **sem pagamento** (carrinho funcional, mock checkout) — você valida UX
+3. MP: secrets, `mp-create-preference`, `mp-webhook`, `dispatch-paid-order`
+4. Página de status + impressão na cozinha + sino do gestor
+5. Tools Giana no WhatsApp Cliente (`whatsapp-cliente-order-tools`)
+6. GA4 (tag site + tag pedir) + dashboard `/ecommerce`
+7. DNS + publish + smoke test ponta-a-ponta
+
+## O que vou pedir quando chegar a hora
+
+- **Etapa 3**: `MERCADOPAGO_ACCESS_TOKEN` e `MERCADOPAGO_WEBHOOK_SECRET` (production) via add_secret
+- **Etapa 6**: 2 Measurement IDs GA4 (`G-XXXX` do site e do pedir)
+- **Etapa 7**: apontar `pedir.aquelaparme.com.br` → `185.158.133.1`
+- **Quando precisar de imagem**: você me diz "pega tal arquivo da pasta X do Drive" e eu busco via connector gateway + subo como asset
+
+## Regra de ouro
+`pdv_orders.status='received'` **só** depois de `mp-webhook` validar pagamento aprovado e chamar `dispatch-paid-order`. Nada vai pra cozinha antes disso.
+
+Posso seguir?
