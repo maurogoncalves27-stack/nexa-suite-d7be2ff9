@@ -385,7 +385,14 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({})) as {
       scenarios?: unknown;
       runs_per_scenario?: unknown;
+      list?: unknown;
     };
+    if (body.list) {
+      return Response.json(
+        { scenarios: Object.values(SCENARIOS).map((s) => ({ id: s.id, label: s.label })) },
+        { headers: corsHeaders },
+      );
+    }
     const requested = Array.isArray(body.scenarios) ? body.scenarios.filter((s) => typeof s === "string") as string[] : [];
     const ids = requested.length ? requested.filter((id) => SCENARIOS[id]) : Object.keys(SCENARIOS);
     if (!ids.length) {
