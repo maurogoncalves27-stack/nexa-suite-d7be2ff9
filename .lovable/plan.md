@@ -1,81 +1,65 @@
-# E-commerce Grupo Aquela Parmê — Plano de Implementação
+## Objetivo
 
-Subdomínio `pedir.aquelaparme.com.br`. Marca-mãe **Grupo Aquela Parmê** com 3 abas internas (Parmê / Estrogonofe / Box). 1 CNPJ, 1 cozinha, 1 impressora, 1 pedido, 1 pagamento. Início **somente retirada**, preparado para delivery futuro.
+Hoje o botão **Gerar lançamento** cria UMA conta a pagar/receber com o valor total da transação bancária. Para casos como "Pagamento de lote #806 — R$ 2.830,00", o usuário precisa **quebrar manualmente** essa transação em N lançamentos (um por beneficiário), cada um com sua loja, categoria, descrição e data de competência. A soma das linhas deve bater com o valor total da transação, e todas ficam vinculadas à mesma `bank_transaction` (que entra como conciliada).
 
-## Decisões já fechadas
-- Pagamento: **Mercado Pago** (PIX + cartão). Pedido só vai pro PDV após `payment.status=approved`.
-- WhatsApp: Giana monta o pedido no chat e envia link de pagamento MP.
-- Analytics: **GA4** em `aquelaparme.com.br` e `pedir.aquelaparme.com.br` + dashboard interno no NEXA.
-- Drive: conector já ligado. Eu **não** vou varrer automaticamente — você me aponta cada imagem quando precisar; eu busco via gateway e subo como asset.
-- NFC-e: fora desta fase (avaliar após MP→PDV→impressão estarem estáveis). 1 nota por pedido quando entrar.
-- Fora do escopo: delivery, login/fidelidade, cupons, app nativo.
+## Mudanças
 
-## Modelo de dados (migrations)
+### 1. Diálogo `CreateFinanceFromTxDialog`
+- Trocar o formulário de "uma linha só" por uma **lista de divisões**, cada linha com:
+  - Descrição *
+  - Fornecedor / Pagador
+  - Categoria (mantém o "Gerenciar")
+  - Loja *
+  - Data de competência (default = data da transação)
+  - Valor * (default da 1ª linha = total da transação)
+- Botões **+ Adicionar linha** e **Remover** por linha.
+- Rodapé mostra **Total dividido / Total da transação / Diferença** em tempo real. Botão "Criar" só habilita quando a diferença é R$ 0,00 (tolerância R$ 0,01).
+- Atalho: botão **"Dividir igualmente"** quando há ≥ 2 linhas (distribui o total proporcionalmente, com ajuste de centavos na última linha).
+- Sugestões do histórico continuam disponíveis e aplicam à linha focada.
+- Manter o caminho atual de "1 linha só" como caso particular (o usuário pode simplesmente não adicionar mais linhas).
 
-**Tabelas novas** (todas com GRANT + RLS):
-- `ecommerce_stores` — 4 lojas físicas com slug, endereço, horário, telefone, status (aberta/fechada).
-- `ecommerce_carts` — efêmero (24h), chave `session_token` OU `whatsapp_phone`, RLS por token.
-- `ecommerce_cart_items` — item + brand + qtd + obs + complementos.
-- `pdv_orders` ganha colunas: `source` ('site'|'whatsapp'), `brand_breakdown jsonb`, `mp_preference_id`, `mp_payment_id`, `customer_phone`, `customer_name`, `pickup_eta`.
-- `ecommerce_events` — log de eventos (view_item, add_to_cart, begin_checkout, purchase) para o dashboard interno.
+### 2. Backend — novas RPCs que aceitam várias linhas
 
-**Reuso**: `menu_items` + `menu_item_brands` (já existe), `pdv_channels` (1 entry "Site Direto" × 4 lojas reais).
+Criar duas funções novas (sem quebrar as antigas, que continuam usadas pelo caminho de 1 linha):
 
-## Edge functions
+- `create_payables_from_bank_tx(_transaction_id uuid, _lines jsonb)`
+- `create_receivables_from_bank_tx(_transaction_id uuid, _lines jsonb)`
 
-| Função | Papel |
-|---|---|
-| `ecommerce-cart` | CRUD do carrinho (token-based, sem auth) |
-| `mp-create-preference` | Cria preferência MP, retorna init_point |
-| `mp-webhook` | Recebe notificação MP, valida assinatura, chama dispatch |
-| `dispatch-paid-order` | Cria `pdv_orders` status='received', dispara impressão e notificação gestor |
-| `whatsapp-cliente-order-tools` | Tools da Giana: list_menu, add_to_cart, checkout (gera link MP) |
-| `ecommerce-order-status` | Página pública de status do pedido |
-| `ga4-server-event` | (opcional) Measurement Protocol para eventos server-side |
+Cada item de `_lines` traz: `store_id`, `description`, `party_name`, `category_id`, `competence_date`, `amount`.
 
-## Frontend (`pedir.aquelaparme.com.br`)
+Regras dentro da função:
+- Permissão admin/manager (igual às RPCs atuais).
+- Carrega a transação, valida sinal (débito → payables / crédito → receivables) e que não está conciliada.
+- Valida que `sum(amount) == abs(tx.amount)` com tolerância 0,01; senão `RAISE EXCEPTION`.
+- Insere N linhas em `accounts_payable` ou `accounts_receivable`, todas com o mesmo `bank_transaction_id`, `bank_account_id`, status `paid`/`received`, datas de pagamento/recebimento = `tx.posted_at`, e `competence_date` da linha (fallback `tx.posted_at`).
+- Marca `bank_transactions.reconciled_at = now()` ao final.
+- Tudo em uma transação implícita do plpgsql (rollback automático se algo falhar).
 
-Rotas:
-- `/` → seletor de loja (4 lojas físicas, mostra qual está aberta)
-- `/loja/:slug` → cardápio unificado com abas "Tudo / Parmê / Estrogonofe / Box"
-- `/loja/:slug/carrinho` → revisão + nome/telefone + horário retirada
-- `/loja/:slug/pagamento` → embed MP (Checkout Pro)
-- `/pedido/:id` → status (aguardando pagamento → recebido → preparando → pronto)
+### 3. Tela de Conciliação (`BankReconciliationPanel`)
+- Sem mudança de fluxo; o diálogo aberto pelo "+ Gerar lançamento" agora suporta divisão. Após sucesso, faz `loadData()` como hoje.
+- Manter `inheritAllocationsFromSource` desligado para este caso (cada linha já tem sua própria loja, não precisa de rateio extra).
 
-Aliases SEO (mesmo conteúdo, meta diferente): `/parme/:loja`, `/estrogonofe/:loja`, `/box/:loja`.
+### 4. Extrato financeiro (`FinanceStatementPanel`)
+- Já lê `competence_date` e `bank_transaction_id` — múltiplas contas a pagar com o mesmo `bank_transaction_id` aparecem naturalmente como lançamentos separados. Sem mudança.
 
-Tema: CSS variables trocam por aba (vermelho/marrom/laranja). Logo do **Grupo Aquela Parmê** no header (você me envia).
+## Detalhes técnicos
 
-## Cozinha (impressão)
+- Tipo da linha no front:
+  ```ts
+  type SplitLine = {
+    store_id: string;
+    description: string;
+    party_name: string;
+    category_id: string;
+    competence_date: string; // yyyy-mm-dd
+    amount: number;          // sempre positivo
+  };
+  ```
+- Validação no front antes de chamar a RPC: todas as linhas com `store_id`, `description` e `amount > 0`; soma == `abs(tx.amount)` ± 0,01.
+- A RPC nova chama-se no lugar de `create_payable_from_bank_tx` / `create_receivable_from_bank_tx` quando há ≥ 1 linha (sempre vai pela nova; a antiga fica como fallback caso algo dê erro de assinatura).
+- Sem mudança de RLS — as RPCs são `SECURITY DEFINER` e já validam role.
 
-Single comanda agrupada por marca com cabeçalho colorido. Reusa infra de impressão do PDV (mesma impressora). Sem KDS.
+## Fora do escopo
 
-## Notificação ao gestor
-
-Push + sino (NotificationsBell) quando `dispatch-paid-order` roda.
-
-## Dashboard interno NEXA
-
-Nova rota `/ecommerce` com: pedidos do dia por loja/marca, ticket médio, taxa de cross-brand, funil (view→cart→checkout→pago), top items. Lê `pdv_orders` + `ecommerce_events`.
-
-## Ordem de implementação
-
-1. Migrations + seed das 4 lojas + 1 `pdv_channels` "Site Direto"
-2. Storefront completo **sem pagamento** (carrinho funcional, mock checkout) — você valida UX
-3. MP: secrets, `mp-create-preference`, `mp-webhook`, `dispatch-paid-order`
-4. Página de status + impressão na cozinha + sino do gestor
-5. Tools Giana no WhatsApp Cliente (`whatsapp-cliente-order-tools`)
-6. GA4 (tag site + tag pedir) + dashboard `/ecommerce`
-7. DNS + publish + smoke test ponta-a-ponta
-
-## O que vou pedir quando chegar a hora
-
-- **Etapa 3**: `MERCADOPAGO_ACCESS_TOKEN` e `MERCADOPAGO_WEBHOOK_SECRET` (production) via add_secret
-- **Etapa 6**: 2 Measurement IDs GA4 (`G-XXXX` do site e do pedir)
-- **Etapa 7**: apontar `pedir.aquelaparme.com.br` → `185.158.133.1`
-- **Quando precisar de imagem**: você me diz "pega tal arquivo da pasta X do Drive" e eu busco via connector gateway + subo como asset
-
-## Regra de ouro
-`pdv_orders.status='received'` **só** depois de `mp-webhook` validar pagamento aprovado e chamar `dispatch-paid-order`. Nada vai pra cozinha antes disso.
-
-Posso seguir?
+- Importação de arquivo CNAB 240 para explodir o lote automaticamente.
+- Mudanças no fluxo de "Vincular" (conciliação contra contas a pagar já existentes) — segue como hoje.
