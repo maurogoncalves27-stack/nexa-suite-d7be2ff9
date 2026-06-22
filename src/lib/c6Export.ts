@@ -1,4 +1,14 @@
 import JSZip from "jszip";
+import { supabase } from "@/integrations/supabase/client";
+
+export type C6BatchSource =
+  | "payroll"
+  | "weekly_bonus"
+  | "internship"
+  | "freelancer"
+  | "rescission"
+  | "training"
+  | "other";
 
 export interface C6PixRow {
   /** Nome do beneficiário (Nome do funcionário / recebedor) */
@@ -11,6 +21,12 @@ export interface C6PixRow {
   amount: number;
   /** Descrição livre (até ~140 chars) */
   description?: string;
+  /** (opcional) Colaborador vinculado — usado pelo registro do lote */
+  employeeId?: string | null;
+  /** (opcional) Loja específica desta linha (sobrescreve a loja padrão do lote) */
+  storeId?: string | null;
+  /** (opcional) Categoria específica desta linha */
+  categoryId?: string | null;
 }
 
 export interface ExportC6Options {
@@ -20,7 +36,16 @@ export interface ExportC6Options {
   fileName: string;
   /** Data de pagamento (Date). Default: hoje. */
   paymentDate?: Date;
+  /** Origem do lote (folha, bonificação, estágio, etc.). Default: 'other'. */
+  source?: C6BatchSource;
+  /** Identificador legível da origem (ex.: "Folha 2026-05", "Bonificação semana 17/05"). */
+  sourceRef?: string;
+  /** Loja padrão (usada na conciliação para gerar contas a pagar quando a linha não tem loja específica). */
+  defaultStoreId?: string | null;
+  /** Categoria financeira padrão. */
+  defaultCategoryId?: string | null;
 }
+
 
 const formatDateBR = (d: Date) =>
   `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
