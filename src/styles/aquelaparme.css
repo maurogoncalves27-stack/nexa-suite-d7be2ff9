@@ -389,3 +389,15 @@
 .ap-brand .ap-form button {
   font-family: "Bitter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
+
+/* ─── Override /pedir para fundo branco ─── */
+#pedir-page.ap-brand {
+  background: #fff;
+}
+#pedir-page.ap-brand .ap-card {
+  background: #fff;
+  border-color: hsl(var(--ap-brown) / .15);
+}
+#pedir-page.ap-brand .ap-tag-soft {
+  background: hsl(var(--ap-cream-2));
+}
