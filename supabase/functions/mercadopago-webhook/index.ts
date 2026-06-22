@@ -86,6 +86,17 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     console.log('[mp-webhook] body', JSON.stringify(body).slice(0, 400));
 
+    const isMercadoPagoTestPing =
+      body?.live_mode === false &&
+      String(body?.data?.id || body?.id || '') === '123456' &&
+      String(body?.type || '') === 'payment';
+
+    if (isMercadoPagoTestPing) {
+      return new Response(JSON.stringify({ ok: true, skipped: 'mercadopago_test_ping' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Extrai id pra validar assinatura antes de qualquer chamada externa
     const sigDataId =
       String(body?.data?.id || url.searchParams.get('data.id') || url.searchParams.get('id') || '');
