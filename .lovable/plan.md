@@ -1,65 +1,120 @@
 ## Objetivo
 
-Hoje o botão **Gerar lançamento** cria UMA conta a pagar/receber com o valor total da transação bancária. Para casos como "Pagamento de lote #806 — R$ 2.830,00", o usuário precisa **quebrar manualmente** essa transação em N lançamentos (um por beneficiário), cada um com sua loja, categoria, descrição e data de competência. A soma das linhas deve bater com o valor total da transação, e todas ficam vinculadas à mesma `bank_transaction` (que entra como conciliada).
+Aproveitar o fato de que **todo "Pagamento de lote" no extrato C6 nasceu de uma exportação XLS feita pelo próprio sistema** para conciliar automaticamente: o usuário clica uma vez e o sistema cria N contas a pagar (uma por pessoa do lote), já com fornecedor, valor, descrição, categoria e loja preenchidos, vinculadas à mesma `bank_transaction`.
+
+Critério de casamento: **total + data (± 1 dia)**. Se houver mais de um lote candidato, o usuário escolhe na hora.
 
 ## Mudanças
 
-### 1. Diálogo `CreateFinanceFromTxDialog`
-- Trocar o formulário de "uma linha só" por uma **lista de divisões**, cada linha com:
-  - Descrição *
-  - Fornecedor / Pagador
-  - Categoria (mantém o "Gerenciar")
-  - Loja *
-  - Data de competência (default = data da transação)
-  - Valor * (default da 1ª linha = total da transação)
-- Botões **+ Adicionar linha** e **Remover** por linha.
-- Rodapé mostra **Total dividido / Total da transação / Diferença** em tempo real. Botão "Criar" só habilita quando a diferença é R$ 0,00 (tolerância R$ 0,01).
-- Atalho: botão **"Dividir igualmente"** quando há ≥ 2 linhas (distribui o total proporcionalmente, com ajuste de centavos na última linha).
-- Sugestões do histórico continuam disponíveis e aplicam à linha focada.
-- Manter o caminho atual de "1 linha só" como caso particular (o usuário pode simplesmente não adicionar mais linhas).
+### 1. Banco — registrar lotes C6
 
-### 2. Backend — novas RPCs que aceitam várias linhas
+Migração com duas tabelas novas:
 
-Criar duas funções novas (sem quebrar as antigas, que continuam usadas pelo caminho de 1 linha):
+- **`c6_payment_batches`**
+  - `id uuid pk`
+  - `source` text — `payroll | weekly_bonus | internship | freelancer | rescission | training | other`
+  - `source_ref` text — id/descrição livre (ex.: "Folha 2026-05", "Bonificação semana 17/05")
+  - `payment_date date` — data de pagamento informada no XLS
+  - `total numeric(14,2)` — soma das linhas válidas exportadas
+  - `line_count int`
+  - `file_name text`
+  - `category_id uuid` — categoria financeira default sugerida (ex.: Folha, Bonificações). Nullable.
+  - `default_store_id uuid` — loja default (ex.: loja sede). Nullable; cada linha pode sobrescrever.
+  - `bank_transaction_id uuid null` — preenchido quando conciliado
+  - `reconciled_at timestamptz null`, `reconciled_by uuid null`
+  - `created_at`, `created_by`
+- **`c6_payment_batch_lines`**
+  - `id uuid pk`
+  - `batch_id uuid fk -> c6_payment_batches(id) on delete cascade`
+  - `name text` — nome do beneficiário (sanitizado)
+  - `pix_key text`
+  - `pix_key_type text null`
+  - `amount numeric(14,2)`
+  - `description text null`
+  - `employee_id uuid null` — quando origem tem vínculo direto
+  - `store_id uuid null` — se a linha tem loja específica (ex.: bonificação por loja)
+  - `category_id uuid null`
+  - `created_payable_id uuid null` — preenchido após conciliação
 
-- `create_payables_from_bank_tx(_transaction_id uuid, _lines jsonb)`
-- `create_receivables_from_bank_tx(_transaction_id uuid, _lines jsonb)`
+GRANTs para `authenticated`/`service_role`. RLS: admin/manager fazem tudo; demais sem acesso.
 
-Cada item de `_lines` traz: `store_id`, `description`, `party_name`, `category_id`, `competence_date`, `amount`.
+### 2. `exportC6PixFile` — passa a aceitar metadados e a gravar o lote
 
-Regras dentro da função:
-- Permissão admin/manager (igual às RPCs atuais).
-- Carrega a transação, valida sinal (débito → payables / crédito → receivables) e que não está conciliada.
-- Valida que `sum(amount) == abs(tx.amount)` com tolerância 0,01; senão `RAISE EXCEPTION`.
-- Insere N linhas em `accounts_payable` ou `accounts_receivable`, todas com o mesmo `bank_transaction_id`, `bank_account_id`, status `paid`/`received`, datas de pagamento/recebimento = `tx.posted_at`, e `competence_date` da linha (fallback `tx.posted_at`).
-- Marca `bank_transactions.reconciled_at = now()` ao final.
-- Tudo em uma transação implícita do plpgsql (rollback automático se algo falhar).
+Estender a assinatura **sem quebrar callers**:
 
-### 3. Tela de Conciliação (`BankReconciliationPanel`)
-- Sem mudança de fluxo; o diálogo aberto pelo "+ Gerar lançamento" agora suporta divisão. Após sucesso, faz `loadData()` como hoje.
-- Manter `inheritAllocationsFromSource` desligado para este caso (cada linha já tem sua própria loja, não precisa de rateio extra).
+```ts
+export interface ExportC6Options {
+  rows: C6PixRow[];
+  fileName: string;
+  paymentDate?: Date;
+  // novos (opcionais por compat, mas todos os callers serão atualizados)
+  source?: BatchSource;        // 'payroll' | 'weekly_bonus' | 'internship' | 'freelancer' | 'rescission' | 'training' | 'other'
+  sourceRef?: string;
+  defaultStoreId?: string | null;
+  defaultCategoryId?: string | null;
+  // cada row pode ter overrides:
+  // employeeId, storeId, categoryId (adicionar campos opcionais em C6PixRow)
+}
+```
 
-### 4. Extrato financeiro (`FinanceStatementPanel`)
-- Já lê `competence_date` e `bank_transaction_id` — múltiplas contas a pagar com o mesmo `bank_transaction_id` aparecem naturalmente como lançamentos separados. Sem mudança.
+Antes do download, faz `INSERT` em `c6_payment_batches` + `c6_payment_batch_lines` com as linhas **válidas** que foram para o arquivo (mesma lista que vai para `finalValid`). Se o insert falhar, ainda baixa o arquivo (logar warning) — não bloquear o usuário.
+
+Atualizar os 6 callers conhecidos para passar `source` / `sourceRef`:
+
+- `InternshipPaymentsPanel` → `source: 'internship'`
+- `Rescissions` → `source: 'rescission'`
+- `WeeklyPaymentsPanel` → `source: 'weekly_bonus'`
+- `TrainingReceipts` → `source: 'training'`
+- `FreelancerDailyPayments` → `source: 'freelancer'`
+- Qualquer ponto da folha mensal que use (vou procurar; provavelmente `PayrollSummaryPanel`/`ConsolidateSequentialDialog`) → `source: 'payroll'`
+
+Cada caller também passa `defaultCategoryId` apropriado (Folha, Bonificações, Estágio, Freelancer, Rescisão, Treinamento), criando a categoria se não existir.
+
+### 3. Conciliação — detectar e oferecer "Conciliar lote"
+
+No `BankReconciliationPanel`, para cada transação de débito ainda não conciliada:
+
+- Buscar lotes C6 abertos (`bank_transaction_id IS NULL`) com `total == abs(tx.amount)` e `payment_date` dentro de ± 1 dia de `tx.posted_at`.
+- Quando há ≥ 1 candidato, mostrar badge **"Lote C6"** ao lado de "Sem sugestão" e um botão extra **"Conciliar lote"** ao lado de "+ Gerar lançamento".
+
+Clicando em "Conciliar lote":
+
+- **1 candidato** → confirma com toast "X lançamentos serão criados" e aplica direto.
+- **N candidatos** → abre um pequeno dialog `PickC6BatchDialog` listando cada lote (origem, ref, data, total, nº de linhas) para escolher.
+
+### 4. RPC `reconcile_bank_tx_with_c6_batch`
+
+`SECURITY DEFINER`, admin/manager. Recebe `_transaction_id uuid`, `_batch_id uuid`.
+
+- Valida: tx existe, é débito, não conciliada; lote existe, não conciliado; `abs(tx.amount) == batch.total` (±0,01).
+- Para cada `c6_payment_batch_lines`:
+  - `INSERT` em `accounts_payable` com:
+    - `store_id` = `line.store_id` ou `batch.default_store_id` (obrigatório — falha se nenhum dos dois existir)
+    - `description` = `line.name` + (se existir) ` — ` + sufixo da origem (ex.: "Folha 2026-05")
+    - `supplier_name` = `line.name`
+    - `category_id` = `line.category_id` ou `batch.category_id`
+    - `amount`, `due_date = tx.posted_at`, `paid_at = tx.posted_at`, `status = 'paid'`
+    - `bank_account_id = tx.bank_account_id`, `bank_transaction_id = tx.id`
+    - `competence_date = batch.payment_date` (data do pagamento do lote)
+  - Atualiza `c6_payment_batch_lines.created_payable_id`.
+- Marca `bank_transactions.reconciled_at = now()` e `c6_payment_batches.reconciled_at = now()` + `bank_transaction_id = tx.id`.
+
+### 5. Reverter conciliação de lote
+
+O `unreconcile_bank_transaction` atual desfaz a vinculação da tx, mas agora pode haver N AP atrelados a uma única tx via lote. Estender o RPC: se a tx estava vinculada a um lote C6, apagar as APs criadas por aquele lote (que estão referenciadas em `created_payable_id`) e limpar `bank_transaction_id` + `reconciled_at` do lote.
 
 ## Detalhes técnicos
 
-- Tipo da linha no front:
-  ```ts
-  type SplitLine = {
-    store_id: string;
-    description: string;
-    party_name: string;
-    category_id: string;
-    competence_date: string; // yyyy-mm-dd
-    amount: number;          // sempre positivo
-  };
-  ```
-- Validação no front antes de chamar a RPC: todas as linhas com `store_id`, `description` e `amount > 0`; soma == `abs(tx.amount)` ± 0,01.
-- A RPC nova chama-se no lugar de `create_payable_from_bank_tx` / `create_receivable_from_bank_tx` quando há ≥ 1 linha (sempre vai pela nova; a antiga fica como fallback caso algo dê erro de assinatura).
-- Sem mudança de RLS — as RPCs são `SECURITY DEFINER` e já validam role.
+- O lote registra o que **foi para o arquivo** (`finalValid`), não o que o usuário pediu, para garantir que o total bate com o que o C6 debitou.
+- `total` é calculado server-side via trigger? Não — calculamos no insert (mesma soma já feita pelo `exportC6PixFile`) para evitar trigger extra. Adicional: `CHECK (total >= 0)`.
+- O critério "± 1 dia" cobre o caso comum de C6 processar D+1.
+- Múltiplos lotes do mesmo valor no mesmo dia: o `PickC6BatchDialog` resolve.
+- Lotes antigos (gerados antes desta feature) ficam de fora do auto-match — usuário usa o fluxo manual de divisão.
+- `defaultStoreId`/loja por linha: em folha sem split por loja, usa a loja "Sede"/administrativa default. Bonificações já têm loja por linha. Sem essa info, deixa NULL e a RPC exige `batch.default_store_id`.
+- Compat dos callers existentes não fica quebrada se faltar o campo `source` — apenas não grava o lote (warning no console). Mas vou atualizar todos os callers para gravar.
 
 ## Fora do escopo
 
-- Importação de arquivo CNAB 240 para explodir o lote automaticamente.
-- Mudanças no fluxo de "Vincular" (conciliação contra contas a pagar já existentes) — segue como hoje.
+- Auto-conciliação de transações que NÃO sejam de lote C6 (PIX individual, transferências, etc.).
+- Importação de retorno CNAB 240 do C6 (caminho alternativo, não necessário enquanto controlamos a origem dos lotes).
+- Botão de "re-exportar" um lote salvo a partir do banco (pode ser feito depois).
