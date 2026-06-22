@@ -47,6 +47,14 @@ const ROLE_MAP: Array<{ prefix: string; config: RoleManifestConfig }> = [
       appleIcon: "/icons/nexa-fornecedor-512.png",
     },
   },
+  {
+    prefix: "/consultor/painel",
+    config: {
+      manifest: "/manifest-consultor.json",
+      themeColor: "#0ea5e9",
+      appleIcon: "/icons/nexa-consultor-512.png",
+    },
+  },
 ];
 
 function resolveConfig(pathname: string): RoleManifestConfig {
