@@ -179,11 +179,11 @@ export default function DrePanel() {
 
       setSales(((salesRes.data ?? []) as any[]).map((r) => ({
         id: r.id,
-        sold_at: r.concluded_at ?? r.opened_at ?? new Date().toISOString(),
-        total_amount: Number(r.total ?? 0),
-        status: r.status,
-        dre_excluded: !!r.dre_excluded,
-        order_number: r.order_number ?? null,
+        sold_at: r.sale_date,
+        total_amount: Number(r.gross_revenue ?? 0),
+        status: "concluded",
+        dre_excluded: false,
+        order_number: null,
       })) as SaleRow[]);
       setPayables((payRes.data ?? []) as PayableRow[]);
       setReceivables((recRes.data ?? []) as ReceivableRow[]);
