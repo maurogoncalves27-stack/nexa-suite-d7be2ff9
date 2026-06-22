@@ -47,6 +47,7 @@ export default function CreateFinanceFromTxDialog({ tx, onOpenChange, onCreated 
   const [description, setDescription] = useState("");
   const [partyName, setPartyName] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [competenceDate, setCompetenceDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [managingCategories, setManagingCategories] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
