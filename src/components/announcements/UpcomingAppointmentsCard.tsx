@@ -35,26 +35,27 @@ export default function UpcomingAppointmentsCard({ employeeId, storeId, allocate
 
   useEffect(() => {
     const load = async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      const uid = userData.user?.id;
+      if (!uid) {
+        setAppointments([]);
+        setLoading(false);
+        return;
+      }
+
       const now = new Date();
       const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
-      const storeIds = [storeId, allocatedStoreId].filter(Boolean) as string[];
 
       const { data } = await supabase
         .from("appointments")
-        .select("id, title, description, location, meeting_url, start_at, end_at, scope, employee_id, store_id, status")
+        .select("id, title, description, location, meeting_url, start_at, end_at, scope, employee_id, store_id, status, created_by")
         .eq("status", "scheduled")
+        .eq("created_by", uid)
         .gte("start_at", now.toISOString())
         .lte("start_at", weekEnd.toISOString())
         .order("start_at", { ascending: true });
 
-      const filtered = (data ?? []).filter((a: any) => {
-        if (a.scope === "all") return true;
-        if (a.scope === "employee") return a.employee_id === employeeId;
-        if (a.scope === "store") return storeIds.includes(a.store_id);
-        return false;
-      });
-
-      setAppointments(filtered as Appointment[]);
+      setAppointments((data ?? []) as Appointment[]);
       setLoading(false);
     };
     load();
