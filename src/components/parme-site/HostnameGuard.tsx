@@ -54,6 +54,15 @@ export function HostnameGuard() {
       return;
     }
 
+    // Subdomínio do e-commerce: pedir.aquelaparme.com.br → /pedir/*
+    if (host.startsWith("pedir.")) {
+      if (!loc.pathname.startsWith("/pedir")) {
+        const target = loc.pathname === "/" ? "/pedir" : "/pedir" + loc.pathname;
+        nav(target + loc.search + loc.hash, { replace: true });
+      }
+      return;
+    }
+
     if (!SITE_HOSTS.has(host)) return;
     if (loc.pathname.startsWith("/parme")) return;
     if (loc.pathname === "/nexa") return; // atalho para o app NEXA — não reescrever

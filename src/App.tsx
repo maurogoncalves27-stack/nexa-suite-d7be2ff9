@@ -159,6 +159,10 @@ const ParmeSobre = lazy(() => import("./pages/parme/Sobre.tsx"));
 const ParmeReservar = lazy(() => import("./pages/parme/Reservar.tsx"));
 const ParmeEnderecos = lazy(() => import("./pages/parme/Enderecos.tsx"));
 const ParmeSurpresa = lazy(() => import("./pages/parme/Surpresa.tsx"));
+const PedirHome = lazy(() => import("./pages/pedir/PedirHome.tsx"));
+const PedirLoja = lazy(() => import("./pages/pedir/PedirLoja.tsx"));
+const PedirCarrinho = lazy(() => import("./pages/pedir/PedirCarrinho.tsx"));
+const PedirPedido = lazy(() => import("./pages/pedir/PedirPedido.tsx"));
 import { HostnameGuard } from "@/components/parme-site/HostnameGuard";
 
 const queryClient = new QueryClient();
@@ -228,6 +232,12 @@ const App = () => (
             <Route path="/parme/vagas" element={<PublicJobs />} />
             <Route path="/parme/vagas/:id" element={<PublicJobDetail />} />
             <Route path="/parme/:slug" element={<ParmeBrand />} />
+
+            {/* E-commerce Grupo Aquela Parmê (pedir.aquelaparme.com.br) */}
+            <Route path="/pedir" element={<PedirHome />} />
+            <Route path="/pedir/pedido/:id" element={<PedirPedido />} />
+            <Route path="/pedir/:slug" element={<PedirLoja />} />
+            <Route path="/pedir/:slug/carrinho" element={<PedirCarrinho />} />
 
             <Route path="/auth" element={<Auth />} />
             <Route path="/nexa" element={<NexaEntry />} />
