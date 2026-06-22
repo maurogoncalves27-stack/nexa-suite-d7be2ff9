@@ -1,11 +1,11 @@
-// Revisão da sacola + dados do cliente + mock de pagamento.
-// Etapa 3 conecta Mercado Pago aqui.
+// Revisão da sacola + dados do cliente + checkout Mercado Pago.
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Trash2, Minus, Plus } from "lucide-react";
+import { Trash2, Minus, Plus, Loader2 } from "lucide-react";
 import { PedirLayout } from "./PedirLayout";
 import { useEcommerceCart, formatBRL } from "@/hooks/useEcommerceCart";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function PedirCarrinho() {
   const { slug = "" } = useParams<{ slug: string }>();
@@ -26,14 +26,45 @@ export default function PedirCarrinho() {
     }
     cart.updateCustomer({ customer_name: name.trim(), customer_phone: phone.trim() });
     setSubmitting(true);
-    // TODO Etapa 3: chamar edge function `mp-create-preference` e redirecionar para init_point
-    setTimeout(() => {
-      setSubmitting(false);
-      toast({
-        title: "Pagamento ainda não está conectado",
-        description: "O Mercado Pago será ligado na próxima etapa. Sua sacola está salva.",
+    try {
+      const { data, error } = await supabase.functions.invoke("ecommerce-checkout", {
+        body: {
+          storeSlug: slug,
+          customer_name: name.trim(),
+          customer_phone: phone.trim().replace(/\D/g, ""),
+          items: cart.items.map((it) => ({
+            menu_item_id: it.menu_item_id,
+            name: it.item_name,
+            brand_code: it.brand_code,
+            unit_price: it.unit_price,
+            quantity: it.quantity,
+            notes: it.notes,
+          })),
+        },
       });
-    }, 600);
+      if (error) throw error;
+      if (data?.mp_configured === false) {
+        toast({
+          title: "Pagamento ainda não está ligado",
+          description: "O token do Mercado Pago não está configurado. Pedido salvo como rascunho.",
+          variant: "destructive",
+        });
+        setSubmitting(false);
+        return;
+      }
+      if (!data?.init_point) throw new Error("Sem link de pagamento");
+      cart.clear();
+      // redireciona pro checkout do MP
+      window.location.href = data.init_point;
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        title: "Não foi possível iniciar o pagamento",
+        description: err?.message || "Tente novamente em instantes.",
+        variant: "destructive",
+      });
+      setSubmitting(false);
+    }
   }
 
   return (
