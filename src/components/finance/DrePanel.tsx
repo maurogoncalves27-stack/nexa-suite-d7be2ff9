@@ -234,8 +234,9 @@ export default function DrePanel() {
     <Card>
       <CardContent className="pt-4 sm:pt-6 space-y-4">
         <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-          Receita pela data da venda no PDV. Despesas e receitas extras pelas contas a pagar/receber pagas (data de pagamento).
+          Receita bruta vem do lançamento manual diário em Faturamento (até as integrações com iFood/Totem/Salão entrarem). Despesas e receitas extras pelas contas a pagar/receber pagas.
         </p>
+
 
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
