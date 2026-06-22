@@ -199,7 +199,11 @@ export async function exportC6PixFile({
   rows,
   fileName,
   paymentDate,
-}: ExportC6Options): Promise<{ included: number; skipped: C6PixRow[] }> {
+  source,
+  sourceRef,
+  defaultStoreId,
+  defaultCategoryId,
+}: ExportC6Options): Promise<{ included: number; skipped: C6PixRow[]; batchId: string | null }> {
   // Pré-processa cada linha (normalização + sanitização)
   const prepared = rows.map((r) => {
     const name = sanitizeText(r.name);
@@ -208,8 +212,12 @@ export async function exportC6PixFile({
     return {
       name,
       pixKey: normalizePixKey(r.pixKey ?? "", r.pixKeyType),
+      pixKeyType: r.pixKeyType ?? null,
       amount: Number((r.amount ?? 0).toFixed(2)),
       description: finalDesc,
+      employeeId: r.employeeId ?? null,
+      storeId: r.storeId ?? null,
+      categoryId: r.categoryId ?? null,
       original: r,
     };
   });
@@ -221,7 +229,7 @@ export async function exportC6PixFile({
     .map((r) => r.original);
 
   if (valid.length === 0) {
-    return { included: 0, skipped };
+    return { included: 0, skipped, batchId: null };
   }
 
   const resp = await fetch("/templates/c6-pagar-salarios-via-pix.xlsx");
@@ -235,7 +243,8 @@ export async function exportC6PixFile({
   const finalValid = valid.slice(0, MAX_ROWS);
   skipped.push(...overflow);
 
-  const paymentDateText = formatDateBR(paymentDate ?? new Date());
+  const effectivePaymentDate = paymentDate ?? new Date();
+  const paymentDateText = formatDateBR(effectivePaymentDate);
   const zip = await JSZip.loadAsync(buf);
   const mainSheet = zip.file("xl/worksheets/sheet2.xml");
   if (!mainSheet) throw new Error(`Aba "PIX chave ou código" não encontrada no template`);
@@ -275,9 +284,51 @@ export async function exportC6PixFile({
     );
   }
 
-  const total = finalValid.reduce((sum, r) => sum + r.amount, 0).toFixed(2);
+  const totalNum = finalValid.reduce((sum, r) => sum + r.amount, 0);
+  const total = totalNum.toFixed(2);
   sheetXml = sheetXml.replace(/(<c r="C103"[^>]*><f>SUM\(C3:C102\)<\/f><v>)[^<]*(<\/v><\/c>)/, `$1${total}$2`);
   zip.file("xl/worksheets/sheet2.xml", sheetXml);
+
+  // Registra o lote no banco (best-effort, não bloqueia o download)
+  let batchId: string | null = null;
+  try {
+    const isoDate = `${effectivePaymentDate.getFullYear()}-${String(effectivePaymentDate.getMonth() + 1).padStart(2, "0")}-${String(effectivePaymentDate.getDate()).padStart(2, "0")}`;
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: batch, error: batchErr } = await supabase
+      .from("c6_payment_batches" as any)
+      .insert({
+        source: source ?? "other",
+        source_ref: sourceRef ?? null,
+        payment_date: isoDate,
+        total: Number(total),
+        line_count: finalValid.length,
+        file_name: `${fileName}.xlsx`,
+        category_id: defaultCategoryId ?? null,
+        default_store_id: defaultStoreId ?? null,
+        created_by: user?.id ?? null,
+      })
+      .select("id")
+      .single();
+    if (batchErr) throw batchErr;
+    batchId = (batch as any)?.id ?? null;
+    if (batchId) {
+      const lines = finalValid.map((r) => ({
+        batch_id: batchId,
+        name: r.name,
+        pix_key: r.pixKey,
+        pix_key_type: r.pixKeyType,
+        amount: r.amount,
+        description: r.description || null,
+        employee_id: r.employeeId,
+        store_id: r.storeId,
+        category_id: r.categoryId,
+      }));
+      const { error: linesErr } = await supabase.from("c6_payment_batch_lines" as any).insert(lines);
+      if (linesErr) throw linesErr;
+    }
+  } catch (err) {
+    console.warn("[c6Export] Falha ao registrar lote (download segue):", err);
+  }
 
   const out = await zip.generateAsync({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   const url = URL.createObjectURL(out);
@@ -289,5 +340,6 @@ export async function exportC6PixFile({
   link.remove();
   URL.revokeObjectURL(url);
 
-  return { included: finalValid.length, skipped };
+  return { included: finalValid.length, skipped, batchId };
 }
+
