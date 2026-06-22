@@ -19,19 +19,25 @@ export default function PedirCarrinho() {
 
   async function handleCheckout(e: React.FormEvent) {
     e.preventDefault();
-    if (empty) return;
-    if (!name.trim() || !phone.trim()) {
+    if (empty || submitting) return;
+    const form = e.currentTarget as HTMLFormElement;
+    const formData = new FormData(form);
+    const customerName = String(formData.get("customer_name") || name).trim();
+    const customerPhone = String(formData.get("customer_phone") || phone).trim();
+    if (!customerName || !customerPhone) {
       toast({ title: "Preencha nome e telefone", variant: "destructive" });
       return;
     }
-    cart.updateCustomer({ customer_name: name.trim(), customer_phone: phone.trim() });
+    setName(customerName);
+    setPhone(customerPhone);
+    cart.updateCustomer({ customer_name: customerName, customer_phone: customerPhone });
     setSubmitting(true);
     try {
       const { data, error } = await supabase.functions.invoke("ecommerce-checkout", {
         body: {
           storeSlug: slug,
-          customer_name: name.trim(),
-          customer_phone: phone.trim().replace(/\D/g, ""),
+          customer_name: customerName,
+          customer_phone: customerPhone.replace(/\D/g, ""),
           items: cart.items.map((it) => ({
             menu_item_id: it.menu_item_id,
             name: it.item_name,
@@ -176,6 +182,7 @@ export default function PedirCarrinho() {
                   Nome
                 </label>
                 <input
+                  name="customer_name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Seu nome completo"
@@ -188,6 +195,7 @@ export default function PedirCarrinho() {
                   WhatsApp
                 </label>
                 <input
+                  name="customer_phone"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="(61) 9 9999-9999"
@@ -198,8 +206,8 @@ export default function PedirCarrinho() {
               </div>
               <button
                 type="submit"
-                disabled={submitting}
-                className="ap-btn-primary flex w-full items-center justify-center gap-2 py-3 text-base disabled:opacity-60"
+                aria-disabled={submitting}
+                className="ap-btn-primary flex w-full items-center justify-center gap-2 py-3 text-base"
               >
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                 {submitting ? "Processando…" : `Pagar ${formatBRL(cart.subtotal)}`}
