@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
         store_id: store.store_id,
         channel_id: channel.id,
         order_type: "pickup",
-        status: "pending_payment",
+        status: "placed",
         source: "site",
         customer_name,
         customer_phone,
