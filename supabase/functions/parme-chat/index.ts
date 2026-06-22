@@ -231,12 +231,100 @@ export function inferClientName(flat: FlatChatMessage[]) {
   return null;
 }
 
-export function mergeClientMeta(current: unknown, fallback: unknown, flat: FlatChatMessage[]) {
+function inferClientPhone(flat: FlatChatMessage[]): string | null {
+  for (const m of flat) {
+    if (String(m.role || "").toLowerCase() !== "user") continue;
+    const match = String(m.content || "").match(/(?:\(?\d{2}\)?\s?)?9?\d{4}[-\s]?\d{4}/);
+    if (match) {
+      const digits = match[0].replace(/\D/g, "");
+      if (digits.length >= 10) return digits;
+    }
+  }
+  return null;
+}
+
+const NEIGHBORHOOD_KEYWORDS = [
+  "asa norte", "asa sul", "lago norte", "lago sul", "noroeste", "sudoeste",
+  "cruzeiro", "octogonal", "vila planalto", "varjao", "varjão",
+  "guara", "guará", "candangolandia", "candangolândia", "nucleo bandeirante", "núcleo bandeirante",
+  "park sul", "park way", "parkway", "jardim botanico", "jardim botânico",
+  "sao sebastiao", "são sebastião", "itapoa", "itapoã", "paranoa", "paranoá",
+  "aguas claras", "águas claras", "taguatinga", "vicente pires", "arniqueiras",
+  "ceilandia", "ceilândia", "samambaia", "riacho fundo", "recanto", "gama", "santa maria",
+];
+
+function inferNeighborhood(flat: FlatChatMessage[]): string | null {
+  const askRe = /\b(bairro|regi[ãa]o|onde\s+(?:voc[êe]\s+)?est[áa])\b/i;
+  // Resposta após pergunta de bairro
+  for (let i = 0; i < flat.length - 1; i++) {
+    const cur = flat[i], next = flat[i + 1];
+    if (String(cur.role).toLowerCase() !== "assistant") continue;
+    if (String(next.role).toLowerCase() !== "user") continue;
+    if (!askRe.test(String(cur.content || ""))) continue;
+    const ans = String(next.content || "").trim();
+    if (ans.length >= 2 && ans.length <= 80) return ans;
+  }
+  // Keyword scan em mensagens do user
+  const userText = flat
+    .filter((m) => String(m.role).toLowerCase() === "user")
+    .map((m) => String(m.content || "").toLowerCase())
+    .join(" ");
+  for (const kw of NEIGHBORHOOD_KEYWORDS) {
+    if (userText.includes(kw)) return kw.replace(/\b\w/g, (l) => l.toUpperCase());
+  }
+  return null;
+}
+
+function inferBrandInterest(flat: FlatChatMessage[]): string | null {
+  const text = flat
+    .filter((m) => String(m.role).toLowerCase() === "user")
+    .map((m) => String(m.content || "").toLowerCase()).join(" ");
+  if (/\bestrogonofe|strogonoff|estrog\b/.test(text)) return "Aquele Estrogonofe";
+  if (/\bbox\s*caipira|caipira\b/.test(text)) return "Box Caipira";
+  if (/\bparm[êe]|parmegiana|parm\b/.test(text)) return "Aquela Parmê";
+  return null;
+}
+
+function inferIntent(flat: FlatChatMessage[]): string | null {
+  const text = flat
+    .filter((m) => String(m.role).toLowerCase() === "user")
+    .map((m) => String(m.content || "").toLowerCase()).join(" ");
+  if (!text) return null;
+  if (/\breserv|mesa\s+para|reservar\b/.test(text)) return "reserva";
+  if (/\b(n[ãa]o\s+veio|faltou|errad|fri[oa]|atras|demor|reclama|p[ée]ssim|horr[ií]vel|estragad|queim|cru|sumiu|esquecer)/i.test(text)) return "reclamacao";
+  if (/\bifood|delivery|entreg|pedir|pedido\b/.test(text)) return "delivery";
+  if (/\bcard[áa]pio|prato|menu|pre[çc]o|tem\s+\w+\?/i.test(text)) return "duvida_cardapio";
+  return "outro";
+}
+
+export function enrichClientMeta(flat: FlatChatMessage[], current: unknown, fallback: unknown) {
   const base = (typeof current === "object" && current !== null ? current :
     typeof fallback === "object" && fallback !== null ? fallback : {}) as Record<string, unknown>;
-  const inferredName = inferClientName(flat);
-  return inferredName && !base.name && !base.nome ? { ...base, name: inferredName } : base;
+  const out: Record<string, unknown> = { ...base };
+  const setIfMissing = (k: string, v: unknown) => {
+    if (v == null || v === "") return;
+    if (out[k] != null && out[k] !== "") return;
+    out[k] = v;
+  };
+  setIfMissing("name", inferClientName(flat));
+  setIfMissing("phone", inferClientPhone(flat));
+  setIfMissing("neighborhood", inferNeighborhood(flat));
+  setIfMissing("brand_interest", inferBrandInterest(flat));
+  // intent pode mudar ao longo da conversa, sempre recomputa
+  const intent = inferIntent(flat);
+  if (intent) out.intent = intent;
+  if (flat.length) {
+    const first = flat[0]?.ts;
+    const last = flat[flat.length - 1]?.ts;
+    if (first && !out.first_message_at) out.first_message_at = first;
+    if (last) out.last_message_at = last;
+  }
+  return out;
 }
+
+// Compat: nome antigo ainda usado nas chamadas.
+export const mergeClientMeta = (current: unknown, fallback: unknown, flat: FlatChatMessage[]) =>
+  enrichClientMeta(flat, current, fallback);
 
 async function ensureComplaintTicket(
   supabase: ReturnType<typeof sb>,
