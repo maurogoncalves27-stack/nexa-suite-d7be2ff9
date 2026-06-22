@@ -75,6 +75,7 @@ const PAGE_TITLES: PageMeta[] = [
   { match: (p) => p.startsWith("/checklists"), title: "Check-lists", group: "Operação" },
   { match: (p) => p.startsWith("/nutri-relatorios"), title: "Relatórios NutriControle", group: "Operação" },
   { match: (p) => p.startsWith("/nutricionista/painel"), title: "Painel da Nutricionista", group: "Operação" },
+  { match: (p) => p.startsWith("/consultor/painel"), title: "Painel do Consultor Financeiro", group: "Financeiro" },
   { match: (p) => p.startsWith("/nutri-visita/historico"), title: "Histórico de visitas técnicas", group: "Operação" },
   { match: (p) => p.startsWith("/nutri-visita"), title: "Visita técnica", group: "Operação" },
   { match: (p) => p.startsWith("/nutricontrol"), title: "NutriControle", group: "Operação" },

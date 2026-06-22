@@ -148,6 +148,7 @@ const PublicJobDetail = lazy(() => import("./pages/PublicJobDetail.tsx"));
 const CandidateDocumentUpload = lazy(() => import("./pages/CandidateDocumentUpload.tsx"));
 const LegalPage = lazy(() => import("./pages/LegalPage.tsx"));
 const PartnerDashboard = lazy(() => import("./pages/PartnerDashboard.tsx"));
+const ConsultorPanel = lazy(() => import("./pages/ConsultorPanel.tsx"));
 const SelectAccess = lazy(() => import("./pages/SelectAccess.tsx"));
 const MigrateNexa = lazy(() => import("./pages/admin/MigrateNexa.tsx"));
 
@@ -275,6 +276,9 @@ const App = () => (
             } />
             <Route path="/terceirizado/painel" element={
               <ProtectedRoute redirectTo="/parceiro/login"><OutsourcedDashboard /></ProtectedRoute>
+            } />
+            <Route path="/consultor/painel" element={
+              <ProtectedRoute redirectTo="/parceiro/login"><ConsultorPanel /></ProtectedRoute>
             } />
 
             {/* Preview admin: visualizar painel de parceiro como gestor */}

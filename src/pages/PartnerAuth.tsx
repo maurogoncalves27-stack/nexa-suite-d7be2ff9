@@ -40,7 +40,11 @@ export default function PartnerAuth() {
 
   if (user) {
     if (isSupplier || supplier?.status === "approved") return <Navigate to="/fornecedor/painel" replace />;
-    if (isOutsourced || outsourced?.approval_status === "approved") return <Navigate to="/terceirizado/painel" replace />;
+    if (isOutsourced || outsourced?.approval_status === "approved") {
+      const spec = `${outsourced?.specialty ?? ""} ${outsourced?.role_title ?? ""}`.toLowerCase();
+      if (spec.includes("consultor")) return <Navigate to="/consultor/painel" replace />;
+      return <Navigate to="/terceirizado/painel" replace />;
+    }
     if (supplier) return <Navigate to="/fornecedor/aguardando" replace />;
     if (outsourced) return <Navigate to="/parceiro/aguardando" replace />;
   }
