@@ -919,6 +919,13 @@ export default function BankReconciliationPanel() {
         onCreated={loadData}
       />
 
+      <PickC6BatchDialog
+        tx={c6Target}
+        candidates={c6Candidates}
+        onOpenChange={(o) => { if (!o) { setC6Target(null); setC6Candidates([]); } }}
+        onApplied={async () => { await loadData(); await loadC6Batches(); }}
+      />
+
       <Dialog open={!!allocTarget} onOpenChange={(o) => { if (!o && !submitting) { setAllocTarget(null); setAllocSplits([]); } }}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
