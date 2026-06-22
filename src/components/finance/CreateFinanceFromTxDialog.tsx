@@ -78,6 +78,7 @@ export default function CreateFinanceFromTxDialog({ tx, onOpenChange, onCreated 
       setDescription(tx.memo || tx.payee || "");
       setPartyName(tx.payee || "");
       setCategoryId("");
+      setCompetenceDate(tx.posted_at ? String(tx.posted_at).slice(0, 10) : "");
       setManagingCategories(false);
       setNewCategoryName("");
       setEditingCategoryId(null);
