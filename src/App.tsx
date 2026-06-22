@@ -80,6 +80,7 @@ const WhatsAppCustomerAdmin = lazy(() => import("./pages/WhatsAppCustomerAdmin.t
 const WhatsApp = lazy(() => import("./pages/WhatsApp.tsx"));
 const DeliverySettings = lazy(() => import("./pages/DeliverySettings.tsx"));
 const CRM = lazy(() => import("./pages/CRM.tsx"));
+const CrmTests = lazy(() => import("./pages/CrmTests.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const VerifySignature = lazy(() => import("./pages/VerifySignature.tsx"));
 const InventoryReceiving = lazy(() => import("./pages/InventoryReceiving.tsx"));
@@ -365,6 +366,7 @@ const App = () => (
               <Route path="/configuracoes/whatsapp-cliente" element={<Guarded staff><WhatsAppCustomerAdmin /></Guarded>} />
               <Route path="/configuracoes/entregas" element={<Guarded staff><DeliverySettings /></Guarded>} />
               <Route path="/crm" element={<Guarded staff><CRM /></Guarded>} />
+              <Route path="/crm-tests" element={<Guarded staff><CrmTests /></Guarded>} />
               <Route path="/configuracoes/whatsapp" element={<Guarded staff><WhatsAppAdmin /></Guarded>} />
               <Route path="/whatsapp" element={<Guarded staff><WhatsApp /></Guarded>} />
               <Route path="/configuracoes/totem" element={<Guarded staff><TotemConfig /></Guarded>} />
