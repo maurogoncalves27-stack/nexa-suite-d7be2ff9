@@ -389,6 +389,34 @@ export default function BankReconciliationPanel() {
     return map;
   }, [transactions, candidatesFor]);
 
+  // Lotes C6 candidatos por tx: débito, total ± 0,01, data ± 1 dia
+  const c6CandidatesMap = useMemo(() => {
+    const map = new Map<string, C6BatchCandidate[]>();
+    if (c6Batches.length === 0) return map;
+    for (const tx of transactions) {
+      if (tx.reconciled_at) continue;
+      const amt = Number(tx.amount);
+      if (amt >= 0) continue;
+      const txAbs = Math.abs(amt);
+      const txTime = new Date(tx.posted_at + "T00:00:00").getTime();
+      const matches = c6Batches.filter((b) => {
+        if (Math.abs(Number(b.total) - txAbs) > 0.01) return false;
+        const bTime = new Date(b.payment_date + "T00:00:00").getTime();
+        const days = Math.abs(bTime - txTime) / 86400000;
+        return days <= 1;
+      });
+      if (matches.length > 0) map.set(tx.id, matches);
+    }
+    return map;
+  }, [transactions, c6Batches]);
+
+  const openC6Picker = (tx: BankTx) => {
+    const list = c6CandidatesMap.get(tx.id) ?? [];
+    if (list.length === 0) return;
+    setC6Candidates(list);
+    setC6Target(tx);
+  };
+
   const filteredTx = transactions.filter((t) => {
     if (!showReconciled && t.reconciled_at) return false;
     if (!search) return true;
