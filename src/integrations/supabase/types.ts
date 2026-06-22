@@ -5653,24 +5653,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "interview_reschedule_log_new_slot_id_fkey"
-            columns: ["new_slot_id"]
-            isOneToOne: false
-            referencedRelation: "interview_slots_public"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "interview_reschedule_log_previous_slot_id_fkey"
             columns: ["previous_slot_id"]
             isOneToOne: false
             referencedRelation: "interview_slots"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "interview_reschedule_log_previous_slot_id_fkey"
-            columns: ["previous_slot_id"]
-            isOneToOne: false
-            referencedRelation: "interview_slots_public"
             referencedColumns: ["id"]
           },
         ]
@@ -6857,13 +6843,6 @@ export type Database = {
             columns: ["selected_slot_id"]
             isOneToOne: false
             referencedRelation: "interview_slots"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "job_applications_selected_slot_id_fkey"
-            columns: ["selected_slot_id"]
-            isOneToOne: false
-            referencedRelation: "interview_slots_public"
             referencedColumns: ["id"]
           },
         ]
@@ -15761,24 +15740,6 @@ export type Database = {
           },
         ]
       }
-      interview_slots_public: {
-        Row: {
-          duration_min: number | null
-          id: string | null
-          start_at: string | null
-        }
-        Insert: {
-          duration_min?: number | null
-          id?: string | null
-          start_at?: string | null
-        }
-        Update: {
-          duration_min?: number | null
-          id?: string | null
-          start_at?: string | null
-        }
-        Relationships: []
-      }
       inventory_lot_alerts: {
         Row: {
           alert_level: string | null
@@ -16248,6 +16209,14 @@ export type Database = {
           _recipe_id: string
         }
         Returns: Json
+      }
+      list_public_interview_slots: {
+        Args: never
+        Returns: {
+          duration_min: number
+          id: string
+          start_at: string
+        }[]
       }
       list_shift_swap_candidates: {
         Args: { _requester_employee_id: string }
