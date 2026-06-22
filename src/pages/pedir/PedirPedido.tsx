@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Loader2, CheckCircle2, ChefHat, Package, XCircle, Clock } from "lucide-react";
 import { PedirLayout } from "./PedirLayout";
-import { supabase } from "@/integrations/supabase/client";
+
 
 type OrderStatus = {
   id: string;
