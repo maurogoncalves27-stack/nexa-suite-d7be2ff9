@@ -732,7 +732,9 @@ export default function BankReconciliationPanel() {
                                     <Button size="sm" variant="outline" onClick={() => { setMatchSearch(""); setMatchTarget(tx); }}>Vincular</Button>
                                     <Button size="sm" onClick={() => setCreateTarget(tx)} className="gap-1">
                                       <Plus className="h-3 w-3" /> Gerar lançamento
-                                </Button>
+                                    </Button>
+                                  </>
+                                )}
                               </>
                             )}
                           </div>
