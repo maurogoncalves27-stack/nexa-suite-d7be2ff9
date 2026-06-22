@@ -786,6 +786,167 @@ export type Database = {
         }
         Relationships: []
       }
+      c6_payment_batch_lines: {
+        Row: {
+          amount: number
+          batch_id: string
+          category_id: string | null
+          created_at: string
+          created_payable_id: string | null
+          description: string | null
+          employee_id: string | null
+          id: string
+          name: string
+          pix_key: string | null
+          pix_key_type: string | null
+          store_id: string | null
+        }
+        Insert: {
+          amount: number
+          batch_id: string
+          category_id?: string | null
+          created_at?: string
+          created_payable_id?: string | null
+          description?: string | null
+          employee_id?: string | null
+          id?: string
+          name: string
+          pix_key?: string | null
+          pix_key_type?: string | null
+          store_id?: string | null
+        }
+        Update: {
+          amount?: number
+          batch_id?: string
+          category_id?: string | null
+          created_at?: string
+          created_payable_id?: string | null
+          description?: string | null
+          employee_id?: string | null
+          id?: string
+          name?: string
+          pix_key?: string | null
+          pix_key_type?: string | null
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "c6_payment_batch_lines_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "c6_payment_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "c6_payment_batch_lines_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "finance_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "c6_payment_batch_lines_created_payable_id_fkey"
+            columns: ["created_payable_id"]
+            isOneToOne: false
+            referencedRelation: "accounts_payable"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "c6_payment_batch_lines_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "c6_payment_batch_lines_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "c6_payment_batch_lines_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      c6_payment_batches: {
+        Row: {
+          bank_transaction_id: string | null
+          category_id: string | null
+          created_at: string
+          created_by: string | null
+          default_store_id: string | null
+          file_name: string | null
+          id: string
+          line_count: number
+          payment_date: string
+          reconciled_at: string | null
+          reconciled_by: string | null
+          source: string
+          source_ref: string | null
+          total: number
+        }
+        Insert: {
+          bank_transaction_id?: string | null
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_store_id?: string | null
+          file_name?: string | null
+          id?: string
+          line_count: number
+          payment_date: string
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          source: string
+          source_ref?: string | null
+          total: number
+        }
+        Update: {
+          bank_transaction_id?: string | null
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_store_id?: string | null
+          file_name?: string | null
+          id?: string
+          line_count?: number
+          payment_date?: string
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          source?: string
+          source_ref?: string | null
+          total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "c6_payment_batches_bank_transaction_id_fkey"
+            columns: ["bank_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "bank_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "c6_payment_batches_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "finance_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "c6_payment_batches_default_store_id_fkey"
+            columns: ["default_store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_document_uploads: {
         Row: {
           candidate_id: string
@@ -16741,6 +16902,10 @@ export type Database = {
       reconcile_bank_transaction_receivable: {
         Args: { _receivable_id: string; _transaction_id: string }
         Returns: Json
+      }
+      reconcile_bank_tx_with_c6_batch: {
+        Args: { _batch_id: string; _transaction_id: string }
+        Returns: number
       }
       register_candidate_document_upload: {
         Args: {
