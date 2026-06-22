@@ -1025,6 +1025,45 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_test_runs: {
+        Row: {
+          created_at: string
+          evaluator_notes: string | null
+          id: string
+          issues: Json | null
+          passed: boolean | null
+          persona: Json | null
+          run_id: string
+          scenario: string
+          score: number | null
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          evaluator_notes?: string | null
+          id?: string
+          issues?: Json | null
+          passed?: boolean | null
+          persona?: Json | null
+          run_id: string
+          scenario: string
+          score?: number | null
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          evaluator_notes?: string | null
+          id?: string
+          issues?: Json | null
+          passed?: boolean | null
+          persona?: Json | null
+          run_id?: string
+          scenario?: string
+          score?: number | null
+          session_id?: string
+        }
+        Relationships: []
+      }
       checklist_answers: {
         Row: {
           checked: boolean
