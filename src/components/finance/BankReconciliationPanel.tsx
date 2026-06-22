@@ -6,12 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Loader2, Upload, CheckCircle2, RotateCcw, Sparkles, Search, AlertCircle, Plus, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
+import { Loader2, Upload, CheckCircle2, RotateCcw, Sparkles, Search, AlertCircle, Plus, ArrowDownCircle, ArrowUpCircle, Boxes } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { type BankAccount } from "./BankAccountsManager";
 import OfxImportDialog from "./OfxImportDialog";
 import CreateFinanceFromTxDialog from "./CreateFinanceFromTxDialog";
 import AllocationEditor, { type AllocationSplit, type StoreLite, validateSplits } from "./AllocationEditor";
+import PickC6BatchDialog, { type C6BatchCandidate } from "./PickC6BatchDialog";
 import { Split } from "lucide-react";
 
 interface BankTx {
