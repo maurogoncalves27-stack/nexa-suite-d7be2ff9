@@ -91,20 +91,6 @@ export function PedirLayout({
         {children}
       </main>
 
-      {/* Rodapé laranja com onda do site */}
-      <footer className="ap-footer mt-10">
-        <div className="ap-footer-wave" style={{ background: "#fff" }} />
-        <div className="ap-footer-inner text-center">
-          <h4>Grupo Aquela Parmê</h4>
-          <p className="mt-2 text-sm opacity-90" style={{ fontFamily: "Bitter, serif" }}>
-            Parmê · Aquele Estrogonofe · Box Caipira
-          </p>
-          <div className="ap-footer-bottom justify-center">
-            <span>© {new Date().getFullYear()} Grupo Aquela Parmê</span>
-            <span>Brasília · DF</span>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
