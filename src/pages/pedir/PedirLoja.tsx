@@ -20,13 +20,6 @@ type MenuRow = {
   brand_codes: string[];
 };
 
-const TABS: { code: BrandCode; label: string; logo?: string; bg: string }[] = [
-  { code: "all", label: "Tudo", bg: "#2a140c" },
-  { code: "aquela-parme", label: "Parmê", logo: parmeAssets.Logo_Aquela_Parme, bg: "#c93029" },
-  { code: "aquele-estrogonofe", label: "Estrogonofe", logo: parmeAssets.Logo_Aquele_estrogonofe, bg: "#bba07a" },
-  { code: "box-caipira", label: "Box Caipira", logo: parmeAssets.Logo_Box_Caipira, bg: "#ef6b3a" },
-];
-
 const BRAND_LABEL: Record<Exclude<BrandCode, "all">, string> = {
   "aquela-parme": "Parmê",
   "aquele-estrogonofe": "Estrogonofe",
@@ -45,7 +38,6 @@ export default function PedirLoja() {
   const [store, setStore] = useState<EStore | null>(null);
   const [items, setItems] = useState<MenuRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<BrandCode>("all");
   const cart = useEcommerceCart(slug);
 
   useEffect(() => {
@@ -113,16 +105,17 @@ export default function PedirLoja() {
     })();
   }, [slug]);
 
+  // Dedup por nome+preço (mesmo prato compartilhado entre marcas aparece 1x)
   const filtered = useMemo(() => {
-    if (tab === "all") {
-      return items.filter((i) =>
-        i.brand_codes.some((b) =>
-          ["aquela-parme", "aquele-estrogonofe", "box-caipira"].includes(b),
-        ),
-      );
+    const validBrands = ["aquela-parme", "aquele-estrogonofe", "box-caipira"];
+    const seen = new Map<string, MenuRow>();
+    for (const i of items) {
+      if (!i.brand_codes.some((b) => validBrands.includes(b))) continue;
+      const key = `${i.name.trim().toLowerCase()}|${i.price}`;
+      if (!seen.has(key)) seen.set(key, i);
     }
-    return items.filter((i) => i.brand_codes.includes(tab));
-  }, [items, tab]);
+    return Array.from(seen.values());
+  }, [items]);
 
   const grouped = useMemo(() => {
     const g = new Map<string, { sort: number; items: MenuRow[] }>();
@@ -135,7 +128,7 @@ export default function PedirLoja() {
   }, [filtered]);
 
   return (
-    <PedirLayout brand={tab} cartCount={cart.totalItems} cartHref={`/pedir/${slug}/carrinho`}>
+    <PedirLayout brand="all" cartCount={cart.totalItems} cartHref={`/pedir/${slug}/carrinho`}>
       {/* Cabeçalho */}
       <div className="mb-5">
         <span className="ap-tag">Retirada no balcão</span>
@@ -144,39 +137,6 @@ export default function PedirLoja() {
         </h1>
       </div>
 
-      {/* Tabs por marca */}
-      <div
-        className="sticky top-[3.75rem] z-20 -mx-4 mb-5 flex gap-2 overflow-x-auto px-4 py-2 md:top-[5rem]"
-        style={{ background: "rgba(255,255,255,.92)", backdropFilter: "blur(6px)" }}
-      >
-        {TABS.map((t) => {
-          const active = tab === t.code;
-          return (
-            <button
-              key={t.code}
-              onClick={() => setTab(t.code)}
-              className="flex shrink-0 items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-semibold transition"
-              style={{
-                background: active ? t.bg : "transparent",
-                color: active ? "#fff" : "hsl(var(--ap-brown))",
-                border: `1px solid ${active ? t.bg : "hsl(var(--ap-brown) / .25)"}`,
-                fontFamily: "Bitter, sans-serif",
-                boxShadow: active ? `0 6px 16px -8px ${t.bg}` : "none",
-              }}
-            >
-              {t.logo && (
-                <span
-                  className="grid h-5 w-5 place-items-center overflow-hidden rounded-full p-0.5"
-                  style={{ background: active ? "rgba(255,255,255,.18)" : t.bg }}
-                >
-                  <img src={t.logo} alt="" className="max-h-full max-w-full object-contain" />
-                </span>
-              )}
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
 
       {/* Lista */}
       <div className="space-y-8 pb-28">
@@ -240,7 +200,7 @@ export default function PedirLoja() {
                           <ImageIcon className="h-10 w-10" />
                         </div>
                       )}
-                      {brandCode && tab === "all" && (
+                      {brandCode && (
                         <span
                           className="absolute left-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow"
                           style={{
