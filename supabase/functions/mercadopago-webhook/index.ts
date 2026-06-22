@@ -5,7 +5,12 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const MP_TOKEN = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN') || Deno.env.get('MERCADOPAGO_ACCESS_TOKEN') || '';
-const MP_WEBHOOK_SECRET = Deno.env.get('MERCADO_PAGO_WEBHOOK_SECRET') || Deno.env.get('MERCADOPAGO_WEBHOOK_SECRET') || '';
+const MP_WEBHOOK_SECRETS = [
+  Deno.env.get('MERCADO_PAGO_PROD_WEBHOOK_SECRET') || '',
+  Deno.env.get('MERCADO_PAGO_WEBHOOK_SECRET') || '',
+  Deno.env.get('MERCADOPAGO_WEBHOOK_SECRET') || '',
+].filter(Boolean);
+const MP_WEBHOOK_SECRET = MP_WEBHOOK_SECRETS[0] || '';
 
 const ZAPI_INSTANCE = Deno.env.get('ZAPI_CUSTOMER_INSTANCE_ID') || '';
 const ZAPI_TOKEN = Deno.env.get('ZAPI_CUSTOMER_TOKEN') || '';
@@ -29,7 +34,7 @@ async function verifyMpSignature(
   url: URL,
   dataId: string | null,
 ): Promise<boolean> {
-  if (!MP_WEBHOOK_SECRET) return false;
+  if (MP_WEBHOOK_SECRETS.length === 0) return false;
   const sigHeader = req.headers.get('x-signature') || '';
   const requestId = req.headers.get('x-request-id') || '';
   if (!sigHeader || !dataId) return false;
@@ -45,22 +50,25 @@ async function verifyMpSignature(
   if (!ts || !v1) return false;
 
   const manifest = `id:${dataId.toLowerCase()};request-id:${requestId};ts:${ts};`;
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(MP_WEBHOOK_SECRET),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  );
-  const sigBuf = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(manifest));
-  const hex = Array.from(new Uint8Array(sigBuf))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-  // timing-safe compare
-  if (hex.length !== v1.length) return false;
-  let diff = 0;
-  for (let i = 0; i < hex.length; i++) diff |= hex.charCodeAt(i) ^ v1.charCodeAt(i);
-  return diff === 0;
+  for (const secret of MP_WEBHOOK_SECRETS) {
+    const key = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign'],
+    );
+    const sigBuf = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(manifest));
+    const hex = Array.from(new Uint8Array(sigBuf))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+    if (hex.length === v1.length) {
+      let diff = 0;
+      for (let i = 0; i < hex.length; i++) diff |= hex.charCodeAt(i) ^ v1.charCodeAt(i);
+      if (diff === 0) return true;
+    }
+  }
+  return false;
 }
 
 Deno.serve(async (req) => {
