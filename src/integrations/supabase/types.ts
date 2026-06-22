@@ -16210,6 +16210,14 @@ export type Database = {
         }
         Returns: Json
       }
+      list_public_interview_slots: {
+        Args: never
+        Returns: {
+          duration_min: number
+          id: string
+          start_at: string
+        }[]
+      }
       list_shift_swap_candidates: {
         Args: { _requester_employee_id: string }
         Returns: {
