@@ -198,6 +198,18 @@ export default function BankReconciliationPanel() {
   useEffect(() => { loadAccounts(); }, [loadAccounts]);
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Carrega lotes C6 ainda não conciliados (para detectar "Pagamento de lote")
+  const loadC6Batches = useCallback(async () => {
+    const { data } = await supabase
+      .from("c6_payment_batches" as any)
+      .select("id, source, source_ref, payment_date, total, line_count, default_store_id")
+      .is("reconciled_at", null)
+      .order("payment_date", { ascending: false })
+      .limit(500);
+    setC6Batches(((data ?? []) as unknown as C6BatchCandidate[]));
+  }, []);
+  useEffect(() => { loadC6Batches(); }, [loadC6Batches]);
+
   // Carrega lista de lojas para o editor de rateio (uma vez)
   useEffect(() => {
     (async () => {
