@@ -1,7 +1,7 @@
 // Revisão da sacola + dados do cliente + checkout Mercado Pago.
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Trash2, Minus, Plus, Loader2 } from "lucide-react";
+import { Trash2, Minus, Plus, Loader2, ArrowLeft } from "lucide-react";
 import { PedirLayout } from "./PedirLayout";
 import { useEcommerceCart, formatBRL } from "@/hooks/useEcommerceCart";
 import { toast } from "@/hooks/use-toast";
@@ -54,7 +54,6 @@ export default function PedirCarrinho() {
       }
       if (!data?.init_point) throw new Error("Sem link de pagamento");
       cart.clear();
-      // redireciona pro checkout do MP
       window.location.href = data.init_point;
     } catch (err: any) {
       console.error(err);
@@ -69,37 +68,56 @@ export default function PedirCarrinho() {
 
   return (
     <PedirLayout cartCount={cart.totalItems}>
-      <div className="mb-4">
-        <Link to={`/pedir/${slug}`} className="text-sm opacity-70 hover:opacity-100">
-          ← Voltar ao cardápio
+      <div className="mb-5 flex items-center gap-2">
+        <Link
+          to={`/pedir/${slug}`}
+          className="inline-flex items-center gap-1 text-sm font-semibold"
+          style={{ color: "hsl(var(--ap-brown-2))" }}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Voltar ao cardápio
         </Link>
-        <h1 className="mt-2 text-xl font-black">Sua sacola</h1>
       </div>
 
+      <h1 className="ap-display mb-5" style={{ fontSize: "clamp(2rem, 5vw, 2.75rem)" }}>
+        Sua sacola
+      </h1>
+
       {empty ? (
-        <div className="rounded-2xl border bg-white p-8 text-center">
-          <p className="opacity-70">Sua sacola está vazia.</p>
+        <div className="ap-card p-10 text-center">
+          <p className="text-base" style={{ color: "hsl(var(--ap-brown-2))" }}>
+            Sua sacola está vazia.
+          </p>
           <button
             onClick={() => nav(`/pedir/${slug}`)}
-            className="mt-4 rounded-full bg-zinc-900 px-5 py-2 text-sm font-semibold text-white"
+            className="ap-btn-primary mt-5 inline-flex"
           >
             Ver cardápio
           </button>
         </div>
       ) : (
-        <div className="space-y-4">
-          <div className="space-y-2">
+        <div className="grid gap-5 md:grid-cols-[1fr,360px]">
+          {/* Itens */}
+          <div className="space-y-3">
             {cart.items.map((it) => (
-              <div key={it.id} className="flex items-center gap-3 rounded-xl border bg-white p-3">
-                <div className="flex-1">
-                  <div className="text-sm font-semibold leading-tight">{it.item_name}</div>
-                  <div className="mt-1 text-xs opacity-70">{formatBRL(it.unit_price)} cada</div>
+              <div key={it.id} className="ap-card flex items-center gap-3 p-3">
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-bold leading-tight" style={{ color: "hsl(var(--ap-brown))" }}>
+                    {it.item_name}
+                  </div>
+                  <div className="mt-1 text-xs" style={{ color: "hsl(var(--ap-brown-2))" }}>
+                    {formatBRL(it.unit_price)} · un.
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 rounded-full border px-1.5 py-1">
+                <div
+                  className="flex items-center gap-1 rounded-full bg-white px-1.5 py-1"
+                  style={{ border: "1px solid hsl(var(--ap-brown) / .15)" }}
+                >
                   <button
                     aria-label="Diminuir"
                     onClick={() => cart.setQuantity(it.id, it.quantity - 1)}
-                    className="grid h-6 w-6 place-items-center rounded-full bg-zinc-100"
+                    className="grid h-6 w-6 place-items-center rounded-full"
+                    style={{ background: "hsl(var(--ap-cream))", color: "hsl(var(--ap-brown))" }}
                   >
                     <Minus className="h-3 w-3" />
                   </button>
@@ -107,7 +125,8 @@ export default function PedirCarrinho() {
                   <button
                     aria-label="Aumentar"
                     onClick={() => cart.setQuantity(it.id, it.quantity + 1)}
-                    className="grid h-6 w-6 place-items-center rounded-full bg-zinc-900 text-white"
+                    className="grid h-6 w-6 place-items-center rounded-full text-white"
+                    style={{ background: "hsl(var(--ap-red))" }}
                   >
                     <Plus className="h-3 w-3" />
                   </button>
@@ -115,7 +134,8 @@ export default function PedirCarrinho() {
                 <button
                   aria-label="Remover"
                   onClick={() => cart.removeItem(it.id)}
-                  className="grid h-8 w-8 place-items-center rounded-full text-zinc-400 hover:text-red-500"
+                  className="grid h-8 w-8 place-items-center rounded-full"
+                  style={{ color: "hsl(var(--ap-brown-2))" }}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -123,57 +143,79 @@ export default function PedirCarrinho() {
             ))}
           </div>
 
-          <div className="rounded-xl border bg-white p-4">
-            <div className="flex items-center justify-between text-sm">
-              <span className="opacity-70">Subtotal</span>
-              <span className="font-bold">{formatBRL(cart.subtotal)}</span>
-            </div>
-            {Object.keys(cart.brandBreakdown).length > 1 && (
-              <div className="mt-2 space-y-0.5 border-t pt-2 text-xs opacity-70">
-                {Object.entries(cart.brandBreakdown).map(([brand, val]) => (
-                  <div key={brand} className="flex items-center justify-between">
-                    <span className="capitalize">{brand.replace("-", " ")}</span>
-                    <span>{formatBRL(val)}</span>
-                  </div>
-                ))}
+          {/* Resumo + form */}
+          <aside className="space-y-4">
+            <div className="ap-card p-4">
+              <div className="flex items-center justify-between">
+                <span style={{ color: "hsl(var(--ap-brown-2))" }}>Subtotal</span>
+                <span className="text-lg font-black" style={{ color: "hsl(var(--ap-red))" }}>
+                  {formatBRL(cart.subtotal)}
+                </span>
               </div>
-            )}
-          </div>
+              {Object.keys(cart.brandBreakdown).length > 1 && (
+                <div
+                  className="mt-3 space-y-1 border-t pt-3 text-xs"
+                  style={{ color: "hsl(var(--ap-brown-2))", borderColor: "hsl(var(--ap-brown) / .15)" }}
+                >
+                  {Object.entries(cart.brandBreakdown).map(([brand, val]) => (
+                    <div key={brand} className="flex items-center justify-between">
+                      <span className="capitalize">{brand.replace(/-/g, " ")}</span>
+                      <span>{formatBRL(val)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-          <form onSubmit={handleCheckout} className="space-y-3 rounded-xl border bg-white p-4">
-            <h2 className="text-sm font-bold">Seus dados</h2>
-            <div>
-              <label className="block text-xs font-semibold opacity-70">Nome</label>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Seu nome completo"
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold opacity-70">Telefone (WhatsApp)</label>
-              <input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="(61) 9 9999-9999"
-                inputMode="tel"
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                required
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full rounded-full bg-emerald-600 py-3 text-sm font-bold text-white disabled:opacity-60"
-            >
-              {submitting ? "Processando…" : `Pagar ${formatBRL(cart.subtotal)} (em breve via Mercado Pago)`}
-            </button>
-            <p className="text-center text-[11px] opacity-60">
-              O pedido só vai pra cozinha após o pagamento ser confirmado.
-            </p>
-          </form>
+            <form onSubmit={handleCheckout} className="ap-card ap-form space-y-3 p-4">
+              <h2 className="ap-display" style={{ fontSize: "1.5rem" }}>
+                Seus dados
+              </h2>
+              <div>
+                <label className="block text-xs font-semibold" style={{ color: "hsl(var(--ap-brown-2))" }}>
+                  Nome
+                </label>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Seu nome completo"
+                  className="mt-1 w-full rounded-xl bg-white px-3 py-2.5 text-sm outline-none"
+                  style={{ border: "1px solid hsl(var(--ap-brown) / .2)" }}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold" style={{ color: "hsl(var(--ap-brown-2))" }}>
+                  WhatsApp
+                </label>
+                <input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="(61) 9 9999-9999"
+                  inputMode="tel"
+                  className="mt-1 w-full rounded-xl bg-white px-3 py-2.5 text-sm outline-none"
+                  style={{ border: "1px solid hsl(var(--ap-brown) / .2)" }}
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="ap-btn-primary flex w-full items-center justify-center gap-2 py-3 text-base disabled:opacity-60"
+              >
+                {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                {submitting ? "Processando…" : `Pagar ${formatBRL(cart.subtotal)}`}
+              </button>
+              <p
+                className="text-center text-[11px]"
+                style={{ color: "hsl(var(--ap-brown-2))" }}
+              >
+                Pagamento processado pelo Mercado Pago.
+                <br />
+                A cozinha só recebe o pedido após o pagamento aprovado.
+              </p>
+            </form>
+          </aside>
         </div>
       )}
     </PedirLayout>

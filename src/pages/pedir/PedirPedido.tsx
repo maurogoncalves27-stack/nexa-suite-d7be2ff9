@@ -1,9 +1,8 @@
 // Página pública de acompanhamento do pedido — polling no status.
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Loader2, CheckCircle2, ChefHat, Package, XCircle, Clock } from "lucide-react";
+import { Loader2, CheckCircle2, ChefHat, Package, XCircle, Clock, MapPin, Phone } from "lucide-react";
 import { PedirLayout } from "./PedirLayout";
-
 
 type OrderStatus = {
   id: string;
@@ -74,58 +73,88 @@ export default function PedirPedido() {
 
   return (
     <PedirLayout>
-      <div className="mx-auto max-w-md space-y-4">
-        <div className="rounded-2xl border bg-white p-6 text-center">
-          <p className="text-xs uppercase tracking-wider opacity-60">Pedido</p>
-          <h1 className="mt-1 text-2xl font-black">
+      <div className="mx-auto max-w-lg space-y-5">
+        {/* Cabeçalho do pedido */}
+        <div className="ap-card p-6 text-center">
+          <span className="ap-tag">Pedido</span>
+          <h1
+            className="ap-display mt-3"
+            style={{ fontSize: "clamp(2rem, 6vw, 3rem)" }}
+          >
             #{order?.order_number || id?.slice(0, 8).toUpperCase()}
           </h1>
           {order?.store && (
-            <p className="mt-1 text-sm opacity-70">Retirar em {order.store.display_name}</p>
+            <p
+              className="mt-2 text-sm"
+              style={{ color: "hsl(var(--ap-brown-2))", fontFamily: "Bitter, serif" }}
+            >
+              Retirar em <strong>{order.store.display_name}</strong>
+            </p>
+          )}
+          {order?.customer_name && (
+            <p className="mt-1 text-xs" style={{ color: "hsl(var(--ap-brown-2))" }}>
+              {order.customer_name}
+            </p>
           )}
         </div>
 
         {loading && !order ? (
-          <div className="flex items-center justify-center rounded-2xl border bg-white p-8">
-            <Loader2 className="h-5 w-5 animate-spin opacity-60" />
+          <div className="ap-card flex items-center justify-center p-8">
+            <Loader2 className="h-5 w-5 animate-spin" style={{ color: "hsl(var(--ap-red))" }} />
           </div>
         ) : err ? (
-          <div className="rounded-2xl border bg-white p-6 text-center text-sm text-red-600">{err}</div>
+          <div className="ap-card p-6 text-center text-sm" style={{ color: "hsl(var(--ap-red))" }}>
+            {err}
+          </div>
         ) : order ? (
           <>
-            <div className="rounded-2xl border bg-white p-4">
+            {/* Timeline */}
+            <div className="ap-card p-5">
               {cancelled ? (
-                <div className="flex items-center gap-3 text-red-600">
-                  <XCircle className="h-6 w-6" />
+                <div className="flex items-center gap-3" style={{ color: "hsl(var(--ap-red))" }}>
+                  <XCircle className="h-7 w-7" />
                   <div>
                     <div className="font-bold">Pedido cancelado</div>
                     <div className="text-xs opacity-70">Pagamento não foi concluído.</div>
                   </div>
                 </div>
               ) : (
-                <ol className="space-y-3">
+                <ol className="space-y-4">
                   {STEPS.map((s, i) => {
                     const Icon = s.icon;
                     const done = i < activeIdx;
                     const active = i === activeIdx;
+                    const bg = done
+                      ? "hsl(var(--ap-red))"
+                      : active
+                        ? "hsl(var(--ap-mustard))"
+                        : "hsl(var(--ap-brown) / .1)";
+                    const fg = done || active ? "#fff" : "hsl(var(--ap-brown-2))";
                     return (
                       <li key={s.key} className="flex items-center gap-3">
                         <div
-                          className={`grid h-8 w-8 place-items-center rounded-full ${
-                            done
-                              ? "bg-green-600 text-white"
-                              : active
-                                ? "bg-zinc-900 text-white"
-                                : "bg-zinc-100 text-zinc-400"
-                          }`}
+                          className="grid h-10 w-10 place-items-center rounded-full shadow-sm"
+                          style={{ background: bg, color: fg }}
                         >
                           {active && i === 0 ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <Loader2 className="h-5 w-5 animate-spin" />
                           ) : (
-                            <Icon className="h-4 w-4" />
+                            <Icon className="h-5 w-5" />
                           )}
                         </div>
-                        <span className={`text-sm ${active ? "font-bold" : done ? "" : "opacity-50"}`}>
+                        <span
+                          className="text-sm"
+                          style={{
+                            fontFamily: "Bitter, serif",
+                            fontWeight: active ? 700 : done ? 600 : 500,
+                            color: active
+                              ? "hsl(var(--ap-brown))"
+                              : done
+                                ? "hsl(var(--ap-brown))"
+                                : "hsl(var(--ap-brown-2))",
+                            opacity: done || active ? 1 : 0.65,
+                          }}
+                        >
                           {s.label}
                         </span>
                       </li>
@@ -135,35 +164,50 @@ export default function PedirPedido() {
               )}
             </div>
 
-            <div className="rounded-2xl border bg-white p-4">
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wider opacity-60">
+            {/* Resumo */}
+            <div className="ap-card p-5">
+              <div className="mb-3 text-xs font-bold uppercase tracking-wider" style={{ color: "hsl(var(--ap-brown-2))" }}>
                 Resumo
               </div>
-              <ul className="space-y-1 text-sm">
+              <ul className="space-y-1.5 text-sm" style={{ fontFamily: "Bitter, serif", color: "hsl(var(--ap-brown))" }}>
                 {order.items.map((it) => (
                   <li key={it.id} className="flex justify-between gap-2">
-                    <span>
-                      {it.quantity}× {it.name}
-                    </span>
+                    <span>{it.quantity}× {it.name}</span>
                     <span className="tabular-nums">
                       {it.total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     </span>
                   </li>
                 ))}
               </ul>
-              <div className="mt-3 flex justify-between border-t pt-2 text-sm font-bold">
+              <div
+                className="mt-4 flex justify-between border-t pt-3 text-base font-black"
+                style={{ borderColor: "hsl(var(--ap-brown) / .15)", color: "hsl(var(--ap-red))" }}
+              >
                 <span>Total</span>
-                <span>
-                  {order.total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                </span>
+                <span>{order.total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
               </div>
             </div>
 
+            {/* Loja */}
             {order.store && (
-              <div className="rounded-2xl border bg-white p-4 text-sm">
-                <div className="font-semibold">{order.store.display_name}</div>
-                {order.store.address && <div className="opacity-70">{order.store.address}</div>}
-                {order.store.phone && <div className="opacity-70">{order.store.phone}</div>}
+              <div className="ap-card p-5 text-sm" style={{ fontFamily: "Bitter, serif" }}>
+                <div className="ap-display" style={{ fontSize: "1.25rem" }}>
+                  {order.store.display_name}
+                </div>
+                {order.store.address && (
+                  <div className="mt-2 flex items-start gap-1.5" style={{ color: "hsl(var(--ap-brown-2))" }}>
+                    <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>{order.store.address}</span>
+                  </div>
+                )}
+                {order.store.phone && (
+                  <div className="mt-1 flex items-center gap-1.5" style={{ color: "hsl(var(--ap-brown-2))" }}>
+                    <Phone className="h-4 w-4" />
+                    <a href={`tel:${order.store.phone}`} className="ap-footer-link" style={{ color: "hsl(var(--ap-red))" }}>
+                      {order.store.phone}
+                    </a>
+                  </div>
+                )}
               </div>
             )}
           </>
