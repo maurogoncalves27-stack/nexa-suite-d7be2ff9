@@ -495,8 +495,8 @@ function DreTable({ columns, loading }: { columns: DreColumn[]; loading: boolean
               const isOpen = expanded[row.label];
               const items = isOpen && hasDrill ? breakdownItems(row) : [];
               return (
-                <>
-                  <tr key={row.label} className={`${rowClass(row.variant)} ${hasDrill ? "cursor-pointer hover:bg-muted/30" : ""}`}
+                <Fragment key={row.label}>
+                  <tr className={`${rowClass(row.variant)} ${hasDrill ? "cursor-pointer hover:bg-muted/30" : ""}`}
                       onClick={() => hasDrill && toggle(row.label)}>
                     <td className={`px-2 sm:px-3 py-1.5 sticky left-0 z-10 ${rowBg(row.variant)} ${row.indent ? "pl-4 sm:pl-6" : ""}`}>
                       <span className="inline-flex items-center gap-1">
