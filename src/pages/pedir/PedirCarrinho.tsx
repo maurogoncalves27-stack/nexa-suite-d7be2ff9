@@ -181,7 +181,6 @@ export default function PedirCarrinho() {
                   placeholder="Seu nome completo"
                   className="mt-1 w-full rounded-xl bg-white px-3 py-2.5 text-sm outline-none"
                   style={{ border: "1px solid hsl(var(--ap-brown) / .2)" }}
-                  required
                 />
               </div>
               <div>
@@ -195,7 +194,6 @@ export default function PedirCarrinho() {
                   inputMode="tel"
                   className="mt-1 w-full rounded-xl bg-white px-3 py-2.5 text-sm outline-none"
                   style={{ border: "1px solid hsl(var(--ap-brown) / .2)" }}
-                  required
                 />
               </div>
               <button
