@@ -150,11 +150,10 @@ export default function DrePanel() {
     try {
       const [salesRes, payRes, recRes, catRes] = await Promise.all([
         supabase
-          .from("pdv_orders")
-          .select("id,concluded_at,total,status,dre_excluded,order_number")
-          .in("status", ["concluded", "cancelled"])
-          .gte("concluded_at", `${periodStart}T00:00:00`)
-          .lte("concluded_at", `${periodEnd}T23:59:59`),
+          .from("daily_revenue")
+          .select("id,sale_date,gross_revenue")
+          .gte("sale_date", periodStart)
+          .lte("sale_date", periodEnd),
         supabase
           .from("accounts_payable")
           .select("id,paid_at,amount,category_id,description,supplier_name,beneficiary,status")
