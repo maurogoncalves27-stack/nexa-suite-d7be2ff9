@@ -201,7 +201,7 @@ export default function PedirLoja() {
                           <ImageIcon className="h-10 w-10" />
                         </div>
                       )}
-                      {brandCode && tab === "all" && (
+                      {brandCode && (
                         <span
                           className="absolute left-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow"
                           style={{
