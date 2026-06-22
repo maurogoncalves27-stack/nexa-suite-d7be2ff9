@@ -35,7 +35,6 @@ export default function PedirHome() {
     <PedirLayout>
       {/* Hero */}
       <section className="text-center">
-        <span className="ap-tag">Retire na loja · pronto rapidinho</span>
         <h1 className="ap-display mt-4" style={{ fontSize: "clamp(2.25rem, 7vw, 3.75rem)" }}>
           Peça <em className="not-italic" style={{ color: "hsl(var(--ap-mustard))" }}>online</em>
           <br />
