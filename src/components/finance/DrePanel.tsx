@@ -294,7 +294,7 @@ export default function DrePanel() {
           </TabsContent>
         </Tabs>
 
-        <ExclusionsSection sales={sales} onChanged={load} />
+        
       </CardContent>
     </Card>
   );
