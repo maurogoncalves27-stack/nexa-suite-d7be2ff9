@@ -20,13 +20,6 @@ type MenuRow = {
   brand_codes: string[];
 };
 
-const TABS: { code: BrandCode; label: string; logo?: string; bg: string }[] = [
-  { code: "all", label: "Tudo", bg: "#2a140c" },
-  { code: "aquela-parme", label: "Parmê", logo: parmeAssets.Logo_Aquela_Parme, bg: "#c93029" },
-  { code: "aquele-estrogonofe", label: "Estrogonofe", logo: parmeAssets.Logo_Aquele_estrogonofe, bg: "#bba07a" },
-  { code: "box-caipira", label: "Box Caipira", logo: parmeAssets.Logo_Box_Caipira, bg: "#ef6b3a" },
-];
-
 const BRAND_LABEL: Record<Exclude<BrandCode, "all">, string> = {
   "aquela-parme": "Parmê",
   "aquele-estrogonofe": "Estrogonofe",
