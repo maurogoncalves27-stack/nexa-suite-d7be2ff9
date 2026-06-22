@@ -159,6 +159,10 @@ const ParmeSobre = lazy(() => import("./pages/parme/Sobre.tsx"));
 const ParmeReservar = lazy(() => import("./pages/parme/Reservar.tsx"));
 const ParmeEnderecos = lazy(() => import("./pages/parme/Enderecos.tsx"));
 const ParmeSurpresa = lazy(() => import("./pages/parme/Surpresa.tsx"));
+const PedirHome = lazy(() => import("./pages/pedir/PedirHome.tsx"));
+const PedirLoja = lazy(() => import("./pages/pedir/PedirLoja.tsx"));
+const PedirCarrinho = lazy(() => import("./pages/pedir/PedirCarrinho.tsx"));
+const PedirPedido = lazy(() => import("./pages/pedir/PedirPedido.tsx"));
 import { HostnameGuard } from "@/components/parme-site/HostnameGuard";
 
 const queryClient = new QueryClient();
