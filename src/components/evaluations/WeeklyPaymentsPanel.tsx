@@ -344,8 +344,13 @@ export default function WeeklyPaymentsPanel({ weekStart }: WeeklyPaymentsPanelPr
           pixKeyType: r.employee.pix_key_type ?? null,
           amount: r.liquido,
           description: `Bonificação ${periodoBR}`,
+          employeeId: r.employee.id,
+          storeId: r.store_id ?? null,
         })),
         fileName: `c6-bonificacoes-${startIso}`,
+        source: "weekly_bonus",
+        sourceRef: `Bonificação ${periodoBR}`,
+        defaultCategoryId: BONIFICACAO_CATEGORY_ID,
       });
 
       if (included === 0) {
