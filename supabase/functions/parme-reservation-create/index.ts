@@ -52,6 +52,35 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    // Carrega config (limite/pausas) antes de inserir
+    const { data: cfgRow } = await supabase
+      .from("parme_site_settings")
+      .select("value")
+      .eq("key", "reservations")
+      .maybeSingle();
+    const cfg = (cfgRow?.value ?? {}) as {
+      whatsappStorePhone?: string;
+      notifyEnabled?: boolean;
+      maxPerDay?: number;
+      pausedDates?: string[];
+    };
+    const maxPerDay = Number(cfg.maxPerDay) > 0 ? Number(cfg.maxPerDay) : 0;
+    const pausedDates = Array.isArray(cfg.pausedDates) ? cfg.pausedDates : [];
+
+    if (pausedDates.includes(reservation_date)) {
+      return j({ error: "date_paused", message: "Reservas indisponíveis nesta data." }, 409);
+    }
+    if (maxPerDay > 0) {
+      const { count } = await supabase
+        .from("reservations")
+        .select("id", { count: "exact", head: true })
+        .eq("reservation_date", reservation_date)
+        .neq("status", "cancelled");
+      if ((count ?? 0) >= maxPerDay) {
+        return j({ error: "date_full", message: "Esgotado nesta data. Tente outro dia." }, 409);
+      }
+    }
+
     const { data, error } = await supabase
       .from("reservations")
       .insert({
