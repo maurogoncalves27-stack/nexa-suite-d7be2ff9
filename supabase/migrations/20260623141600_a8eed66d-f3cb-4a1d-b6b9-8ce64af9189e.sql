@@ -1,0 +1,1 @@
+DELETE FROM chat_conversations WHERE messages::text ILIKE '%mauro%' OR messages::text ILIKE '%teste2%' OR client_meta::text ILIKE '%mauro%' OR client_meta::text ILIKE '%teste2%';
