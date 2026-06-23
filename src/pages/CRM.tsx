@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Headset, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, Clock, Bot, Plug, Globe, Star, ArrowRight } from "lucide-react";
+import { Headset, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, Clock, Bot, Plug, Globe, Star, ArrowRight, Settings } from "lucide-react";
 import { AgentPanel, IntegrationsPanel } from "@/components/crm/ParmeSettingsPanels";
+import { ReservationSettingsDialog } from "@/components/crm/ReservationSettingsDialog";
 import CustomerReviews from "@/pages/CustomerReviews";
 import {
   BarChart,
