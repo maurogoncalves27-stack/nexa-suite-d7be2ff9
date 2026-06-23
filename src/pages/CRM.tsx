@@ -1630,9 +1630,11 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
 
 
 
-        <TabsContent value="reviews" className="mt-4">
+        <TabsContent value="reviews" className="mt-4 space-y-4">
+          <IFoodReviewsWidget />
           <CustomerReviews embedded />
         </TabsContent>
+
 
 
         <TabsContent value="agent" className="mt-4">
