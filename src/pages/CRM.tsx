@@ -1121,6 +1121,7 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                     <TableHead>Descrição</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Criado</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
