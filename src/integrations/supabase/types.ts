@@ -10716,6 +10716,41 @@ export type Database = {
         }
         Relationships: []
       }
+      pdv_ifood_widgets: {
+        Row: {
+          brand: string
+          merchant_id: string
+          store_id: string
+          updated_at: string
+          updated_by: string | null
+          widget_id: string
+        }
+        Insert: {
+          brand: string
+          merchant_id: string
+          store_id: string
+          updated_at?: string
+          updated_by?: string | null
+          widget_id: string
+        }
+        Update: {
+          brand?: string
+          merchant_id?: string
+          store_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          widget_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdv_ifood_widgets_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pdv_order_events: {
         Row: {
           acknowledged: boolean
