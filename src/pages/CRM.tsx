@@ -1521,6 +1521,10 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
           <IntegrationsPanel />
         </TabsContent>
       </Tabs>
+      <ReservationSettingsDialog
+        open={reservationSettingsOpen}
+        onOpenChange={setReservationSettingsOpen}
+      />
     </div>
   );
 }
