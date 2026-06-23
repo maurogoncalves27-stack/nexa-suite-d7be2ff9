@@ -387,6 +387,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
         .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by,packed_at,has_unread_chat")
 
         .in("store_id", ids)
+        .neq("status", "awaiting_payment")
         .gte("opened_at", start.toISOString())
         .lte("opened_at", end.toISOString())
         .order("opened_at", { ascending: false });
