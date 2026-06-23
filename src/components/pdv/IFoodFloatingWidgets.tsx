@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 declare global {
   interface Window {
-    iFoodWidget?: { init: (cfg: { widgetId: string; merchantIds: string[] }) => void };
+    iFoodWidget?: { init: (cfg: { widgetId: string; merchantIds: string[]; container?: string }) => void };
     __ifoodWidgetInits?: Set<string>;
   }
 }
