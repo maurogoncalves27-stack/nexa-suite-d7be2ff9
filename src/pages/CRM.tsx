@@ -638,6 +638,7 @@ export default function CRM() {
       toast.error("Falha ao confirmar", { id: tid, description: e.message });
     } finally {
       setConfirmingId(null);
+    }
   }
 
   async function handleUpdateTicketStatus(parmeId: string, status: string) {
