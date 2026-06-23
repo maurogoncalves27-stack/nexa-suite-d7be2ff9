@@ -392,6 +392,7 @@ export default function CRM() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [expandedTicketId, setExpandedTicketId] = useState<string | null>(null);
+  const [ticketBusyId, setTicketBusyId] = useState<string | null>(null);
   const [threadLoading, setThreadLoading] = useState(false);
   const [threadMessages, setThreadMessages] = useState<any[] | null>(null);
   const [threadError, setThreadError] = useState<string | null>(null);
@@ -639,6 +640,45 @@ export default function CRM() {
       setConfirmingId(null);
     }
   }
+
+  async function handleUpdateTicketStatus(parmeId: string, status: string) {
+    setTicketBusyId(parmeId);
+    const tid = toast.loading("Atualizando ticket…");
+    try {
+      const { error } = await supabase
+        .from("support_tickets")
+        .update({ status })
+        .eq("id", parmeId);
+      if (error) throw error;
+      setTickets((prev) =>
+        prev.map((t) => (t.parme_id === parmeId ? { ...t, status } : t)),
+      );
+      toast.success("Ticket atualizado", { id: tid });
+    } catch (e: any) {
+      toast.error("Falha ao atualizar", { id: tid, description: e.message });
+    } finally {
+      setTicketBusyId(null);
+    }
+  }
+
+  async function handleDeleteTicket(parmeId: string) {
+    setTicketBusyId(parmeId);
+    const tid = toast.loading("Excluindo ticket…");
+    try {
+      const { error } = await supabase
+        .from("support_tickets")
+        .delete()
+        .eq("id", parmeId);
+      if (error) throw error;
+      setTickets((prev) => prev.filter((t) => t.parme_id !== parmeId));
+      toast.success("Ticket excluído", { id: tid });
+    } catch (e: any) {
+      toast.error("Falha ao excluir", { id: tid, description: e.message });
+    } finally {
+      setTicketBusyId(null);
+    }
+  }
+
 
   const q = search.trim().toLowerCase();
 
@@ -1081,18 +1121,19 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                     <TableHead>Descrição</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Criado</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         Carregando…
                       </TableCell>
                     </TableRow>
                   ) : filteredTickets.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         Nenhum ticket.
                       </TableCell>
                     </TableRow>
@@ -1148,10 +1189,76 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                               {t.status ? <Badge variant="outline">{translateStatus(t.status)}</Badge> : "—"}
                             </TableCell>
                             <TableCell>{fmtDateTime(t.created_at)}</TableCell>
+                            <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-end gap-2">
+                                <Select
+                                  value={(t.status ?? "open").toLowerCase()}
+                                  onValueChange={(v) => handleUpdateTicketStatus(t.parme_id, v)}
+                                  disabled={ticketBusyId === t.parme_id}
+                                >
+                                  <SelectTrigger className="h-8 w-[150px]">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="open">Aberto</SelectItem>
+                                    <SelectItem value="in_progress">Em andamento</SelectItem>
+                                    <SelectItem value="waiting">Aguardando</SelectItem>
+                                    <SelectItem value="resolved">Resolvido</SelectItem>
+                                    <SelectItem value="closed">Fechado</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                {(t.status ?? "").toLowerCase() !== "resolved" && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 gap-1"
+                                    disabled={ticketBusyId === t.parme_id}
+                                    onClick={() => handleUpdateTicketStatus(t.parme_id, "resolved")}
+                                    title="Marcar como resolvido"
+                                  >
+                                    <CheckCircle2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 text-destructive hover:text-destructive"
+                                      disabled={ticketBusyId === t.parme_id}
+                                      title="Excluir ticket"
+                                    >
+                                      {ticketBusyId === t.parme_id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Trash2 className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Excluir ticket?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Esta ação remove o ticket permanentemente. Não pode ser desfeita.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => handleDeleteTicket(t.parme_id)}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      >
+                                        Excluir
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </TableCell>
                           </TableRow>
                           {isOpen && (
                             <TableRow className="hover:bg-transparent">
-                              <TableCell colSpan={6} className="p-0">
+                              <TableCell colSpan={7} className="p-0">
 
                                 <div className="p-4 space-y-4 bg-muted/20 border-t">
                                   <div className="flex flex-wrap gap-2 text-sm">
