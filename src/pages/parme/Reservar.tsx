@@ -18,12 +18,48 @@ export default function ReservarPage() {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState<null | { date: string; time: string; party: number }>(null);
   const [phone, setPhone] = useState("");
+  const [date, setDate] = useState("");
+  const [availability, setAvailability] = useState<null | { paused: boolean; full: boolean }>(null);
+  const [checkingAvail, setCheckingAvail] = useState(false);
   const today = new Date().toISOString().slice(0, 10);
   const maxDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   useEffect(() => {
     document.title = "Reservar mesa — Aquela Parmê";
   }, []);
+
+  useEffect(() => {
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      setAvailability(null);
+      return;
+    }
+    let cancelled = false;
+    setCheckingAvail(true);
+    supabase.functions.invoke("parme-reservation-availability", {
+      body: undefined,
+      method: "GET" as never,
+      headers: { } as never,
+    } as never).then(({ data }) => {
+      // Fallback: usar fetch direto pois invoke não passa query string
+      return data;
+    }).catch(() => null).finally(async () => {
+      try {
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parme-reservation-availability?date=${date}`;
+        const res = await fetch(url, {
+          headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "" },
+        });
+        const json = await res.json();
+        if (!cancelled) setAvailability({ paused: !!json.paused, full: !!json.full });
+      } catch {
+        if (!cancelled) setAvailability(null);
+      } finally {
+        if (!cancelled) setCheckingAvail(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [date]);
+
+  const unavailable = availability?.paused || availability?.full;
 
   return (
     <SiteLayout>
