@@ -771,7 +771,18 @@ export default function CRM() {
 
 
         {/* Reservas */}
-        <TabsContent value="reservations" className="mt-4">
+        <TabsContent value="reservations" className="mt-4 space-y-3">
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setReservationSettingsOpen(true)}
+              className="gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              Configurações
+            </Button>
+          </div>
           <Card>
             <CardContent className="p-0">
               {/* Mobile: cards */}
