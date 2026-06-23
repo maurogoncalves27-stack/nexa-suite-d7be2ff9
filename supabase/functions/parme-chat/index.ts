@@ -164,16 +164,31 @@ function existingFlatMessages(raw: unknown) {
 
 function mergeFlatMessages(existing: FlatChatMessage[], incoming: FlatChatMessage[]) {
   const merged: FlatChatMessage[] = [];
-  const indexByKey = new Map<string, number>();
-  const keyFor = (m: FlatChatMessage) => m.id || `${m.role}:${m.content}:${m.ts}`;
+  const indexById = new Map<string, number>();
+  const indexByContent = new Map<string, number>();
+  // Dedupe por id E por (role + conteúdo normalizado), porque o cliente e o
+  // onFinish geram ids diferentes para a mesma resposta da Giana (ex.:
+  // `assistant_N_<prefix>` vs `a_<ts>`), o que duplicava cada mensagem.
+  const contentKey = (m: FlatChatMessage) => {
+    const c = String(m.content || "").trim().toLowerCase();
+    if (!c) return "";
+    return `${String(m.role || "user").toLowerCase()}::${c}`;
+  };
   for (const msg of [...existing, ...incoming]) {
-    const key = keyFor(msg);
-    const found = indexByKey.get(key);
+    const idKey = msg.id || "";
+    const cKey = contentKey(msg);
+    const foundById = idKey ? indexById.get(idKey) : undefined;
+    const foundByContent = cKey ? indexByContent.get(cKey) : undefined;
+    const found = foundById ?? foundByContent;
     if (found === undefined) {
-      indexByKey.set(key, merged.length);
+      const pos = merged.length;
       merged.push(msg);
+      if (idKey) indexById.set(idKey, pos);
+      if (cKey) indexByContent.set(cKey, pos);
     } else {
       merged[found] = { ...merged[found], ...msg, ts: merged[found].ts || msg.ts };
+      if (idKey && !indexById.has(idKey)) indexById.set(idKey, found);
+      if (cKey && !indexByContent.has(cKey)) indexByContent.set(cKey, found);
     }
   }
   return merged;
