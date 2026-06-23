@@ -660,6 +660,7 @@ export default function CRM() {
       if (q) {
         const hit =
           (t.contact ?? "").toLowerCase().includes(q) ||
+          (t.title ?? "").toLowerCase().includes(q) ||
           (t.description ?? "").toLowerCase().includes(q) ||
           (t.order_number ?? "").toLowerCase().includes(q);
         if (!hit) return false;
@@ -667,6 +668,7 @@ export default function CRM() {
       return true;
     });
   }, [tickets, q]);
+
 
   const filteredConversations = useMemo(() => {
     return conversations.filter((c: any) => {
