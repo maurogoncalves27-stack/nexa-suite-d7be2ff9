@@ -393,6 +393,7 @@ export default function CRM() {
   const [threadLoading, setThreadLoading] = useState(false);
   const [threadMessages, setThreadMessages] = useState<any[] | null>(null);
   const [threadError, setThreadError] = useState<string | null>(null);
+  const [reservationSettingsOpen, setReservationSettingsOpen] = useState(false);
   const [expandedConvId, setExpandedConvId] = useState<string | null>(null);
   const [convMsgsLoading, setConvMsgsLoading] = useState(false);
   const [convMsgs, setConvMsgs] = useState<any[] | null>(null);
