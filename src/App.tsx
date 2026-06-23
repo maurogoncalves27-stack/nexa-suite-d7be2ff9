@@ -119,6 +119,7 @@ const Quotations = lazy(() => import("./pages/Quotations.tsx"));
 const PdvNovo = lazy(() => import("./pages/PdvNovo.tsx"));
 
 const TefPaygoSetup = lazy(() => import("./pages/TefPaygoSetup.tsx"));
+const IFoodWidgetsSettings = lazy(() => import("./pages/IFoodWidgetsSettings.tsx"));
 const PdvCancellations = lazy(() => import("./pages/PdvCancellations.tsx"));
 const StoreHome = lazy(() => import("./pages/StoreHome.tsx"));
 const SmartPos = lazy(() => import("./pages/SmartPos.tsx"));
