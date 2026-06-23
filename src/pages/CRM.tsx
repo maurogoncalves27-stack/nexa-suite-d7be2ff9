@@ -1189,6 +1189,72 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                               {t.status ? <Badge variant="outline">{translateStatus(t.status)}</Badge> : "—"}
                             </TableCell>
                             <TableCell>{fmtDateTime(t.created_at)}</TableCell>
+                            <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-end gap-2">
+                                <Select
+                                  value={(t.status ?? "open").toLowerCase()}
+                                  onValueChange={(v) => handleUpdateTicketStatus(t.parme_id, v)}
+                                  disabled={ticketBusyId === t.parme_id}
+                                >
+                                  <SelectTrigger className="h-8 w-[150px]">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="open">Aberto</SelectItem>
+                                    <SelectItem value="in_progress">Em andamento</SelectItem>
+                                    <SelectItem value="waiting">Aguardando</SelectItem>
+                                    <SelectItem value="resolved">Resolvido</SelectItem>
+                                    <SelectItem value="closed">Fechado</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                {(t.status ?? "").toLowerCase() !== "resolved" && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 gap-1"
+                                    disabled={ticketBusyId === t.parme_id}
+                                    onClick={() => handleUpdateTicketStatus(t.parme_id, "resolved")}
+                                    title="Marcar como resolvido"
+                                  >
+                                    <CheckCircle2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 text-destructive hover:text-destructive"
+                                      disabled={ticketBusyId === t.parme_id}
+                                      title="Excluir ticket"
+                                    >
+                                      {ticketBusyId === t.parme_id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Trash2 className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Excluir ticket?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Esta ação remove o ticket permanentemente. Não pode ser desfeita.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => handleDeleteTicket(t.parme_id)}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      >
+                                        Excluir
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </TableCell>
                           </TableRow>
                           {isOpen && (
                             <TableRow className="hover:bg-transparent">
