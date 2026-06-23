@@ -31,7 +31,10 @@ export default function IFoodWidgetsSettings() {
         .eq("is_virtual", false)
         .order("name");
       if (error) throw error;
-      return (data ?? []) as Store[];
+      // Apenas pontos de venda — exclui FÁBRICA, ESTOQUE CENTRAL, ESCRITÓRIO etc.
+      return ((data ?? []) as Store[]).filter(
+        (s) => !/f[áa]brica|estoque|escrit[óo]rio/i.test(s.name)
+      );
     },
   });
 

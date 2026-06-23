@@ -182,9 +182,11 @@ export function IFoodReviewsWidget() {
           </div>
         ) : (
           <div className="flex gap-4 overflow-x-auto pb-3">
-            {stores.map((s) => (
-              <StoreCard key={s.id} store={s} rows={rowsByStore[s.id] ?? []} />
-            ))}
+            {stores
+              .filter((s) => (rowsByStore[s.id]?.length ?? 0) > 0)
+              .map((s) => (
+                <StoreCard key={s.id} store={s} rows={rowsByStore[s.id] ?? []} />
+              ))}
           </div>
         )}
       </CardContent>
