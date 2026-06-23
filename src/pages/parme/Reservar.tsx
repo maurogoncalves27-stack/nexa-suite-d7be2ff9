@@ -18,12 +18,41 @@ export default function ReservarPage() {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState<null | { date: string; time: string; party: number }>(null);
   const [phone, setPhone] = useState("");
+  const [date, setDate] = useState("");
+  const [availability, setAvailability] = useState<null | { paused: boolean; full: boolean }>(null);
+  const [checkingAvail, setCheckingAvail] = useState(false);
   const today = new Date().toISOString().slice(0, 10);
   const maxDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   useEffect(() => {
     document.title = "Reservar mesa — Aquela Parmê";
   }, []);
+
+  useEffect(() => {
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      setAvailability(null);
+      return;
+    }
+    let cancelled = false;
+    setCheckingAvail(true);
+    (async () => {
+      try {
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parme-reservation-availability?date=${date}`;
+        const res = await fetch(url, {
+          headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "" },
+        });
+        const json = await res.json();
+        if (!cancelled) setAvailability({ paused: !!json.paused, full: !!json.full });
+      } catch {
+        if (!cancelled) setAvailability(null);
+      } finally {
+        if (!cancelled) setCheckingAvail(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [date]);
+
+  const unavailable = availability?.paused || availability?.full;
 
   return (
     <SiteLayout>
@@ -94,16 +123,35 @@ export default function ReservarPage() {
               <Input name="email" label="E-mail (opcional)" type="email" autoComplete="email" />
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
-              <Input name="reservation_date" label="Data" type="date" required min={today} max={maxDate} />
+              <Input
+                name="reservation_date"
+                label="Data"
+                type="date"
+                required
+                min={today}
+                max={maxDate}
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
               <Select name="reservation_time" label="Horário" required options={TIMES} />
               <Input name="party_size" label="Pessoas" type="number" required min={1} max={25} defaultValue={2} />
             </div>
+            {date && checkingAvail && (
+              <p className="text-xs" style={{ color: "rgba(0,0,0,0.5)" }}>Verificando disponibilidade…</p>
+            )}
+            {unavailable && (
+              <div className="rounded-lg border-2 px-4 py-3 text-sm font-semibold" style={{ borderColor: "#e8231f", color: "#e8231f", background: "rgba(232,35,31,0.06)" }}>
+                {availability?.paused
+                  ? "Reservas indisponíveis nesta data."
+                  : "Esgotado nesta data — escolha outro dia."}
+              </div>
+            )}
             <div>
               <label className="text-sm font-medium" htmlFor="notes">Observações</label>
               <textarea id="notes" name="notes" rows={3} maxLength={500} placeholder="Aniversário, alergia, cadeirinha..." className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2" style={{ borderColor: "rgba(0,0,0,0.15)" }} />
             </div>
-            <button disabled={loading} className="mt-2 rounded-full px-6 py-3 font-semibold text-white shadow disabled:opacity-60" style={{ background: "#e8231f" }}>
-              {loading ? "Enviando..." : "Confirmar reserva"}
+            <button disabled={loading || !!unavailable} className="mt-2 rounded-full px-6 py-3 font-semibold text-white shadow disabled:opacity-60" style={{ background: "#e8231f" }}>
+              {loading ? "Enviando..." : unavailable ? "Indisponível" : "Confirmar reserva"}
             </button>
           </form>
         )}

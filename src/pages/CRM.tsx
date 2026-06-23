@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Headset, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, Clock, Bot, Plug, Globe, Star, ArrowRight } from "lucide-react";
+import { Headset, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, Clock, Bot, Plug, Globe, Star, ArrowRight, Settings } from "lucide-react";
 import { AgentPanel, IntegrationsPanel } from "@/components/crm/ParmeSettingsPanels";
+import { ReservationSettingsDialog } from "@/components/crm/ReservationSettingsDialog";
 import CustomerReviews from "@/pages/CustomerReviews";
 import {
   BarChart,
@@ -392,6 +393,7 @@ export default function CRM() {
   const [threadLoading, setThreadLoading] = useState(false);
   const [threadMessages, setThreadMessages] = useState<any[] | null>(null);
   const [threadError, setThreadError] = useState<string | null>(null);
+  const [reservationSettingsOpen, setReservationSettingsOpen] = useState(false);
   const [expandedConvId, setExpandedConvId] = useState<string | null>(null);
   const [convMsgsLoading, setConvMsgsLoading] = useState(false);
   const [convMsgs, setConvMsgs] = useState<any[] | null>(null);
@@ -769,7 +771,18 @@ export default function CRM() {
 
 
         {/* Reservas */}
-        <TabsContent value="reservations" className="mt-4">
+        <TabsContent value="reservations" className="mt-4 space-y-3">
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setReservationSettingsOpen(true)}
+              className="gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              Configurações
+            </Button>
+          </div>
           <Card>
             <CardContent className="p-0">
               {/* Mobile: cards */}
@@ -1508,6 +1521,10 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
           <IntegrationsPanel />
         </TabsContent>
       </Tabs>
+      <ReservationSettingsDialog
+        open={reservationSettingsOpen}
+        onOpenChange={setReservationSettingsOpen}
+      />
     </div>
   );
 }
