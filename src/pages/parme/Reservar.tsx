@@ -35,14 +35,7 @@ export default function ReservarPage() {
     }
     let cancelled = false;
     setCheckingAvail(true);
-    supabase.functions.invoke("parme-reservation-availability", {
-      body: undefined,
-      method: "GET" as never,
-      headers: { } as never,
-    } as never).then(({ data }) => {
-      // Fallback: usar fetch direto pois invoke não passa query string
-      return data;
-    }).catch(() => null).finally(async () => {
+    (async () => {
       try {
         const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parme-reservation-availability?date=${date}`;
         const res = await fetch(url, {
@@ -55,7 +48,7 @@ export default function ReservarPage() {
       } finally {
         if (!cancelled) setCheckingAvail(false);
       }
-    });
+    })();
     return () => { cancelled = true; };
   }, [date]);
 
