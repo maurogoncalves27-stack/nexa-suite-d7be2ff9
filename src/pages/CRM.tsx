@@ -638,8 +638,46 @@ export default function CRM() {
       toast.error("Falha ao confirmar", { id: tid, description: e.message });
     } finally {
       setConfirmingId(null);
+  }
+
+  async function handleUpdateTicketStatus(parmeId: string, status: string) {
+    setTicketBusyId(parmeId);
+    const tid = toast.loading("Atualizando ticket…");
+    try {
+      const { error } = await supabase
+        .from("support_tickets")
+        .update({ status })
+        .eq("id", parmeId);
+      if (error) throw error;
+      setTickets((prev) =>
+        prev.map((t) => (t.parme_id === parmeId ? { ...t, status } : t)),
+      );
+      toast.success("Ticket atualizado", { id: tid });
+    } catch (e: any) {
+      toast.error("Falha ao atualizar", { id: tid, description: e.message });
+    } finally {
+      setTicketBusyId(null);
     }
   }
+
+  async function handleDeleteTicket(parmeId: string) {
+    setTicketBusyId(parmeId);
+    const tid = toast.loading("Excluindo ticket…");
+    try {
+      const { error } = await supabase
+        .from("support_tickets")
+        .delete()
+        .eq("id", parmeId);
+      if (error) throw error;
+      setTickets((prev) => prev.filter((t) => t.parme_id !== parmeId));
+      toast.success("Ticket excluído", { id: tid });
+    } catch (e: any) {
+      toast.error("Falha ao excluir", { id: tid, description: e.message });
+    } finally {
+      setTicketBusyId(null);
+    }
+  }
+
 
   const q = search.trim().toLowerCase();
 
