@@ -60,11 +60,29 @@ export function IFoodFloatingWidgets({ storeId }: { storeId: string | null | und
       .then(() => {
         if (cancelled || !window.iFoodWidget) return;
         window.__ifoodWidgetInits = window.__ifoodWidgetInits ?? new Set<string>();
-        for (const r of rows) {
+        for (let i = 0; i < rows.length; i++) {
+          const r = rows[i];
           const key = `${r.widget_id}:${r.merchant_id}`;
           if (window.__ifoodWidgetInits.has(key)) continue;
+          // cria container dedicado por marca para evitar colisão de bolinhas
+          const containerId = `ifood-widget-${r.brand}-${r.merchant_id.slice(0, 8)}`;
+          let container = document.getElementById(containerId);
+          if (!container) {
+            container = document.createElement("div");
+            container.id = containerId;
+            container.style.position = "fixed";
+            container.style.zIndex = String(9999 - i);
+            container.style.right = "20px";
+            // empilha verticalmente: 1ª em baixo, 2ª 80px acima, 3ª 160px acima
+            container.style.bottom = `${20 + i * 80}px`;
+            document.body.appendChild(container);
+          }
           try {
-            window.iFoodWidget.init({ widgetId: r.widget_id, merchantIds: [r.merchant_id] });
+            window.iFoodWidget.init({
+              widgetId: r.widget_id,
+              merchantIds: [r.merchant_id],
+              container: `#${containerId}`,
+            });
             window.__ifoodWidgetInits.add(key);
           } catch (e) {
             console.error("[iFoodFloatingWidgets] init error", r.brand, e);
