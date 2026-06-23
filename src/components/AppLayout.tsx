@@ -173,6 +173,7 @@ const PAGE_TITLES: PageMeta[] = [
   { match: (p) => p.startsWith("/configuracoes/nfce-tester"), title: "Teste NFC-e (ACBr)", group: "Configurações" },
   { match: (p) => p.startsWith("/configuracoes/tef-paygo"), title: "TEF PayGo", group: "PDV" },
   { match: (p) => p.startsWith("/configuracoes/tef-paygo"), title: "TEF PayGo (instalação)", group: "Configurações" },
+  { match: (p) => p.startsWith("/configuracoes/ifood-widgets"), title: "Widgets iFood", group: "Configurações" },
   { match: (p) => p.startsWith("/configuracoes"), title: "Configurações" },
   { match: (p) => p.startsWith("/whatsapp"), title: "WhatsApp" },
 ];

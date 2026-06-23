@@ -63,6 +63,7 @@ import StockShortagesPanel from "@/components/pdv-novo/StockShortagesPanel";
 import { PrintersPanel } from "@/components/pdv-novo/PrintersPanel";
 import { PrintLayoutPanel } from "@/components/pdv-novo/PrintLayoutPanel";
 import { routePrintOrder } from "@/lib/routePrint";
+import { IFoodFloatingWidgets } from "@/components/pdv/IFoodFloatingWidgets";
 
 
 // ===== Tipos ============================================================
@@ -1051,6 +1052,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   // ===== Render ==========================================================
   return (
     <div className={cn("space-y-6", hideHeader && "pt-0")}>
+      <IFoodFloatingWidgets storeId={storeId} />
       {!hideHeader && (
         <>
           {/* Cabeçalho padrão */}
