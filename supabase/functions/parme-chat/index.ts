@@ -623,13 +623,14 @@ Deno.serve(async (req) => {
         },
       }),
       registrar_problema_pedido: tool({
-        description: "Registra um problema/reclamação de pedido. EXIGE telefone/contato do cliente — sem contato NÃO é possível registrar (peça antes de chamar).",
+        description: "Registra um problema/reclamação de pedido. EXIGE telefone/contato do cliente — sem contato NÃO é possível registrar (peça antes de chamar). Inclua SEMPRE um 'titulo' curto (até 60 caracteres) resumindo a ocorrência (ex.: 'Pedido frio', 'Faltou refrigerante', 'Atraso na entrega').",
         inputSchema: z.object({
+          titulo: z.string().min(3).max(80),
           numero_pedido: z.string().min(2).max(20).optional(),
           descricao: z.string().min(3).max(1000),
           contato: z.string().min(8).max(30),
         }),
-        execute: async ({ numero_pedido, descricao, contato }) => {
+        execute: async ({ titulo, numero_pedido, descricao, contato }) => {
           const contatoLimpo = (contato ?? "").replace(/\D/g, "");
           if (contatoLimpo.length < 8) {
             return {
@@ -638,12 +639,13 @@ Deno.serve(async (req) => {
               mensagem: "Preciso do seu telefone com DDD antes de abrir o chamado — sem contato não conseguimos retornar.",
             };
           }
+          const tituloLimpo = (titulo ?? "").trim().slice(0, 80) || "Ocorrência";
           const supabase = sb();
           const descricaoFinal = sessionId ? `Conversa ${sessionId}:\n${descricao}` : descricao;
           if (sessionId) {
             const { data: existing } = await supabase
               .from("support_tickets")
-              .select("id, order_number, contact")
+              .select("id, order_number, contact, title")
               .ilike("description", `%${sessionId}%`)
               .order("created_at", { ascending: false })
               .limit(1)
@@ -654,6 +656,7 @@ Deno.serve(async (req) => {
                 .update({
                   order_number: existing.order_number ?? numero_pedido ?? null,
                   description: descricaoFinal,
+                  title: existing.title ?? tituloLimpo,
                   contact: existing.contact && existing.contact !== "não informado"
                     ? existing.contact
                     : contatoLimpo,
@@ -675,6 +678,7 @@ Deno.serve(async (req) => {
             .from("support_tickets")
             .insert({
               order_number: numero_pedido ?? null,
+              title: tituloLimpo,
               description: descricaoFinal,
               contact: contatoLimpo,
             })
@@ -692,6 +696,7 @@ Deno.serve(async (req) => {
           };
         },
       }),
+
       sugerir_ifood: tool({
         description:
           "Dado o bairro/região e a marca, escolhe a unidade mais próxima e devolve o link do iFood.",
