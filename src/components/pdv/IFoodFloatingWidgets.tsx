@@ -2,9 +2,9 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-// Renderiza as bolinhas flutuantes do widget oficial iFood para a loja atual.
-// Para cada (loja_atual, marca) configurada em pdv_ifood_widgets, dispara um
-// iFoodWidget.init({ widgetId, merchantIds: [merchant_id] }).
+// Renderiza a bolinha flutuante do widget oficial iFood para a loja atual.
+// O script do iFood aceita apenas uma instância por página, então consolidamos
+// todos os merchantIds da loja em uma única chamada.
 // Doc: https://widgets.ifood.com.br/
 
 declare global {
@@ -47,7 +47,8 @@ export function IFoodFloatingWidgets({ storeId }: { storeId: string | null | und
       const { data, error } = await supabase
         .from("pdv_ifood_widgets" as any)
         .select("store_id, brand, widget_id, merchant_id")
-        .eq("store_id", validStoreId!);
+        .eq("store_id", validStoreId!)
+        .order("brand", { ascending: true });
       if (error) throw error;
       return (data ?? []) as unknown as Row[];
     },
@@ -60,33 +61,18 @@ export function IFoodFloatingWidgets({ storeId }: { storeId: string | null | und
       .then(() => {
         if (cancelled || !window.iFoodWidget) return;
         window.__ifoodWidgetInits = window.__ifoodWidgetInits ?? new Set<string>();
-        for (let i = 0; i < rows.length; i++) {
-          const r = rows[i];
-          const key = `${r.widget_id}:${r.merchant_id}`;
-          if (window.__ifoodWidgetInits.has(key)) continue;
-          // cria container dedicado por marca para evitar colisão de bolinhas
-          const containerId = `ifood-widget-${r.brand}-${r.merchant_id.slice(0, 8)}`;
-          let container = document.getElementById(containerId);
-          if (!container) {
-            container = document.createElement("div");
-            container.id = containerId;
-            container.style.position = "fixed";
-            container.style.zIndex = String(9999 - i);
-            container.style.right = "20px";
-            // empilha verticalmente: 1ª em baixo, 2ª 80px acima, 3ª 160px acima
-            container.style.bottom = `${20 + i * 80}px`;
-            document.body.appendChild(container);
-          }
-          try {
-            window.iFoodWidget.init({
-              widgetId: r.widget_id,
-              merchantIds: [r.merchant_id],
-              container: `#${containerId}`,
-            });
-            window.__ifoodWidgetInits.add(key);
-          } catch (e) {
-            console.error("[iFoodFloatingWidgets] init error", r.brand, e);
-          }
+        const widgetId = rows[0]?.widget_id;
+        const merchantIds = Array.from(new Set(rows.map((r) => r.merchant_id).filter(Boolean)));
+        if (!widgetId || merchantIds.length === 0) return;
+
+        const key = `${validStoreId}:${widgetId}:${merchantIds.join("|")}`;
+        if (window.__ifoodWidgetInits.has(key)) return;
+
+        try {
+          window.iFoodWidget.init({ widgetId, merchantIds });
+          window.__ifoodWidgetInits.add(key);
+        } catch (e) {
+          console.error("[iFoodFloatingWidgets] init error", e);
         }
       })
       .catch((e) => console.error(e));
