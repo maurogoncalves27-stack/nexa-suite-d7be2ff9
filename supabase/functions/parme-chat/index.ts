@@ -890,6 +890,20 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
 - Se o cliente JÁ informou telefone/contato em QUALQUER mensagem anterior da conversa (mesmo no meio do texto, ex: "meu fone é 61 99999-9999"), NÃO peça telefone de novo. Use o que ele já deu e passe como "contato" para registrar_problema_pedido.
 - Ao encerrar um atendimento de problema, NÃO peça telefone se ele já apareceu na conversa. Apenas confirme o registro.`;
 
+    // Contexto do cliente já conhecido — evita pedir nome/telefone que já temos.
+    try {
+      const nowIso = new Date().toISOString();
+      const flatCtx = flattenUIMessages(messages as UIMessage[], nowIso);
+      const knownName = inferClientName(flatCtx);
+      const knownPhone = inferClientPhone(flatCtx);
+      const lines: string[] = [];
+      if (knownName) lines.push(`- Nome do cliente: ${knownName}. Use sempre que se dirigir a ele.`);
+      if (knownPhone) lines.push(`- WhatsApp/telefone do cliente: ${knownPhone}. JÁ TEMOS — NÃO peça de novo em hipótese alguma. Use diretamente para registrar_problema_pedido / criar_reserva.`);
+      if (lines.length) {
+        systemPrompt += `\n\nCONTEXTO DO CLIENTE (já conhecido nesta conversa):\n${lines.join("\n")}`;
+      }
+    } catch { /* contexto é opcional */ }
+
     const result = streamText({
       model,
       system: systemPrompt,
