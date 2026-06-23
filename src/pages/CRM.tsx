@@ -77,6 +77,7 @@ type Reservation = {
 type Ticket = {
   id: string;
   parme_id: string;
+  title: string | null;
   description: string | null;
   order_number: string | null;
   contact: string | null;
@@ -84,6 +85,7 @@ type Ticket = {
   created_at: string | null;
   synced_at: string;
 };
+
 
 type Conversation = {
   id: string;
