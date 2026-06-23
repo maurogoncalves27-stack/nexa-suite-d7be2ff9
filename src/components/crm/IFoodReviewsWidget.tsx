@@ -1,29 +1,34 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Star, Settings2, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Star, Loader2 } from "lucide-react";
 
-// Widget oficial do iFood: https://widgets.ifood.com.br/
-// Renderizamos UM card por loja física (Asa Norte, Asa Sul, Águas Claras, Lago Sul).
-// Cada card aceita até 10 UUIDs (uma marca da loja por UUID; geralmente até 3: Parmê / Estrogonofe / Box Caipira).
-const WIDGET_ID = "51f75fec-0ac2-41c1-84c6-af0df25bfe04";
-const storageKeyFor = (storeId: string) => `ifood_widget_merchant_uuids:store:${storeId}`;
+// Widget oficial do iFood — visualização no CRM.
+// Lê os UUIDs salvos em pdv_ifood_widgets (configurados em /configuracoes/ifood-widgets)
+// e renderiza um card por loja física com 1 widget por marca.
+
+const BRAND_META: Record<string, { label: string; color: string }> = {
+  aquela_parme: { label: "Aquela Parmê", color: "#EB0033" },
+  estrogonofe: { label: "Estrogonofe", color: "#5D3A1A" },
+  box_caipira: { label: "Box Caipira", color: "#F58220" },
+};
 
 declare global {
   interface Window {
     iFoodWidget?: { init: (cfg: { widgetId: string; merchantIds: string[]; container?: string }) => void };
+    __ifoodCrmInits?: Set<string>;
   }
 }
 
 function loadScript(): Promise<void> {
   return new Promise((resolve, reject) => {
+    if (typeof window === "undefined") return resolve();
     if (window.iFoodWidget) return resolve();
-    const existing = document.querySelector<HTMLScriptElement>('script[src="https://widgets.ifood.com.br/widget.js"]');
+    const existing = document.querySelector<HTMLScriptElement>(
+      'script[src="https://widgets.ifood.com.br/widget.js"]'
+    );
     if (existing) {
       existing.addEventListener("load", () => resolve(), { once: true });
       existing.addEventListener("error", () => reject(new Error("Falha ao carregar widget iFood")), { once: true });
@@ -38,103 +43,75 @@ function loadScript(): Promise<void> {
   });
 }
 
-type StoreRow = { id: string; name: string };
+type Row = { store_id: string; brand: string; widget_id: string; merchant_id: string };
+type Store = { id: string; name: string };
 
-function StoreWidgetCard({ store }: { store: StoreRow }) {
-  const storageKey = storageKeyFor(store.id);
-  const [merchantIds, setMerchantIds] = useState<string[]>(() => {
-    try {
-      const raw = localStorage.getItem(storageKey);
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [editing, setEditing] = useState(merchantIds.length === 0);
-  const [draft, setDraft] = useState(merchantIds.join("\n"));
-  const containerId = useMemo(() => `ifood-widget-${store.id}`, [store.id]);
-  const initRef = useRef(false);
+function StoreCard({ store, rows }: { store: Store; rows: Row[] }) {
+  const initedRef = useRef(false);
 
   useEffect(() => {
-    if (merchantIds.length === 0) return;
+    if (rows.length === 0 || initedRef.current) return;
     let cancelled = false;
     loadScript()
       .then(() => {
         if (cancelled || !window.iFoodWidget) return;
-        try {
-          window.iFoodWidget.init({ widgetId: WIDGET_ID, merchantIds, container: `#${containerId}` });
-          initRef.current = true;
-        } catch (e) {
-          console.error(`[iFoodWidget ${store.name}] init error`, e);
+        window.__ifoodCrmInits = window.__ifoodCrmInits ?? new Set<string>();
+        for (const r of rows) {
+          const key = `${r.widget_id}:${r.merchant_id}`;
+          if (window.__ifoodCrmInits.has(key)) continue;
+          try {
+            window.iFoodWidget.init({ widgetId: r.widget_id, merchantIds: [r.merchant_id] });
+            window.__ifoodCrmInits.add(key);
+          } catch (e) {
+            console.error("[IFoodReviewsWidget]", r.brand, e);
+          }
         }
+        initedRef.current = true;
       })
       .catch((e) => console.error(e));
     return () => {
       cancelled = true;
     };
-  }, [merchantIds, containerId, store.name]);
-
-  function save() {
-    const parsed = draft
-      .split(/[\s,;]+/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (parsed.length === 0) {
-      toast.error("Cole pelo menos um merchantId (UUID) do iFood.");
-      return;
-    }
-    if (parsed.length > 10) {
-      toast.error("O widget aceita no máximo 10 lojas/UUIDs por card.");
-      return;
-    }
-    localStorage.setItem(storageKey, JSON.stringify(parsed));
-    setMerchantIds(parsed);
-    setEditing(false);
-    toast.success(`${store.name}: widget atualizado.`);
-  }
+  }, [rows]);
 
   return (
-    <Card className="min-w-[360px] w-[380px] flex-shrink-0">
-      <CardHeader className="flex flex-row items-start justify-between gap-2 pb-3">
-        <div>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Star className="h-4 w-4 text-primary" />
-            {store.name}
-          </CardTitle>
-          <CardDescription className="text-xs">
-            {merchantIds.length > 0
-              ? `${merchantIds.length} marca(s) configurada(s)`
-              : "Nenhuma marca configurada"}
-          </CardDescription>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => setEditing((v) => !v)}>
-          <Settings2 className="h-4 w-4" />
-        </Button>
+    <Card className="min-w-[340px] w-[360px] flex-shrink-0">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Star className="h-4 w-4 text-primary" />
+          {store.name}
+        </CardTitle>
+        <CardDescription className="text-xs">
+          {rows.length} marca(s) configurada(s)
+        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {editing && (
-          <div className="space-y-2 rounded-md border bg-muted/30 p-3">
-            <Label className="text-xs">UUIDs do iFood — {store.name} (1 por linha; uma por marca)</Label>
-            <Textarea
-              rows={4}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder={"ex.: 51f75fec-0ac2-41c1-84c6-af0df25bfe04"}
-              className="font-mono text-[11px]"
-            />
-            <p className="text-[11px] text-muted-foreground">
-              Portal do Parceiro iFood → Configurações da Loja → ID da loja (UUID). Não use o número curto.
-            </p>
-            <Button size="sm" onClick={save}>Salvar</Button>
-          </div>
-        )}
-
-        {merchantIds.length === 0 ? (
-          <div className="text-xs text-muted-foreground py-6 text-center">
-            Configure os UUIDs desta loja.
-          </div>
+      <CardContent className="space-y-2">
+        {rows.length === 0 ? (
+          <p className="text-xs text-muted-foreground py-4 text-center">
+            Nenhuma marca configurada. Vá em <span className="font-medium">Configurações → Widgets iFood</span>.
+          </p>
         ) : (
-          <div id={containerId} className="min-h-[400px]" />
+          rows.map((r) => {
+            const meta = BRAND_META[r.brand] ?? { label: r.brand, color: "#666" };
+            return (
+              <div key={r.brand} className="rounded-md border bg-muted/30 p-2 space-y-1">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="inline-block w-3 h-3 rounded-full flex-shrink-0"
+                    style={{ background: meta.color }}
+                  />
+                  <span className="text-sm font-medium">{meta.label}</span>
+                  <Badge variant="secondary" className="ml-auto text-[10px]">merchant</Badge>
+                </div>
+                <p className="font-mono text-[10px] text-muted-foreground break-all select-all" title="Merchant UUID">
+                  {r.merchant_id}
+                </p>
+                <p className="font-mono text-[10px] text-muted-foreground break-all select-all" title="Widget UUID">
+                  widget: {r.widget_id}
+                </p>
+              </div>
+            );
+          })
         )}
       </CardContent>
     </Card>
@@ -142,19 +119,44 @@ function StoreWidgetCard({ store }: { store: StoreRow }) {
 }
 
 export function IFoodReviewsWidget() {
-  const { data: stores, isLoading } = useQuery({
-    queryKey: ["ifood-widget-stores"],
+  const { data: stores, isLoading: loadingStores } = useQuery({
+    queryKey: ["ifood-crm-stores"],
     queryFn: async () => {
-      // RLS já filtra as lojas que o usuário tem acesso.
       const { data, error } = await supabase
         .from("stores")
         .select("id, name")
         .eq("is_virtual", false)
         .order("name");
       if (error) throw error;
-      return (data ?? []) as StoreRow[];
+      return (data ?? []) as Store[];
     },
   });
+
+  const { data: rows, isLoading: loadingRows } = useQuery({
+    queryKey: ["ifood-crm-widgets"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pdv_ifood_widgets" as any)
+        .select("store_id, brand, widget_id, merchant_id");
+      if (error) throw error;
+      return (data ?? []) as unknown as Row[];
+    },
+  });
+
+  const rowsByStore = useMemo(() => {
+    const map: Record<string, Row[]> = {};
+    for (const r of rows ?? []) {
+      (map[r.store_id] ||= []).push(r);
+    }
+    // ordem fixa: Parmê, Estrogonofe, Box Caipira
+    const order = ["aquela_parme", "estrogonofe", "box_caipira"];
+    for (const sid of Object.keys(map)) {
+      map[sid].sort((a, b) => order.indexOf(a.brand) - order.indexOf(b.brand));
+    }
+    return map;
+  }, [rows]);
+
+  const loading = loadingStores || loadingRows;
 
   return (
     <Card>
@@ -164,14 +166,15 @@ export function IFoodReviewsWidget() {
           Avaliações do iFood (widget oficial)
         </CardTitle>
         <CardDescription>
-          Um card por loja. Em cada card cole os UUIDs do iFood das marcas daquela loja (até 3: Aquela Parmê, Estrogonofe, Box Caipira).
-          A autorização inicial precisa ser feita por quem tem login no Portal do Parceiro daquela loja.
+          Um card por loja com os UUIDs das 3 marcas (Aquela Parmê, Estrogonofe, Box Caipira) já configurados.
+          As bolinhas flutuantes aparecem dentro do PDV daquela loja. Para editar os IDs, vá em
+          <span className="font-medium"> Configurações → Widgets iFood</span>.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
+        {loading ? (
           <div className="flex items-center justify-center py-10 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin mr-2" /> Carregando lojas...
+            <Loader2 className="h-5 w-5 animate-spin mr-2" /> Carregando...
           </div>
         ) : !stores || stores.length === 0 ? (
           <div className="text-sm text-muted-foreground py-6 text-center">
@@ -180,7 +183,7 @@ export function IFoodReviewsWidget() {
         ) : (
           <div className="flex gap-4 overflow-x-auto pb-3">
             {stores.map((s) => (
-              <StoreWidgetCard key={s.id} store={s} />
+              <StoreCard key={s.id} store={s} rows={rowsByStore[s.id] ?? []} />
             ))}
           </div>
         )}
