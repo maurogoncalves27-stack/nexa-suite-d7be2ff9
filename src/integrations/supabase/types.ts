@@ -13904,6 +13904,7 @@ export type Database = {
           id: string
           order_number: string | null
           status: string
+          title: string | null
         }
         Insert: {
           contact: string
@@ -13912,6 +13913,7 @@ export type Database = {
           id?: string
           order_number?: string | null
           status?: string
+          title?: string | null
         }
         Update: {
           contact?: string
@@ -13920,6 +13922,7 @@ export type Database = {
           id?: string
           order_number?: string | null
           status?: string
+          title?: string | null
         }
         Relationships: []
       }

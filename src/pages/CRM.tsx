@@ -77,6 +77,7 @@ type Reservation = {
 type Ticket = {
   id: string;
   parme_id: string;
+  title: string | null;
   description: string | null;
   order_number: string | null;
   contact: string | null;
@@ -84,6 +85,7 @@ type Ticket = {
   created_at: string | null;
   synced_at: string;
 };
+
 
 type Conversation = {
   id: string;
@@ -658,6 +660,7 @@ export default function CRM() {
       if (q) {
         const hit =
           (t.contact ?? "").toLowerCase().includes(q) ||
+          (t.title ?? "").toLowerCase().includes(q) ||
           (t.description ?? "").toLowerCase().includes(q) ||
           (t.order_number ?? "").toLowerCase().includes(q);
         if (!hit) return false;
@@ -665,6 +668,7 @@ export default function CRM() {
       return true;
     });
   }, [tickets, q]);
+
 
   const filteredConversations = useMemo(() => {
     return conversations.filter((c: any) => {
@@ -1072,6 +1076,7 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                 <TableHeader>
                   <TableRow>
                     <TableHead>Pedido</TableHead>
+                    <TableHead>Título</TableHead>
                     <TableHead>Contato</TableHead>
                     <TableHead>Descrição</TableHead>
                     <TableHead>Status</TableHead>
@@ -1081,13 +1086,13 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                         Carregando…
                       </TableCell>
                     </TableRow>
                   ) : filteredTickets.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                         Nenhum ticket.
                       </TableCell>
                     </TableRow>
@@ -1110,6 +1115,12 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                             );
                           })
                         : [];
+                      const fallbackTitle = (t.description ?? "")
+                        .replace(/^Conversa\s+[^\n]+\n/i, "")
+                        .replace(/\s+/g, " ")
+                        .trim()
+                        .slice(0, 60);
+                      const titulo = (t.title ?? "").trim() || fallbackTitle || "—";
                       return (
                         <Fragment key={t.id}>
                           <TableRow
@@ -1126,6 +1137,9 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                                 {t.order_number ?? "—"}
                               </div>
                             </TableCell>
+                            <TableCell className="font-medium max-w-[220px]">
+                              <div className="truncate" title={titulo}>{titulo}</div>
+                            </TableCell>
                             <TableCell>{t.contact ?? "—"}</TableCell>
                             <TableCell className="max-w-md">
                               <div className="line-clamp-2 text-sm">{t.description ?? "—"}</div>
@@ -1137,7 +1151,8 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                           </TableRow>
                           {isOpen && (
                             <TableRow className="hover:bg-transparent">
-                              <TableCell colSpan={5} className="p-0">
+                              <TableCell colSpan={6} className="p-0">
+
                                 <div className="p-4 space-y-4 bg-muted/20 border-t">
                                   <div className="flex flex-wrap gap-2 text-sm">
                                     {t.status && (
