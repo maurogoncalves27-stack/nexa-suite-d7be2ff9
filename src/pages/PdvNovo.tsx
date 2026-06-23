@@ -1052,6 +1052,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   // ===== Render ==========================================================
   return (
     <div className={cn("space-y-6", hideHeader && "pt-0")}>
+      <IFoodFloatingWidgets storeId={storeId} />
       {!hideHeader && (
         <>
           {/* Cabeçalho padrão */}
