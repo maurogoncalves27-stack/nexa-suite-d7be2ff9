@@ -392,6 +392,7 @@ export default function CRM() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [expandedTicketId, setExpandedTicketId] = useState<string | null>(null);
+  const [ticketBusyId, setTicketBusyId] = useState<string | null>(null);
   const [threadLoading, setThreadLoading] = useState(false);
   const [threadMessages, setThreadMessages] = useState<any[] | null>(null);
   const [threadError, setThreadError] = useState<string | null>(null);
