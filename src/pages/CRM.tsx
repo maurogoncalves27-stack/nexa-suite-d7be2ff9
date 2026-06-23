@@ -58,6 +58,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { IFoodReviewsWidget } from "@/components/crm/IFoodReviewsWidget";
 
 type Reservation = {
   id: string;
@@ -1630,9 +1631,11 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
 
 
 
-        <TabsContent value="reviews" className="mt-4">
+        <TabsContent value="reviews" className="mt-4 space-y-4">
+          <IFoodReviewsWidget />
           <CustomerReviews embedded />
         </TabsContent>
+
 
 
         <TabsContent value="agent" className="mt-4">
