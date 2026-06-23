@@ -3,14 +3,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Star, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 
-// Widget público do iFood para exibir/responder avaliações de loja.
-// Doc: https://widgets.ifood.com.br/
-// Aceita até 10 merchantIds (UUIDs do iFood, NÃO os ids numéricos).
+// Widget oficial do iFood: https://widgets.ifood.com.br/
+// Aceita até 10 merchantIds (UUIDs, não os ids numéricos).
+// Como temos várias marcas por loja, mantemos um widget por marca.
 const WIDGET_ID = "51f75fec-0ac2-41c1-84c6-af0df25bfe04";
-const STORAGE_KEY = "ifood_widget_merchant_uuids";
+
+type BrandKey = "aquela_parme" | "estrogonofe" | "box_caipira";
+const BRANDS: { key: BrandKey; label: string }[] = [
+  { key: "aquela_parme", label: "Aquela Parmê" },
+  { key: "estrogonofe", label: "Estrogonofe" },
+  { key: "box_caipira", label: "Box Caipira" },
+];
+const storageKeyFor = (b: BrandKey) => `ifood_widget_merchant_uuids:${b}`;
 
 declare global {
   interface Window {
@@ -36,10 +44,10 @@ function loadScript(): Promise<void> {
   });
 }
 
-export function IFoodReviewsWidget() {
+function BrandWidget({ brand, active }: { brand: { key: BrandKey; label: string }; active: boolean }) {
   const [merchantIds, setMerchantIds] = useState<string[]>(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(storageKeyFor(brand.key));
       return raw ? JSON.parse(raw) : [];
     } catch {
       return [];
@@ -47,17 +55,15 @@ export function IFoodReviewsWidget() {
   });
   const [editing, setEditing] = useState(merchantIds.length === 0);
   const [draft, setDraft] = useState(merchantIds.join("\n"));
-  const mountedRef = useRef(false);
 
   useEffect(() => {
-    if (merchantIds.length === 0) return;
+    if (!active || merchantIds.length === 0) return;
     let cancelled = false;
     loadScript()
       .then(() => {
         if (cancelled || !window.iFoodWidget) return;
         try {
           window.iFoodWidget.init({ widgetId: WIDGET_ID, merchantIds });
-          mountedRef.current = true;
         } catch (e) {
           console.error("[iFoodWidget] init error", e);
         }
@@ -66,7 +72,7 @@ export function IFoodReviewsWidget() {
     return () => {
       cancelled = true;
     };
-  }, [merchantIds]);
+  }, [active, merchantIds]);
 
   function save() {
     const parsed = draft
@@ -78,60 +84,87 @@ export function IFoodReviewsWidget() {
       return;
     }
     if (parsed.length > 10) {
-      toast.error("O widget aceita no máximo 10 lojas.");
+      toast.error("O widget aceita no máximo 10 lojas por marca.");
       return;
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+    localStorage.setItem(storageKeyFor(brand.key), JSON.stringify(parsed));
     setMerchantIds(parsed);
     setEditing(false);
-    toast.success("Widget atualizado. Recarregue a página se ele não aparecer.");
+    toast.success(`${brand.label}: widget atualizado.`);
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-2">
-        <div>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Star className="h-5 w-5 text-primary" />
-            Avaliações do iFood (widget oficial)
-          </CardTitle>
-          <CardDescription>
-            Exibe e permite responder avaliações direto do portal do iFood, sem sair do NEXA.
-          </CardDescription>
-        </div>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">
+          {merchantIds.length > 0
+            ? `${merchantIds.length} loja(s) configurada(s) em ${brand.label}.`
+            : `Nenhuma loja configurada para ${brand.label}.`}
+        </p>
         <Button variant="outline" size="sm" onClick={() => setEditing((v) => !v)}>
           <Settings2 className="h-4 w-4 mr-1" />
           {editing ? "Fechar" : "Configurar lojas"}
         </Button>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {editing && (
-          <div className="space-y-2 rounded-md border bg-muted/30 p-3">
-            <Label className="text-sm">Merchant UUIDs do iFood (um por linha, até 10)</Label>
-            <Textarea
-              rows={5}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder={"ex.: 51f75fec-0ac2-41c1-84c6-af0df25bfe04\n..."}
-              className="font-mono text-xs"
-            />
-            <p className="text-xs text-muted-foreground">
-              Pegue o UUID em <span className="font-medium">Portal do Parceiro iFood → Configurações da Loja → ID da loja (UUID)</span>.
-              Não use o número curto — o widget só aceita UUID.
-            </p>
-            <Button size="sm" onClick={save}>Salvar e carregar</Button>
-          </div>
-        )}
+      </div>
 
-        {merchantIds.length === 0 ? (
-          <div className="text-sm text-muted-foreground py-6 text-center">
-            Configure as lojas para carregar o widget.
-          </div>
-        ) : (
-          <div id="ifood-widget-container" className="min-h-[400px]">
-            {/* O script do iFood injeta o conteúdo aqui */}
-          </div>
-        )}
+      {editing && (
+        <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+          <Label className="text-sm">Merchant UUIDs do iFood — {brand.label} (um por linha, até 10)</Label>
+          <Textarea
+            rows={5}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder={"ex.: 51f75fec-0ac2-41c1-84c6-af0df25bfe04\n..."}
+            className="font-mono text-xs"
+          />
+          <p className="text-xs text-muted-foreground">
+            Pegue o UUID em <span className="font-medium">Portal do Parceiro iFood → Configurações da Loja → ID da loja (UUID)</span>.
+            Não use o número curto — o widget só aceita UUID.
+          </p>
+          <Button size="sm" onClick={save}>Salvar e carregar</Button>
+        </div>
+      )}
+
+      {merchantIds.length === 0 ? (
+        <div className="text-sm text-muted-foreground py-6 text-center">
+          Configure as lojas desta marca para carregar o widget.
+        </div>
+      ) : (
+        <div id="ifood-widget-container" className="min-h-[400px]">
+          {/* O script do iFood injeta o conteúdo aqui (re-inicializa ao trocar de aba) */}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function IFoodReviewsWidget() {
+  const [tab, setTab] = useState<BrandKey>("aquela_parme");
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Star className="h-5 w-5 text-primary" />
+          Avaliações do iFood (widget oficial)
+        </CardTitle>
+        <CardDescription>
+          Um widget por marca. A autorização (primeiro acesso) precisa ser feita por quem tem login no Portal do Parceiro daquela marca.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as BrandKey)}>
+          <TabsList className="grid grid-cols-3 w-full md:w-auto">
+            {BRANDS.map((b) => (
+              <TabsTrigger key={b.key} value={b.key}>{b.label}</TabsTrigger>
+            ))}
+          </TabsList>
+          {BRANDS.map((b) => (
+            <TabsContent key={b.key} value={b.key} className="mt-4">
+              <BrandWidget brand={b} active={tab === b.key} />
+            </TabsContent>
+          ))}
+        </Tabs>
       </CardContent>
     </Card>
   );
