@@ -23,7 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { fmt } from "@/lib/saiposMenu";
+import { fmt } from "@/lib/menuFormat";
 
 interface Group {
   id: string;

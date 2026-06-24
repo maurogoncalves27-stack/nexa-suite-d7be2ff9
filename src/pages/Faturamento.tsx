@@ -495,54 +495,8 @@ export default function Faturamento() {
     }).filter(x => x.total > 0);
   }, [detailRows, brandById, operationalStores]);
 
-  const [syncing, setSyncing] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
 
-  async function syncFromPos() {
-    setSyncing(true);
-    try {
-      // Busca todas as vendas POS agrupadas por (year, month, store_id)
-      const { data, error } = await supabase
-        .from("pos_sales")
-        .select("sold_at, total_amount, store_id, stores!inner(brand_id, is_active)")
-        .neq("status", "cancelled")
-        .eq("dre_excluded", false);
-      if (error) throw error;
-
-      // Agrega por (year, month, store_id, brand_id)
-      const agg = new Map<string, { year: number; month: number; store_id: string; brand_id: string | null; gross_revenue: number }>();
-      for (const row of (data as any[])) {
-        const d = new Date(row.sold_at);
-        const yr = d.getFullYear();
-        const mo = d.getMonth() + 1;
-        const sid = row.store_id as string;
-        const bid = (row.stores?.brand_id as string | null) ?? null;
-        const key = `${yr}-${mo}-${sid}-${bid ?? "null"}`;
-        const cur = agg.get(key);
-        const v = Number(row.total_amount) || 0;
-        if (cur) cur.gross_revenue += v;
-        else agg.set(key, { year: yr, month: mo, store_id: sid, brand_id: bid, gross_revenue: v });
-      }
-
-      const records = Array.from(agg.values()).map(r => ({ ...r, is_consolidated: false }));
-      if (!records.length) {
-        toast({ title: "Sem vendas no PDV para sincronizar" });
-        return;
-      }
-
-      const { error: upErr } = await supabase
-        .from("monthly_revenue")
-        .upsert(records, { onConflict: "year,month,store_id,brand_id" });
-      if (upErr) throw upErr;
-
-      toast({ title: `Sincronizado: ${records.length} períodos atualizados` });
-      load();
-    } catch (e: any) {
-      toast({ title: "Erro ao sincronizar", description: e.message, variant: "destructive" });
-    } finally {
-      setSyncing(false);
-    }
-  }
 
   return (
     <div className="space-y-6 p-3 sm:p-4">
@@ -574,10 +528,6 @@ export default function Faturamento() {
           <Button size="sm" onClick={() => setManualOpen(true)}>
             <Plus className="h-4 w-4 mr-1" />
             Lançar manual
-          </Button>
-          <Button size="sm" variant="outline" onClick={syncFromPos} disabled={syncing}>
-            <RefreshCw className={`h-4 w-4 mr-1 ${syncing ? "animate-spin" : ""}`} />
-            {syncing ? "Sincronizando..." : "Sincronizar do PDV"}
           </Button>
         </div>
       </div>
