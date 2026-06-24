@@ -15,7 +15,7 @@ import {
   PieChart, Pie, Cell, LabelList,
 } from "recharts";
 import { fmtBRL } from "@/lib/dre";
-import { FileSpreadsheet, RefreshCw, Plus, TrendingUp } from "lucide-react";
+import { FileSpreadsheet, Plus, TrendingUp } from "lucide-react";
 import { ManualRevenueDialog } from "@/components/faturamento/ManualRevenueDialog";
 
 const DailyAnalytics = lazy(() =>
