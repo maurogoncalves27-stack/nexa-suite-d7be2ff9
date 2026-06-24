@@ -378,7 +378,7 @@ export default function Menu() {
             className="h-7 text-xs"
             onClick={() => setBrandFilter("all")}
           >
-            Todas as marcas
+            GRUPO
           </Button>
           {brands.map((b) => (
             <Button
@@ -389,18 +389,6 @@ export default function Menu() {
               onClick={() => setBrandFilter(`b:${b.id}`)}
             >
               {b.name}
-            </Button>
-          ))}
-          {brands.map((b) => (
-            <Button
-              key={`x-${b.id}`}
-              size="sm"
-              variant={brandFilter === `x:${b.id}` ? "default" : "outline"}
-              className="h-7 text-xs"
-              onClick={() => setBrandFilter(`x:${b.id}`)}
-              title={`Itens vendidos somente em ${brandShort(b.id)}`}
-            >
-              Exclusivos {brandShort(b.id)}
             </Button>
           ))}
         </div>
