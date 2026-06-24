@@ -491,7 +491,7 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
             </p>
           )}
 
-          {kind === "payable" && raw.recurrence_group_id && groupCount > 1 && (
+          {kind === "payable" && groupCount > 1 && (
             <label className="flex items-start gap-2 rounded-md border border-amber-300/60 bg-amber-50/40 dark:bg-amber-950/10 p-2 text-sm cursor-pointer">
               <input
                 type="checkbox"
@@ -500,11 +500,13 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
                 className="mt-1"
               />
               <span>
-                Aplicar a <strong>todos os {groupCount} pagamentos</strong> desta recorrência.
+                Aplicar a <strong>todos os {groupCount} pagamentos</strong> desta recorrência
+                {groupMode === "description" && " (agrupados por descrição + fornecedor + loja)"}.
                 <span className="block text-xs text-muted-foreground mt-0.5">
-                  Descrição, fornecedor, loja, categoria e valor serão copiados. Vencimento e competência
+                  Fornecedor, loja, categoria e valor serão copiados. Vencimento e competência
                   serão deslocados pela mesma diferença aplicada aqui (preservando o mês de cada parcela).
-                  Datas de pagamento não são alteradas.
+                  {groupMode === "description" && " A numeração \"(N/M)\" de cada parcela é preservada."}
+                  {" "}Datas de pagamento não são alteradas.
                 </span>
               </span>
             </label>
