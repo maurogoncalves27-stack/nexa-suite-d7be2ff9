@@ -127,9 +127,8 @@ export default function Menu() {
     }
     setItemStores(storeMap);
 
-    const itemIds = Object.keys(brandMap).filter((id) =>
-      brandMap[id].includes(activeBrand) && (storeMap[id] ?? []).includes(activeStore),
-    );
+    // Mostra TODOS os itens da marca ativa. A pausa por loja é exibida via toggle no card.
+    const itemIds = Object.keys(brandMap).filter((id) => brandMap[id].includes(activeBrand));
     if (itemIds.length === 0) {
       setItems([]);
       setLoading(false);
