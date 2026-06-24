@@ -430,10 +430,13 @@ export default function Menu() {
                     {list.map((it) => {
                       const otherBrands = (itemBrands[it.id] ?? []).filter((b) => b !== activeBrand);
                       const photo = it.recipe_id ? recipePhotos[it.recipe_id] : null;
+                      const storesAvail = itemStores[it.id] ?? [];
+                      const availableHere = storesAvail.includes(activeStore);
+                      const pausedCount = Math.max(0, stores.length - storesAvail.length);
                       return (
                         <div
                           key={it.id}
-                          className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-md border bg-card"
+                          className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-md border bg-card ${availableHere ? "" : "opacity-70"}`}
                         >
                           {photo ? (
                             <img
@@ -452,13 +455,28 @@ export default function Menu() {
                               {otherBrands.length > 0 && (
                                 <Badge variant="outline" className="text-[10px]">+{otherBrands.length} marca(s)</Badge>
                               )}
+                              {pausedCount > 0 && (
+                                <Badge variant="outline" className="text-[10px] border-warning/40 text-warning">
+                                  Pausado em {pausedCount} {pausedCount === 1 ? "loja" : "lojas"}
+                                </Badge>
+                              )}
                             </div>
                             {it.description && (
                               <p className="text-xs text-muted-foreground truncate">{it.description}</p>
                             )}
                           </div>
-                          <div className="flex items-center gap-2 sm:gap-3">
+                          <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
                             <span className="tabular-nums font-semibold text-sm w-24 text-right">{fmt(Number(it.price))}</span>
+                            <div className="flex items-center gap-1.5">
+                              <Switch
+                                checked={availableHere}
+                                onCheckedChange={(v) => toggleStoreAvailability(it.id, v)}
+                                aria-label={`Disponível em ${stores.find((s) => s.id === activeStore)?.name ?? "loja"}`}
+                              />
+                              <span className="text-[11px] text-muted-foreground hidden sm:inline">
+                                {availableHere ? "Disponível" : "Pausado"}
+                              </span>
+                            </div>
                             <Button size="sm" variant="ghost" onClick={() => toggleActive(it)}>
                               {it.is_active ? "Desativar" : "Ativar"}
                             </Button>
