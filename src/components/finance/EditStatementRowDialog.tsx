@@ -91,12 +91,46 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
     setEditingCategoryName("");
     setApplyToGroup(false);
     setGroupCount(0);
-    if (kind === "payable" && raw.recurrence_group_id) {
-      supabase
-        .from("accounts_payable")
-        .select("id", { count: "exact", head: true })
-        .eq("recurrence_group_id", raw.recurrence_group_id)
-        .then(({ count }) => setGroupCount(count ?? 0));
+    setSiblingIds([]);
+    setGroupMode("id");
+    if (kind === "payable") {
+      (async () => {
+        // 1) Try by recurrence_group_id
+        if (raw.recurrence_group_id) {
+          const { data } = await supabase
+            .from("accounts_payable")
+            .select("id")
+            .eq("recurrence_group_id", raw.recurrence_group_id)
+            .neq("id", raw.id);
+          if (data && data.length > 0) {
+            setSiblingIds(data.map((d: any) => d.id));
+            setGroupCount(data.length + 1);
+            setGroupMode("id");
+            return;
+          }
+        }
+        // 2) Fallback: same supplier + store + base description (strip "(N/M)" suffix)
+        const desc = String(raw.description ?? "");
+        const baseDesc = desc.replace(/\s*\(\d+\/\d+\)\s*$/, "").trim();
+        if (!baseDesc) return;
+        let q = supabase
+          .from("accounts_payable")
+          .select("id, description")
+          .neq("id", raw.id)
+          .ilike("description", `${baseDesc}%`);
+        if (raw.supplier_name) q = q.eq("supplier_name", raw.supplier_name);
+        if (raw.store_id) q = q.eq("store_id", raw.store_id);
+        const { data } = await q;
+        const matches = (data ?? []).filter((d: any) => {
+          const dBase = String(d.description ?? "").replace(/\s*\(\d+\/\d+\)\s*$/, "").trim();
+          return dBase === baseDesc;
+        });
+        if (matches.length > 0) {
+          setSiblingIds(matches.map((d: any) => d.id));
+          setGroupCount(matches.length + 1);
+          setGroupMode("description");
+        }
+      })();
     }
   }, [open, raw, kind]);
 
