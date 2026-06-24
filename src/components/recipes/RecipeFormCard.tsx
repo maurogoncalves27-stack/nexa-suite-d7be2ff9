@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import RecipeIngredientsDialog from "./RecipeIngredientsDialog";
 import RecipeYieldCostPanel from "./RecipeYieldCostPanel";
+import RecipeMenuItemsSection from "./RecipeMenuItemsSection";
 
 const UNITS = ["UN", "KG", "G", "L", "ML", "CX", "PCT", "FD", "DZ", "MT", "PORCAO"];
 
