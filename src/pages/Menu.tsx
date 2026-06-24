@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Loader2, FolderPlus, Search, ScanText, Layers, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, FolderPlus, Search, ScanText, Layers, ChevronUp, ChevronDown, Copy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -14,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import AddCategoryDialog from "@/components/menu/AddCategoryDialog";
 import MenuItemEditorDialog from "@/components/menu/MenuItemEditorDialog";
 import ComplementsCatalogDialog from "@/components/menu/ComplementsCatalogDialog";
+import ReplicateMenuDialog from "@/components/menu/ReplicateMenuDialog";
 import { fmt } from "@/lib/saiposMenu";
 
 interface Brand { id: string; name: string; sort_order: number; }
@@ -65,6 +67,7 @@ export default function Menu() {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [complementsOpen, setComplementsOpen] = useState(false);
+  const [replicateOpen, setReplicateOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -124,9 +127,8 @@ export default function Menu() {
     }
     setItemStores(storeMap);
 
-    const itemIds = Object.keys(brandMap).filter((id) =>
-      brandMap[id].includes(activeBrand) && (storeMap[id] ?? []).includes(activeStore),
-    );
+    // Mostra TODOS os itens da marca ativa. A pausa por loja é exibida via toggle no card.
+    const itemIds = Object.keys(brandMap).filter((id) => brandMap[id].includes(activeBrand));
     if (itemIds.length === 0) {
       setItems([]);
       setLoading(false);
@@ -191,6 +193,44 @@ export default function Menu() {
     const { error } = await supabase.from("menu_items").update({ is_active: !item.is_active }).eq("id", item.id);
     if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
     load();
+  }
+
+  // Pausa/ativa um item em UMA loja específica (a loja ativa).
+  // Disponível = linha em menu_item_stores com is_available=true.
+  // Pausado = sem linha (consistente com Site/Totem/SmartPOS, que filtram por is_available=true).
+  async function toggleStoreAvailability(itemId: string, makeAvailable: boolean) {
+    if (!activeStore) return;
+    // Optimistic update
+    setItemStores((prev) => {
+      const next = { ...prev };
+      const cur = new Set(next[itemId] ?? []);
+      if (makeAvailable) cur.add(activeStore); else cur.delete(activeStore);
+      next[itemId] = Array.from(cur);
+      return next;
+    });
+
+    if (makeAvailable) {
+      const { error } = await (supabase as any)
+        .from("menu_item_stores")
+        .upsert(
+          { menu_item_id: itemId, store_id: activeStore, is_available: true },
+          { onConflict: "menu_item_id,store_id" },
+        );
+      if (error) {
+        toast({ title: "Erro ao ativar", description: error.message, variant: "destructive" });
+        load();
+      }
+    } else {
+      const { error } = await (supabase as any)
+        .from("menu_item_stores")
+        .delete()
+        .eq("menu_item_id", itemId)
+        .eq("store_id", activeStore);
+      if (error) {
+        toast({ title: "Erro ao pausar", description: error.message, variant: "destructive" });
+        load();
+      }
+    }
   }
 
   async function moveCategory(idx: number, dir: -1 | 1) {
@@ -273,12 +313,33 @@ export default function Menu() {
         <Button variant="outline" size="sm" onClick={openNewCategory} className="gap-2" disabled={!activeBrand}>
           <FolderPlus className="h-4 w-4" /> Categoria
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setReplicateOpen(true)}
+          className="gap-2"
+          disabled={!activeBrand || stores.length < 2}
+        >
+          <Copy className="h-4 w-4" /> Replicar
+        </Button>
         <Button size="sm" onClick={() => { setEditingId(null); setEditorOpen(true); }} className="gap-2" disabled={!activeBrand || !activeStore}>
           <Plus className="h-4 w-4" /> Novo item
         </Button>
       </div>
 
       <ComplementsCatalogDialog open={complementsOpen} onOpenChange={setComplementsOpen} />
+
+      <ReplicateMenuDialog
+        open={replicateOpen}
+        onOpenChange={setReplicateOpen}
+        stores={stores}
+        categories={categories}
+        brandId={activeBrand}
+        defaultSourceStoreId={activeStore}
+        onDone={load}
+      />
+
+
 
 
       {brands.length > 0 && (
@@ -369,10 +430,13 @@ export default function Menu() {
                     {list.map((it) => {
                       const otherBrands = (itemBrands[it.id] ?? []).filter((b) => b !== activeBrand);
                       const photo = it.recipe_id ? recipePhotos[it.recipe_id] : null;
+                      const storesAvail = itemStores[it.id] ?? [];
+                      const availableHere = storesAvail.includes(activeStore);
+                      const pausedCount = Math.max(0, stores.length - storesAvail.length);
                       return (
                         <div
                           key={it.id}
-                          className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-md border bg-card"
+                          className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-md border bg-card ${availableHere ? "" : "opacity-70"}`}
                         >
                           {photo ? (
                             <img
@@ -391,13 +455,28 @@ export default function Menu() {
                               {otherBrands.length > 0 && (
                                 <Badge variant="outline" className="text-[10px]">+{otherBrands.length} marca(s)</Badge>
                               )}
+                              {pausedCount > 0 && (
+                                <Badge variant="outline" className="text-[10px] border-warning/40 text-warning">
+                                  Pausado em {pausedCount} {pausedCount === 1 ? "loja" : "lojas"}
+                                </Badge>
+                              )}
                             </div>
                             {it.description && (
                               <p className="text-xs text-muted-foreground truncate">{it.description}</p>
                             )}
                           </div>
-                          <div className="flex items-center gap-2 sm:gap-3">
+                          <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
                             <span className="tabular-nums font-semibold text-sm w-24 text-right">{fmt(Number(it.price))}</span>
+                            <div className="flex items-center gap-1.5">
+                              <Switch
+                                checked={availableHere}
+                                onCheckedChange={(v) => toggleStoreAvailability(it.id, v)}
+                                aria-label={`Disponível em ${stores.find((s) => s.id === activeStore)?.name ?? "loja"}`}
+                              />
+                              <span className="text-[11px] text-muted-foreground hidden sm:inline">
+                                {availableHere ? "Disponível" : "Pausado"}
+                              </span>
+                            </div>
                             <Button size="sm" variant="ghost" onClick={() => toggleActive(it)}>
                               {it.is_active ? "Desativar" : "Ativar"}
                             </Button>

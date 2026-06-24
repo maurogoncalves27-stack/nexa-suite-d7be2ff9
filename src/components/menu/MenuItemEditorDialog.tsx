@@ -370,6 +370,11 @@ export default function MenuItemEditorDialog({
                     {recipes.map((r) => (<SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>))}
                   </SelectContent>
                 </Select>
+                {recipeId !== "__none__" && (
+                  <p className="text-[11px] text-muted-foreground leading-tight">
+                    A foto do cardápio (site/totem/SmartPOS) vem da ficha técnica. Para trocá-la, edite em <strong>Receitas</strong>; a alteração vale para a empresa toda.
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label>Preço (R$)</Label>

@@ -1,48 +1,45 @@
-## Objetivo
-No PDV (`/pdv-novo`), mostrar 3 bolinhas flutuantes do widget iFood (Parmê / Estrogonofe / Box Caipira) com merchantId daquela loja física. Trocar de loja troca os UUIDs. CRM volta a ter widget único de visualização.
+## Escopo aprovado (recapitulando)
 
-## O que VOCÊ faz no Portal Desenvolvedor iFood
-1. Criar **3 widgets** (um por marca), anotando os 3 `widgetId`:
-   - **Aquela Parmê** → cor `#EB0033` (vermelho), Posição `Direita`, Margin Y `16`
-   - **Estrogonofe** → cor marrom (`#5D3A1A`), Posição `Direita`, Margin Y `80`
-   - **Box Caipira** → cor laranja (`#F58220`), Posição `Direita`, Margin Y `144`
-   (Margins Y diferentes = empilham uma "um pouco atrás da outra")
-2. Para cada widget, anotar o **merchantId UUID** de cada loja física onde aquela marca opera (Portal Parceiro → Configurações da Loja → ID da loja).
+Cardápio único da empresa, com:
+- Pausa de item por loja (Coca pausada em Asa Norte some no totem, smartpos e site daquela loja).
+- Foto e nome vindos da ficha técnica; trocar lá atualiza tudo.
+- Replicar disponibilidade entre lojas — **total** (cardápio inteiro) ou **por categoria**.
+- Baixa de estoque automática a partir da ficha técnica em **todos** os canais, inclusive iFood (cardápio iFood é 100% igual ao nosso).
+- Estorno no cancelamento.
 
-## O que EU faço no NEXA
+## Base que já existe
 
-### 1. Tabela de configuração (`pdv_ifood_widgets`)
-Estrutura mínima:
-- `store_id` (uuid, FK stores)
-- `brand` (`aquela_parme` | `estrogonofe` | `box_caipira`)
-- `widget_id` (uuid do iFood) — mesmo para todas as lojas da mesma marca
-- `merchant_id` (uuid do merchant daquela loja+marca)
-- PK composta `(store_id, brand)`
-- RLS: SELECT autenticado (qualquer user logado lê); INSERT/UPDATE/DELETE só admin/super_user.
+- `menu_items` + `menu_item_brands` + `menu_item_stores(is_available)` + `recipes` + `recipe_ingredients` + `inventory_stock` + `pdv_stock_consumption_log` + RPC `pdv_consume_order_stock(_order_id)` (lê a ficha técnica e dá baixa).
+- Site `/pedir/:slug`, Totem e SmartPOS já leem `menu_item_stores.is_available`.
 
-### 2. Tela de configuração `/configuracoes/ifood-widgets`
-- Tabela com 4 linhas (lojas físicas) × 3 colunas (marcas).
-- Em cada célula: input do merchant UUID (vazio = marca não opera naquela loja → não mostra bolinha).
-- No topo: 3 inputs para os 3 `widgetId` (um por marca, global).
-- Botão Salvar grava em `pdv_ifood_widgets`.
+## O que vou implementar
 
-### 3. Componente `IFoodFloatingWidgets`
-- Recebe `storeId`.
-- Faz query da tabela filtrando por `store_id`.
-- Para cada linha encontrada com `merchant_id` preenchido: chama `iFoodWidget.init({ widgetId, merchantIds: [merchant_id] })`.
-- Carrega o `widget.js` uma única vez.
-- Ao trocar de `storeId`: faz unmount/cleanup (remover containers injetados pelo iFood, se possível) e re-inicializa com os novos UUIDs.
+### Backend (migração única)
+1. **`pdv_reverse_order_stock(_order_id)`** — devolve ingredientes consumidos ao estoque, registra movimento `adjustment / pdv_order_cancel`, limpa `stock_consumed_at`.
+2. **Trigger `trg_pdv_orders_status_stock`** em `pdv_orders AFTER UPDATE OF status`:
+   - Status passa para `confirmed / preparing / ready / dispatched / concluded` e ainda não consumiu → chama `pdv_consume_order_stock`.
+   - Status passa para `cancelled` e já tinha consumido → chama `pdv_reverse_order_stock`.
+   - Cobre PDV-Novo, iFood (webhook/poll usam `pdv_advance_order_status`), Totem e Site automaticamente — sem precisar editar edge functions.
 
-### 4. Integração no PDV
-- Em `src/pages/PdvNovo.tsx`: renderizar `<IFoodFloatingWidgets storeId={storeId} />` quando `storeId` for uma loja física (não "ALL", não virtual).
-- Não renderizar no resto do app (são bolinhas flutuantes globais; ficam ativas só enquanto o usuário está no PDV).
+### Frontend — página `/cardapio` (`src/pages/Menu.tsx`)
+3. Listar **todos os itens da marca** (hoje só lista itens com linha em `menu_item_stores` para a loja ativa — itens novos somem).
+4. Em cada card, **toggle "Disponível em [loja ativa]"** que faz upsert/delete em `menu_item_stores` (insere `is_available=true` quando liga, deleta a linha quando desliga = pausado).
+5. Badge "Pausado em N lojas" no card quando aplicável.
+6. Novo botão **"Replicar"** no topo abrindo `ReplicateMenuDialog`:
+   - Loja origem (default = loja ativa).
+   - Lojas destino (multi-select).
+   - Modo: **Cardápio inteiro** ou **Por categoria** (multi-select de categorias).
+   - Copia exatamente as linhas de `menu_item_stores` da origem para as destino (sobrescreve só o conjunto selecionado).
 
-### 5. CRM (limpeza)
-- Em `/crm` → aba Avaliações: substituir o componente atual `IFoodReviewsWidget` por uma versão **somente leitura/visualização** que usa as mesmas configs da tabela (mesmo card por loja, mostrando os 3 widgets se houver). Ou simplesmente remover o widget do CRM, já que agora as bolinhas vivem no PDV. **Pergunto antes de implementar.**
+### Editor de item (`MenuItemEditorDialog.tsx`)
+7. Quando o item tem `recipe_id`, exibir badge **"Foto e nome vêm da ficha técnica · Editar em /receitas"** e travar os campos. Trocar lá reflete em site/totem/SmartPOS de toda a empresa (já é assim na vitrine).
 
-## Riscos / observações
-- O script oficial do iFood pode não suportar 3 inits simultâneos no mesmo documento. Plano de contingência: se conflitar, montar apenas 1 bolinha por vez com seletor visual de marca dentro da bolinha (mantém o conceito mas reduz para 1 widget). Confirmo isso na hora de testar.
-- As bolinhas só aparecem após autorização inicial no Portal Parceiro (você já faz, sem problema).
+## Fora de escopo agora
+- Editor da página `/cardapio` continua igual exceto pela badge da foto.
+- Sem mexer em `/pdv` antigo, `pos_sales` ou Saipos.
+- iFood em produção fica intacto — a baixa de estoque entra automaticamente via trigger.
 
-## Pergunta de confirmação
-- O widget no **CRM/Avaliações**: removo (some), mantenho como visualizador admin de todas as lojas, ou mantenho exatamente como está hoje?
+## Ordem
+Migração (1+2) → Menu.tsx (3-6) → ReplicateMenuDialog novo → editor com badge (7).
+
+Aprova pra eu seguir?
