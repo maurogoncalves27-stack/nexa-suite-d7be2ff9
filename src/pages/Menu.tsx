@@ -313,12 +313,33 @@ export default function Menu() {
         <Button variant="outline" size="sm" onClick={openNewCategory} className="gap-2" disabled={!activeBrand}>
           <FolderPlus className="h-4 w-4" /> Categoria
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setReplicateOpen(true)}
+          className="gap-2"
+          disabled={!activeBrand || stores.length < 2}
+        >
+          <Copy className="h-4 w-4" /> Replicar
+        </Button>
         <Button size="sm" onClick={() => { setEditingId(null); setEditorOpen(true); }} className="gap-2" disabled={!activeBrand || !activeStore}>
           <Plus className="h-4 w-4" /> Novo item
         </Button>
       </div>
 
       <ComplementsCatalogDialog open={complementsOpen} onOpenChange={setComplementsOpen} />
+
+      <ReplicateMenuDialog
+        open={replicateOpen}
+        onOpenChange={setReplicateOpen}
+        stores={stores}
+        categories={categories}
+        brandId={activeBrand}
+        defaultSourceStoreId={activeStore}
+        onDone={load}
+      />
+
+
 
 
       {brands.length > 0 && (
