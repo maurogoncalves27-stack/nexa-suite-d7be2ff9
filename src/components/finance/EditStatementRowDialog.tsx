@@ -28,6 +28,8 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
   const [newCategoryName, setNewCategoryName] = useState("");
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [editingCategoryName, setEditingCategoryName] = useState("");
+  const [applyToGroup, setApplyToGroup] = useState(false);
+  const [groupCount, setGroupCount] = useState(0);
 
   // common fields
   const [description, setDescription] = useState("");
