@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+// Tabs de marca removidas — agora usamos chips de filtro (Todas / por marca / Exclusivos).
 import { Label } from "@/components/ui/label";
 import AddCategoryDialog from "@/components/menu/AddCategoryDialog";
 import MenuItemEditorDialog from "@/components/menu/MenuItemEditorDialog";
@@ -33,7 +33,7 @@ interface MenuItem {
   sort_order: number;
 }
 
-const ACTIVE_BRAND_KEY = "menu.activeBrand";
+const BRAND_FILTER_KEY = "menu.brandFilter";
 const ACTIVE_STORE_KEY = "menu.activeStore";
 const STORE_NAMES = ["ASA SUL", "ASA NORTE", "ÁGUAS CLARAS", "LAGO SUL"];
 const ALLOWED_BRAND_NAMES = ["AQUELA PARME", "AQUELA PARMÊ", "BOX CAIPIRA", "AQUELE ESTROGONOFE"];
@@ -45,7 +45,10 @@ export default function Menu() {
   const [loading, setLoading] = useState(true);
 
   const [brands, setBrands] = useState<Brand[]>([]);
-  const [activeBrand, setActiveBrand] = useState<string>("");
+  // brandFilter: "all" | `b:<id>` (marca específica) | `x:<id>` (exclusivo dessa marca)
+  const [brandFilter, setBrandFilter] = useState<string>(
+    () => localStorage.getItem(BRAND_FILTER_KEY) ?? "all",
+  );
 
   const [stores, setStores] = useState<Store[]>([]);
   const [activeStore, setActiveStore] = useState<string>("");
@@ -77,8 +80,6 @@ export default function Menu() {
       ]);
       const blist = ((bRes.data ?? []) as Brand[]).filter((b) => isAllowedBrand(b.name));
       setBrands(blist);
-      const storedB = localStorage.getItem(ACTIVE_BRAND_KEY);
-      setActiveBrand(storedB && blist.some((b) => b.id === storedB) ? storedB : blist[0]?.id ?? "");
 
       const slist = ((sRes.data ?? []) as Store[]).sort(
         (a, b) => STORE_NAMES.indexOf(a.name) - STORE_NAMES.indexOf(b.name),
@@ -90,8 +91,8 @@ export default function Menu() {
   }, []);
 
   useEffect(() => {
-    if (activeBrand) localStorage.setItem(ACTIVE_BRAND_KEY, activeBrand);
-  }, [activeBrand]);
+    localStorage.setItem(BRAND_FILTER_KEY, brandFilter);
+  }, [brandFilter]);
 
   useEffect(() => {
     if (activeStore) localStorage.setItem(ACTIVE_STORE_KEY, activeStore);
