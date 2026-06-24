@@ -87,6 +87,15 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
     setNewCategoryName("");
     setEditingCategoryId(null);
     setEditingCategoryName("");
+    setApplyToGroup(false);
+    setGroupCount(0);
+    if (kind === "payable" && raw.recurrence_group_id) {
+      supabase
+        .from("accounts_payable")
+        .select("id", { count: "exact", head: true })
+        .eq("recurrence_group_id", raw.recurrence_group_id)
+        .then(({ count }) => setGroupCount(count ?? 0));
+    }
   }, [open, raw, kind]);
 
   if (!kind || !raw) return null;
