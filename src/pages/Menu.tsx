@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+// Tabs de marca removidas — agora usamos chips de filtro (Todas / por marca / Exclusivos).
 import { Label } from "@/components/ui/label";
 import AddCategoryDialog from "@/components/menu/AddCategoryDialog";
 import MenuItemEditorDialog from "@/components/menu/MenuItemEditorDialog";
@@ -33,7 +33,7 @@ interface MenuItem {
   sort_order: number;
 }
 
-const ACTIVE_BRAND_KEY = "menu.activeBrand";
+const BRAND_FILTER_KEY = "menu.brandFilter";
 const ACTIVE_STORE_KEY = "menu.activeStore";
 const STORE_NAMES = ["ASA SUL", "ASA NORTE", "ÁGUAS CLARAS", "LAGO SUL"];
 const ALLOWED_BRAND_NAMES = ["AQUELA PARME", "AQUELA PARMÊ", "BOX CAIPIRA", "AQUELE ESTROGONOFE"];
@@ -45,7 +45,10 @@ export default function Menu() {
   const [loading, setLoading] = useState(true);
 
   const [brands, setBrands] = useState<Brand[]>([]);
-  const [activeBrand, setActiveBrand] = useState<string>("");
+  // brandFilter: "all" | `b:<id>` (marca específica) | `x:<id>` (exclusivo dessa marca)
+  const [brandFilter, setBrandFilter] = useState<string>(
+    () => localStorage.getItem(BRAND_FILTER_KEY) ?? "all",
+  );
 
   const [stores, setStores] = useState<Store[]>([]);
   const [activeStore, setActiveStore] = useState<string>("");
@@ -77,8 +80,6 @@ export default function Menu() {
       ]);
       const blist = ((bRes.data ?? []) as Brand[]).filter((b) => isAllowedBrand(b.name));
       setBrands(blist);
-      const storedB = localStorage.getItem(ACTIVE_BRAND_KEY);
-      setActiveBrand(storedB && blist.some((b) => b.id === storedB) ? storedB : blist[0]?.id ?? "");
 
       const slist = ((sRes.data ?? []) as Store[]).sort(
         (a, b) => STORE_NAMES.indexOf(a.name) - STORE_NAMES.indexOf(b.name),
@@ -90,19 +91,22 @@ export default function Menu() {
   }, []);
 
   useEffect(() => {
-    if (activeBrand) localStorage.setItem(ACTIVE_BRAND_KEY, activeBrand);
-  }, [activeBrand]);
+    localStorage.setItem(BRAND_FILTER_KEY, brandFilter);
+  }, [brandFilter]);
 
   useEffect(() => {
     if (activeStore) localStorage.setItem(ACTIVE_STORE_KEY, activeStore);
   }, [activeStore]);
 
   async function load() {
-    if (!activeBrand || !activeStore) return;
+    if (!activeStore || brands.length === 0) return;
     setLoading(true);
+    const allowedBrandIds = brands.map((b) => b.id);
+
+    // Categorias: todas vinculadas a qualquer marca permitida.
     const { data: catLinks } = await (supabase as any)
-      .from("menu_category_brands").select("category_id").eq("brand_id", activeBrand);
-    const catIds = ((catLinks ?? []) as any[]).map((r) => r.category_id);
+      .from("menu_category_brands").select("category_id").in("brand_id", allowedBrandIds);
+    const catIds = Array.from(new Set(((catLinks ?? []) as any[]).map((r) => r.category_id)));
     let cat: Category[] = [];
     if (catIds.length) {
       const { data } = await supabase.from("menu_categories")
@@ -127,8 +131,10 @@ export default function Menu() {
     }
     setItemStores(storeMap);
 
-    // Mostra TODOS os itens da marca ativa. A pausa por loja é exibida via toggle no card.
-    const itemIds = Object.keys(brandMap).filter((id) => brandMap[id].includes(activeBrand));
+    // Carrega TODOS os itens vinculados a qualquer marca permitida. O filtro por marca é aplicado em memória.
+    const itemIds = Object.keys(brandMap).filter((id) =>
+      brandMap[id].some((bid) => allowedBrandIds.includes(bid)),
+    );
     if (itemIds.length === 0) {
       setItems([]);
       setLoading(false);
@@ -154,11 +160,18 @@ export default function Menu() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, [activeBrand, activeStore]);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [brands, activeStore]);
+
+  // Marca usada como default em "Nova categoria", "Novo item" e "Replicar".
+  // Se o filtro estiver numa marca específica, usa ela; senão usa a primeira marca permitida.
+  const targetBrandId = useMemo(() => {
+    if (brandFilter.startsWith("b:") || brandFilter.startsWith("x:")) return brandFilter.slice(2);
+    return brands[0]?.id ?? "";
+  }, [brandFilter, brands]);
 
   function openNewCategory() {
     setCatName("");
-    setCatBrands(activeBrand ? [activeBrand] : []);
+    setCatBrands(targetBrandId ? [targetBrandId] : []);
     setCatOpen(true);
   }
 
@@ -255,13 +268,24 @@ export default function Menu() {
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
     return items.filter((i) => {
+      // Filtro de marca
+      const itemBrandIds = itemBrands[i.id] ?? [];
+      if (brandFilter.startsWith("b:")) {
+        const bid = brandFilter.slice(2);
+        if (!itemBrandIds.includes(bid)) return false;
+      } else if (brandFilter.startsWith("x:")) {
+        const bid = brandFilter.slice(2);
+        // Exclusivo = vinculado APENAS àquela marca
+        if (!(itemBrandIds.length === 1 && itemBrandIds[0] === bid)) return false;
+      }
+      // Filtro de categoria / sem ficha
       if (filterCat === "__no_recipe__") {
         if (i.recipe_id) return false;
       } else if (filterCat !== "all" && i.category_id !== filterCat) return false;
       if (s && !i.name.toLowerCase().includes(s)) return false;
       return true;
     });
-  }, [items, search, filterCat]);
+  }, [items, search, filterCat, brandFilter, itemBrands]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, MenuItem[]>();
@@ -276,8 +300,14 @@ export default function Menu() {
   const catName_ = (id: string | null) =>
     id ? (categories.find((c) => c.id === id)?.name ?? "Sem categoria") : "Sem categoria";
 
-  const activeBrandObj = brands.find((b) => b.id === activeBrand);
   const activeStoreObj = stores.find((s) => s.id === activeStore);
+  const brandShort = (id: string) => {
+    const n = brands.find((b) => b.id === id)?.name ?? "";
+    if (/box/i.test(n)) return "BOX";
+    if (/estrogon/i.test(n)) return "ESTROGONOFE";
+    if (/parm/i.test(n)) return "AQUELA PARMÊ";
+    return n;
+  };
 
   return (
     <div className="space-y-6">
@@ -288,9 +318,8 @@ export default function Menu() {
             Cardápio
           </h1>
           <p className="text-muted-foreground">
-            {activeStoreObj && activeBrandObj
-              ? `${activeStoreObj.name} • ${activeBrandObj.name}`
-              : "Selecione uma loja e marca"}
+            {activeStoreObj ? activeStoreObj.name : "Selecione uma loja"}
+            {" • Cardápio único da empresa"}
           </p>
         </div>
         {stores.length > 0 && (
@@ -312,7 +341,7 @@ export default function Menu() {
         <Button variant="outline" size="sm" onClick={() => setComplementsOpen(true)} className="gap-2">
           <Layers className="h-4 w-4" /> Complementos
         </Button>
-        <Button variant="outline" size="sm" onClick={openNewCategory} className="gap-2" disabled={!activeBrand}>
+        <Button variant="outline" size="sm" onClick={openNewCategory} className="gap-2" disabled={!targetBrandId}>
           <FolderPlus className="h-4 w-4" /> Categoria
         </Button>
         <Button
@@ -320,11 +349,11 @@ export default function Menu() {
           size="sm"
           onClick={() => setReplicateOpen(true)}
           className="gap-2"
-          disabled={!activeBrand || stores.length < 2}
+          disabled={!targetBrandId || stores.length < 2}
         >
           <Copy className="h-4 w-4" /> Replicar
         </Button>
-        <Button size="sm" onClick={() => { setEditingId(null); setEditorOpen(true); }} className="gap-2" disabled={!activeBrand || !activeStore}>
+        <Button size="sm" onClick={() => { setEditingId(null); setEditorOpen(true); }} className="gap-2" disabled={!targetBrandId || !activeStore}>
           <Plus className="h-4 w-4" /> Novo item
         </Button>
       </div>
@@ -336,24 +365,45 @@ export default function Menu() {
         onOpenChange={setReplicateOpen}
         stores={stores}
         categories={categories}
-        brandId={activeBrand}
+        brandId={targetBrandId}
         defaultSourceStoreId={activeStore}
         onDone={load}
       />
 
-
-
-
       {brands.length > 0 && (
-        <Tabs value={activeBrand} onValueChange={setActiveBrand} className="w-full">
-          <TabsList className="w-full sm:w-auto flex-wrap h-auto">
-            {brands.map((b) => (
-              <TabsTrigger key={b.id} value={b.id} className="text-xs sm:text-sm">
-                {b.name}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <div className="flex flex-wrap gap-1.5">
+          <Button
+            size="sm"
+            variant={brandFilter === "all" ? "default" : "outline"}
+            className="h-7 text-xs"
+            onClick={() => setBrandFilter("all")}
+          >
+            Todas as marcas
+          </Button>
+          {brands.map((b) => (
+            <Button
+              key={`b-${b.id}`}
+              size="sm"
+              variant={brandFilter === `b:${b.id}` ? "default" : "outline"}
+              className="h-7 text-xs"
+              onClick={() => setBrandFilter(`b:${b.id}`)}
+            >
+              {b.name}
+            </Button>
+          ))}
+          {brands.map((b) => (
+            <Button
+              key={`x-${b.id}`}
+              size="sm"
+              variant={brandFilter === `x:${b.id}` ? "default" : "outline"}
+              className="h-7 text-xs"
+              onClick={() => setBrandFilter(`x:${b.id}`)}
+              title={`Itens vendidos somente em ${brandShort(b.id)}`}
+            >
+              Exclusivos {brandShort(b.id)}
+            </Button>
+          ))}
+        </div>
       )}
 
       {(() => {
@@ -454,7 +504,8 @@ export default function Menu() {
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {list.map((it) => {
-                      const otherBrands = (itemBrands[it.id] ?? []).filter((b) => b !== activeBrand);
+                      const itemBrandIds = itemBrands[it.id] ?? [];
+                      const isExclusive = itemBrandIds.length === 1;
                       const photo = it.recipe_id ? recipePhotos[it.recipe_id] : null;
                       const storesAvail = itemStores[it.id] ?? [];
                       const availableHere = storesAvail.includes(activeStore);
@@ -487,8 +538,16 @@ export default function Menu() {
                                   <AlertTriangle className="h-3 w-3" /> Sem ficha
                                 </Badge>
                               )}
-                              {otherBrands.length > 0 && (
-                                <Badge variant="outline" className="text-[10px]">+{otherBrands.length} marca(s)</Badge>
+                              {isExclusive ? (
+                                <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">
+                                  Exclusivo {brandShort(itemBrandIds[0])}
+                                </Badge>
+                              ) : (
+                                itemBrandIds.map((bid) => (
+                                  <Badge key={bid} variant="outline" className="text-[10px]">
+                                    {brandShort(bid)}
+                                  </Badge>
+                                ))
                               )}
                               {pausedCount > 0 && (
                                 <Badge variant="outline" className="text-[10px] border-warning/40 text-warning">
@@ -551,7 +610,7 @@ export default function Menu() {
         categories={categories}
         brands={brands}
         stores={stores}
-        defaultBrandId={activeBrand}
+        defaultBrandId={targetBrandId}
         defaultStoreId={activeStore}
         onSaved={load}
       />
