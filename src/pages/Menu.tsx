@@ -99,11 +99,14 @@ export default function Menu() {
   }, [activeStore]);
 
   async function load() {
-    if (!activeBrand || !activeStore) return;
+    if (!activeStore || brands.length === 0) return;
     setLoading(true);
+    const allowedBrandIds = brands.map((b) => b.id);
+
+    // Categorias: todas vinculadas a qualquer marca permitida.
     const { data: catLinks } = await (supabase as any)
-      .from("menu_category_brands").select("category_id").eq("brand_id", activeBrand);
-    const catIds = ((catLinks ?? []) as any[]).map((r) => r.category_id);
+      .from("menu_category_brands").select("category_id").in("brand_id", allowedBrandIds);
+    const catIds = Array.from(new Set(((catLinks ?? []) as any[]).map((r) => r.category_id)));
     let cat: Category[] = [];
     if (catIds.length) {
       const { data } = await supabase.from("menu_categories")
@@ -128,8 +131,10 @@ export default function Menu() {
     }
     setItemStores(storeMap);
 
-    // Mostra TODOS os itens da marca ativa. A pausa por loja é exibida via toggle no card.
-    const itemIds = Object.keys(brandMap).filter((id) => brandMap[id].includes(activeBrand));
+    // Carrega TODOS os itens vinculados a qualquer marca permitida. O filtro por marca é aplicado em memória.
+    const itemIds = Object.keys(brandMap).filter((id) =>
+      brandMap[id].some((bid) => allowedBrandIds.includes(bid)),
+    );
     if (itemIds.length === 0) {
       setItems([]);
       setLoading(false);
@@ -155,11 +160,18 @@ export default function Menu() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, [activeBrand, activeStore]);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [brands, activeStore]);
+
+  // Marca usada como default em "Nova categoria", "Novo item" e "Replicar".
+  // Se o filtro estiver numa marca específica, usa ela; senão usa a primeira marca permitida.
+  const targetBrandId = useMemo(() => {
+    if (brandFilter.startsWith("b:") || brandFilter.startsWith("x:")) return brandFilter.slice(2);
+    return brands[0]?.id ?? "";
+  }, [brandFilter, brands]);
 
   function openNewCategory() {
     setCatName("");
-    setCatBrands(activeBrand ? [activeBrand] : []);
+    setCatBrands(targetBrandId ? [targetBrandId] : []);
     setCatOpen(true);
   }
 
