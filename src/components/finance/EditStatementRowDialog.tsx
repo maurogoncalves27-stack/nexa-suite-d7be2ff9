@@ -30,6 +30,8 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
   const [editingCategoryName, setEditingCategoryName] = useState("");
   const [applyToGroup, setApplyToGroup] = useState(false);
   const [groupCount, setGroupCount] = useState(0);
+  const [siblingIds, setSiblingIds] = useState<string[]>([]);
+  const [groupMode, setGroupMode] = useState<"id" | "description">("id");
 
   // common fields
   const [description, setDescription] = useState("");
@@ -89,12 +91,46 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
     setEditingCategoryName("");
     setApplyToGroup(false);
     setGroupCount(0);
-    if (kind === "payable" && raw.recurrence_group_id) {
-      supabase
-        .from("accounts_payable")
-        .select("id", { count: "exact", head: true })
-        .eq("recurrence_group_id", raw.recurrence_group_id)
-        .then(({ count }) => setGroupCount(count ?? 0));
+    setSiblingIds([]);
+    setGroupMode("id");
+    if (kind === "payable") {
+      (async () => {
+        // 1) Try by recurrence_group_id
+        if (raw.recurrence_group_id) {
+          const { data } = await supabase
+            .from("accounts_payable")
+            .select("id")
+            .eq("recurrence_group_id", raw.recurrence_group_id)
+            .neq("id", raw.id);
+          if (data && data.length > 0) {
+            setSiblingIds(data.map((d: any) => d.id));
+            setGroupCount(data.length + 1);
+            setGroupMode("id");
+            return;
+          }
+        }
+        // 2) Fallback: same supplier + store + base description (strip "(N/M)" suffix)
+        const desc = String(raw.description ?? "");
+        const baseDesc = desc.replace(/\s*\(\d+\/\d+\)\s*$/, "").trim();
+        if (!baseDesc) return;
+        let q = supabase
+          .from("accounts_payable")
+          .select("id, description")
+          .neq("id", raw.id)
+          .ilike("description", `${baseDesc}%`);
+        if (raw.supplier_name) q = q.eq("supplier_name", raw.supplier_name);
+        if (raw.store_id) q = q.eq("store_id", raw.store_id);
+        const { data } = await q;
+        const matches = (data ?? []).filter((d: any) => {
+          const dBase = String(d.description ?? "").replace(/\s*\(\d+\/\d+\)\s*$/, "").trim();
+          return dBase === baseDesc;
+        });
+        if (matches.length > 0) {
+          setSiblingIds(matches.map((d: any) => d.id));
+          setGroupCount(matches.length + 1);
+          setGroupMode("description");
+        }
+      })();
     }
   }, [open, raw, kind]);
 
@@ -167,7 +203,7 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
       }).eq("id", raw.id);
       error = e;
 
-      if (!error && applyToGroup && raw.recurrence_group_id) {
+      if (!error && applyToGroup && siblingIds.length > 0) {
         const dayDelta = (raw.due_date && newDue)
           ? Math.round((new Date(newDue + "T12:00:00").getTime() - new Date(raw.due_date + "T12:00:00").getTime()) / 86400000)
           : 0;
@@ -178,9 +214,8 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
 
         const { data: siblings } = await supabase
           .from("accounts_payable")
-          .select("id, due_date, competence_date")
-          .eq("recurrence_group_id", raw.recurrence_group_id)
-          .neq("id", raw.id);
+          .select("id, description, due_date, competence_date")
+          .in("id", siblingIds);
 
         const shiftDays = (d: string | null, days: number) => {
           if (!d || !days) return d;
@@ -195,9 +230,17 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
           return dt.toISOString().slice(0, 10);
         };
 
+        // In description-mode, preserve each sibling's "(N/M)" parcel suffix.
+        const newBase = (description || "").replace(/\s*\(\d+\/\d+\)\s*$/, "").trim();
+
         for (const s of (siblings ?? []) as any[]) {
+          let descToUse: string | null = description || null;
+          if (groupMode === "description") {
+            const m = String(s.description ?? "").match(/\((\d+\/\d+)\)\s*$/);
+            descToUse = m ? `${newBase} (${m[1]})` : (description || null);
+          }
           const upd: any = {
-            description: description || null,
+            description: descToUse,
             supplier_name: partyName || null,
             store_id: storeId || raw.store_id,
             category_id: categoryId || null,
@@ -448,7 +491,7 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
             </p>
           )}
 
-          {kind === "payable" && raw.recurrence_group_id && groupCount > 1 && (
+          {kind === "payable" && groupCount > 1 && (
             <label className="flex items-start gap-2 rounded-md border border-amber-300/60 bg-amber-50/40 dark:bg-amber-950/10 p-2 text-sm cursor-pointer">
               <input
                 type="checkbox"
@@ -457,11 +500,13 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
                 className="mt-1"
               />
               <span>
-                Aplicar a <strong>todos os {groupCount} pagamentos</strong> desta recorrência.
+                Aplicar a <strong>todos os {groupCount} pagamentos</strong> desta recorrência
+                {groupMode === "description" && " (agrupados por descrição + fornecedor + loja)"}.
                 <span className="block text-xs text-muted-foreground mt-0.5">
-                  Descrição, fornecedor, loja, categoria e valor serão copiados. Vencimento e competência
+                  Fornecedor, loja, categoria e valor serão copiados. Vencimento e competência
                   serão deslocados pela mesma diferença aplicada aqui (preservando o mês de cada parcela).
-                  Datas de pagamento não são alteradas.
+                  {groupMode === "description" && " A numeração \"(N/M)\" de cada parcela é preservada."}
+                  {" "}Datas de pagamento não são alteradas.
                 </span>
               </span>
             </label>
