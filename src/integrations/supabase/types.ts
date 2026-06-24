@@ -16867,6 +16867,7 @@ export type Database = {
         }
       }
       pdv_consume_order_stock: { Args: { _order_id: string }; Returns: Json }
+      pdv_reverse_order_stock: { Args: { _order_id: string }; Returns: Json }
       pending_request_for_recipe: {
         Args: { _recipe_id: string }
         Returns: number
