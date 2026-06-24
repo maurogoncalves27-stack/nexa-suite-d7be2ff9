@@ -504,7 +504,8 @@ export default function Menu() {
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {list.map((it) => {
-                      const otherBrands = (itemBrands[it.id] ?? []).filter((b) => b !== activeBrand);
+                      const itemBrandIds = itemBrands[it.id] ?? [];
+                      const isExclusive = itemBrandIds.length === 1;
                       const photo = it.recipe_id ? recipePhotos[it.recipe_id] : null;
                       const storesAvail = itemStores[it.id] ?? [];
                       const availableHere = storesAvail.includes(activeStore);
