@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Loader2, FolderPlus, Search, ScanText, Layers, ChevronUp, ChevronDown, Copy } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, FolderPlus, Search, ScanText, Layers, ChevronUp, ChevronDown, Copy, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -353,6 +353,29 @@ export default function Menu() {
           </TabsList>
         </Tabs>
       )}
+
+      {(() => {
+        const missing = items.filter((i) => !i.recipe_id).length;
+        if (missing === 0) return null;
+        return (
+          <button
+            type="button"
+            onClick={() => setFilterCat("__no_recipe__")}
+            className="w-full flex items-start gap-3 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-left hover:bg-warning/15 transition"
+          >
+            <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+            <div className="text-xs sm:text-sm">
+              <p className="font-medium text-foreground">
+                {missing} {missing === 1 ? "item está" : "itens estão"} sem ficha técnica
+              </p>
+              <p className="text-muted-foreground">
+                Sem ficha, a venda <strong>não baixa estoque</strong> e o item entra no CMV como "sem custo". Vincule uma receita no editor do item. Clique para filtrar só esses itens.
+              </p>
+            </div>
+          </button>
+        );
+      })()}
+
 
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
