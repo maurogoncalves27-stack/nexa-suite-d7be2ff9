@@ -538,8 +538,16 @@ export default function Menu() {
                                   <AlertTriangle className="h-3 w-3" /> Sem ficha
                                 </Badge>
                               )}
-                              {otherBrands.length > 0 && (
-                                <Badge variant="outline" className="text-[10px]">+{otherBrands.length} marca(s)</Badge>
+                              {isExclusive ? (
+                                <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">
+                                  Exclusivo {brandShort(itemBrandIds[0])}
+                                </Badge>
+                              ) : (
+                                itemBrandIds.map((bid) => (
+                                  <Badge key={bid} variant="outline" className="text-[10px]">
+                                    {brandShort(bid)}
+                                  </Badge>
+                                ))
                               )}
                               {pausedCount > 0 && (
                                 <Badge variant="outline" className="text-[10px] border-warning/40 text-warning">
