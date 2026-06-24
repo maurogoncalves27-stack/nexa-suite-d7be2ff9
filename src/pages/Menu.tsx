@@ -610,7 +610,7 @@ export default function Menu() {
         categories={categories}
         brands={brands}
         stores={stores}
-        defaultBrandId={activeBrand}
+        defaultBrandId={targetBrandId}
         defaultStoreId={activeStore}
         onSaved={load}
       />
