@@ -255,7 +255,9 @@ export default function Menu() {
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
     return items.filter((i) => {
-      if (filterCat !== "all" && i.category_id !== filterCat) return false;
+      if (filterCat === "__no_recipe__") {
+        if (i.recipe_id) return false;
+      } else if (filterCat !== "all" && i.category_id !== filterCat) return false;
       if (s && !i.name.toLowerCase().includes(s)) return false;
       return true;
     });
@@ -391,6 +393,7 @@ export default function Menu() {
           <SelectTrigger className="sm:w-56"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas as categorias</SelectItem>
+            <SelectItem value="__no_recipe__">⚠ Somente sem ficha técnica</SelectItem>
             {categories.map((c) => (
               <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
             ))}
