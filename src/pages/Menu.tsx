@@ -195,6 +195,44 @@ export default function Menu() {
     load();
   }
 
+  // Pausa/ativa um item em UMA loja específica (a loja ativa).
+  // Disponível = linha em menu_item_stores com is_available=true.
+  // Pausado = sem linha (consistente com Site/Totem/SmartPOS, que filtram por is_available=true).
+  async function toggleStoreAvailability(itemId: string, makeAvailable: boolean) {
+    if (!activeStore) return;
+    // Optimistic update
+    setItemStores((prev) => {
+      const next = { ...prev };
+      const cur = new Set(next[itemId] ?? []);
+      if (makeAvailable) cur.add(activeStore); else cur.delete(activeStore);
+      next[itemId] = Array.from(cur);
+      return next;
+    });
+
+    if (makeAvailable) {
+      const { error } = await (supabase as any)
+        .from("menu_item_stores")
+        .upsert(
+          { menu_item_id: itemId, store_id: activeStore, is_available: true },
+          { onConflict: "menu_item_id,store_id" },
+        );
+      if (error) {
+        toast({ title: "Erro ao ativar", description: error.message, variant: "destructive" });
+        load();
+      }
+    } else {
+      const { error } = await (supabase as any)
+        .from("menu_item_stores")
+        .delete()
+        .eq("menu_item_id", itemId)
+        .eq("store_id", activeStore);
+      if (error) {
+        toast({ title: "Erro ao pausar", description: error.message, variant: "destructive" });
+        load();
+      }
+    }
+  }
+
   async function moveCategory(idx: number, dir: -1 | 1) {
     const target = idx + dir;
     if (target < 0 || target >= categories.length) return;
