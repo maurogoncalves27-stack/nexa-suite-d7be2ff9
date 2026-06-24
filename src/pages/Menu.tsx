@@ -67,6 +67,7 @@ export default function Menu() {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [complementsOpen, setComplementsOpen] = useState(false);
+  const [replicateOpen, setReplicateOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
