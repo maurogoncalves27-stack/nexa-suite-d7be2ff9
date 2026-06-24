@@ -153,17 +153,62 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
     let error: any = null;
 
     if (kind === "payable") {
+      const newDue = dueDate || null;
+      const newComp = competenceDate || null;
       const { error: e } = await supabase.from("accounts_payable").update({
         description: description || null,
         supplier_name: partyName || null,
         store_id: storeId || raw.store_id,
         category_id: categoryId || null,
-        due_date: dueDate || null,
-        competence_date: competenceDate || null,
+        due_date: newDue,
+        competence_date: newComp,
         paid_at: settledDate ? new Date(settledDate + "T12:00:00").toISOString() : null,
         amount: Number(amount) || 0,
       }).eq("id", raw.id);
       error = e;
+
+      if (!error && applyToGroup && raw.recurrence_group_id) {
+        const dayDelta = (raw.due_date && newDue)
+          ? Math.round((new Date(newDue + "T12:00:00").getTime() - new Date(raw.due_date + "T12:00:00").getTime()) / 86400000)
+          : 0;
+        const monthDelta = (raw.competence_date && newComp)
+          ? ((new Date(newComp + "T12:00:00").getFullYear() - new Date(raw.competence_date + "T12:00:00").getFullYear()) * 12
+              + (new Date(newComp + "T12:00:00").getMonth() - new Date(raw.competence_date + "T12:00:00").getMonth()))
+          : 0;
+
+        const { data: siblings } = await supabase
+          .from("accounts_payable")
+          .select("id, due_date, competence_date")
+          .eq("recurrence_group_id", raw.recurrence_group_id)
+          .neq("id", raw.id);
+
+        const shiftDays = (d: string | null, days: number) => {
+          if (!d || !days) return d;
+          const dt = new Date(d + "T12:00:00");
+          dt.setDate(dt.getDate() + days);
+          return dt.toISOString().slice(0, 10);
+        };
+        const shiftMonths = (d: string | null, months: number) => {
+          if (!d || !months) return d;
+          const dt = new Date(d + "T12:00:00");
+          dt.setMonth(dt.getMonth() + months);
+          return dt.toISOString().slice(0, 10);
+        };
+
+        for (const s of (siblings ?? []) as any[]) {
+          const upd: any = {
+            description: description || null,
+            supplier_name: partyName || null,
+            store_id: storeId || raw.store_id,
+            category_id: categoryId || null,
+            amount: Number(amount) || 0,
+          };
+          if (dayDelta) upd.due_date = shiftDays(s.due_date, dayDelta);
+          if (monthDelta) upd.competence_date = shiftMonths(s.competence_date, monthDelta);
+          const { error: se } = await supabase.from("accounts_payable").update(upd).eq("id", s.id);
+          if (se) { error = se; break; }
+        }
+      }
     } else if (kind === "receivable") {
       const { error: e } = await supabase.from("accounts_receivable").update({
         description: description || "—",
