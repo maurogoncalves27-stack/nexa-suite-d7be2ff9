@@ -478,6 +478,15 @@ export default function Menu() {
                               <span className="font-medium truncate">{it.name}</span>
                               {it.is_combo && <Badge variant="secondary" className="text-[10px]">Combo</Badge>}
                               {!it.is_active && <Badge variant="outline" className="text-[10px]">Inativo</Badge>}
+                              {!it.recipe_id && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] border-warning/50 text-warning gap-1"
+                                  title="Sem ficha técnica vinculada — a venda não baixa estoque e o item entra no CMV como 'sem custo'. Edite o item e vincule uma receita."
+                                >
+                                  <AlertTriangle className="h-3 w-3" /> Sem ficha
+                                </Badge>
+                              )}
                               {otherBrands.length > 0 && (
                                 <Badge variant="outline" className="text-[10px]">+{otherBrands.length} marca(s)</Badge>
                               )}
