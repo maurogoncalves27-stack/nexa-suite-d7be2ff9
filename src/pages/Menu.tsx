@@ -268,13 +268,24 @@ export default function Menu() {
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
     return items.filter((i) => {
+      // Filtro de marca
+      const itemBrandIds = itemBrands[i.id] ?? [];
+      if (brandFilter.startsWith("b:")) {
+        const bid = brandFilter.slice(2);
+        if (!itemBrandIds.includes(bid)) return false;
+      } else if (brandFilter.startsWith("x:")) {
+        const bid = brandFilter.slice(2);
+        // Exclusivo = vinculado APENAS àquela marca
+        if (!(itemBrandIds.length === 1 && itemBrandIds[0] === bid)) return false;
+      }
+      // Filtro de categoria / sem ficha
       if (filterCat === "__no_recipe__") {
         if (i.recipe_id) return false;
       } else if (filterCat !== "all" && i.category_id !== filterCat) return false;
       if (s && !i.name.toLowerCase().includes(s)) return false;
       return true;
     });
-  }, [items, search, filterCat]);
+  }, [items, search, filterCat, brandFilter, itemBrands]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, MenuItem[]>();
@@ -289,8 +300,14 @@ export default function Menu() {
   const catName_ = (id: string | null) =>
     id ? (categories.find((c) => c.id === id)?.name ?? "Sem categoria") : "Sem categoria";
 
-  const activeBrandObj = brands.find((b) => b.id === activeBrand);
   const activeStoreObj = stores.find((s) => s.id === activeStore);
+  const brandShort = (id: string) => {
+    const n = brands.find((b) => b.id === id)?.name ?? "";
+    if (/box/i.test(n)) return "BOX";
+    if (/estrogon/i.test(n)) return "ESTROGONOFE";
+    if (/parm/i.test(n)) return "AQUELA PARMÊ";
+    return n;
+  };
 
   return (
     <div className="space-y-6">
@@ -301,9 +318,8 @@ export default function Menu() {
             Cardápio
           </h1>
           <p className="text-muted-foreground">
-            {activeStoreObj && activeBrandObj
-              ? `${activeStoreObj.name} • ${activeBrandObj.name}`
-              : "Selecione uma loja e marca"}
+            {activeStoreObj ? activeStoreObj.name : "Selecione uma loja"}
+            {" • Cardápio único da empresa"}
           </p>
         </div>
         {stores.length > 0 && (
@@ -325,7 +341,7 @@ export default function Menu() {
         <Button variant="outline" size="sm" onClick={() => setComplementsOpen(true)} className="gap-2">
           <Layers className="h-4 w-4" /> Complementos
         </Button>
-        <Button variant="outline" size="sm" onClick={openNewCategory} className="gap-2" disabled={!activeBrand}>
+        <Button variant="outline" size="sm" onClick={openNewCategory} className="gap-2" disabled={!targetBrandId}>
           <FolderPlus className="h-4 w-4" /> Categoria
         </Button>
         <Button
@@ -333,11 +349,11 @@ export default function Menu() {
           size="sm"
           onClick={() => setReplicateOpen(true)}
           className="gap-2"
-          disabled={!activeBrand || stores.length < 2}
+          disabled={!targetBrandId || stores.length < 2}
         >
           <Copy className="h-4 w-4" /> Replicar
         </Button>
-        <Button size="sm" onClick={() => { setEditingId(null); setEditorOpen(true); }} className="gap-2" disabled={!activeBrand || !activeStore}>
+        <Button size="sm" onClick={() => { setEditingId(null); setEditorOpen(true); }} className="gap-2" disabled={!targetBrandId || !activeStore}>
           <Plus className="h-4 w-4" /> Novo item
         </Button>
       </div>
@@ -349,24 +365,45 @@ export default function Menu() {
         onOpenChange={setReplicateOpen}
         stores={stores}
         categories={categories}
-        brandId={activeBrand}
+        brandId={targetBrandId}
         defaultSourceStoreId={activeStore}
         onDone={load}
       />
 
-
-
-
       {brands.length > 0 && (
-        <Tabs value={activeBrand} onValueChange={setActiveBrand} className="w-full">
-          <TabsList className="w-full sm:w-auto flex-wrap h-auto">
-            {brands.map((b) => (
-              <TabsTrigger key={b.id} value={b.id} className="text-xs sm:text-sm">
-                {b.name}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <div className="flex flex-wrap gap-1.5">
+          <Button
+            size="sm"
+            variant={brandFilter === "all" ? "default" : "outline"}
+            className="h-7 text-xs"
+            onClick={() => setBrandFilter("all")}
+          >
+            Todas as marcas
+          </Button>
+          {brands.map((b) => (
+            <Button
+              key={`b-${b.id}`}
+              size="sm"
+              variant={brandFilter === `b:${b.id}` ? "default" : "outline"}
+              className="h-7 text-xs"
+              onClick={() => setBrandFilter(`b:${b.id}`)}
+            >
+              {b.name}
+            </Button>
+          ))}
+          {brands.map((b) => (
+            <Button
+              key={`x-${b.id}`}
+              size="sm"
+              variant={brandFilter === `x:${b.id}` ? "default" : "outline"}
+              className="h-7 text-xs"
+              onClick={() => setBrandFilter(`x:${b.id}`)}
+              title={`Itens vendidos somente em ${brandShort(b.id)}`}
+            >
+              Exclusivos {brandShort(b.id)}
+            </Button>
+          ))}
+        </div>
       )}
 
       {(() => {
