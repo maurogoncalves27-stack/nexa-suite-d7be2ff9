@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Loader2, FolderPlus, Search, ScanText, Layers, ChevronUp, ChevronDown, Copy } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, FolderPlus, Search, ScanText, Layers, ChevronUp, ChevronDown, Copy, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -255,7 +255,9 @@ export default function Menu() {
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
     return items.filter((i) => {
-      if (filterCat !== "all" && i.category_id !== filterCat) return false;
+      if (filterCat === "__no_recipe__") {
+        if (i.recipe_id) return false;
+      } else if (filterCat !== "all" && i.category_id !== filterCat) return false;
       if (s && !i.name.toLowerCase().includes(s)) return false;
       return true;
     });
@@ -354,6 +356,29 @@ export default function Menu() {
         </Tabs>
       )}
 
+      {(() => {
+        const missing = items.filter((i) => !i.recipe_id).length;
+        if (missing === 0) return null;
+        return (
+          <button
+            type="button"
+            onClick={() => setFilterCat("__no_recipe__")}
+            className="w-full flex items-start gap-3 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-left hover:bg-warning/15 transition"
+          >
+            <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+            <div className="text-xs sm:text-sm">
+              <p className="font-medium text-foreground">
+                {missing} {missing === 1 ? "item está" : "itens estão"} sem ficha técnica
+              </p>
+              <p className="text-muted-foreground">
+                Sem ficha, a venda <strong>não baixa estoque</strong> e o item entra no CMV como "sem custo". Vincule uma receita no editor do item. Clique para filtrar só esses itens.
+              </p>
+            </div>
+          </button>
+        );
+      })()}
+
+
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -368,6 +393,7 @@ export default function Menu() {
           <SelectTrigger className="sm:w-56"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas as categorias</SelectItem>
+            <SelectItem value="__no_recipe__">⚠ Somente sem ficha técnica</SelectItem>
             {categories.map((c) => (
               <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
             ))}
@@ -452,6 +478,15 @@ export default function Menu() {
                               <span className="font-medium truncate">{it.name}</span>
                               {it.is_combo && <Badge variant="secondary" className="text-[10px]">Combo</Badge>}
                               {!it.is_active && <Badge variant="outline" className="text-[10px]">Inativo</Badge>}
+                              {!it.recipe_id && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] border-warning/50 text-warning gap-1"
+                                  title="Sem ficha técnica vinculada — a venda não baixa estoque e o item entra no CMV como 'sem custo'. Edite o item e vincule uma receita."
+                                >
+                                  <AlertTriangle className="h-3 w-3" /> Sem ficha
+                                </Badge>
+                              )}
                               {otherBrands.length > 0 && (
                                 <Badge variant="outline" className="text-[10px]">+{otherBrands.length} marca(s)</Badge>
                               )}
