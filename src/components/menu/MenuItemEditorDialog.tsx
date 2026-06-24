@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { fmt } from "@/lib/saiposMenu";
+import { fmt } from "@/lib/menuFormat";
 
 interface Category { id: string; name: string; }
 interface RecipeOpt { id: string; name: string; }

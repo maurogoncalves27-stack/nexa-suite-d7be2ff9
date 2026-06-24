@@ -22,7 +22,6 @@ type SaleItem = {
 type RecipeIng = { product_id: string; quantity: number };
 type Recipe = { id: string; name: string; yield_quantity: number; recipe_ingredients: RecipeIng[] };
 type MenuItem = { id: string; name: string; price: number; recipe_id: string | null };
-type Mapping = { pos_item_name: string; recipe_id: string | null; inventory_product_id: string | null };
 type Product = { id: string; name: string; last_cost: number | null; average_cost: number | null };
 
 type Row = {
@@ -87,12 +86,7 @@ export default function FinanceCmv() {
       const menuByName = new Map<string, MenuItem>();
       for (const m of (menu ?? []) as MenuItem[]) menuByName.set(norm(m.name), m);
 
-      // 3. Mapeamentos PDV → receita
-      const { data: maps } = await supabase
-        .from("pos_item_mappings")
-        .select("pos_item_name, recipe_id, inventory_product_id");
-      const mapByName = new Map<string, Mapping>();
-      for (const m of (maps ?? []) as Mapping[]) mapByName.set(norm(m.pos_item_name), m);
+      // (Saipos removido — mapeamentos legados não existem mais.)
 
       // 4. Receitas + ingredientes
       const { data: recipes } = await supabase
@@ -131,14 +125,10 @@ export default function FinanceCmv() {
       // 7. Calcula custo unitário de cada prato vendido
       const out: Row[] = [];
       for (const [key, agg] of grouped) {
-        // resolve recipe_id: 1) menu_items.recipe_id; 2) pos_item_mappings.recipe_id
+        // resolve recipe_id pelo cardápio (menu_items.recipe_id)
         let recipeId: string | null = null;
         const menuMatch = menuByName.get(key);
         if (menuMatch?.recipe_id) recipeId = menuMatch.recipe_id;
-        if (!recipeId) {
-          const mp = mapByName.get(key);
-          if (mp?.recipe_id) recipeId = mp.recipe_id;
-        }
 
         let unitCost: number | null = null;
         let hasCost = false;
@@ -293,8 +283,7 @@ export default function FinanceCmv() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Sem itens de venda no período</AlertTitle>
           <AlertDescription>
-            As vendas estão sendo sincronizadas do Saipos só com cabeçalho (sem detalhe dos itens).
-            Assim que os itens começarem a entrar em <code>pos_sale_items</code>, este painel popula automaticamente.
+            Nenhum pedido concluído no PDV próprio entre as datas selecionadas. Assim que houver vendas, o painel popula automaticamente a partir das fichas técnicas vinculadas ao cardápio.
           </AlertDescription>
         </Alert>
       )}

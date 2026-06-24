@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import type { MenuItem } from "@/lib/saiposMenu";
+import type { MenuItem } from "@/lib/menuFormat";
 
 interface Props {
   open: boolean;

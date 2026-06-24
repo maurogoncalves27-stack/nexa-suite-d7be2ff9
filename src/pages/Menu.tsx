@@ -16,7 +16,7 @@ import AddCategoryDialog from "@/components/menu/AddCategoryDialog";
 import MenuItemEditorDialog from "@/components/menu/MenuItemEditorDialog";
 import ComplementsCatalogDialog from "@/components/menu/ComplementsCatalogDialog";
 import ReplicateMenuDialog from "@/components/menu/ReplicateMenuDialog";
-import { fmt } from "@/lib/saiposMenu";
+import { fmt } from "@/lib/menuFormat";
 
 interface Brand { id: string; name: string; sort_order: number; }
 interface Store { id: string; name: string; }
