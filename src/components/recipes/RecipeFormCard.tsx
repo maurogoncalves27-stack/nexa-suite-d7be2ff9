@@ -591,6 +591,10 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
                   </div>
                 </div>
 
+                {!isNew && recipeId && (
+                  <RecipeMenuItemsSection recipeId={recipeId} />
+                )}
+
                 {!isNew && (
                   <Button
                     type="button"
