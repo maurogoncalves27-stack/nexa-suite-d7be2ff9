@@ -203,7 +203,7 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
       }).eq("id", raw.id);
       error = e;
 
-      if (!error && applyToGroup && raw.recurrence_group_id) {
+      if (!error && applyToGroup && siblingIds.length > 0) {
         const dayDelta = (raw.due_date && newDue)
           ? Math.round((new Date(newDue + "T12:00:00").getTime() - new Date(raw.due_date + "T12:00:00").getTime()) / 86400000)
           : 0;
@@ -214,9 +214,8 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
 
         const { data: siblings } = await supabase
           .from("accounts_payable")
-          .select("id, due_date, competence_date")
-          .eq("recurrence_group_id", raw.recurrence_group_id)
-          .neq("id", raw.id);
+          .select("id, description, due_date, competence_date")
+          .in("id", siblingIds);
 
         const shiftDays = (d: string | null, days: number) => {
           if (!d || !days) return d;
@@ -231,9 +230,17 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
           return dt.toISOString().slice(0, 10);
         };
 
+        // In description-mode, preserve each sibling's "(N/M)" parcel suffix.
+        const newBase = (description || "").replace(/\s*\(\d+\/\d+\)\s*$/, "").trim();
+
         for (const s of (siblings ?? []) as any[]) {
+          let descToUse: string | null = description || null;
+          if (groupMode === "description") {
+            const m = String(s.description ?? "").match(/\((\d+\/\d+)\)\s*$/);
+            descToUse = m ? `${newBase} (${m[1]})` : (description || null);
+          }
           const upd: any = {
-            description: description || null,
+            description: descToUse,
             supplier_name: partyName || null,
             store_id: storeId || raw.store_id,
             category_id: categoryId || null,
