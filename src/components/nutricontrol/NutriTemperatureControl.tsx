@@ -573,6 +573,8 @@ export const NutriTemperatureControl = ({ currentDate, storeId }: Props) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <NutriTemperatureAlertsAdmin storeId={storeId} />
     </div>
   );
 };
