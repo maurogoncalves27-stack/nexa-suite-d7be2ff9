@@ -16821,6 +16821,7 @@ export type Database = {
         }
         Returns: string
       }
+      unaccent: { Args: { "": string }; Returns: string }
       unreconcile_bank_transaction: {
         Args: { _transaction_id: string }
         Returns: Json
