@@ -1,45 +1,48 @@
-## Escopo aprovado (recapitulando)
+## Auditoria (já feita)
 
-Cardápio único da empresa, com:
-- Pausa de item por loja (Coca pausada em Asa Norte some no totem, smartpos e site daquela loja).
-- Foto e nome vindos da ficha técnica; trocar lá atualiza tudo.
-- Replicar disponibilidade entre lojas — **total** (cardápio inteiro) ou **por categoria**.
-- Baixa de estoque automática a partir da ficha técnica em **todos** os canais, inclusive iFood (cardápio iFood é 100% igual ao nosso).
-- Estorno no cancelamento.
+Vasculhei `ems-ingest`, `ems-sync-temperature`, `NutriTemperatureControl.tsx` e `ColdChamberStatusCard.tsx`. Resultado:
 
-## Base que já existe
+**Nunca existiu disparo de alerta automático para temperatura fora da faixa.**
 
-- `menu_items` + `menu_item_brands` + `menu_item_stores(is_available)` + `recipes` + `recipe_ingredients` + `inventory_stock` + `pdv_stock_consumption_log` + RPC `pdv_consume_order_stock(_order_id)` (lê a ficha técnica e dá baixa).
-- Site `/pedir/:slug`, Totem e SmartPOS já leem `menu_item_stores.is_available`.
+- `ems-ingest` (cron 5min) só grava leituras em `ems_sensor_readings`.
+- `ems-sync-temperature` só copia para `nutri_temperature_readings`.
+- O "alerta" hoje é **apenas visual**: badge/número em vermelho quando `temp > max_value` (ou `< min_value`). Nenhum push, nenhum WhatsApp, nenhum registro de incidente.
+- Sensor cadastrado: 1 só — **Câmara Fria · Asa Sul** (faixa −25°C a −5°C).
+
+Por isso "os alertas não estão chegando": eles nunca foram enviados.
 
 ## O que vou implementar
 
-### Backend (migração única)
-1. **`pdv_reverse_order_stock(_order_id)`** — devolve ingredientes consumidos ao estoque, registra movimento `adjustment / pdv_order_cancel`, limpa `stock_consumed_at`.
-2. **Trigger `trg_pdv_orders_status_stock`** em `pdv_orders AFTER UPDATE OF status`:
-   - Status passa para `confirmed / preparing / ready / dispatched / concluded` e ainda não consumiu → chama `pdv_consume_order_stock`.
-   - Status passa para `cancelled` e já tinha consumido → chama `pdv_reverse_order_stock`.
-   - Cobre PDV-Novo, iFood (webhook/poll usam `pdv_advance_order_status`), Totem e Site automaticamente — sem precisar editar edge functions.
+Alertas via **WhatsApp** (Z-API, mesma infra do `send-whatsapp`) — sem push.
 
-### Frontend — página `/cardapio` (`src/pages/Menu.tsx`)
-3. Listar **todos os itens da marca** (hoje só lista itens com linha em `menu_item_stores` para a loja ativa — itens novos somem).
-4. Em cada card, **toggle "Disponível em [loja ativa]"** que faz upsert/delete em `menu_item_stores` (insere `is_available=true` quando liga, deleta a linha quando desliga = pausado).
-5. Badge "Pausado em N lojas" no card quando aplicável.
-6. Novo botão **"Replicar"** no topo abrindo `ReplicateMenuDialog`:
-   - Loja origem (default = loja ativa).
-   - Lojas destino (multi-select).
-   - Modo: **Cardápio inteiro** ou **Por categoria** (multi-select de categorias).
-   - Copia exatamente as linhas de `menu_item_stores` da origem para as destino (sobrescreve só o conjunto selecionado).
+### 1. Banco
+- Nova tabela `nutri_temperature_alert_recipients` (`store_id` nullable = recebe de todas as lojas, `phone`, `name`, `active`).
+- Nova tabela `nutri_temperature_alerts` para auditoria + dedup: `sensor_code`, `store_id`, `triggered_at`, `last_temperature`, `kind` (`out_of_range` | `offline` | `recovered`), `notified_phones jsonb`, `resolved_at`.
+- RLS: admin/manager/nutritionist gerenciam destinatários e leem alertas.
+- GRANT padrão.
 
-### Editor de item (`MenuItemEditorDialog.tsx`)
-7. Quando o item tem `recipe_id`, exibir badge **"Foto e nome vêm da ficha técnica · Editar em /receitas"** e travar os campos. Trocar lá reflete em site/totem/SmartPOS de toda a empresa (já é assim na vitrine).
+### 2. Edge function `ems-temperature-alert-check`
+Roda a cada 10 min via pg_cron. Para cada sensor ativo com `min_value`/`max_value` definidos:
+- Pega última leitura.
+- Calcula estado: `out_of_range` (fora dos limites), `offline` (sem leitura > 30 min) ou `ok`.
+- **Histerese / anti-spam:** só dispara novo alerta do mesmo `kind` se o último ainda não foi resolvido e tem ≥ 60 min, OU se mudou de estado.
+- Quando volta ao normal, marca o alerta aberto como `resolved_at = now()` e envia mensagem de "normalizado".
+- Para cada destinatário (loja específica + globais), chama `send-whatsapp` e registra retorno em `notified_phones`.
 
-## Fora de escopo agora
-- Editor da página `/cardapio` continua igual exceto pela badge da foto.
-- Sem mexer em `/pdv` antigo, `pos_sales` ou Saipos.
-- iFood em produção fica intacto — a baixa de estoque entra automaticamente via trigger.
+### 3. Cron
+`select cron.schedule('ems-temperature-alert-check', '*/10 * * * *', $$select net.http_post(...)$$);`
 
-## Ordem
-Migração (1+2) → Menu.tsx (3-6) → ReplicateMenuDialog novo → editor com badge (7).
+### 4. UI
+Pequena seção em **NutriControle → Controle de Temperatura** (visível para admin/manager/nutritionist) para gerenciar destinatários WhatsApp da loja: adicionar nome/telefone, ativar/desativar, ver últimos 10 alertas enviados.
 
-Aprova pra eu seguir?
+### Mensagem de exemplo
+```
+🚨 Câmara Fria · Asa Sul
+Temperatura FORA da faixa: -3.2°C
+(limites: -25°C a -5°C)
+Há 7 min · 25/06 13:42
+```
+
+Pré-requisitos já atendidos: `ZAPI_INSTANCE_ID`, `ZAPI_TOKEN`, `ZAPI_CLIENT_TOKEN` (usados pelo `send-whatsapp`).
+
+Sigo com a implementação?

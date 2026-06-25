@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { NutriTemperatureAlertsAdmin } from "./NutriTemperatureAlertsAdmin";
 
 type EquipmentType = "freezer" | "refrigerator";
 
@@ -572,6 +573,8 @@ export const NutriTemperatureControl = ({ currentDate, storeId }: Props) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <NutriTemperatureAlertsAdmin storeId={storeId} />
     </div>
   );
 };

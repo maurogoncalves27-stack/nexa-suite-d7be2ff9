@@ -8695,6 +8695,100 @@ export type Database = {
           },
         ]
       }
+      nutri_temperature_alert_recipients: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          phone: string
+          store_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          phone: string
+          store_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          phone?: string
+          store_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nutri_temperature_alert_recipients_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nutri_temperature_alerts: {
+        Row: {
+          id: string
+          kind: string
+          last_temperature: number | null
+          max_value: number | null
+          measured_at: string | null
+          min_value: number | null
+          notes: string | null
+          notified_phones: Json
+          resolved_at: string | null
+          sensor_code: string
+          store_id: string | null
+          triggered_at: string
+        }
+        Insert: {
+          id?: string
+          kind: string
+          last_temperature?: number | null
+          max_value?: number | null
+          measured_at?: string | null
+          min_value?: number | null
+          notes?: string | null
+          notified_phones?: Json
+          resolved_at?: string | null
+          sensor_code: string
+          store_id?: string | null
+          triggered_at?: string
+        }
+        Update: {
+          id?: string
+          kind?: string
+          last_temperature?: number | null
+          max_value?: number | null
+          measured_at?: string | null
+          min_value?: number | null
+          notes?: string | null
+          notified_phones?: Json
+          resolved_at?: string | null
+          sensor_code?: string
+          store_id?: string | null
+          triggered_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nutri_temperature_alerts_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nutri_temperature_readings: {
         Row: {
           created_at: string
