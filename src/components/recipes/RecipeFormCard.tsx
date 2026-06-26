@@ -235,11 +235,6 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
 
   const handleSave = async () => {
     if (!form.name.trim()) { toast.error("Informe o nome da ficha"); return; }
-    if (isFactory) {
-      if (!form.output_product_id) { toast.error("Selecione o produto final"); return; }
-    } else {
-      if (!linkedMenuItemId) { toast.error("Selecione o item de cardápio"); return; }
-    }
     setSaving(true);
     try {
       const payload = {
