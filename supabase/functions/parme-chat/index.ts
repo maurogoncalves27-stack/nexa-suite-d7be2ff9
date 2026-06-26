@@ -1,4 +1,4 @@
-// Edge function: streaming chat IA "Giana" (Aquela Parmê)
+// Edge function: streaming chat IA "Giana" (Aquela Parmê) — redeploy 2026-06-26 (dedup mensagens)
 // Port da rota TanStack `src/routes/api.chat.ts` (Parmê) → Supabase Edge Function.
 // Usa Lovable AI Gateway via AI SDK + 5 tools (cardápio, recomendação, reserva,
 // problema de pedido, sugerir iFood). Persiste em chat_conversations e dispara
