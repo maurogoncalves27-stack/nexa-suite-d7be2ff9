@@ -188,7 +188,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
           yield_unit: r.yield_unit,
           shelf_life_hours: r.shelf_life_hours,
           is_active: r.is_active,
-          category: ((r as any).category ?? "") as "" | "individual" | "casal" | "familia",
+          
           ncm: (r as any).ncm ?? "",
           cest: (r as any).cest ?? "",
           cfop: (r as any).cfop ?? "5102",
