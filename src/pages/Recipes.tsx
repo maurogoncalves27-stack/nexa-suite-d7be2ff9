@@ -70,15 +70,21 @@ const Recipes = () => {
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return recipes.filter((r) => {
-      if (activeBrand) {
-        const set = recipeBrandMap[r.id];
-        if (!set || !set.has(activeBrand)) return false;
-      }
-      if (typeFilter !== "all" && factoryBrandId) {
-        const set = recipeBrandMap[r.id];
-        const isFactory = !!set?.has(factoryBrandId);
-        if (typeFilter === "factory" && !isFactory) return false;
-        if (typeFilter === "ready" && isFactory) return false;
+      const set = recipeBrandMap[r.id];
+      const isFactory = !!(factoryBrandId && set?.has(factoryBrandId));
+
+      if (typeFilter === "factory") {
+        if (!isFactory) return false;
+      } else if (typeFilter === "ready") {
+        if (isFactory) return false;
+        if (activeBrand) {
+          if (!set || !set.has(activeBrand)) return false;
+        }
+      } else {
+        // all
+        if (activeBrand) {
+          if (!set || !set.has(activeBrand)) return false;
+        }
       }
       return !q || r.name.toLowerCase().includes(q);
     });
