@@ -211,7 +211,7 @@ const pdvSections: Section[] = [
     { title: "WhatsApp", url: "/whatsapp", icon: MessageCircle, staffOnly: true },
     { title: "Entregas", url: "/configuracoes/entregas", icon: Bike, staffOnly: true },
     { title: "CRM", url: "/crm", icon: Headset, staffOnly: true },
-    { title: "Testes Giana", url: "/crm-tests", icon: FlaskConical, staffOnly: true },
+    
   ]},
   { label: "Cardápio", items: [
     { title: "Cardápio", url: "/cardapio", icon: ScanText, staffOnly: true },
