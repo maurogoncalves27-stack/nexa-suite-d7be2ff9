@@ -138,23 +138,6 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
                       <Plus className="h-4 w-4 mr-1" /> Adicionar
                     </Button>
                   </div>
-                  {group.isPack && kits.length > 0 && (
-                    <div className="flex flex-col sm:flex-row gap-2 bg-muted/40 rounded-md p-2">
-                      <Select value={kitToApply} onValueChange={setKitToApply}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Aplicar kit pronto…" /></SelectTrigger>
-                        <SelectContent>
-                          {kits.map((k) => (
-                            <SelectItem key={k.id} value={k.id}>
-                              {k.brand_name} • {k.name} ({k.kit_type})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button size="sm" variant="secondary" disabled={!kitToApply} onClick={applyKit}>
-                        Aplicar kit
-                      </Button>
-                    </div>
-                  )}
                   {rows.length === 0 && (
                     <p className="text-sm text-muted-foreground text-center py-4">{group.empty}</p>
                   )}
