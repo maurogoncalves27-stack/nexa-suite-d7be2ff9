@@ -619,10 +619,31 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
                 )}
 
                 <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t">
-                  <div className="flex items-center gap-2">
-                    <Switch checked={form.is_active}
-                      onCheckedChange={(v) => setForm((f) => ({ ...f, is_active: v }))} />
-                    <Label className="text-xs">Ativa</Label>
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <Switch checked={form.is_active}
+                        onCheckedChange={(v) => setForm((f) => ({ ...f, is_active: v }))} />
+                      <Label className="text-xs">Ativa</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={isFactory}
+                        onCheckedChange={(checked) => {
+                          const factory = brands.find((b) => isFactoryBrandName(b.name));
+                          if (!factory) {
+                            toast.error("Marca 'PRÉ PREPARO/FÁBRICA' não encontrada");
+                            return;
+                          }
+                          setSelectedBrands((prev) => {
+                            const n = new Set(prev);
+                            if (checked) n.add(factory.id);
+                            else n.delete(factory.id);
+                            return n;
+                          });
+                        }}
+                      />
+                      <Label className="text-xs">{isFactory ? "Pré-preparo" : "Pronto"}</Label>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 justify-end flex-wrap">
                     {!isNew && (
