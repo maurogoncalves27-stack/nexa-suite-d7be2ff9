@@ -62,6 +62,11 @@ const Recipes = () => {
     if (!activeBrand && brands.length > 0) setActiveBrand(brands[0].id);
   }, [brands, activeBrand]);
 
+  const factoryBrandId = useMemo(
+    () => brands.find((b) => /pr[eé]\s*preparo|f[aá]brica/i.test(b.name))?.id ?? null,
+    [brands]
+  );
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return recipes.filter((r) => {
@@ -69,9 +74,15 @@ const Recipes = () => {
         const set = recipeBrandMap[r.id];
         if (!set || !set.has(activeBrand)) return false;
       }
+      if (typeFilter !== "all" && factoryBrandId) {
+        const set = recipeBrandMap[r.id];
+        const isFactory = !!set?.has(factoryBrandId);
+        if (typeFilter === "factory" && !isFactory) return false;
+        if (typeFilter === "ready" && isFactory) return false;
+      }
       return !q || r.name.toLowerCase().includes(q);
     });
-  }, [recipes, search, activeBrand, recipeBrandMap]);
+  }, [recipes, search, activeBrand, recipeBrandMap, typeFilter, factoryBrandId]);
 
   const activeBrandId = activeBrand || null;
 
