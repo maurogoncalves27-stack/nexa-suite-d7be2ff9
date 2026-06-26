@@ -127,15 +127,20 @@ export default function CurrentMonthVs3Panel({ stores, storeColor }: Props) {
 
       // 2) monthly_revenue (consolidados + diários somados) — fonte do
       //    "mês completo real" para os 3 meses anteriores.
+      //    Paginado porque pode passar do limite de 1000 linhas do PostgREST.
       const first = months[0];
       const last = months[months.length - 1];
       const allMonthly: MonthlyRow[] = [];
-      const { data: mData } = await supabase
-        .from("monthly_revenue")
-        .select("year, month, store_id, gross_revenue")
-        .gte("year", first.year)
-        .lte("year", last.year);
-      if (mData) {
+      for (let off = 0; ; off += step) {
+        const { data: mData, error: mErr } = await supabase
+          .from("monthly_revenue")
+          .select("year, month, store_id, gross_revenue")
+          .gte("year", first.year)
+          .lte("year", last.year)
+          .order("year")
+          .order("month")
+          .range(off, off + step - 1);
+        if (mErr || !mData || mData.length === 0) break;
         for (const r of mData as any[]) {
           allMonthly.push({
             year: Number(r.year),
@@ -144,7 +149,9 @@ export default function CurrentMonthVs3Panel({ stores, storeColor }: Props) {
             gross_revenue: Number(r.gross_revenue) || 0,
           });
         }
+        if (mData.length < step) break;
       }
+
 
       if (!cancelled) {
         setDaily(allDaily);
