@@ -73,22 +73,20 @@ const Recipes = () => {
     return recipes.filter((r) => {
       const set = recipeBrandMap[r.id];
       const linkedFactory = !!(factoryBrandId && set?.has(factoryBrandId));
-      // Excluir fichas de fábrica (têm página própria em /fichas-fabrica)
+      // Fichas da fábrica têm página própria — não aparecem aqui
       if (r.scope === "fabrica" || linkedFactory) return false;
 
+      if (activeBrand && (!set || !set.has(activeBrand))) return false;
+
       if (typeFilter === "factory") {
-        // "Pré-preparo" de loja: ficha da loja ativa marcada como insumo (sem output direto)
-        if (activeBrand && (!set || !set.has(activeBrand))) return false;
         if (r.output_product_id) return false;
       } else if (typeFilter === "ready") {
-        if (activeBrand && (!set || !set.has(activeBrand))) return false;
         if (!r.output_product_id) return false;
-      } else {
-        if (activeBrand && (!set || !set.has(activeBrand))) return false;
       }
       return !q || r.name.toLowerCase().includes(q);
     });
   }, [recipes, search, activeBrand, recipeBrandMap, typeFilter, factoryBrandId]);
+
 
 
   const activeBrandId = activeBrand || null;
