@@ -554,38 +554,64 @@ export default function FinanceStatementPanel({
   };
 
   const [marking, setMarking] = useState<string | null>(null);
+  const [payDialog, setPayDialog] = useState<{ row: StatementRow; date: string } | null>(null);
 
-  const handleMarkPaid = async (row: StatementRow) => {
+  const openMarkPaidDialog = (row: StatementRow) => {
     if (row.kind !== "payable" && row.kind !== "receivable") return;
+    setPayDialog({ row, date: new Date().toISOString().slice(0, 10) });
+  };
+
+  const confirmMarkPaid = async () => {
+    if (!payDialog) return;
+    const { row, date } = payDialog;
     const id = row.raw?.id;
-    if (!id) return;
-    const today = new Date().toISOString().slice(0, 10);
-    const label =
-      row.kind === "payable"
-        ? `Marcar esta conta como paga em ${new Date(today + "T00:00:00").toLocaleDateString("pt-BR")}?`
-        : `Marcar esta conta como recebida em ${new Date(today + "T00:00:00").toLocaleDateString("pt-BR")}?`;
-    if (!window.confirm(label)) return;
+    if (!id || !date) return;
     setMarking(row.id);
     try {
       if (row.kind === "payable") {
         const { error } = await supabase
           .from("accounts_payable")
-          .update({ status: "paid", paid_at: today })
+          .update({ status: "paid", paid_at: date })
           .eq("id", id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from("accounts_receivable")
-          .update({ status: "received", received_at: today })
+          .update({ status: "received", received_at: date })
           .eq("id", id);
         if (error) throw error;
       }
       toast({ title: row.kind === "payable" ? "Conta marcada como paga" : "Conta marcada como recebida" });
+      setPayDialog(null);
       await load();
     } catch (e: any) {
       toast({ title: "Erro ao marcar", description: e?.message ?? String(e), variant: "destructive" });
     } finally {
       setMarking(null);
+    }
+  };
+
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  const handleDeleteRow = async (row: StatementRow) => {
+    if (row.kind !== "payable" && row.kind !== "receivable") return;
+    const id = row.raw?.id;
+    if (!id) return;
+    const label =
+      `EXCLUIR DEFINITIVAMENTE este lançamento (${row.description})?\n\n` +
+      `Use apenas em caso de duplicidade. Esta ação não pode ser desfeita.`;
+    if (!window.confirm(label)) return;
+    setDeleting(row.id);
+    try {
+      const table = row.kind === "payable" ? "accounts_payable" : "accounts_receivable";
+      const { error } = await supabase.from(table).delete().eq("id", id);
+      if (error) throw error;
+      toast({ title: "Lançamento excluído" });
+      await load();
+    } catch (e: any) {
+      toast({ title: "Erro ao excluir", description: e?.message ?? String(e), variant: "destructive" });
+    } finally {
+      setDeleting(null);
     }
   };
 
