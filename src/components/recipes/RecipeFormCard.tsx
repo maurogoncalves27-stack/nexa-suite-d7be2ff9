@@ -161,7 +161,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
   useEffect(() => {
     void supabase
       .from("inventory_products")
-      .select("id, name, unit")
+      .select("id, name, unit, category")
       .eq("is_active", true)
       .order("name")
       .then(({ data }) => setProducts((data as Product[]) ?? []));
@@ -171,6 +171,12 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
       .eq("is_active", true)
       .order("sort_order")
       .then(({ data }) => setBrands((data as Brand[]) ?? []));
+    void supabase
+      .from("menu_items")
+      .select("id, name")
+      .eq("is_active", true)
+      .order("name")
+      .then(({ data }) => setMenuItems((data as MenuItemRow[]) ?? []));
   }, []);
 
   useEffect(() => {
