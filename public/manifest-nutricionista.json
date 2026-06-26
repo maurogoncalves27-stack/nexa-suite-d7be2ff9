@@ -4,7 +4,7 @@
   "description": "Painel da nutricionista — NEXA Suite.",
   "id": "/nutricionista/painel?source=pwa",
   "start_url": "/nutricionista/painel?source=pwa",
-  "scope": "/nutricionista/painel",
+  "scope": "/nutricionista",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#1e3a8a",

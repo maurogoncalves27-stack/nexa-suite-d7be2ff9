@@ -4,7 +4,7 @@
   "description": "Painel do consultor financeiro — NEXA Suite.",
   "id": "/consultor/painel?source=pwa",
   "start_url": "/consultor/painel?source=pwa",
-  "scope": "/consultor/painel",
+  "scope": "/consultor",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0c4a6e",
