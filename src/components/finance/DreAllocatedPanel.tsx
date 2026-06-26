@@ -52,7 +52,8 @@ const applyReceivable = (col: DreColumn, group: DreGroup | null, credit: number)
   if (group === "excluded") return;
   if (group === "non_operational") { col.non_operational += credit; return; }
   if (group === "revenue_deduction") { col.revenue_deduction -= credit; return; }
-  col.revenue_gross += credit;
+  // Receita bruta já vem integralmente de monthly_revenue (/faturamento).
+  // Contas a receber representam liquidação/cobrança e não devem duplicar faturamento.
 };
 
 export default function DreAllocatedPanel() {
