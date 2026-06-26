@@ -21,12 +21,13 @@ import {
   Landmark,
   Undo2,
   Pencil,
-  Trash2,
+  Link2Off,
   ShoppingBasket,
   CalendarDays,
   FileSpreadsheet,
   ChevronLeft,
   ChevronRight,
+  CircleDollarSign,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
