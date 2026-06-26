@@ -10,7 +10,6 @@ import { toast } from "sonner";
 const UNITS = ["UN", "KG", "G", "L", "ML", "CX", "PCT", "FD", "DZ", "MT", "PORCAO"];
 
 interface Product { id: string; name: string; unit: string; average_cost: number; }
-interface KitOption { id: string; name: string; brand_name: string; kit_type: string; items: { product_id: string; quantity: number }[]; }
 
 interface Item {
   id?: string;
