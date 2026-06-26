@@ -97,11 +97,15 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
   const [brands, setBrands] = useState<Brand[]>([]);
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
   const [form, setForm] = useState(emptyForm);
+  const [menuItems, setMenuItems] = useState<MenuItemRow[]>([]);
+  const [linkedMenuItemId, setLinkedMenuItemId] = useState<string>("");
   const [photoPath, setPhotoPath] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [openValue, setOpenValue] = useState<string | undefined>(defaultOpen ? "open" : undefined);
   const [ingredientsOpen, setIngredientsOpen] = useState(false);
   const [generatingBook, setGeneratingBook] = useState(false);
+
+  const isFactory = brands.some((b) => selectedBrands.has(b.id) && isFactoryBrandName(b.name));
 
   const photoUrl = photoPath
     ? supabase.storage.from("recipe-photos").getPublicUrl(photoPath).data.publicUrl
