@@ -62,6 +62,43 @@ const RecipeBookEditorDialog = ({ open, onOpenChange, recipeBookId, onSaved }: P
     ? supabase.storage.from("recipe-book-photos").getPublicUrl(data.photo_path).data.publicUrl
     : null;
 
+  const handlePhotoUpload = async (file: File) => {
+    if (!data.id) {
+      toast.error("Salve o receituário antes de enviar a foto");
+      return;
+    }
+    setUploadingPhoto(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${data.id}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("recipe-book-photos")
+        .upload(path, file, { upsert: false, contentType: file.type || "image/jpeg" });
+      if (upErr) throw upErr;
+      if (data.photo_path) {
+        await supabase.storage.from("recipe-book-photos").remove([data.photo_path]);
+      }
+      const { error: updErr } = await supabase
+        .from("recipe_books")
+        .update({ photo_path: path })
+        .eq("id", data.id);
+      if (updErr) throw updErr;
+      setData((d) => ({ ...d, photo_path: path }));
+      toast.success("Foto atualizada");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao enviar foto");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handlePhotoRemove = async () => {
+    if (!data.id || !data.photo_path) return;
+    await supabase.storage.from("recipe-book-photos").remove([data.photo_path]);
+    await supabase.from("recipe_books").update({ photo_path: null }).eq("id", data.id);
+    setData((d) => ({ ...d, photo_path: null }));
+  };
+
   const save = async () => {
     if (!data.title.trim()) {
       toast.error("Informe o título");
