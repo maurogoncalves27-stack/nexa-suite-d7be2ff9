@@ -203,10 +203,11 @@ export default function DrePanel() {
     try {
       const [salesRes, payRes, recRes, catRes, dedRes] = await Promise.all([
         supabase
-          .from("daily_revenue")
-          .select("sale_date,gross_revenue")
-          .gte("sale_date", periodStart)
-          .lte("sale_date", periodEnd),
+          .from("monthly_revenue")
+          .select("year,month,day,gross_revenue")
+          .gte("year", Number(periodStart.slice(0, 4)))
+          .lte("year", Number(periodEnd.slice(0, 4))),
+
         supabase
           .from("accounts_payable")
           .select("id,paid_at,amount,category_id,status")
@@ -237,7 +238,17 @@ export default function DrePanel() {
         };
       }
 
-      setSales((salesRes.data ?? []) as SaleRow[]);
+      const mappedSales: SaleRow[] = ((salesRes.data ?? []) as any[])
+        .map((r) => {
+          const y = String(r.year).padStart(4, "0");
+          const m = String(r.month).padStart(2, "0");
+          const d = String(r.day ?? 1).padStart(2, "0");
+          return { sale_date: `${y}-${m}-${d}`, gross_revenue: Number(r.gross_revenue ?? 0) };
+        })
+        .filter((r) => r.sale_date >= periodStart && r.sale_date <= periodEnd);
+
+      setSales(mappedSales);
+
       setPayables((payRes.data ?? []) as PayableRow[]);
       setReceivables((recRes.data ?? []) as ReceivableRow[]);
       setCatMap(cm);
