@@ -55,7 +55,6 @@ const emptyForm = {
   yield_unit: "UN",
   shelf_life_hours: null as number | null,
   is_active: true,
-  category: "" as "" | "individual" | "casal" | "familia",
   ncm: "",
   cest: "",
   cfop: "5102",
@@ -63,18 +62,6 @@ const emptyForm = {
   csosn: "102",
   unidade_comercial: "UN",
   ean: "",
-};
-
-const CATEGORY_LABEL: Record<string, string> = {
-  individual: "Individual",
-  casal: "Casal",
-  familia: "Família",
-};
-
-const CATEGORY_COLOR: Record<string, { bg: string; text: string }> = {
-  individual: { bg: "#0ea5e9", text: "#ffffff" },
-  casal: { bg: "#a855f7", text: "#ffffff" },
-  familia: { bg: "#f59e0b", text: "#1f2937" },
 };
 
 interface Props {
