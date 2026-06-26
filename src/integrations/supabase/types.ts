@@ -13147,7 +13147,7 @@ export type Database = {
           notes: string | null
           nutrition_info: Json | null
           origem_mercadoria: number | null
-          output_product_id: string
+          output_product_id: string | null
           photo_path: string | null
           prep_time_minutes: number | null
           scope: string
@@ -13179,7 +13179,7 @@ export type Database = {
           notes?: string | null
           nutrition_info?: Json | null
           origem_mercadoria?: number | null
-          output_product_id: string
+          output_product_id?: string | null
           photo_path?: string | null
           prep_time_minutes?: number | null
           scope?: string
@@ -13211,7 +13211,7 @@ export type Database = {
           notes?: string | null
           nutrition_info?: Json | null
           origem_mercadoria?: number | null
-          output_product_id?: string
+          output_product_id?: string | null
           photo_path?: string | null
           prep_time_minutes?: number | null
           scope?: string

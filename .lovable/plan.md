@@ -1,13 +1,9 @@
-## Diagnóstico
+## Causa
 
-Existem 10 pedidos em `pdv_orders` com `source = 'site'`, todos de 22/06/2026 (clientes "mauro", "lilian lima", "Cliente Teste"). Os demais pedidos têm `source = NULL` (importados do iFood/legado) e devem ficar.
+`recipes.output_product_id` é `NOT NULL` no banco. Quando a ficha é "Pronto" (não-fábrica), o save envia `output_product_id = null` e o Postgres rejeita → toast "Falha ao salvar". Em "Pré-preparo" passa porque manda o produto final.
 
-## O que vou fazer
+## Fix
 
-Deletar tudo que casa com `source = 'site'` em `pdv_orders`, junto com itens e eventos vinculados — sem mexer em nada mais:
+Migration única: `ALTER TABLE public.recipes ALTER COLUMN output_product_id DROP NOT NULL;`
 
-1. `DELETE FROM pdv_order_events WHERE order_id IN (SELECT id FROM pdv_orders WHERE source='site')`
-2. `DELETE FROM pdv_order_items WHERE order_id IN (...)`
-3. `DELETE FROM pdv_orders WHERE source='site'`
-
-Nada de mudança de schema, nada de código.
+Sem mudança de código — o form já manda `null` corretamente quando é Pronto.
