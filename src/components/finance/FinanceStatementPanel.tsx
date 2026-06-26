@@ -21,12 +21,13 @@ import {
   Landmark,
   Undo2,
   Pencil,
-  Trash2,
+  Link2Off,
   ShoppingBasket,
   CalendarDays,
   FileSpreadsheet,
   ChevronLeft,
   ChevronRight,
+  CircleDollarSign,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -498,40 +499,83 @@ export default function FinanceStatementPanel({
     }
   };
 
-  const [deleting, setDeleting] = useState<string | null>(null);
+  const [unlinking, setUnlinking] = useState<string | null>(null);
 
-  const handleDeleteEntry = async (row: StatementRow) => {
+  const handleUnreconcile = async (row: StatementRow) => {
     if (row.kind !== "payable" && row.kind !== "receivable") return;
     const id = row.raw?.id;
     if (!id) return;
-
-    const isLinkedToInvoice = row.kind === "payable" && row.raw?.inventory_invoices;
-    if (isLinkedToInvoice) {
+    const isReconciled = !!row.raw?.bank_transaction_id;
+    const isSettled = row.status === "paid" || row.status === "received";
+    if (!isReconciled && !isSettled) {
       toast({
-        title: "Não é possível excluir",
-        description: "Este lançamento foi gerado a partir de uma nota fiscal de entrada. Exclua a nota correspondente.",
-        variant: "destructive",
+        title: "Nada a desfazer",
+        description: "Este lançamento ainda não foi pago nem conciliado.",
       });
       return;
     }
-
-    const label =
-      row.kind === "payable"
-        ? `Excluir definitivamente esta conta a pagar?\n\n${row.description}\nValor: ${fmtBRL(Math.abs(row.amount))}\n\nEsta ação não pode ser desfeita.`
-        : `Excluir definitivamente esta conta a receber?\n\n${row.description}\nValor: ${fmtBRL(Math.abs(row.amount))}\n\nEsta ação não pode ser desfeita.`;
+    const label = isReconciled
+      ? "Desfazer a conciliação deste lançamento? Ele voltará para 'em aberto' e poderá ser conciliado novamente."
+      : "Desfazer o pagamento deste lançamento? Ele voltará para 'em aberto'.";
     if (!window.confirm(label)) return;
 
-    setDeleting(row.id);
+    setUnlinking(row.id);
     try {
-      const table = row.kind === "payable" ? "accounts_payable" : "accounts_receivable";
-      const { error } = await supabase.from(table).delete().eq("id", id);
-      if (error) throw error;
-      toast({ title: "Lançamento excluído" });
+      if (row.kind === "payable") {
+        const { error } = await supabase
+          .from("accounts_payable")
+          .update({ status: "open", bank_transaction_id: null, paid_at: null })
+          .eq("id", id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("accounts_receivable")
+          .update({ status: "open", bank_transaction_id: null, received_at: null })
+          .eq("id", id);
+        if (error) throw error;
+      }
+      toast({ title: "Conciliação desfeita", description: "O lançamento voltou para 'em aberto' e pode ser conciliado novamente." });
       await load();
     } catch (e: any) {
-      toast({ title: "Erro ao excluir", description: e?.message ?? String(e), variant: "destructive" });
+      toast({ title: "Erro ao desfazer conciliação", description: e?.message ?? String(e), variant: "destructive" });
     } finally {
-      setDeleting(null);
+      setUnlinking(null);
+    }
+  };
+
+  const [marking, setMarking] = useState<string | null>(null);
+
+  const handleMarkPaid = async (row: StatementRow) => {
+    if (row.kind !== "payable" && row.kind !== "receivable") return;
+    const id = row.raw?.id;
+    if (!id) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const label =
+      row.kind === "payable"
+        ? `Marcar esta conta como paga em ${new Date(today + "T00:00:00").toLocaleDateString("pt-BR")}?`
+        : `Marcar esta conta como recebida em ${new Date(today + "T00:00:00").toLocaleDateString("pt-BR")}?`;
+    if (!window.confirm(label)) return;
+    setMarking(row.id);
+    try {
+      if (row.kind === "payable") {
+        const { error } = await supabase
+          .from("accounts_payable")
+          .update({ status: "paid", paid_at: today })
+          .eq("id", id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("accounts_receivable")
+          .update({ status: "received", received_at: today })
+          .eq("id", id);
+        if (error) throw error;
+      }
+      toast({ title: row.kind === "payable" ? "Conta marcada como paga" : "Conta marcada como recebida" });
+      await load();
+    } catch (e: any) {
+      toast({ title: "Erro ao marcar", description: e?.message ?? String(e), variant: "destructive" });
+    } finally {
+      setMarking(null);
     }
   };
 
@@ -951,6 +995,24 @@ export default function FinanceStatementPanel({
                                 >
                                   <Pencil className="h-3.5 w-3.5" />
                                 </Button>
+                                {!((row.kind === "payable" && row.status === "paid") ||
+                                  (row.kind === "receivable" && row.status === "received")) && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 text-muted-foreground hover:text-emerald-600"
+                                    disabled={marking === row.id}
+                                    onClick={() => handleMarkPaid(row)}
+                                    title={row.kind === "payable" ? "Marcar como pago (hoje)" : "Marcar como recebido (hoje)"}
+                                    aria-label="Marcar como pago"
+                                  >
+                                    {marking === row.id ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <CircleDollarSign className="h-3.5 w-3.5" />
+                                    )}
+                                  </Button>
+                                )}
                                 {((row.kind === "payable" && row.status === "paid") ||
                                   (row.kind === "receivable" && row.status === "received")) && (
                                   <Button
@@ -969,21 +1031,25 @@ export default function FinanceStatementPanel({
                                     )}
                                   </Button>
                                 )}
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                  disabled={deleting === row.id}
-                                  onClick={() => handleDeleteEntry(row)}
-                                  title={row.kind === "payable" ? "Excluir conta a pagar" : "Excluir conta a receber"}
-                                  aria-label="Excluir"
-                                >
-                                  {deleting === row.id ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  )}
-                                </Button>
+                                {(!!row.raw?.bank_transaction_id ||
+                                  (row.kind === "payable" && row.status === "paid") ||
+                                  (row.kind === "receivable" && row.status === "received")) && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                    disabled={unlinking === row.id}
+                                    onClick={() => handleUnreconcile(row)}
+                                    title="Desfazer conciliação / pagamento (não apaga o lançamento)"
+                                    aria-label="Desfazer conciliação"
+                                  >
+                                    {unlinking === row.id ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <Link2Off className="h-3.5 w-3.5" />
+                                    )}
+                                  </Button>
+                                )}
                               </div>
                             )}
                           </TableCell>
