@@ -313,13 +313,13 @@ export default function Faturamento() {
     const CURRENT = new Date().getFullYear();
     const PREV = CURRENT - 1;
     const yrs = years.slice().sort((a, b) => a - b).filter(y =>
-      MONTH_LABELS.some((_, i) => consolidatedMonthTotal(rows, y, i + 1) !== null)
+      MONTH_LABELS.some((_, i) => monthTotal(rows, y, i + 1) > 0)
     );
 
-    // Último mês consolidado do ano corrente
+    // Último mês com dado real do ano corrente (consolidado OU soma das lojas)
     let lastRealizedMonth = 0;
     for (let m = 1; m <= 12; m++) {
-      if (consolidatedMonthTotal(rows, CURRENT, m) !== null) lastRealizedMonth = m;
+      if (monthTotal(rows, CURRENT, m) > 0) lastRealizedMonth = m;
     }
 
     // Crescimento YoY observado YTD
@@ -337,7 +337,10 @@ export default function Faturamento() {
     const data = MONTH_LABELS.map((label, i) => {
       const m = i + 1;
       const item: any = { label };
-      yrs.forEach(y => { item[String(y)] = consolidatedMonthTotal(rows, y, i + 1); });
+      yrs.forEach(y => {
+        const v = monthTotal(rows, y, i + 1);
+        item[String(y)] = v > 0 ? v : null;
+      });
 
       if (hasCurrent && m > lastRealizedMonth) {
         const prev = monthTotal(rows, PREV, m);
