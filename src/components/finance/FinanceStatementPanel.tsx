@@ -1038,8 +1038,8 @@ export default function FinanceStatementPanel({
                                     variant="ghost"
                                     className="h-7 w-7 text-muted-foreground hover:text-emerald-600"
                                     disabled={marking === row.id}
-                                    onClick={() => handleMarkPaid(row)}
-                                    title={row.kind === "payable" ? "Marcar como pago (hoje)" : "Marcar como recebido (hoje)"}
+                                    onClick={() => openMarkPaidDialog(row)}
+                                    title={row.kind === "payable" ? "Marcar como pago (escolher data)" : "Marcar como recebido (escolher data)"}
                                     aria-label="Marcar como pago"
                                   >
                                     {marking === row.id ? (
