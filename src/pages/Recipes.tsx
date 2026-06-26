@@ -27,6 +27,7 @@ const Recipes = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeBrand, setActiveBrand] = useState<string>("");
+  const [typeFilter, setTypeFilter] = useState<"all" | "factory" | "ready">("all");
   const [creatingNew, setCreatingNew] = useState(false);
 
   const load = async () => {
@@ -61,6 +62,11 @@ const Recipes = () => {
     if (!activeBrand && brands.length > 0) setActiveBrand(brands[0].id);
   }, [brands, activeBrand]);
 
+  const factoryBrandId = useMemo(
+    () => brands.find((b) => /pr[eé]\s*preparo|f[aá]brica/i.test(b.name))?.id ?? null,
+    [brands]
+  );
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return recipes.filter((r) => {
@@ -68,9 +74,15 @@ const Recipes = () => {
         const set = recipeBrandMap[r.id];
         if (!set || !set.has(activeBrand)) return false;
       }
+      if (typeFilter !== "all" && factoryBrandId) {
+        const set = recipeBrandMap[r.id];
+        const isFactory = !!set?.has(factoryBrandId);
+        if (typeFilter === "factory" && !isFactory) return false;
+        if (typeFilter === "ready" && isFactory) return false;
+      }
       return !q || r.name.toLowerCase().includes(q);
     });
-  }, [recipes, search, activeBrand, recipeBrandMap]);
+  }, [recipes, search, activeBrand, recipeBrandMap, typeFilter, factoryBrandId]);
 
   const activeBrandId = activeBrand || null;
 
@@ -104,14 +116,39 @@ const Recipes = () => {
         <TabsContent value={activeBrand} className="mt-3">
           <Card>
             <CardContent className="p-3 sm:p-4 space-y-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nome…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9"
-                />
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <div className="flex gap-1.5">
+                  <Button
+                    size="sm"
+                    variant={typeFilter === "all" ? "default" : "outline"}
+                    onClick={() => setTypeFilter("all")}
+                  >
+                    Todas
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={typeFilter === "factory" ? "default" : "outline"}
+                    onClick={() => setTypeFilter("factory")}
+                  >
+                    Pré-preparo
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={typeFilter === "ready" ? "default" : "outline"}
+                    onClick={() => setTypeFilter("ready")}
+                  >
+                    Prato pronto
+                  </Button>
+                </div>
               </div>
 
               {loading ? (
