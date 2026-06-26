@@ -79,7 +79,7 @@ const RecipesFactory = () => {
       <div className="flex flex-col sm:flex-row sm:items-end gap-2 sm:justify-between">
         <div>
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-            <ChefHat className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Fichas técnicas da Fábrica
+            <FlaskConical className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Fichas técnicas da Fábrica
           </h1>
           <p className="text-muted-foreground">Receitas de produção da fábrica — pré-preparos (insumos) e pratos prontos.</p>
         </div>
