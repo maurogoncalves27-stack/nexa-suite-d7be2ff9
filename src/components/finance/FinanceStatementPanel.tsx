@@ -28,7 +28,17 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleDollarSign,
+  Trash2,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import EditStatementRowDialog, { type EditableKind } from "./EditStatementRowDialog";
@@ -544,38 +554,64 @@ export default function FinanceStatementPanel({
   };
 
   const [marking, setMarking] = useState<string | null>(null);
+  const [payDialog, setPayDialog] = useState<{ row: StatementRow; date: string } | null>(null);
 
-  const handleMarkPaid = async (row: StatementRow) => {
+  const openMarkPaidDialog = (row: StatementRow) => {
     if (row.kind !== "payable" && row.kind !== "receivable") return;
+    setPayDialog({ row, date: new Date().toISOString().slice(0, 10) });
+  };
+
+  const confirmMarkPaid = async () => {
+    if (!payDialog) return;
+    const { row, date } = payDialog;
     const id = row.raw?.id;
-    if (!id) return;
-    const today = new Date().toISOString().slice(0, 10);
-    const label =
-      row.kind === "payable"
-        ? `Marcar esta conta como paga em ${new Date(today + "T00:00:00").toLocaleDateString("pt-BR")}?`
-        : `Marcar esta conta como recebida em ${new Date(today + "T00:00:00").toLocaleDateString("pt-BR")}?`;
-    if (!window.confirm(label)) return;
+    if (!id || !date) return;
     setMarking(row.id);
     try {
       if (row.kind === "payable") {
         const { error } = await supabase
           .from("accounts_payable")
-          .update({ status: "paid", paid_at: today })
+          .update({ status: "paid", paid_at: date })
           .eq("id", id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from("accounts_receivable")
-          .update({ status: "received", received_at: today })
+          .update({ status: "received", received_at: date })
           .eq("id", id);
         if (error) throw error;
       }
       toast({ title: row.kind === "payable" ? "Conta marcada como paga" : "Conta marcada como recebida" });
+      setPayDialog(null);
       await load();
     } catch (e: any) {
       toast({ title: "Erro ao marcar", description: e?.message ?? String(e), variant: "destructive" });
     } finally {
       setMarking(null);
+    }
+  };
+
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  const handleDeleteRow = async (row: StatementRow) => {
+    if (row.kind !== "payable" && row.kind !== "receivable") return;
+    const id = row.raw?.id;
+    if (!id) return;
+    const label =
+      `EXCLUIR DEFINITIVAMENTE este lançamento (${row.description})?\n\n` +
+      `Use apenas em caso de duplicidade. Esta ação não pode ser desfeita.`;
+    if (!window.confirm(label)) return;
+    setDeleting(row.id);
+    try {
+      const table = row.kind === "payable" ? "accounts_payable" : "accounts_receivable";
+      const { error } = await supabase.from(table).delete().eq("id", id);
+      if (error) throw error;
+      toast({ title: "Lançamento excluído" });
+      await load();
+    } catch (e: any) {
+      toast({ title: "Erro ao excluir", description: e?.message ?? String(e), variant: "destructive" });
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -1002,8 +1038,8 @@ export default function FinanceStatementPanel({
                                     variant="ghost"
                                     className="h-7 w-7 text-muted-foreground hover:text-emerald-600"
                                     disabled={marking === row.id}
-                                    onClick={() => handleMarkPaid(row)}
-                                    title={row.kind === "payable" ? "Marcar como pago (hoje)" : "Marcar como recebido (hoje)"}
+                                    onClick={() => openMarkPaidDialog(row)}
+                                    title={row.kind === "payable" ? "Marcar como pago (escolher data)" : "Marcar como recebido (escolher data)"}
                                     aria-label="Marcar como pago"
                                   >
                                     {marking === row.id ? (
@@ -1050,6 +1086,21 @@ export default function FinanceStatementPanel({
                                     )}
                                   </Button>
                                 )}
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                  disabled={deleting === row.id}
+                                  onClick={() => handleDeleteRow(row)}
+                                  title="Excluir lançamento (duplicidade) — ação definitiva"
+                                  aria-label="Excluir"
+                                >
+                                  {deleting === row.id ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  )}
+                                </Button>
                               </div>
                             )}
                           </TableCell>
@@ -1142,6 +1193,40 @@ export default function FinanceStatementPanel({
         raw={editing?.raw ?? null}
         onSaved={load}
       />
+
+      <Dialog open={!!payDialog} onOpenChange={(o) => !o && setPayDialog(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {payDialog?.row.kind === "payable" ? "Marcar como pago" : "Marcar como recebido"}
+            </DialogTitle>
+            <DialogDescription className="truncate">
+              {payDialog?.row.description}
+              {payDialog ? ` · ${fmtBRL(Math.abs(payDialog.row.amount))}` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="pay-date">
+              {payDialog?.row.kind === "payable" ? "Data do pagamento" : "Data do recebimento"}
+            </Label>
+            <Input
+              id="pay-date"
+              type="date"
+              value={payDialog?.date ?? ""}
+              onChange={(e) => setPayDialog((p) => (p ? { ...p, date: e.target.value } : p))}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayDialog(null)} disabled={!!marking}>
+              Cancelar
+            </Button>
+            <Button onClick={confirmMarkPaid} disabled={!payDialog?.date || !!marking}>
+              {marking ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
