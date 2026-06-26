@@ -1,7 +1,7 @@
 {
-  "name": "NEXA GESTAO",
-  "short_name": "NEXA GESTAO",
-  "description": "Painel do sócio / gestor — NEXA Suite.",
+  "name": "NEXA SÓCIO",
+  "short_name": "NEXA SÓCIO",
+  "description": "Painel do sócio — NEXA Suite.",
   "id": "/painel-socio?source=pwa",
   "start_url": "/painel-socio?source=pwa",
   "scope": "/painel-socio",

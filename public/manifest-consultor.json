@@ -1,17 +1,17 @@
 {
-  "name": "NEXA Consultor",
-  "short_name": "Consultor",
-  "description": "Painel do consultor financeiro — NEXA Suite.",
+  "name": "NEXA GESTAO",
+  "short_name": "NEXA GESTAO",
+  "description": "Painel do consultor / gestor financeiro — NEXA Suite.",
   "id": "/consultor/painel?source=pwa",
   "start_url": "/consultor/painel?source=pwa",
   "scope": "/consultor",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0c4a6e",
+  "background_color": "#ffffff",
   "theme_color": "#0ea5e9",
   "lang": "pt-BR",
   "icons": [
-    { "src": "/icons/nexa-consultor-512.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/nexa-consultor-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/icons/nexa-consultor-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "/icons/nexa-consultor-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
