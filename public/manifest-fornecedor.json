@@ -1,17 +1,17 @@
 {
-  "name": "NEXA Fornecedor",
-  "short_name": "Fornecedor",
-  "description": "Portal do fornecedor — NEXA Suite.",
+  "name": "NEXA COMPRAS",
+  "short_name": "NEXA COMPRAS",
+  "description": "Portal do fornecedor / compras — NEXA Suite.",
   "id": "/fornecedor/painel?source=pwa",
   "start_url": "/fornecedor/painel?source=pwa",
   "scope": "/fornecedor",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#1e3a8a",
+  "background_color": "#ffffff",
   "theme_color": "#475569",
   "lang": "pt-BR",
   "icons": [
-    { "src": "/icons/nexa-fornecedor-512.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/nexa-fornecedor-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/icons/nexa-fornecedor-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "/icons/nexa-fornecedor-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
