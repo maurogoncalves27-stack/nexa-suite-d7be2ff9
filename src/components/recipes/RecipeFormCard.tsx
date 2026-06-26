@@ -249,7 +249,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
         yield_unit: form.yield_unit,
         shelf_life_hours: form.shelf_life_hours,
         is_active: form.is_active,
-        category: form.category || null,
+        
         ncm: form.ncm.trim() || null,
         cest: form.cest.trim() || null,
         cfop: form.cfop.trim() || "5102",
