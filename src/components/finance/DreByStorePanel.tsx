@@ -106,14 +106,22 @@ export default function DreByStorePanel() {
         const firstNonFactory = physical.find((s) => !FACTORY_NAMES.includes(s.name.toUpperCase())) ?? physical[0];
         setSelectedStoreId(firstNonFactory.id);
       }
-      setSales(((salesRes.data ?? []) as any[]).map((r) => ({
-        id: r.id,
-        sold_at: r.sale_date,
-        total_amount: Number(r.gross_revenue ?? 0),
-        status: "concluded",
-        dre_excluded: false,
-        store_id: r.store_id,
-      })) as SaleRow[]);
+      setSales(((salesRes.data ?? []) as any[])
+        .map((r) => {
+          const y = String(r.year).padStart(4, "0");
+          const m = String(r.month).padStart(2, "0");
+          const d = String(r.day ?? 1).padStart(2, "0");
+          return {
+            id: r.id,
+            sold_at: `${y}-${m}-${d}`,
+            total_amount: Number(r.gross_revenue ?? 0),
+            status: "concluded",
+            dre_excluded: false,
+            store_id: r.store_id,
+          };
+        })
+        .filter((r) => r.sold_at >= start && r.sold_at <= end) as SaleRow[]);
+
       setPayables((payRes.data ?? []) as PayableRow[]);
       setReceivables((recRes.data ?? []) as ReceivableRow[]);
       setCatMap(cm);
