@@ -474,26 +474,6 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
 
                 {recipeId && <RecipeYieldCostPanel recipeId={recipeId} />}
 
-                <div className="space-y-1">
-                  <Label>Categoria</Label>
-                  <Select
-                    value={form.category || "__none"}
-                    onValueChange={(v) =>
-                      setForm((f) => ({
-                        ...f,
-                        category: (v === "__none" ? "" : v) as typeof f.category,
-                      }))
-                    }
-                  >
-                    <SelectTrigger><SelectValue placeholder="Sem categoria" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none">Sem categoria</SelectItem>
-                      <SelectItem value="individual">Individual</SelectItem>
-                      <SelectItem value="casal">Casal</SelectItem>
-                      <SelectItem value="familia">Família</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
 
                 <Accordion type="single" collapsible className="border rounded-md">
                   <AccordionItem value="fiscal" className="border-b-0">
