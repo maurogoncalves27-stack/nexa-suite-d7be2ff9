@@ -21,8 +21,11 @@ import RecipeMenuItemsSection from "./RecipeMenuItemsSection";
 
 const UNITS = ["UN", "KG", "G", "L", "ML", "CX", "PCT", "FD", "DZ", "MT", "PORCAO"];
 
-interface Product { id: string; name: string; unit: string; }
+interface Product { id: string; name: string; unit: string; category: string | null; }
 interface Brand { id: string; name: string; }
+interface MenuItemRow { id: string; name: string; }
+
+const isFactoryBrandName = (n: string) => /f[áa]brica|pr[eé]\s*preparo/i.test(n);
 
 // Cores fixas por marca (conforme planilha das abas)
 // bg + text com bom contraste
