@@ -1193,6 +1193,40 @@ export default function FinanceStatementPanel({
         raw={editing?.raw ?? null}
         onSaved={load}
       />
+
+      <Dialog open={!!payDialog} onOpenChange={(o) => !o && setPayDialog(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {payDialog?.row.kind === "payable" ? "Marcar como pago" : "Marcar como recebido"}
+            </DialogTitle>
+            <DialogDescription className="truncate">
+              {payDialog?.row.description}
+              {payDialog ? ` · ${fmtBRL(Math.abs(payDialog.row.amount))}` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="pay-date">
+              {payDialog?.row.kind === "payable" ? "Data do pagamento" : "Data do recebimento"}
+            </Label>
+            <Input
+              id="pay-date"
+              type="date"
+              value={payDialog?.date ?? ""}
+              onChange={(e) => setPayDialog((p) => (p ? { ...p, date: e.target.value } : p))}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayDialog(null)} disabled={!!marking}>
+              Cancelar
+            </Button>
+            <Button onClick={confirmMarkPaid} disabled={!payDialog?.date || !!marking}>
+              {marking ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
