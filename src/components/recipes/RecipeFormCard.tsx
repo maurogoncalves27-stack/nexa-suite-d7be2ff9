@@ -356,15 +356,15 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
     <>
       <Accordion type="single" collapsible value={openValue} onValueChange={setOpenValue} className="border rounded-md bg-card">
         <AccordionItem value="open" className="border-b-0">
-          <AccordionTrigger className="px-3 py-10 hover:no-underline">
-            <div className="flex flex-col gap-3 flex-1 min-w-0 text-left w-full h-full">
+          <AccordionTrigger className="px-3 py-3 hover:no-underline">
+            <div className="flex flex-col gap-1.5 flex-1 min-w-0 text-left w-full">
               <div className="flex items-center gap-2 flex-1 min-w-0">
-                <ChefHat className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground shrink-0" />
-                <span className="text-xl sm:text-2xl font-semibold truncate flex-1">
+                <ChefHat className="h-5 w-5 text-muted-foreground shrink-0" />
+                <span className="text-sm sm:text-base font-semibold truncate flex-1">
                   {form.name || (isNew ? "Nova ficha técnica" : "—")}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="flex items-center gap-1 flex-wrap">
                 {form.category && (
                   <Badge
                     className="text-[10px] px-1.5 py-0 border-transparent"
