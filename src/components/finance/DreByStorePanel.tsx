@@ -131,8 +131,14 @@ export default function DreByStorePanel() {
       setPayables((payRes.data ?? []) as PayableRow[]);
       setReceivables((recRes.data ?? []) as ReceivableRow[]);
       setCatMap(cm);
+      if (!dedRes.error && (dedRes.data as any)?.by_store_month) {
+        setIfoodByStoreMonth((dedRes.data as any).by_store_month as Record<string, number>);
+      } else if (dedRes.error) {
+        console.warn("Falha ao carregar deduções iFood:", dedRes.error);
+      }
     } catch (e: any) {
       toast({ title: "Erro ao carregar DRE da loja", description: e.message, variant: "destructive" });
+
     } finally {
       setLoading(false);
     }
