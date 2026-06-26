@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Plus, Search, ChefHat, Package, ChevronDown } from "lucide-react";
-import PackagingKitsDialog from "@/components/recipes/PackagingKitsDialog";
+import { Loader2, Plus, Search, ChefHat, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -49,7 +48,7 @@ const Recipes = () => {
   const [scope, setScope] = useState<ScopeTab>("pratos");
   const [categoryChip, setCategoryChip] = useState<CategoryKey>("all");
   const [creatingNew, setCreatingNew] = useState(false);
-  const [kitsOpen, setKitsOpen] = useState(false);
+  
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     individual: true,
     casal: true,
@@ -179,9 +178,6 @@ const Recipes = () => {
         </div>
         {canReceive && (
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => setKitsOpen(true)} className="gap-2">
-              <Package className="h-4 w-4" /> Kit embalagens
-            </Button>
             <Button onClick={() => setCreatingNew(true)} className="gap-2" disabled={creatingNew}>
               <Plus className="h-4 w-4" /> Nova ficha
             </Button>
@@ -189,7 +185,6 @@ const Recipes = () => {
         )}
       </div>
 
-      <PackagingKitsDialog open={kitsOpen} onOpenChange={setKitsOpen} />
 
       <Tabs value={activeBrand} onValueChange={setActiveBrand}>
         <TabsList className="flex flex-wrap h-auto">
