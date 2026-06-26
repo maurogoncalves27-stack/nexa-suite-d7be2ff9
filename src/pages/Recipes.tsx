@@ -72,32 +72,24 @@ const Recipes = () => {
     const q = search.toLowerCase();
     return recipes.filter((r) => {
       const set = recipeBrandMap[r.id];
-      const isFactory = !!(factoryBrandId && set?.has(factoryBrandId));
-      const isFactoryTab = !!factoryBrandId && activeBrand === factoryBrandId;
-      const isFactoryScope = r.scope === "fabrica" || isFactory;
+      const linkedFactory = !!(factoryBrandId && set?.has(factoryBrandId));
+      // Excluir fichas de fábrica (têm página própria em /fichas-fabrica)
+      if (r.scope === "fabrica" || linkedFactory) return false;
 
       if (typeFilter === "factory") {
-        if (!isFactory) return false;
+        // "Pré-preparo" de loja: ficha da loja ativa marcada como insumo (sem output direto)
+        if (activeBrand && (!set || !set.has(activeBrand))) return false;
+        if (r.output_product_id) return false;
       } else if (typeFilter === "ready") {
-        // Na aba FÁBRICA, "Pronto" são fichas da fábrica sem a marca FÁBRICA.
-        // Nas demais abas, mantém o recorte da marca ativa.
-        if (isFactory) return false;
-        if (isFactoryTab) {
-          if (!isFactoryScope) return false;
-        } else if (activeBrand && set?.size && !set.has(activeBrand)) {
-          return false;
-        }
+        if (activeBrand && (!set || !set.has(activeBrand))) return false;
+        if (!r.output_product_id) return false;
       } else {
-        // all
-        if (isFactoryTab) {
-          if (!isFactoryScope) return false;
-        } else if (activeBrand) {
-          if (!set || !set.has(activeBrand)) return false;
-        }
+        if (activeBrand && (!set || !set.has(activeBrand))) return false;
       }
       return !q || r.name.toLowerCase().includes(q);
     });
   }, [recipes, search, activeBrand, recipeBrandMap, typeFilter, factoryBrandId]);
+
 
   const activeBrandId = activeBrand || null;
 
