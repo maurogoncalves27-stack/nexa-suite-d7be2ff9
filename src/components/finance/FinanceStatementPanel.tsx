@@ -83,11 +83,19 @@ function statusBadge(row: StatementRow) {
   const settled =
     row.status === "paid" || row.status === "received" || row.kind === "transfer";
   if (settled) {
+    const reconciled = !!row.raw?.bank_transaction_id;
     return (
-      <Badge className="bg-emerald-500 hover:bg-emerald-500 gap-1">
-        <CheckCircle2 className="h-3 w-3" />
-        {row.kind === "transfer" ? "Concluída" : row.kind === "payable" ? "Pago" : "Recebido"}
-      </Badge>
+      <div className="flex flex-wrap items-center gap-1">
+        <Badge className="bg-emerald-500 hover:bg-emerald-500 gap-1">
+          <CheckCircle2 className="h-3 w-3" />
+          {row.kind === "transfer" ? "Concluída" : row.kind === "payable" ? "Pago" : "Recebido"}
+        </Badge>
+        {reconciled && (
+          <Badge variant="outline" className="gap-1 border-emerald-500/60 text-emerald-700 dark:text-emerald-400">
+            <Landmark className="h-3 w-3" /> Conciliado
+          </Badge>
+        )}
+      </div>
     );
   }
   if (row.status === "cancelled") return <Badge variant="outline">Cancelado</Badge>;
