@@ -301,7 +301,7 @@ export default function DreByStorePanel() {
       factoryShare,
       factoryTotal,
     };
-  }, [selectedStoreId, sales, payables, receivables, catMap, stores, includeFactoryShare, selectedIsFactory]);
+  }, [selectedStoreId, sales, payables, receivables, catMap, stores, includeFactoryShare, selectedIsFactory, ifoodByStoreMonth, start, end]);
 
   return (
     <div className="space-y-3">
