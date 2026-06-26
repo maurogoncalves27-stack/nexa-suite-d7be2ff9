@@ -179,9 +179,6 @@ const Recipes = () => {
         </div>
         {canReceive && (
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => setKitsOpen(true)} className="gap-2">
-              <Package className="h-4 w-4" /> Kit embalagens
-            </Button>
             <Button onClick={() => setCreatingNew(true)} className="gap-2" disabled={creatingNew}>
               <Plus className="h-4 w-4" /> Nova ficha
             </Button>
@@ -189,7 +186,6 @@ const Recipes = () => {
         )}
       </div>
 
-      <PackagingKitsDialog open={kitsOpen} onOpenChange={setKitsOpen} />
 
       <Tabs value={activeBrand} onValueChange={setActiveBrand}>
         <TabsList className="flex flex-wrap h-auto">
