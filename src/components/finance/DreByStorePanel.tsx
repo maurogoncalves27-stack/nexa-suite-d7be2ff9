@@ -92,7 +92,9 @@ export default function DreByStorePanel() {
           .gte("received_at", start)
           .lte("received_at", end),
         supabase.from("finance_categories").select("id,dre_group,kind"),
-      ]);
+        supabase.functions.invoke("dre-ifood-deductions"),
+      ]) as any;
+
 
       if (storesRes.error) throw storesRes.error;
       if (salesRes.error) throw salesRes.error;
