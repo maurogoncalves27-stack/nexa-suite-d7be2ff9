@@ -521,12 +521,19 @@ export default function FinanceStatementPanel({
 
     setUnlinking(row.id);
     try {
-      const table = row.kind === "payable" ? "accounts_payable" : "accounts_receivable";
-      const patch: Record<string, any> = { status: "open", bank_transaction_id: null };
-      if (row.kind === "payable") patch.paid_at = null;
-      else patch.received_at = null;
-      const { error } = await supabase.from(table).update(patch).eq("id", id);
-      if (error) throw error;
+      if (row.kind === "payable") {
+        const { error } = await supabase
+          .from("accounts_payable")
+          .update({ status: "open", bank_transaction_id: null, paid_at: null })
+          .eq("id", id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("accounts_receivable")
+          .update({ status: "open", bank_transaction_id: null, received_at: null })
+          .eq("id", id);
+        if (error) throw error;
+      }
       toast({ title: "Conciliação desfeita", description: "O lançamento voltou para 'em aberto' e pode ser conciliado novamente." });
       await load();
     } catch (e: any) {
