@@ -234,14 +234,30 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
     }
   };
 
+  const syncMenuLink = async (rid: string) => {
+    // Limpa qualquer item de cardápio antes vinculado a esta ficha
+    await supabase
+      .from("menu_items")
+      .update({ recipe_id: null })
+      .eq("recipe_id", rid)
+      .neq("id", linkedMenuItemId || "00000000-0000-0000-0000-000000000000");
+    if (linkedMenuItemId) {
+      await supabase.from("menu_items").update({ recipe_id: rid }).eq("id", linkedMenuItemId);
+    }
+  };
+
   const handleSave = async () => {
     if (!form.name.trim()) { toast.error("Informe o nome da ficha"); return; }
-    if (!form.output_product_id) { toast.error("Selecione o produto final"); return; }
+    if (isFactory) {
+      if (!form.output_product_id) { toast.error("Selecione o produto final"); return; }
+    } else {
+      if (!linkedMenuItemId) { toast.error("Selecione o item de cardápio"); return; }
+    }
     setSaving(true);
     try {
       const payload = {
         name: form.name.trim(),
-        output_product_id: form.output_product_id,
+        output_product_id: isFactory ? form.output_product_id : null,
         yield_quantity: form.yield_quantity,
         yield_unit: form.yield_unit,
         shelf_life_hours: form.shelf_life_hours,
@@ -259,6 +275,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
         const { error } = await supabase.from("recipes").update(payload).eq("id", recipeId);
         if (error) throw error;
         await syncBrands(recipeId);
+        if (!isFactory) await syncMenuLink(recipeId);
         toast.success("Ficha atualizada");
         onSaved?.();
       } else {
@@ -269,6 +286,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
           .single();
         if (error) throw error;
         await syncBrands(data.id);
+        if (!isFactory) await syncMenuLink(data.id);
         toast.success("Ficha criada");
         onSaved?.(data.id);
       }
