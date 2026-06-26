@@ -1086,6 +1086,21 @@ export default function FinanceStatementPanel({
                                     )}
                                   </Button>
                                 )}
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                  disabled={deleting === row.id}
+                                  onClick={() => handleDeleteRow(row)}
+                                  title="Excluir lançamento (duplicidade) — ação definitiva"
+                                  aria-label="Excluir"
+                                >
+                                  {deleting === row.id ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  )}
+                                </Button>
                               </div>
                             )}
                           </TableCell>
