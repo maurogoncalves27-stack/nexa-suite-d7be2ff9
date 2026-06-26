@@ -64,6 +64,9 @@ export default function DreByStorePanel() {
   const [payables, setPayables] = useState<PayableRow[]>([]);
   const [receivables, setReceivables] = useState<ReceivableRow[]>([]);
   const [catMap, setCatMap] = useState<CategoryMap>({});
+  const [ifoodByStoreMonth, setIfoodByStoreMonth] = useState<Record<string, number>>({});
+
+
 
   const load = async () => {
     setLoading(true);
