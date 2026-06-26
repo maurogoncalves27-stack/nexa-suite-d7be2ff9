@@ -1,62 +1,12 @@
+## Diagnóstico
 
-# 3 PWAs no mesmo celular
+O widget `ChatWidget.tsx` cria a resposta da Giana com id de placeholder `a_<timestamp>` e a reenvia no turno seguinte. O `onFinish` do servidor já grava a mesma resposta com id `assistant_N_<prefixo>`. Resultado: cada fala da Giana aparece duas vezes em `chat_conversations.messages`.
 
-Sim, dá. O navegador trata cada PWA como app separado pelo par `id` + `scope` do manifest. Basta cada um ter manifest próprio com escopo distinto e ícone/nome próprios. Hoje só existe 1 manifest "geral" (`/manifest.json` chamado "NEXA") sendo servido em todos os hosts, então quem instala pelo site Parmê ou pelo /pedir acaba com um ícone "NEXA" errado.
+A função `mergeFlatMessages` em `supabase/functions/parme-chat/index.ts` já tem dedup por id **e** por (role+conteúdo) desde 23/06, mas o edge function não foi redeployado depois disso — por isso a versão antiga continua duplicando em produção.
 
-## O que muda
+## O que vou fazer
 
-### 1. Criar 2 manifests novos em `public/`
-- **`manifest-parme.json`** — site institucional
-  - `name`: "Aquela Parmê", `short_name`: "Parmê"
-  - `id`/`start_url`: `/parme?source=pwa`
-  - `scope`: `/parme`
-  - `theme_color`/`background_color`: vermelho/creme da marca
-  - ícones: novos `/icons/parme-192.png` e `/icons/parme-512.png` (logo Aquela Parmê — gerar a partir do asset existente `Logo-Aquela-Parme.webp`)
-- **`manifest-pedir.json`** — e-commerce
-  - `name`: "Aquela Parmê — Pedir", `short_name`: "Pedir"
-  - `id`/`start_url`: `/pedir?source=pwa`
-  - `scope`: `/pedir`
-  - `theme_color`: laranja iFood-like da marca
-  - ícones: novos `/icons/pedir-192.png` e `/icons/pedir-512.png`
+1. **Forçar redeploy do `parme-chat`** — alterar o comentário do topo do arquivo para gerar uma nova versão do edge function (a versão com dedup passa a rodar).
+2. **Limpar conversas já duplicadas** em `chat_conversations`: para cada linha, dedupar `messages` por `(role, content)` mantendo o registro mais antigo (por `ts`, preservando ordem original). Atualiza `message_count` junto. Linhas sem duplicata não são tocadas.
 
-O `manifest.json` atual continua sendo o do **NEXA** (já está correto: nome "NEXA", scope `/`, ícone azul N) — usado quando o usuário entra pelo subdomínio `nexa.aquelaparme.com.br` ou pelo atalho `aquelaparme.com.br/nexa`.
-
-### 2. Atualizar `src/components/pwa/RoleManifest.tsx`
-Adicionar 2 regras novas no `ROLE_MAP` (a primeira que casar ganha):
-- prefixo `/parme` → `manifest-parme.json` + theme vermelho + apple-icon Parmê
-- prefixo `/pedir` → `manifest-pedir.json` + theme laranja + apple-icon Pedir
-
-Assim, qualquer aba aberta em `aquelaparme.com.br/parme/...` mostra "Instalar Aquela Parmê", e em `pedir.aquelaparme.com.br/pedir/...` mostra "Instalar Pedir", sem afetar o NEXA.
-
-### 3. Ajustar `index.html`
-O `<title>` e meta atuais ("Aquela Parmê — comida com gosto de casa…") são do site Parmê, mas o `<link rel="manifest">` aponta pro manifest do NEXA. Como o `RoleManifest` já reescreve o manifest em runtime conforme a rota, o `index.html` continua válido — mas o `apple-touch-icon` fixo precisa virar dinâmico (o `RoleManifest` já cuida disso, só confirmar que o link inicial não trava o iOS antes do React montar).
-
-### 4. `HostnameGuard` + `NexaEntry` (sem mudanças funcionais)
-Já fazem o roteamento certo. Só validar que:
-- `aquelaparme.com.br/` → `/parme` (pega manifest Parmê) ✅
-- `aquelaparme.com.br/nexa` → marca sessionStorage e vai pra `/auth` (pega manifest NEXA) ✅
-- `pedir.aquelaparme.com.br/` → `/pedir` (pega manifest Pedir) ✅
-
-## Detalhes técnicos
-
-- **Por que `id` distintos importam**: Chrome/Android usa `id` (fallback `start_url`) como chave única do app instalado. Sem `id` distinto, instalar o 2º sobrescreve o 1º.
-- **iOS**: Safari não respeita `id`, mas usa `start_url`+`scope`+`apple-touch-icon` no momento do "Adicionar à Tela de Início". Como o `RoleManifest` troca o `apple-touch-icon` por rota, cada install pega o ícone certo. O usuário precisa abrir a rota correta antes de instalar (ex.: abrir `/pedir` antes de "Adicionar à Tela").
-- **Sem service worker novo**: nada de offline; é manifest-only (mantém a regra de não mexer em SW em preview).
-- **Ícones**: gerar 192/512 PNG para Parmê e Pedir via `imagegen` (premium se tiver texto, senão fast), salvar em `public/icons/`. Não usar `lovable-assets` (são ícones de manifest, precisam estar em `public/`).
-
-## Arquivos tocados
-
-- novo `public/manifest-parme.json`
-- novo `public/manifest-pedir.json`
-- novo `public/icons/parme-192.png`, `parme-512.png`
-- novo `public/icons/pedir-192.png`, `pedir-512.png`
-- editar `src/components/pwa/RoleManifest.tsx` (adicionar 2 entradas no ROLE_MAP)
-
-Sem migration, sem mudança de backend, sem mexer no NEXA atual.
-
-## Resultado
-
-Usuário pode ter, lado a lado na home do celular:
-1. Ícone **Aquela Parmê** (vermelho) → abre o site institucional em `/parme`
-2. Ícone **NEXA** (N azul) → abre o app de gestão em `/`
-3. Ícone **Pedir** (laranja) → abre o e-commerce em `/pedir`
+Nenhum schema novo, nenhuma tela alterada — só o edge function e limpeza de dados.
