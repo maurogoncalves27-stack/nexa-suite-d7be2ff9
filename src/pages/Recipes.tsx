@@ -24,6 +24,8 @@ const Recipes = () => {
   const { canReceive } = useInventoryPermission();
   const [recipes, setRecipes] = useState<RecipeRow[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
+  const [factoryBrandId, setFactoryBrandId] = useState<string | null>(null);
+
   const [recipeBrandMap, setRecipeBrandMap] = useState<Record<string, Set<string>>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
