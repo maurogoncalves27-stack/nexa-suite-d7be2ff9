@@ -574,36 +574,6 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
                   </AccordionItem>
                 </Accordion>
 
-                <div className="flex items-center justify-between rounded-md border p-3 bg-muted/30">
-                  <div className="space-y-0.5">
-                    <Label className="text-sm">Tipo da ficha</Label>
-                    <p className="text-[11px] text-muted-foreground">
-                      {isFactory
-                        ? "Pré-preparo — produzido na fábrica e vira insumo no estoque."
-                        : "Pronto — prato finalizado vendido no cardápio."}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs ${!isFactory ? "font-semibold text-foreground" : "text-muted-foreground"}`}>Pronto</span>
-                    <Switch
-                      checked={isFactory}
-                      onCheckedChange={(checked) => {
-                        const factory = brands.find((b) => isFactoryBrandName(b.name));
-                        if (!factory) {
-                          toast.error("Marca 'PRÉ PREPARO/FÁBRICA' não encontrada");
-                          return;
-                        }
-                        setSelectedBrands((prev) => {
-                          const n = new Set(prev);
-                          if (checked) n.add(factory.id);
-                          else n.delete(factory.id);
-                          return n;
-                        });
-                      }}
-                    />
-                    <span className={`text-xs ${isFactory ? "font-semibold text-foreground" : "text-muted-foreground"}`}>Pré-preparo</span>
-                  </div>
-                </div>
 
 
                 <div className="space-y-1.5">
