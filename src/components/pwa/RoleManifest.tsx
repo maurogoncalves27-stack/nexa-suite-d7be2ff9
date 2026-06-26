@@ -39,8 +39,11 @@ const ROLE_MAP: Array<{ prefix: string; config: RoleManifestConfig }> = [
       appleIcon: "/icons/nexa-socio-512.png",
     },
   },
+  // Prefixos ampliados para cobrir também as telas de login/cadastro/aguardando,
+  // que é onde o usuário normalmente instala a PWA. Sem isso, a instalação cai
+  // no manifest default (NEXA) e o app aparece com nome/ícone do NEXA.
   {
-    prefix: "/freelancer/painel",
+    prefix: "/freelancer",
     config: {
       manifest: "/manifest-freelancer.json",
       themeColor: "#f97316",
@@ -48,7 +51,7 @@ const ROLE_MAP: Array<{ prefix: string; config: RoleManifestConfig }> = [
     },
   },
   {
-    prefix: "/nutricionista/painel",
+    prefix: "/nutricionista",
     config: {
       manifest: "/manifest-nutricionista.json",
       themeColor: "#16a34a",
@@ -56,7 +59,7 @@ const ROLE_MAP: Array<{ prefix: string; config: RoleManifestConfig }> = [
     },
   },
   {
-    prefix: "/fornecedor/painel",
+    prefix: "/fornecedor",
     config: {
       manifest: "/manifest-fornecedor.json",
       themeColor: "#475569",
@@ -64,7 +67,15 @@ const ROLE_MAP: Array<{ prefix: string; config: RoleManifestConfig }> = [
     },
   },
   {
-    prefix: "/consultor/painel",
+    prefix: "/parceiro",
+    config: {
+      manifest: "/manifest-fornecedor.json",
+      themeColor: "#475569",
+      appleIcon: "/icons/nexa-fornecedor-512.png",
+    },
+  },
+  {
+    prefix: "/consultor",
     config: {
       manifest: "/manifest-consultor.json",
       themeColor: "#0ea5e9",

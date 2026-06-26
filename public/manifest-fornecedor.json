@@ -4,7 +4,7 @@
   "description": "Portal do fornecedor — NEXA Suite.",
   "id": "/fornecedor/painel?source=pwa",
   "start_url": "/fornecedor/painel?source=pwa",
-  "scope": "/fornecedor/painel",
+  "scope": "/fornecedor",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#1e3a8a",

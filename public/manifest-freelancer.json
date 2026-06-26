@@ -4,7 +4,7 @@
   "description": "Painel do freelancer — NEXA Suite.",
   "id": "/freelancer/painel?source=pwa",
   "start_url": "/freelancer/painel?source=pwa",
-  "scope": "/freelancer/painel",
+  "scope": "/freelancer",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#1e3a8a",
