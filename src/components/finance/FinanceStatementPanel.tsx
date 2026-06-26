@@ -28,7 +28,17 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleDollarSign,
+  Trash2,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import EditStatementRowDialog, { type EditableKind } from "./EditStatementRowDialog";
