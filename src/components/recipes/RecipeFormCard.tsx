@@ -444,15 +444,35 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
                   <Label>Nome *</Label>
                   <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
                 </div>
-                <div className="space-y-1">
-                  <Label>Produto final (que será adicionado ao estoque) *</Label>
-                  <Select value={form.output_product_id} onValueChange={(v) => setForm((f) => ({ ...f, output_product_id: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Selecione o produto" /></SelectTrigger>
-                    <SelectContent>
-                      {products.map((p) => <SelectItem key={p.id} value={p.id}>{p.name} ({p.unit})</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {isFactory ? (
+                  <div className="space-y-1">
+                    <Label>Produto final (que será adicionado ao estoque) *</Label>
+                    <Select value={form.output_product_id} onValueChange={(v) => setForm((f) => ({ ...f, output_product_id: v }))}>
+                      <SelectTrigger><SelectValue placeholder="Selecione o produto porcionado" /></SelectTrigger>
+                      <SelectContent>
+                        {products
+                          .filter((p) => (p.category ?? "").toUpperCase() === "PORCIONADOS")
+                          .map((p) => <SelectItem key={p.id} value={p.id}>{p.name} ({p.unit})</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground">
+                      Apenas produtos da categoria <strong>PORCIONADOS</strong> aparecem nas fichas da fábrica.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <Label>Item de cardápio vinculado *</Label>
+                    <Select value={linkedMenuItemId} onValueChange={setLinkedMenuItemId}>
+                      <SelectTrigger><SelectValue placeholder="Selecione o item de cardápio" /></SelectTrigger>
+                      <SelectContent>
+                        {menuItems.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground">
+                      Esta ficha será vinculada ao item de cardápio escolhido (consumo no PDV usa esta ficha).
+                    </p>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <div className="space-y-1">
                     <Label>Rendimento *</Label>
