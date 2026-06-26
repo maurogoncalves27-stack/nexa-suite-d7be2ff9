@@ -30,6 +30,7 @@ interface Props {
 const RecipeBookEditorDialog = ({ open, onOpenChange, recipeBookId, onSaved }: Props) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [data, setData] = useState<RecipeBookRow>({
     id: "",
     title: "",
