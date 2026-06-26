@@ -203,28 +203,32 @@ export default function DrePanel() {
     setLoading(true);
     try {
       const [salesRes, payRes, recRes, catRes, dedRes] = await Promise.all([
-        supabase
-          .from("monthly_revenue")
-          .select("year,month,day,gross_revenue")
-          .gte("year", Number(periodStart.slice(0, 4)))
-          .lte("year", Number(periodEnd.slice(0, 4)))
-          .limit(50000),
-
-        supabase
-          .from("accounts_payable")
-          .select("id,paid_at,amount,category_id,status")
-          .eq("status", "paid")
-          .gte("paid_at", periodStart)
-          .lte("paid_at", periodEnd)
-          .limit(50000),
-        supabase
-          .from("accounts_receivable")
-          .select("id,received_at,amount,category_id,status")
-          .eq("status", "received")
-          .gte("received_at", periodStart)
-          .lte("received_at", periodEnd)
-          .limit(50000),
-
+        fetchAllPaged((from, to) =>
+          supabase
+            .from("monthly_revenue")
+            .select("year,month,day,gross_revenue")
+            .gte("year", Number(periodStart.slice(0, 4)))
+            .lte("year", Number(periodEnd.slice(0, 4)))
+            .range(from, to),
+        ),
+        fetchAllPaged((from, to) =>
+          supabase
+            .from("accounts_payable")
+            .select("id,paid_at,amount,category_id,status")
+            .eq("status", "paid")
+            .gte("paid_at", periodStart)
+            .lte("paid_at", periodEnd)
+            .range(from, to),
+        ),
+        fetchAllPaged((from, to) =>
+          supabase
+            .from("accounts_receivable")
+            .select("id,received_at,amount,category_id,status")
+            .eq("status", "received")
+            .gte("received_at", periodStart)
+            .lte("received_at", periodEnd)
+            .range(from, to),
+        ),
         supabase.from("finance_categories").select("id,name,dre_group,kind"),
         supabase.functions.invoke("dre-ifood-deductions"),
       ]);
