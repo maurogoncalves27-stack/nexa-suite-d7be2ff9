@@ -35,18 +35,14 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
   const [saving, setSaving] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [items, setItems] = useState<Item[]>([]);
-  const [kits, setKits] = useState<KitOption[]>([]);
-  const [kitToApply, setKitToApply] = useState<string>("");
 
   useEffect(() => {
     if (!open || !recipeId) return;
     (async () => {
       setLoading(true);
-      const [{ data: prods }, { data: ings }, { data: ks }, { data: kis }] = await Promise.all([
+      const [{ data: prods }, { data: ings }] = await Promise.all([
         supabase.from("inventory_products").select("id, name, unit, average_cost").eq("is_active", true).order("name"),
         supabase.from("recipe_ingredients").select("*").eq("recipe_id", recipeId).order("sort_order"),
-        supabase.from("packaging_kits").select("id, name, kit_type, brand_id, is_active, brands(name)").eq("is_active", true).order("name"),
-        supabase.from("packaging_kit_items").select("kit_id, product_id, quantity"),
       ]);
       setProducts((prods as Product[]) ?? []);
       setItems(
@@ -59,38 +55,10 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
           is_packaging: !!i.is_packaging,
         })),
       );
-      const itemsByKit: Record<string, { product_id: string; quantity: number }[]> = {};
-      (kis ?? []).forEach((it: any) => {
-        (itemsByKit[it.kit_id] ||= []).push({ product_id: it.product_id, quantity: Number(it.quantity) });
-      });
-      setKits(((ks as any[]) ?? []).map((k) => ({
-        id: k.id, name: k.name, kit_type: k.kit_type,
-        brand_name: k.brands?.name ?? "—",
-        items: itemsByKit[k.id] ?? [],
-      })));
       setLoading(false);
     })();
   }, [open, recipeId]);
 
-  const applyKit = () => {
-    const kit = kits.find((k) => k.id === kitToApply);
-    if (!kit) return;
-    setItems((arr) => {
-      const next = [...arr];
-      kit.items.forEach((ki) => {
-        const prod = products.find((p) => p.id === ki.product_id);
-        const existingIdx = next.findIndex((x) => x.product_id === ki.product_id && x.is_packaging);
-        if (existingIdx >= 0) {
-          next[existingIdx] = { ...next[existingIdx], quantity: Number(next[existingIdx].quantity) + ki.quantity };
-        } else {
-          next.push({ product_id: ki.product_id, quantity: ki.quantity, unit: prod?.unit ?? "UN", notes: "", is_packaging: true });
-        }
-      });
-      return next;
-    });
-    toast.success(`Kit "${kit.name}" aplicado`);
-    setKitToApply("");
-  };
 
   const totalCost = items.reduce((sum, i) => {
     const p = products.find((p) => p.id === i.product_id);
