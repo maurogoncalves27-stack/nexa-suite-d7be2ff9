@@ -51,6 +51,7 @@ const colorForBrand = (name: string) => {
 const emptyForm = {
   name: "",
   output_product_id: "",
+  scope: "loja" as "fabrica" | "loja",
   yield_quantity: 1,
   yield_unit: "UN",
   shelf_life_hours: null as number | null,
@@ -93,6 +94,9 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
   const [generatingBook, setGeneratingBook] = useState(false);
 
   const isFactory = brands.some((b) => selectedBrands.has(b.id) && isFactoryBrandName(b.name));
+  const initialBrandIsFactory = !!(
+    initialBrandId && brands.some((b) => b.id === initialBrandId && isFactoryBrandName(b.name))
+  );
 
   const photoUrl = photoPath
     ? supabase.storage.from("recipe-photos").getPublicUrl(photoPath).data.publicUrl
@@ -168,7 +172,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
 
   useEffect(() => {
     if (!recipeId) {
-      setForm(emptyForm);
+      setForm({ ...emptyForm, scope: initialBrandIsFactory ? "fabrica" : "loja" });
       setPhotoPath(null);
       setSelectedBrands(initialBrandId ? new Set([initialBrandId]) : new Set());
       setLinkedMenuItemId("");
@@ -184,6 +188,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
         setForm({
           name: r.name,
           output_product_id: r.output_product_id ?? "",
+          scope: ((r as any).scope === "fabrica" ? "fabrica" : "loja"),
           yield_quantity: Number(r.yield_quantity),
           yield_unit: r.yield_unit,
           shelf_life_hours: r.shelf_life_hours,
@@ -203,7 +208,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
       setLinkedMenuItemId(((mi ?? [])[0] as any)?.id ?? "");
       setLoading(false);
     });
-  }, [recipeId, initialBrandId]);
+  }, [recipeId, initialBrandId, initialBrandIsFactory]);
 
   const toggleBrand = (id: string) => {
     setSelectedBrands((prev) => {
@@ -240,6 +245,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
       const payload = {
         name: form.name.trim(),
         output_product_id: isFactory ? form.output_product_id : null,
+        scope: isFactory || form.scope === "fabrica" ? "fabrica" : "loja",
         yield_quantity: form.yield_quantity,
         yield_unit: form.yield_unit,
         shelf_life_hours: form.shelf_life_hours,

@@ -14,7 +14,8 @@ interface RecipeRow {
   yield_quantity: number;
   yield_unit: string;
   is_active: boolean;
-  output_product_id: string;
+  output_product_id: string | null;
+  scope: "fabrica" | "loja" | null;
 }
 
 interface Brand { id: string; name: string; slug: string; }
@@ -35,7 +36,7 @@ const Recipes = () => {
     const [{ data: recs }, { data: brs }, { data: links }] = await Promise.all([
       supabase
         .from("recipes")
-        .select("id, name, yield_quantity, yield_unit, is_active, output_product_id")
+        .select("id, name, yield_quantity, yield_unit, is_active, output_product_id, scope")
         .order("name"),
       supabase.from("brands").select("id, name, slug").eq("is_active", true).order("sort_order"),
       supabase.from("recipe_brands").select("recipe_id, brand_id"),
@@ -72,16 +73,25 @@ const Recipes = () => {
     return recipes.filter((r) => {
       const set = recipeBrandMap[r.id];
       const isFactory = !!(factoryBrandId && set?.has(factoryBrandId));
+      const isFactoryTab = !!factoryBrandId && activeBrand === factoryBrandId;
+      const isFactoryScope = r.scope === "fabrica" || isFactory;
 
       if (typeFilter === "factory") {
         if (!isFactory) return false;
       } else if (typeFilter === "ready") {
-        // Mostra TODAS as fichas não-fábrica, ignorando a aba de marca ativa
-        // (fichas "pronto" podem não estar linkadas a nenhuma marca).
+        // Na aba FÁBRICA, "Pronto" são fichas da fábrica sem a marca FÁBRICA.
+        // Nas demais abas, mantém o recorte da marca ativa.
         if (isFactory) return false;
+        if (isFactoryTab) {
+          if (!isFactoryScope) return false;
+        } else if (activeBrand && set?.size && !set.has(activeBrand)) {
+          return false;
+        }
       } else {
         // all
-        if (activeBrand) {
+        if (isFactoryTab) {
+          if (!isFactoryScope) return false;
+        } else if (activeBrand) {
           if (!set || !set.has(activeBrand)) return false;
         }
       }
