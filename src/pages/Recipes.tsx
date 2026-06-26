@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Plus, Search, ChefHat, Package, ChevronDown } from "lucide-react";
-import PackagingKitsDialog from "@/components/recipes/PackagingKitsDialog";
+import { Loader2, Plus, Search, ChefHat, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
