@@ -406,7 +406,7 @@ export default function CurrentMonthVs3Panel({ stores, storeColor }: Props) {
                   </td>
                 ))}
                 <td className="text-right py-2 px-2">
-                  <VarBadge value={pctVar(current.total, avgPrev)} />
+                  <VarBadge value={pctVar(currentProjection, avgPrev)} />
                 </td>
               </tr>
             </tbody>
