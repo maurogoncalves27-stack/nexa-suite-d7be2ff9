@@ -150,7 +150,8 @@ const computeDre = ({
       addBreakdown(col, "revenue_deduction", r.category_id, catName, -credit);
       continue;
     }
-    col.revenue_gross += credit;
+    // Receita bruta já vem integralmente de monthly_revenue (/faturamento).
+    // Contas a receber representam liquidação/cobrança e não devem duplicar faturamento.
   }
 
   // Deduções vindas da planilha (Vendas iFood — coluna M)
