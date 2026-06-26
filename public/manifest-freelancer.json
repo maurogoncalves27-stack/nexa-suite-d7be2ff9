@@ -1,17 +1,17 @@
 {
-  "name": "NEXA Freelancer",
-  "short_name": "Freela",
+  "name": "NEXA FREELA",
+  "short_name": "NEXA FREELA",
   "description": "Painel do freelancer — NEXA Suite.",
   "id": "/freelancer/painel?source=pwa",
   "start_url": "/freelancer/painel?source=pwa",
   "scope": "/freelancer",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#1e3a8a",
+  "background_color": "#ffffff",
   "theme_color": "#f97316",
   "lang": "pt-BR",
   "icons": [
-    { "src": "/icons/nexa-freelancer-512.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/nexa-freelancer-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/icons/nexa-freelancer-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "/icons/nexa-freelancer-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]

@@ -1,13 +1,13 @@
 {
-  "name": "Aquela Parmê — Pedir",
-  "short_name": "Pedir",
-  "description": "Peça da Aquela Parmê direto pelo app.",
+  "name": "AQUELA PARMÊ",
+  "short_name": "AQUELA PARMÊ",
+  "description": "Aquela Parmê — peça direto pelo app.",
   "id": "/pedir?source=pwa",
   "start_url": "/pedir?source=pwa",
   "scope": "/pedir",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#fff7ed",
+  "background_color": "#ffffff",
   "theme_color": "#ea580c",
   "lang": "pt-BR",
   "icons": [
