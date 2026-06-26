@@ -352,17 +352,6 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
                 </span>
               </div>
               <div className="flex items-center gap-1 flex-wrap">
-                {form.category && (
-                  <Badge
-                    className="text-[10px] px-1.5 py-0 border-transparent"
-                    style={{
-                      backgroundColor: CATEGORY_COLOR[form.category].bg,
-                      color: CATEGORY_COLOR[form.category].text,
-                    }}
-                  >
-                    {CATEGORY_LABEL[form.category]}
-                  </Badge>
-                )}
                 {brandLabels.slice(0, 3).map((b) => {
                   const c = colorForBrand(b);
                   return (
