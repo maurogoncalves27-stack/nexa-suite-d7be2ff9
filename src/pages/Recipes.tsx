@@ -116,14 +116,39 @@ const Recipes = () => {
         <TabsContent value={activeBrand} className="mt-3">
           <Card>
             <CardContent className="p-3 sm:p-4 space-y-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nome…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9"
-                />
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <div className="flex gap-1.5">
+                  <Button
+                    size="sm"
+                    variant={typeFilter === "all" ? "default" : "outline"}
+                    onClick={() => setTypeFilter("all")}
+                  >
+                    Todas
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={typeFilter === "factory" ? "default" : "outline"}
+                    onClick={() => setTypeFilter("factory")}
+                  >
+                    Pré-preparo
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={typeFilter === "ready" ? "default" : "outline"}
+                    onClick={() => setTypeFilter("ready")}
+                  >
+                    Prato pronto
+                  </Button>
+                </div>
               </div>
 
               {loading ? (
