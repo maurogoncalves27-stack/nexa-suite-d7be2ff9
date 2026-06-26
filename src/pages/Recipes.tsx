@@ -94,9 +94,11 @@ const Recipes = () => {
 
       <Tabs value={activeBrand} onValueChange={setActiveBrand}>
         <TabsList className="flex flex-wrap h-auto">
-          {brands.map((b) => (
-            <TabsTrigger key={b.id} value={b.id}>{b.name}</TabsTrigger>
-          ))}
+          {brands
+            .filter((b) => !/^(totem|sal[aã]o|site)$/i.test(b.name.trim()))
+            .map((b) => (
+              <TabsTrigger key={b.id} value={b.id}>{b.name}</TabsTrigger>
+            ))}
         </TabsList>
 
         <TabsContent value={activeBrand} className="mt-3">
