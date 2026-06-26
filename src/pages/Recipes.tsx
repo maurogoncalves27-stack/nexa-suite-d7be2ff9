@@ -133,24 +133,29 @@ const Recipes = () => {
     return visibleByScope.filter((r) => r.category === categoryChip);
   }, [visibleByScope, scope, categoryChip]);
 
-  // Agrupa por categoria quando estamos em "Pratos prontos" sem chip específico
-  const grouped = useMemo(() => {
-    if (scope !== "pratos" || categoryChip !== "all") return null;
-    const groups: Record<"individual" | "casal" | "familia", RecipeRow[]> = {
-      individual: [],
-      casal: [],
-      familia: [],
-    };
+  // Agrupa por nome-base do item (sem o sufixo Individual/Casal/Família)
+  const itemGroups = useMemo(() => {
+    if (scope !== "pratos") return null;
+    const stripVariation = (n: string) =>
+      n.replace(/\s*[-–|]?\s*(individual|casal|fam[ií]lia)\b.*$/i, "").trim();
+    const map = new Map<string, { label: string; items: RecipeRow[] }>();
     for (const r of filtered) {
-      if (r.category) groups[r.category].push(r);
+      const base = stripVariation(r.name) || r.name;
+      const key = base.toLowerCase();
+      if (!map.has(key)) map.set(key, { label: base, items: [] });
+      map.get(key)!.items.push(r);
     }
-    return groups;
-  }, [filtered, scope, categoryChip]);
+    const order: Record<string, number> = { individual: 0, casal: 1, familia: 2 };
+    for (const g of map.values()) {
+      g.items.sort((a, b) => (order[a.category ?? ""] ?? 9) - (order[b.category ?? ""] ?? 9));
+    }
+    return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [filtered, scope]);
 
   const activeBrandId = activeBrand || null;
 
-  const renderGrid = (items: RecipeRow[]) => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-start">
+  const renderList = (items: RecipeRow[]) => (
+    <div className="flex flex-col gap-2">
       {items.map((r) => (
         <RecipeFormCard
           key={r.id}
