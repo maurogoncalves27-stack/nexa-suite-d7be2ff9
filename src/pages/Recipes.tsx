@@ -48,7 +48,7 @@ const Recipes = () => {
   const [scope, setScope] = useState<ScopeTab>("pratos");
   const [categoryChip, setCategoryChip] = useState<CategoryKey>("all");
   const [creatingNew, setCreatingNew] = useState(false);
-  const [kitsOpen, setKitsOpen] = useState(false);
+  
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     individual: true,
     casal: true,
