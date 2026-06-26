@@ -55,7 +55,6 @@ const emptyForm = {
   yield_unit: "UN",
   shelf_life_hours: null as number | null,
   is_active: true,
-  category: "" as "" | "individual" | "casal" | "familia",
   ncm: "",
   cest: "",
   cfop: "5102",
@@ -63,18 +62,6 @@ const emptyForm = {
   csosn: "102",
   unidade_comercial: "UN",
   ean: "",
-};
-
-const CATEGORY_LABEL: Record<string, string> = {
-  individual: "Individual",
-  casal: "Casal",
-  familia: "Família",
-};
-
-const CATEGORY_COLOR: Record<string, { bg: string; text: string }> = {
-  individual: { bg: "#0ea5e9", text: "#ffffff" },
-  casal: { bg: "#a855f7", text: "#ffffff" },
-  familia: { bg: "#f59e0b", text: "#1f2937" },
 };
 
 interface Props {
@@ -201,7 +188,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
           yield_unit: r.yield_unit,
           shelf_life_hours: r.shelf_life_hours,
           is_active: r.is_active,
-          category: ((r as any).category ?? "") as "" | "individual" | "casal" | "familia",
+          
           ncm: (r as any).ncm ?? "",
           cest: (r as any).cest ?? "",
           cfop: (r as any).cfop ?? "5102",
@@ -262,7 +249,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
         yield_unit: form.yield_unit,
         shelf_life_hours: form.shelf_life_hours,
         is_active: form.is_active,
-        category: form.category || null,
+        
         ncm: form.ncm.trim() || null,
         cest: form.cest.trim() || null,
         cfop: form.cfop.trim() || "5102",
@@ -365,17 +352,6 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
                 </span>
               </div>
               <div className="flex items-center gap-1 flex-wrap">
-                {form.category && (
-                  <Badge
-                    className="text-[10px] px-1.5 py-0 border-transparent"
-                    style={{
-                      backgroundColor: CATEGORY_COLOR[form.category].bg,
-                      color: CATEGORY_COLOR[form.category].text,
-                    }}
-                  >
-                    {CATEGORY_LABEL[form.category]}
-                  </Badge>
-                )}
                 {brandLabels.slice(0, 3).map((b) => {
                   const c = colorForBrand(b);
                   return (
@@ -498,26 +474,6 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
 
                 {recipeId && <RecipeYieldCostPanel recipeId={recipeId} />}
 
-                <div className="space-y-1">
-                  <Label>Categoria</Label>
-                  <Select
-                    value={form.category || "__none"}
-                    onValueChange={(v) =>
-                      setForm((f) => ({
-                        ...f,
-                        category: (v === "__none" ? "" : v) as typeof f.category,
-                      }))
-                    }
-                  >
-                    <SelectTrigger><SelectValue placeholder="Sem categoria" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none">Sem categoria</SelectItem>
-                      <SelectItem value="individual">Individual</SelectItem>
-                      <SelectItem value="casal">Casal</SelectItem>
-                      <SelectItem value="familia">Família</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
 
                 <Accordion type="single" collapsible className="border rounded-md">
                   <AccordionItem value="fiscal" className="border-b-0">
