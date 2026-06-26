@@ -16,6 +16,22 @@ const DEFAULT_CONFIG: RoleManifestConfig = {
 // Ordem importa: a primeira rota que casar (prefixo) define o manifest.
 const ROLE_MAP: Array<{ prefix: string; config: RoleManifestConfig }> = [
   {
+    prefix: "/parme",
+    config: {
+      manifest: "/manifest-parme.json",
+      themeColor: "#b91c1c",
+      appleIcon: "/icons/parme-512.png",
+    },
+  },
+  {
+    prefix: "/pedir",
+    config: {
+      manifest: "/manifest-pedir.json",
+      themeColor: "#ea580c",
+      appleIcon: "/icons/pedir-512.png",
+    },
+  },
+  {
     prefix: "/painel-socio",
     config: {
       manifest: "/manifest-socio.json",
