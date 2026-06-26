@@ -21,8 +21,11 @@ import RecipeMenuItemsSection from "./RecipeMenuItemsSection";
 
 const UNITS = ["UN", "KG", "G", "L", "ML", "CX", "PCT", "FD", "DZ", "MT", "PORCAO"];
 
-interface Product { id: string; name: string; unit: string; }
+interface Product { id: string; name: string; unit: string; category: string | null; }
 interface Brand { id: string; name: string; }
+interface MenuItemRow { id: string; name: string; }
+
+const isFactoryBrandName = (n: string) => /f[áa]brica|pr[eé]\s*preparo/i.test(n);
 
 // Cores fixas por marca (conforme planilha das abas)
 // bg + text com bom contraste
@@ -94,11 +97,15 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
   const [brands, setBrands] = useState<Brand[]>([]);
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
   const [form, setForm] = useState(emptyForm);
+  const [menuItems, setMenuItems] = useState<MenuItemRow[]>([]);
+  const [linkedMenuItemId, setLinkedMenuItemId] = useState<string>("");
   const [photoPath, setPhotoPath] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [openValue, setOpenValue] = useState<string | undefined>(defaultOpen ? "open" : undefined);
   const [ingredientsOpen, setIngredientsOpen] = useState(false);
   const [generatingBook, setGeneratingBook] = useState(false);
+
+  const isFactory = brands.some((b) => selectedBrands.has(b.id) && isFactoryBrandName(b.name));
 
   const photoUrl = photoPath
     ? supabase.storage.from("recipe-photos").getPublicUrl(photoPath).data.publicUrl
@@ -154,7 +161,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
   useEffect(() => {
     void supabase
       .from("inventory_products")
-      .select("id, name, unit")
+      .select("id, name, unit, category")
       .eq("is_active", true)
       .order("name")
       .then(({ data }) => setProducts((data as Product[]) ?? []));
@@ -164,6 +171,12 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
       .eq("is_active", true)
       .order("sort_order")
       .then(({ data }) => setBrands((data as Brand[]) ?? []));
+    void supabase
+      .from("menu_items")
+      .select("id, name")
+      .eq("is_active", true)
+      .order("name")
+      .then(({ data }) => setMenuItems((data as MenuItemRow[]) ?? []));
   }, []);
 
   useEffect(() => {
@@ -171,17 +184,19 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
       setForm(emptyForm);
       setPhotoPath(null);
       setSelectedBrands(initialBrandId ? new Set([initialBrandId]) : new Set());
+      setLinkedMenuItemId("");
       return;
     }
     setLoading(true);
     Promise.all([
       supabase.from("recipes").select("*").eq("id", recipeId).maybeSingle(),
       supabase.from("recipe_brands").select("brand_id").eq("recipe_id", recipeId),
-    ]).then(([{ data: r }, { data: rb }]) => {
+      supabase.from("menu_items").select("id").eq("recipe_id", recipeId).limit(1),
+    ]).then(([{ data: r }, { data: rb }, { data: mi }]) => {
       if (r) {
         setForm({
           name: r.name,
-          output_product_id: r.output_product_id,
+          output_product_id: r.output_product_id ?? "",
           yield_quantity: Number(r.yield_quantity),
           yield_unit: r.yield_unit,
           shelf_life_hours: r.shelf_life_hours,
@@ -198,6 +213,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
         setPhotoPath((r as any).photo_path ?? null);
       }
       setSelectedBrands(new Set((rb ?? []).map((x: any) => x.brand_id)));
+      setLinkedMenuItemId(((mi ?? [])[0] as any)?.id ?? "");
       setLoading(false);
     });
   }, [recipeId, initialBrandId]);
@@ -218,14 +234,30 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
     }
   };
 
+  const syncMenuLink = async (rid: string) => {
+    // Limpa qualquer item de cardápio antes vinculado a esta ficha
+    await supabase
+      .from("menu_items")
+      .update({ recipe_id: null })
+      .eq("recipe_id", rid)
+      .neq("id", linkedMenuItemId || "00000000-0000-0000-0000-000000000000");
+    if (linkedMenuItemId) {
+      await supabase.from("menu_items").update({ recipe_id: rid }).eq("id", linkedMenuItemId);
+    }
+  };
+
   const handleSave = async () => {
     if (!form.name.trim()) { toast.error("Informe o nome da ficha"); return; }
-    if (!form.output_product_id) { toast.error("Selecione o produto final"); return; }
+    if (isFactory) {
+      if (!form.output_product_id) { toast.error("Selecione o produto final"); return; }
+    } else {
+      if (!linkedMenuItemId) { toast.error("Selecione o item de cardápio"); return; }
+    }
     setSaving(true);
     try {
       const payload = {
         name: form.name.trim(),
-        output_product_id: form.output_product_id,
+        output_product_id: isFactory ? form.output_product_id : null,
         yield_quantity: form.yield_quantity,
         yield_unit: form.yield_unit,
         shelf_life_hours: form.shelf_life_hours,
@@ -243,6 +275,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
         const { error } = await supabase.from("recipes").update(payload).eq("id", recipeId);
         if (error) throw error;
         await syncBrands(recipeId);
+        if (!isFactory) await syncMenuLink(recipeId);
         toast.success("Ficha atualizada");
         onSaved?.();
       } else {
@@ -253,6 +286,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
           .single();
         if (error) throw error;
         await syncBrands(data.id);
+        if (!isFactory) await syncMenuLink(data.id);
         toast.success("Ficha criada");
         onSaved?.(data.id);
       }
@@ -410,15 +444,35 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
                   <Label>Nome *</Label>
                   <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
                 </div>
-                <div className="space-y-1">
-                  <Label>Produto final (que será adicionado ao estoque) *</Label>
-                  <Select value={form.output_product_id} onValueChange={(v) => setForm((f) => ({ ...f, output_product_id: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Selecione o produto" /></SelectTrigger>
-                    <SelectContent>
-                      {products.map((p) => <SelectItem key={p.id} value={p.id}>{p.name} ({p.unit})</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {isFactory ? (
+                  <div className="space-y-1">
+                    <Label>Produto final (que será adicionado ao estoque) *</Label>
+                    <Select value={form.output_product_id} onValueChange={(v) => setForm((f) => ({ ...f, output_product_id: v }))}>
+                      <SelectTrigger><SelectValue placeholder="Selecione o produto porcionado" /></SelectTrigger>
+                      <SelectContent>
+                        {products
+                          .filter((p) => (p.category ?? "").toUpperCase() === "PORCIONADOS")
+                          .map((p) => <SelectItem key={p.id} value={p.id}>{p.name} ({p.unit})</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground">
+                      Apenas produtos da categoria <strong>PORCIONADOS</strong> aparecem nas fichas da fábrica.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <Label>Item de cardápio vinculado *</Label>
+                    <Select value={linkedMenuItemId} onValueChange={setLinkedMenuItemId}>
+                      <SelectTrigger><SelectValue placeholder="Selecione o item de cardápio" /></SelectTrigger>
+                      <SelectContent>
+                        {menuItems.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground">
+                      Esta ficha será vinculada ao item de cardápio escolhido (consumo no PDV usa esta ficha).
+                    </p>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <div className="space-y-1">
                     <Label>Rendimento *</Label>
