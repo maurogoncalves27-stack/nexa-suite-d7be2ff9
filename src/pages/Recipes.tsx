@@ -70,10 +70,8 @@ const Recipes = () => {
     if (!activeBrand && brands.length > 0) setActiveBrand(brands[0].id);
   }, [brands, activeBrand]);
 
-  const factoryBrandId = useMemo(
-    () => brands.find((b) => /pr[eé]\s*preparo|f[aá]brica/i.test(b.name))?.id ?? null,
-    [brands]
-  );
+
+
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
