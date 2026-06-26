@@ -405,6 +405,8 @@ const App = () => (
               <Route path="/lotes" element={<Guarded><InventoryLots /></Guarded>} />
               <Route path="/perdas" element={<Guarded><InventoryLots /></Guarded>} />
               <Route path="/fichas-tecnicas" element={<Guarded module="fichas_tecnicas"><Recipes /></Guarded>} />
+              <Route path="/fichas-fabrica" element={<Guarded staff module="fichas_tecnicas"><RecipesFactory /></Guarded>} />
+
               <Route path="/receituario" element={<Guarded module="fichas_tecnicas"><RecipeBook /></Guarded>} />
               <Route path="/conciliacao" element={<Guarded staff partner><BankReconciliation /></Guarded>} />
               <Route path="/caixinha" element={<Guarded><PettyCash /></Guarded>} />
