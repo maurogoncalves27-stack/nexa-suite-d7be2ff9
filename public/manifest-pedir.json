@@ -1,0 +1,18 @@
+{
+  "name": "Aquela Parmê — Pedir",
+  "short_name": "Pedir",
+  "description": "Peça da Aquela Parmê direto pelo app.",
+  "id": "/pedir?source=pwa",
+  "start_url": "/pedir?source=pwa",
+  "scope": "/pedir",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff7ed",
+  "theme_color": "#ea580c",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "/icons/pedir-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/pedir-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/pedir-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
