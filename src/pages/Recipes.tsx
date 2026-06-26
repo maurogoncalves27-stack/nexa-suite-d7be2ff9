@@ -76,10 +76,9 @@ const Recipes = () => {
       if (typeFilter === "factory") {
         if (!isFactory) return false;
       } else if (typeFilter === "ready") {
+        // Mostra TODAS as fichas não-fábrica, ignorando a aba de marca ativa
+        // (fichas "pronto" podem não estar linkadas a nenhuma marca).
         if (isFactory) return false;
-        if (activeBrand) {
-          if (!set || !set.has(activeBrand)) return false;
-        }
       } else {
         // all
         if (activeBrand) {
