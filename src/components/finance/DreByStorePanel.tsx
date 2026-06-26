@@ -225,6 +225,24 @@ export default function DreByStorePanel() {
       applyExpense(col, group, debit);
     }
 
+    // Deduções iFood (planilha) para a loja selecionada, somando meses no período
+    const selectedNorm = (stores.find((s) => s.id === selectedStoreId)?.name ?? "")
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    if (selectedNorm) {
+      const sY = Number(start.slice(0, 4)); const sM = Number(start.slice(5, 7));
+      const eY = Number(end.slice(0, 4)); const eM = Number(end.slice(5, 7));
+      for (let y = sY; y <= eY; y++) {
+        const mStart = y === sY ? sM : 1;
+        const mEnd = y === eY ? eM : 12;
+        for (let m = mStart; m <= mEnd; m++) {
+          const k = `${selectedNorm}|${y}-${String(m).padStart(2, "0")}`;
+          const v = ifoodByStoreMonth[k] ?? 0;
+          if (v) col.revenue_deduction += v;
+        }
+      }
+    }
+
+
     // Calcular rateio da fábrica (opcional, só se loja não é fábrica)
     let factoryShare = 0;
     let allocPctValue = 0;
