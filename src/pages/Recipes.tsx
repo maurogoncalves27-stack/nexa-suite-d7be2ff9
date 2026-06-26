@@ -51,6 +51,9 @@ const Recipes = () => {
              !/pr[eé]\s*preparo|f[aá]brica/i.test(b.name)
     );
     setBrands(filteredBrands);
+    const fb = ((brs as Brand[]) ?? []).find((b) => /pr[eé]\s*preparo|f[aá]brica/i.test(b.name));
+    setFactoryBrandId(fb?.id ?? null);
+
 
     const map: Record<string, Set<string>> = {};
     (links ?? []).forEach((l: any) => {
