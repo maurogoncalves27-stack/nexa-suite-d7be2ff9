@@ -184,17 +184,19 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
       setForm(emptyForm);
       setPhotoPath(null);
       setSelectedBrands(initialBrandId ? new Set([initialBrandId]) : new Set());
+      setLinkedMenuItemId("");
       return;
     }
     setLoading(true);
     Promise.all([
       supabase.from("recipes").select("*").eq("id", recipeId).maybeSingle(),
       supabase.from("recipe_brands").select("brand_id").eq("recipe_id", recipeId),
-    ]).then(([{ data: r }, { data: rb }]) => {
+      supabase.from("menu_items").select("id").eq("recipe_id", recipeId).limit(1),
+    ]).then(([{ data: r }, { data: rb }, { data: mi }]) => {
       if (r) {
         setForm({
           name: r.name,
-          output_product_id: r.output_product_id,
+          output_product_id: r.output_product_id ?? "",
           yield_quantity: Number(r.yield_quantity),
           yield_unit: r.yield_unit,
           shelf_life_hours: r.shelf_life_hours,
@@ -211,6 +213,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
         setPhotoPath((r as any).photo_path ?? null);
       }
       setSelectedBrands(new Set((rb ?? []).map((x: any) => x.brand_id)));
+      setLinkedMenuItemId(((mi ?? [])[0] as any)?.id ?? "");
       setLoading(false);
     });
   }, [recipeId, initialBrandId]);
