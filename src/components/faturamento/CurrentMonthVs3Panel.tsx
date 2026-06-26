@@ -26,14 +26,21 @@ interface DailyRow {
   gross_revenue: number;
 }
 
+interface MonthlyRow {
+  year: number;
+  month: number;
+  store_id: string | null;
+  gross_revenue: number;
+}
+
 interface MonthBucket {
   key: string;          // "YYYY-MM"
   year: number;
-  month: number;        // 1..12
+  month: number;
   label: string;        // "Mai/26"
   isCurrent: boolean;
   byStore: Map<string, number>;
-  total: number;
+  total: number;        // mês COMPLETO real (vem de monthly_revenue)
 }
 
 function ymKey(y: number, m: number) {
@@ -71,6 +78,7 @@ function VarBadge({ value }: { value: number | null }) {
 export default function CurrentMonthVs3Panel({ stores, storeColor }: Props) {
   const [loading, setLoading] = useState(true);
   const [daily, setDaily] = useState<DailyRow[]>([]);
+  const [monthly, setMonthly] = useState<MonthlyRow[]>([]);
 
   // Mês corrente + 3 anteriores
   const months = useMemo(() => {
@@ -96,7 +104,9 @@ export default function CurrentMonthVs3Panel({ stores, storeColor }: Props) {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const all: DailyRow[] = [];
+      // 1) daily_revenue (somente para o mês corrente — usado para descobrir
+      //    o cutoffDay e calcular a projeção).
+      const allDaily: DailyRow[] = [];
       const step = 1000;
       for (let off = 0; ; off += step) {
         const { data, error } = await supabase
@@ -107,20 +117,43 @@ export default function CurrentMonthVs3Panel({ stores, storeColor }: Props) {
           .order("sale_date")
           .range(off, off + step - 1);
         if (error || !data || data.length === 0) break;
-        all.push(...(data as any[]).map((r) => ({
+        allDaily.push(...(data as any[]).map((r) => ({
           sale_date: String(r.sale_date),
           store_id: String(r.store_id),
           gross_revenue: Number(r.gross_revenue) || 0,
         })));
         if (data.length < step) break;
       }
+
+      // 2) monthly_revenue (consolidados + diários somados) — fonte do
+      //    "mês completo real" para os 3 meses anteriores.
+      const first = months[0];
+      const last = months[months.length - 1];
+      const allMonthly: MonthlyRow[] = [];
+      const { data: mData } = await supabase
+        .from("monthly_revenue")
+        .select("year, month, store_id, gross_revenue")
+        .gte("year", first.year)
+        .lte("year", last.year);
+      if (mData) {
+        for (const r of mData as any[]) {
+          allMonthly.push({
+            year: Number(r.year),
+            month: Number(r.month),
+            store_id: r.store_id ? String(r.store_id) : null,
+            gross_revenue: Number(r.gross_revenue) || 0,
+          });
+        }
+      }
+
       if (!cancelled) {
-        setDaily(all);
+        setDaily(allDaily);
+        setMonthly(allMonthly);
         setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [range.from, range.to]);
+  }, [range.from, range.to, months]);
 
   // Corte do mês corrente = maior dia com lançamento (>0)
   const cutoffDay = useMemo(() => {
@@ -135,45 +168,85 @@ export default function CurrentMonthVs3Panel({ stores, storeColor }: Props) {
     return maxDay;
   }, [daily, months]);
 
-  // Agrega cada mês limitando ao mesmo intervalo de dias (1..cutoffDay)
-  const buckets: MonthBucket[] = useMemo(() => {
-    return months.map((m, idx) => {
-      const isCurrent = idx === months.length - 1;
+  // Real parcial do mês corrente (dias 1..cutoffDay) + projeção mês cheio.
+  const currentMonth = months[months.length - 1];
+  const daysInCurrentMonth = useMemo(
+    () => new Date(currentMonth.year, currentMonth.month, 0).getDate(),
+    [currentMonth],
+  );
+  const currentPartial = useMemo(() => {
+    let total = 0;
+    const byStore = new Map<string, number>();
+    for (const r of daily) {
+      const [y, m] = r.sale_date.split("-").map(Number);
+      if (y === currentMonth.year && m === currentMonth.month) {
+        total += r.gross_revenue;
+        byStore.set(r.store_id, (byStore.get(r.store_id) ?? 0) + r.gross_revenue);
+      }
+    }
+    return { total, byStore };
+  }, [daily, currentMonth]);
+  const currentProjection = useMemo(() => {
+    if (!cutoffDay) return 0;
+    return (currentPartial.total / cutoffDay) * daysInCurrentMonth;
+  }, [currentPartial.total, cutoffDay, daysInCurrentMonth]);
+
+  // Buckets dos 3 meses anteriores (mês COMPLETO real, vindo de monthly_revenue)
+  const prevBuckets: MonthBucket[] = useMemo(() => {
+    const prev = months.slice(0, -1);
+    return prev.map((m) => {
       const byStore = new Map<string, number>();
       let total = 0;
-      for (const r of daily) {
-        const [y, mm, d] = r.sale_date.split("-").map(Number);
-        if (y !== m.year || mm !== m.month) continue;
-        if (cutoffDay > 0 && d > cutoffDay) continue;
-        byStore.set(r.store_id, (byStore.get(r.store_id) ?? 0) + r.gross_revenue);
+      for (const r of monthly) {
+        if (r.year !== m.year || r.month !== m.month) continue;
         total += r.gross_revenue;
+        if (r.store_id) {
+          byStore.set(r.store_id, (byStore.get(r.store_id) ?? 0) + r.gross_revenue);
+        }
       }
       return {
         key: ymKey(m.year, m.month),
         year: m.year,
         month: m.month,
         label: monthLabel(m.year, m.month),
-        isCurrent,
+        isCurrent: false,
         byStore,
         total,
       };
     });
-  }, [daily, months, cutoffDay]);
+  }, [monthly, months]);
 
-  const current = buckets[buckets.length - 1];
-  const prevs = buckets.slice(0, -1); // 3 anteriores
-  const avgPrev = prevs.length
-    ? prevs.reduce((a, b) => a + b.total, 0) / prevs.length
+  const currentBucket: MonthBucket = {
+    key: ymKey(currentMonth.year, currentMonth.month),
+    year: currentMonth.year,
+    month: currentMonth.month,
+    label: monthLabel(currentMonth.year, currentMonth.month),
+    isCurrent: true,
+    byStore: currentPartial.byStore,
+    total: currentPartial.total,
+  };
+
+  const buckets: MonthBucket[] = [...prevBuckets, currentBucket];
+
+  const avgPrev = prevBuckets.length
+    ? prevBuckets.reduce((a, b) => a + b.total, 0) / prevBuckets.length
     : 0;
 
-  // Dados do gráfico: uma barra por loja, 4 séries (uma por mês)
+  // Dados do gráfico: uma barra por loja, 4 séries (uma por mês).
+  // Para o mês corrente usamos a projeção (mês cheio estimado) pra comparar de
+  // forma justa com os meses completos anteriores.
   const chartData = useMemo(() => {
     return stores.map((s) => {
       const row: Record<string, any> = { store: s.name };
-      for (const b of buckets) row[b.label] = b.byStore.get(s.id) ?? 0;
+      for (const b of prevBuckets) row[b.label] = b.byStore.get(s.id) ?? 0;
+      const currStorePartial = currentPartial.byStore.get(s.id) ?? 0;
+      const currStoreProj = cutoffDay
+        ? (currStorePartial / cutoffDay) * daysInCurrentMonth
+        : 0;
+      row[currentBucket.label] = currStoreProj;
       return row;
     });
-  }, [stores, buckets]);
+  }, [stores, prevBuckets, currentPartial, cutoffDay, daysInCurrentMonth, currentBucket.label]);
 
   if (loading) {
     return (
@@ -200,29 +273,40 @@ export default function CurrentMonthVs3Panel({ stores, storeColor }: Props) {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">
-            {current.label} (dias 1–{cutoffDay}) × mesmo intervalo dos 3 últimos meses
+            {currentBucket.label} (real + projeção) × 3 últimos meses completos
           </CardTitle>
           <p className="text-xs text-muted-foreground">
-            Considera apenas os lançamentos diários ainda não consolidados. Para comparar de
-            forma justa, todos os meses são somados apenas até o dia {cutoffDay}.
+            Mês corrente: real até o dia {cutoffDay} e projeção do mês cheio
+            (real ÷ {cutoffDay} × {daysInCurrentMonth}). Meses anteriores:
+            faturamento real do mês inteiro. A variação % compara a projeção
+            do mês corrente com cada base.
           </p>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-3">
             <Card className="border-primary/40">
               <CardContent className="p-3">
-                <div className="text-xs text-muted-foreground">{current.label} (corrente)</div>
-                <div className="text-lg sm:text-xl font-semibold">{fmtBRL(current.total)}</div>
-                <div className="text-[11px] text-muted-foreground mt-1">dias 1–{cutoffDay}</div>
+                <div className="text-xs text-muted-foreground">{currentBucket.label} (corrente)</div>
+                <div className="text-lg sm:text-xl font-semibold">{fmtBRL(currentPartial.total)}</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">
+                  real · dias 1–{cutoffDay}
+                </div>
+                <div className="text-sm font-medium text-primary mt-1">
+                  {fmtBRL(currentProjection)}
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  projeção mês cheio
+                </div>
               </CardContent>
             </Card>
-            {prevs.slice().reverse().map((b) => {
-              const v = pctVar(current.total, b.total);
+            {prevBuckets.slice().reverse().map((b) => {
+              const v = pctVar(currentProjection, b.total);
               return (
                 <Card key={b.key}>
                   <CardContent className="p-3">
                     <div className="text-xs text-muted-foreground">{b.label}</div>
                     <div className="text-lg sm:text-xl font-semibold">{fmtBRL(b.total)}</div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">mês completo</div>
                     <div className="mt-1"><VarBadge value={v} /></div>
                   </CardContent>
                 </Card>
@@ -232,12 +316,14 @@ export default function CurrentMonthVs3Panel({ stores, storeColor }: Props) {
               <CardContent className="p-3">
                 <div className="text-xs text-muted-foreground">Média dos 3 anteriores</div>
                 <div className="text-lg sm:text-xl font-semibold">{fmtBRL(avgPrev)}</div>
-                <div className="mt-1"><VarBadge value={pctVar(current.total, avgPrev)} /></div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">meses completos</div>
+                <div className="mt-1"><VarBadge value={pctVar(currentProjection, avgPrev)} /></div>
               </CardContent>
             </Card>
           </div>
         </CardContent>
       </Card>
+
 
       <Card>
         <CardHeader>
@@ -320,7 +406,7 @@ export default function CurrentMonthVs3Panel({ stores, storeColor }: Props) {
                   </td>
                 ))}
                 <td className="text-right py-2 px-2">
-                  <VarBadge value={pctVar(current.total, avgPrev)} />
+                  <VarBadge value={pctVar(currentProjection, avgPrev)} />
                 </td>
               </tr>
             </tbody>
