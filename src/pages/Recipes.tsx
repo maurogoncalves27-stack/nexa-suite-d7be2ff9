@@ -284,45 +284,51 @@ const Recipes = () => {
                     <p className="text-sm text-muted-foreground text-center py-6">
                       Nenhuma ficha técnica nesta aba.
                     </p>
-                  ) : grouped ? (
-                    // Agrupado por categoria
-                    <div className="space-y-3">
-                      {(["individual", "casal", "familia"] as const).map((cat) => {
-                        const items = grouped[cat];
-                        if (items.length === 0) return null;
-                        const meta = CATEGORY_META[cat];
-                        const open = openSections[cat] ?? true;
+                  ) : itemGroups ? (
+                    // Agrupado por item — variações em sanfona
+                    <div className="flex flex-col gap-2">
+                      {itemGroups.map((g) => {
+                        const open = openSections[g.label] ?? false;
                         return (
                           <Collapsible
-                            key={cat}
+                            key={g.label}
                             open={open}
-                            onOpenChange={(v) => setOpenSections((s) => ({ ...s, [cat]: v }))}
+                            onOpenChange={(v) => setOpenSections((s) => ({ ...s, [g.label]: v }))}
+                            className="border rounded-md bg-card"
                           >
-                            <CollapsibleTrigger
-                              className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-md border bg-muted/40 hover:bg-muted transition"
-                            >
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                                  style={{ backgroundColor: meta.bg, color: meta.text }}
-                                >
-                                  {meta.label}
-                                </span>
-                                <span className="text-xs text-muted-foreground">{items.length} ficha(s)</span>
+                            <CollapsibleTrigger className="w-full flex items-center justify-between gap-2 px-3 py-2.5 hover:bg-muted/40 transition rounded-md">
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <ChefHat className="h-4 w-4 text-muted-foreground shrink-0" />
+                                <span className="text-sm font-semibold truncate">{g.label}</span>
+                                <span className="text-[10px] text-muted-foreground">{g.items.length} variação(ões)</span>
+                                <div className="flex items-center gap-1 ml-1">
+                                  {g.items.map((it) =>
+                                    it.category ? (
+                                      <span
+                                        key={it.id}
+                                        className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                                        style={{
+                                          backgroundColor: CATEGORY_META[it.category].bg,
+                                          color: CATEGORY_META[it.category].text,
+                                        }}
+                                      >
+                                        {CATEGORY_META[it.category].label[0]}
+                                      </span>
+                                    ) : null,
+                                  )}
+                                </div>
                               </div>
-                              <ChevronDown
-                                className={cn("h-4 w-4 text-muted-foreground transition-transform", open && "rotate-180")}
-                              />
+                              <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", open && "rotate-180")} />
                             </CollapsibleTrigger>
-                            <CollapsibleContent className="pt-2">
-                              {renderGrid(items)}
+                            <CollapsibleContent className="px-2 pb-2 pt-1">
+                              {renderList(g.items)}
                             </CollapsibleContent>
                           </Collapsible>
                         );
                       })}
                     </div>
                   ) : (
-                    renderGrid(filtered)
+                    renderList(filtered)
                   )}
                 </div>
               )}
