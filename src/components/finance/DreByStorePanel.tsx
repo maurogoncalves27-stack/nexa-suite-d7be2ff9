@@ -71,7 +71,7 @@ export default function DreByStorePanel() {
   const load = async () => {
     setLoading(true);
     try {
-      const [storesRes, salesRes, payRes, recRes, catRes] = await Promise.all([
+      const [storesRes, salesRes, payRes, recRes, catRes, dedRes] = await Promise.all([
         supabase.from("stores").select("id,name,is_virtual"),
         supabase
           .from("monthly_revenue")
@@ -93,7 +93,8 @@ export default function DreByStorePanel() {
           .lte("received_at", end),
         supabase.from("finance_categories").select("id,dre_group,kind"),
         supabase.functions.invoke("dre-ifood-deductions"),
-      ]) as any;
+      ]);
+
 
 
       if (storesRes.error) throw storesRes.error;
