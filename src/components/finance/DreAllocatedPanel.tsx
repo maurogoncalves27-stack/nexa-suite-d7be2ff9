@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllPaged } from "./_fetchAll";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,28 +73,32 @@ export default function DreAllocatedPanel() {
     try {
       const [storesRes, salesRes, payRes, recRes, catRes] = await Promise.all([
         supabase.from("stores").select("id,name,is_virtual"),
-        supabase
-          .from("monthly_revenue")
-          .select("id,year,month,day,gross_revenue,store_id")
-          .gte("year", Number(start.slice(0, 4)))
-          .lte("year", Number(end.slice(0, 4)))
-          .limit(50000),
-
-        supabase
-          .from("accounts_payable")
-          .select("id,paid_at,amount,category_id,status,store_id")
-          .eq("status", "paid")
-          .gte("paid_at", start)
-          .lte("paid_at", end)
-          .limit(50000),
-        supabase
-          .from("accounts_receivable")
-          .select("id,received_at,amount,category_id,status,store_id")
-          .eq("status", "received")
-          .gte("received_at", start)
-          .lte("received_at", end)
-          .limit(50000),
-
+        fetchAllPaged((from, to) =>
+          supabase
+            .from("monthly_revenue")
+            .select("id,year,month,day,gross_revenue,store_id")
+            .gte("year", Number(start.slice(0, 4)))
+            .lte("year", Number(end.slice(0, 4)))
+            .range(from, to),
+        ),
+        fetchAllPaged((from, to) =>
+          supabase
+            .from("accounts_payable")
+            .select("id,paid_at,amount,category_id,status,store_id")
+            .eq("status", "paid")
+            .gte("paid_at", start)
+            .lte("paid_at", end)
+            .range(from, to),
+        ),
+        fetchAllPaged((from, to) =>
+          supabase
+            .from("accounts_receivable")
+            .select("id,received_at,amount,category_id,status,store_id")
+            .eq("status", "received")
+            .gte("received_at", start)
+            .lte("received_at", end)
+            .range(from, to),
+        ),
         supabase.from("finance_categories").select("id,dre_group,kind"),
       ]);
 
