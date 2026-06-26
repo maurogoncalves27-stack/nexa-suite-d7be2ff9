@@ -92,6 +92,8 @@ const InventoryTransfers = lazy(() => import("./pages/InventoryTransfers.tsx"));
 const PurchaseSuggestions = lazy(() => import("./pages/PurchaseSuggestions.tsx"));
 const InventoryLots = lazy(() => import("./pages/InventoryLots.tsx"));
 const Recipes = lazy(() => import("./pages/Recipes.tsx"));
+const RecipesFactory = lazy(() => import("./pages/RecipesFactory.tsx"));
+
 const RecipeBook = lazy(() => import("./pages/RecipeBook.tsx"));
 const BankReconciliation = lazy(() => import("./pages/BankReconciliation.tsx"));
 const FactoryRequests = lazy(() => import("./pages/FactoryRequests.tsx"));
@@ -403,6 +405,8 @@ const App = () => (
               <Route path="/lotes" element={<Guarded><InventoryLots /></Guarded>} />
               <Route path="/perdas" element={<Guarded><InventoryLots /></Guarded>} />
               <Route path="/fichas-tecnicas" element={<Guarded module="fichas_tecnicas"><Recipes /></Guarded>} />
+              <Route path="/fichas-fabrica" element={<Guarded staff module="fichas_tecnicas"><RecipesFactory /></Guarded>} />
+
               <Route path="/receituario" element={<Guarded module="fichas_tecnicas"><RecipeBook /></Guarded>} />
               <Route path="/conciliacao" element={<Guarded staff partner><BankReconciliation /></Guarded>} />
               <Route path="/caixinha" element={<Guarded><PettyCash /></Guarded>} />

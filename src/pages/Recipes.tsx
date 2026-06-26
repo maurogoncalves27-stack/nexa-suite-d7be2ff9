@@ -24,6 +24,8 @@ const Recipes = () => {
   const { canReceive } = useInventoryPermission();
   const [recipes, setRecipes] = useState<RecipeRow[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
+  const [factoryBrandId, setFactoryBrandId] = useState<string | null>(null);
+
   const [recipeBrandMap, setRecipeBrandMap] = useState<Record<string, Set<string>>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -45,9 +47,14 @@ const Recipes = () => {
     const HIDDEN_BRAND_SLUGS = new Set(["totem", "salao", "salão", "site"]);
     const filteredBrands = ((brs as Brand[]) ?? []).filter(
       (b) => !HIDDEN_BRAND_SLUGS.has((b.slug ?? "").toLowerCase()) &&
-             !HIDDEN_BRAND_SLUGS.has((b.name ?? "").toLowerCase())
+             !HIDDEN_BRAND_SLUGS.has((b.name ?? "").toLowerCase()) &&
+             !/pr[eé]\s*preparo|f[aá]brica/i.test(b.name)
     );
     setBrands(filteredBrands);
+    const fb = ((brs as Brand[]) ?? []).find((b) => /pr[eé]\s*preparo|f[aá]brica/i.test(b.name));
+    setFactoryBrandId(fb?.id ?? null);
+
+
     const map: Record<string, Set<string>> = {};
     (links ?? []).forEach((l: any) => {
       if (!map[l.recipe_id]) map[l.recipe_id] = new Set();
@@ -63,41 +70,29 @@ const Recipes = () => {
     if (!activeBrand && brands.length > 0) setActiveBrand(brands[0].id);
   }, [brands, activeBrand]);
 
-  const factoryBrandId = useMemo(
-    () => brands.find((b) => /pr[eé]\s*preparo|f[aá]brica/i.test(b.name))?.id ?? null,
-    [brands]
-  );
+
+
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return recipes.filter((r) => {
       const set = recipeBrandMap[r.id];
-      const isFactory = !!(factoryBrandId && set?.has(factoryBrandId));
-      const isFactoryTab = !!factoryBrandId && activeBrand === factoryBrandId;
-      const isFactoryScope = r.scope === "fabrica" || isFactory;
+      const linkedFactory = !!(factoryBrandId && set?.has(factoryBrandId));
+      // Fichas da fábrica têm página própria — não aparecem aqui
+      if (r.scope === "fabrica" || linkedFactory) return false;
+
+      if (activeBrand && (!set || !set.has(activeBrand))) return false;
 
       if (typeFilter === "factory") {
-        if (!isFactory) return false;
+        if (r.output_product_id) return false;
       } else if (typeFilter === "ready") {
-        // Na aba FÁBRICA, "Pronto" são fichas da fábrica sem a marca FÁBRICA.
-        // Nas demais abas, mantém o recorte da marca ativa.
-        if (isFactory) return false;
-        if (isFactoryTab) {
-          if (!isFactoryScope) return false;
-        } else if (activeBrand && set?.size && !set.has(activeBrand)) {
-          return false;
-        }
-      } else {
-        // all
-        if (isFactoryTab) {
-          if (!isFactoryScope) return false;
-        } else if (activeBrand) {
-          if (!set || !set.has(activeBrand)) return false;
-        }
+        if (!r.output_product_id) return false;
       }
       return !q || r.name.toLowerCase().includes(q);
     });
   }, [recipes, search, activeBrand, recipeBrandMap, typeFilter, factoryBrandId]);
+
+
 
   const activeBrandId = activeBrand || null;
 
