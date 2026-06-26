@@ -27,6 +27,7 @@ const Recipes = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeBrand, setActiveBrand] = useState<string>("");
+  const [typeFilter, setTypeFilter] = useState<"all" | "factory" | "ready">("all");
   const [creatingNew, setCreatingNew] = useState(false);
 
   const load = async () => {
