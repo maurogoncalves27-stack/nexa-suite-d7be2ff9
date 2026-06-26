@@ -352,6 +352,45 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
                 </span>
               </div>
               <div className="flex items-center gap-1 flex-wrap">
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const factory = brands.find((b) => isFactoryBrandName(b.name));
+                    if (!factory) {
+                      toast.error("Marca 'PRÉ PREPARO/FÁBRICA' não encontrada");
+                      return;
+                    }
+                    setSelectedBrands((prev) => {
+                      const n = new Set(prev);
+                      if (n.has(factory.id)) n.delete(factory.id);
+                      else n.add(factory.id);
+                      return n;
+                    });
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      (e.currentTarget as HTMLElement).click();
+                    }
+                  }}
+                  className="inline-flex"
+                  title="Clique para alternar Pré-preparo ↔ Pronto"
+                >
+                  <Badge
+                    className="text-[10px] px-1.5 py-0 border-transparent cursor-pointer hover:opacity-80"
+                    style={
+                      isFactory
+                        ? { backgroundColor: "#22c55e", color: "#ffffff" }
+                        : { backgroundColor: "#2563eb", color: "#ffffff" }
+                    }
+                  >
+                    {isFactory ? "Pré-preparo" : "Pronto"}
+                  </Badge>
+                </span>
                 {brandLabels.slice(0, 3).map((b) => {
                   const c = colorForBrand(b);
                   return (
