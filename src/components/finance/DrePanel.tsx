@@ -205,11 +205,9 @@ export default function DrePanel() {
         supabase
           .from("monthly_revenue")
           .select("year,month,day,gross_revenue")
-          .or(
-            `and(year.gt.${Number(periodStart.slice(0,4))}),` +
-            `and(year.eq.${Number(periodStart.slice(0,4))},month.gte.${Number(periodStart.slice(5,7))})`
-          )
-          .lte("year", Number(periodEnd.slice(0,4))),
+          .gte("year", Number(periodStart.slice(0, 4)))
+          .lte("year", Number(periodEnd.slice(0, 4))),
+
         supabase
           .from("accounts_payable")
           .select("id,paid_at,amount,category_id,status")
