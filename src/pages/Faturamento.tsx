@@ -153,7 +153,10 @@ export default function Faturamento() {
       // Fonte: monthly_revenue (alimentada por daily_revenue via trigger).
       // Busca paginada por ano em paralelo para não deixar a tela presa no skeleton.
       const currentYear = new Date().getFullYear();
-      const targetYears = [currentYear, currentYear - 1, currentYear - 2];
+      // Inclui de 2023 (primeiro ano com dados consolidados mensais) até o ano atual
+      const EARLIEST_YEAR = 2023;
+      const targetYears: number[] = [];
+      for (let y = currentYear; y >= EARLIEST_YEAR; y--) targetYears.push(y);
       const COLS = "id,year,month,store_id,brand_id,gross_revenue,is_consolidated";
       const step = 1000;
 
