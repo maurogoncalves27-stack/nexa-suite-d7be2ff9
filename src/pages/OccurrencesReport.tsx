@@ -337,7 +337,7 @@ export default function OccurrencesReport() {
             Visualização dos alertas registrados pelos colaboradores nos últimos {days} dias. Use os filtros para identificar padrões e evitar reincidências.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 ml-auto">
           {!readOnly && (
             <Button size="sm" onClick={runAiAnalysis} disabled={aiLoading}>
               {aiLoading ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1.5" />}
