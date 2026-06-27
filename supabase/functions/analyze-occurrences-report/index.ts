@@ -84,6 +84,30 @@ serve(async (req) => {
       console.warn("Falha ao buscar faturamento", e);
     }
 
+    // Modo "ranking": só comparativo, sem IA
+    if (agg.mode === "ranking") {
+      const split = new Map<string, { ifood: number; interno: number }>();
+      (agg.por_loja_split || []).forEach((s) => split.set(s.name, { ifood: s.ifood, interno: s.interno }));
+      const ranking = revenueByStore.map((r) => {
+        const sp = split.get(r.name) || { ifood: 0, interno: r.occurrences };
+        const per_10k_interno = r.revenue > 0 ? Number(((sp.interno / r.revenue) * 10000).toFixed(2)) : 0;
+        const per_10k_ifood = r.revenue > 0 ? Number(((sp.ifood / r.revenue) * 10000).toFixed(2)) : 0;
+        return {
+          name: r.name,
+          revenue: r.revenue,
+          occurrences: r.occurrences,
+          occ_ifood: sp.ifood,
+          occ_interno: sp.interno,
+          per_10k_total: r.per_10k,
+          per_10k_interno,
+          per_10k_ifood,
+        };
+      }).sort((a, b) => b.per_10k_interno - a.per_10k_interno);
+      return new Response(JSON.stringify({ ranking }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Split iFood/entregador (LOGISTICA + Extravio pelo entregador) vs interno
     const isIfood = (cat?: string) => (cat || "").toUpperCase() === "LOGISTICA";
     const total_ifood_logistica = agg.por_categoria
