@@ -126,9 +126,16 @@ export default function BankReconciliationPanel() {
   const [periodPreset, setPeriodPreset] = useState<"all" | "current" | "previous" | "custom">("all");
   const [periodFrom, setPeriodFrom] = useState<string>("");
   const [periodTo, setPeriodTo] = useState<string>("");
-  // Lembra a data da última transação conciliada para restaurar a posição
-  // após o reload (evita "voltar para o topo" descrito pelo usuário).
-  const focusDateRef = useRef<string | null>(null);
+  // Preserva a posição de scroll ao recarregar a lista após um save
+  // (evita "voltar pro topo" / sensação de reload).
+  const reloadKeepingScroll = useCallback(async (fn: () => Promise<void>) => {
+    const y = window.scrollY;
+    await fn();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => window.scrollTo({ top: y, behavior: "auto" }));
+    });
+  }, []);
+
   // Rateio (centro de custo = loja)
   const [allocStores, setAllocStores] = useState<StoreLite[]>([]);
   const [allocTarget, setAllocTarget] = useState<BankTx | null>(null);
