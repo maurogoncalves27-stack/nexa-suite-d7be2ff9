@@ -742,6 +742,33 @@ export default function OccurrencesReport() {
                 </Card>
               )}
 
+              {aiResult.impacto_ifood && (
+                <Card className="border-info/40 bg-info/5">
+                  <CardContent className="p-3">
+                    <div className="flex items-start gap-2">
+                      <Truck className="h-4 w-4 text-info mt-0.5 shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <div className="text-sm font-semibold">
+                          Impacto do iFood/entregador
+                          <Badge variant="outline" className="ml-2">
+                            {aiResult.impacto_ifood.percentual}% · {aiResult.impacto_ifood.total} ocorrências
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{aiResult.impacto_ifood.observacao}</p>
+                        {aiResult.impacto_ifood.acoes_mitigacao && aiResult.impacto_ifood.acoes_mitigacao.length > 0 && (
+                          <div>
+                            <div className="text-xs font-medium mb-1">O que dá pra mitigar do nosso lado:</div>
+                            <ul className="text-xs space-y-0.5 list-disc list-inside text-muted-foreground">
+                              {aiResult.impacto_ifood.acoes_mitigacao.map((a: string, i: number) => <li key={i}>{a}</li>)}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {aiResult.causas_principais && aiResult.causas_principais.length > 0 && (
                 <div>
                   <h3 className="text-sm font-semibold mb-2">Causas principais</h3>
@@ -772,7 +799,7 @@ export default function OccurrencesReport() {
                 <div>
                   <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
                     <Lightbulb className="h-4 w-4 text-primary" />
-                    Sugestões para evitar reincidência
+                    Ações internas (o que dá pra resolver)
                   </h3>
                   <div className="space-y-2">
                     {aiResult.sugestoes.map((s, i) => (
