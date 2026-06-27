@@ -412,30 +412,30 @@ export default function OccurrencesReport() {
 
   return (
     <div className="container mx-auto px-3 py-4 md:py-6 max-w-6xl space-y-4">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-            <BarChart3 className="h-6 w-6 md:h-7 md:w-7 text-primary" />
-            Relatório de Ocorrências
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Visualização dos alertas registrados pelos colaboradores nos últimos {days} dias. Use os filtros para identificar padrões e evitar reincidências.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 ml-auto">
-          {!readOnly && (
-            <Button size="sm" onClick={() => runAiAnalysis("geral")} disabled={aiLoading}>
-              {aiLoading ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1.5" />}
-              Análise IA
-            </Button>
-          )}
-          <Button asChild variant="outline" size="sm" data-partner-allow={readOnly ? "true" : undefined}>
-            <Link to={readOnly ? "/painel-socio" : "/ocorrencias"}>
-              <ArrowLeft className="h-4 w-4 mr-1.5" /> Voltar
-            </Link>
+      <div className="flex items-center justify-between gap-2">
+        <Button asChild variant="outline" size="sm" data-partner-allow={readOnly ? "true" : undefined}>
+          <Link to={readOnly ? "/painel-socio" : "/ocorrencias"}>
+            <ArrowLeft className="h-4 w-4 mr-1.5" /> Voltar
+          </Link>
+        </Button>
+        {!readOnly && (
+          <Button size="sm" onClick={() => runAiAnalysis("geral")} disabled={aiLoading}>
+            {aiLoading ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1.5" />}
+            Análise IA
           </Button>
-        </div>
+        )}
       </div>
+
+      <div>
+        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+          <BarChart3 className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+          Relatório de Ocorrências
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Visualização dos alertas registrados pelos colaboradores nos últimos {days} dias. Use os filtros para identificar padrões e evitar reincidências.
+        </p>
+      </div>
+
 
 
       {/* Filtros */}
