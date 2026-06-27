@@ -93,8 +93,22 @@ export default function OccurrencesReport() {
       .select("id, occurrence_id, created_by, store_id, note, subcategory, created_at, occurrences(occurrence, category, order_correct), stores(name)")
       .is("store_id", null)
       .order("created_at", { ascending: false });
-    setOrphanAlerts(((data ?? []) as unknown) as AlertRow[]);
+    const rows = ((data ?? []) as unknown) as AlertRow[];
+    setOrphanAlerts(rows);
+    const ids = Array.from(new Set(rows.map((r) => r.created_by)));
+    if (ids.length > 0) {
+      const { data: emps } = await supabase
+        .from("employees")
+        .select("user_id, full_name")
+        .in("user_id", ids);
+      setReporterNames((prev) => {
+        const next = { ...prev };
+        (emps ?? []).forEach((e) => { if (e.user_id) next[e.user_id] = e.full_name ?? "—"; });
+        return next;
+      });
+    }
   };
+
 
   const loadRealStores = async () => {
     const { data } = await supabase
