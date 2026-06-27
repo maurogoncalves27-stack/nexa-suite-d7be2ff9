@@ -805,7 +805,7 @@ export default function OccurrencesReport() {
 
           {/* Barra de escopo */}
           <div className="flex flex-wrap gap-1.5 pb-2 border-b">
-            {[{ key: "geral", label: "Geral" }, ...STORE_TABS.map((s) => ({ key: s, label: s })), { key: "comparativo", label: "Comparativo" }].map((t) => (
+            {[{ key: "geral", label: "Geral" }, ...STORE_TABS, { key: "comparativo", label: "Comparativo" }].map((t) => (
               <Button
                 key={t.key}
                 size="sm"
