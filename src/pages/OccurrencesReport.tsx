@@ -246,8 +246,20 @@ export default function OccurrencesReport() {
             ))}
           </SelectContent>
         </Select>
-        {(categoryFilter !== "all" || storeFilter !== "all") && (
-          <Button variant="ghost" size="sm" onClick={() => { setCategoryFilter("all"); setStoreFilter("all"); }}>
+        <Select value={subcategoryFilter} onValueChange={setSubcategoryFilter}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Subcategoria" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as subcategorias</SelectItem>
+            <SelectItem value="__none__">Sem subcategoria</SelectItem>
+            {subcategoryOptions.map((s) => (
+              <SelectItem key={s} value={s}>{s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {(categoryFilter !== "all" || storeFilter !== "all" || subcategoryFilter !== "all") && (
+          <Button variant="ghost" size="sm" onClick={() => { setCategoryFilter("all"); setStoreFilter("all"); setSubcategoryFilter("all"); }}>
             Limpar filtros
           </Button>
         )}
