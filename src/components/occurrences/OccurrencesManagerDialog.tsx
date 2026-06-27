@@ -269,6 +269,21 @@ export default function OccurrencesManagerDialog({ open, onOpenChange, onChanged
                 <Label>Ocorrência</Label>
                 <Input value={form.occurrence} onChange={(e) => setForm({ ...form, occurrence: e.target.value })} />
               </div>
+              <div>
+                <Label>Categoria (causa-raiz)</Label>
+                <Input
+                  list="occ-category-presets"
+                  placeholder="Ex: COZINHA, MONTAGEM, LOGISTICA…"
+                  value={form.category ?? ""}
+                  onChange={(e) => setForm({ ...form, category: e.target.value.toUpperCase() })}
+                />
+                <datalist id="occ-category-presets">
+                  {CATEGORY_PRESETS.map((c) => <option key={c} value={c} />)}
+                </datalist>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Use causa-raiz, não desfecho. Sugeridas: {CATEGORY_PRESETS.join(", ")}.
+                </p>
+              </div>
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-2">
                   <Switch checked={form.order_correct} onCheckedChange={(v) => setForm({ ...form, order_correct: v })} />
@@ -277,6 +292,28 @@ export default function OccurrencesManagerDialog({ open, onOpenChange, onChanged
                 <div className="flex items-center gap-2">
                   <Switch checked={form.is_active ?? true} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
                   <Label className="text-sm">Ativo</Label>
+                </div>
+              </div>
+              <div className="rounded-md border p-3 space-y-2 bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={!!form.requires_subcategory}
+                    onCheckedChange={(v) => setForm({ ...form, requires_subcategory: v })}
+                  />
+                  <Label className="text-sm font-semibold">Exigir subcategoria ao registrar</Label>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Quebra ocorrências genéricas (ex.: "qualidade do pedido") em causas específicas (temperatura, sabor, objeto estranho…).
+                </p>
+                <div>
+                  <Label className="text-xs">Opções de subcategoria (uma por linha)</Label>
+                  <Textarea
+                    rows={4}
+                    placeholder={"Temperatura\nSabor\nApresentação\nObjeto estranho"}
+                    value={form.subcategory_options_text ?? ""}
+                    onChange={(e) => setForm({ ...form, subcategory_options_text: e.target.value })}
+                    className="font-mono text-xs"
+                  />
                 </div>
               </div>
               <div>
