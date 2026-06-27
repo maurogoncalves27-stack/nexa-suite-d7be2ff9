@@ -348,7 +348,7 @@ export default function Occurrences() {
     }
   };
 
-  const openRegister = () => {
+  const openRegister = async () => {
     if (!user) {
       toast({ title: "Faça login para registrar", variant: "destructive" });
       return;
@@ -359,6 +359,15 @@ export default function Occurrences() {
     }
     setAlertOrderNumber((prev) => orderNumberInput.trim() || prev);
     setAlertOrderValue("");
+    setAlertSubcategory("");
+    // Carrega meta do catálogo p/ saber se exige subcategoria
+    const { data: cat } = await supabase
+      .from("occurrences")
+      .select("requires_subcategory, subcategory_options")
+      .eq("id", chosenOccId)
+      .maybeSingle<{ requires_subcategory: boolean | null; subcategory_options: string[] | null }>();
+    setAlertRequiresSub(!!cat?.requires_subcategory);
+    setAlertSubcategoryOptions(cat?.subcategory_options ?? []);
     setAlertOpen(true);
   };
 
