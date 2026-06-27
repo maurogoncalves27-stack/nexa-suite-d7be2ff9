@@ -47,6 +47,10 @@ export default function OccurrencesReport() {
   const [storeFilter, setStoreFilter] = useState<string>("all");
   const [subcategoryFilter, setSubcategoryFilter] = useState<string>("all");
   const [reporterNames, setReporterNames] = useState<Record<string, string>>({});
+  const [orphanAlerts, setOrphanAlerts] = useState<AlertRow[]>([]);
+  const [realStores, setRealStores] = useState<{ id: string; name: string }[]>([]);
+  const [assigning, setAssigning] = useState<string | null>(null);
+
 
   const load = async () => {
     setLoading(true);
