@@ -381,11 +381,11 @@ export default function Occurrences() {
     try {
       const { data: emp } = await supabase
         .from("employees")
-        .select("store_id, allocated_store_id, full_name, stores:store_id(name, is_virtual), allocated_store:allocated_store_id(id, name, is_virtual)")
+        .select("allocated_store_id, full_name, allocated_store:allocated_store_id(name)")
         .eq("user_id", user.id)
         .maybeSingle();
 
-      // Carrega lojas reais (usadas pelo GPS e pela regra ESCRITÓRIO→ASA SUL)
+      // Carrega lojas reais (para o GPS e validação de IDs)
       const { data: realStoresData } = await supabase
         .from("stores")
         .select("id, name, latitude, longitude, geofence_radius_m")
@@ -423,35 +423,14 @@ export default function Occurrences() {
         // ignora erros de GPS
       }
 
-      // 2) allocated_store_id se for loja real
+      // 2) allocated_store_id (loja real)
       if (!detectedStoreId && isRealStoreId(emp?.allocated_store_id)) {
         const s = realStores.find((r) => r.id === emp!.allocated_store_id)!;
         detectedStoreId = s.id;
         detectedStoreName = s.name;
       }
 
-      // 3) store_id se for loja real
-      if (!detectedStoreId && isRealStoreId(emp?.store_id)) {
-        const s = realStores.find((r) => r.id === emp!.store_id)!;
-        detectedStoreId = s.id;
-        detectedStoreName = s.name;
-      }
-
-      // 4) Regra: ESCRITÓRIO → ASA SUL
-      if (!detectedStoreId) {
-        const empStoreName =
-          (emp as { stores?: { name?: string } } | null)?.stores?.name ??
-          (emp as { allocated_store?: { name?: string } } | null)?.allocated_store?.name ?? "";
-        if (empStoreName.toUpperCase().includes("ESCRIT")) {
-          const asaSul = realStores.find((s) => s.name.toUpperCase().includes("ASA SUL"));
-          if (asaSul) {
-            detectedStoreId = asaSul.id;
-            detectedStoreName = asaSul.name;
-          }
-        }
-      }
-
-      // 5) Login de terminal de loja (store_terminal_users) — cobre logins compartilhados sem employee
+      // 3) store_terminal_users (logins compartilhados de terminal de loja)
       if (!detectedStoreId) {
         const { data: terminal } = await supabase
           .from("store_terminal_users")
@@ -464,6 +443,8 @@ export default function Occurrences() {
           detectedStoreName = (terminal as { stores?: { name?: string } } | null)?.stores?.name ?? null;
         }
       }
+
+
 
 
 
