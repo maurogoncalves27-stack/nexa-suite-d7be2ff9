@@ -276,7 +276,7 @@ export default function NotificationsBell() {
                   <div
                     key={a.id}
                     className={cn(
-                      "relative rounded-md border p-2.5 pr-10",
+                      "relative rounded-md border p-2.5 pr-16",
                       cfg.cls,
                     )}
                   >
@@ -293,13 +293,24 @@ export default function NotificationsBell() {
                         variant="ghost"
                         size="icon"
                         onClick={() => speak(a)}
-                        className="absolute top-1.5 right-1.5 h-7 w-7"
+                        className="absolute top-1.5 right-9 h-7 w-7"
                         aria-label={isSpeaking ? "Parar leitura" : "Ouvir aviso em voz alta"}
                         title={isSpeaking ? "Parar leitura" : "Ouvir em voz alta"}
                       >
                         {isSpeaking ? <Square className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
                       </Button>
                     )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => dismissAnnouncement(a.id)}
+                      className="absolute top-1.5 right-1.5 h-7 w-7"
+                      aria-label="Dispensar aviso"
+                      title="Dispensar aviso"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 );
               })}
