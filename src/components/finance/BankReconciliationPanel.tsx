@@ -503,7 +503,8 @@ export default function BankReconciliationPanel() {
       title: "Conciliação automática concluída",
       description: `${ok} aplicadas${fail > 0 ? `, ${fail} falharam` : ""}.`,
     });
-    await loadData();
+    await reloadKeepingScroll(loadData);
+
   };
 
   const suggestionsCount = useMemo(
