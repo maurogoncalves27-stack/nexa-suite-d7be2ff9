@@ -373,6 +373,10 @@ export default function Occurrences() {
 
   const sendRegister = async () => {
     if (!chosenOccId || !user || !analysis) return;
+    if (alertRequiresSub && !alertSubcategory.trim()) {
+      toast({ title: "Selecione a subcategoria", description: "Esta ocorrência exige a causa específica.", variant: "destructive" });
+      return;
+    }
     setAlertingId(chosenOccId);
     try {
       const { data: emp } = await supabase
@@ -422,8 +426,10 @@ export default function Occurrences() {
         setAlertingId(null);
         return;
       }
+      const subcat = alertSubcategory.trim() || null;
       const note = [
         `Relato: ${relato.trim()}`,
+        subcat ? `Subcategoria: ${subcat}` : null,
         analysis.diagnostico ? `Diagnóstico IA: ${analysis.diagnostico}` : null,
         analysis.causa_raiz ? `Causa raiz: ${analysis.causa_raiz}` : null,
       ].filter(Boolean).join("\n");
@@ -435,7 +441,8 @@ export default function Occurrences() {
         note,
         order_number: orderNumber,
         order_value: orderValue,
-      });
+        subcategory: subcat,
+      } as never);
       if (insErr) throw insErr;
 
       const chosen = [analysis.ocorrencia_principal, ...analysis.alternativas].find((o) => o?.id === chosenOccId);
