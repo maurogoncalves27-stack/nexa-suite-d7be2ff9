@@ -1026,8 +1026,34 @@ export default function Occurrences() {
           </DialogHeader>
           <div className="space-y-3 py-2">
             <p className="text-xs text-muted-foreground">
-              Campos opcionais. Ao registrar, os gestores serão notificados.
+              Ao registrar, os gestores serão notificados.
             </p>
+            {alertRequiresSub && alertSubcategoryOptions.length > 0 && (
+              <div className="space-y-1.5 rounded-md border border-primary/40 bg-primary/5 p-3">
+                <Label className="text-sm font-semibold">
+                  Causa específica <span className="text-destructive">*</span>
+                </Label>
+                <p className="text-[11px] text-muted-foreground -mt-1">
+                  Selecione a subcategoria para um diagnóstico melhor no relatório.
+                </p>
+                <div className="grid grid-cols-2 gap-1.5 pt-1">
+                  {alertSubcategoryOptions.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setAlertSubcategory(opt)}
+                      className={`text-sm px-3 py-2 rounded-md border text-left transition-colors ${
+                        alertSubcategory === opt
+                          ? "border-primary bg-primary text-primary-foreground font-semibold"
+                          : "border-border hover:border-primary/50 hover:bg-accent"
+                      }`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="alert-order-number">Número do pedido</Label>
               <Input id="alert-order-number" placeholder="Ex: 1234" value={alertOrderNumber} onChange={(e) => setAlertOrderNumber(e.target.value)} />
