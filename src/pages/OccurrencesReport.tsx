@@ -87,10 +87,50 @@ export default function OccurrencesReport() {
     setLoading(false);
   };
 
+  const loadOrphans = async () => {
+    const { data } = await supabase
+      .from("occurrence_alerts")
+      .select("id, occurrence_id, created_by, store_id, note, subcategory, created_at, occurrences(occurrence, category, order_correct), stores(name)")
+      .is("store_id", null)
+      .order("created_at", { ascending: false });
+    setOrphanAlerts(((data ?? []) as unknown) as AlertRow[]);
+  };
+
+  const loadRealStores = async () => {
+    const { data } = await supabase
+      .from("stores")
+      .select("id, name")
+      .eq("is_active", true)
+      .eq("is_virtual", false)
+      .order("name");
+    setRealStores((data ?? []) as { id: string; name: string }[]);
+  };
+
+  const assignStore = async (alertId: string, storeId: string) => {
+    setAssigning(alertId);
+    const { error } = await supabase
+      .from("occurrence_alerts")
+      .update({ store_id: storeId })
+      .eq("id", alertId);
+    setAssigning(null);
+    if (error) {
+      toast({ title: "Erro ao atribuir loja", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Loja atribuída" });
+    await Promise.all([load(), loadOrphans()]);
+  };
+
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days]);
+
+  useEffect(() => {
+    loadOrphans();
+    loadRealStores();
+  }, []);
+
 
   const categoryOptions = useMemo(() => {
     const set = new Set<string>();
