@@ -100,13 +100,29 @@ export default function OccurrencesReport() {
     return Array.from(set).sort();
   }, [alerts]);
 
+  const subcategoryOptions = useMemo(() => {
+    const set = new Set<string>();
+    alerts.forEach((a) => {
+      if (categoryFilter === "all" || (a.occurrences?.category ?? "Sem categoria") === categoryFilter) {
+        if (a.subcategory && a.subcategory.trim()) set.add(a.subcategory.trim());
+      }
+    });
+    return Array.from(set).sort();
+  }, [alerts, categoryFilter]);
+
   const filtered = useMemo(() => {
     return alerts.filter((a) => {
       if (categoryFilter !== "all" && (a.occurrences?.category ?? "Sem categoria") !== categoryFilter) return false;
       if (storeFilter !== "all" && (a.stores?.name ?? "Sem loja") !== storeFilter) return false;
+      if (subcategoryFilter !== "all") {
+        const sc = (a.subcategory ?? "").trim();
+        if (subcategoryFilter === "__none__") {
+          if (sc) return false;
+        } else if (sc !== subcategoryFilter) return false;
+      }
       return true;
     });
-  }, [alerts, categoryFilter, storeFilter]);
+  }, [alerts, categoryFilter, storeFilter, subcategoryFilter]);
 
   const totalCount = filtered.length;
 
@@ -121,10 +137,26 @@ export default function OccurrencesReport() {
       .sort((a, b) => b.count - a.count);
   }, [filtered]);
 
+  const bySubcategory = useMemo(() => {
+    const map = new Map<string, number>();
+    filtered.forEach((a) => {
+      const sc = (a.subcategory ?? "").trim();
+      if (!sc) return;
+      const key = `${a.occurrences?.category ?? "—"} · ${sc}`;
+      map.set(key, (map.get(key) ?? 0) + 1);
+    });
+    return Array.from(map.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 12);
+  }, [filtered]);
+
   const byOccurrence = useMemo(() => {
     const map = new Map<string, number>();
     filtered.forEach((a) => {
-      const key = a.occurrences?.occurrence ?? "—";
+      const base = a.occurrences?.occurrence ?? "—";
+      const sc = (a.subcategory ?? "").trim();
+      const key = sc ? `${base} — ${sc}` : base;
       map.set(key, (map.get(key) ?? 0) + 1);
     });
     return Array.from(map.entries())
