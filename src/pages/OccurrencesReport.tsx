@@ -51,6 +51,15 @@ export default function OccurrencesReport() {
   const [orphanAlerts, setOrphanAlerts] = useState<AlertRow[]>([]);
   const [realStores, setRealStores] = useState<{ id: string; name: string }[]>([]);
   const [assigning, setAssigning] = useState<string | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState<{
+    resumo?: string;
+    loja_critica?: { nome: string; total: number; observacao: string };
+    causas_principais?: { causa: string; ocorrencias: number; impacto: string }[];
+    padroes?: string[];
+    sugestoes?: { acao: string; responsavel: string; prazo: string; detalhe: string }[];
+  } | null>(null);
 
 
   const load = async () => {
