@@ -2,6 +2,7 @@
 // recebe agregações (top ocorrências, lojas, subcategorias, tendência) e devolve
 // diagnóstico executivo com causas e sugestões de prevenção.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { requireRole } from "../_shared/requireRole.ts";
 
 const corsHeaders = {
