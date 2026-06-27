@@ -381,24 +381,29 @@ export default function Occurrences() {
     try {
       const { data: emp } = await supabase
         .from("employees")
-        .select("store_id, full_name, stores(name)")
+        .select("store_id, allocated_store_id, full_name, stores:store_id(name, is_virtual), allocated_store:allocated_store_id(id, name, is_virtual)")
         .eq("user_id", user.id)
         .maybeSingle();
 
-      // Tenta detectar loja pela localização atual (fallback: loja vinculada ao colaborador)
-      let detectedStoreId: string | null = emp?.store_id ?? null;
-      let detectedStoreName: string | null =
-        (emp as { stores?: { name?: string } } | null)?.stores?.name ?? null;
+      // Carrega lojas reais (usadas pelo GPS e pela regra ESCRITÓRIO→ASA SUL)
+      const { data: realStoresData } = await supabase
+        .from("stores")
+        .select("id, name, latitude, longitude, geofence_radius_m")
+        .eq("is_active", true)
+        .eq("is_virtual", false);
+      const realStores = realStoresData ?? [];
+      const isRealStoreId = (id?: string | null) =>
+        !!id && realStores.some((s) => s.id === id);
+
+      let detectedStoreId: string | null = null;
+      let detectedStoreName: string | null = null;
+
+      // 1) GPS dentro do raio de uma loja real
       try {
         const pos = await getCurrentPosition();
         if (pos?.coords) {
-          const { data: realStores } = await supabase
-            .from("stores")
-            .select("id, name, latitude, longitude, geofence_radius_m")
-            .eq("is_active", true)
-            .eq("is_virtual", false);
           let best: { id: string; name: string; dist: number; radius: number } | null = null;
-          for (const s of realStores ?? []) {
+          for (const s of realStores) {
             if (s.latitude == null || s.longitude == null) continue;
             const d = haversineDistanceMeters(
               pos.coords.latitude,
@@ -415,8 +420,37 @@ export default function Occurrences() {
           }
         }
       } catch {
-        // ignora erros de GPS — usa fallback
+        // ignora erros de GPS
       }
+
+      // 2) allocated_store_id se for loja real
+      if (!detectedStoreId && isRealStoreId(emp?.allocated_store_id)) {
+        const s = realStores.find((r) => r.id === emp!.allocated_store_id)!;
+        detectedStoreId = s.id;
+        detectedStoreName = s.name;
+      }
+
+      // 3) store_id se for loja real
+      if (!detectedStoreId && isRealStoreId(emp?.store_id)) {
+        const s = realStores.find((r) => r.id === emp!.store_id)!;
+        detectedStoreId = s.id;
+        detectedStoreName = s.name;
+      }
+
+      // 4) Regra: ESCRITÓRIO → ASA SUL
+      if (!detectedStoreId) {
+        const empStoreName =
+          (emp as { stores?: { name?: string } } | null)?.stores?.name ??
+          (emp as { allocated_store?: { name?: string } } | null)?.allocated_store?.name ?? "";
+        if (empStoreName.toUpperCase().includes("ESCRIT")) {
+          const asaSul = realStores.find((s) => s.name.toUpperCase().includes("ASA SUL"));
+          if (asaSul) {
+            detectedStoreId = asaSul.id;
+            detectedStoreName = asaSul.name;
+          }
+        }
+      }
+
 
       const orderNumber = alertOrderNumber.trim() || null;
       const orderValueRaw = alertOrderValue.trim().replace(",", ".");
