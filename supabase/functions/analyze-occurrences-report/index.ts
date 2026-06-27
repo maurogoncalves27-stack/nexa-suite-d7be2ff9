@@ -41,6 +41,47 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurado");
 
+    // Buscar faturamento por loja no período (monthly_revenue) para normalizar
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+    const now = new Date();
+    const start = new Date(now.getTime() - agg.periodo_dias * 24 * 60 * 60 * 1000);
+    const months = new Set<string>();
+    const cur = new Date(start.getFullYear(), start.getMonth(), 1);
+    while (cur <= now) {
+      months.add(`${cur.getFullYear()}-${cur.getMonth() + 1}`);
+      cur.setMonth(cur.getMonth() + 1);
+    }
+    const revenueByStore: { name: string; revenue: number; occurrences: number; per_10k: number }[] = [];
+    try {
+      const { data: stores } = await supabase.from("stores").select("id,name").eq("is_virtual", false);
+      const { data: rev } = await supabase
+        .from("monthly_revenue")
+        .select("store_id,year,month,gross_revenue")
+        .gte("year", start.getFullYear())
+        .lte("year", now.getFullYear());
+      const totals = new Map<string, number>();
+      (rev || []).forEach((r: any) => {
+        if (!months.has(`${r.year}-${r.month}`)) return;
+        totals.set(r.store_id, (totals.get(r.store_id) || 0) + Number(r.gross_revenue || 0));
+      });
+      (stores || []).forEach((s: any) => {
+        const occ = agg.por_loja.find((l) => l.name === s.name)?.count || 0;
+        const fat = totals.get(s.id) || 0;
+        revenueByStore.push({
+          name: s.name,
+          revenue: Math.round(fat),
+          occurrences: occ,
+          per_10k: fat > 0 ? Number(((occ / fat) * 10000).toFixed(2)) : 0,
+        });
+      });
+      revenueByStore.sort((a, b) => b.per_10k - a.per_10k);
+    } catch (e) {
+      console.warn("Falha ao buscar faturamento", e);
+    }
+
     const systemPrompt = `Você é um analista operacional sênior da rede de restaurantes Aquela Parme (delivery iFood, 4 lojas: ASA SUL, ASA NORTE, ÁGUAS CLARAS, LAGO SUL).
 Sua função: ler agregações de ocorrências e devolver um diagnóstico executivo curto, direto e acionável.
 
@@ -50,14 +91,16 @@ REGRAS:
 3. Seja específico: cite a loja, a ocorrência ou a subcategoria exata quando relevante.
 4. Sugestões precisam ser práticas e implementáveis numa loja de delivery (treinamento, checklist, escala, processo, equipamento).
 5. NÃO sugira soluções genéricas tipo "melhorar processos" — diga exatamente o quê.
-6. Se o volume for muito baixo (total < 5), avise que a amostra é pequena e evite generalizar.`;
+6. Se o volume for muito baixo (total < 5), avise que a amostra é pequena e evite generalizar.
+7. CRÍTICO: SEMPRE normalize ocorrências pelo faturamento da loja. A loja "crítica" NÃO é a que tem mais ocorrências em volume absoluto, e sim a com maior ÍNDICE (ocorrências por R$10.000 de faturamento — campo "per_10k"). Loja que vende muito tende a ter mais ocorrências em volume — isso é esperado. Cite no resumo o índice da loja crítica e compare com as demais.`;
 
     const userPrompt = `Período: últimos ${agg.periodo_dias} dias
 Total de ocorrências no período (já filtradas): ${agg.total}
 Filtros ativos: ${JSON.stringify(agg.filtros)}
 
 POR CATEGORIA (causa-raiz): ${JSON.stringify(agg.por_categoria)}
-POR LOJA: ${JSON.stringify(agg.por_loja)}
+POR LOJA (volume absoluto): ${JSON.stringify(agg.por_loja)}
+FATURAMENTO E ÍNDICE POR LOJA no período (use ISTO para escolher a loja crítica): ${JSON.stringify(revenueByStore)}
 POR SUBCATEGORIA: ${JSON.stringify(agg.por_subcategoria)}
 TOP OCORRÊNCIAS: ${JSON.stringify(agg.top_ocorrencias)}
 RECORRÊNCIAS (mesma ocorrência+subcategoria+loja repetida): ${JSON.stringify(agg.recorrencias)}
