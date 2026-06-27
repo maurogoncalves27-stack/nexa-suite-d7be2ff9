@@ -191,6 +191,30 @@ export default function OccurrencesReport() {
     }));
   }, [filtered, days]);
 
+  // Recorrências: combinações de (ocorrência + subcategoria + loja) que se repetem.
+  // Mostra apenas combinações com 2+ alertas no período, ordenadas pelas mais frequentes.
+  const recurrences = useMemo(() => {
+    type Key = string;
+    const map = new Map<Key, { occurrence: string; subcategory: string; store: string; count: number; lastAt: string }>();
+    filtered.forEach((a) => {
+      const occ = a.occurrences?.occurrence ?? "—";
+      const sub = (a.subcategory ?? "").trim() || "—";
+      const store = a.stores?.name ?? "Sem loja";
+      const key = `${occ}|${sub}|${store}`;
+      const cur = map.get(key);
+      if (cur) {
+        cur.count += 1;
+        if (a.created_at > cur.lastAt) cur.lastAt = a.created_at;
+      } else {
+        map.set(key, { occurrence: occ, subcategory: sub, store, count: 1, lastAt: a.created_at });
+      }
+    });
+    return Array.from(map.values())
+      .filter((r) => r.count >= 2)
+      .sort((a, b) => b.count - a.count || (b.lastAt > a.lastAt ? 1 : -1))
+      .slice(0, 15);
+  }, [filtered]);
+
   return (
     <div className="container mx-auto px-3 py-4 md:py-6 max-w-6xl space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -405,6 +429,61 @@ export default function OccurrencesReport() {
               )}
             </CardContent>
           </Card>
+
+          {/* Recorrências (mesma ocorrência + subcategoria + loja repetida 2+ vezes) */}
+          <Card className="border-destructive/40">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Siren className="h-4 w-4 text-destructive" />
+                Recorrências (mesmo problema, mesma loja, 2+ vezes)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {recurrences.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma combinação se repetiu no período filtrado. 👍
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-muted-foreground border-b">
+                        <th className="py-2 pr-2">Ocorrência</th>
+                        <th className="py-2 pr-2">Causa específica</th>
+                        <th className="py-2 pr-2">Loja</th>
+                        <th className="py-2 pr-2 text-right">Vezes</th>
+                        <th className="py-2 pl-2">Última</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recurrences.map((r, i) => (
+                        <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
+                          <td className="py-2 pr-2 font-medium">{r.occurrence}</td>
+                          <td className="py-2 pr-2">
+                            {r.subcategory !== "—" ? (
+                              <Badge variant="default" className="text-[10px]">{r.subcategory}</Badge>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </td>
+                          <td className="py-2 pr-2 text-xs">{r.store}</td>
+                          <td className="py-2 pr-2 text-right">
+                            <Badge variant={r.count >= 5 ? "destructive" : "secondary"} className="text-xs">
+                              {r.count}x
+                            </Badge>
+                          </td>
+                          <td className="py-2 pl-2 text-xs text-muted-foreground whitespace-nowrap">
+                            {format(new Date(r.lastAt), "dd/MM HH:mm", { locale: ptBR })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
 
           {/* Lista detalhada */}
           <Card>
