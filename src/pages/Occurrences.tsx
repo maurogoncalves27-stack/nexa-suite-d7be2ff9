@@ -25,6 +25,8 @@ interface OccLite {
   category: string | null;
   occurrence: string;
   order_correct: boolean;
+  requires_subcategory?: boolean;
+  subcategory_options?: string[] | null;
 }
 
 interface Analysis {
