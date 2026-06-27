@@ -451,6 +451,21 @@ export default function Occurrences() {
         }
       }
 
+      // 5) Login de terminal de loja (store_terminal_users) — cobre logins compartilhados sem employee
+      if (!detectedStoreId) {
+        const { data: terminal } = await supabase
+          .from("store_terminal_users")
+          .select("store_id, stores(name)")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        const tStoreId = (terminal as { store_id?: string } | null)?.store_id ?? null;
+        if (tStoreId && isRealStoreId(tStoreId)) {
+          detectedStoreId = tStoreId;
+          detectedStoreName = (terminal as { stores?: { name?: string } } | null)?.stores?.name ?? null;
+        }
+      }
+
+
 
       const orderNumber = alertOrderNumber.trim() || null;
       const orderValueRaw = alertOrderValue.trim().replace(",", ".");
