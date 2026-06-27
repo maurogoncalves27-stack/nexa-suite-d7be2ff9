@@ -47,6 +47,10 @@ export default function OccurrencesReport() {
   const [storeFilter, setStoreFilter] = useState<string>("all");
   const [subcategoryFilter, setSubcategoryFilter] = useState<string>("all");
   const [reporterNames, setReporterNames] = useState<Record<string, string>>({});
+  const [orphanAlerts, setOrphanAlerts] = useState<AlertRow[]>([]);
+  const [realStores, setRealStores] = useState<{ id: string; name: string }[]>([]);
+  const [assigning, setAssigning] = useState<string | null>(null);
+
 
   const load = async () => {
     setLoading(true);
@@ -83,10 +87,64 @@ export default function OccurrencesReport() {
     setLoading(false);
   };
 
+  const loadOrphans = async () => {
+    const { data } = await supabase
+      .from("occurrence_alerts")
+      .select("id, occurrence_id, created_by, store_id, note, subcategory, created_at, occurrences(occurrence, category, order_correct), stores(name)")
+      .is("store_id", null)
+      .order("created_at", { ascending: false });
+    const rows = ((data ?? []) as unknown) as AlertRow[];
+    setOrphanAlerts(rows);
+    const ids = Array.from(new Set(rows.map((r) => r.created_by)));
+    if (ids.length > 0) {
+      const { data: emps } = await supabase
+        .from("employees")
+        .select("user_id, full_name")
+        .in("user_id", ids);
+      setReporterNames((prev) => {
+        const next = { ...prev };
+        (emps ?? []).forEach((e) => { if (e.user_id) next[e.user_id] = e.full_name ?? "—"; });
+        return next;
+      });
+    }
+  };
+
+
+  const loadRealStores = async () => {
+    const { data } = await supabase
+      .from("stores")
+      .select("id, name")
+      .eq("is_active", true)
+      .eq("is_virtual", false)
+      .order("name");
+    setRealStores((data ?? []) as { id: string; name: string }[]);
+  };
+
+  const assignStore = async (alertId: string, storeId: string) => {
+    setAssigning(alertId);
+    const { error } = await supabase
+      .from("occurrence_alerts")
+      .update({ store_id: storeId })
+      .eq("id", alertId);
+    setAssigning(null);
+    if (error) {
+      toast({ title: "Erro ao atribuir loja", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Loja atribuída" });
+    await Promise.all([load(), loadOrphans()]);
+  };
+
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days]);
+
+  useEffect(() => {
+    loadOrphans();
+    loadRealStores();
+  }, []);
+
 
   const categoryOptions = useMemo(() => {
     const set = new Set<string>();
@@ -288,6 +346,59 @@ export default function OccurrencesReport() {
           </Button>
         )}
       </div>
+
+      {/* Fila de revisão: ocorrências sem loja */}
+      {!readOnly && orphanAlerts.length > 0 && (
+        <Card className="border-warning/40 bg-warning/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Siren className="h-5 w-5 text-warning" />
+              Ocorrências sem loja ({orphanAlerts.length}) — a revisar
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Registros antigos sem vínculo de loja. Atribua a unidade correta para que apareçam nos relatórios.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="max-h-80">
+              <div className="space-y-2">
+                {orphanAlerts.map((a) => (
+                  <div key={a.id} className="flex flex-col md:flex-row md:items-center gap-2 p-2 rounded-md border bg-background">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">
+                        {a.occurrences?.occurrence ?? "—"}
+                        {a.subcategory && <Badge variant="outline" className="ml-2">{a.subcategory}</Badge>}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {format(new Date(a.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                        {" • "}
+                        {reporterNames[a.created_by] ?? "Autor sem cadastro"}
+                      </div>
+                      {a.note && (
+                        <div className="text-xs text-muted-foreground line-clamp-1">{a.note}</div>
+                      )}
+                    </div>
+                    <Select
+                      disabled={assigning === a.id}
+                      onValueChange={(v) => assignStore(a.id, v)}
+                    >
+                      <SelectTrigger className="w-full md:w-[200px]">
+                        <SelectValue placeholder={assigning === a.id ? "Salvando…" : "Atribuir loja"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {realStores.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
+
 
       {loading ? (
         <div className="flex items-center gap-2 text-muted-foreground">
