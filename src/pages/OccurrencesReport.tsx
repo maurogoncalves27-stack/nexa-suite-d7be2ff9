@@ -430,6 +430,61 @@ export default function OccurrencesReport() {
             </CardContent>
           </Card>
 
+          {/* Recorrências (mesma ocorrência + subcategoria + loja repetida 2+ vezes) */}
+          <Card className="border-destructive/40">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Siren className="h-4 w-4 text-destructive" />
+                Recorrências (mesmo problema, mesma loja, 2+ vezes)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {recurrences.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma combinação se repetiu no período filtrado. 👍
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-muted-foreground border-b">
+                        <th className="py-2 pr-2">Ocorrência</th>
+                        <th className="py-2 pr-2">Causa específica</th>
+                        <th className="py-2 pr-2">Loja</th>
+                        <th className="py-2 pr-2 text-right">Vezes</th>
+                        <th className="py-2 pl-2">Última</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recurrences.map((r, i) => (
+                        <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
+                          <td className="py-2 pr-2 font-medium">{r.occurrence}</td>
+                          <td className="py-2 pr-2">
+                            {r.subcategory !== "—" ? (
+                              <Badge variant="default" className="text-[10px]">{r.subcategory}</Badge>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </td>
+                          <td className="py-2 pr-2 text-xs">{r.store}</td>
+                          <td className="py-2 pr-2 text-right">
+                            <Badge variant={r.count >= 5 ? "destructive" : "secondary"} className="text-xs">
+                              {r.count}x
+                            </Badge>
+                          </td>
+                          <td className="py-2 pl-2 text-xs text-muted-foreground whitespace-nowrap">
+                            {format(new Date(r.lastAt), "dd/MM HH:mm", { locale: ptBR })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+
           {/* Lista detalhada */}
           <Card>
             <CardHeader className="pb-2">
