@@ -456,13 +456,13 @@ export default function BankReconciliationPanel() {
       return;
     }
     toast({ title: "Conciliada", description: `${ids.length} ${isCredit ? "recebimentos" : "pagamentos"} vinculados.` });
-    focusDateRef.current = matchTarget.posted_at;
     setMatchTarget(null);
     setMatchSearch("");
     setBatchMode(false);
     setBatchSelected(new Set());
-    await loadData();
+    await reloadKeepingScroll(loadData);
   };
+
 
   const undo = async (txId: string) => {
     setSubmitting(true);
