@@ -30,6 +30,7 @@ interface AlertRow {
   created_by: string;
   store_id: string | null;
   note: string | null;
+  subcategory: string | null;
   created_at: string;
   occurrences?: { occurrence: string; category: string | null; order_correct: boolean } | null;
   stores?: { name: string | null } | null;
