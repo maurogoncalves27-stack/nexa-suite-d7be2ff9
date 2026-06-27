@@ -122,6 +122,8 @@ export default function OccurrencesManagerDialog({ open, onOpenChange, onChanged
       prevention_2: "",
       sort_order: o.sort_order ?? 0,
       is_active: o.is_active ?? true,
+      requires_subcategory: o.requires_subcategory ?? false,
+      subcategory_options_text: (o.subcategory_options ?? []).join("\n"),
     });
   };
 
@@ -137,6 +139,10 @@ export default function OccurrencesManagerDialog({ open, onOpenChange, onChanged
     }
     setSaving(true);
     const autoCode = form.code?.trim() || `OC-${Date.now().toString(36).toUpperCase()}`;
+    const subOpts = (form.subcategory_options_text ?? "")
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
     const payload = {
       code: autoCode,
       category: form.category?.trim() || null,
@@ -149,6 +155,8 @@ export default function OccurrencesManagerDialog({ open, onOpenChange, onChanged
       prevention_2: form.prevention_2?.trim() || null,
       sort_order: form.sort_order ?? 0,
       is_active: form.is_active ?? true,
+      requires_subcategory: !!form.requires_subcategory && subOpts.length > 0,
+      subcategory_options: subOpts.length > 0 ? subOpts : null,
     };
     const { error } = editingId
       ? await supabase.from("occurrences").update(payload).eq("id", editingId)
