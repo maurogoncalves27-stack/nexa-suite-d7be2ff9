@@ -11,7 +11,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useViewMode } from "@/hooks/useViewMode";
-import { ArrowLeft, BarChart3, Loader2, Siren } from "lucide-react";
+import { ArrowLeft, BarChart3, Loader2, Siren, Sparkles, Lightbulb, AlertTriangle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   ResponsiveContainer,
   BarChart,
@@ -50,6 +51,15 @@ export default function OccurrencesReport() {
   const [orphanAlerts, setOrphanAlerts] = useState<AlertRow[]>([]);
   const [realStores, setRealStores] = useState<{ id: string; name: string }[]>([]);
   const [assigning, setAssigning] = useState<string | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState<{
+    resumo?: string;
+    loja_critica?: { nome: string; total: number; observacao: string };
+    causas_principais?: { causa: string; ocorrencias: number; impacto: string }[];
+    padroes?: string[];
+    sugestoes?: { acao: string; responsavel: string; prazo: string; detalhe: string }[];
+  } | null>(null);
 
 
   const load = async () => {
@@ -273,6 +283,48 @@ export default function OccurrencesReport() {
       .slice(0, 15);
   }, [filtered]);
 
+  const runAiAnalysis = async () => {
+    if (filtered.length === 0) {
+      toast({ title: "Sem dados", description: "Não há ocorrências no período/filtros atuais.", variant: "destructive" });
+      return;
+    }
+    setAiOpen(true);
+    setAiLoading(true);
+    setAiResult(null);
+    try {
+      const payload = {
+        periodo_dias: Number(days),
+        total: filtered.length,
+        filtros: {
+          categoria: categoryFilter !== "all" ? categoryFilter : undefined,
+          loja: storeFilter !== "all" ? storeFilter : undefined,
+          subcategoria: subcategoryFilter !== "all" ? subcategoryFilter : undefined,
+        },
+        por_categoria: byCategory.map((c) => ({ name: c.category, count: c.count })),
+        por_loja: byStore.sort((a, b) => b.count - a.count),
+        por_subcategoria: bySubcategory,
+        top_ocorrencias: byOccurrence,
+        recorrencias: recurrences.map((r) => ({
+          occurrence: r.occurrence, subcategory: r.subcategory, store: r.store, count: r.count,
+        })),
+        tendencia: trend,
+      };
+      const { data, error } = await supabase.functions.invoke("analyze-occurrences-report", { body: payload });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setAiResult(data);
+    } catch (e) {
+      toast({
+        title: "Erro na análise",
+        description: e instanceof Error ? e.message : "Falha ao processar.",
+        variant: "destructive",
+      });
+      setAiOpen(false);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   return (
     <div className="container mx-auto px-3 py-4 md:py-6 max-w-6xl space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -285,12 +337,21 @@ export default function OccurrencesReport() {
             Visualização dos alertas registrados pelos colaboradores nos últimos {days} dias. Use os filtros para identificar padrões e evitar reincidências.
           </p>
         </div>
-        <Button asChild variant="outline" size="sm" data-partner-allow={readOnly ? "true" : undefined}>
-          <Link to={readOnly ? "/painel-socio" : "/ocorrencias"}>
-            <ArrowLeft className="h-4 w-4 mr-1.5" /> Voltar
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          {!readOnly && (
+            <Button size="sm" onClick={runAiAnalysis} disabled={aiLoading}>
+              {aiLoading ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1.5" />}
+              Análise IA
+            </Button>
+          )}
+          <Button asChild variant="outline" size="sm" data-partner-allow={readOnly ? "true" : undefined}>
+            <Link to={readOnly ? "/painel-socio" : "/ocorrencias"}>
+              <ArrowLeft className="h-4 w-4 mr-1.5" /> Voltar
+            </Link>
+          </Button>
+        </div>
       </div>
+
 
       {/* Filtros */}
       <div className="flex flex-wrap gap-2">
@@ -639,6 +700,106 @@ export default function OccurrencesReport() {
           </Card>
         </>
       )}
+
+      <Dialog open={aiOpen} onOpenChange={setAiOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Análise IA das ocorrências
+            </DialogTitle>
+            <DialogDescription>
+              Últimos {days} dias · {filtered.length} ocorrências analisadas
+            </DialogDescription>
+          </DialogHeader>
+
+          {aiLoading && (
+            <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" /> Analisando padrões…
+            </div>
+          )}
+
+          {!aiLoading && aiResult && (
+            <div className="space-y-4">
+              {aiResult.resumo && (
+                <div className="text-sm leading-relaxed">{aiResult.resumo}</div>
+              )}
+
+              {aiResult.loja_critica && (
+                <Card className="border-warning/40 bg-warning/5">
+                  <CardContent className="p-3">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
+                      <div className="flex-1">
+                        <div className="text-sm font-semibold">
+                          Loja crítica: {aiResult.loja_critica.nome}
+                          <Badge variant="outline" className="ml-2">{aiResult.loja_critica.total} ocorrências</Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">{aiResult.loja_critica.observacao}</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {aiResult.causas_principais && aiResult.causas_principais.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">Causas principais</h3>
+                  <div className="space-y-2">
+                    {aiResult.causas_principais.map((c, i) => (
+                      <div key={i} className="p-2 rounded-md border bg-card">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-medium">{c.causa}</span>
+                          <Badge variant="secondary">{c.ocorrencias}</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">{c.impacto}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {aiResult.padroes && aiResult.padroes.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">Padrões observados</h3>
+                  <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                    {aiResult.padroes.map((p, i) => <li key={i}>{p}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              {aiResult.sugestoes && aiResult.sugestoes.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                    <Lightbulb className="h-4 w-4 text-primary" />
+                    Sugestões para evitar reincidência
+                  </h3>
+                  <div className="space-y-2">
+                    {aiResult.sugestoes.map((s, i) => (
+                      <div key={i} className="p-2 rounded-md border bg-card">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className="text-sm font-medium">{s.acao}</span>
+                          <div className="flex gap-1">
+                            <Badge variant="outline" className="text-xs">{s.responsavel}</Badge>
+                            <Badge
+                              variant={s.prazo === "imediato" ? "destructive" : s.prazo === "esta_semana" ? "default" : "secondary"}
+                              className="text-xs"
+                            >
+                              {s.prazo === "imediato" ? "Imediato" : s.prazo === "esta_semana" ? "Esta semana" : "Este mês"}
+                            </Badge>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">{s.detalhe}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
