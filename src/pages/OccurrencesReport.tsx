@@ -333,6 +333,59 @@ export default function OccurrencesReport() {
         )}
       </div>
 
+      {/* Fila de revisão: ocorrências sem loja */}
+      {!readOnly && orphanAlerts.length > 0 && (
+        <Card className="border-warning/40 bg-warning/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Siren className="h-5 w-5 text-warning" />
+              Ocorrências sem loja ({orphanAlerts.length}) — a revisar
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Registros antigos sem vínculo de loja. Atribua a unidade correta para que apareçam nos relatórios.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="max-h-80">
+              <div className="space-y-2">
+                {orphanAlerts.map((a) => (
+                  <div key={a.id} className="flex flex-col md:flex-row md:items-center gap-2 p-2 rounded-md border bg-background">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">
+                        {a.occurrences?.occurrence ?? "—"}
+                        {a.subcategory && <Badge variant="outline" className="ml-2">{a.subcategory}</Badge>}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {format(new Date(a.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                        {" • "}
+                        {reporterNames[a.created_by] ?? "Autor sem cadastro"}
+                      </div>
+                      {a.note && (
+                        <div className="text-xs text-muted-foreground line-clamp-1">{a.note}</div>
+                      )}
+                    </div>
+                    <Select
+                      disabled={assigning === a.id}
+                      onValueChange={(v) => assignStore(a.id, v)}
+                    >
+                      <SelectTrigger className="w-full md:w-[200px]">
+                        <SelectValue placeholder={assigning === a.id ? "Salvando…" : "Atribuir loja"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {realStores.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
+
+
       {loading ? (
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Carregando…
