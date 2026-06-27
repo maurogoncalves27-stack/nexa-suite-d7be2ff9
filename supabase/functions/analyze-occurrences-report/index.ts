@@ -21,6 +21,8 @@ interface Aggregation {
   top_ocorrencias: { name: string; count: number }[];
   recorrencias: { occurrence: string; subcategory: string; store: string; count: number }[];
   tendencia: { date: string; count: number }[];
+  mode?: "analysis" | "ranking";
+  por_loja_split?: { name: string; ifood: number; interno: number }[];
 }
 
 serve(async (req) => {
