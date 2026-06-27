@@ -59,6 +59,7 @@ export default function OccurrencesReport() {
     causas_principais?: { causa: string; ocorrencias: number; impacto: string }[];
     padroes?: string[];
     sugestoes?: { acao: string; responsavel: string; prazo: string; detalhe: string }[];
+    impacto_ifood?: { percentual: number; total: number; observacao: string; acoes_mitigacao: string[] };
   } | null>(null);
 
 
