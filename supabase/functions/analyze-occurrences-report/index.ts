@@ -23,6 +23,8 @@ interface Aggregation {
   tendencia: { date: string; count: number }[];
   mode?: "analysis" | "ranking";
   por_loja_split?: { name: string; ifood: number; interno: number }[];
+  escopo?: "geral" | "loja";
+  loja_alvo?: string;
 }
 
 serve(async (req) => {
