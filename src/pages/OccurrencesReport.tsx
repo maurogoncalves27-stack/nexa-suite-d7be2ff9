@@ -68,7 +68,12 @@ export default function OccurrencesReport() {
     per_10k_total: number; per_10k_interno: number; per_10k_ifood: number;
   }[] | null>(null);
 
-  const STORE_TABS = ["Águas Claras", "Asa Norte", "Asa Sul", "Lago Sul"];
+  const STORE_TABS: { key: string; label: string }[] = [
+    { key: "ÁGUAS CLARAS", label: "Águas Claras" },
+    { key: "ASA NORTE", label: "Asa Norte" },
+    { key: "ASA SUL", label: "Asa Sul" },
+    { key: "LAGO SUL", label: "Lago Sul" },
+  ];
 
 
   const load = async () => {
@@ -800,7 +805,7 @@ export default function OccurrencesReport() {
 
           {/* Barra de escopo */}
           <div className="flex flex-wrap gap-1.5 pb-2 border-b">
-            {[{ key: "geral", label: "Geral" }, ...STORE_TABS.map((s) => ({ key: s, label: s })), { key: "comparativo", label: "Comparativo" }].map((t) => (
+            {[{ key: "geral", label: "Geral" }, ...STORE_TABS, { key: "comparativo", label: "Comparativo" }].map((t) => (
               <Button
                 key={t.key}
                 size="sm"
