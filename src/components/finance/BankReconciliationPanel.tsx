@@ -473,10 +473,9 @@ export default function BankReconciliationPanel() {
       return;
     }
     toast({ title: "Conciliação desfeita" });
-    const tx = transactions.find((t) => t.id === txId);
-    if (tx) focusDateRef.current = tx.posted_at;
-    await loadData();
+    await reloadKeepingScroll(loadData);
   };
+
 
 
   const autoReconcileAll = async () => {
