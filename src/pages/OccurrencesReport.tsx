@@ -866,7 +866,7 @@ export default function OccurrencesReport() {
           )}
 
 
-          {!aiLoading && aiResult && (
+          {!aiLoading && aiScope !== "comparativo" && aiResult && (
             <div className="space-y-4">
               {aiResult.resumo && (
                 <div className="text-sm leading-relaxed">{aiResult.resumo}</div>
