@@ -82,11 +82,15 @@ serve(async (req) => {
       console.warn("Falha ao buscar faturamento", e);
     }
 
-    // Split iFood/entregador (LOGISTICA) vs interno
+    // Split iFood/entregador (LOGISTICA + Extravio pelo entregador) vs interno
     const isIfood = (cat?: string) => (cat || "").toUpperCase() === "LOGISTICA";
-    const total_ifood = agg.por_categoria
+    const total_ifood_logistica = agg.por_categoria
       .filter((c) => isIfood(c.name))
       .reduce((s, c) => s + c.count, 0);
+    const total_extravio = agg.por_subcategoria
+      .filter((s) => (s.name || "").toLowerCase().includes("extravio pelo entregador"))
+      .reduce((s, c) => s + c.count, 0);
+    const total_ifood = total_ifood_logistica + total_extravio;
     const total_interno = Math.max(0, agg.total - total_ifood);
     const pct_ifood = agg.total > 0 ? Math.round((total_ifood / agg.total) * 100) : 0;
 
@@ -101,11 +105,13 @@ REGRAS:
 5. NÃO sugira soluções genéricas tipo "melhorar processos" — diga exatamente o quê.
 6. Se o volume for muito baixo (total < 5), avise que a amostra é pequena e evite generalizar.
 7. CRÍTICO: SEMPRE normalize ocorrências pelo faturamento da loja. A loja "crítica" NÃO é a que tem mais ocorrências em volume absoluto, e sim a com maior ÍNDICE (ocorrências por R$10.000 de faturamento — campo "per_10k"). Loja que vende muito tende a ter mais ocorrências em volume — isso é esperado. Cite no resumo o índice da loja crítica e compare com as demais.
-8. CRÍTICO — IFOOD vs INTERNO: A categoria "LOGISTICA" agrupa problemas causados pela operação de entrega do iFood (entregador atrasa, extravia, troca pedido, não chega, motoboy cancela, etc.). Isso está FORA do nosso controle operacional direto. Trate separadamente:
-   - Preencha "impacto_ifood" com o % e quais ocorrências de LOGISTICA mais aparecem.
-   - Para a loja_critica, SEMPRE que possível, calcule o índice usando APENAS ocorrências internas (total − LOGISTICA da loja) ÷ faturamento. Não puna a loja que sofre mais com entregador.
-   - O array "sugestoes" deve conter SOMENTE ações que a operação interna consegue executar (cozinha, montagem, estoque, infraestrutura, atendimento, TI, RH, treinamento). NÃO inclua "treinar entregador", "melhorar entrega" nem nada que dependa do iFood.
-   - Coloque ações relacionadas a iFood em "impacto_ifood.acoes_mitigacao" — apenas o que a loja realmente pode fazer (registrar print da rota, escalar gerência de praça iFood, comunicar cliente proativamente, abrir contestação, conferir saída com selo, etc.).
+8. CRÍTICO — IFOOD vs INTERNO (FOCO É NO QUE A GENTE RESOLVE): A categoria "LOGISTICA" + a subcategoria "Extravio pelo entregador" são problemas da operação de entrega do iFood — FORA do nosso controle direto. Regras de tratamento:
+   - "impacto_ifood" é um RELATÓRIO CURTO: percentual, total absoluto, e 1-2 frases citando quais sub-problemas dominam (ex: "78% é atraso de entrega, 15% extravio") e quais lojas mais sofrem. NÃO escreva análise longa aqui — é só pra dimensionar o tamanho do problema externo.
+   - "acoes_mitigacao" do iFood: NO MÁXIMO 2-3 ações realistas e curtas. Não é o foco do relatório.
+   - O FOCO TOTAL da análise (resumo, causas_principais, padroes, sugestoes) é o que a operação INTERNA pode resolver. Quando for falar do panorama no "resumo", diga algo como "X% das ocorrências vêm da entrega iFood (fora do nosso controle); foco abaixo é nos Y% internos que conseguimos atacar".
+   - "loja_critica": SEMPRE recalcule o índice usando APENAS ocorrências internas (total da loja − LOGISTICA da loja − Extravio pelo entregador) ÷ faturamento. Não puna a loja que sofre mais com entregador.
+   - "causas_principais": IGNORE LOGISTICA. Só liste causas internas (COZINHA, MONTAGEM, PAGAMENTO, INFRAESTRUTURA, ATENDIMENTO, etc.). Se a maior categoria for LOGISTICA, pule ela e use a segunda/terceira maior.
+   - "sugestoes": SOMENTE ações internas executáveis pela operação. NUNCA inclua "treinar entregador", "melhorar entrega", "falar com iFood" — isso fica em impacto_ifood.acoes_mitigacao.
 9. SUBCATEGORIAS ESPECIAIS — trate de forma diferenciada quando aparecerem em "por_subcategoria":
    - "Cliente alega erro - conferido OK": NÃO é falha interna. É recusa/reclamação de cliente sem causa comprovada (loja conferiu e está OK). Mencione em "padroes" como sinal de comunicação/expectativa com cliente, e em "sugestoes" sugira melhorar foto/descrição do prato, conferência dupla com selo de saída, ou comunicação proativa. NUNCA conte como erro de cozinha.
    - "Extravio pelo entregador" (mesmo dentro de FALTOU ITENS NO PEDIDO): conte como impacto iFood — some no "impacto_ifood.total" e desconte do total interno na hora de avaliar a loja crítica. Não trate como erro de montagem.
@@ -115,9 +121,9 @@ REGRAS:
 Total de ocorrências no período (já filtradas): ${agg.total}
 Filtros ativos: ${JSON.stringify(agg.filtros)}
 
-SPLIT IFOOD vs INTERNO:
-- Causadas pelo iFood/entregador (LOGISTICA): ${total_ifood} (${pct_ifood}%)
-- Internas (nossa responsabilidade): ${total_interno} (${100 - pct_ifood}%)
+SPLIT IFOOD vs INTERNO (já inclui "Extravio pelo entregador" no lado iFood):
+- Causadas pelo iFood/entregador: ${total_ifood} (${pct_ifood}%) — LOGISTICA: ${total_ifood_logistica}, Extravio: ${total_extravio}
+- Internas (nossa responsabilidade, FOCO DA ANÁLISE): ${total_interno} (${100 - pct_ifood}%)
 
 POR CATEGORIA (causa-raiz): ${JSON.stringify(agg.por_categoria)}
 POR LOJA (volume absoluto): ${JSON.stringify(agg.por_loja)}
