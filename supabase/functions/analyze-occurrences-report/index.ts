@@ -82,11 +82,15 @@ serve(async (req) => {
       console.warn("Falha ao buscar faturamento", e);
     }
 
-    // Split iFood/entregador (LOGISTICA) vs interno
+    // Split iFood/entregador (LOGISTICA + Extravio pelo entregador) vs interno
     const isIfood = (cat?: string) => (cat || "").toUpperCase() === "LOGISTICA";
-    const total_ifood = agg.por_categoria
+    const total_ifood_logistica = agg.por_categoria
       .filter((c) => isIfood(c.name))
       .reduce((s, c) => s + c.count, 0);
+    const total_extravio = agg.por_subcategoria
+      .filter((s) => (s.name || "").toLowerCase().includes("extravio pelo entregador"))
+      .reduce((s, c) => s + c.count, 0);
+    const total_ifood = total_ifood_logistica + total_extravio;
     const total_interno = Math.max(0, agg.total - total_ifood);
     const pct_ifood = agg.total > 0 ? Math.round((total_ifood / agg.total) * 100) : 0;
 
