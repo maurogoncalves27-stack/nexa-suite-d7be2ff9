@@ -910,7 +910,7 @@ export default function BankReconciliationPanel() {
         tx={c6Target}
         candidates={c6Candidates}
         onOpenChange={(o) => { if (!o) { setC6Target(null); setC6Candidates([]); } }}
-        onApplied={async () => { await loadData(); await loadC6Batches(); }}
+        onApplied={async () => { await reloadKeepingScroll(async () => { await loadData(); await loadC6Batches(); }); }}
       />
 
       <Dialog open={!!allocTarget} onOpenChange={(o) => { if (!o && !submitting) { setAllocTarget(null); setAllocSplits([]); } }}>
