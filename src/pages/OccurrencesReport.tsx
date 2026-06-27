@@ -700,6 +700,106 @@ export default function OccurrencesReport() {
           </Card>
         </>
       )}
+
+      <Dialog open={aiOpen} onOpenChange={setAiOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Análise IA das ocorrências
+            </DialogTitle>
+            <DialogDescription>
+              Últimos {days} dias · {filtered.length} ocorrências analisadas
+            </DialogDescription>
+          </DialogHeader>
+
+          {aiLoading && (
+            <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" /> Analisando padrões…
+            </div>
+          )}
+
+          {!aiLoading && aiResult && (
+            <div className="space-y-4">
+              {aiResult.resumo && (
+                <div className="text-sm leading-relaxed">{aiResult.resumo}</div>
+              )}
+
+              {aiResult.loja_critica && (
+                <Card className="border-warning/40 bg-warning/5">
+                  <CardContent className="p-3">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
+                      <div className="flex-1">
+                        <div className="text-sm font-semibold">
+                          Loja crítica: {aiResult.loja_critica.nome}
+                          <Badge variant="outline" className="ml-2">{aiResult.loja_critica.total} ocorrências</Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">{aiResult.loja_critica.observacao}</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {aiResult.causas_principais && aiResult.causas_principais.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">Causas principais</h3>
+                  <div className="space-y-2">
+                    {aiResult.causas_principais.map((c, i) => (
+                      <div key={i} className="p-2 rounded-md border bg-card">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-medium">{c.causa}</span>
+                          <Badge variant="secondary">{c.ocorrencias}</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">{c.impacto}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {aiResult.padroes && aiResult.padroes.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">Padrões observados</h3>
+                  <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                    {aiResult.padroes.map((p, i) => <li key={i}>{p}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              {aiResult.sugestoes && aiResult.sugestoes.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                    <Lightbulb className="h-4 w-4 text-primary" />
+                    Sugestões para evitar reincidência
+                  </h3>
+                  <div className="space-y-2">
+                    {aiResult.sugestoes.map((s, i) => (
+                      <div key={i} className="p-2 rounded-md border bg-card">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className="text-sm font-medium">{s.acao}</span>
+                          <div className="flex gap-1">
+                            <Badge variant="outline" className="text-xs">{s.responsavel}</Badge>
+                            <Badge
+                              variant={s.prazo === "imediato" ? "destructive" : s.prazo === "esta_semana" ? "default" : "secondary"}
+                              className="text-xs"
+                            >
+                              {s.prazo === "imediato" ? "Imediato" : s.prazo === "esta_semana" ? "Esta semana" : "Este mês"}
+                            </Badge>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">{s.detalhe}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
