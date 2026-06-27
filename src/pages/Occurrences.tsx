@@ -25,6 +25,8 @@ interface OccLite {
   category: string | null;
   occurrence: string;
   order_correct: boolean;
+  requires_subcategory?: boolean;
+  subcategory_options?: string[] | null;
 }
 
 interface Analysis {
@@ -81,11 +83,14 @@ export default function Occurrences() {
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertOrderNumber, setAlertOrderNumber] = useState("");
   const [alertOrderValue, setAlertOrderValue] = useState("");
+  const [alertSubcategory, setAlertSubcategory] = useState<string>("");
+  const [alertSubcategoryOptions, setAlertSubcategoryOptions] = useState<string[]>([]);
+  const [alertRequiresSub, setAlertRequiresSub] = useState(false);
   const [alertingId, setAlertingId] = useState<string | null>(null);
 
   // Atalhos rápidos (ocorrências mais usadas nos últimos 90 dias)
   const [topShortcuts, setTopShortcuts] = useState<
-    { id: string; code: string; category: string | null; occurrence: string; uses: number }[]
+    { id: string; code: string; category: string | null; occurrence: string; uses: number; requires_subcategory?: boolean; subcategory_options?: string[] | null }[]
   >([]);
 
   // Diálogo único "pedir nº do pedido + se foi enviado correto" — usado pelo atalho rápido E pelo card "Conte o que aconteceu"
@@ -121,19 +126,19 @@ export default function Occurrences() {
     (async () => {
       const { data, error } = await supabase
         .from("occurrence_alerts")
-        .select("occurrence_id, occurrences!inner(id, code, category, occurrence, is_active)")
+        .select("occurrence_id, occurrences!inner(id, code, category, occurrence, is_active, requires_subcategory, subcategory_options)")
         .gte("created_at", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
         .limit(500);
       if (cancelled || error || !data) return;
-      const counts = new Map<string, { id: string; code: string; category: string | null; occurrence: string; uses: number }>();
+      const counts = new Map<string, { id: string; code: string; category: string | null; occurrence: string; uses: number; requires_subcategory?: boolean; subcategory_options?: string[] | null }>();
       for (const row of data as unknown as {
-        occurrences: { id: string; code: string; category: string | null; occurrence: string; is_active: boolean };
+        occurrences: { id: string; code: string; category: string | null; occurrence: string; is_active: boolean; requires_subcategory?: boolean; subcategory_options?: string[] | null };
       }[]) {
         const o = row.occurrences;
         if (!o?.is_active) continue;
         const cur = counts.get(o.id);
         if (cur) cur.uses += 1;
-        else counts.set(o.id, { id: o.id, code: o.code, category: o.category, occurrence: o.occurrence, uses: 1 });
+        else counts.set(o.id, { id: o.id, code: o.code, category: o.category, occurrence: o.occurrence, uses: 1, requires_subcategory: o.requires_subcategory, subcategory_options: o.subcategory_options });
       }
       const top = Array.from(counts.values()).sort((a, b) => b.uses - a.uses).slice(0, 6);
       setTopShortcuts(top);
@@ -343,7 +348,7 @@ export default function Occurrences() {
     }
   };
 
-  const openRegister = () => {
+  const openRegister = async () => {
     if (!user) {
       toast({ title: "Faça login para registrar", variant: "destructive" });
       return;
@@ -354,11 +359,24 @@ export default function Occurrences() {
     }
     setAlertOrderNumber((prev) => orderNumberInput.trim() || prev);
     setAlertOrderValue("");
+    setAlertSubcategory("");
+    // Carrega meta do catálogo p/ saber se exige subcategoria
+    const { data: cat } = await supabase
+      .from("occurrences")
+      .select("requires_subcategory, subcategory_options")
+      .eq("id", chosenOccId)
+      .maybeSingle<{ requires_subcategory: boolean | null; subcategory_options: string[] | null }>();
+    setAlertRequiresSub(!!cat?.requires_subcategory);
+    setAlertSubcategoryOptions(cat?.subcategory_options ?? []);
     setAlertOpen(true);
   };
 
   const sendRegister = async () => {
     if (!chosenOccId || !user || !analysis) return;
+    if (alertRequiresSub && !alertSubcategory.trim()) {
+      toast({ title: "Selecione a subcategoria", description: "Esta ocorrência exige a causa específica.", variant: "destructive" });
+      return;
+    }
     setAlertingId(chosenOccId);
     try {
       const { data: emp } = await supabase
@@ -408,8 +426,10 @@ export default function Occurrences() {
         setAlertingId(null);
         return;
       }
+      const subcat = alertSubcategory.trim() || null;
       const note = [
         `Relato: ${relato.trim()}`,
+        subcat ? `Subcategoria: ${subcat}` : null,
         analysis.diagnostico ? `Diagnóstico IA: ${analysis.diagnostico}` : null,
         analysis.causa_raiz ? `Causa raiz: ${analysis.causa_raiz}` : null,
       ].filter(Boolean).join("\n");
@@ -421,7 +441,8 @@ export default function Occurrences() {
         note,
         order_number: orderNumber,
         order_value: orderValue,
-      });
+        subcategory: subcat,
+      } as never);
       if (insErr) throw insErr;
 
       const chosen = [analysis.ocorrencia_principal, ...analysis.alternativas].find((o) => o?.id === chosenOccId);
@@ -1005,8 +1026,34 @@ export default function Occurrences() {
           </DialogHeader>
           <div className="space-y-3 py-2">
             <p className="text-xs text-muted-foreground">
-              Campos opcionais. Ao registrar, os gestores serão notificados.
+              Ao registrar, os gestores serão notificados.
             </p>
+            {alertRequiresSub && alertSubcategoryOptions.length > 0 && (
+              <div className="space-y-1.5 rounded-md border border-primary/40 bg-primary/5 p-3">
+                <Label className="text-sm font-semibold">
+                  Causa específica <span className="text-destructive">*</span>
+                </Label>
+                <p className="text-[11px] text-muted-foreground -mt-1">
+                  Selecione a subcategoria para um diagnóstico melhor no relatório.
+                </p>
+                <div className="grid grid-cols-2 gap-1.5 pt-1">
+                  {alertSubcategoryOptions.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setAlertSubcategory(opt)}
+                      className={`text-sm px-3 py-2 rounded-md border text-left transition-colors ${
+                        alertSubcategory === opt
+                          ? "border-primary bg-primary text-primary-foreground font-semibold"
+                          : "border-border hover:border-primary/50 hover:bg-accent"
+                      }`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="alert-order-number">Número do pedido</Label>
               <Input id="alert-order-number" placeholder="Ex: 1234" value={alertOrderNumber} onChange={(e) => setAlertOrderNumber(e.target.value)} />

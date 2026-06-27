@@ -9039,6 +9039,7 @@ export type Database = {
           resolved_by: string | null
           status: string
           store_id: string | null
+          subcategory: string | null
           updated_at: string
         }
         Insert: {
@@ -9053,6 +9054,7 @@ export type Database = {
           resolved_by?: string | null
           status?: string
           store_id?: string | null
+          subcategory?: string | null
           updated_at?: string
         }
         Update: {
@@ -9067,6 +9069,7 @@ export type Database = {
           resolved_by?: string | null
           status?: string
           store_id?: string | null
+          subcategory?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -9094,13 +9097,16 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
+          legacy_category: string | null
           message: string | null
           occurrence: string
           order_correct: boolean
           platform: string
           prevention_1: string | null
           prevention_2: string | null
+          requires_subcategory: boolean
           sort_order: number
+          subcategory_options: string[] | null
           updated_at: string
         }
         Insert: {
@@ -9110,13 +9116,16 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          legacy_category?: string | null
           message?: string | null
           occurrence: string
           order_correct?: boolean
           platform?: string
           prevention_1?: string | null
           prevention_2?: string | null
+          requires_subcategory?: boolean
           sort_order?: number
+          subcategory_options?: string[] | null
           updated_at?: string
         }
         Update: {
@@ -9126,13 +9135,16 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          legacy_category?: string | null
           message?: string | null
           occurrence?: string
           order_correct?: boolean
           platform?: string
           prevention_1?: string | null
           prevention_2?: string | null
+          requires_subcategory?: boolean
           sort_order?: number
+          subcategory_options?: string[] | null
           updated_at?: string
         }
         Relationships: []

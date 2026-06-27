@@ -30,6 +30,7 @@ interface AlertRow {
   created_by: string;
   store_id: string | null;
   note: string | null;
+  subcategory: string | null;
   created_at: string;
   occurrences?: { occurrence: string; category: string | null; order_correct: boolean } | null;
   stores?: { name: string | null } | null;
@@ -44,6 +45,7 @@ export default function OccurrencesReport() {
   const [days, setDays] = useState<string>("30");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [storeFilter, setStoreFilter] = useState<string>("all");
+  const [subcategoryFilter, setSubcategoryFilter] = useState<string>("all");
   const [reporterNames, setReporterNames] = useState<Record<string, string>>({});
 
   const load = async () => {
@@ -52,7 +54,7 @@ export default function OccurrencesReport() {
     const { data, error } = await supabase
       .from("occurrence_alerts")
       .select(
-        "id, occurrence_id, created_by, store_id, note, created_at, occurrences(occurrence, category, order_correct), stores(name)",
+        "id, occurrence_id, created_by, store_id, note, subcategory, created_at, occurrences(occurrence, category, order_correct), stores(name)",
       )
       .gte("created_at", since)
       .order("created_at", { ascending: false });
@@ -98,13 +100,29 @@ export default function OccurrencesReport() {
     return Array.from(set).sort();
   }, [alerts]);
 
+  const subcategoryOptions = useMemo(() => {
+    const set = new Set<string>();
+    alerts.forEach((a) => {
+      if (categoryFilter === "all" || (a.occurrences?.category ?? "Sem categoria") === categoryFilter) {
+        if (a.subcategory && a.subcategory.trim()) set.add(a.subcategory.trim());
+      }
+    });
+    return Array.from(set).sort();
+  }, [alerts, categoryFilter]);
+
   const filtered = useMemo(() => {
     return alerts.filter((a) => {
       if (categoryFilter !== "all" && (a.occurrences?.category ?? "Sem categoria") !== categoryFilter) return false;
       if (storeFilter !== "all" && (a.stores?.name ?? "Sem loja") !== storeFilter) return false;
+      if (subcategoryFilter !== "all") {
+        const sc = (a.subcategory ?? "").trim();
+        if (subcategoryFilter === "__none__") {
+          if (sc) return false;
+        } else if (sc !== subcategoryFilter) return false;
+      }
       return true;
     });
-  }, [alerts, categoryFilter, storeFilter]);
+  }, [alerts, categoryFilter, storeFilter, subcategoryFilter]);
 
   const totalCount = filtered.length;
 
@@ -119,10 +137,26 @@ export default function OccurrencesReport() {
       .sort((a, b) => b.count - a.count);
   }, [filtered]);
 
+  const bySubcategory = useMemo(() => {
+    const map = new Map<string, number>();
+    filtered.forEach((a) => {
+      const sc = (a.subcategory ?? "").trim();
+      if (!sc) return;
+      const key = `${a.occurrences?.category ?? "—"} · ${sc}`;
+      map.set(key, (map.get(key) ?? 0) + 1);
+    });
+    return Array.from(map.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 12);
+  }, [filtered]);
+
   const byOccurrence = useMemo(() => {
     const map = new Map<string, number>();
     filtered.forEach((a) => {
-      const key = a.occurrences?.occurrence ?? "—";
+      const base = a.occurrences?.occurrence ?? "—";
+      const sc = (a.subcategory ?? "").trim();
+      const key = sc ? `${base} — ${sc}` : base;
       map.set(key, (map.get(key) ?? 0) + 1);
     });
     return Array.from(map.entries())
@@ -212,8 +246,20 @@ export default function OccurrencesReport() {
             ))}
           </SelectContent>
         </Select>
-        {(categoryFilter !== "all" || storeFilter !== "all") && (
-          <Button variant="ghost" size="sm" onClick={() => { setCategoryFilter("all"); setStoreFilter("all"); }}>
+        <Select value={subcategoryFilter} onValueChange={setSubcategoryFilter}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Subcategoria" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as subcategorias</SelectItem>
+            <SelectItem value="__none__">Sem subcategoria</SelectItem>
+            {subcategoryOptions.map((s) => (
+              <SelectItem key={s} value={s}>{s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {(categoryFilter !== "all" || storeFilter !== "all" || subcategoryFilter !== "all") && (
+          <Button variant="ghost" size="sm" onClick={() => { setCategoryFilter("all"); setStoreFilter("all"); setSubcategoryFilter("all"); }}>
             Limpar filtros
           </Button>
         )}
@@ -314,6 +360,30 @@ export default function OccurrencesReport() {
             </Card>
           </div>
 
+          {/* Por subcategoria (causa específica) */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Por causa específica (subcategoria)</CardTitle>
+            </CardHeader>
+            <CardContent className="h-80">
+              {bySubcategory.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma ocorrência com subcategoria no período. Marque "exigir subcategoria" no gerenciador para os tipos genéricos.
+                </p>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={bySubcategory} layout="vertical" margin={{ left: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                    <YAxis dataKey="name" type="category" width={220} tick={{ fontSize: 11 }} />
+                    <Tooltip contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }} />
+                    <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Top ocorrências */}
           <Card>
             <CardHeader className="pb-2">
@@ -327,7 +397,7 @@ export default function OccurrencesReport() {
                   <BarChart data={byOccurrence} layout="vertical" margin={{ left: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                    <YAxis dataKey="name" type="category" width={180} tick={{ fontSize: 11 }} />
+                    <YAxis dataKey="name" type="category" width={220} tick={{ fontSize: 11 }} />
                     <Tooltip contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }} />
                     <Bar dataKey="count" fill="hsl(var(--destructive))" radius={[0, 4, 4, 0]} />
                   </BarChart>
@@ -352,6 +422,9 @@ export default function OccurrencesReport() {
                         <div className="flex items-center gap-2 flex-wrap">
                           {a.occurrences?.category && (
                             <Badge variant="outline">{a.occurrences.category}</Badge>
+                          )}
+                          {a.subcategory && (
+                            <Badge variant="default">{a.subcategory}</Badge>
                           )}
                           {a.stores?.name && (
                             <Badge variant="secondary">{a.stores.name}</Badge>

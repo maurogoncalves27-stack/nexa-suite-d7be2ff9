@@ -1,39 +1,63 @@
 ## Objetivo
-Separar fichas técnicas da Fábrica das fichas das lojas: criar página dedicada **/fichas-fabrica** no submenu **Fábrica** do sidebar, mantendo `/fichas-tecnicas` apenas para fichas de loja.
+Reorganizar o catálogo de ocorrências para que o relatório aponte **causa-raiz** (não desfecho), permitindo agir sobre o problema antes de virar cancelamento.
 
-## Mudanças
+## Nova taxonomia proposta
 
-### 1. Nova página `src/pages/RecipesFactory.tsx`
-- Reaproveita a estrutura atual de `src/pages/Recipes.tsx`, mas:
-  - Remove as abas de marca (não há tab de marca; é sempre Fábrica).
-  - Lista apenas fichas com `scope = 'fabrica'` OU vinculadas à brand FÁBRICA.
-  - Mantém os dois filtros: **Pré-preparo** e **Prato pronto** (mesma semântica de hoje aplicada apenas dentro do universo Fábrica).
-  - Criação/edição via `RecipeFormCard` já vinculada à brand FÁBRICA e `scope = 'fabrica'`.
-- Cabeçalho padrão com ícone do item do sidebar (ChefHat/ClipboardList — mesmo ícone usado no submenu).
+Substituir as 5 categorias atuais (CANCELAMENTO/ENTREGA/RETIRADA/TROCA ITENS/DIVERSOS) por **7 categorias por causa-raiz** + **subcategoria** obrigatória nas genéricas:
 
-### 2. `src/pages/Recipes.tsx` (página de loja)
-- Remove do universo as fichas de fábrica: passa a filtrar `scope <> 'fabrica'` e ignorar a brand FÁBRICA por completo.
-- Remove a aba/tab "FÁBRICA" da barra de marcas.
-- Mantém filtros Pré-preparo / Prato pronto apenas para fichas de loja (pré-preparo de loja = ingrediente intermediário que vira componente de outra ficha da própria loja).
+| Categoria | O que entra | Exemplos |
+|---|---|---|
+| **COZINHA / PRODUÇÃO** | Falhas no preparo | Ponto errado da proteína, temperatura baixa, sabor ruim, objeto estranho, item queimado |
+| **MONTAGEM / EXPEDIÇÃO** | Erros na hora de fechar o pedido | Faltou item, pouca quantidade, pedido trocado, embalagem violada |
+| **ESTOQUE** | Falta de insumo / produto | Sem ingrediente, sem embalagem, item indisponível no cardápio |
+| **LOGÍSTICA / ENTREGADOR** | Problemas do motoboy | Não chegou na loja, atrasou, extraviou, trocou pedidos, não encontrou cliente, veículo quebrado |
+| **CLIENTE** | Ações ou pedidos do cliente | Desistiu, mudou modalidade (entrega↔retirada), quer WhatsApp, reclamação subjetiva |
+| **PAGAMENTO** | Falhas financeiras | Maquininha, Pix, cartão recusado, problema no app |
+| **INFRAESTRUTURA / SISTEMA** | Loja parada | Energia, água, internet, gás, totem off, falha iFood/sistema |
 
-### 3. Sidebar `src/components/AppSidebar.tsx`
-- Adicionar item em `fabricaSections`:
-  ```
-  { title: "Fichas técnicas", url: "/fichas-fabrica", icon: ChefHat, staffOnly: true }
-  ```
-- Atualizar `fabricaItems` (automático via flatMap).
+### Subcategoria (campo novo)
+Onde a ocorrência ainda for ampla, exigir subcategoria. Exemplos:
 
-### 4. Rota em `src/App.tsx`
-- Registrar `/fichas-fabrica` → `RecipesFactory`.
+- **COZINHA → "Problema de qualidade"** → subcategorias: `Temperatura`, `Sabor`, `Apresentação`, `Objeto estranho`, `Ponto da proteína`, `Item queimado`
+- **MONTAGEM → "Faltou item"** → subcategorias: `Bebida`, `Acompanhamento`, `Sobremesa`, `Talher/molho`, `Item principal`
+- **LOGÍSTICA → "Atraso"** → subcategorias: `Saída da loja`, `Trânsito`, `Entregador parado`
 
-### 5. `src/components/AppLayout.tsx`
-- Acrescentar entrada em `PAGE_TITLES` para `/fichas-fabrica` ("Fábrica › Fichas técnicas").
+## Mudanças no sistema
 
-## Fora de escopo
-- Não altera schema (tabela `recipes`/coluna `scope` já existe).
-- Não mexe em receituário, ficha de PDV, mapeamentos POS.
-- Não toca em estoque, produção ou requisições.
+### 1. Banco (`occurrences`)
+- Adicionar coluna `subcategory text` (nullable, mas obrigatório quando o tipo exige)
+- Adicionar coluna `requires_subcategory boolean default false`
+- Migrar registros atuais: re-mapear cada `occurrence` existente para a nova `category` (script de migração faz o de/para)
+- Manter `category` antigo num campo `legacy_category` por 60 dias para conferência
 
-## Confirmações que preciso
-1. O ícone do novo item no submenu Fábrica deve ser **ChefHat** (mesmo de Fichas técnicas hoje)? Ou prefere outro?
-2. Confirma que a página atual `/fichas-tecnicas` deve **deixar de mostrar qualquer ficha da Fábrica** (inclusive a aba "FÁBRICA" some)?
+### 2. UI de registro (`/ocorrencias`)
+- Quando o colaborador escolhe uma ocorrência com `requires_subcategory=true`, abre um segundo select obrigatório
+- Salvar `subcategory` em `occurrence_alerts` (nova coluna)
+
+### 3. Relatório (`/ocorrencias/relatorio`)
+- Adicionar filtro de **subcategoria** ao lado de categoria/loja
+- Novo gráfico: **mapa de calor categoria × subcategoria** (ou stacked bar)
+- "Top 10 ocorrências" passa a mostrar `ocorrência — subcategoria`
+- Card extra: "Top 5 causas-raiz por loja" (cruzamento)
+
+### 4. Configuração
+- Tela `/configuracoes/ocorrencias` (nova) para o gestor manter o catálogo: adicionar/editar ocorrência, definir categoria, marcar se exige subcategoria e listar as opções
+
+## De/para sugerido (resumo)
+- `CANCELAMENTO / PROBLEMAS COM A QUALIDADE` → COZINHA + subcategoria
+- `CANCELAMENTO / FALTOU ITENS / POUCA QUANTIDADE / PEDIDO TROCADO / VIOLADO` → MONTAGEM
+- `CANCELAMENTO / MOTOBOY * / ENTREGADOR *` → LOGÍSTICA
+- `CANCELAMENTO / CLIENTE PEDE * / TEMPERATURA (reclamação)` → CLIENTE
+- `CANCELAMENTO / PROBLEMAS COM O PAGAMENTO` → PAGAMENTO
+- `DIVERSOS / LOJA SEM * / TOTEM / FALHA NOS SISTEMAS` → INFRAESTRUTURA/SISTEMA
+- `DIVERSOS / NÃO TEM ESTOQUE` → ESTOQUE
+
+## Detalhes técnicos
+- Migração SQL: `ALTER TABLE occurrences ADD COLUMN subcategory_options text[], requires_subcategory bool default false, legacy_category text` + `ALTER TABLE occurrence_alerts ADD COLUMN subcategory text`
+- UPDATE em lote para preencher novas categorias com base no nome da ocorrência (mapeamento explícito)
+- Sem mudança de RLS necessária
+- Componente `OccurrencePicker` ganha dependência condicional para mostrar select de subcategoria
+
+## Fora do escopo (agora)
+- IA sugerindo causa-raiz automaticamente (pode vir depois usando o histórico já categorizado)
+- Integração com avaliações do cliente para cruzar com ocorrências internas
