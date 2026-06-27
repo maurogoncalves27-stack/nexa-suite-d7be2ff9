@@ -5315,6 +5315,35 @@ export type Database = {
           },
         ]
       }
+      hr_announcement_dismissals: {
+        Row: {
+          announcement_id: string
+          dismissed_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          announcement_id: string
+          dismissed_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          announcement_id?: string
+          dismissed_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_announcement_dismissals_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "hr_announcements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hr_announcements: {
         Row: {
           created_at: string
