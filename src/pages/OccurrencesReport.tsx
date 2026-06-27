@@ -397,6 +397,8 @@ export default function OccurrencesReport() {
         periodo_dias: Number(days),
         total: rows.length,
         filtros: { loja: scope === "geral" ? undefined : scope },
+        escopo: scope === "geral" ? "geral" as const : "loja" as const,
+        loja_alvo: scope === "geral" ? undefined : scope,
         ...agg,
       };
       const { data, error } = await supabase.functions.invoke("analyze-occurrences-report", { body: payload });
