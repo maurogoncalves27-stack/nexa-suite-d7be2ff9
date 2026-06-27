@@ -126,19 +126,19 @@ export default function Occurrences() {
     (async () => {
       const { data, error } = await supabase
         .from("occurrence_alerts")
-        .select("occurrence_id, occurrences!inner(id, code, category, occurrence, is_active)")
+        .select("occurrence_id, occurrences!inner(id, code, category, occurrence, is_active, requires_subcategory, subcategory_options)")
         .gte("created_at", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
         .limit(500);
       if (cancelled || error || !data) return;
-      const counts = new Map<string, { id: string; code: string; category: string | null; occurrence: string; uses: number }>();
+      const counts = new Map<string, { id: string; code: string; category: string | null; occurrence: string; uses: number; requires_subcategory?: boolean; subcategory_options?: string[] | null }>();
       for (const row of data as unknown as {
-        occurrences: { id: string; code: string; category: string | null; occurrence: string; is_active: boolean };
+        occurrences: { id: string; code: string; category: string | null; occurrence: string; is_active: boolean; requires_subcategory?: boolean; subcategory_options?: string[] | null };
       }[]) {
         const o = row.occurrences;
         if (!o?.is_active) continue;
         const cur = counts.get(o.id);
         if (cur) cur.uses += 1;
-        else counts.set(o.id, { id: o.id, code: o.code, category: o.category, occurrence: o.occurrence, uses: 1 });
+        else counts.set(o.id, { id: o.id, code: o.code, category: o.category, occurrence: o.occurrence, uses: 1, requires_subcategory: o.requires_subcategory, subcategory_options: o.subcategory_options });
       }
       const top = Array.from(counts.values()).sort((a, b) => b.uses - a.uses).slice(0, 6);
       setTopShortcuts(top);
