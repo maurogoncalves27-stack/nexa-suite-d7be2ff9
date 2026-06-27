@@ -9,6 +9,8 @@ Toda ocorrência (`occurrence_alerts`) precisa ter `store_id` apontando para uma
 2. `employees.allocated_store_id` (se for loja real).
 3. `employees.store_id` (se for loja real).
 4. Regra fixa: se a loja do colaborador é ESCRITÓRIO → atribui ASA SUL.
-5. Último caso (conta sem employee): grava NULL e cai na fila "Ocorrências sem loja (a revisar)" em `/ocorrencias/relatorio`, onde admin/gestor atribui manualmente.
+5. `store_terminal_users.store_id` do `user.id` — cobre logins compartilhados de terminal de loja (PDV/Totem) sem `employees`.
+6. Último caso: grava NULL e cai na fila "Ocorrências sem loja (a revisar)" em `/ocorrencias/relatorio`.
+
 
 Para fins de relatórios operacionais, ESCRITÓRIO sempre equivale a ASA SUL.
