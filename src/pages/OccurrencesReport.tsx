@@ -283,6 +283,48 @@ export default function OccurrencesReport() {
       .slice(0, 15);
   }, [filtered]);
 
+  const runAiAnalysis = async () => {
+    if (filtered.length === 0) {
+      toast({ title: "Sem dados", description: "Não há ocorrências no período/filtros atuais.", variant: "destructive" });
+      return;
+    }
+    setAiOpen(true);
+    setAiLoading(true);
+    setAiResult(null);
+    try {
+      const payload = {
+        periodo_dias: Number(days),
+        total: filtered.length,
+        filtros: {
+          categoria: categoryFilter !== "all" ? categoryFilter : undefined,
+          loja: storeFilter !== "all" ? storeFilter : undefined,
+          subcategoria: subcategoryFilter !== "all" ? subcategoryFilter : undefined,
+        },
+        por_categoria: byCategory.map((c) => ({ name: c.category, count: c.count })),
+        por_loja: byStore.sort((a, b) => b.count - a.count),
+        por_subcategoria: bySubcategory,
+        top_ocorrencias: byOccurrence,
+        recorrencias: recurrences.map((r) => ({
+          occurrence: r.occurrence, subcategory: r.subcategory, store: r.store, count: r.count,
+        })),
+        tendencia: trend,
+      };
+      const { data, error } = await supabase.functions.invoke("analyze-occurrences-report", { body: payload });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setAiResult(data);
+    } catch (e) {
+      toast({
+        title: "Erro na análise",
+        description: e instanceof Error ? e.message : "Falha ao processar.",
+        variant: "destructive",
+      });
+      setAiOpen(false);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   return (
     <div className="container mx-auto px-3 py-4 md:py-6 max-w-6xl space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -295,12 +337,21 @@ export default function OccurrencesReport() {
             Visualização dos alertas registrados pelos colaboradores nos últimos {days} dias. Use os filtros para identificar padrões e evitar reincidências.
           </p>
         </div>
-        <Button asChild variant="outline" size="sm" data-partner-allow={readOnly ? "true" : undefined}>
-          <Link to={readOnly ? "/painel-socio" : "/ocorrencias"}>
-            <ArrowLeft className="h-4 w-4 mr-1.5" /> Voltar
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          {!readOnly && (
+            <Button size="sm" onClick={runAiAnalysis} disabled={aiLoading}>
+              {aiLoading ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1.5" />}
+              Análise IA
+            </Button>
+          )}
+          <Button asChild variant="outline" size="sm" data-partner-allow={readOnly ? "true" : undefined}>
+            <Link to={readOnly ? "/painel-socio" : "/ocorrencias"}>
+              <ArrowLeft className="h-4 w-4 mr-1.5" /> Voltar
+            </Link>
+          </Button>
+        </div>
       </div>
+
 
       {/* Filtros */}
       <div className="flex flex-wrap gap-2">
