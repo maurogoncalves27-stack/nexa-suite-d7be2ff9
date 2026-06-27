@@ -191,6 +191,30 @@ export default function OccurrencesReport() {
     }));
   }, [filtered, days]);
 
+  // Recorrências: combinações de (ocorrência + subcategoria + loja) que se repetem.
+  // Mostra apenas combinações com 2+ alertas no período, ordenadas pelas mais frequentes.
+  const recurrences = useMemo(() => {
+    type Key = string;
+    const map = new Map<Key, { occurrence: string; subcategory: string; store: string; count: number; lastAt: string }>();
+    filtered.forEach((a) => {
+      const occ = a.occurrences?.occurrence ?? "—";
+      const sub = (a.subcategory ?? "").trim() || "—";
+      const store = a.stores?.name ?? "Sem loja";
+      const key = `${occ}|${sub}|${store}`;
+      const cur = map.get(key);
+      if (cur) {
+        cur.count += 1;
+        if (a.created_at > cur.lastAt) cur.lastAt = a.created_at;
+      } else {
+        map.set(key, { occurrence: occ, subcategory: sub, store, count: 1, lastAt: a.created_at });
+      }
+    });
+    return Array.from(map.values())
+      .filter((r) => r.count >= 2)
+      .sort((a, b) => b.count - a.count || (b.lastAt > a.lastAt ? 1 : -1))
+      .slice(0, 15);
+  }, [filtered]);
+
   return (
     <div className="container mx-auto px-3 py-4 md:py-6 max-w-6xl space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
