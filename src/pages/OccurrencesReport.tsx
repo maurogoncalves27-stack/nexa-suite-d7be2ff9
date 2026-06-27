@@ -53,6 +53,7 @@ export default function OccurrencesReport() {
   const [assigning, setAssigning] = useState<string | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiScope, setAiScope] = useState<string>("geral"); // 'geral' | nome da loja | 'comparativo'
   const [aiResult, setAiResult] = useState<{
     resumo?: string;
     loja_critica?: { nome: string; total: number; observacao: string };
@@ -61,6 +62,13 @@ export default function OccurrencesReport() {
     sugestoes?: { acao: string; responsavel: string; prazo: string; detalhe: string }[];
     impacto_ifood?: { percentual: number; total: number; observacao: string; acoes_mitigacao: string[] };
   } | null>(null);
+  const [aiRanking, setAiRanking] = useState<{
+    name: string; revenue: number; occurrences: number;
+    occ_ifood: number; occ_interno: number;
+    per_10k_total: number; per_10k_interno: number; per_10k_ifood: number;
+  }[] | null>(null);
+
+  const STORE_TABS = ["Águas Claras", "Asa Norte", "Asa Sul", "Lago Sul"];
 
 
   const load = async () => {
@@ -284,31 +292,107 @@ export default function OccurrencesReport() {
       .slice(0, 15);
   }, [filtered]);
 
-  const runAiAnalysis = async () => {
-    if (filtered.length === 0) {
-      toast({ title: "Sem dados", description: "Não há ocorrências no período/filtros atuais.", variant: "destructive" });
-      return;
-    }
+  const buildAggregations = (rows: AlertRow[]) => {
+    const cat = new Map<string, number>();
+    const sto = new Map<string, number>();
+    const sub = new Map<string, number>();
+    const occ = new Map<string, number>();
+    const rec = new Map<string, { occurrence: string; subcategory: string; store: string; count: number }>();
+    rows.forEach((a) => {
+      const c = a.occurrences?.category ?? "Sem categoria";
+      cat.set(c, (cat.get(c) ?? 0) + 1);
+      const s = a.stores?.name ?? "Sem loja";
+      sto.set(s, (sto.get(s) ?? 0) + 1);
+      const sc = (a.subcategory ?? "").trim();
+      if (sc) {
+        const k = `${c} · ${sc}`;
+        sub.set(k, (sub.get(k) ?? 0) + 1);
+      }
+      const base = a.occurrences?.occurrence ?? "—";
+      const ok = sc ? `${base} — ${sc}` : base;
+      occ.set(ok, (occ.get(ok) ?? 0) + 1);
+      const rk = `${base}|${sc || "—"}|${s}`;
+      const cur = rec.get(rk);
+      if (cur) cur.count++;
+      else rec.set(rk, { occurrence: base, subcategory: sc || "—", store: s, count: 1 });
+    });
+    const n = Number(days);
+    const tMap = new Map<string, number>();
+    for (let i = n - 1; i >= 0; i--) tMap.set(format(subDays(new Date(), i), "yyyy-MM-dd"), 0);
+    rows.forEach((a) => {
+      const d = format(new Date(a.created_at), "yyyy-MM-dd");
+      if (tMap.has(d)) tMap.set(d, (tMap.get(d) ?? 0) + 1);
+    });
+    return {
+      por_categoria: Array.from(cat.entries()).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
+      por_loja: Array.from(sto.entries()).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
+      por_subcategoria: Array.from(sub.entries()).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 12),
+      top_ocorrencias: Array.from(occ.entries()).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 10),
+      recorrencias: Array.from(rec.values()).filter((r) => r.count >= 2).sort((a, b) => b.count - a.count).slice(0, 15),
+      tendencia: Array.from(tMap.entries()).map(([date, count]) => ({ date: format(new Date(date + "T00:00:00"), "dd/MM"), count })),
+    };
+  };
+
+  const runAiAnalysis = async (scope: string = aiScope) => {
+    setAiScope(scope);
     setAiOpen(true);
     setAiLoading(true);
     setAiResult(null);
+    setAiRanking(null);
+
+    // base = todos os alerts do período, com filtros de categoria/subcategoria já aplicados
+    const base = alerts.filter((a) => {
+      if (categoryFilter !== "all" && (a.occurrences?.category ?? "Sem categoria") !== categoryFilter) return false;
+      if (subcategoryFilter !== "all") {
+        const sc = (a.subcategory ?? "").trim();
+        if (subcategoryFilter === "__none__") { if (sc) return false; }
+        else if (sc !== subcategoryFilter) return false;
+      }
+      return true;
+    });
+
     try {
+      if (scope === "comparativo") {
+        // split iFood vs interno por loja a partir do base completo
+        const splitMap = new Map<string, { ifood: number; interno: number }>();
+        base.forEach((a) => {
+          const s = a.stores?.name ?? "Sem loja";
+          const isIfood = (a.occurrences?.category ?? "").toUpperCase() === "LOGISTICA"
+            || (a.subcategory ?? "").toLowerCase().includes("extravio pelo entregador");
+          const cur = splitMap.get(s) ?? { ifood: 0, interno: 0 };
+          if (isIfood) cur.ifood++; else cur.interno++;
+          splitMap.set(s, cur);
+        });
+        const por_loja_split = Array.from(splitMap.entries()).map(([name, v]) => ({ name, ...v }));
+        const agg = buildAggregations(base);
+        const payload = {
+          periodo_dias: Number(days),
+          total: base.length,
+          filtros: {},
+          ...agg,
+          mode: "ranking" as const,
+          por_loja_split,
+        };
+        const { data, error } = await supabase.functions.invoke("analyze-occurrences-report", { body: payload });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        setAiRanking(data.ranking || []);
+        return;
+      }
+
+      // Geral ou loja específica
+      const rows = scope === "geral" ? base : base.filter((a) => (a.stores?.name ?? "") === scope);
+      if (rows.length === 0) {
+        toast({ title: "Sem dados", description: `Sem ocorrências para ${scope === "geral" ? "o período" : scope}.`, variant: "destructive" });
+        setAiOpen(false);
+        return;
+      }
+      const agg = buildAggregations(rows);
       const payload = {
         periodo_dias: Number(days),
-        total: filtered.length,
-        filtros: {
-          categoria: categoryFilter !== "all" ? categoryFilter : undefined,
-          loja: storeFilter !== "all" ? storeFilter : undefined,
-          subcategoria: subcategoryFilter !== "all" ? subcategoryFilter : undefined,
-        },
-        por_categoria: byCategory.map((c) => ({ name: c.category, count: c.count })),
-        por_loja: byStore.sort((a, b) => b.count - a.count),
-        por_subcategoria: bySubcategory,
-        top_ocorrencias: byOccurrence,
-        recorrencias: recurrences.map((r) => ({
-          occurrence: r.occurrence, subcategory: r.subcategory, store: r.store, count: r.count,
-        })),
-        tendencia: trend,
+        total: rows.length,
+        filtros: { loja: scope === "geral" ? undefined : scope },
+        ...agg,
       };
       const { data, error } = await supabase.functions.invoke("analyze-occurrences-report", { body: payload });
       if (error) throw error;
@@ -340,7 +424,7 @@ export default function OccurrencesReport() {
         </div>
         <div className="flex items-center gap-2 ml-auto">
           {!readOnly && (
-            <Button size="sm" onClick={runAiAnalysis} disabled={aiLoading}>
+            <Button size="sm" onClick={() => runAiAnalysis("geral")} disabled={aiLoading}>
               {aiLoading ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1.5" />}
               Análise IA
             </Button>
@@ -710,9 +794,25 @@ export default function OccurrencesReport() {
               Análise IA das ocorrências
             </DialogTitle>
             <DialogDescription>
-              Últimos {days} dias · {filtered.length} ocorrências analisadas
+              Últimos {days} dias · escolha o escopo da análise
             </DialogDescription>
           </DialogHeader>
+
+          {/* Barra de escopo */}
+          <div className="flex flex-wrap gap-1.5 pb-2 border-b">
+            {[{ key: "geral", label: "Geral" }, ...STORE_TABS.map((s) => ({ key: s, label: s })), { key: "comparativo", label: "Comparativo" }].map((t) => (
+              <Button
+                key={t.key}
+                size="sm"
+                variant={aiScope === t.key ? "default" : "outline"}
+                onClick={() => runAiAnalysis(t.key)}
+                disabled={aiLoading}
+                className="text-xs"
+              >
+                {t.label}
+              </Button>
+            ))}
+          </div>
 
           {aiLoading && (
             <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground">
@@ -720,7 +820,53 @@ export default function OccurrencesReport() {
             </div>
           )}
 
-          {!aiLoading && aiResult && (
+          {!aiLoading && aiScope === "comparativo" && aiRanking && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Ranking ponderado pelo faturamento: ocorrências internas por R$10.000 vendidos (quanto maior, pior). iFood/entregador é mostrado à parte.
+              </p>
+              {aiRanking.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Sem dados de faturamento para o período.</p>
+              ) : (
+                <div className="space-y-2">
+                  {aiRanking.map((r, i) => (
+                    <Card key={r.name} className={i === 0 ? "border-destructive/40 bg-destructive/5" : ""}>
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2">
+                            <Badge variant={i === 0 ? "destructive" : "secondary"} className="text-xs">#{i + 1}</Badge>
+                            <span className="font-semibold text-sm">{r.name}</span>
+                          </div>
+                          <Badge variant="outline" className="text-xs">
+                            {r.per_10k_interno.toFixed(2)} / R$10k
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                          <div>
+                            <div>Faturamento</div>
+                            <div className="font-medium text-foreground">R$ {r.revenue.toLocaleString("pt-BR")}</div>
+                          </div>
+                          <div>
+                            <div>Ocorrências</div>
+                            <div className="font-medium text-foreground">{r.occurrences} ({r.occ_interno} internas + {r.occ_ifood} iFood)</div>
+                          </div>
+                        </div>
+                        {r.occ_ifood > 0 && (
+                          <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1.5">
+                            <Truck className="h-3 w-3" />
+                            iFood/entregador: {r.per_10k_ifood.toFixed(2)} / R$10k
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+
+          {!aiLoading && aiScope !== "comparativo" && aiResult && (
             <div className="space-y-4">
               {aiResult.resumo && (
                 <div className="text-sm leading-relaxed">{aiResult.resumo}</div>
