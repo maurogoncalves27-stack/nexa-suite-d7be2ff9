@@ -83,11 +83,14 @@ export default function Occurrences() {
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertOrderNumber, setAlertOrderNumber] = useState("");
   const [alertOrderValue, setAlertOrderValue] = useState("");
+  const [alertSubcategory, setAlertSubcategory] = useState<string>("");
+  const [alertSubcategoryOptions, setAlertSubcategoryOptions] = useState<string[]>([]);
+  const [alertRequiresSub, setAlertRequiresSub] = useState(false);
   const [alertingId, setAlertingId] = useState<string | null>(null);
 
   // Atalhos rápidos (ocorrências mais usadas nos últimos 90 dias)
   const [topShortcuts, setTopShortcuts] = useState<
-    { id: string; code: string; category: string | null; occurrence: string; uses: number }[]
+    { id: string; code: string; category: string | null; occurrence: string; uses: number; requires_subcategory?: boolean; subcategory_options?: string[] | null }[]
   >([]);
 
   // Diálogo único "pedir nº do pedido + se foi enviado correto" — usado pelo atalho rápido E pelo card "Conte o que aconteceu"
