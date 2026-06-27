@@ -360,6 +360,30 @@ export default function OccurrencesReport() {
             </Card>
           </div>
 
+          {/* Por subcategoria (causa específica) */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Por causa específica (subcategoria)</CardTitle>
+            </CardHeader>
+            <CardContent className="h-80">
+              {bySubcategory.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma ocorrência com subcategoria no período. Marque "exigir subcategoria" no gerenciador para os tipos genéricos.
+                </p>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={bySubcategory} layout="vertical" margin={{ left: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                    <YAxis dataKey="name" type="category" width={220} tick={{ fontSize: 11 }} />
+                    <Tooltip contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }} />
+                    <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Top ocorrências */}
           <Card>
             <CardHeader className="pb-2">
@@ -373,7 +397,7 @@ export default function OccurrencesReport() {
                   <BarChart data={byOccurrence} layout="vertical" margin={{ left: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                    <YAxis dataKey="name" type="category" width={180} tick={{ fontSize: 11 }} />
+                    <YAxis dataKey="name" type="category" width={220} tick={{ fontSize: 11 }} />
                     <Tooltip contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }} />
                     <Bar dataKey="count" fill="hsl(var(--destructive))" radius={[0, 4, 4, 0]} />
                   </BarChart>
@@ -398,6 +422,9 @@ export default function OccurrencesReport() {
                         <div className="flex items-center gap-2 flex-wrap">
                           {a.occurrences?.category && (
                             <Badge variant="outline">{a.occurrences.category}</Badge>
+                          )}
+                          {a.subcategory && (
+                            <Badge variant="default">{a.subcategory}</Badge>
                           )}
                           {a.stores?.name && (
                             <Badge variant="secondary">{a.stores.name}</Badge>
