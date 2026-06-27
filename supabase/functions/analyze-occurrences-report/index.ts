@@ -121,9 +121,9 @@ REGRAS:
 Total de ocorrências no período (já filtradas): ${agg.total}
 Filtros ativos: ${JSON.stringify(agg.filtros)}
 
-SPLIT IFOOD vs INTERNO:
-- Causadas pelo iFood/entregador (LOGISTICA): ${total_ifood} (${pct_ifood}%)
-- Internas (nossa responsabilidade): ${total_interno} (${100 - pct_ifood}%)
+SPLIT IFOOD vs INTERNO (já inclui "Extravio pelo entregador" no lado iFood):
+- Causadas pelo iFood/entregador: ${total_ifood} (${pct_ifood}%) — LOGISTICA: ${total_ifood_logistica}, Extravio: ${total_extravio}
+- Internas (nossa responsabilidade, FOCO DA ANÁLISE): ${total_interno} (${100 - pct_ifood}%)
 
 POR CATEGORIA (causa-raiz): ${JSON.stringify(agg.por_categoria)}
 POR LOJA (volume absoluto): ${JSON.stringify(agg.por_loja)}
