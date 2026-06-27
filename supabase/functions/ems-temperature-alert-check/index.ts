@@ -151,8 +151,8 @@ Deno.serve(async (req: Request) => {
           const message = buildMessage("recovered", sensor, storeName, last ?? null);
           const notified: Array<{ phone: string; name: string; ok: boolean; error?: string }> = [];
           for (const r of recipients) {
-            const { data: sendData, error: sendErr } = await supabase.functions.invoke("send-whatsapp", {
-              body: { phone: r.phone, message, category: "temperature_recovered", tag: sensor.unique_code },
+            const { data: sendData, error: sendErr } = await supabase.functions.invoke("uazapi-send-text", {
+              body: { phone: r.phone, message },
             });
             notified.push({
               phone: r.phone,
