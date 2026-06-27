@@ -424,7 +424,7 @@ export default function OccurrencesReport() {
         </div>
         <div className="flex items-center gap-2 ml-auto">
           {!readOnly && (
-            <Button size="sm" onClick={runAiAnalysis} disabled={aiLoading}>
+            <Button size="sm" onClick={() => runAiAnalysis("geral")} disabled={aiLoading}>
               {aiLoading ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1.5" />}
               Análise IA
             </Button>
