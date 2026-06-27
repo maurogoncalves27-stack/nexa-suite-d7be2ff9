@@ -105,7 +105,11 @@ REGRAS:
    - Preencha "impacto_ifood" com o % e quais ocorrências de LOGISTICA mais aparecem.
    - Para a loja_critica, SEMPRE que possível, calcule o índice usando APENAS ocorrências internas (total − LOGISTICA da loja) ÷ faturamento. Não puna a loja que sofre mais com entregador.
    - O array "sugestoes" deve conter SOMENTE ações que a operação interna consegue executar (cozinha, montagem, estoque, infraestrutura, atendimento, TI, RH, treinamento). NÃO inclua "treinar entregador", "melhorar entrega" nem nada que dependa do iFood.
-   - Coloque ações relacionadas a iFood em "impacto_ifood.acoes_mitigacao" — apenas o que a loja realmente pode fazer (registrar print da rota, escalar gerência de praça iFood, comunicar cliente proativamente, abrir contestação, conferir saída com selo, etc.).`;
+   - Coloque ações relacionadas a iFood em "impacto_ifood.acoes_mitigacao" — apenas o que a loja realmente pode fazer (registrar print da rota, escalar gerência de praça iFood, comunicar cliente proativamente, abrir contestação, conferir saída com selo, etc.).
+9. SUBCATEGORIAS ESPECIAIS — trate de forma diferenciada quando aparecerem em "por_subcategoria":
+   - "Cliente alega erro - conferido OK": NÃO é falha interna. É recusa/reclamação de cliente sem causa comprovada (loja conferiu e está OK). Mencione em "padroes" como sinal de comunicação/expectativa com cliente, e em "sugestoes" sugira melhorar foto/descrição do prato, conferência dupla com selo de saída, ou comunicação proativa. NUNCA conte como erro de cozinha.
+   - "Extravio pelo entregador" (mesmo dentro de FALTOU ITENS NO PEDIDO): conte como impacto iFood — some no "impacto_ifood.total" e desconte do total interno na hora de avaliar a loja crítica. Não trate como erro de montagem.
+   - "Reclamação genérica": cliente reclamou sem detalhar. Cite como ruído de dados que precisa de melhor coleta (treinar atendente a perguntar "o que exatamente?"), não como problema operacional específico.`;
 
     const userPrompt = `Período: últimos ${agg.periodo_dias} dias
 Total de ocorrências no período (já filtradas): ${agg.total}
