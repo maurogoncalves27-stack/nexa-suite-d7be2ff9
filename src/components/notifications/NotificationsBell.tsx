@@ -181,6 +181,21 @@ export default function NotificationsBell() {
     await supabase.from("user_notifications").delete().eq("id", id);
   };
 
+  const dismissAnnouncement = async (announcementId: string) => {
+    if (!user) return;
+    setAnnouncements((cur) => cur.filter((a) => a.id !== announcementId));
+    if (speakingId === announcementId && typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+      setSpeakingId(null);
+    }
+    await supabase
+      .from("hr_announcement_dismissals")
+      .upsert(
+        { user_id: user.id, announcement_id: announcementId },
+        { onConflict: "user_id,announcement_id" },
+      );
+  };
+
   const handleClick = (n: UserNotification) => {
     const targetUrl = n.url && n.url !== "/" ? n.url : null;
     setOpen(false);
