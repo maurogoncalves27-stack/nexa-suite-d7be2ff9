@@ -120,7 +120,18 @@ export default function NotificationsBell() {
       .order("priority", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(50);
-    const filtered = ((data ?? []) as Announcement[]).filter(isDueToday).slice(0, 10);
+
+    // Filtra os que o usuário já dispensou
+    const { data: dismissed } = await supabase
+      .from("hr_announcement_dismissals")
+      .select("announcement_id")
+      .eq("user_id", user.id);
+    const dismissedIds = new Set((dismissed ?? []).map((d: any) => d.announcement_id));
+
+    const filtered = ((data ?? []) as Announcement[])
+      .filter((a) => !dismissedIds.has(a.id))
+      .filter(isDueToday)
+      .slice(0, 10);
     setAnnouncements(filtered);
   };
 
