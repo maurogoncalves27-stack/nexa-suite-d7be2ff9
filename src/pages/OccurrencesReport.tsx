@@ -11,7 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useViewMode } from "@/hooks/useViewMode";
-import { ArrowLeft, BarChart3, Loader2, Siren, Sparkles, Lightbulb, AlertTriangle } from "lucide-react";
+import { ArrowLeft, BarChart3, Loader2, Siren, Sparkles, Lightbulb, AlertTriangle, Truck } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   ResponsiveContainer,
