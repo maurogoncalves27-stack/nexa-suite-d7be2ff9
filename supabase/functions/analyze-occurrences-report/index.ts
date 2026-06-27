@@ -82,6 +82,14 @@ serve(async (req) => {
       console.warn("Falha ao buscar faturamento", e);
     }
 
+    // Split iFood/entregador (LOGISTICA) vs interno
+    const isIfood = (cat?: string) => (cat || "").toUpperCase() === "LOGISTICA";
+    const total_ifood = agg.por_categoria
+      .filter((c) => isIfood(c.name))
+      .reduce((s, c) => s + c.count, 0);
+    const total_interno = Math.max(0, agg.total - total_ifood);
+    const pct_ifood = agg.total > 0 ? Math.round((total_ifood / agg.total) * 100) : 0;
+
     const systemPrompt = `Você é um analista operacional sênior da rede de restaurantes Aquela Parme (delivery iFood, 4 lojas: ASA SUL, ASA NORTE, ÁGUAS CLARAS, LAGO SUL).
 Sua função: ler agregações de ocorrências e devolver um diagnóstico executivo curto, direto e acionável.
 
@@ -92,11 +100,20 @@ REGRAS:
 4. Sugestões precisam ser práticas e implementáveis numa loja de delivery (treinamento, checklist, escala, processo, equipamento).
 5. NÃO sugira soluções genéricas tipo "melhorar processos" — diga exatamente o quê.
 6. Se o volume for muito baixo (total < 5), avise que a amostra é pequena e evite generalizar.
-7. CRÍTICO: SEMPRE normalize ocorrências pelo faturamento da loja. A loja "crítica" NÃO é a que tem mais ocorrências em volume absoluto, e sim a com maior ÍNDICE (ocorrências por R$10.000 de faturamento — campo "per_10k"). Loja que vende muito tende a ter mais ocorrências em volume — isso é esperado. Cite no resumo o índice da loja crítica e compare com as demais.`;
+7. CRÍTICO: SEMPRE normalize ocorrências pelo faturamento da loja. A loja "crítica" NÃO é a que tem mais ocorrências em volume absoluto, e sim a com maior ÍNDICE (ocorrências por R$10.000 de faturamento — campo "per_10k"). Loja que vende muito tende a ter mais ocorrências em volume — isso é esperado. Cite no resumo o índice da loja crítica e compare com as demais.
+8. CRÍTICO — IFOOD vs INTERNO: A categoria "LOGISTICA" agrupa problemas causados pela operação de entrega do iFood (entregador atrasa, extravia, troca pedido, não chega, motoboy cancela, etc.). Isso está FORA do nosso controle operacional direto. Trate separadamente:
+   - Preencha "impacto_ifood" com o % e quais ocorrências de LOGISTICA mais aparecem.
+   - Para a loja_critica, SEMPRE que possível, calcule o índice usando APENAS ocorrências internas (total − LOGISTICA da loja) ÷ faturamento. Não puna a loja que sofre mais com entregador.
+   - O array "sugestoes" deve conter SOMENTE ações que a operação interna consegue executar (cozinha, montagem, estoque, infraestrutura, atendimento, TI, RH, treinamento). NÃO inclua "treinar entregador", "melhorar entrega" nem nada que dependa do iFood.
+   - Coloque ações relacionadas a iFood em "impacto_ifood.acoes_mitigacao" — apenas o que a loja realmente pode fazer (registrar print da rota, escalar gerência de praça iFood, comunicar cliente proativamente, abrir contestação, conferir saída com selo, etc.).`;
 
     const userPrompt = `Período: últimos ${agg.periodo_dias} dias
 Total de ocorrências no período (já filtradas): ${agg.total}
 Filtros ativos: ${JSON.stringify(agg.filtros)}
+
+SPLIT IFOOD vs INTERNO:
+- Causadas pelo iFood/entregador (LOGISTICA): ${total_ifood} (${pct_ifood}%)
+- Internas (nossa responsabilidade): ${total_interno} (${100 - pct_ifood}%)
 
 POR CATEGORIA (causa-raiz): ${JSON.stringify(agg.por_categoria)}
 POR LOJA (volume absoluto): ${JSON.stringify(agg.por_loja)}
