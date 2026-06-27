@@ -126,9 +126,16 @@ export default function BankReconciliationPanel() {
   const [periodPreset, setPeriodPreset] = useState<"all" | "current" | "previous" | "custom">("all");
   const [periodFrom, setPeriodFrom] = useState<string>("");
   const [periodTo, setPeriodTo] = useState<string>("");
-  // Lembra a data da última transação conciliada para restaurar a posição
-  // após o reload (evita "voltar para o topo" descrito pelo usuário).
-  const focusDateRef = useRef<string | null>(null);
+  // Preserva a posição de scroll ao recarregar a lista após um save
+  // (evita "voltar pro topo" / sensação de reload).
+  const reloadKeepingScroll = useCallback(async (fn: () => Promise<void>) => {
+    const y = window.scrollY;
+    await fn();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => window.scrollTo({ top: y, behavior: "auto" }));
+    });
+  }, []);
+
   // Rateio (centro de custo = loja)
   const [allocStores, setAllocStores] = useState<StoreLite[]>([]);
   const [allocTarget, setAllocTarget] = useState<BankTx | null>(null);
@@ -300,26 +307,6 @@ export default function BankReconciliationPanel() {
 
 
 
-  // Após cada reload, se houver uma "data foco" salva, rola até a primeira
-  // linha cuja posted_at seja <= data foco (mantém o usuário no dia em que
-  // ele estava conciliando, em vez de jogá-lo de volta ao topo).
-  useEffect(() => {
-    if (loading) return;
-    const focus = focusDateRef.current;
-    if (!focus) return;
-    focusDateRef.current = null;
-    // Aguarda um frame para garantir que a tabela já foi pintada
-    requestAnimationFrame(() => {
-      const rows = document.querySelectorAll<HTMLElement>("tr[data-posted-at]");
-      let target: HTMLElement | null = null;
-      for (const row of Array.from(rows)) {
-        const d = row.dataset.postedAt;
-        if (d && d <= focus) { target = row; break; }
-      }
-      if (!target && rows.length > 0) target = rows[rows.length - 1];
-      target?.scrollIntoView({ block: "center", behavior: "auto" });
-    });
-  }, [loading, transactions]);
 
   // Constrói candidatos compatíveis com cada transação (débito → pagar; crédito → receber)
   // Pré-filtra por janela de valor (±20%) e data (±15 dias) para reduzir O(N×M) drasticamente
@@ -441,14 +428,14 @@ export default function BankReconciliationPanel() {
     toast({ title: "Conciliada", description: c.kind === "payable" ? "Conta a pagar quitada." : "Conta a receber recebida." });
     const tx = transactions.find((t) => t.id === txId);
     if (tx) {
-      focusDateRef.current = tx.posted_at;
       // Herda o rateio do AP/AR (se houver) para a transação bancária
       await inheritAllocationsFromSource(txId, c.kind, c.id, Math.abs(Number(tx.amount)));
     }
     setMatchTarget(null);
     setMatchSearch("");
-    await loadData();
+    await reloadKeepingScroll(loadData);
   };
+
 
   const reconcileBatch = async () => {
     if (!matchTarget) return;
@@ -469,13 +456,13 @@ export default function BankReconciliationPanel() {
       return;
     }
     toast({ title: "Conciliada", description: `${ids.length} ${isCredit ? "recebimentos" : "pagamentos"} vinculados.` });
-    focusDateRef.current = matchTarget.posted_at;
     setMatchTarget(null);
     setMatchSearch("");
     setBatchMode(false);
     setBatchSelected(new Set());
-    await loadData();
+    await reloadKeepingScroll(loadData);
   };
+
 
   const undo = async (txId: string) => {
     setSubmitting(true);
@@ -486,10 +473,9 @@ export default function BankReconciliationPanel() {
       return;
     }
     toast({ title: "Conciliação desfeita" });
-    const tx = transactions.find((t) => t.id === txId);
-    if (tx) focusDateRef.current = tx.posted_at;
-    await loadData();
+    await reloadKeepingScroll(loadData);
   };
+
 
 
   const autoReconcileAll = async () => {
@@ -517,7 +503,8 @@ export default function BankReconciliationPanel() {
       title: "Conciliação automática concluída",
       description: `${ok} aplicadas${fail > 0 ? `, ${fail} falharam` : ""}.`,
     });
-    await loadData();
+    await reloadKeepingScroll(loadData);
+
   };
 
   const suggestionsCount = useMemo(
@@ -923,7 +910,7 @@ export default function BankReconciliationPanel() {
         tx={c6Target}
         candidates={c6Candidates}
         onOpenChange={(o) => { if (!o) { setC6Target(null); setC6Candidates([]); } }}
-        onApplied={async () => { await loadData(); await loadC6Batches(); }}
+        onApplied={async () => { await reloadKeepingScroll(async () => { await loadData(); await loadC6Batches(); }); }}
       />
 
       <Dialog open={!!allocTarget} onOpenChange={(o) => { if (!o && !submitting) { setAllocTarget(null); setAllocSplits([]); } }}>
