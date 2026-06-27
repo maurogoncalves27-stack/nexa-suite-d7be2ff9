@@ -174,7 +174,7 @@ TENDÊNCIA DIÁRIA: ${JSON.stringify(agg.tendencia)}`;
                   },
                   sugestoes: {
                     type: "array",
-                    description: "3-6 ações concretas para evitar reincidência, ordenadas por impacto",
+                    description: "3-6 ações concretas INTERNAS (que a operação consegue resolver sem depender do iFood) para evitar reincidência, ordenadas por impacto",
                     items: {
                       type: "object",
                       properties: {
@@ -186,8 +186,23 @@ TENDÊNCIA DIÁRIA: ${JSON.stringify(agg.tendencia)}`;
                       required: ["acao", "responsavel", "prazo", "detalhe"],
                     },
                   },
+                  impacto_ifood: {
+                    type: "object",
+                    description: "Quanto das ocorrências é causado pela operação de entrega do iFood (categoria LOGISTICA) e o que dá pra mitigar",
+                    properties: {
+                      percentual: { type: "number", description: "% do total de ocorrências causado por LOGISTICA/entregador" },
+                      total: { type: "number", description: "Quantidade absoluta de ocorrências LOGISTICA" },
+                      observacao: { type: "string", description: "1-2 frases: o que mais aparece (atraso, extravio, etc) e quais lojas mais sofrem" },
+                      acoes_mitigacao: {
+                        type: "array",
+                        description: "2-4 ações realistas que a loja consegue fazer para reduzir impacto do iFood (ex: registrar print da rota, escalar gerência de praça, comunicar cliente proativamente). NUNCA inclua treinar entregador.",
+                        items: { type: "string" },
+                      },
+                    },
+                    required: ["percentual", "total", "observacao", "acoes_mitigacao"],
+                  },
                 },
-                required: ["resumo", "loja_critica", "causas_principais", "padroes", "sugestoes"],
+                required: ["resumo", "loja_critica", "causas_principais", "padroes", "sugestoes", "impacto_ifood"],
                 additionalProperties: false,
               },
             },
