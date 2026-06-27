@@ -25,9 +25,24 @@ export interface Occurrence {
   prevention_2: string | null;
   sort_order?: number;
   is_active?: boolean;
+  requires_subcategory?: boolean;
+  subcategory_options?: string[] | null;
 }
 
-type Editable = Omit<Occurrence, "id"> & { id?: string };
+type Editable = Omit<Occurrence, "id" | "subcategory_options"> & {
+  id?: string;
+  subcategory_options_text?: string;
+};
+
+const CATEGORY_PRESETS = [
+  "COZINHA",
+  "MONTAGEM",
+  "ESTOQUE",
+  "LOGISTICA",
+  "CLIENTE",
+  "PAGAMENTO",
+  "INFRAESTRUTURA",
+];
 
 const emptyForm: Editable = {
   code: "",
@@ -41,6 +56,8 @@ const emptyForm: Editable = {
   prevention_2: "",
   sort_order: 0,
   is_active: true,
+  requires_subcategory: false,
+  subcategory_options_text: "",
 };
 
 interface Props {
