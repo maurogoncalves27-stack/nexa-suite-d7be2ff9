@@ -53,6 +53,7 @@ export default function OccurrencesReport() {
   const [assigning, setAssigning] = useState<string | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiScope, setAiScope] = useState<string>("geral"); // 'geral' | nome da loja | 'comparativo'
   const [aiResult, setAiResult] = useState<{
     resumo?: string;
     loja_critica?: { nome: string; total: number; observacao: string };
@@ -61,6 +62,13 @@ export default function OccurrencesReport() {
     sugestoes?: { acao: string; responsavel: string; prazo: string; detalhe: string }[];
     impacto_ifood?: { percentual: number; total: number; observacao: string; acoes_mitigacao: string[] };
   } | null>(null);
+  const [aiRanking, setAiRanking] = useState<{
+    name: string; revenue: number; occurrences: number;
+    occ_ifood: number; occ_interno: number;
+    per_10k_total: number; per_10k_interno: number; per_10k_ifood: number;
+  }[] | null>(null);
+
+  const STORE_TABS = ["Águas Claras", "Asa Norte", "Asa Sul", "Lago Sul"];
 
 
   const load = async () => {
