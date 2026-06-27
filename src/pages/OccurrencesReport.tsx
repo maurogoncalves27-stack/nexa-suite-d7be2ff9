@@ -11,7 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useViewMode } from "@/hooks/useViewMode";
-import { ArrowLeft, BarChart3, Loader2, Siren, CheckCircle2, Eye } from "lucide-react";
+import { ArrowLeft, BarChart3, Loader2, Siren } from "lucide-react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -20,10 +20,6 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
   LineChart,
   Line,
 } from "recharts";
@@ -34,24 +30,10 @@ interface AlertRow {
   created_by: string;
   store_id: string | null;
   note: string | null;
-  status: string;
   created_at: string;
-  resolved_at: string | null;
   occurrences?: { occurrence: string; category: string | null; order_correct: boolean } | null;
   stores?: { name: string | null } | null;
 }
-
-const STATUS_COLORS: Record<string, string> = {
-  pending: "hsl(var(--destructive))",
-  seen: "hsl(var(--primary))",
-  resolved: "hsl(var(--muted-foreground))",
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  pending: "Pendente",
-  seen: "Vista",
-  resolved: "Resolvida",
-};
 
 export default function OccurrencesReport() {
   const { isPartner, isAdmin, isManager, isSuperUser } = useAuth();
@@ -60,6 +42,8 @@ export default function OccurrencesReport() {
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState<string>("30");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [storeFilter, setStoreFilter] = useState<string>("all");
   const [reporterNames, setReporterNames] = useState<Record<string, string>>({});
 
   const load = async () => {
@@ -68,7 +52,7 @@ export default function OccurrencesReport() {
     const { data, error } = await supabase
       .from("occurrence_alerts")
       .select(
-        "id, occurrence_id, created_by, store_id, note, status, created_at, resolved_at, occurrences(occurrence, category, order_correct), stores(name)",
+        "id, occurrence_id, created_by, store_id, note, created_at, occurrences(occurrence, category, order_correct), stores(name)",
       )
       .gte("created_at", since)
       .order("created_at", { ascending: false });
@@ -82,7 +66,6 @@ export default function OccurrencesReport() {
     const rows = (data ?? []) as unknown as AlertRow[];
     setAlerts(rows);
 
-    // Buscar nomes de quem criou
     const userIds = Array.from(new Set(rows.map((r) => r.created_by)));
     if (userIds.length > 0) {
       const { data: emps } = await supabase
@@ -103,37 +86,42 @@ export default function OccurrencesReport() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days]);
 
-  const updateStatus = async (id: string, status: "seen" | "resolved") => {
-    const resolvedAt = status === "resolved" ? new Date().toISOString() : null;
-    const patch = status === "resolved" ? { status, resolved_at: resolvedAt } : { status };
-    const { error } = await supabase.from("occurrence_alerts").update(patch).eq("id", id);
-    if (error) {
-      toast({ title: "Erro ao atualizar", description: error.message, variant: "destructive" });
-      return;
-    }
-    setAlerts((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status, resolved_at: resolvedAt ?? a.resolved_at } : a)),
-    );
-  };
+  const categoryOptions = useMemo(() => {
+    const set = new Set<string>();
+    alerts.forEach((a) => set.add(a.occurrences?.category ?? "Sem categoria"));
+    return Array.from(set).sort();
+  }, [alerts]);
 
-  const totalCount = alerts.length;
-  const pendingCount = alerts.filter((a) => a.status === "pending").length;
-  const resolvedCount = alerts.filter((a) => a.status === "resolved").length;
+  const storeOptions = useMemo(() => {
+    const set = new Set<string>();
+    alerts.forEach((a) => set.add(a.stores?.name ?? "Sem loja"));
+    return Array.from(set).sort();
+  }, [alerts]);
+
+  const filtered = useMemo(() => {
+    return alerts.filter((a) => {
+      if (categoryFilter !== "all" && (a.occurrences?.category ?? "Sem categoria") !== categoryFilter) return false;
+      if (storeFilter !== "all" && (a.stores?.name ?? "Sem loja") !== storeFilter) return false;
+      return true;
+    });
+  }, [alerts, categoryFilter, storeFilter]);
+
+  const totalCount = filtered.length;
 
   const byCategory = useMemo(() => {
     const map = new Map<string, number>();
-    alerts.forEach((a) => {
+    filtered.forEach((a) => {
       const key = a.occurrences?.category ?? "Sem categoria";
       map.set(key, (map.get(key) ?? 0) + 1);
     });
     return Array.from(map.entries())
       .map(([category, count]) => ({ category, count }))
       .sort((a, b) => b.count - a.count);
-  }, [alerts]);
+  }, [filtered]);
 
   const byOccurrence = useMemo(() => {
     const map = new Map<string, number>();
-    alerts.forEach((a) => {
+    filtered.forEach((a) => {
       const key = a.occurrences?.occurrence ?? "—";
       map.set(key, (map.get(key) ?? 0) + 1);
     });
@@ -141,26 +129,16 @@ export default function OccurrencesReport() {
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
-  }, [alerts]);
+  }, [filtered]);
 
   const byStore = useMemo(() => {
     const map = new Map<string, number>();
-    alerts.forEach((a) => {
+    filtered.forEach((a) => {
       const key = a.stores?.name ?? "Sem loja";
       map.set(key, (map.get(key) ?? 0) + 1);
     });
     return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
-  }, [alerts]);
-
-  const byStatus = useMemo(() => {
-    const map = new Map<string, number>();
-    alerts.forEach((a) => map.set(a.status, (map.get(a.status) ?? 0) + 1));
-    return Array.from(map.entries()).map(([status, count]) => ({
-      status,
-      label: STATUS_LABEL[status] ?? status,
-      count,
-    }));
-  }, [alerts]);
+  }, [filtered]);
 
   const trend = useMemo(() => {
     const n = Number(days);
@@ -169,7 +147,7 @@ export default function OccurrencesReport() {
       const d = format(subDays(new Date(), i), "yyyy-MM-dd");
       map.set(d, 0);
     }
-    alerts.forEach((a) => {
+    filtered.forEach((a) => {
       const d = format(new Date(a.created_at), "yyyy-MM-dd");
       if (map.has(d)) map.set(d, (map.get(d) ?? 0) + 1);
     });
@@ -177,7 +155,7 @@ export default function OccurrencesReport() {
       date: format(new Date(date + "T00:00:00"), "dd/MM"),
       count,
     }));
-  }, [alerts, days]);
+  }, [filtered, days]);
 
   return (
     <div className="container mx-auto px-3 py-4 md:py-6 max-w-6xl space-y-4">
@@ -188,28 +166,57 @@ export default function OccurrencesReport() {
             Relatório de Ocorrências
           </h1>
           <p className="text-sm text-muted-foreground">
-            Alertas registrados pelos colaboradores nos últimos {days} dias.
+            Visualização dos alertas registrados pelos colaboradores nos últimos {days} dias. Use os filtros para identificar padrões e evitar reincidências.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Select value={days} onValueChange={setDays}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">Últimos 7 dias</SelectItem>
-              <SelectItem value="15">Últimos 15 dias</SelectItem>
-              <SelectItem value="30">Últimos 30 dias</SelectItem>
-              <SelectItem value="60">Últimos 60 dias</SelectItem>
-              <SelectItem value="90">Últimos 90 dias</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button asChild variant="outline" size="sm" data-partner-allow={readOnly ? "true" : undefined}>
-            <Link to={readOnly ? "/painel-socio" : "/ocorrencias"}>
-              <ArrowLeft className="h-4 w-4 mr-1.5" /> Voltar
-            </Link>
+        <Button asChild variant="outline" size="sm" data-partner-allow={readOnly ? "true" : undefined}>
+          <Link to={readOnly ? "/painel-socio" : "/ocorrencias"}>
+            <ArrowLeft className="h-4 w-4 mr-1.5" /> Voltar
+          </Link>
+        </Button>
+      </div>
+
+      {/* Filtros */}
+      <div className="flex flex-wrap gap-2">
+        <Select value={days} onValueChange={setDays}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="7">Últimos 7 dias</SelectItem>
+            <SelectItem value="15">Últimos 15 dias</SelectItem>
+            <SelectItem value="30">Últimos 30 dias</SelectItem>
+            <SelectItem value="60">Últimos 60 dias</SelectItem>
+            <SelectItem value="90">Últimos 90 dias</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Categoria" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as categorias</SelectItem>
+            {categoryOptions.map((c) => (
+              <SelectItem key={c} value={c}>{c}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={storeFilter} onValueChange={setStoreFilter}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Loja" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as lojas</SelectItem>
+            {storeOptions.map((s) => (
+              <SelectItem key={s} value={s}>{s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {(categoryFilter !== "all" || storeFilter !== "all") && (
+          <Button variant="ghost" size="sm" onClick={() => { setCategoryFilter("all"); setStoreFilter("all"); }}>
+            Limpar filtros
           </Button>
-        </div>
+        )}
       </div>
 
       {loading ? (
@@ -219,10 +226,10 @@ export default function OccurrencesReport() {
       ) : (
         <>
           {/* Métricas */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <Card>
               <CardContent className="p-4">
-                <div className="text-xs text-muted-foreground">Total de alertas</div>
+                <div className="text-xs text-muted-foreground">Total de ocorrências</div>
                 <div className="text-2xl font-bold flex items-center gap-2">
                   <Siren className="h-5 w-5 text-primary" />
                   {totalCount}
@@ -231,14 +238,8 @@ export default function OccurrencesReport() {
             </Card>
             <Card>
               <CardContent className="p-4">
-                <div className="text-xs text-muted-foreground">Pendentes</div>
-                <div className="text-2xl font-bold text-destructive">{pendingCount}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-xs text-muted-foreground">Resolvidos</div>
-                <div className="text-2xl font-bold text-primary">{resolvedCount}</div>
+                <div className="text-xs text-muted-foreground">Categorias diferentes</div>
+                <div className="text-2xl font-bold">{byCategory.length}</div>
               </CardContent>
             </Card>
             <Card>
@@ -290,25 +291,23 @@ export default function OccurrencesReport() {
               </CardContent>
             </Card>
 
-            {/* Por status */}
+            {/* Por loja */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Por status</CardTitle>
+                <CardTitle className="text-base">Por loja</CardTitle>
               </CardHeader>
               <CardContent className="h-72">
-                {byStatus.length === 0 ? (
+                {byStore.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Sem dados.</p>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={byStatus} dataKey="count" nameKey="label" outerRadius={90} label>
-                        {byStatus.map((entry) => (
-                          <Cell key={entry.status} fill={STATUS_COLORS[entry.status] ?? "hsl(var(--primary))"} />
-                        ))}
-                      </Pie>
-                      <Legend />
+                    <BarChart data={byStore} layout="vertical" margin={{ left: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                      <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 11 }} />
                       <Tooltip contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }} />
-                    </PieChart>
+                      <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                    </BarChart>
                   </ResponsiveContainer>
                 )}
               </CardContent>
@@ -340,55 +339,34 @@ export default function OccurrencesReport() {
           {/* Lista detalhada */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Alertas detalhados</CardTitle>
+              <CardTitle className="text-base">Ocorrências detalhadas</CardTitle>
             </CardHeader>
             <CardContent>
-              {alerts.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nenhum alerta no período.</p>
+              {filtered.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhuma ocorrência no período.</p>
               ) : (
                 <ScrollArea className="h-[420px] pr-3">
                   <div className="space-y-2">
-                    {alerts.map((a) => (
-                      <div key={a.id} className="border rounded-lg p-3 bg-card space-y-2">
-                        <div className="flex items-start justify-between gap-2 flex-wrap">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <Badge
-                                variant={a.status === "pending" ? "destructive" : a.status === "resolved" ? "secondary" : "default"}
-                              >
-                                {STATUS_LABEL[a.status] ?? a.status}
-                              </Badge>
-                              {a.occurrences?.category && (
-                                <Badge variant="outline">{a.occurrences.category}</Badge>
-                              )}
-                              <span className="text-xs text-muted-foreground">
-                                {format(new Date(a.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                              </span>
-                            </div>
-                            <p className="font-medium mt-1 text-sm">{a.occurrences?.occurrence ?? "—"}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {reporterNames[a.created_by] ?? "Colaborador"}
-                              {a.stores?.name ? ` • ${a.stores.name}` : ""}
-                            </p>
-                            {a.note && (
-                              <p className="text-xs mt-1 italic text-muted-foreground">"{a.note}"</p>
-                            )}
-                          </div>
-                          {!readOnly && (
-                            <div className="flex gap-1 shrink-0">
-                              {a.status === "pending" && (
-                                <Button size="sm" variant="outline" className="h-8" onClick={() => updateStatus(a.id, "seen")}>
-                                  <Eye className="h-3.5 w-3.5 mr-1" /> Vista
-                                </Button>
-                              )}
-                              {a.status !== "resolved" && (
-                                <Button size="sm" className="h-8" onClick={() => updateStatus(a.id, "resolved")}>
-                                  <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Resolver
-                                </Button>
-                              )}
-                            </div>
+                    {filtered.map((a) => (
+                      <div key={a.id} className="border rounded-lg p-3 bg-card space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {a.occurrences?.category && (
+                            <Badge variant="outline">{a.occurrences.category}</Badge>
                           )}
+                          {a.stores?.name && (
+                            <Badge variant="secondary">{a.stores.name}</Badge>
+                          )}
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(a.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                          </span>
                         </div>
+                        <p className="font-medium text-sm">{a.occurrences?.occurrence ?? "—"}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Registrada por {reporterNames[a.created_by] ?? "Colaborador"}
+                        </p>
+                        {a.note && (
+                          <p className="text-xs italic text-muted-foreground">"{a.note}"</p>
+                        )}
                       </div>
                     ))}
                   </div>
