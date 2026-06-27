@@ -23,6 +23,8 @@ interface Aggregation {
   tendencia: { date: string; count: number }[];
   mode?: "analysis" | "ranking";
   por_loja_split?: { name: string; ifood: number; interno: number }[];
+  escopo?: "geral" | "loja";
+  loja_alvo?: string;
 }
 
 serve(async (req) => {
@@ -123,8 +125,22 @@ serve(async (req) => {
     const total_interno = Math.max(0, agg.total - total_ifood);
     const pct_ifood = agg.total > 0 ? Math.round((total_ifood / agg.total) * 100) : 0;
 
+    const escopo = agg.escopo || (agg.filtros?.loja ? "loja" : "geral");
+    const lojaAlvo = agg.loja_alvo || agg.filtros?.loja || "";
+
+    const escopoBlock = escopo === "loja"
+      ? `ESCOPO: análise focada APENAS na loja "${lojaAlvo}". Toda a análise (resumo, causas, padrões, sugestões) deve ser sobre ESSA loja. Em "loja_critica.nome" coloque "${lojaAlvo}". Não compare com outras lojas.`
+      : `ESCOPO: análise PANORÂMICA das 4 lojas (ASA SUL, ASA NORTE, ÁGUAS CLARAS, LAGO SUL). REGRAS OBRIGATÓRIAS:
+- O "resumo" DEVE citar pelo menos 2-3 lojas e seus índices per_10k_interno, comparando. NÃO foque numa loja só.
+- "loja_critica" é apenas o destaque do pior caso — mas o resto da análise olha o conjunto.
+- "causas_principais" devem ser causas que aparecem na REDE (em mais de uma loja se possível). Cite entre parênteses quais lojas mais sofrem com cada causa.
+- "padroes" DEVE incluir comparações entre lojas (ex: "ASA NORTE tem 3x mais erro de preparo que LAGO SUL", "todas as lojas têm pico de ocorrências às sextas").
+- "sugestoes" são para a REDE inteira (ações que beneficiam todas as lojas), não específicas de uma loja. Se uma ação for crítica só pra uma loja, deixe explícito no "detalhe".`;
+
     const systemPrompt = `Você é um analista operacional sênior da rede de restaurantes Aquela Parme (delivery iFood, 4 lojas: ASA SUL, ASA NORTE, ÁGUAS CLARAS, LAGO SUL).
 Sua função: ler agregações de ocorrências e devolver um diagnóstico executivo curto, direto e acionável.
+
+${escopoBlock}
 
 REGRAS:
 1. Tom direto, sem floreio. Para gerentes, não para clientes.
@@ -133,18 +149,18 @@ REGRAS:
 4. Sugestões precisam ser práticas e implementáveis numa loja de delivery (treinamento, checklist, escala, processo, equipamento).
 5. NÃO sugira soluções genéricas tipo "melhorar processos" — diga exatamente o quê.
 6. Se o volume for muito baixo (total < 5), avise que a amostra é pequena e evite generalizar.
-7. CRÍTICO: SEMPRE normalize ocorrências pelo faturamento da loja. A loja "crítica" NÃO é a que tem mais ocorrências em volume absoluto, e sim a com maior ÍNDICE (ocorrências por R$10.000 de faturamento — campo "per_10k"). Loja que vende muito tende a ter mais ocorrências em volume — isso é esperado. Cite no resumo o índice da loja crítica e compare com as demais.
+7. CRÍTICO: SEMPRE normalize ocorrências pelo faturamento da loja. A loja "crítica" NÃO é a que tem mais ocorrências em volume absoluto, e sim a com maior ÍNDICE (ocorrências por R$10.000 de faturamento — campo "per_10k"). Loja que vende muito tende a ter mais ocorrências em volume — isso é esperado.
 8. CRÍTICO — IFOOD vs INTERNO (FOCO É NO QUE A GENTE RESOLVE): A categoria "LOGISTICA" + a subcategoria "Extravio pelo entregador" são problemas da operação de entrega do iFood — FORA do nosso controle direto. Regras de tratamento:
-   - "impacto_ifood" é um RELATÓRIO CURTO: percentual, total absoluto, e 1-2 frases citando quais sub-problemas dominam (ex: "78% é atraso de entrega, 15% extravio") e quais lojas mais sofrem. NÃO escreva análise longa aqui — é só pra dimensionar o tamanho do problema externo.
-   - "acoes_mitigacao" do iFood: NO MÁXIMO 2-3 ações realistas e curtas. Não é o foco do relatório.
-   - O FOCO TOTAL da análise (resumo, causas_principais, padroes, sugestoes) é o que a operação INTERNA pode resolver. Quando for falar do panorama no "resumo", diga algo como "X% das ocorrências vêm da entrega iFood (fora do nosso controle); foco abaixo é nos Y% internos que conseguimos atacar".
+   - "impacto_ifood" é um RELATÓRIO CURTO: percentual, total absoluto, e 1-2 frases citando quais sub-problemas dominam (ex: "78% é atraso de entrega, 15% extravio") e quais lojas mais sofrem.
+   - "acoes_mitigacao" do iFood: NO MÁXIMO 2-3 ações realistas e curtas.
+   - O FOCO TOTAL da análise (resumo, causas_principais, padroes, sugestoes) é o que a operação INTERNA pode resolver.
    - "loja_critica": SEMPRE recalcule o índice usando APENAS ocorrências internas (total da loja − LOGISTICA da loja − Extravio pelo entregador) ÷ faturamento. Não puna a loja que sofre mais com entregador.
    - "causas_principais": IGNORE LOGISTICA. Só liste causas internas (COZINHA, MONTAGEM, PAGAMENTO, INFRAESTRUTURA, ATENDIMENTO, etc.). Se a maior categoria for LOGISTICA, pule ela e use a segunda/terceira maior.
    - "sugestoes": SOMENTE ações internas executáveis pela operação. NUNCA inclua "treinar entregador", "melhorar entrega", "falar com iFood" — isso fica em impacto_ifood.acoes_mitigacao.
 9. SUBCATEGORIAS ESPECIAIS — trate de forma diferenciada quando aparecerem em "por_subcategoria":
-   - "Cliente alega erro - conferido OK": NÃO é falha interna. É recusa/reclamação de cliente sem causa comprovada (loja conferiu e está OK). Mencione em "padroes" como sinal de comunicação/expectativa com cliente, e em "sugestoes" sugira melhorar foto/descrição do prato, conferência dupla com selo de saída, ou comunicação proativa. NUNCA conte como erro de cozinha.
-   - "Extravio pelo entregador" (mesmo dentro de FALTOU ITENS NO PEDIDO): conte como impacto iFood — some no "impacto_ifood.total" e desconte do total interno na hora de avaliar a loja crítica. Não trate como erro de montagem.
-   - "Reclamação genérica": cliente reclamou sem detalhar. Cite como ruído de dados que precisa de melhor coleta (treinar atendente a perguntar "o que exatamente?"), não como problema operacional específico.`;
+   - "Cliente alega erro - conferido OK": NÃO é falha interna. É recusa/reclamação de cliente sem causa comprovada. Mencione em "padroes" como sinal de comunicação, e em "sugestoes" sugira melhorar foto/descrição, conferência dupla com selo de saída, ou comunicação proativa. NUNCA conte como erro de cozinha.
+   - "Extravio pelo entregador" (mesmo dentro de FALTOU ITENS NO PEDIDO): conte como impacto iFood — some no "impacto_ifood.total" e desconte do total interno.
+   - "Reclamação genérica": cliente reclamou sem detalhar. Cite como ruído de dados que precisa de melhor coleta, não como problema operacional específico.`;
 
     const userPrompt = `Período: últimos ${agg.periodo_dias} dias
 Total de ocorrências no período (já filtradas): ${agg.total}
