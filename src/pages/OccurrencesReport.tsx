@@ -794,15 +794,77 @@ export default function OccurrencesReport() {
               Análise IA das ocorrências
             </DialogTitle>
             <DialogDescription>
-              Últimos {days} dias · {filtered.length} ocorrências analisadas
+              Últimos {days} dias · escolha o escopo da análise
             </DialogDescription>
           </DialogHeader>
+
+          {/* Barra de escopo */}
+          <div className="flex flex-wrap gap-1.5 pb-2 border-b">
+            {[{ key: "geral", label: "Geral" }, ...STORE_TABS.map((s) => ({ key: s, label: s })), { key: "comparativo", label: "Comparativo" }].map((t) => (
+              <Button
+                key={t.key}
+                size="sm"
+                variant={aiScope === t.key ? "default" : "outline"}
+                onClick={() => runAiAnalysis(t.key)}
+                disabled={aiLoading}
+                className="text-xs"
+              >
+                {t.label}
+              </Button>
+            ))}
+          </div>
 
           {aiLoading && (
             <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" /> Analisando padrões…
             </div>
           )}
+
+          {!aiLoading && aiScope === "comparativo" && aiRanking && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Ranking ponderado pelo faturamento: ocorrências internas por R$10.000 vendidos (quanto maior, pior). iFood/entregador é mostrado à parte.
+              </p>
+              {aiRanking.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Sem dados de faturamento para o período.</p>
+              ) : (
+                <div className="space-y-2">
+                  {aiRanking.map((r, i) => (
+                    <Card key={r.name} className={i === 0 ? "border-destructive/40 bg-destructive/5" : ""}>
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2">
+                            <Badge variant={i === 0 ? "destructive" : "secondary"} className="text-xs">#{i + 1}</Badge>
+                            <span className="font-semibold text-sm">{r.name}</span>
+                          </div>
+                          <Badge variant="outline" className="text-xs">
+                            {r.per_10k_interno.toFixed(2)} / R$10k
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                          <div>
+                            <div>Faturamento</div>
+                            <div className="font-medium text-foreground">R$ {r.revenue.toLocaleString("pt-BR")}</div>
+                          </div>
+                          <div>
+                            <div>Ocorrências</div>
+                            <div className="font-medium text-foreground">{r.occurrences} ({r.occ_interno} internas + {r.occ_ifood} iFood)</div>
+                          </div>
+                        </div>
+                        {r.occ_ifood > 0 && (
+                          <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1.5">
+                            <Truck className="h-3 w-3" />
+                            iFood/entregador: {r.per_10k_ifood.toFixed(2)} / R$10k
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
 
           {!aiLoading && aiResult && (
             <div className="space-y-4">
