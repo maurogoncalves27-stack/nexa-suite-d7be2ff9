@@ -11,7 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useViewMode } from "@/hooks/useViewMode";
-import { ArrowLeft, BarChart3, Loader2, Siren, Sparkles, Lightbulb, AlertTriangle, Truck } from "lucide-react";
+import { ArrowLeft, BarChart3, Loader2, Siren, Sparkles, Lightbulb, AlertTriangle, Bike } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   ResponsiveContainer,
@@ -860,7 +860,7 @@ export default function OccurrencesReport() {
                         </div>
                         {r.occ_ifood > 0 && (
                           <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1.5">
-                            <Truck className="h-3 w-3" />
+                            <Bike className="h-3 w-3" />
                             iFood/entregador: {r.per_10k_ifood.toFixed(2)} / R$10k
                           </div>
                         )}
@@ -900,7 +900,7 @@ export default function OccurrencesReport() {
                 <Card className="border-info/40 bg-info/5">
                   <CardContent className="p-3">
                     <div className="flex items-start gap-2">
-                      <Truck className="h-4 w-4 text-info mt-0.5 shrink-0" />
+                      <Bike className="h-4 w-4 text-info mt-0.5 shrink-0" />
                       <div className="flex-1 space-y-2">
                         <div className="text-sm font-semibold">
                           Impacto do iFood/entregador
