@@ -1,49 +1,22 @@
-## Diagnóstico
+## Simplificar detecção de loja em ocorrências
 
-145 ocorrências, 57 sem loja. A loja pode ser inferida automaticamente via `employees.allocated_store_id` (loja real de alocação) — não precisa pedir nada ao usuário.
+Cascata atual tem 5 passos (GPS → allocated_store_id → store_id → regra ESCRITÓRIO → store_terminal_users). Reduzir para 3, removendo as regras frágeis.
 
-Mapeamento dos 57 órfãos por `allocated_store_id` do autor:
+### Nova cascata (em `src/pages/Occurrences.tsx#sendRegister`)
+1. **GPS** dentro do raio (geofence_radius_m, mínimo 500m) de uma loja real.
+2. **`employees.allocated_store_id`** se for loja real.
+3. **`store_terminal_users.store_id`** se for loja real.
 
-| Loja alocada | Qtd |
-|---|---|
-| ÁGUAS CLARAS | 10 |
-| ASA SUL | 7 |
-| ASA NORTE | 2 |
-| LAGO SUL | 1 |
-| ESCRITÓRIO → ASA SUL (regra fixa) | 1 |
-| Sem employee vinculado (managers antigos/contas admin) | 36 |
+Se nenhum passo resolver, grava `NULL` e cai na fila de revisão do `/ocorrencias/relatorio` (já implementada).
 
-**Causa raiz** (`src/pages/Occurrences.tsx` 382–419): a detecção só consulta `employees.store_id` (matriz, geralmente FÁBRICA) + GPS. Nunca usa `allocated_store_id`, então cai em `NULL`.
+### O que sai
+- Fallback `employees.store_id` (loja matriz, geralmente FÁBRICA — gerava ruído).
+- Regra fixa ESCRITÓRIO → ASA SUL (substituída pelo `allocated_store_id`, que para o pessoal do escritório já é "ASA SUL" via cadastro).
 
-## Plano
+### Memória
+Atualizar `mem://features/ocorrencias-loja-auto` com a cascata reduzida.
 
-### 1. Corrigir detecção no registro (`src/pages/Occurrences.tsx`)
-Trocar a ordem de fallback dentro de `sendRegister` para **sempre achar uma loja real**, sem pedir nada ao usuário:
-
-1. GPS dentro do raio de uma loja real → usa essa loja.
-2. Senão, `employees.allocated_store_id` (se for loja real).
-3. Senão, `employees.store_id` (se for loja real).
-4. Senão, regra: `ESCRITÓRIO` → `ASA SUL`.
-5. Senão (último fallback, conta sem employee), buscar a loja real mais antiga/principal do sistema OU manter `NULL` e cair na fila de revisão (passo 3).
-
-Atualizar a query para trazer `allocated_store_id` e o nome da loja alocada. Nenhuma mudança de UI — usuário continua só apertando "Registrar".
-
-### 2. Backfill automático — 21 dos 57
-Insert/update SQL:
-- `ESCRITÓRIO` (1 registro) → `ASA SUL`.
-- Demais 20 → `allocated_store_id` do autor.
-
-### 3. Fila de revisão para os 36 sem employee
-Em `src/pages/OccurrencesReport.tsx`, card **"Ocorrências sem loja (a revisar)"**:
-- Lista os pendentes com autor/data/ocorrência.
-- Botão "Atribuir loja" com select das 4 lojas reais → grava `store_id`.
-- Banner com contagem; some quando zerar.
-
-Esses 36 são casos legados de managers sem `employees` — a partir do passo 1 não geram mais órfãos, então a fila não cresce.
-
-### 4. Memória
-- `ESCRITÓRIO` = `ASA SUL` para fins operacionais.
-- Detecção de loja em ocorrências usa GPS → `allocated_store_id` → `store_id` (se real) → regra ESCRITÓRIO.
-
-### 5. (Opcional, depois) `NOT NULL` em `occurrence_alerts.store_id`
-Só depois da fila zerada, sob confirmação. Sem isso, qualquer brecha futura volta a gerar órfãos.
+### Não muda
+- UI: continua sem campo de loja, é tudo automático.
+- Banco: `store_id` segue nullable; fila de revisão cuida de exceções.
+- Backfill já feito (4 órfãos restantes ficam na fila para atribuição manual).
