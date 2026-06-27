@@ -45,6 +45,7 @@ export default function OccurrencesReport() {
   const [days, setDays] = useState<string>("30");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [storeFilter, setStoreFilter] = useState<string>("all");
+  const [subcategoryFilter, setSubcategoryFilter] = useState<string>("all");
   const [reporterNames, setReporterNames] = useState<Record<string, string>>({});
 
   const load = async () => {
@@ -53,7 +54,7 @@ export default function OccurrencesReport() {
     const { data, error } = await supabase
       .from("occurrence_alerts")
       .select(
-        "id, occurrence_id, created_by, store_id, note, created_at, occurrences(occurrence, category, order_correct), stores(name)",
+        "id, occurrence_id, created_by, store_id, note, subcategory, created_at, occurrences(occurrence, category, order_correct), stores(name)",
       )
       .gte("created_at", since)
       .order("created_at", { ascending: false });
