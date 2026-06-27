@@ -468,7 +468,24 @@ export default function Occurrences() {
           }),
         ),
       );
+
+      // Notificação WhatsApp fixa (central de ocorrências)
+      const waMsg = [
+        `🚨 Ocorrência: ${problemaCurto}`,
+        linha1Parts.join(" • "),
+        resumo,
+      ].filter(Boolean).join("\n");
+      void supabase.functions.invoke("send-whatsapp", {
+        body: {
+          phone: "5561998158029",
+          message: waMsg,
+          category: "occurrence",
+          tag: `occurrence-${chosenOccId}`,
+        },
+      });
+
       toast({ title: "Ocorrência registrada", description: "Os gestores foram notificados." });
+
       setAlertOpen(false);
       restart();
     } catch (e: unknown) {
