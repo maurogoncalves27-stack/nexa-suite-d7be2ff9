@@ -23,7 +23,8 @@ const { spawnSync } = require("child_process");
 
 const nfe = require("./acbr-nfe.cjs");
 const tef = require("./acbr-tefd.cjs");
-const payer = require("./payer-localhost.cjs");
+const payer = require("./payer/localhost.cjs");
+const { handlePayerRoutes } = require("./payer/routes.cjs");
 const pkg = require("./package.json");
 
 const HTTP_PORT = parseInt(process.env.ACBR_AGENT_PORT || "3030", 10);
@@ -336,64 +337,8 @@ async function handle(req, res) {
       return send(res, 200, { ok: true, retorno });
     }
 
-    // -------- Payer (Checkout API Localhost :6060) --------
-    if (req.method === "GET" && path === "/payer/diagnostics") {
-      try {
-        const d = await payer.diagnostics();
-        return send(res, 200, { ok: true, ...d });
-      } catch (e) {
-        return send(res, 500, { ok: false, error: e.message });
-      }
-    }
-
-    if (req.method === "POST" && path === "/payer/login") {
-      const body = await readBody(req).catch(() => ({}));
-      try {
-        const retorno = await payer.login(body);
-        return send(res, 200, { ok: true, retorno });
-      } catch (e) {
-        return send(res, 500, { ok: false, error: e.message });
-      }
-    }
-
-    if (req.method === "POST" && path === "/payer/logoff") {
-      try {
-        const retorno = await payer.logoff();
-        return send(res, 200, { ok: true, retorno });
-      } catch (e) {
-        return send(res, 500, { ok: false, error: e.message });
-      }
-    }
-
-    if (req.method === "POST" && path === "/payer/payment") {
-      const body = await readBody(req);
-      try {
-        const retorno = body?.wait
-          ? await payer.requestPaymentAndWait(body)
-          : await payer.requestPayment(body);
-        return send(res, 200, { ok: true, retorno });
-      } catch (e) {
-        return send(res, 500, { ok: false, error: e.message });
-      }
-    }
-
-    if (req.method === "GET" && path === "/payer/response") {
-      try {
-        const retorno = await payer.getResponse();
-        return send(res, 200, { ok: true, retorno });
-      } catch (e) {
-        return send(res, 500, { ok: false, error: e.message });
-      }
-    }
-
-    if (req.method === "POST" && path === "/payer/abort") {
-      try {
-        const retorno = await payer.abort();
-        return send(res, 200, { ok: true, retorno });
-      } catch (e) {
-        return send(res, 500, { ok: false, error: e.message });
-      }
-    }
+    // -------- Payer (Checkout API Localhost :6060) — módulo isolado --------
+    if (await handlePayerRoutes({ req, res, path, payer, readBody, send })) return;
 
     // -------- Teste isolado de porta COM do pinpad --------
     // Não depende de PGWebLib/PdC/host. Tenta abrir \\.\COMn diretamente.

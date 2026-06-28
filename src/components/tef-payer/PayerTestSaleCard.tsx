@@ -8,13 +8,28 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, CreditCard, XCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { payerAbort, payerPayment, payerResponse } from "@/lib/tef/payerAdapter";
-
-const AGENT_URL = "https://127.0.0.1:3031";
+import { logTefTransaction } from "@/lib/tef";
+import {
+  payerAbort,
+  payerPayment,
+  payerResponse,
+  DEFAULT_PAYER_AGENT_URL,
+} from "@/lib/tef/payer";
+import { extractIdPayer } from "./payerPaymentFlow";
 
 type SaleStatus = "idle" | "busy" | "approved" | "rejected" | "aborted" | "error";
 
-export default function PayerTestSaleCard() {
+interface Props {
+  agentUrl?: string;
+  storeId?: string;
+  onIdPayer?: (id: string) => void;
+}
+
+export default function PayerTestSaleCard({
+  agentUrl = DEFAULT_PAYER_AGENT_URL,
+  storeId,
+  onIdPayer,
+}: Props) {
   const [amount, setAmount] = useState("10");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<SaleStatus>("idle");
@@ -31,27 +46,59 @@ export default function PayerTestSaleCard() {
     pollRef.current = null;
   };
 
-  const pollUntilDone = async () => {
+  const pollUntilDone = async (method: string) => {
     const ctl = { stop: false };
     pollRef.current = ctl;
+    const value = Number(amount.replace(",", "."));
     while (!ctl.stop) {
       try {
-        const data = await payerResponse(AGENT_URL);
+        const data = await payerResponse(agentUrl);
         const st = data?.retorno?.statusTransaction;
         if (st === "PENDING") {
           setStatusMsg("Aguardando Checkout Payer...");
         }
         if (["APPROVED", "REJECTED", "ABORTED"].includes(String(st))) {
           setLastJson(JSON.stringify(data.retorno, null, 2));
+          const retorno = data.retorno ?? {};
           if (st === "APPROVED") {
             setStatus("approved");
             setStatusMsg("Pagamento aprovado");
+            const id = extractIdPayer(retorno);
+            if (id) onIdPayer?.(id);
+            void logTefTransaction({
+              storeId,
+              provider: "payer",
+              amount: value,
+              status: "approved",
+              method,
+              nsu: String(retorno.nsu ?? retorno.NSU ?? "") || undefined,
+              authorizationCode: String(retorno.authorizationCode ?? "") || undefined,
+              cardBrand: String(retorno.cardBrand ?? retorno.bandeira ?? "") || undefined,
+              raw: retorno,
+            });
           } else if (st === "ABORTED") {
             setStatus("aborted");
             setStatusMsg("Operação abortada");
+            void logTefTransaction({
+              storeId,
+              provider: "payer",
+              amount: value,
+              status: "cancelled",
+              method,
+              raw: retorno,
+            });
           } else {
             setStatus("rejected");
             setStatusMsg(data?.retorno?.message || "Pagamento recusado");
+            void logTefTransaction({
+              storeId,
+              provider: "payer",
+              amount: value,
+              status: "declined",
+              method,
+              message: data?.retorno?.message,
+              raw: retorno,
+            });
           }
           return;
         }
@@ -62,7 +109,7 @@ export default function PayerTestSaleCard() {
     }
   };
 
-  const runPayment = async (payload: Record<string, unknown>) => {
+  const runPayment = async (payload: Record<string, unknown>, method: string) => {
     const value = Number(amount.replace(",", "."));
     if (!value || value <= 0) {
       toast({ title: "Valor inválido", variant: "destructive" });
@@ -74,14 +121,22 @@ export default function PayerTestSaleCard() {
     setLastJson("");
     stopPoll();
     try {
-      const start = await payerPayment(AGENT_URL, { value, wait: false, ...payload });
+      const start = await payerPayment(agentUrl, { value, wait: false, ...payload });
       if (!start?.ok) throw new Error(start?.error || "Falha ao iniciar pagamento");
-      await pollUntilDone();
+      await pollUntilDone(method);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       setStatus("error");
       setStatusMsg(msg);
       toast({ title: "Erro Payer", description: msg, variant: "destructive" });
+      void logTefTransaction({
+        storeId,
+        provider: "payer",
+        amount: value,
+        status: "error",
+        method,
+        message: msg,
+      });
     } finally {
       setBusy(false);
       stopPoll();
@@ -92,7 +147,7 @@ export default function PayerTestSaleCard() {
     stopPoll();
     setBusy(true);
     try {
-      await payerAbort(AGENT_URL);
+      await payerAbort(agentUrl);
       setStatus("aborted");
       setStatusMsg("Abort solicitado");
     } catch (e: unknown) {
@@ -133,7 +188,7 @@ export default function PayerTestSaleCard() {
           paymentMethod: "CARD",
           paymentType: "DEBIT",
           paymentMethodSubType: "FULL_PAYMENT",
-        })}>
+        }, "debit")}>
           {busy ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
           Débito
         </Button>
@@ -141,13 +196,13 @@ export default function PayerTestSaleCard() {
           paymentMethod: "CARD",
           paymentType: "CREDIT",
           paymentMethodSubType: "FULL_PAYMENT",
-        })}>
+        }, "credit")}>
           Crédito
         </Button>
-        <Button disabled={busy} variant="outline" onClick={() => runPayment({ paymentMethod: "PIX" })}>
+        <Button disabled={busy} variant="outline" onClick={() => runPayment({ paymentMethod: "PIX" }, "pix")}>
           PIX
         </Button>
-        <Button disabled={busy} variant="outline" onClick={() => runPayment({})}>
+        <Button disabled={busy} variant="outline" onClick={() => runPayment({}, "simple")}>
           Simples
         </Button>
         <Button disabled={busy} variant="ghost" onClick={onAbort}>

@@ -7,7 +7,7 @@ import { createMockAdapter } from "./mockAdapter";
 import { createSitefAdapter } from "./sitefAdapter";
 import { createAcbrAdapter } from "./acbrAdapter";
 import { createPaygoAdapter } from "./paygoAdapter";
-import { createPayerTefAdapter } from "./payerTefAdapter";
+import { createPayerTefAdapter } from "./payer";
 
 export * from "./types";
 

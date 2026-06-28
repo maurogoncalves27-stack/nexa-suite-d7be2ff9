@@ -2,31 +2,63 @@
  * /configuracoes/tef-payer — homologação Payer API Localhost
  */
 import { useCallback, useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Loader2, RefreshCw, CreditCard, ExternalLink } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { checkAcbrAgent } from "@/lib/tef/acbrAdapter";
-import { payerDiagnostics, payerLogin, type PayerDiagnostics } from "@/lib/tef/payerAdapter";
+import { loadTefConfig } from "@/lib/tef";
+import {
+  checkPayerAgent,
+  payerDiagnostics,
+  payerLogin,
+  type PayerDiagnostics,
+  DEFAULT_PAYER_AGENT_URL,
+} from "@/lib/tef/payer";
 import PayerTestSaleCard from "@/components/tef-payer/PayerTestSaleCard";
+import PayerHomologationChecklist from "@/components/tef-payer/PayerHomologationChecklist";
+import PayerHomologationCard from "@/components/tef-payer/PayerHomologationCard";
 
-const AGENT_URL = "https://127.0.0.1:3031";
 const PAYER_DOCS = "https://docs.payer.com.br/docs/integrations/api-localhost.html";
 
+interface Store { id: string; name: string; }
+
 export default function TefPayerSetup() {
+  const [stores, setStores] = useState<Store[]>([]);
+  const [storeId, setStoreId] = useState<string>("");
+  const [agentUrl, setAgentUrl] = useState(DEFAULT_PAYER_AGENT_URL);
   const [loading, setLoading] = useState(true);
   const [agentOk, setAgentOk] = useState(false);
   const [agentVersion, setAgentVersion] = useState<string | null>(null);
   const [payer, setPayer] = useState<PayerDiagnostics | null>(null);
+  const [lastIdPayer, setLastIdPayer] = useState("");
+
+  useEffect(() => {
+    supabase.from("stores").select("id, name").order("name").then(({ data }) => {
+      const list = (data ?? []) as Store[];
+      setStores(list);
+      if (list.length && !storeId) setStoreId(list[0].id);
+    });
+  }, [storeId]);
+
+  useEffect(() => {
+    if (!storeId) return;
+    loadTefConfig(storeId).then((cfg) => {
+      if (cfg.agentUrl) setAgentUrl(cfg.agentUrl);
+    });
+  }, [storeId]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const agent = await checkAcbrAgent(AGENT_URL);
-      setAgentOk(!!agent?.ok);
-      setAgentVersion(agent?.version ?? null);
-      const d = await payerDiagnostics(AGENT_URL);
+      const agent = await checkPayerAgent(agentUrl);
+      setAgentOk(!!agent.ok);
+      setAgentVersion(agent.version ?? null);
+      const d = await payerDiagnostics(agentUrl);
       setPayer(d);
     } catch (e) {
       setAgentOk(false);
@@ -35,13 +67,13 @@ export default function TefPayerSetup() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [agentUrl]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { void refresh(); }, [refresh]);
 
   const onLogin = async () => {
     try {
-      const r = await payerLogin(AGENT_URL);
+      const r = await payerLogin(agentUrl);
       if (!r?.ok) throw new Error(r?.error || "Login falhou");
       toast({ title: "Login Payer", description: "Sessão iniciada no Checkout." });
       await refresh();
@@ -59,7 +91,7 @@ export default function TefPayerSetup() {
             TEF Payer — Testes
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Homologação via API Localhost (Checkout Payer na porta 6060).
+            Homologação via API Localhost (Checkout Payer na porta 6060). Módulo isolado do PayGo.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
@@ -67,6 +99,25 @@ export default function TefPayerSetup() {
           <span className="ml-2">Atualizar</span>
         </Button>
       </div>
+
+      {stores.length > 0 && (
+        <Card className="p-4">
+          <label className="text-xs text-muted-foreground">Loja (pdv_tef_config)</label>
+          <Select value={storeId} onValueChange={setStoreId}>
+            <SelectTrigger className="mt-1 max-w-md">
+              <SelectValue placeholder="Selecione a loja" />
+            </SelectTrigger>
+            <SelectContent>
+              {stores.map((s) => (
+                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs font-mono text-muted-foreground mt-2">Agente: {agentUrl}</p>
+        </Card>
+      )}
+
+      <PayerHomologationChecklist agentUrl={agentUrl} />
 
       <Card className="p-4 space-y-3">
         <h2 className="font-semibold">Status</h2>
@@ -101,15 +152,27 @@ export default function TefPayerSetup() {
         </div>
       </Card>
 
-      <PayerTestSaleCard />
+      <PayerTestSaleCard
+        agentUrl={agentUrl}
+        storeId={storeId || undefined}
+        onIdPayer={setLastIdPayer}
+      />
+
+      <PayerHomologationCard
+        agentUrl={agentUrl}
+        storeId={storeId || undefined}
+        lastIdPayer={lastIdPayer}
+        onIdPayer={setLastIdPayer}
+      />
 
       <Card className="p-4 text-sm text-muted-foreground space-y-2">
         <p className="font-medium text-foreground">Setup rápido</p>
         <ol className="list-decimal list-inside space-y-1">
-          <li>Instale o Checkout Payer e ative modo <strong>Localhost</strong>.</li>
+          <li>Instale o <strong>Payer Checkout</strong> e deixe aberto (modo Localhost).</li>
           <li>Defina <code className="text-xs">PAYER_EMAIL</code> e <code className="text-xs">PAYER_PASSWORD</code> antes de subir o agente.</li>
-          <li>Reinicie o agente (atalho na área de trabalho ou <code className="text-xs">npm run start:console</code>).</li>
-          <li>Veja <code className="text-xs">electron-acbr/SETUP-PAYER.md</code> no repositório.</li>
+          <li>Reinicie o agente NEXA (atalho na área de trabalho ou <code className="text-xs">npm run start:console</code> em electron-acbr).</li>
+          <li>Configure a loja com provider <code className="text-xs">payer</code> em PDV → TEF.</li>
+          <li>Veja <code className="text-xs">electron-acbr/payer/README.md</code> e <code className="text-xs">SETUP-PAYER.md</code>.</li>
         </ol>
       </Card>
     </div>

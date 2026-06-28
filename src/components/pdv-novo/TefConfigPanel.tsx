@@ -14,7 +14,7 @@ import { toast } from "@/hooks/use-toast";
 import { checkSitefAgent } from "@/lib/tef/sitefAdapter";
 import { checkAcbrAgent } from "@/lib/tef/acbrAdapter";
 import { checkPaygoAgent } from "@/lib/tef/paygoAdapter";
-import { payerDiagnostics } from "@/lib/tef/payerAdapter";
+import { checkPayerAgent } from "@/lib/tef/payer";
 import { TefPaymentDialog } from "@/components/tef/TefPaymentDialog";
 import type { TefConfig, TefPaymentRequest } from "@/lib/tef";
 
@@ -68,11 +68,12 @@ export default function TefConfigPanel() {
     const tick = async () => {
       let r: { ok: boolean; mode?: string; version?: string; error?: string };
       if (cfg.provider === "payer") {
-        const d = await payerDiagnostics(cfg.agent_url);
+        const d = await checkPayerAgent(cfg.agent_url);
         r = {
-          ok: !!d.checkoutReachable,
+          ok: !!d.ok,
           mode: d.loggedIn ? "Payer logado" : "Checkout Payer",
-          error: d.lastError ?? (!d.checkoutReachable ? "Checkout :6060 indisponível" : undefined),
+          version: d.version,
+          error: d.error,
         };
       } else if (cfg.provider === "paygo") {
         r = await checkPaygoAgent(cfg.agent_url);
