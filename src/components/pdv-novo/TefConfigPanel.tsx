@@ -13,6 +13,8 @@ import { CreditCard, Loader2, Save, Wifi, WifiOff, PlayCircle } from "lucide-rea
 import { toast } from "@/hooks/use-toast";
 import { checkSitefAgent } from "@/lib/tef/sitefAdapter";
 import { checkAcbrAgent } from "@/lib/tef/acbrAdapter";
+import { checkPaygoAgent } from "@/lib/tef/paygoAdapter";
+import { checkPayerAgent } from "@/lib/tef/payer";
 import { TefPaymentDialog } from "@/components/tef/TefPaymentDialog";
 import type { TefConfig, TefPaymentRequest } from "@/lib/tef";
 
@@ -21,7 +23,7 @@ interface Store { id: string; name: string }
 interface TefCfg {
   id?: string;
   store_id: string;
-  provider: "sitef" | "paygo" | "mock" | "acbr";
+  provider: "sitef" | "paygo" | "mock" | "acbr" | "payer";
   agent_url: string;
   merchant_code: string | null;
   terminal_code: string | null;
@@ -35,7 +37,7 @@ const DEFAULT_AGENT_URL: Record<TefCfg["provider"], string> = {
   sitef: "https://127.0.0.1:3031",
   paygo: "https://127.0.0.1:3031",
   acbr: "https://127.0.0.1:3031",
-
+  payer: "https://127.0.0.1:3031",
 };
 
 const blank = (storeId: string): TefCfg => ({
@@ -64,9 +66,22 @@ export default function TefConfigPanel() {
     if (!cfg?.agent_url) return;
     let cancelled = false;
     const tick = async () => {
-      const r = cfg.provider === "acbr"
-        ? await checkAcbrAgent(cfg.agent_url)
-        : await checkSitefAgent(cfg.agent_url);
+      let r: { ok: boolean; mode?: string; version?: string; error?: string };
+      if (cfg.provider === "payer") {
+        const d = await checkPayerAgent(cfg.agent_url);
+        r = {
+          ok: !!d.ok,
+          mode: d.loggedIn ? "Payer logado" : "Checkout Payer",
+          version: d.version,
+          error: d.error,
+        };
+      } else if (cfg.provider === "paygo") {
+        r = await checkPaygoAgent(cfg.agent_url);
+      } else if (cfg.provider === "acbr") {
+        r = await checkAcbrAgent(cfg.agent_url);
+      } else {
+        r = await checkSitefAgent(cfg.agent_url);
+      }
       if (!cancelled) setAgent(r);
     };
     void tick();
@@ -172,7 +187,11 @@ export default function TefConfigPanel() {
                 <>
                   <Wifi className="h-4 w-4 text-success" />
                   <span className="text-sm">
-                    {cfg.provider === "acbr" ? "NEXA ACBr Agent online" : "Agente SiTef online"}
+                    {cfg.provider === "payer"
+                      ? "Checkout Payer acessível"
+                      : cfg.provider === "paygo" || cfg.provider === "acbr"
+                        ? "NEXA ACBr Agent online"
+                        : "Agente SiTef online"}
                   </span>
                   {agent.mode && <Badge variant="secondary">modo: {agent.mode}</Badge>}
                   {agent.version && <Badge variant="outline">v{agent.version}</Badge>}
@@ -181,7 +200,11 @@ export default function TefConfigPanel() {
                 <>
                   <WifiOff className="h-4 w-4 text-destructive" />
                   <span className="text-sm">
-                    {cfg.provider === "acbr" ? "NEXA ACBr Agent offline" : "Agente SiTef offline"}
+                    {cfg.provider === "payer"
+                      ? "Checkout Payer offline"
+                      : cfg.provider === "paygo" || cfg.provider === "acbr"
+                        ? "NEXA ACBr Agent offline"
+                        : "Agente SiTef offline"}
                   </span>
                   <span className="text-xs text-muted-foreground">{agent.error ?? "sem resposta em " + cfg.agent_url}</span>
                 </>
@@ -227,7 +250,8 @@ export default function TefConfigPanel() {
                   <SelectItem value="mock">Mock (simulação)</SelectItem>
                   <SelectItem value="sitef">SiTef (Software Express)</SelectItem>
                   <SelectItem value="acbr">ACBr (PayGo / C6)</SelectItem>
-                  <SelectItem value="paygo">PayGo direto (em breve)</SelectItem>
+                  <SelectItem value="paygo">PayGo (PGWebLib)</SelectItem>
+                  <SelectItem value="payer">Payer (Checkout Localhost)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -235,9 +259,14 @@ export default function TefConfigPanel() {
               <Label>URL do agente local</Label>
               <Input value={cfg.agent_url} onChange={e => setCfg({ ...cfg, agent_url: e.target.value })}
                 placeholder={DEFAULT_AGENT_URL[cfg.provider]} />
-              {cfg.provider === "acbr" && (
+              {(cfg.provider === "acbr" || cfg.provider === "paygo") && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  Requer o <strong>NEXA ACBr Agent</strong> rodando na máquina do totem (HTTPS porta 3031, ACBrLibTEFD + PayGo Integrado).
+                  Requer o <strong>NEXA ACBr Agent</strong> rodando na máquina do totem (HTTPS porta 3031, PGWebLib / PayGo Integrado).
+                </p>
+              )}
+              {cfg.provider === "payer" && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Agente NEXA na 3031 + Checkout Payer em localhost:6060. Configure <code className="text-xs">PAYER_EMAIL</code> e <code className="text-xs">PAYER_PASSWORD</code> no agente.
                 </p>
               )}
             </div>

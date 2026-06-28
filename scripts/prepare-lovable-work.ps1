@@ -58,13 +58,13 @@ Write-Host "main atualizado com origin/main." -ForegroundColor Green
 Write-Host ""
 Write-Host "=== Pode abrir o Lovable (branch main) ===" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "AVISE O LOVABLE/CODEX SE ALGO QUEBRAR — checklist:" -ForegroundColor Yellow
-Write-Host "  1) .env — VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY"
-Write-Host "  2) src/integrations/supabase/client.ts — URL e anon key do projeto ixjgmerxxakdkfdzgumy"
-Write-Host "  3) src/integrations/supabase/types.ts — tipos do Supabase (regenerar se DB mudou)"
-Write-Host "  4) supabase/config.toml — project_id ixjgmerxxakdkfdzgumy"
-Write-Host "  5) Edge functions — secrets (PAYGO, iFood, Z-API, LOVABLE_API_KEY, etc.)"
-Write-Host "  6) Publish Lovable — frontend; migrations/functions sobem no sync"
+Write-Host "AVISE O LOVABLE/CODEX SE ALGO QUEBRAR - checklist:" -ForegroundColor Yellow
+Write-Host "  1) .env - VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY"
+Write-Host "  2) src/integrations/supabase/client.ts - URL e anon key do projeto ixjgmerxxakdkfdzgumy"
+Write-Host "  3) src/integrations/supabase/types.ts - tipos do Supabase (regenerar se DB mudou)"
+Write-Host "  4) supabase/config.toml - project_id ixjgmerxxakdkfdzgumy"
+Write-Host "  5) Edge functions - secrets (PAYGO, iFood, Z-API, LOVABLE_API_KEY, etc.)"
+Write-Host "  6) Publish Lovable - frontend; migrations/functions sobem no sync"
 Write-Host ""
 Write-Host "Trabalho Cursor salvo em: $branchName"
 Write-Host "Depois do Lovable, no Cursor:"

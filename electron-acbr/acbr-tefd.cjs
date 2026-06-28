@@ -451,18 +451,14 @@ async function efetuarPagamento(opts = {}) {
   const saleId = opts.saleId || `SALE-${Date.now()}`;
   const qrDisplayPreference = String(opts.qrDisplayPreference || process.env.PAYGO_QR_DISPLAY_PREF || NEXA_DEFAULTS.qrDisplayPreference) === "1" ? "1" : "2";
 
-  // Auto-cleanup pre-flight: se a transação anterior morreu em timeout/error,
-  // a DLL PGWebLib pode ter ficado com estado "transação em andamento" e a
-  // próxima venda devolve `cancelarEmAndamento`. Forçamos um desfazimento
-  // best-effort antes de iniciar a nova venda.
-  const prevStatus = saleStatus?.status;
-  if (prevStatus === "timeout" || prevStatus === "error") {
-    try {
-      console.log("[TEF] Pré-cleanup automático: estado anterior=", prevStatus);
-      await runBridge({ action: "cleanup" }, { timeoutMs: 15000 });
-    } catch (e) {
-      console.warn("[TEF] Pré-cleanup falhou (seguindo mesmo assim):", e.message);
-    }
+  // Sempre limpa pendência/SSL preso antes de nova venda (logs PayGo mostram
+  // PWSRV_iSendConfirmation falhando com -2582 quando há confirmação pendente).
+  try {
+    console.log("[TEF] Pré-cleanup automático antes da venda");
+    await runBridge({ action: "cleanup" }, { timeoutMs: 20000 });
+  } catch (e) {
+    console.warn("[TEF] Pré-cleanup falhou — reiniciando host:", e.message);
+    stopHost("pre-sale-cleanup-failed");
   }
 
   setSaleStatus({
@@ -478,15 +474,17 @@ async function efetuarPagamento(opts = {}) {
   });
 
   try {
-    const payload = await runBridge({
-      action: "sale",
-      saleId,
-      amountInCents,
-      method,
-      installments,
-      paygoMenuChoice: opts.paygoMenuChoice || "",
-      captureValuesBase64: opts.captureValuesBase64 || "",
-      qrDisplayPreference,
+  const payload = await runBridge({
+    action: "sale",
+    saleId,
+    amountInCents,
+    method,
+    installments,
+    paygoMenuChoice: opts.paygoMenuChoice || "",
+    captureValuesBase64: opts.captureValuesBase64 || "",
+    qrDisplayPreference,
+    usePinpad: opts.usePinpad !== false ? "1" : "0",
+    pinpadPort: String(opts.pinpadPort || NEXA_DEFAULTS.pinpadPort),
     }, { onEvent: (ev) => {
       if (!ev) return;
       // O bridge emite eventos NDJSON: { type, message }.
@@ -533,12 +531,11 @@ async function efetuarPagamento(opts = {}) {
 
 async function limparPendencia() {
   try {
-    const r = await runBridge({ action: "cleanup" }, { timeoutMs: 15000 });
+    const r = await runBridge({ action: "cleanup" }, { timeoutMs: 20000 });
+    stopHost("limparPendencia-reset-host");
     clearSaleStatus();
     return r;
   } catch (e) {
-    // Se a DLL não respondeu, ainda assim matamos o host para garantir
-    // estado limpo na próxima chamada.
     stopHost("limparPendencia-fallback");
     clearSaleStatus();
     return { ok: true, status: "cleanup", message: `Host reiniciado (${e.message})` };

@@ -227,7 +227,7 @@ public static class PayGoBridge
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
 
-    public static string Sale(string dllPath, string workingDir, string saleId, int amountInCents, string method, int installments, string paygoMenuChoice, string captureValuesBase64, string qrDisplayPreference)
+    public static string Sale(string dllPath, string workingDir, string saleId, int amountInCents, string method, int installments, string paygoMenuChoice, string captureValuesBase64, string qrDisplayPreference, string usePinpad, string pinpadPort)
     {
         try
         {
@@ -235,9 +235,12 @@ public static class PayGoBridge
             _captureValues = ParseCaptureValues(captureValuesBase64);
             _qrDisplayPreference = qrDisplayPreference ?? "";
             _lastQrEmitted = "";
-            EmitEvent("INFO", "Iniciando venda PayGo TEF saleId=" + saleId + " valorCentavos=" + amountInCents + " metodo=" + method);
+            _usePinpad = String.IsNullOrWhiteSpace(usePinpad) ? "1" : usePinpad;
+            _pinpadPort = NormalizePinpadPort(pinpadPort);
+            EmitEvent("INFO", "Iniciando venda PayGo TEF saleId=" + saleId + " valorCentavos=" + amountInCents + " metodo=" + method + " usePinpad=" + _usePinpad + " pinpadPort=" + _pinpadPort);
 
             Load(dllPath);
+            AbortPinpad();
             short ret = Init(workingDir);
             if (ret != PWRET_OK) return Error("PW_iInit", ret);
 
@@ -247,8 +250,11 @@ public static class PayGoBridge
             Add(PWINFO_AUTNAME, "PDV");
             Add(PWINFO_AUTVER, "1.0.0");
             Add(PWINFO_AUTDEV, "PayGo");
-            Add(PWINFO_AUTCAP, "384"); // 128 (DSP_CHECKOUT) + 256 (DSP_QRCODE), igual demo oficial C#
+            // 4 (valor fixo, sempre incluir — obrigatorio pela doc) + 128 (DSP_CHECKOUT) + 256 (DSP_QRCODE) = 388
+            Add(PWINFO_AUTCAP, "388");
             Add(PWINFO_DSPQRPREF, QrDisplayPreference());
+            // usePinpad/pinpadPort NAO vao em PW_iAddParam na venda (demo oficial Setis).
+            // Ficam em _usePinpad/_pinpadPort para responder PWDAT_TYPED se a DLL pedir.
             EmitEvent("INFO", "Preferencia QR PayGo=" + QrDisplayPreference() + " (1=pinpad, 2=checkout/PC)");
             Add(PWINFO_TOTAMNT, amountInCents.ToString());
             Add(PWINFO_CURRENCY, "986");
@@ -453,14 +459,32 @@ public static class PayGoBridge
             short ret = Init(workingDir);
             if (ret != PWRET_OK) return Error("PW_iInit", ret);
 
-            EmitEvent("INFO", "Cleanup: forcando PW_iConfirmation(PWCNF_REV_MANU_AUT) com params vazios");
-            short cnfRet = Fn<PW_iConfirmation_>("PW_iConfirmation")(PWCNF_REV_MANU_AUT, "", "", "", "", "");
-            if (cnfRet != PWRET_OK)
+            AbortPinpad();
+
+            string pndReq = Result(PWINFO_PNDREQNUM);
+            string pndLoc = Result(PWINFO_PNDAUTLOCREF);
+            string pndExt = Result(PWINFO_PNDAUTEXTREF);
+            string pndVirt = Result(PWINFO_PNDVIRTMERCH);
+            string pndAuth = Result(PWINFO_PNDAUTHSYST);
+
+            if (!String.IsNullOrWhiteSpace(pndReq))
             {
-                EmitEvent("INFO", "Cleanup: PW_iConfirmation ret=" + cnfRet + " (nenhuma pendencia ou ja limpa)");
-                // Não tratamos como erro fatal — se não havia pendência, a DLL
-                // retorna algo != 0 e tudo bem, a próxima venda funciona.
-                return "{\"ok\":true,\"status\":\"cleanup\",\"message\":\"Sem pendencia a limpar (ret=" + cnfRet + ")\",\"ret\":" + cnfRet + "}";
+                EmitEvent("INFO", "Cleanup: desfazendo pendencia reqNum=" + pndReq);
+                short cnfRet = Fn<PW_iConfirmation_>("PW_iConfirmation")(PWCNF_REV_MANU_AUT, pndReq, pndLoc ?? "", pndExt ?? "", pndVirt ?? "", pndAuth ?? "");
+                if (cnfRet == PWRET_OK)
+                {
+                    EmitEvent("CONFIRMED", "Cleanup: pendencia anterior desfeita (com token)");
+                    return "{\"ok\":true,\"status\":\"cleanup\",\"message\":\"Pendencia anterior desfeita\",\"ret\":0}";
+                }
+                EmitEvent("INFO", "Cleanup: desfazimento com token ret=" + cnfRet + " — tentando vazio");
+            }
+
+            EmitEvent("INFO", "Cleanup: forcando PW_iConfirmation(PWCNF_REV_MANU_AUT) com params vazios");
+            short cnfRetEmpty = Fn<PW_iConfirmation_>("PW_iConfirmation")(PWCNF_REV_MANU_AUT, "", "", "", "", "");
+            if (cnfRetEmpty != PWRET_OK)
+            {
+                EmitEvent("INFO", "Cleanup: PW_iConfirmation ret=" + cnfRetEmpty + " (nenhuma pendencia ou ja limpa)");
+                return "{\"ok\":true,\"status\":\"cleanup\",\"message\":\"Sem pendencia a limpar (ret=" + cnfRetEmpty + ")\",\"ret\":" + cnfRetEmpty + "}";
             }
 
             EmitEvent("CONFIRMED", "Cleanup: pendencia anterior desfeita com sucesso");
@@ -1273,7 +1297,7 @@ function Invoke-PayGoCommand {
 
   try {
     if ($cmdAction -eq "sale") {
-      return [PayGoBridge]::Sale($DllPath, $WorkingDir, [string]$Command.saleId, [int]$Command.amountInCents, [string]$Command.method, [int]$Command.installments, [string]$Command.paygoMenuChoice, [string]$Command.captureValuesBase64, [string]$Command.qrDisplayPreference)
+      return [PayGoBridge]::Sale($DllPath, $WorkingDir, [string]$Command.saleId, [int]$Command.amountInCents, [string]$Command.method, [int]$Command.installments, [string]$Command.paygoMenuChoice, [string]$Command.captureValuesBase64, [string]$Command.qrDisplayPreference, [string]$Command.usePinpad, [string]$Command.pinpadPort)
     }
 
     if ($cmdAction -eq "commtest") {
@@ -1383,7 +1407,7 @@ if ($Action -eq "host") {
 }
 
 if ($Action -eq "sale") {
-  [PayGoBridge]::Sale($DllPath, $WorkingDir, $SaleId, $AmountInCents, $Method, $Installments, $PaygoMenuChoice, $CaptureValuesBase64, $QrDisplayPreference)
+  [PayGoBridge]::Sale($DllPath, $WorkingDir, $SaleId, $AmountInCents, $Method, $Installments, $PaygoMenuChoice, $CaptureValuesBase64, $QrDisplayPreference, $UsePinpad, $PinpadPort)
   exit
 }
 

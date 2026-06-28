@@ -23,6 +23,8 @@ const { spawnSync } = require("child_process");
 
 const nfe = require("./acbr-nfe.cjs");
 const tef = require("./acbr-tefd.cjs");
+const payer = require("./payer/localhost.cjs");
+const { handlePayerRoutes } = require("./payer/routes.cjs");
 const pkg = require("./package.json");
 
 const HTTP_PORT = parseInt(process.env.ACBR_AGENT_PORT || "3030", 10);
@@ -334,6 +336,9 @@ async function handle(req, res) {
       const retorno = tef.instalarPdc({ ...body, environment: body.environment, onDisplay: (m) => console.log("[TEF display]", m) });
       return send(res, 200, { ok: true, retorno });
     }
+
+    // -------- Payer (Checkout API Localhost :6060) — módulo isolado --------
+    if (await handlePayerRoutes({ req, res, path, payer, readBody, send })) return;
 
     // -------- Teste isolado de porta COM do pinpad --------
     // Não depende de PGWebLib/PdC/host. Tenta abrir \\.\COMn diretamente.

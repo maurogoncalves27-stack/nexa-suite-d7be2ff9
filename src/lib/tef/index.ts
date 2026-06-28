@@ -7,6 +7,7 @@ import { createMockAdapter } from "./mockAdapter";
 import { createSitefAdapter } from "./sitefAdapter";
 import { createAcbrAdapter } from "./acbrAdapter";
 import { createPaygoAdapter } from "./paygoAdapter";
+import { createPayerTefAdapter } from "./payer";
 
 export * from "./types";
 
@@ -42,6 +43,8 @@ export const createTefAdapter = (config: TefConfig): TefAdapter => {
       return createAcbrAdapter(config);
     case "paygo":
       return createPaygoAdapter(config);
+    case "payer":
+      return createPayerTefAdapter(config);
     case "mock":
     default:
       return createMockAdapter(config);
@@ -64,10 +67,12 @@ export const logTefTransaction = async (params: {
   acquirer?: string;
   method?: string;
   raw?: unknown;
+  closureId?: string;
 }) => {
   await supabase.from("pdv_tef_transactions").insert({
     order_id: params.orderId ?? null,
     store_id: params.storeId ?? null,
+    closure_id: params.closureId ?? null,
     provider: params.provider,
     amount: params.amount,
     status: params.status,

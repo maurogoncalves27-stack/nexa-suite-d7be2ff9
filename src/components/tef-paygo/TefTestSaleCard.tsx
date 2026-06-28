@@ -63,7 +63,7 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
   }, [pixQrBrCode]);
 
   // Faz polling de /tef/sale/status enquanto a transacao PIX esta em andamento.
-  // O pinpad PPC930 nao tem display grafico — quem renderiza o QR e' essa UI.
+  // Polling de /tef/sale/status — renderiza QR na UI quando PayGo manda preferencia checkout/PC.
   const startPixPolling = async () => {
     try {
       const cfg = await loadTefConfig(ASA_SUL_ID);
@@ -111,7 +111,7 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
     setPixWaitMsg("");
     setPixSaleInfo("");
 
-    // PIX nao aparece no PPC930 (sem display grafico) — a automacao tem que mostrar o QR.
+    // PIX PC: QR na tela do navegador. PIX pinpad: QR no display do pinpad (quando suportado).
     if (method === "pix") void startPixPolling();
 
     try {
@@ -419,6 +419,7 @@ export default function TefTestSaleCard({ storeId, cpfCnpj, pontoDeCaptura, sand
       <p className="text-sm text-muted-foreground">
         Dispara uma transacao direto no pinpad usando o adapter PayGo da Asa Sul,
         com os mesmos parametros padrao do demo de referencia.
+        <strong>PIX pinpad</strong> exibe o QR no display do pinpad; <strong>PIX PC</strong> exibe na tela do navegador.
       </p>
 
       <div className="flex flex-wrap items-end gap-2">
