@@ -28,7 +28,6 @@ const nameSchema = z.string().trim().min(2, "Nome muito curto").max(100);
 
 const LAST_EMAIL_KEY = "rhplus:lastEmail";
 const KNOWN_EMAILS_KEY = "rhplus:knownEmails";
-const BIO_PREF_PREFIX = "rhplus:bioPref:";
 
 function loadKnownEmails(): string[] {
   try {
@@ -43,16 +42,6 @@ function rememberEmail(email: string) {
     localStorage.setItem(KNOWN_EMAILS_KEY, JSON.stringify([...set]));
   } catch {}
 }
-function getBioPref(email: string): boolean {
-  try { return localStorage.getItem(BIO_PREF_PREFIX + email.toLowerCase()) === "1"; } catch { return false; }
-}
-function setBioPref(email: string, value: boolean) {
-  try {
-    if (value) localStorage.setItem(BIO_PREF_PREFIX + email.toLowerCase(), "1");
-    else localStorage.removeItem(BIO_PREF_PREFIX + email.toLowerCase());
-  } catch {}
-}
-
 type Mode = "signin" | "signup";
 
 export default function Auth() {
@@ -85,9 +74,7 @@ export default function Auth() {
   const [fullName, setFullName] = useState("");
   const [busy, setBusy] = useState(false);
   const [hasPasskey, setHasPasskey] = useState(false);
-  const [bioPrefEnabled, setBioPrefEnabled] = useState(false);
   const [bioBusy, setBioBusy] = useState(false);
-  const [autoTried, setAutoTried] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const [resetOpen, setResetOpen] = useState(false);
@@ -111,11 +98,9 @@ export default function Auth() {
     const parsed = emailSchema.safeParse(email);
     if (!parsed.success) {
       setHasPasskey(false);
-      setBioPrefEnabled(false);
       return;
     }
     const normalized = parsed.data.toLowerCase();
-    setBioPrefEnabled(getBioPref(normalized));
     const t = setTimeout(async () => {
       try {
         const { data } = await supabase.functions.invoke("auth-methods-available", { body: { email: normalized } });
@@ -133,17 +118,6 @@ export default function Auth() {
     (window.location.hostname.includes("lovableproject.com") ||
       window.location.hostname.includes("id-preview--"));
 
-  // Auto-disparar passkey se o usuário marcou "usar sempre"
-  // (não dispara em domínios de preview pra evitar popup "nenhuma chave disponível")
-  useEffect(() => {
-    if (mode !== "signin" || autoTried) return;
-    if (!bioPrefEnabled || !hasPasskey || !webAuthnOk) return;
-    if (isPreviewDomain) return;
-    setAutoTried(true);
-    void loginWithPasskey();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, bioPrefEnabled, hasPasskey, webAuthnOk]);
-
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const ep = emailSchema.safeParse(email);
@@ -160,7 +134,6 @@ export default function Auth() {
       return;
     }
     rememberEmail(ep.data);
-    setBioPref(ep.data, bioPrefEnabled);
     navigate(computeRedirect(signInData.user?.id, signInData.user?.user_metadata as Record<string, unknown> | null), { replace: true });
   };
 
@@ -296,7 +269,6 @@ export default function Auth() {
       });
       if (otpErr) throw new Error(otpErr.message);
       rememberEmail(ep.data);
-      setBioPref(ep.data, true);
       navigate(redirectAfterLogin, { replace: true });
     } catch (e: any) {
       toast({
@@ -442,27 +414,12 @@ export default function Auth() {
                       Entrar com Digital
                     </Button>
 
-                    {isPreviewDomain ? (
+                    {isPreviewDomain && (
                       <p className="text-xs text-muted-foreground text-center leading-relaxed">
                         A biometria está vinculada ao domínio onde foi cadastrada
                         (<span className="font-mono">nexasuite.aquelaparme.com.br</span>).
                         Acesse pelo app publicado para usar a digital.
                       </p>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          id="bio-pref"
-                          checked={bioPrefEnabled}
-                          onCheckedChange={(c) => {
-                            const v = c === true;
-                            setBioPrefEnabled(v);
-                            setBioPref(email, v);
-                          }}
-                        />
-                        <Label htmlFor="bio-pref" className="text-xs font-normal cursor-pointer">
-                          Usar biometria automaticamente neste dispositivo
-                        </Label>
-                      </div>
                     )}
                   </>
                 )}

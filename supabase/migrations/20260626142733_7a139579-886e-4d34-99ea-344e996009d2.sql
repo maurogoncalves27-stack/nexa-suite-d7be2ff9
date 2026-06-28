@@ -1,0 +1,1 @@
+ALTER TABLE public.recipes ALTER COLUMN output_product_id DROP NOT NULL;

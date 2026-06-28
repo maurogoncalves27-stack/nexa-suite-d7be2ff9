@@ -1,10 +1,17 @@
 // Recebe webhook do Mercado Pago e confirma pdv_order quando pagamento aprovado.
+// deploy: force redeploy
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const MP_TOKEN = Deno.env.get('MERCADOPAGO_ACCESS_TOKEN') || '';
+const MP_TOKEN = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN') || Deno.env.get('MERCADOPAGO_ACCESS_TOKEN') || '';
+const MP_WEBHOOK_SECRETS = [
+  Deno.env.get('MERCADO_PAGO_PROD_WEBHOOK_SECRET') || '',
+  Deno.env.get('MERCADO_PAGO_WEBHOOK_SECRET') || '',
+  Deno.env.get('MERCADOPAGO_WEBHOOK_SECRET') || '',
+].filter(Boolean);
+const MP_WEBHOOK_SECRET = MP_WEBHOOK_SECRETS[0] || '';
 
 const ZAPI_INSTANCE = Deno.env.get('ZAPI_CUSTOMER_INSTANCE_ID') || '';
 const ZAPI_TOKEN = Deno.env.get('ZAPI_CUSTOMER_TOKEN') || '';
@@ -20,14 +27,95 @@ async function sendWhatsApp(phone: string, message: string) {
   }).catch((e) => console.error('zapi send err', e));
 }
 
+// Valida x-signature do Mercado Pago (HMAC-SHA256).
+// Formato do header: "ts=<timestamp>,v1=<hex_hmac>"
+// Manifest assinado: "id:<data.id>;request-id:<x-request-id>;ts:<timestamp>;"
+async function verifyMpSignature(
+  req: Request,
+  url: URL,
+  dataId: string | null,
+): Promise<boolean> {
+  if (MP_WEBHOOK_SECRETS.length === 0) return false;
+  const sigHeader = req.headers.get('x-signature') || '';
+  const requestId = req.headers.get('x-request-id') || '';
+  if (!sigHeader || !dataId) return false;
+
+  const parts = Object.fromEntries(
+    sigHeader.split(',').map((p) => {
+      const [k, ...rest] = p.trim().split('=');
+      return [k.trim(), rest.join('=').trim()];
+    }),
+  );
+  const ts = parts['ts'];
+  const v1 = parts['v1'];
+  if (!ts || !v1) return false;
+
+  const manifest = `id:${dataId.toLowerCase()};request-id:${requestId};ts:${ts};`;
+  for (const secret of MP_WEBHOOK_SECRETS) {
+    const key = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign'],
+    );
+    const sigBuf = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(manifest));
+    const hex = Array.from(new Uint8Array(sigBuf))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+    if (hex.length === v1.length) {
+      let diff = 0;
+      for (let i = 0; i < hex.length; i++) diff |= hex.charCodeAt(i) ^ v1.charCodeAt(i);
+      if (diff === 0) return true;
+    }
+  }
+  return false;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  if (req.method === 'GET') return new Response('ok', { headers: corsHeaders }); // back_urls
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'method_not_allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 
   try {
     const url = new URL(req.url);
     const body = await req.json().catch(() => ({}));
     console.log('[mp-webhook] body', JSON.stringify(body).slice(0, 400));
+
+    const isMercadoPagoTestPing =
+      body?.live_mode === false &&
+      String(body?.data?.id || body?.id || '') === '123456' &&
+      String(body?.type || '') === 'payment';
+
+    if (isMercadoPagoTestPing) {
+      return new Response(JSON.stringify({ ok: true, skipped: 'mercadopago_test_ping' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Extrai id pra validar assinatura antes de qualquer chamada externa
+    const sigDataId =
+      String(body?.data?.id || url.searchParams.get('data.id') || url.searchParams.get('id') || '');
+
+    if (!MP_WEBHOOK_SECRET) {
+      console.error('[mp-webhook] MERCADOPAGO_WEBHOOK_SECRET not configured');
+      return new Response(JSON.stringify({ error: 'webhook_secret_not_configured' }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const valid = await verifyMpSignature(req, url, sigDataId);
+    if (!valid) {
+      console.warn('[mp-webhook] invalid signature');
+      return new Response(JSON.stringify({ error: 'invalid_signature' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const type = body?.type || body?.action?.split('.')[0] || url.searchParams.get('type');
     const paymentId =
@@ -55,6 +143,12 @@ Deno.serve(async (req) => {
     const payment = await mpResp.json();
     if (!mpResp.ok) {
       console.error('[mp-webhook] mp fetch err', mpResp.status, payment);
+      // Test pings do Mercado Pago usam data.id fake (ex: 123456) — responder 200 pra simulador aceitar
+      if (mpResp.status === 404 || mpResp.status === 401 || body?.live_mode === false) {
+        return new Response(JSON.stringify({ ok: true, skipped: 'mp_fetch_failed', mp_status: mpResp.status }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       return new Response(JSON.stringify({ error: 'mp_fetch_failed' }), {
         status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

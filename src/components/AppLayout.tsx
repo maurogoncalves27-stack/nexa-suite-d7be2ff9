@@ -75,6 +75,7 @@ const PAGE_TITLES: PageMeta[] = [
   { match: (p) => p.startsWith("/checklists"), title: "Check-lists", group: "Operação" },
   { match: (p) => p.startsWith("/nutri-relatorios"), title: "Relatórios NutriControle", group: "Operação" },
   { match: (p) => p.startsWith("/nutricionista/painel"), title: "Painel da Nutricionista", group: "Operação" },
+  { match: (p) => p.startsWith("/consultor/painel"), title: "Painel do Consultor Financeiro", group: "Financeiro" },
   { match: (p) => p.startsWith("/nutri-visita/historico"), title: "Histórico de visitas técnicas", group: "Operação" },
   { match: (p) => p.startsWith("/nutri-visita"), title: "Visita técnica", group: "Operação" },
   { match: (p) => p.startsWith("/nutricontrol"), title: "NutriControle", group: "Operação" },
@@ -105,6 +106,7 @@ const PAGE_TITLES: PageMeta[] = [
   
   { match: (p) => p.startsWith("/pasta-colaborador"), title: "Pasta do Colaborador", group: "Documentos" },
   { match: (p) => p.startsWith("/cofre"), title: "Cofre (logins e contatos)", group: "Documentos" },
+  { match: (p) => p.startsWith("/links-uteis"), title: "Links úteis", group: "Documentos" },
 
   // Estoque
   { match: (p) => p === "/nf-arquivadas", title: "NF arquivadas", group: "Estoque" },
@@ -120,7 +122,9 @@ const PAGE_TITLES: PageMeta[] = [
   { match: (p) => p.startsWith("/transferencias"), title: "Transferências", group: "Estoque" },
   { match: (p) => p.startsWith("/perdas"), title: "Lotes, validades e perdas", group: "Estoque" },
   { match: (p) => p.startsWith("/lotes"), title: "Lotes, validades e perdas", group: "Estoque" },
+  { match: (p) => p.startsWith("/fichas-fabrica"), title: "Fichas técnicas", group: "Fábrica" },
   { match: (p) => p.startsWith("/fichas-tecnicas"), title: "Fichas técnicas", group: "Estoque" },
+
   { match: (p) => p.startsWith("/receituario"), title: "Receituário", group: "Estoque" },
   { match: (p) => p.startsWith("/garantias"), title: "Garantias de equipamentos", group: "Documentos" },
   { match: (p) => p.startsWith("/patrimonio"), title: "Patrimônio", group: "Financeiro" },
@@ -136,6 +140,8 @@ const PAGE_TITLES: PageMeta[] = [
   
   { match: (p) => p.startsWith("/pdv-cancelamentos"), title: "Cancelamentos", group: "PDV" },
   { match: (p) => p.startsWith("/pdv-novo"), title: "PDV", group: "PDV" },
+  
+  { match: (p) => p.startsWith("/crm"), title: "CRM", group: "PDV" },
   { match: (p) => p === "/loja", title: "Loja", group: "PDV" },
   { match: (p) => p.startsWith("/smartpos"), title: "Smart POS", group: "PDV" },
   { match: (p) => p.startsWith("/garcom"), title: "Garçom", group: "PDV" },
@@ -169,6 +175,7 @@ const PAGE_TITLES: PageMeta[] = [
   { match: (p) => p.startsWith("/configuracoes/nfce-tester"), title: "Teste NFC-e (ACBr)", group: "Configurações" },
   { match: (p) => p.startsWith("/configuracoes/tef-paygo"), title: "TEF PayGo", group: "PDV" },
   { match: (p) => p.startsWith("/configuracoes/tef-paygo"), title: "TEF PayGo (instalação)", group: "Configurações" },
+  { match: (p) => p.startsWith("/configuracoes/ifood-widgets"), title: "Widgets iFood", group: "Configurações" },
   { match: (p) => p.startsWith("/configuracoes"), title: "Configurações" },
   { match: (p) => p.startsWith("/whatsapp"), title: "WhatsApp" },
 ];

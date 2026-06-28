@@ -1,165 +1,403 @@
 /* Identidade visual Aquela Parmê — escopo público (vagas).
+ * Cópia fiel do site refeito em aquelaparme.com.br.
  * Aplicado via classe .ap-brand no wrapper raiz da página.
- * Cores em HSL extraídas do site aquelaparme.com.br.
  */
+
+/* ─── Fonte de display (Avigea) ─── */
+@font-face {
+  font-family: "Avigea";
+  src: url("/__l5e/assets-v1/9abc8ad8-d4e9-42f3-9813-d248eb466ce4/Avigea.woff2") format("woff2"),
+       url("/__l5e/assets-v1/b28ddee6-9701-4f0c-9ec9-3fca49da1075/Avigea.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 .ap-brand {
-  /* Paleta */
-  --ap-cream: 38 80% 94%;          /* #fbf3e1 fundo principal */
-  --ap-cream-2: 36 60% 88%;        /* variação para cards */
-  --ap-red: 0 71% 28%;             /* #7a1416 vermelho profundo */
-  --ap-red-soft: 0 65% 38%;
-  --ap-orange: 22 90% 67%;         /* #f59362 laranja terroso */
-  --ap-brown: 24 30% 28%;          /* marrom escuro */
-  --ap-ink: 30 15% 12%;            /* preto quente do header */
-  --ap-tomato: 4 75% 50%;
+  /* Paleta HSL */
+  --ap-cream: 41 95% 93%;          /* #fef4df fundo principal */
+  --ap-cream-2: 39 86% 92%;        /* #fef0d4 */
+  --ap-red: 3 65% 47%;             /* #c93029 */
+  --ap-red-soft: 7 90% 58%;        /* #f44a37 */
+  --ap-mustard: 38 89% 52%;        /* #f2a618 */
+  --ap-brown: 17 56% 11%;          /* #2a140c */
+  --ap-brown-2: 21 30% 30%;        /* #654438 */
+  --ap-ink: 0 0% 0%;               /* #000 */
+  --ap-orange: 18 82% 58%;         /* #ed6f3a */
 
   background: hsl(var(--ap-cream));
-  color: hsl(var(--ap-ink));
-  font-family: ui-serif, Georgia, "Recoleta", "Playfair Display", serif;
+  color: hsl(var(--ap-brown));
+  font-family: "Bitter", ui-serif, Georgia, serif;
+  font-weight: 400;
 }
 .ap-brand .ap-sans {
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: "Bitter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
-/* Header escuro como o site */
+/* ─── Utilitários de cor (independem do Tailwind config) ─── */
+.ap-brand .ap-bg-ink       { background-color: hsl(var(--ap-ink)); }
+.ap-brand .ap-text-cream   { color: hsl(var(--ap-cream-2)); }
+.ap-brand .ap-text-cream-90{ color: hsl(var(--ap-cream-2) / .9); }
+.ap-brand .ap-text-red     { color: hsl(var(--ap-red)); }
+.ap-brand .ap-text-red-soft{ color: hsl(var(--ap-red-soft)); }
+.ap-brand .ap-hover-text-red:hover { color: hsl(var(--ap-red)); }
+.ap-brand .ap-hover-text-ink:hover { color: #000; }
+.ap-brand .ap-border-cream { border-color: hsl(var(--ap-cream-2) / .8); }
+.ap-brand .ap-border-cream-10 { border-color: hsl(var(--ap-cream-2) / .1); }
+.ap-brand .ap-border-cream-55 { border-color: hsl(var(--ap-cream-2) / .55); }
+.ap-brand .ap-border-cream-70 { border-color: hsl(var(--ap-cream-2) / .7); }
+
+/* ─── Fonte display (Avigea) ─── */
+.ap-brand .ap-font-display {
+  font-family: "Avigea", "Alfa Slab One", Georgia, serif;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 1.05;
+}
+
+/* ─── Header preto fixo no topo ─── */
 .ap-brand .ap-header {
-  background: hsl(var(--ap-ink));
-  color: hsl(var(--ap-cream));
-}
-
-/* Header flutuante (igual ao site) — pílula com cantos arredondados */
-.ap-brand .ap-header-floating {
   position: sticky;
-  top: 0.75rem;
+  top: 0;
   z-index: 50;
-  margin: 0.75rem auto 0;
-  max-width: min(1200px, calc(100% - 1.5rem));
   background: hsl(var(--ap-ink));
-  color: hsl(var(--ap-cream));
-  border-radius: 9999px;
-  box-shadow: 0 12px 30px -12px hsl(var(--ap-ink) / .5);
-  padding: 1rem 1.5rem; /* mesma altura visual do header do site */
+  color: hsl(var(--ap-cream-2));
+  box-shadow: 0 4px 16px -6px hsl(var(--ap-ink) / .35);
 }
-@media (max-width: 640px) {
-  .ap-brand .ap-header-floating {
-    border-radius: 1.5rem;
-    padding: 0.5rem 0.75rem;
+.ap-brand .ap-header-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+}
+@media (min-width: 768px) {
+  .ap-brand .ap-header-inner {
+    gap: 1rem;
+    padding: 1rem 1.5rem;
   }
 }
+.ap-brand .ap-header-nav {
+  display: none;
+  align-items: center;
+  gap: 1.75rem;
+}
+@media (min-width: 1024px) {
+  .ap-brand .ap-header-nav { display: flex; }
+}
+.ap-brand .ap-header-nav a {
+  font-family: "Bitter", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 1.25;
+  color: hsl(var(--ap-cream-2) / .9);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.ap-brand .ap-header-nav a:hover,
+.ap-brand .ap-header-nav a.active {
+  color: hsl(var(--ap-red-soft));
+}
+.ap-brand .ap-header-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ap-brand .ap-header-logo img {
+  height: 2.5rem;
+  width: auto;
+}
+@media (min-width: 768px) {
+  .ap-brand .ap-header-logo img { height: 3.5rem; }
+}
+.ap-brand .ap-header-right {
+  display: none;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+@media (min-width: 1024px) {
+  .ap-brand .ap-header-right { display: flex; }
+}
+.ap-brand .ap-header-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid hsl(var(--ap-cream-2) / .8);
+  background: transparent;
+  padding: 0.5rem 1rem;
+  font-family: "Bitter", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: hsl(var(--ap-cream-2));
+  text-decoration: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.ap-brand .ap-header-btn-outline:hover {
+  background: hsl(var(--ap-cream-2));
+  color: hsl(var(--ap-ink));
+}
+.ap-brand .ap-header-hamburger {
+  display: grid;
+  place-items: center;
+  margin-left: auto;
+  margin-right: -0.25rem;
+  height: 2.75rem;
+  width: 2.75rem;
+  border-radius: 0.375rem;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+}
+@media (min-width: 1024px) {
+  .ap-brand .ap-header-hamburger { display: none; }
+}
+.ap-brand .ap-header-mobile {
+  display: block;
+  border-top: 1px solid hsl(var(--ap-cream-2) / .1);
+  background: hsl(var(--ap-ink));
+  padding: 0.75rem 1rem;
+}
+@media (min-width: 1024px) {
+  .ap-brand .ap-header-mobile { display: none; }
+}
+.ap-brand .ap-header-mobile ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ap-brand .ap-header-mobile a {
+  display: block;
+  border-radius: 0.375rem;
+  padding: 0.75rem 0.75rem;
+  font-family: "Bitter", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 1rem;
+  color: inherit;
+  text-decoration: none;
+}
+.ap-brand .ap-header-mobile a.active {
+  color: hsl(var(--ap-red-soft));
+}
+.ap-brand .ap-header-mobile .ap-header-btn-outline {
+  margin-top: 0.5rem;
+  text-align: center;
+  justify-content: center;
+}
 
-/* Rodapé laranja vibrante (igual ao site oficial) */
+/* ─── Rodapé laranja com onda SVG no topo ─── */
 .ap-brand .ap-footer {
   position: relative;
-  margin-top: 4rem;
-  background: #e6532a; /* laranja-tomate do rodapé do site */
+  background: #ef6b3a;
   color: hsl(var(--ap-cream));
-  border-radius: 1.5rem 1.5rem 0 0;
   overflow: hidden;
 }
-/* Faixa "drip" preta no topo do rodapé (igual ao site) */
-.ap-brand .ap-footer-drip {
-  height: 56px;
-  background: hsl(var(--ap-ink));
-  -webkit-mask: radial-gradient(22px at 50% 100%, #0000 98%, #000) 50% 100% / 80px 100% repeat-x;
-          mask: radial-gradient(22px at 50% 100%, #0000 98%, #000) 50% 100% / 80px 100% repeat-x;
+.ap-brand .ap-footer-wave {
+  display: block;
+  width: 100%;
+  height: clamp(40px, 7vw, 90px);
+  background: hsl(var(--ap-cream));
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 90' preserveAspectRatio='none'><path d='M0,90 L0,40 C160,0 320,80 540,55 C760,30 900,75 1080,55 C1240,38 1340,60 1440,30 L1440,90 Z' fill='black'/></svg>") no-repeat center / 100% 100%;
+          mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 90' preserveAspectRatio='none'><path d='M0,90 L0,40 C160,0 320,80 540,55 C760,30 900,75 1080,55 C1240,38 1340,60 1440,30 L1440,90 Z' fill='black'/></svg>") no-repeat center / 100% 100%;
 }
-.ap-brand .ap-footer a.ap-footer-link {
+.ap-brand .ap-footer-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem 1rem 2.5rem;
+}
+@media (min-width: 768px) {
+  .ap-brand .ap-footer-inner {
+    padding: 0.5rem 1.5rem 4rem;
+  }
+}
+.ap-brand .ap-footer h3 {
+  font-family: "Avigea", "Alfa Slab One", Georgia, serif;
+  font-weight: 400;
+  color: hsl(var(--ap-cream));
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  margin: 0;
+}
+.ap-brand .ap-footer h4 {
+  font-family: "Avigea", "Alfa Slab One", Georgia, serif;
+  font-weight: 400;
+  color: hsl(var(--ap-cream));
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+  font-size: clamp(1.25rem, 2.5vw, 1.875rem);
+  margin: 0;
+}
+.ap-brand .ap-footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   color: hsl(var(--ap-cream));
   text-decoration: underline;
   text-underline-offset: 4px;
-  text-decoration-color: hsl(var(--ap-cream) / .6);
-  font-family: ui-serif, "Recoleta", "Playfair Display", Georgia, serif;
-  font-weight: 700;
-  font-size: 1.05rem;
+  text-decoration-color: hsl(var(--ap-cream) / .55);
+  font-family: "Bitter", ui-serif, Georgia, serif;
+  font-weight: 500;
+  font-size: 1rem;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
 }
-.ap-brand .ap-footer a.ap-footer-link:hover {
-  text-decoration-color: hsl(var(--ap-cream));
+.ap-brand .ap-footer-link:hover {
+  color: #fff;
+  text-decoration-color: #fff;
 }
-.ap-brand .ap-footer h4 {
-  font-family: ui-serif, "Recoleta", "Playfair Display", Georgia, serif;
-  font-weight: 700;
-  color: hsl(var(--ap-cream));
+.ap-brand .ap-footer-grid {
+  display: grid;
+  gap: 2rem;
+  margin-top: 2.5rem;
+}
+@media (min-width: 768px) {
+  .ap-brand .ap-footer-grid {
+    grid-template-columns: repeat(2, 1fr);
+    margin-top: 2.5rem;
+  }
+}
+.ap-brand .ap-footer-bottom {
+  font-family: "Bitter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.75rem;
+  color: hsl(var(--ap-cream) / .9);
+  margin-top: 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+@media (min-width: 768px) {
+  .ap-brand .ap-footer-bottom {
+    flex-direction: row;
+    align-items: center;
+  }
 }
 
-/* Botão CTA principal (creme com texto escuro, igual o "Saiba mais" do site) */
+/* ─── Botões — pílula vermelha (CTA) e outline creme ─── */
 .ap-brand .ap-btn-primary {
-  background: hsl(var(--ap-cream));
-  color: hsl(var(--ap-ink));
-  border: 1px solid hsl(var(--ap-cream));
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  background: hsl(var(--ap-red));
+  color: #fff;
+  border: 1px solid hsl(var(--ap-red));
+  font-family: "Bitter", ui-sans-serif, system-ui, sans-serif;
   font-weight: 600;
   border-radius: 999px;
   padding: 0.6rem 1.2rem;
-  transition: transform .15s ease, box-shadow .15s ease;
+  transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease;
 }
 .ap-brand .ap-btn-primary:hover {
+  background: hsl(var(--ap-red-soft));
+  border-color: hsl(var(--ap-red-soft));
   transform: translateY(-1px);
-  box-shadow: 0 8px 20px -8px hsl(var(--ap-ink) / .35);
+  box-shadow: 0 8px 20px -8px hsl(var(--ap-red) / .5);
 }
 .ap-brand .ap-btn-outline {
   background: transparent;
-  color: hsl(var(--ap-cream));
-  border: 1px solid hsl(var(--ap-cream) / .8);
+  color: hsl(var(--ap-cream-2));
+  border: 1px solid hsl(var(--ap-cream-2) / .85);
   border-radius: 999px;
   padding: 0.5rem 1rem;
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-family: "Bitter", ui-sans-serif, system-ui, sans-serif;
   font-weight: 500;
 }
+.ap-brand .ap-btn-outline:hover {
+  background: hsl(var(--ap-cream-2));
+  color: hsl(var(--ap-ink));
+}
 
-/* Cards no estilo do site (cantos arredondados, bege claro com bordas suaves) */
+/* ─── Cards no estilo do site ─── */
 .ap-brand .ap-card {
-  background: hsl(var(--ap-cream-2) / .35);
-  border: 1px solid hsl(var(--ap-brown) / .15);
+  background: hsl(var(--ap-cream-2) / .55);
+  border: 1px solid hsl(var(--ap-brown) / .12);
   border-radius: 1.25rem;
   overflow: hidden;
 }
 .ap-brand .ap-card-strong {
   background: hsl(var(--ap-red));
-  color: hsl(var(--ap-cream));
+  color: hsl(var(--ap-cream-2));
 }
 
-/* Headlines em serifada */
+/* ─── Headlines / display em Avigea (vermelho da marca) ─── */
 .ap-brand .ap-display {
-  font-family: ui-serif, "Recoleta", "Playfair Display", Georgia, serif;
-  font-weight: 700;
+  font-family: "Avigea", "Alfa Slab One", Georgia, serif;
+  font-weight: 400;
   letter-spacing: -0.01em;
   color: hsl(var(--ap-red));
+  line-height: 1.05;
 }
 .ap-brand .ap-display-light {
-  color: hsl(var(--ap-cream));
+  color: hsl(var(--ap-cream-2));
 }
 
-/* Badges/tag */
+/* ─── Texto manuscrito ─── */
+.ap-brand .ap-script {
+  font-family: "Caveat", "Bradley Hand", cursive;
+  font-weight: 600;
+  color: hsl(var(--ap-red));
+}
+
+/* ─── Links de menu (Bitter, peso médio, hover vermelho) ─── */
+.ap-brand .ap-nav-link {
+  font-family: "Bitter", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 500;
+  color: hsl(var(--ap-cream-2));
+  transition: color .15s ease;
+}
+.ap-brand .ap-nav-link:hover,
+.ap-brand .ap-nav-link.active {
+  color: hsl(var(--ap-red-soft));
+}
+
+/* ─── Badges/tag ─── */
 .ap-brand .ap-tag {
   display: inline-flex;
   align-items: center;
   gap: .35rem;
-  background: hsl(var(--ap-orange) / .2);
+  background: hsl(var(--ap-mustard) / .2);
   color: hsl(var(--ap-red));
-  border: 1px solid hsl(var(--ap-orange) / .45);
+  border: 1px solid hsl(var(--ap-mustard) / .55);
   padding: .25rem .65rem;
   border-radius: 999px;
   font-size: .75rem;
   font-weight: 600;
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-family: "Bitter", ui-sans-serif, system-ui, sans-serif;
 }
 .ap-brand .ap-tag-soft {
   background: hsl(var(--ap-cream-2));
-  color: hsl(var(--ap-brown));
+  color: hsl(var(--ap-brown-2));
   border-color: hsl(var(--ap-brown) / .2);
 }
 
-/* Divider sutil */
+/* ─── Divider sutil ─── */
 .ap-brand .ap-divider {
   height: 1px;
   background: hsl(var(--ap-brown) / .15);
 }
 
-/* Inputs/labels com tipografia limpa */
+/* ─── Inputs/labels com tipografia limpa ─── */
 .ap-brand .ap-form label,
 .ap-brand .ap-form input,
 .ap-brand .ap-form textarea,
 .ap-brand .ap-form select,
 .ap-brand .ap-form button {
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: "Bitter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ─── Override /pedir para fundo branco ─── */
+#pedir-page.ap-brand {
+  background: #fff;
+}
+#pedir-page.ap-brand .ap-card {
+  background: #fff;
+  border-color: hsl(var(--ap-brown) / .15);
+}
+#pedir-page.ap-brand .ap-tag-soft {
+  background: hsl(var(--ap-cream-2));
 }

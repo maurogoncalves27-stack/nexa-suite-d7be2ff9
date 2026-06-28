@@ -105,7 +105,7 @@ export default function MigrateNexa() {
         </h1>
         <p className="text-muted-foreground">
           Lê do projeto <strong>NEXA original</strong> (<code>xmswsrhfofwhwtykjqef</code>) e grava aqui no <strong>NEXA Suite</strong>, em lotes de {BATCH_SIZE} tabelas. Pula{" "}
-          <code>pdv_*</code>, <code>pos_*</code>, <code>saipos_*</code> e tabelas internas.
+          <code>pdv_*</code> e tabelas internas.
         </p>
       </div>
 

@@ -28,6 +28,10 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
   const [newCategoryName, setNewCategoryName] = useState("");
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [editingCategoryName, setEditingCategoryName] = useState("");
+  const [applyToGroup, setApplyToGroup] = useState(false);
+  const [groupCount, setGroupCount] = useState(0);
+  const [siblingIds, setSiblingIds] = useState<string[]>([]);
+  const [groupMode, setGroupMode] = useState<"id" | "description">("id");
 
   // common fields
   const [description, setDescription] = useState("");
@@ -37,6 +41,7 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
   const [dueDate, setDueDate] = useState("");
   const [settledDate, setSettledDate] = useState(""); // paid_at / received_at
   const [issueDate, setIssueDate] = useState(""); // for invoices (read-only display)
+  const [competenceDate, setCompetenceDate] = useState(""); // editable competence (payable/receivable sem NF)
   const [amount, setAmount] = useState<string>("");
 
   const reloadCategories = async () => {
@@ -78,11 +83,55 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
       : ""
     );
     setIssueDate(raw.inventory_invoices?.issue_date ?? "");
+    setCompetenceDate(raw.competence_date ? String(raw.competence_date).slice(0, 10) : "");
     setAmount(String(Math.abs(Number(raw.amount ?? 0))));
     setManagingCategories(false);
     setNewCategoryName("");
     setEditingCategoryId(null);
     setEditingCategoryName("");
+    setApplyToGroup(false);
+    setGroupCount(0);
+    setSiblingIds([]);
+    setGroupMode("id");
+    if (kind === "payable") {
+      (async () => {
+        // 1) Try by recurrence_group_id
+        if (raw.recurrence_group_id) {
+          const { data } = await supabase
+            .from("accounts_payable")
+            .select("id")
+            .eq("recurrence_group_id", raw.recurrence_group_id)
+            .neq("id", raw.id);
+          if (data && data.length > 0) {
+            setSiblingIds(data.map((d: any) => d.id));
+            setGroupCount(data.length + 1);
+            setGroupMode("id");
+            return;
+          }
+        }
+        // 2) Fallback: same supplier + store + base description (strip "(N/M)" suffix)
+        const desc = String(raw.description ?? "");
+        const baseDesc = desc.replace(/\s*\(\d+\/\d+\)\s*$/, "").trim();
+        if (!baseDesc) return;
+        let q = supabase
+          .from("accounts_payable")
+          .select("id, description")
+          .neq("id", raw.id)
+          .ilike("description", `${baseDesc}%`);
+        if (raw.supplier_name) q = q.eq("supplier_name", raw.supplier_name);
+        if (raw.store_id) q = q.eq("store_id", raw.store_id);
+        const { data } = await q;
+        const matches = (data ?? []).filter((d: any) => {
+          const dBase = String(d.description ?? "").replace(/\s*\(\d+\/\d+\)\s*$/, "").trim();
+          return dBase === baseDesc;
+        });
+        if (matches.length > 0) {
+          setSiblingIds(matches.map((d: any) => d.id));
+          setGroupCount(matches.length + 1);
+          setGroupMode("description");
+        }
+      })();
+    }
   }, [open, raw, kind]);
 
   if (!kind || !raw) return null;
@@ -140,16 +189,69 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
     let error: any = null;
 
     if (kind === "payable") {
+      const newDue = dueDate || null;
+      const newComp = competenceDate || null;
       const { error: e } = await supabase.from("accounts_payable").update({
         description: description || null,
         supplier_name: partyName || null,
         store_id: storeId || raw.store_id,
         category_id: categoryId || null,
-        due_date: dueDate || null,
+        due_date: newDue,
+        competence_date: newComp,
         paid_at: settledDate ? new Date(settledDate + "T12:00:00").toISOString() : null,
         amount: Number(amount) || 0,
       }).eq("id", raw.id);
       error = e;
+
+      if (!error && applyToGroup && siblingIds.length > 0) {
+        const dayDelta = (raw.due_date && newDue)
+          ? Math.round((new Date(newDue + "T12:00:00").getTime() - new Date(raw.due_date + "T12:00:00").getTime()) / 86400000)
+          : 0;
+        const monthDelta = (raw.competence_date && newComp)
+          ? ((new Date(newComp + "T12:00:00").getFullYear() - new Date(raw.competence_date + "T12:00:00").getFullYear()) * 12
+              + (new Date(newComp + "T12:00:00").getMonth() - new Date(raw.competence_date + "T12:00:00").getMonth()))
+          : 0;
+
+        const { data: siblings } = await supabase
+          .from("accounts_payable")
+          .select("id, description, due_date, competence_date")
+          .in("id", siblingIds);
+
+        const shiftDays = (d: string | null, days: number) => {
+          if (!d || !days) return d;
+          const dt = new Date(d + "T12:00:00");
+          dt.setDate(dt.getDate() + days);
+          return dt.toISOString().slice(0, 10);
+        };
+        const shiftMonths = (d: string | null, months: number) => {
+          if (!d || !months) return d;
+          const dt = new Date(d + "T12:00:00");
+          dt.setMonth(dt.getMonth() + months);
+          return dt.toISOString().slice(0, 10);
+        };
+
+        // In description-mode, preserve each sibling's "(N/M)" parcel suffix.
+        const newBase = (description || "").replace(/\s*\(\d+\/\d+\)\s*$/, "").trim();
+
+        for (const s of (siblings ?? []) as any[]) {
+          let descToUse: string | null = description || null;
+          if (groupMode === "description") {
+            const m = String(s.description ?? "").match(/\((\d+\/\d+)\)\s*$/);
+            descToUse = m ? `${newBase} (${m[1]})` : (description || null);
+          }
+          const upd: any = {
+            description: descToUse,
+            supplier_name: partyName || null,
+            store_id: storeId || raw.store_id,
+            category_id: categoryId || null,
+            amount: Number(amount) || 0,
+          };
+          if (dayDelta) upd.due_date = shiftDays(s.due_date, dayDelta);
+          if (monthDelta) upd.competence_date = shiftMonths(s.competence_date, monthDelta);
+          const { error: se } = await supabase.from("accounts_payable").update(upd).eq("id", s.id);
+          if (se) { error = se; break; }
+        }
+      }
     } else if (kind === "receivable") {
       const { error: e } = await supabase.from("accounts_receivable").update({
         description: description || "—",
@@ -348,12 +450,17 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            {showInvoiceDate && (
+            {showInvoiceDate ? (
               <div className="space-y-1">
                 <Label>Data competência (NF)</Label>
                 <Input type="date" value={issueDate} disabled />
               </div>
-            )}
+            ) : kind === "payable" ? (
+              <div className="space-y-1">
+                <Label>Data competência</Label>
+                <Input type="date" value={competenceDate} onChange={(e) => setCompetenceDate(e.target.value)} />
+              </div>
+            ) : null}
             {(kind === "payable" || kind === "receivable") && (
               <div className="space-y-1">
                 <Label>Vencimento</Label>
@@ -383,7 +490,29 @@ export default function EditStatementRowDialog({ open, onOpenChange, kind, raw, 
               Para alterar valor ou data, gere uma conta vinculada a partir da Conciliação.
             </p>
           )}
+
+          {kind === "payable" && groupCount > 1 && (
+            <label className="flex items-start gap-2 rounded-md border border-amber-300/60 bg-amber-50/40 dark:bg-amber-950/10 p-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={applyToGroup}
+                onChange={(e) => setApplyToGroup(e.target.checked)}
+                className="mt-1"
+              />
+              <span>
+                Aplicar a <strong>todos os {groupCount} pagamentos</strong> desta recorrência
+                {groupMode === "description" && " (agrupados por descrição + fornecedor + loja)"}.
+                <span className="block text-xs text-muted-foreground mt-0.5">
+                  Fornecedor, loja, categoria e valor serão copiados. Vencimento e competência
+                  serão deslocados pela mesma diferença aplicada aqui (preservando o mês de cada parcela).
+                  {groupMode === "description" && " A numeração \"(N/M)\" de cada parcela é preservada."}
+                  {" "}Datas de pagamento não são alteradas.
+                </span>
+              </span>
+            </label>
+          )}
         </div>
+
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>Cancelar</Button>

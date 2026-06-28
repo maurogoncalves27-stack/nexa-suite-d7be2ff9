@@ -15,7 +15,7 @@ import {
   PieChart, Pie, Cell, LabelList,
 } from "recharts";
 import { fmtBRL } from "@/lib/dre";
-import { FileSpreadsheet, RefreshCw, Plus, TrendingUp } from "lucide-react";
+import { FileSpreadsheet, Plus, TrendingUp } from "lucide-react";
 import { ManualRevenueDialog } from "@/components/faturamento/ManualRevenueDialog";
 
 const DailyAnalytics = lazy(() =>
@@ -153,7 +153,10 @@ export default function Faturamento() {
       // Fonte: monthly_revenue (alimentada por daily_revenue via trigger).
       // Busca paginada por ano em paralelo para não deixar a tela presa no skeleton.
       const currentYear = new Date().getFullYear();
-      const targetYears = [currentYear, currentYear - 1, currentYear - 2];
+      // Inclui de 2023 (primeiro ano com dados consolidados mensais) até o ano atual
+      const EARLIEST_YEAR = 2023;
+      const targetYears: number[] = [];
+      for (let y = currentYear; y >= EARLIEST_YEAR; y--) targetYears.push(y);
       const COLS = "id,year,month,store_id,brand_id,gross_revenue,is_consolidated";
       const step = 1000;
 
@@ -310,13 +313,13 @@ export default function Faturamento() {
     const CURRENT = new Date().getFullYear();
     const PREV = CURRENT - 1;
     const yrs = years.slice().sort((a, b) => a - b).filter(y =>
-      MONTH_LABELS.some((_, i) => consolidatedMonthTotal(rows, y, i + 1) !== null)
+      MONTH_LABELS.some((_, i) => monthTotal(rows, y, i + 1) > 0)
     );
 
-    // Último mês consolidado do ano corrente
+    // Último mês com dado real do ano corrente (consolidado OU soma das lojas)
     let lastRealizedMonth = 0;
     for (let m = 1; m <= 12; m++) {
-      if (consolidatedMonthTotal(rows, CURRENT, m) !== null) lastRealizedMonth = m;
+      if (monthTotal(rows, CURRENT, m) > 0) lastRealizedMonth = m;
     }
 
     // Crescimento YoY observado YTD
@@ -334,7 +337,10 @@ export default function Faturamento() {
     const data = MONTH_LABELS.map((label, i) => {
       const m = i + 1;
       const item: any = { label };
-      yrs.forEach(y => { item[String(y)] = consolidatedMonthTotal(rows, y, i + 1); });
+      yrs.forEach(y => {
+        const v = monthTotal(rows, y, i + 1);
+        item[String(y)] = v > 0 ? v : null;
+      });
 
       if (hasCurrent && m > lastRealizedMonth) {
         const prev = monthTotal(rows, PREV, m);
@@ -495,54 +501,8 @@ export default function Faturamento() {
     }).filter(x => x.total > 0);
   }, [detailRows, brandById, operationalStores]);
 
-  const [syncing, setSyncing] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
 
-  async function syncFromPos() {
-    setSyncing(true);
-    try {
-      // Busca todas as vendas POS agrupadas por (year, month, store_id)
-      const { data, error } = await supabase
-        .from("pos_sales")
-        .select("sold_at, total_amount, store_id, stores!inner(brand_id, is_active)")
-        .neq("status", "cancelled")
-        .eq("dre_excluded", false);
-      if (error) throw error;
-
-      // Agrega por (year, month, store_id, brand_id)
-      const agg = new Map<string, { year: number; month: number; store_id: string; brand_id: string | null; gross_revenue: number }>();
-      for (const row of (data as any[])) {
-        const d = new Date(row.sold_at);
-        const yr = d.getFullYear();
-        const mo = d.getMonth() + 1;
-        const sid = row.store_id as string;
-        const bid = (row.stores?.brand_id as string | null) ?? null;
-        const key = `${yr}-${mo}-${sid}-${bid ?? "null"}`;
-        const cur = agg.get(key);
-        const v = Number(row.total_amount) || 0;
-        if (cur) cur.gross_revenue += v;
-        else agg.set(key, { year: yr, month: mo, store_id: sid, brand_id: bid, gross_revenue: v });
-      }
-
-      const records = Array.from(agg.values()).map(r => ({ ...r, is_consolidated: false }));
-      if (!records.length) {
-        toast({ title: "Sem vendas no PDV para sincronizar" });
-        return;
-      }
-
-      const { error: upErr } = await supabase
-        .from("monthly_revenue")
-        .upsert(records, { onConflict: "year,month,store_id,brand_id" });
-      if (upErr) throw upErr;
-
-      toast({ title: `Sincronizado: ${records.length} períodos atualizados` });
-      load();
-    } catch (e: any) {
-      toast({ title: "Erro ao sincronizar", description: e.message, variant: "destructive" });
-    } finally {
-      setSyncing(false);
-    }
-  }
 
   return (
     <div className="space-y-6 p-3 sm:p-4">
@@ -574,10 +534,6 @@ export default function Faturamento() {
           <Button size="sm" onClick={() => setManualOpen(true)}>
             <Plus className="h-4 w-4 mr-1" />
             Lançar manual
-          </Button>
-          <Button size="sm" variant="outline" onClick={syncFromPos} disabled={syncing}>
-            <RefreshCw className={`h-4 w-4 mr-1 ${syncing ? "animate-spin" : ""}`} />
-            {syncing ? "Sincronizando..." : "Sincronizar do PDV"}
           </Button>
         </div>
       </div>

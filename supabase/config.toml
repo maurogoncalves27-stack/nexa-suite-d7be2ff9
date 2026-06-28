@@ -3,6 +3,9 @@ project_id = "ixjgmerxxakdkfdzgumy"
 [functions.whatsapp-customer-webhook]
 verify_jwt = false
 
+[functions.uazapi-webhook]
+verify_jwt = false
+
 [functions.ems-ingest]
 verify_jwt = false
 
@@ -11,3 +14,12 @@ verify_jwt = true
 
 [functions.mercadopago-webhook]
 verify_jwt = false
+
+[functions.parme-webhook]
+verify_jwt = false
+
+[functions.parme-backfill]
+verify_jwt = true
+
+[functions.parme-delete-reservation]
+verify_jwt = true

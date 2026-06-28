@@ -25,6 +25,8 @@ interface OccLite {
   category: string | null;
   occurrence: string;
   order_correct: boolean;
+  requires_subcategory?: boolean;
+  subcategory_options?: string[] | null;
 }
 
 interface Analysis {
@@ -81,11 +83,14 @@ export default function Occurrences() {
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertOrderNumber, setAlertOrderNumber] = useState("");
   const [alertOrderValue, setAlertOrderValue] = useState("");
+  const [alertSubcategory, setAlertSubcategory] = useState<string>("");
+  const [alertSubcategoryOptions, setAlertSubcategoryOptions] = useState<string[]>([]);
+  const [alertRequiresSub, setAlertRequiresSub] = useState(false);
   const [alertingId, setAlertingId] = useState<string | null>(null);
 
   // Atalhos rápidos (ocorrências mais usadas nos últimos 90 dias)
   const [topShortcuts, setTopShortcuts] = useState<
-    { id: string; code: string; category: string | null; occurrence: string; uses: number }[]
+    { id: string; code: string; category: string | null; occurrence: string; uses: number; requires_subcategory?: boolean; subcategory_options?: string[] | null }[]
   >([]);
 
   // Diálogo único "pedir nº do pedido + se foi enviado correto" — usado pelo atalho rápido E pelo card "Conte o que aconteceu"
@@ -121,19 +126,19 @@ export default function Occurrences() {
     (async () => {
       const { data, error } = await supabase
         .from("occurrence_alerts")
-        .select("occurrence_id, occurrences!inner(id, code, category, occurrence, is_active)")
+        .select("occurrence_id, occurrences!inner(id, code, category, occurrence, is_active, requires_subcategory, subcategory_options)")
         .gte("created_at", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
         .limit(500);
       if (cancelled || error || !data) return;
-      const counts = new Map<string, { id: string; code: string; category: string | null; occurrence: string; uses: number }>();
+      const counts = new Map<string, { id: string; code: string; category: string | null; occurrence: string; uses: number; requires_subcategory?: boolean; subcategory_options?: string[] | null }>();
       for (const row of data as unknown as {
-        occurrences: { id: string; code: string; category: string | null; occurrence: string; is_active: boolean };
+        occurrences: { id: string; code: string; category: string | null; occurrence: string; is_active: boolean; requires_subcategory?: boolean; subcategory_options?: string[] | null };
       }[]) {
         const o = row.occurrences;
         if (!o?.is_active) continue;
         const cur = counts.get(o.id);
         if (cur) cur.uses += 1;
-        else counts.set(o.id, { id: o.id, code: o.code, category: o.category, occurrence: o.occurrence, uses: 1 });
+        else counts.set(o.id, { id: o.id, code: o.code, category: o.category, occurrence: o.occurrence, uses: 1, requires_subcategory: o.requires_subcategory, subcategory_options: o.subcategory_options });
       }
       const top = Array.from(counts.values()).sort((a, b) => b.uses - a.uses).slice(0, 6);
       setTopShortcuts(top);
@@ -343,7 +348,7 @@ export default function Occurrences() {
     }
   };
 
-  const openRegister = () => {
+  const openRegister = async () => {
     if (!user) {
       toast({ title: "Faça login para registrar", variant: "destructive" });
       return;
@@ -354,33 +359,51 @@ export default function Occurrences() {
     }
     setAlertOrderNumber((prev) => orderNumberInput.trim() || prev);
     setAlertOrderValue("");
+    setAlertSubcategory("");
+    // Carrega meta do catálogo p/ saber se exige subcategoria
+    const { data: cat } = await supabase
+      .from("occurrences")
+      .select("requires_subcategory, subcategory_options")
+      .eq("id", chosenOccId)
+      .maybeSingle<{ requires_subcategory: boolean | null; subcategory_options: string[] | null }>();
+    setAlertRequiresSub(!!cat?.requires_subcategory);
+    setAlertSubcategoryOptions(cat?.subcategory_options ?? []);
     setAlertOpen(true);
   };
 
   const sendRegister = async () => {
     if (!chosenOccId || !user || !analysis) return;
+    if (alertRequiresSub && !alertSubcategory.trim()) {
+      toast({ title: "Selecione a subcategoria", description: "Esta ocorrência exige a causa específica.", variant: "destructive" });
+      return;
+    }
     setAlertingId(chosenOccId);
     try {
       const { data: emp } = await supabase
         .from("employees")
-        .select("store_id, full_name, stores(name)")
+        .select("allocated_store_id, full_name, allocated_store:allocated_store_id(name)")
         .eq("user_id", user.id)
         .maybeSingle();
 
-      // Tenta detectar loja pela localização atual (fallback: loja vinculada ao colaborador)
-      let detectedStoreId: string | null = emp?.store_id ?? null;
-      let detectedStoreName: string | null =
-        (emp as { stores?: { name?: string } } | null)?.stores?.name ?? null;
+      // Carrega lojas reais (para o GPS e validação de IDs)
+      const { data: realStoresData } = await supabase
+        .from("stores")
+        .select("id, name, latitude, longitude, geofence_radius_m")
+        .eq("is_active", true)
+        .eq("is_virtual", false);
+      const realStores = realStoresData ?? [];
+      const isRealStoreId = (id?: string | null) =>
+        !!id && realStores.some((s) => s.id === id);
+
+      let detectedStoreId: string | null = null;
+      let detectedStoreName: string | null = null;
+
+      // 1) GPS dentro do raio de uma loja real
       try {
         const pos = await getCurrentPosition();
         if (pos?.coords) {
-          const { data: realStores } = await supabase
-            .from("stores")
-            .select("id, name, latitude, longitude, geofence_radius_m")
-            .eq("is_active", true)
-            .eq("is_virtual", false);
           let best: { id: string; name: string; dist: number; radius: number } | null = null;
-          for (const s of realStores ?? []) {
+          for (const s of realStores) {
             if (s.latitude == null || s.longitude == null) continue;
             const d = haversineDistanceMeters(
               pos.coords.latitude,
@@ -397,8 +420,33 @@ export default function Occurrences() {
           }
         }
       } catch {
-        // ignora erros de GPS — usa fallback
+        // ignora erros de GPS
       }
+
+      // 2) allocated_store_id (loja real)
+      if (!detectedStoreId && isRealStoreId(emp?.allocated_store_id)) {
+        const s = realStores.find((r) => r.id === emp!.allocated_store_id)!;
+        detectedStoreId = s.id;
+        detectedStoreName = s.name;
+      }
+
+      // 3) store_terminal_users (logins compartilhados de terminal de loja)
+      if (!detectedStoreId) {
+        const { data: terminal } = await supabase
+          .from("store_terminal_users")
+          .select("store_id, stores(name)")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        const tStoreId = (terminal as { store_id?: string } | null)?.store_id ?? null;
+        if (tStoreId && isRealStoreId(tStoreId)) {
+          detectedStoreId = tStoreId;
+          detectedStoreName = (terminal as { stores?: { name?: string } } | null)?.stores?.name ?? null;
+        }
+      }
+
+
+
+
 
       const orderNumber = alertOrderNumber.trim() || null;
       const orderValueRaw = alertOrderValue.trim().replace(",", ".");
@@ -408,8 +456,10 @@ export default function Occurrences() {
         setAlertingId(null);
         return;
       }
+      const subcat = alertSubcategory.trim() || null;
       const note = [
         `Relato: ${relato.trim()}`,
+        subcat ? `Subcategoria: ${subcat}` : null,
         analysis.diagnostico ? `Diagnóstico IA: ${analysis.diagnostico}` : null,
         analysis.causa_raiz ? `Causa raiz: ${analysis.causa_raiz}` : null,
       ].filter(Boolean).join("\n");
@@ -421,7 +471,8 @@ export default function Occurrences() {
         note,
         order_number: orderNumber,
         order_value: orderValue,
-      });
+        subcategory: subcat,
+      } as never);
       if (insErr) throw insErr;
 
       const chosen = [analysis.ocorrencia_principal, ...analysis.alternativas].find((o) => o?.id === chosenOccId);
@@ -468,7 +519,24 @@ export default function Occurrences() {
           }),
         ),
       );
+
+      // Notificação WhatsApp fixa (central de ocorrências)
+      const waMsg = [
+        `🚨 Ocorrência: ${problemaCurto}`,
+        linha1Parts.join(" • "),
+        resumo,
+      ].filter(Boolean).join("\n");
+      void supabase.functions.invoke("send-whatsapp", {
+        body: {
+          phone: "5561998158029",
+          message: waMsg,
+          category: "occurrence",
+          tag: `occurrence-${chosenOccId}`,
+        },
+      });
+
       toast({ title: "Ocorrência registrada", description: "Os gestores foram notificados." });
+
       setAlertOpen(false);
       restart();
     } catch (e: unknown) {
@@ -988,8 +1056,34 @@ export default function Occurrences() {
           </DialogHeader>
           <div className="space-y-3 py-2">
             <p className="text-xs text-muted-foreground">
-              Campos opcionais. Ao registrar, os gestores serão notificados.
+              Ao registrar, os gestores serão notificados.
             </p>
+            {alertRequiresSub && alertSubcategoryOptions.length > 0 && (
+              <div className="space-y-1.5 rounded-md border border-primary/40 bg-primary/5 p-3">
+                <Label className="text-sm font-semibold">
+                  Causa específica <span className="text-destructive">*</span>
+                </Label>
+                <p className="text-[11px] text-muted-foreground -mt-1">
+                  Selecione a subcategoria para um diagnóstico melhor no relatório.
+                </p>
+                <div className="grid grid-cols-2 gap-1.5 pt-1">
+                  {alertSubcategoryOptions.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setAlertSubcategory(opt)}
+                      className={`text-sm px-3 py-2 rounded-md border text-left transition-colors ${
+                        alertSubcategory === opt
+                          ? "border-primary bg-primary text-primary-foreground font-semibold"
+                          : "border-border hover:border-primary/50 hover:bg-accent"
+                      }`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="alert-order-number">Número do pedido</Label>
               <Input id="alert-order-number" placeholder="Ex: 1234" value={alertOrderNumber} onChange={(e) => setAlertOrderNumber(e.target.value)} />

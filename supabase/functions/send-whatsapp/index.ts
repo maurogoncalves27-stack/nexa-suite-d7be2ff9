@@ -1,6 +1,7 @@
 // Envia mensagem WhatsApp via provedor configurado (Z-API por padrão).
 // Adapter-pattern para permitir trocar para Meta Cloud API no futuro sem refactor.
 import { createClient } from "npm:@supabase/supabase-js@2.45.0";
+import { requireRole } from "../_shared/requireRole.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -71,6 +72,16 @@ async function sendByProvider(phone: string, message: string) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  // Authorize caller: allow internal service_role invocations (other edge functions)
+  // OR authenticated users with admin/manager/hr role. Block plain employees from
+  // sending arbitrary WhatsApp messages to any phone number.
+  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  const isServiceRole = !!SERVICE_ROLE && token === SERVICE_ROLE;
+  if (!isServiceRole) {
+    const authCheck = await requireRole(req, ["admin", "manager", "hr"], corsHeaders);
+    if (!authCheck.ok) return authCheck.response!;
+  }
 
   try {
     const body = (await req.json()) as Body;

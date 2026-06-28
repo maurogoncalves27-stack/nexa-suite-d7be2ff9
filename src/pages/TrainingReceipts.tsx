@@ -338,9 +338,12 @@ export default function TrainingReceipts() {
             pixKey: r.employees?.pix_key ?? "",
             pixKeyType: r.employees?.pix_key_type ?? null,
             amount: Number(r.total_amount),
+            employeeId: (r as any).employee_id ?? null,
           })),
           fileName: `c6-treinamento-${due}`,
           paymentDate: parseISO(due),
+          source: "training",
+          sourceRef: `Treinamento ${due}`,
         });
         totalIncluded += result.included;
         if (result.included > 0) {

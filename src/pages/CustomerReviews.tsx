@@ -80,7 +80,7 @@ function Stars({ n }: { n: number | null }) {
   );
 }
 
-export default function CustomerReviews() {
+export default function CustomerReviews({ embedded = false }: { embedded?: boolean } = {}) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -128,14 +128,16 @@ export default function CustomerReviews() {
   }, [reviews]);
 
   return (
-    <div className="space-y-6 p-3 sm:p-4">
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-          <Star className="h-6 w-6 md:h-7 md:w-7 text-primary" />
-          Avaliações de clientes
-        </h1>
-        <p className="text-muted-foreground">Resenhas recebidas dos canais de venda — responda e acompanhe a média.</p>
-      </div>
+    <div className={embedded ? "space-y-6" : "space-y-6 p-3 sm:p-4"}>
+      {!embedded && (
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+            <Star className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+            Avaliações de clientes
+          </h1>
+          <p className="text-muted-foreground">Resenhas recebidas dos canais de venda — responda e acompanhe a média.</p>
+        </div>
+      )}
       {/* Header KPIs */}
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
 

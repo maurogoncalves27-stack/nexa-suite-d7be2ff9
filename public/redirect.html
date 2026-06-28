@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Abrir avaliação</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      text-align: center;
+      padding: 20px;
+    }
+    .logo { width: 80px; height: 80px; margin-bottom: 24px; }
+    h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 8px; }
+    p { color: #94a3b8; font-size: 0.95rem; margin-bottom: 24px; }
+    .manual-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      padding: 0 22px;
+      border-radius: 999px;
+      background: #3b82f6;
+      color: #ffffff;
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 12px 30px rgba(59, 130, 246, 0.28);
+    }
+    .fallback {
+      display: block;
+      margin-top: 18px;
+      color: #3b82f6;
+      text-decoration: underline;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <svg class="logo" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100" height="100" rx="20" fill="#3B82F6"/>
+    <path d="M30 30 L50 70 L70 30" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <h1>Abrir avaliação</h1>
+  <p>Toque no botão abaixo para abrir o Google e deixar sua avaliação.</p>
+  <a id="manual-link" class="manual-link" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">Abrir avaliação no Google</a>
+  <a class="fallback" href="/parme/surpresa">Voltar para a promoção</a>
+
+  <script>
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const targetUrl = params.get('url');
+      const manualLink = document.getElementById('manual-link');
+
+      if (targetUrl) {
+        manualLink.href = targetUrl;
+      } else {
+        document.querySelector('h1').textContent = 'Link inválido';
+        document.querySelector('p').textContent = 'Nenhuma URL de destino foi fornecida.';
+        manualLink.style.display = 'none';
+      }
+    })();
+  </script>
+</body>
+</html>

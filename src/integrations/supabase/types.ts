@@ -164,6 +164,7 @@ export type Database = {
           bank_account_id: string | null
           bank_transaction_id: string | null
           category_id: string | null
+          competence_date: string | null
           created_at: string
           created_by: string
           description: string
@@ -183,6 +184,7 @@ export type Database = {
           bank_account_id?: string | null
           bank_transaction_id?: string | null
           category_id?: string | null
+          competence_date?: string | null
           created_at?: string
           created_by: string
           description: string
@@ -202,6 +204,7 @@ export type Database = {
           bank_account_id?: string | null
           bank_transaction_id?: string | null
           category_id?: string | null
+          competence_date?: string | null
           created_at?: string
           created_by?: string
           description?: string
@@ -783,6 +786,167 @@ export type Database = {
         }
         Relationships: []
       }
+      c6_payment_batch_lines: {
+        Row: {
+          amount: number
+          batch_id: string
+          category_id: string | null
+          created_at: string
+          created_payable_id: string | null
+          description: string | null
+          employee_id: string | null
+          id: string
+          name: string
+          pix_key: string | null
+          pix_key_type: string | null
+          store_id: string | null
+        }
+        Insert: {
+          amount: number
+          batch_id: string
+          category_id?: string | null
+          created_at?: string
+          created_payable_id?: string | null
+          description?: string | null
+          employee_id?: string | null
+          id?: string
+          name: string
+          pix_key?: string | null
+          pix_key_type?: string | null
+          store_id?: string | null
+        }
+        Update: {
+          amount?: number
+          batch_id?: string
+          category_id?: string | null
+          created_at?: string
+          created_payable_id?: string | null
+          description?: string | null
+          employee_id?: string | null
+          id?: string
+          name?: string
+          pix_key?: string | null
+          pix_key_type?: string | null
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "c6_payment_batch_lines_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "c6_payment_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "c6_payment_batch_lines_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "finance_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "c6_payment_batch_lines_created_payable_id_fkey"
+            columns: ["created_payable_id"]
+            isOneToOne: false
+            referencedRelation: "accounts_payable"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "c6_payment_batch_lines_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "c6_payment_batch_lines_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "c6_payment_batch_lines_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      c6_payment_batches: {
+        Row: {
+          bank_transaction_id: string | null
+          category_id: string | null
+          created_at: string
+          created_by: string | null
+          default_store_id: string | null
+          file_name: string | null
+          id: string
+          line_count: number
+          payment_date: string
+          reconciled_at: string | null
+          reconciled_by: string | null
+          source: string
+          source_ref: string | null
+          total: number
+        }
+        Insert: {
+          bank_transaction_id?: string | null
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_store_id?: string | null
+          file_name?: string | null
+          id?: string
+          line_count: number
+          payment_date: string
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          source: string
+          source_ref?: string | null
+          total: number
+        }
+        Update: {
+          bank_transaction_id?: string | null
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_store_id?: string | null
+          file_name?: string | null
+          id?: string
+          line_count?: number
+          payment_date?: string
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          source?: string
+          source_ref?: string | null
+          total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "c6_payment_batches_bank_transaction_id_fkey"
+            columns: ["bank_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "bank_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "c6_payment_batches_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "finance_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "c6_payment_batches_default_store_id_fkey"
+            columns: ["default_store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_document_uploads: {
         Row: {
           candidate_id: string
@@ -989,6 +1153,78 @@ export type Database = {
           created_at?: string
           synonyms?: string | null
           title?: string
+        }
+        Relationships: []
+      }
+      chat_conversations: {
+        Row: {
+          client_meta: Json | null
+          created_at: string
+          id: string
+          last_message_at: string
+          message_count: number
+          messages: Json
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          client_meta?: Json | null
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          message_count?: number
+          messages?: Json
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          client_meta?: Json | null
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          message_count?: number
+          messages?: Json
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      chat_test_runs: {
+        Row: {
+          created_at: string
+          evaluator_notes: string | null
+          id: string
+          issues: Json | null
+          passed: boolean | null
+          persona: Json | null
+          run_id: string
+          scenario: string
+          score: number | null
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          evaluator_notes?: string | null
+          id?: string
+          issues?: Json | null
+          passed?: boolean | null
+          persona?: Json | null
+          run_id: string
+          scenario: string
+          score?: number | null
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          evaluator_notes?: string | null
+          id?: string
+          issues?: Json | null
+          passed?: boolean | null
+          persona?: Json | null
+          run_id?: string
+          scenario?: string
+          score?: number | null
+          session_id?: string
         }
         Relationships: []
       }
@@ -2510,6 +2746,226 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "inventory_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ecommerce_cart_items: {
+        Row: {
+          brand_code: string | null
+          cart_id: string
+          complements: Json
+          created_at: string
+          id: string
+          item_name: string
+          menu_item_id: string | null
+          notes: string | null
+          quantity: number
+          total_price: number
+          unit_price: number
+        }
+        Insert: {
+          brand_code?: string | null
+          cart_id: string
+          complements?: Json
+          created_at?: string
+          id?: string
+          item_name: string
+          menu_item_id?: string | null
+          notes?: string | null
+          quantity?: number
+          total_price: number
+          unit_price: number
+        }
+        Update: {
+          brand_code?: string | null
+          cart_id?: string
+          complements?: Json
+          created_at?: string
+          id?: string
+          item_name?: string
+          menu_item_id?: string | null
+          notes?: string | null
+          quantity?: number
+          total_price?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ecommerce_cart_items_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "ecommerce_carts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ecommerce_cart_items_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ecommerce_carts: {
+        Row: {
+          brand_breakdown: Json
+          created_at: string
+          customer_document: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          ecommerce_store_id: string | null
+          expires_at: string
+          id: string
+          pickup_eta: string | null
+          session_token: string
+          status: string
+          subtotal: number
+          updated_at: string
+          whatsapp_phone: string | null
+        }
+        Insert: {
+          brand_breakdown?: Json
+          created_at?: string
+          customer_document?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          ecommerce_store_id?: string | null
+          expires_at?: string
+          id?: string
+          pickup_eta?: string | null
+          session_token: string
+          status?: string
+          subtotal?: number
+          updated_at?: string
+          whatsapp_phone?: string | null
+        }
+        Update: {
+          brand_breakdown?: Json
+          created_at?: string
+          customer_document?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          ecommerce_store_id?: string | null
+          expires_at?: string
+          id?: string
+          pickup_eta?: string | null
+          session_token?: string
+          status?: string
+          subtotal?: number
+          updated_at?: string
+          whatsapp_phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ecommerce_carts_ecommerce_store_id_fkey"
+            columns: ["ecommerce_store_id"]
+            isOneToOne: false
+            referencedRelation: "ecommerce_stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ecommerce_events: {
+        Row: {
+          brand_code: string | null
+          cart_id: string | null
+          created_at: string
+          ecommerce_store_id: string | null
+          event_name: string
+          id: string
+          menu_item_id: string | null
+          metadata: Json
+          order_id: string | null
+          session_token: string | null
+          user_agent: string | null
+          value: number | null
+        }
+        Insert: {
+          brand_code?: string | null
+          cart_id?: string | null
+          created_at?: string
+          ecommerce_store_id?: string | null
+          event_name: string
+          id?: string
+          menu_item_id?: string | null
+          metadata?: Json
+          order_id?: string | null
+          session_token?: string | null
+          user_agent?: string | null
+          value?: number | null
+        }
+        Update: {
+          brand_code?: string | null
+          cart_id?: string | null
+          created_at?: string
+          ecommerce_store_id?: string | null
+          event_name?: string
+          id?: string
+          menu_item_id?: string | null
+          metadata?: Json
+          order_id?: string | null
+          session_token?: string | null
+          user_agent?: string | null
+          value?: number | null
+        }
+        Relationships: []
+      }
+      ecommerce_stores: {
+        Row: {
+          accepts_delivery: boolean
+          accepts_pickup: boolean
+          active: boolean
+          address: string | null
+          created_at: string
+          display_name: string
+          hours: Json
+          id: string
+          is_open: boolean
+          min_pickup_minutes: number
+          phone: string | null
+          slug: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          accepts_delivery?: boolean
+          accepts_pickup?: boolean
+          active?: boolean
+          address?: string | null
+          created_at?: string
+          display_name: string
+          hours?: Json
+          id?: string
+          is_open?: boolean
+          min_pickup_minutes?: number
+          phone?: string | null
+          slug: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          accepts_delivery?: boolean
+          accepts_pickup?: boolean
+          active?: boolean
+          address?: string | null
+          created_at?: string
+          display_name?: string
+          hours?: Json
+          id?: string
+          is_open?: boolean
+          min_pickup_minutes?: number
+          phone?: string | null
+          slug?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ecommerce_stores_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
@@ -4710,6 +5166,48 @@ export type Database = {
           },
         ]
       }
+      google_reviews: {
+        Row: {
+          author_name: string
+          author_photo_url: string | null
+          fetched_at: string
+          id: string
+          language: string | null
+          place_id: string
+          published_at: string | null
+          rating: number
+          relative_time: string | null
+          text: string
+          unit_label: string
+        }
+        Insert: {
+          author_name: string
+          author_photo_url?: string | null
+          fetched_at?: string
+          id?: string
+          language?: string | null
+          place_id: string
+          published_at?: string | null
+          rating: number
+          relative_time?: string | null
+          text: string
+          unit_label: string
+        }
+        Update: {
+          author_name?: string
+          author_photo_url?: string | null
+          fetched_at?: string
+          id?: string
+          language?: string | null
+          place_id?: string
+          published_at?: string | null
+          rating?: number
+          relative_time?: string | null
+          text?: string
+          unit_label?: string
+        }
+        Relationships: []
+      }
       holidays: {
         Row: {
           created_at: string
@@ -4813,6 +5311,35 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_announcement_dismissals: {
+        Row: {
+          announcement_id: string
+          dismissed_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          announcement_id: string
+          dismissed_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          announcement_id?: string
+          dismissed_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_announcement_dismissals_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "hr_announcements"
             referencedColumns: ["id"]
           },
         ]
@@ -8197,6 +8724,100 @@ export type Database = {
           },
         ]
       }
+      nutri_temperature_alert_recipients: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          phone: string
+          store_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          phone: string
+          store_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          phone?: string
+          store_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nutri_temperature_alert_recipients_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nutri_temperature_alerts: {
+        Row: {
+          id: string
+          kind: string
+          last_temperature: number | null
+          max_value: number | null
+          measured_at: string | null
+          min_value: number | null
+          notes: string | null
+          notified_phones: Json
+          resolved_at: string | null
+          sensor_code: string
+          store_id: string | null
+          triggered_at: string
+        }
+        Insert: {
+          id?: string
+          kind: string
+          last_temperature?: number | null
+          max_value?: number | null
+          measured_at?: string | null
+          min_value?: number | null
+          notes?: string | null
+          notified_phones?: Json
+          resolved_at?: string | null
+          sensor_code: string
+          store_id?: string | null
+          triggered_at?: string
+        }
+        Update: {
+          id?: string
+          kind?: string
+          last_temperature?: number | null
+          max_value?: number | null
+          measured_at?: string | null
+          min_value?: number | null
+          notes?: string | null
+          notified_phones?: Json
+          resolved_at?: string | null
+          sensor_code?: string
+          store_id?: string | null
+          triggered_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nutri_temperature_alerts_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nutri_temperature_readings: {
         Row: {
           created_at: string
@@ -8418,6 +9039,7 @@ export type Database = {
           resolved_by: string | null
           status: string
           store_id: string | null
+          subcategory: string | null
           updated_at: string
         }
         Insert: {
@@ -8432,6 +9054,7 @@ export type Database = {
           resolved_by?: string | null
           status?: string
           store_id?: string | null
+          subcategory?: string | null
           updated_at?: string
         }
         Update: {
@@ -8446,6 +9069,7 @@ export type Database = {
           resolved_by?: string | null
           status?: string
           store_id?: string | null
+          subcategory?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -8473,13 +9097,16 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
+          legacy_category: string | null
           message: string | null
           occurrence: string
           order_correct: boolean
           platform: string
           prevention_1: string | null
           prevention_2: string | null
+          requires_subcategory: boolean
           sort_order: number
+          subcategory_options: string[] | null
           updated_at: string
         }
         Insert: {
@@ -8489,13 +9116,16 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          legacy_category?: string | null
           message?: string | null
           occurrence: string
           order_correct?: boolean
           platform?: string
           prevention_1?: string | null
           prevention_2?: string | null
+          requires_subcategory?: boolean
           sort_order?: number
+          subcategory_options?: string[] | null
           updated_at?: string
         }
         Update: {
@@ -8505,13 +9135,16 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          legacy_category?: string | null
           message?: string | null
           occurrence?: string
           order_correct?: boolean
           platform?: string
           prevention_1?: string | null
           prevention_2?: string | null
+          requires_subcategory?: boolean
           sort_order?: number
+          subcategory_options?: string[] | null
           updated_at?: string
         }
         Relationships: []
@@ -8831,6 +9464,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      parme_site_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value?: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
       }
       payroll_advance_installments: {
         Row: {
@@ -10200,6 +10851,41 @@ export type Database = {
         }
         Relationships: []
       }
+      pdv_ifood_widgets: {
+        Row: {
+          brand: string
+          merchant_id: string
+          store_id: string
+          updated_at: string
+          updated_by: string | null
+          widget_id: string
+        }
+        Insert: {
+          brand: string
+          merchant_id: string
+          store_id: string
+          updated_at?: string
+          updated_by?: string | null
+          widget_id: string
+        }
+        Update: {
+          brand?: string
+          merchant_id?: string
+          store_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          widget_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdv_ifood_widgets_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pdv_order_events: {
         Row: {
           acknowledged: boolean
@@ -10325,6 +11011,7 @@ export type Database = {
       }
       pdv_orders: {
         Row: {
+          brand_breakdown: Json | null
           cancellation_reason_code: string | null
           cancellation_reason_text: string | null
           cancelled_at: string | null
@@ -10355,14 +11042,18 @@ export type Database = {
           has_unread_chat: boolean
           id: string
           last_synced_at: string | null
+          mp_payment_id: string | null
+          mp_preference_id: string | null
           notes: string | null
           opened_at: string
           order_number: string | null
           order_type: string
           packed_at: string | null
           pickup_code: string | null
+          pickup_eta: string | null
           preparation_started_at: string | null
           ready_at: string | null
+          source: string | null
           source_payload: Json | null
           status: string
           stock_consumed_at: string | null
@@ -10373,6 +11064,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          brand_breakdown?: Json | null
           cancellation_reason_code?: string | null
           cancellation_reason_text?: string | null
           cancelled_at?: string | null
@@ -10403,14 +11095,18 @@ export type Database = {
           has_unread_chat?: boolean
           id?: string
           last_synced_at?: string | null
+          mp_payment_id?: string | null
+          mp_preference_id?: string | null
           notes?: string | null
           opened_at?: string
           order_number?: string | null
           order_type?: string
           packed_at?: string | null
           pickup_code?: string | null
+          pickup_eta?: string | null
           preparation_started_at?: string | null
           ready_at?: string | null
+          source?: string | null
           source_payload?: Json | null
           status?: string
           stock_consumed_at?: string | null
@@ -10421,6 +11117,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          brand_breakdown?: Json | null
           cancellation_reason_code?: string | null
           cancellation_reason_text?: string | null
           cancelled_at?: string | null
@@ -10451,14 +11148,18 @@ export type Database = {
           has_unread_chat?: boolean
           id?: string
           last_synced_at?: string | null
+          mp_payment_id?: string | null
+          mp_preference_id?: string | null
           notes?: string | null
           opened_at?: string
           order_number?: string | null
           order_type?: string
           packed_at?: string | null
           pickup_code?: string | null
+          pickup_eta?: string | null
           preparation_started_at?: string | null
           ready_at?: string | null
+          source?: string | null
           source_payload?: Json | null
           status?: string
           stock_consumed_at?: string | null
@@ -11300,220 +12001,6 @@ export type Database = {
           },
           {
             foreignKeyName: "petty_cash_movements_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      pos_item_mappings: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          id: string
-          inventory_product_id: string | null
-          pos_item_name: string
-          recipe_id: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          inventory_product_id?: string | null
-          pos_item_name: string
-          recipe_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          inventory_product_id?: string | null
-          pos_item_name?: string
-          recipe_id?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pos_item_mappings_inventory_product_id_fkey"
-            columns: ["inventory_product_id"]
-            isOneToOne: false
-            referencedRelation: "inventory_products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pos_item_mappings_recipe_id_fkey"
-            columns: ["recipe_id"]
-            isOneToOne: false
-            referencedRelation: "recipes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      pos_sale_items: {
-        Row: {
-          created_at: string
-          external_product_id: string | null
-          id: string
-          inventory_product_id: string | null
-          match_status: string
-          product_name: string
-          quantity: number
-          sale_id: string
-          total_price: number
-          unit_price: number
-        }
-        Insert: {
-          created_at?: string
-          external_product_id?: string | null
-          id?: string
-          inventory_product_id?: string | null
-          match_status?: string
-          product_name: string
-          quantity?: number
-          sale_id: string
-          total_price?: number
-          unit_price?: number
-        }
-        Update: {
-          created_at?: string
-          external_product_id?: string | null
-          id?: string
-          inventory_product_id?: string | null
-          match_status?: string
-          product_name?: string
-          quantity?: number
-          sale_id?: string
-          total_price?: number
-          unit_price?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pos_sale_items_inventory_product_id_fkey"
-            columns: ["inventory_product_id"]
-            isOneToOne: false
-            referencedRelation: "inventory_products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pos_sale_items_sale_id_fkey"
-            columns: ["sale_id"]
-            isOneToOne: false
-            referencedRelation: "pos_sales"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      pos_sales: {
-        Row: {
-          created_at: string
-          customer_name: string | null
-          dre_excluded: boolean
-          external_id: string
-          id: string
-          order_number: string | null
-          payment_method: string | null
-          raw_payload: Json | null
-          sold_at: string
-          status: string
-          stock_applied: boolean
-          stock_applied_at: string | null
-          store_id: string
-          total_amount: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          customer_name?: string | null
-          dre_excluded?: boolean
-          external_id: string
-          id?: string
-          order_number?: string | null
-          payment_method?: string | null
-          raw_payload?: Json | null
-          sold_at: string
-          status?: string
-          stock_applied?: boolean
-          stock_applied_at?: string | null
-          store_id: string
-          total_amount?: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          customer_name?: string | null
-          dre_excluded?: boolean
-          external_id?: string
-          id?: string
-          order_number?: string | null
-          payment_method?: string | null
-          raw_payload?: Json | null
-          sold_at?: string
-          status?: string
-          stock_applied?: boolean
-          stock_applied_at?: string | null
-          store_id?: string
-          total_amount?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pos_sales_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      pos_sync_logs: {
-        Row: {
-          details: Json | null
-          error_message: string | null
-          finished_at: string | null
-          id: string
-          items_matched: number
-          items_unmatched: number
-          sales_imported: number
-          started_at: string
-          status: string
-          store_id: string | null
-          trigger_type: string
-          triggered_by: string | null
-        }
-        Insert: {
-          details?: Json | null
-          error_message?: string | null
-          finished_at?: string | null
-          id?: string
-          items_matched?: number
-          items_unmatched?: number
-          sales_imported?: number
-          started_at?: string
-          status?: string
-          store_id?: string | null
-          trigger_type?: string
-          triggered_by?: string | null
-        }
-        Update: {
-          details?: Json | null
-          error_message?: string | null
-          finished_at?: string | null
-          id?: string
-          items_matched?: number
-          items_unmatched?: number
-          sales_imported?: number
-          started_at?: string
-          status?: string
-          store_id?: string | null
-          trigger_type?: string
-          triggered_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pos_sync_logs_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
@@ -12701,7 +13188,7 @@ export type Database = {
           notes: string | null
           nutrition_info: Json | null
           origem_mercadoria: number | null
-          output_product_id: string
+          output_product_id: string | null
           photo_path: string | null
           prep_time_minutes: number | null
           scope: string
@@ -12733,7 +13220,7 @@ export type Database = {
           notes?: string | null
           nutrition_info?: Json | null
           origem_mercadoria?: number | null
-          output_product_id: string
+          output_product_id?: string | null
           photo_path?: string | null
           prep_time_minutes?: number | null
           scope?: string
@@ -12765,7 +13252,7 @@ export type Database = {
           notes?: string | null
           nutrition_info?: Json | null
           origem_mercadoria?: number | null
-          output_product_id?: string
+          output_product_id?: string | null
           photo_path?: string | null
           prep_time_minutes?: number | null
           scope?: string
@@ -12785,6 +13272,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      reservations: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          party_size: number
+          phone: string
+          reservation_date: string
+          reservation_time: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          party_size: number
+          phone: string
+          reservation_date: string
+          reservation_time: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          party_size?: number
+          phone?: string
+          reservation_date?: string
+          reservation_time?: string
+          status?: string
+        }
+        Relationships: []
       }
       shift_swap_requests: {
         Row: {
@@ -13323,6 +13849,36 @@ export type Database = {
           trade_name?: string | null
           updated_at?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      support_tickets: {
+        Row: {
+          contact: string
+          created_at: string
+          description: string
+          id: string
+          order_number: string | null
+          status: string
+          title: string | null
+        }
+        Insert: {
+          contact: string
+          created_at?: string
+          description: string
+          id?: string
+          order_number?: string | null
+          status?: string
+          title?: string | null
+        }
+        Update: {
+          contact?: string
+          created_at?: string
+          description?: string
+          id?: string
+          order_number?: string | null
+          status?: string
+          title?: string | null
         }
         Relationships: []
       }
@@ -14733,6 +15289,45 @@ export type Database = {
         }
         Relationships: []
       }
+      user_useful_links: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_shared: boolean
+          sort_order: number
+          title: string
+          updated_at: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_shared?: boolean
+          sort_order?: number
+          title: string
+          updated_at?: string
+          url: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_shared?: boolean
+          sort_order?: number
+          title?: string
+          updated_at?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       vacation_schedules: {
         Row: {
           acquisition_end: string
@@ -15726,30 +16321,63 @@ export type Database = {
         }
         Returns: string
       }
-      create_payable_from_bank_tx: {
-        Args: {
-          _category_id: string
-          _description: string
-          _store_id: string
-          _supplier_name: string
-          _transaction_id: string
-        }
-        Returns: string
+      create_payable_from_bank_tx:
+        | {
+            Args: {
+              _category_id: string
+              _description: string
+              _store_id: string
+              _supplier_name: string
+              _transaction_id: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              _category_id: string
+              _competence_date?: string
+              _description: string
+              _store_id: string
+              _supplier_name: string
+              _transaction_id: string
+            }
+            Returns: string
+          }
+      create_payables_from_bank_tx: {
+        Args: { _lines: Json; _transaction_id: string }
+        Returns: string[]
       }
-      create_receivable_from_bank_tx: {
-        Args: {
-          _category_id: string
-          _description: string
-          _payer_name: string
-          _store_id: string
-          _transaction_id: string
-        }
-        Returns: string
+      create_receivable_from_bank_tx:
+        | {
+            Args: {
+              _category_id: string
+              _description: string
+              _payer_name: string
+              _store_id: string
+              _transaction_id: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              _category_id: string
+              _competence_date?: string
+              _description: string
+              _payer_name: string
+              _store_id: string
+              _transaction_id: string
+            }
+            Returns: string
+          }
+      create_receivables_from_bank_tx: {
+        Args: { _lines: Json; _transaction_id: string }
+        Returns: string[]
       }
       create_transfer_from_bank_txs: {
         Args: { _description: string; _from_tx_id: string; _to_tx_id: string }
         Returns: string
       }
+      current_profile_store_id: { Args: { _user_id: string }; Returns: string }
       current_supplier_id: { Args: never; Returns: string }
       current_user_position: { Args: never; Returns: string }
       delete_email: {
@@ -15953,7 +16581,6 @@ export type Database = {
         }
         Returns: string
       }
-      import_saipos_menu: { Args: { _dishes: Json }; Returns: Json }
       is_active_employee: { Args: { _user_id: string }; Returns: boolean }
       is_approved_supplier: { Args: { _user_id: string }; Returns: boolean }
       is_freelancer: { Args: { _user_id: string }; Returns: boolean }
@@ -15971,6 +16598,14 @@ export type Database = {
           _recipe_id: string
         }
         Returns: Json
+      }
+      list_public_interview_slots: {
+        Args: never
+        Returns: {
+          duration_min: number
+          id: string
+          start_at: string
+        }[]
       }
       list_shift_swap_candidates: {
         Args: { _requester_employee_id: string }
@@ -16071,6 +16706,15 @@ export type Database = {
         Args: { _store_id: string; _user_id: string }
         Returns: boolean
       }
+      outsourced_self_update_keeps_approval: {
+        Args: {
+          _approval_status: string
+          _approved_at: string
+          _approved_by: string
+          _id: string
+        }
+        Returns: boolean
+      }
       pdv_advance_order_status: {
         Args: {
           p_event_code?: string
@@ -16083,6 +16727,7 @@ export type Database = {
           p_source?: string
         }
         Returns: {
+          brand_breakdown: Json | null
           cancellation_reason_code: string | null
           cancellation_reason_text: string | null
           cancelled_at: string | null
@@ -16113,14 +16758,18 @@ export type Database = {
           has_unread_chat: boolean
           id: string
           last_synced_at: string | null
+          mp_payment_id: string | null
+          mp_preference_id: string | null
           notes: string | null
           opened_at: string
           order_number: string | null
           order_type: string
           packed_at: string | null
           pickup_code: string | null
+          pickup_eta: string | null
           preparation_started_at: string | null
           ready_at: string | null
+          source: string | null
           source_payload: Json | null
           status: string
           stock_consumed_at: string | null
@@ -16138,6 +16787,7 @@ export type Database = {
         }
       }
       pdv_consume_order_stock: { Args: { _order_id: string }; Returns: Json }
+      pdv_reverse_order_stock: { Args: { _order_id: string }; Returns: Json }
       pending_request_for_recipe: {
         Args: { _recipe_id: string }
         Returns: number
@@ -16211,6 +16861,10 @@ export type Database = {
       reconcile_bank_transaction_receivable: {
         Args: { _receivable_id: string; _transaction_id: string }
         Returns: Json
+      }
+      reconcile_bank_tx_with_c6_batch: {
+        Args: { _batch_id: string; _transaction_id: string }
+        Returns: number
       }
       register_candidate_document_upload: {
         Args: {
@@ -16302,6 +16956,7 @@ export type Database = {
         }
         Returns: string
       }
+      unaccent: { Args: { "": string }; Returns: string }
       unreconcile_bank_transaction: {
         Args: { _transaction_id: string }
         Returns: Json

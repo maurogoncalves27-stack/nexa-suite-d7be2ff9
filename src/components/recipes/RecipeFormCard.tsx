@@ -17,11 +17,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import RecipeIngredientsDialog from "./RecipeIngredientsDialog";
 import RecipeYieldCostPanel from "./RecipeYieldCostPanel";
+import RecipeMenuItemsSection from "./RecipeMenuItemsSection";
 
 const UNITS = ["UN", "KG", "G", "L", "ML", "CX", "PCT", "FD", "DZ", "MT", "PORCAO"];
 
-interface Product { id: string; name: string; unit: string; }
+interface Product { id: string; name: string; unit: string; category: string | null; }
 interface Brand { id: string; name: string; }
+interface MenuItemRow { id: string; name: string; }
+
+const isFactoryBrandName = (n: string) => /f[áa]brica|pr[eé]\s*preparo/i.test(n);
 
 // Cores fixas por marca (conforme planilha das abas)
 // bg + text com bom contraste
@@ -47,11 +51,11 @@ const colorForBrand = (name: string) => {
 const emptyForm = {
   name: "",
   output_product_id: "",
+  scope: "loja" as "fabrica" | "loja",
   yield_quantity: 1,
   yield_unit: "UN",
   shelf_life_hours: null as number | null,
   is_active: true,
-  category: "" as "" | "individual" | "casal" | "familia",
   ncm: "",
   cest: "",
   cfop: "5102",
@@ -59,18 +63,6 @@ const emptyForm = {
   csosn: "102",
   unidade_comercial: "UN",
   ean: "",
-};
-
-const CATEGORY_LABEL: Record<string, string> = {
-  individual: "Individual",
-  casal: "Casal",
-  familia: "Família",
-};
-
-const CATEGORY_COLOR: Record<string, { bg: string; text: string }> = {
-  individual: { bg: "#0ea5e9", text: "#ffffff" },
-  casal: { bg: "#a855f7", text: "#ffffff" },
-  familia: { bg: "#f59e0b", text: "#1f2937" },
 };
 
 interface Props {
@@ -93,11 +85,18 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
   const [brands, setBrands] = useState<Brand[]>([]);
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
   const [form, setForm] = useState(emptyForm);
+  const [menuItems, setMenuItems] = useState<MenuItemRow[]>([]);
+  const [linkedMenuItemId, setLinkedMenuItemId] = useState<string>("");
   const [photoPath, setPhotoPath] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [openValue, setOpenValue] = useState<string | undefined>(defaultOpen ? "open" : undefined);
   const [ingredientsOpen, setIngredientsOpen] = useState(false);
   const [generatingBook, setGeneratingBook] = useState(false);
+
+  const isFactory = brands.some((b) => selectedBrands.has(b.id) && isFactoryBrandName(b.name));
+  const initialBrandIsFactory = !!(
+    initialBrandId && brands.some((b) => b.id === initialBrandId && isFactoryBrandName(b.name))
+  );
 
   const photoUrl = photoPath
     ? supabase.storage.from("recipe-photos").getPublicUrl(photoPath).data.publicUrl
@@ -153,7 +152,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
   useEffect(() => {
     void supabase
       .from("inventory_products")
-      .select("id, name, unit")
+      .select("id, name, unit, category")
       .eq("is_active", true)
       .order("name")
       .then(({ data }) => setProducts((data as Product[]) ?? []));
@@ -163,29 +162,38 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
       .eq("is_active", true)
       .order("sort_order")
       .then(({ data }) => setBrands((data as Brand[]) ?? []));
+    void supabase
+      .from("menu_items")
+      .select("id, name")
+      .eq("is_active", true)
+      .order("name")
+      .then(({ data }) => setMenuItems((data as MenuItemRow[]) ?? []));
   }, []);
 
   useEffect(() => {
     if (!recipeId) {
-      setForm(emptyForm);
+      setForm({ ...emptyForm, scope: initialBrandIsFactory ? "fabrica" : "loja" });
       setPhotoPath(null);
       setSelectedBrands(initialBrandId ? new Set([initialBrandId]) : new Set());
+      setLinkedMenuItemId("");
       return;
     }
     setLoading(true);
     Promise.all([
       supabase.from("recipes").select("*").eq("id", recipeId).maybeSingle(),
       supabase.from("recipe_brands").select("brand_id").eq("recipe_id", recipeId),
-    ]).then(([{ data: r }, { data: rb }]) => {
+      supabase.from("menu_items").select("id").eq("recipe_id", recipeId).limit(1),
+    ]).then(([{ data: r }, { data: rb }, { data: mi }]) => {
       if (r) {
         setForm({
           name: r.name,
-          output_product_id: r.output_product_id,
+          output_product_id: r.output_product_id ?? "",
+          scope: ((r as any).scope === "fabrica" ? "fabrica" : "loja"),
           yield_quantity: Number(r.yield_quantity),
           yield_unit: r.yield_unit,
           shelf_life_hours: r.shelf_life_hours,
           is_active: r.is_active,
-          category: ((r as any).category ?? "") as "" | "individual" | "casal" | "familia",
+          
           ncm: (r as any).ncm ?? "",
           cest: (r as any).cest ?? "",
           cfop: (r as any).cfop ?? "5102",
@@ -197,9 +205,10 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
         setPhotoPath((r as any).photo_path ?? null);
       }
       setSelectedBrands(new Set((rb ?? []).map((x: any) => x.brand_id)));
+      setLinkedMenuItemId(((mi ?? [])[0] as any)?.id ?? "");
       setLoading(false);
     });
-  }, [recipeId, initialBrandId]);
+  }, [recipeId, initialBrandId, initialBrandIsFactory]);
 
   const toggleBrand = (id: string) => {
     setSelectedBrands((prev) => {
@@ -217,19 +226,31 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
     }
   };
 
+  const syncMenuLink = async (rid: string) => {
+    // Limpa qualquer item de cardápio antes vinculado a esta ficha
+    await supabase
+      .from("menu_items")
+      .update({ recipe_id: null })
+      .eq("recipe_id", rid)
+      .neq("id", linkedMenuItemId || "00000000-0000-0000-0000-000000000000");
+    if (linkedMenuItemId) {
+      await supabase.from("menu_items").update({ recipe_id: rid }).eq("id", linkedMenuItemId);
+    }
+  };
+
   const handleSave = async () => {
     if (!form.name.trim()) { toast.error("Informe o nome da ficha"); return; }
-    if (!form.output_product_id) { toast.error("Selecione o produto final"); return; }
     setSaving(true);
     try {
       const payload = {
         name: form.name.trim(),
-        output_product_id: form.output_product_id,
+        output_product_id: isFactory ? form.output_product_id : null,
+        scope: isFactory || form.scope === "fabrica" ? "fabrica" : "loja",
         yield_quantity: form.yield_quantity,
         yield_unit: form.yield_unit,
         shelf_life_hours: form.shelf_life_hours,
         is_active: form.is_active,
-        category: form.category || null,
+        
         ncm: form.ncm.trim() || null,
         cest: form.cest.trim() || null,
         cfop: form.cfop.trim() || "5102",
@@ -242,6 +263,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
         const { error } = await supabase.from("recipes").update(payload).eq("id", recipeId);
         if (error) throw error;
         await syncBrands(recipeId);
+        if (!isFactory) await syncMenuLink(recipeId);
         toast.success("Ficha atualizada");
         onSaved?.();
       } else {
@@ -252,6 +274,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
           .single();
         if (error) throw error;
         await syncBrands(data.id);
+        if (!isFactory) await syncMenuLink(data.id);
         toast.success("Ficha criada");
         onSaved?.(data.id);
       }
@@ -321,26 +344,54 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
     <>
       <Accordion type="single" collapsible value={openValue} onValueChange={setOpenValue} className="border rounded-md bg-card">
         <AccordionItem value="open" className="border-b-0">
-          <AccordionTrigger className="px-3 py-10 hover:no-underline">
-            <div className="flex flex-col gap-3 flex-1 min-w-0 text-left w-full h-full">
+          <AccordionTrigger className="px-3 py-3 hover:no-underline">
+            <div className="flex flex-col gap-1.5 flex-1 min-w-0 text-left w-full">
               <div className="flex items-center gap-2 flex-1 min-w-0">
-                <ChefHat className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground shrink-0" />
-                <span className="text-xl sm:text-2xl font-semibold truncate flex-1">
+                <ChefHat className="h-5 w-5 text-muted-foreground shrink-0" />
+                <span className="text-sm sm:text-base font-semibold truncate flex-1">
                   {form.name || (isNew ? "Nova ficha técnica" : "—")}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {form.category && (
+              <div className="flex items-center gap-1 flex-wrap">
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const factory = brands.find((b) => isFactoryBrandName(b.name));
+                    if (!factory) {
+                      toast.error("Marca 'PRÉ PREPARO/FÁBRICA' não encontrada");
+                      return;
+                    }
+                    setSelectedBrands((prev) => {
+                      const n = new Set(prev);
+                      if (n.has(factory.id)) n.delete(factory.id);
+                      else n.add(factory.id);
+                      return n;
+                    });
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      (e.currentTarget as HTMLElement).click();
+                    }
+                  }}
+                  className="inline-flex"
+                  title="Clique para alternar Pré-preparo ↔ Pronto"
+                >
                   <Badge
-                    className="text-[10px] px-1.5 py-0 border-transparent"
-                    style={{
-                      backgroundColor: CATEGORY_COLOR[form.category].bg,
-                      color: CATEGORY_COLOR[form.category].text,
-                    }}
+                    className="text-[10px] px-1.5 py-0 border-transparent cursor-pointer hover:opacity-80"
+                    style={
+                      isFactory
+                        ? { backgroundColor: "#22c55e", color: "#ffffff" }
+                        : { backgroundColor: "#2563eb", color: "#ffffff" }
+                    }
                   >
-                    {CATEGORY_LABEL[form.category]}
+                    {isFactory ? "Pré-preparo" : "Pronto"}
                   </Badge>
-                )}
+                </span>
                 {brandLabels.slice(0, 3).map((b) => {
                   const c = colorForBrand(b);
                   return (
@@ -365,59 +416,40 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
               <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
             ) : (
               <div className="space-y-3">
-                <div className="space-y-1">
-                  <Label>Foto do prato</Label>
-                  <div className="flex items-center gap-3">
-                    {photoUrl ? (
-                      <img src={photoUrl} alt={form.name} className="h-20 w-20 rounded object-cover border" />
-                    ) : (
-                      <div className="h-20 w-20 rounded border bg-muted flex items-center justify-center text-muted-foreground">
-                        <ImageIcon className="h-6 w-6" />
-                      </div>
-                    )}
-                    <div className="flex flex-col gap-1.5">
-                      <label>
-                        <Button asChild size="sm" variant="outline" disabled={uploadingPhoto || isNew}>
-                          <span className="cursor-pointer gap-1">
-                            {uploadingPhoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                            {photoPath ? "Trocar foto" : "Enviar foto"}
-                          </span>
-                        </Button>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) void handlePhotoUpload(f);
-                            e.target.value = "";
-                          }}
-                        />
-                      </label>
-                      {photoPath && !isNew && (
-                        <Button size="sm" variant="ghost" className="text-destructive gap-1" onClick={handlePhotoRemove}>
-                          <Trash2 className="h-4 w-4" /> Remover
-                        </Button>
-                      )}
-                      {isNew && (
-                        <p className="text-[11px] text-muted-foreground">Salve a ficha para enviar uma foto.</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                {/* Foto removida da ficha técnica — gerenciada apenas no receituário */}
                 <div className="space-y-1">
                   <Label>Nome *</Label>
                   <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
                 </div>
-                <div className="space-y-1">
-                  <Label>Produto final (que será adicionado ao estoque) *</Label>
-                  <Select value={form.output_product_id} onValueChange={(v) => setForm((f) => ({ ...f, output_product_id: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Selecione o produto" /></SelectTrigger>
-                    <SelectContent>
-                      {products.map((p) => <SelectItem key={p.id} value={p.id}>{p.name} ({p.unit})</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {isFactory ? (
+                  <div className="space-y-1">
+                    <Label>Produto final (que será adicionado ao estoque) *</Label>
+                    <Select value={form.output_product_id} onValueChange={(v) => setForm((f) => ({ ...f, output_product_id: v }))}>
+                      <SelectTrigger><SelectValue placeholder="Selecione o produto porcionado" /></SelectTrigger>
+                      <SelectContent>
+                        {products
+                          .filter((p) => (p.category ?? "").toUpperCase() === "PORCIONADOS")
+                          .map((p) => <SelectItem key={p.id} value={p.id}>{p.name} ({p.unit})</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground">
+                      Apenas produtos da categoria <strong>PORCIONADOS</strong> aparecem nas fichas da fábrica.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <Label>Item de cardápio vinculado *</Label>
+                    <Select value={linkedMenuItemId} onValueChange={setLinkedMenuItemId}>
+                      <SelectTrigger><SelectValue placeholder="Selecione o item de cardápio" /></SelectTrigger>
+                      <SelectContent>
+                        {menuItems.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground">
+                      Esta ficha será vinculada ao item de cardápio escolhido (consumo no PDV usa esta ficha).
+                    </p>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <div className="space-y-1">
                     <Label>Rendimento *</Label>
@@ -443,26 +475,6 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
 
                 {recipeId && <RecipeYieldCostPanel recipeId={recipeId} />}
 
-                <div className="space-y-1">
-                  <Label>Categoria</Label>
-                  <Select
-                    value={form.category || "__none"}
-                    onValueChange={(v) =>
-                      setForm((f) => ({
-                        ...f,
-                        category: (v === "__none" ? "" : v) as typeof f.category,
-                      }))
-                    }
-                  >
-                    <SelectTrigger><SelectValue placeholder="Sem categoria" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none">Sem categoria</SelectItem>
-                      <SelectItem value="individual">Individual</SelectItem>
-                      <SelectItem value="casal">Casal</SelectItem>
-                      <SelectItem value="familia">Família</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
 
                 <Accordion type="single" collapsible className="border rounded-md">
                   <AccordionItem value="fiscal" className="border-b-0">
@@ -563,10 +575,12 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
                   </AccordionItem>
                 </Accordion>
 
+
+
                 <div className="space-y-1.5">
                   <Label>Marcas que usam esta ficha</Label>
                   <div className="flex flex-wrap gap-1.5">
-                    {brands.map((b) => {
+                    {brands.filter((b) => !/^(totem|sal[aã]o|site)$/i.test(b.name.trim())).map((b) => {
                       const active = selectedBrands.has(b.id);
                       const c = colorForBrand(b.name);
                       return (
@@ -590,6 +604,10 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
                   </div>
                 </div>
 
+                {!isNew && recipeId && (
+                  <RecipeMenuItemsSection recipeId={recipeId} />
+                )}
+
                 {!isNew && (
                   <Button
                     type="button"
@@ -602,10 +620,31 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
                 )}
 
                 <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t">
-                  <div className="flex items-center gap-2">
-                    <Switch checked={form.is_active}
-                      onCheckedChange={(v) => setForm((f) => ({ ...f, is_active: v }))} />
-                    <Label className="text-xs">Ativa</Label>
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <Switch checked={form.is_active}
+                        onCheckedChange={(v) => setForm((f) => ({ ...f, is_active: v }))} />
+                      <Label className="text-xs">Ativa</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={isFactory}
+                        onCheckedChange={(checked) => {
+                          const factory = brands.find((b) => isFactoryBrandName(b.name));
+                          if (!factory) {
+                            toast.error("Marca 'PRÉ PREPARO/FÁBRICA' não encontrada");
+                            return;
+                          }
+                          setSelectedBrands((prev) => {
+                            const n = new Set(prev);
+                            if (checked) n.add(factory.id);
+                            else n.delete(factory.id);
+                            return n;
+                          });
+                        }}
+                      />
+                      <Label className="text-xs">{isFactory ? "Pré-preparo" : "Pronto"}</Label>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 justify-end flex-wrap">
                     {!isNew && (

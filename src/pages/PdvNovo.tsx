@@ -63,6 +63,7 @@ import StockShortagesPanel from "@/components/pdv-novo/StockShortagesPanel";
 import { PrintersPanel } from "@/components/pdv-novo/PrintersPanel";
 import { PrintLayoutPanel } from "@/components/pdv-novo/PrintLayoutPanel";
 import { routePrintOrder } from "@/lib/routePrint";
+import { IFoodFloatingWidgets } from "@/components/pdv/IFoodFloatingWidgets";
 
 
 // ===== Tipos ============================================================
@@ -349,6 +350,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
           .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by,packed_at,has_unread_chat")
 
           .in("store_id", ids)
+          .neq("status", "awaiting_payment")
           .order("opened_at", { ascending: false })
           .limit(150),
       ]);
@@ -386,6 +388,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
         .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by,packed_at,has_unread_chat")
 
         .in("store_id", ids)
+        .neq("status", "awaiting_payment")
         .gte("opened_at", start.toISOString())
         .lte("opened_at", end.toISOString())
         .order("opened_at", { ascending: false });
@@ -1049,6 +1052,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   // ===== Render ==========================================================
   return (
     <div className={cn("space-y-6", hideHeader && "pt-0")}>
+      <IFoodFloatingWidgets storeId={storeId} />
       {!hideHeader && (
         <>
           {/* Cabeçalho padrão */}

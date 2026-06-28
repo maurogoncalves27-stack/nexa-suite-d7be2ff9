@@ -177,6 +177,7 @@ export default function FreelancerDailyPayments() {
       pixKeyType: p.freelancers?.pix_key_type ?? null,
       amount: Number(p.amount),
       description: "DIARIA FREELANCER",
+      storeId: p.store_id ?? null,
     }));
     const sem = rows.filter((r) => !r.pixKey || !r.name);
     if (sem.length > 0) {
@@ -190,6 +191,8 @@ export default function FreelancerDailyPayments() {
         rows,
         fileName: `diarias-freelancers-${year}-${String(month).padStart(2, "0")}`,
         paymentDate: new Date(),
+        source: "freelancer",
+        sourceRef: `Diárias freelancers ${String(month).padStart(2, "0")}/${year}`,
       });
       if (included === 0) { toast.error("Nenhum pagamento válido para exportar."); return; }
       const ids = pendings

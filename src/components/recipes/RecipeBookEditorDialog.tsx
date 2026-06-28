@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload, Trash2, ImageIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,7 @@ interface Props {
 const RecipeBookEditorDialog = ({ open, onOpenChange, recipeBookId, onSaved }: Props) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [data, setData] = useState<RecipeBookRow>({
     id: "",
     title: "",
@@ -60,6 +61,43 @@ const RecipeBookEditorDialog = ({ open, onOpenChange, recipeBookId, onSaved }: P
   const photoUrl = data.photo_path
     ? supabase.storage.from("recipe-book-photos").getPublicUrl(data.photo_path).data.publicUrl
     : null;
+
+  const handlePhotoUpload = async (file: File) => {
+    if (!data.id) {
+      toast.error("Salve o receituário antes de enviar a foto");
+      return;
+    }
+    setUploadingPhoto(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${data.id}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("recipe-book-photos")
+        .upload(path, file, { upsert: false, contentType: file.type || "image/jpeg" });
+      if (upErr) throw upErr;
+      if (data.photo_path) {
+        await supabase.storage.from("recipe-book-photos").remove([data.photo_path]);
+      }
+      const { error: updErr } = await supabase
+        .from("recipe_books")
+        .update({ photo_path: path })
+        .eq("id", data.id);
+      if (updErr) throw updErr;
+      setData((d) => ({ ...d, photo_path: path }));
+      toast.success("Foto atualizada");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao enviar foto");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handlePhotoRemove = async () => {
+    if (!data.id || !data.photo_path) return;
+    await supabase.storage.from("recipe-book-photos").remove([data.photo_path]);
+    await supabase.from("recipe_books").update({ photo_path: null }).eq("id", data.id);
+    setData((d) => ({ ...d, photo_path: null }));
+  };
 
   const save = async () => {
     if (!data.title.trim()) {
@@ -141,17 +179,43 @@ const RecipeBookEditorDialog = ({ open, onOpenChange, recipeBookId, onSaved }: P
               </div>
             </div>
 
-            {photoUrl && (
-              <div>
-                <Label>Foto do prato</Label>
-                <div className="mt-1 flex items-center gap-3">
+            <div>
+              <Label>Foto do prato</Label>
+              <div className="mt-1 flex items-center gap-3">
+                {photoUrl ? (
                   <img src={photoUrl} alt={data.title} className="h-20 w-20 rounded object-cover border" />
-                  <p className="text-xs text-muted-foreground">
-                    A foto vem da ficha técnica. Para alterar, edite a foto na ficha técnica de origem.
-                  </p>
+                ) : (
+                  <div className="h-20 w-20 rounded border bg-muted flex items-center justify-center text-muted-foreground">
+                    <ImageIcon className="h-6 w-6" />
+                  </div>
+                )}
+                <div className="flex flex-col gap-1.5">
+                  <label>
+                    <Button asChild size="sm" variant="outline" disabled={uploadingPhoto}>
+                      <span className="cursor-pointer gap-1">
+                        {uploadingPhoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                        {data.photo_path ? "Trocar foto" : "Enviar foto"}
+                      </span>
+                    </Button>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) void handlePhotoUpload(f);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                  {data.photo_path && (
+                    <Button size="sm" variant="ghost" className="text-destructive gap-1" onClick={handlePhotoRemove}>
+                      <Trash2 className="h-4 w-4" /> Remover
+                    </Button>
+                  )}
                 </div>
               </div>
-            )}
+            </div>
 
             <div>
               <Label>Ingredientes</Label>

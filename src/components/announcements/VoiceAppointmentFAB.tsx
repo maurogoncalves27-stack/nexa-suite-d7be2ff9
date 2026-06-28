@@ -4,11 +4,15 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogD
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Mic, Square, Loader2, CalendarPlus, Volume2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Mic, Square, Loader2, CalendarPlus, Volume2, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+
+type ScopeMode = "self" | "store" | "employee" | "all";
+
 
 type Parsed = {
   title: string;
@@ -35,7 +39,7 @@ const speak = (text: string) => {
 };
 
 export default function VoiceAppointmentFAB() {
-  const { isAdmin, isManager } = useAuth();
+  const { user, isAdmin, isManager } = useAuth();
   const canUse = isAdmin || isManager;
 
 
@@ -46,8 +50,16 @@ export default function VoiceAppointmentFAB() {
   const [parsed, setParsed] = useState<Parsed | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const [scopeMode, setScopeMode] = useState<ScopeMode>("self");
+  const [myEmployeeId, setMyEmployeeId] = useState<string | null>(null);
+  const [stores, setStores] = useState<Array<{ id: string; name: string }>>([]);
+  const [employees, setEmployees] = useState<Array<{ id: string; full_name: string }>>([]);
+  const [selectedStoreId, setSelectedStoreId] = useState<string>("");
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
+
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<number | null>(null);
 
@@ -55,7 +67,25 @@ export default function VoiceAppointmentFAB() {
     try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
   }, []);
 
+  useEffect(() => {
+    if (!canUse || !user?.id) return;
+    let cancelled = false;
+    (async () => {
+      const [meRes, storesRes, empsRes] = await Promise.all([
+        supabase.from("employees").select("id").eq("user_id", user.id).maybeSingle(),
+        supabase.from("stores").select("id, name").eq("is_virtual", false).order("name"),
+        supabase.from("employees").select("id, full_name").eq("status", "active").order("full_name"),
+      ]);
+      if (cancelled) return;
+      setMyEmployeeId(meRes.data?.id ?? null);
+      setStores(storesRes.data ?? []);
+      setEmployees(empsRes.data ?? []);
+    })();
+    return () => { cancelled = true; };
+  }, [canUse, user?.id]);
+
   if (!canUse) return null;
+
 
   const stopTracks = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -169,6 +199,22 @@ export default function VoiceAppointmentFAB() {
       toast({ title: "Preencha título e início", variant: "destructive" });
       return;
     }
+    let scopeExtra: { scope: string; employee_id?: string | null; store_id?: string | null };
+    if (scopeMode === "self") {
+      if (!myEmployeeId) {
+        toast({ title: "Seu usuário não está vinculado a um colaborador", description: "Escolha outro destinatário para o lembrete.", variant: "destructive" });
+        return;
+      }
+      scopeExtra = { scope: "employee", employee_id: myEmployeeId };
+    } else if (scopeMode === "employee") {
+      if (!selectedEmployeeId) { toast({ title: "Escolha um colaborador", variant: "destructive" }); return; }
+      scopeExtra = { scope: "employee", employee_id: selectedEmployeeId };
+    } else if (scopeMode === "store") {
+      if (!selectedStoreId) { toast({ title: "Escolha uma loja", variant: "destructive" }); return; }
+      scopeExtra = { scope: "store", store_id: selectedStoreId };
+    } else {
+      scopeExtra = { scope: "all" };
+    }
     setSaving(true);
     try {
       const { error } = await supabase.from("appointments").insert({
@@ -178,9 +224,9 @@ export default function VoiceAppointmentFAB() {
         meeting_url: parsed.meeting_url?.trim() || null,
         start_at: new Date(parsed.start_at).toISOString(),
         end_at: parsed.end_at ? new Date(parsed.end_at).toISOString() : null,
-        scope: "all",
         reminder_offsets_min: [60, 1440],
         status: "scheduled",
+        ...scopeExtra,
       });
       if (error) throw error;
       toast({ title: "Compromisso agendado", description: parsed.title });
@@ -194,6 +240,7 @@ export default function VoiceAppointmentFAB() {
       setSaving(false);
     }
   };
+
 
   const reRecord = () => {
     try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
@@ -261,10 +308,48 @@ export default function VoiceAppointmentFAB() {
                   </div>
                 </div>
               )}
+              <div className="rounded-md border p-3 space-y-2 bg-card">
+                <Label className="flex items-center gap-2 text-sm">
+                  <Users className="h-4 w-4 text-primary" />
+                  Quem recebe o lembrete?
+                </Label>
+                <Select value={scopeMode} onValueChange={(v) => setScopeMode(v as ScopeMode)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="self">Somente eu</SelectItem>
+                    <SelectItem value="store">Uma loja</SelectItem>
+                    <SelectItem value="employee">Um colaborador</SelectItem>
+                    <SelectItem value="all">Todos os colaboradores</SelectItem>
+                  </SelectContent>
+                </Select>
+                {scopeMode === "store" && (
+                  <Select value={selectedStoreId} onValueChange={setSelectedStoreId}>
+                    <SelectTrigger><SelectValue placeholder="Selecione a loja" /></SelectTrigger>
+                    <SelectContent>
+                      {stores.map((s) => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {scopeMode === "employee" && (
+                  <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o colaborador" /></SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      {employees.map((e) => (<SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {scopeMode === "self" && !myEmployeeId && (
+                  <p className="text-xs text-destructive">Seu usuário não está vinculado a um colaborador. Escolha outro destinatário.</p>
+                )}
+                {scopeMode === "all" && (
+                  <p className="text-xs text-warning">Aviso urgente + push + WhatsApp para todos os colaboradores ativos.</p>
+                )}
+              </div>
               <div>
                 <Label>Título</Label>
                 <Input value={parsed.title} onChange={(e) => update("title", e.target.value)} />
               </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label>Início</Label>

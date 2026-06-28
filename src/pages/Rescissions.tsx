@@ -213,8 +213,12 @@ export default function Rescissions() {
           pixKeyType: row.emp.pix_key_type ?? null,
           amount: row.amount,
           description: `Rescisão ${MONTHS_PT[ref.month - 1]}/${ref.year}`,
+          employeeId: row.emp.id,
         }],
         fileName: `c6-rescisao-${safe}-${ref.year}-${String(ref.month).padStart(2, "0")}`,
+        source: "rescission",
+        sourceRef: `Rescisão ${row.emp.full_name ?? ""} ${MONTHS_PT[ref.month - 1]}/${ref.year}`,
+        defaultCategoryId: RESCISAO_CATEGORY_ID,
       });
       if (included === 0) {
         toast({ title: "Sem chaves PIX", description: "PIX inválido.", variant: "destructive" });

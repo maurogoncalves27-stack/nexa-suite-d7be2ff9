@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bell, Check, Trash2, Megaphone, AlertTriangle, Info, Volume2, Square, Siren } from "lucide-react";
+import { Bell, Check, Trash2, Megaphone, AlertTriangle, Info, Volume2, Square, Siren, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -120,7 +120,18 @@ export default function NotificationsBell() {
       .order("priority", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(50);
-    const filtered = ((data ?? []) as Announcement[]).filter(isDueToday).slice(0, 10);
+
+    // Filtra os que o usuário já dispensou
+    const { data: dismissed } = await supabase
+      .from("hr_announcement_dismissals")
+      .select("announcement_id")
+      .eq("user_id", user.id);
+    const dismissedIds = new Set((dismissed ?? []).map((d: any) => d.announcement_id));
+
+    const filtered = ((data ?? []) as Announcement[])
+      .filter((a) => !dismissedIds.has(a.id))
+      .filter(isDueToday)
+      .slice(0, 10);
     setAnnouncements(filtered);
   };
 
@@ -168,6 +179,21 @@ export default function NotificationsBell() {
 
   const removeOne = async (id: string) => {
     await supabase.from("user_notifications").delete().eq("id", id);
+  };
+
+  const dismissAnnouncement = async (announcementId: string) => {
+    if (!user) return;
+    setAnnouncements((cur) => cur.filter((a) => a.id !== announcementId));
+    if (speakingId === announcementId && typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+      setSpeakingId(null);
+    }
+    await supabase
+      .from("hr_announcement_dismissals")
+      .upsert(
+        { user_id: user.id, announcement_id: announcementId },
+        { onConflict: "user_id,announcement_id" },
+      );
   };
 
   const handleClick = (n: UserNotification) => {
@@ -250,7 +276,7 @@ export default function NotificationsBell() {
                   <div
                     key={a.id}
                     className={cn(
-                      "relative rounded-md border p-2.5 pr-10",
+                      "relative rounded-md border p-2.5 pr-16",
                       cfg.cls,
                     )}
                   >
@@ -267,13 +293,24 @@ export default function NotificationsBell() {
                         variant="ghost"
                         size="icon"
                         onClick={() => speak(a)}
-                        className="absolute top-1.5 right-1.5 h-7 w-7"
+                        className="absolute top-1.5 right-9 h-7 w-7"
                         aria-label={isSpeaking ? "Parar leitura" : "Ouvir aviso em voz alta"}
                         title={isSpeaking ? "Parar leitura" : "Ouvir em voz alta"}
                       >
                         {isSpeaking ? <Square className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
                       </Button>
                     )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => dismissAnnouncement(a.id)}
+                      className="absolute top-1.5 right-1.5 h-7 w-7"
+                      aria-label="Dispensar aviso"
+                      title="Dispensar aviso"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 );
               })}

@@ -6,12 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Loader2, Upload, CheckCircle2, RotateCcw, Sparkles, Search, AlertCircle, Plus, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
+import { Loader2, Upload, CheckCircle2, RotateCcw, Sparkles, Search, AlertCircle, Plus, ArrowDownCircle, ArrowUpCircle, Boxes } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { type BankAccount } from "./BankAccountsManager";
 import OfxImportDialog from "./OfxImportDialog";
 import CreateFinanceFromTxDialog from "./CreateFinanceFromTxDialog";
 import AllocationEditor, { type AllocationSplit, type StoreLite, validateSplits } from "./AllocationEditor";
+import PickC6BatchDialog, { type C6BatchCandidate } from "./PickC6BatchDialog";
 import { Split } from "lucide-react";
 
 interface BankTx {
@@ -125,14 +126,25 @@ export default function BankReconciliationPanel() {
   const [periodPreset, setPeriodPreset] = useState<"all" | "current" | "previous" | "custom">("all");
   const [periodFrom, setPeriodFrom] = useState<string>("");
   const [periodTo, setPeriodTo] = useState<string>("");
-  // Lembra a data da última transação conciliada para restaurar a posição
-  // após o reload (evita "voltar para o topo" descrito pelo usuário).
-  const focusDateRef = useRef<string | null>(null);
+  // Preserva a posição de scroll ao recarregar a lista após um save
+  // (evita "voltar pro topo" / sensação de reload).
+  const reloadKeepingScroll = useCallback(async (fn: () => Promise<void>) => {
+    const y = window.scrollY;
+    await fn();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => window.scrollTo({ top: y, behavior: "auto" }));
+    });
+  }, []);
+
   // Rateio (centro de custo = loja)
   const [allocStores, setAllocStores] = useState<StoreLite[]>([]);
   const [allocTarget, setAllocTarget] = useState<BankTx | null>(null);
   const [allocSplits, setAllocSplits] = useState<AllocationSplit[]>([]);
   const [allocLoading, setAllocLoading] = useState(false);
+  // Lotes C6 abertos (não conciliados ainda) — usados para detectar "Pagamento de lote"
+  const [c6Batches, setC6Batches] = useState<C6BatchCandidate[]>([]);
+  const [c6Target, setC6Target] = useState<BankTx | null>(null);
+  const [c6Candidates, setC6Candidates] = useState<C6BatchCandidate[]>([]);
 
   const loadAccounts = useCallback(async () => {
     const { data } = await supabase.from("bank_accounts").select("*").order("name");
@@ -192,6 +204,18 @@ export default function BankReconciliationPanel() {
 
   useEffect(() => { loadAccounts(); }, [loadAccounts]);
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Carrega lotes C6 ainda não conciliados (para detectar "Pagamento de lote")
+  const loadC6Batches = useCallback(async () => {
+    const { data } = await supabase
+      .from("c6_payment_batches" as any)
+      .select("id, source, source_ref, payment_date, total, line_count, default_store_id")
+      .is("reconciled_at", null)
+      .order("payment_date", { ascending: false })
+      .limit(500);
+    setC6Batches(((data ?? []) as unknown as C6BatchCandidate[]));
+  }, []);
+  useEffect(() => { loadC6Batches(); }, [loadC6Batches]);
 
   // Carrega lista de lojas para o editor de rateio (uma vez)
   useEffect(() => {
@@ -283,26 +307,6 @@ export default function BankReconciliationPanel() {
 
 
 
-  // Após cada reload, se houver uma "data foco" salva, rola até a primeira
-  // linha cuja posted_at seja <= data foco (mantém o usuário no dia em que
-  // ele estava conciliando, em vez de jogá-lo de volta ao topo).
-  useEffect(() => {
-    if (loading) return;
-    const focus = focusDateRef.current;
-    if (!focus) return;
-    focusDateRef.current = null;
-    // Aguarda um frame para garantir que a tabela já foi pintada
-    requestAnimationFrame(() => {
-      const rows = document.querySelectorAll<HTMLElement>("tr[data-posted-at]");
-      let target: HTMLElement | null = null;
-      for (const row of Array.from(rows)) {
-        const d = row.dataset.postedAt;
-        if (d && d <= focus) { target = row; break; }
-      }
-      if (!target && rows.length > 0) target = rows[rows.length - 1];
-      target?.scrollIntoView({ block: "center", behavior: "auto" });
-    });
-  }, [loading, transactions]);
 
   // Constrói candidatos compatíveis com cada transação (débito → pagar; crédito → receber)
   // Pré-filtra por janela de valor (±20%) e data (±15 dias) para reduzir O(N×M) drasticamente
@@ -372,6 +376,34 @@ export default function BankReconciliationPanel() {
     return map;
   }, [transactions, candidatesFor]);
 
+  // Lotes C6 candidatos por tx: débito, total ± 0,01, data ± 1 dia
+  const c6CandidatesMap = useMemo(() => {
+    const map = new Map<string, C6BatchCandidate[]>();
+    if (c6Batches.length === 0) return map;
+    for (const tx of transactions) {
+      if (tx.reconciled_at) continue;
+      const amt = Number(tx.amount);
+      if (amt >= 0) continue;
+      const txAbs = Math.abs(amt);
+      const txTime = new Date(tx.posted_at + "T00:00:00").getTime();
+      const matches = c6Batches.filter((b) => {
+        if (Math.abs(Number(b.total) - txAbs) > 0.01) return false;
+        const bTime = new Date(b.payment_date + "T00:00:00").getTime();
+        const days = Math.abs(bTime - txTime) / 86400000;
+        return days <= 1;
+      });
+      if (matches.length > 0) map.set(tx.id, matches);
+    }
+    return map;
+  }, [transactions, c6Batches]);
+
+  const openC6Picker = (tx: BankTx) => {
+    const list = c6CandidatesMap.get(tx.id) ?? [];
+    if (list.length === 0) return;
+    setC6Candidates(list);
+    setC6Target(tx);
+  };
+
   const filteredTx = transactions.filter((t) => {
     if (!showReconciled && t.reconciled_at) return false;
     if (!search) return true;
@@ -396,14 +428,14 @@ export default function BankReconciliationPanel() {
     toast({ title: "Conciliada", description: c.kind === "payable" ? "Conta a pagar quitada." : "Conta a receber recebida." });
     const tx = transactions.find((t) => t.id === txId);
     if (tx) {
-      focusDateRef.current = tx.posted_at;
       // Herda o rateio do AP/AR (se houver) para a transação bancária
       await inheritAllocationsFromSource(txId, c.kind, c.id, Math.abs(Number(tx.amount)));
     }
     setMatchTarget(null);
     setMatchSearch("");
-    await loadData();
+    await reloadKeepingScroll(loadData);
   };
+
 
   const reconcileBatch = async () => {
     if (!matchTarget) return;
@@ -424,13 +456,13 @@ export default function BankReconciliationPanel() {
       return;
     }
     toast({ title: "Conciliada", description: `${ids.length} ${isCredit ? "recebimentos" : "pagamentos"} vinculados.` });
-    focusDateRef.current = matchTarget.posted_at;
     setMatchTarget(null);
     setMatchSearch("");
     setBatchMode(false);
     setBatchSelected(new Set());
-    await loadData();
+    await reloadKeepingScroll(loadData);
   };
+
 
   const undo = async (txId: string) => {
     setSubmitting(true);
@@ -441,10 +473,9 @@ export default function BankReconciliationPanel() {
       return;
     }
     toast({ title: "Conciliação desfeita" });
-    const tx = transactions.find((t) => t.id === txId);
-    if (tx) focusDateRef.current = tx.posted_at;
-    await loadData();
+    await reloadKeepingScroll(loadData);
   };
+
 
 
   const autoReconcileAll = async () => {
@@ -472,7 +503,8 @@ export default function BankReconciliationPanel() {
       title: "Conciliação automática concluída",
       description: `${ok} aplicadas${fail > 0 ? `, ${fail} falharam` : ""}.`,
     });
-    await loadData();
+    await reloadKeepingScroll(loadData);
+
   };
 
   const suggestionsCount = useMemo(
@@ -619,6 +651,8 @@ export default function BankReconciliationPanel() {
                 <TableBody>
                   {filteredTx.map((tx) => {
                     const sug = suggestionMap.get(tx.id);
+                    const c6cands = c6CandidatesMap.get(tx.id) ?? [];
+                    const hasC6 = c6cands.length > 0;
                     const isReconciled = !!tx.reconciled_at;
                     return (
                       <TableRow key={tx.id} data-posted-at={tx.posted_at} className={isReconciled ? "opacity-60" : undefined}>
@@ -631,6 +665,11 @@ export default function BankReconciliationPanel() {
                         <TableCell>
                           {isReconciled ? (
                             <Badge variant="outline" className="gap-1"><CheckCircle2 className="h-3 w-3" /> Conciliada</Badge>
+                          ) : hasC6 ? (
+                            <Badge variant="secondary" className="gap-1">
+                              <Boxes className="h-3 w-3" />
+                              Lote C6{c6cands.length > 1 ? ` (${c6cands.length})` : ""}
+                            </Badge>
                           ) : sug ? (
                             <div className="text-xs">
                               <div className="font-medium flex items-center gap-1">
@@ -658,22 +697,31 @@ export default function BankReconciliationPanel() {
                               <Button size="sm" variant="ghost" disabled={submitting} onClick={() => undo(tx.id)} className="gap-1">
                                 <RotateCcw className="h-3 w-3" /> Desfazer
                               </Button>
-                            ) : sug ? (
-                              <>
-                                <Button size="sm" disabled={submitting} onClick={() => reconcileCandidate(tx.id, sug)} className="gap-1">
-                                  <CheckCircle2 className="h-3 w-3" /> Aceitar
-                                </Button>
-                                <Button size="sm" variant="outline" onClick={() => { setMatchSearch(""); setMatchTarget(tx); }}>Outra</Button>
-                                <Button size="sm" variant="ghost" onClick={() => setCreateTarget(tx)} className="gap-1">
-                                  <Plus className="h-3 w-3" /> Gerar
-                                </Button>
-                              </>
                             ) : (
                               <>
-                                <Button size="sm" variant="outline" onClick={() => { setMatchSearch(""); setMatchTarget(tx); }}>Vincular</Button>
-                                <Button size="sm" onClick={() => setCreateTarget(tx)} className="gap-1">
-                                  <Plus className="h-3 w-3" /> Gerar lançamento
-                                </Button>
+                                {hasC6 && (
+                                  <Button size="sm" variant="default" onClick={() => openC6Picker(tx)} className="gap-1">
+                                    <Boxes className="h-3 w-3" /> Conciliar lote
+                                  </Button>
+                                )}
+                                {sug ? (
+                                  <>
+                                    <Button size="sm" disabled={submitting} onClick={() => reconcileCandidate(tx.id, sug)} className="gap-1">
+                                      <CheckCircle2 className="h-3 w-3" /> Aceitar
+                                    </Button>
+                                    <Button size="sm" variant="outline" onClick={() => { setMatchSearch(""); setMatchTarget(tx); }}>Outra</Button>
+                                    <Button size="sm" variant="ghost" onClick={() => setCreateTarget(tx)} className="gap-1">
+                                      <Plus className="h-3 w-3" /> Gerar
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Button size="sm" variant="outline" onClick={() => { setMatchSearch(""); setMatchTarget(tx); }}>Vincular</Button>
+                                    <Button size="sm" onClick={() => setCreateTarget(tx)} className="gap-1">
+                                      <Plus className="h-3 w-3" /> Gerar lançamento
+                                    </Button>
+                                  </>
+                                )}
                               </>
                             )}
                           </div>
@@ -856,6 +904,13 @@ export default function BankReconciliationPanel() {
         tx={createTarget}
         onOpenChange={(o) => !o && setCreateTarget(null)}
         onCreated={loadData}
+      />
+
+      <PickC6BatchDialog
+        tx={c6Target}
+        candidates={c6Candidates}
+        onOpenChange={(o) => { if (!o) { setC6Target(null); setC6Candidates([]); } }}
+        onApplied={async () => { await reloadKeepingScroll(async () => { await loadData(); await loadC6Batches(); }); }}
       />
 
       <Dialog open={!!allocTarget} onOpenChange={(o) => { if (!o && !submitting) { setAllocTarget(null); setAllocSplits([]); } }}>

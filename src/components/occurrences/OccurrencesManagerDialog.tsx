@@ -25,9 +25,24 @@ export interface Occurrence {
   prevention_2: string | null;
   sort_order?: number;
   is_active?: boolean;
+  requires_subcategory?: boolean;
+  subcategory_options?: string[] | null;
 }
 
-type Editable = Omit<Occurrence, "id"> & { id?: string };
+type Editable = Omit<Occurrence, "id" | "subcategory_options"> & {
+  id?: string;
+  subcategory_options_text?: string;
+};
+
+const CATEGORY_PRESETS = [
+  "COZINHA",
+  "MONTAGEM",
+  "ESTOQUE",
+  "LOGISTICA",
+  "CLIENTE",
+  "PAGAMENTO",
+  "INFRAESTRUTURA",
+];
 
 const emptyForm: Editable = {
   code: "",
@@ -41,6 +56,8 @@ const emptyForm: Editable = {
   prevention_2: "",
   sort_order: 0,
   is_active: true,
+  requires_subcategory: false,
+  subcategory_options_text: "",
 };
 
 interface Props {
@@ -105,6 +122,8 @@ export default function OccurrencesManagerDialog({ open, onOpenChange, onChanged
       prevention_2: "",
       sort_order: o.sort_order ?? 0,
       is_active: o.is_active ?? true,
+      requires_subcategory: o.requires_subcategory ?? false,
+      subcategory_options_text: (o.subcategory_options ?? []).join("\n"),
     });
   };
 
@@ -120,6 +139,10 @@ export default function OccurrencesManagerDialog({ open, onOpenChange, onChanged
     }
     setSaving(true);
     const autoCode = form.code?.trim() || `OC-${Date.now().toString(36).toUpperCase()}`;
+    const subOpts = (form.subcategory_options_text ?? "")
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
     const payload = {
       code: autoCode,
       category: form.category?.trim() || null,
@@ -132,6 +155,8 @@ export default function OccurrencesManagerDialog({ open, onOpenChange, onChanged
       prevention_2: form.prevention_2?.trim() || null,
       sort_order: form.sort_order ?? 0,
       is_active: form.is_active ?? true,
+      requires_subcategory: !!form.requires_subcategory && subOpts.length > 0,
+      subcategory_options: subOpts.length > 0 ? subOpts : null,
     };
     const { error } = editingId
       ? await supabase.from("occurrences").update(payload).eq("id", editingId)
@@ -244,6 +269,21 @@ export default function OccurrencesManagerDialog({ open, onOpenChange, onChanged
                 <Label>Ocorrência</Label>
                 <Input value={form.occurrence} onChange={(e) => setForm({ ...form, occurrence: e.target.value })} />
               </div>
+              <div>
+                <Label>Categoria (causa-raiz)</Label>
+                <Input
+                  list="occ-category-presets"
+                  placeholder="Ex: COZINHA, MONTAGEM, LOGISTICA…"
+                  value={form.category ?? ""}
+                  onChange={(e) => setForm({ ...form, category: e.target.value.toUpperCase() })}
+                />
+                <datalist id="occ-category-presets">
+                  {CATEGORY_PRESETS.map((c) => <option key={c} value={c} />)}
+                </datalist>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Use causa-raiz, não desfecho. Sugeridas: {CATEGORY_PRESETS.join(", ")}.
+                </p>
+              </div>
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-2">
                   <Switch checked={form.order_correct} onCheckedChange={(v) => setForm({ ...form, order_correct: v })} />
@@ -252,6 +292,28 @@ export default function OccurrencesManagerDialog({ open, onOpenChange, onChanged
                 <div className="flex items-center gap-2">
                   <Switch checked={form.is_active ?? true} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
                   <Label className="text-sm">Ativo</Label>
+                </div>
+              </div>
+              <div className="rounded-md border p-3 space-y-2 bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={!!form.requires_subcategory}
+                    onCheckedChange={(v) => setForm({ ...form, requires_subcategory: v })}
+                  />
+                  <Label className="text-sm font-semibold">Exigir subcategoria ao registrar</Label>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Quebra ocorrências genéricas (ex.: "qualidade do pedido") em causas específicas (temperatura, sabor, objeto estranho…).
+                </p>
+                <div>
+                  <Label className="text-xs">Opções de subcategoria (uma por linha)</Label>
+                  <Textarea
+                    rows={4}
+                    placeholder={"Temperatura\nSabor\nApresentação\nObjeto estranho"}
+                    value={form.subcategory_options_text ?? ""}
+                    onChange={(e) => setForm({ ...form, subcategory_options_text: e.target.value })}
+                    className="font-mono text-xs"
+                  />
                 </div>
               </div>
               <div>

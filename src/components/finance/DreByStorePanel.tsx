@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllPaged } from "./_fetchAll";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
@@ -49,7 +50,8 @@ const applyReceivable = (col: DreColumn, group: DreGroup | null, credit: number)
   if (group === "excluded") return;
   if (group === "non_operational") { col.non_operational += credit; return; }
   if (group === "revenue_deduction") { col.revenue_deduction -= credit; return; }
-  col.revenue_gross += credit;
+  // Receita bruta já vem integralmente de monthly_revenue (/faturamento).
+  // Contas a receber representam liquidação/cobrança e não devem duplicar faturamento.
 };
 
 export default function DreByStorePanel() {
@@ -64,32 +66,47 @@ export default function DreByStorePanel() {
   const [payables, setPayables] = useState<PayableRow[]>([]);
   const [receivables, setReceivables] = useState<ReceivableRow[]>([]);
   const [catMap, setCatMap] = useState<CategoryMap>({});
+  const [ifoodByStoreMonth, setIfoodByStoreMonth] = useState<Record<string, number>>({});
+
+
 
   const load = async () => {
     setLoading(true);
     try {
-      const [storesRes, salesRes, payRes, recRes, catRes] = await Promise.all([
+      const [storesRes, salesRes, payRes, recRes, catRes, dedRes] = await Promise.all([
         supabase.from("stores").select("id,name,is_virtual"),
-        supabase
-          .from("pdv_orders")
-          .select("id,concluded_at,total,status,dre_excluded,store_id")
-          .in("status", ["concluded", "cancelled"])
-          .gte("concluded_at", `${start}T00:00:00`)
-          .lte("concluded_at", `${end}T23:59:59`),
-        supabase
-          .from("accounts_payable")
-          .select("id,paid_at,amount,category_id,status,store_id")
-          .eq("status", "paid")
-          .gte("paid_at", start)
-          .lte("paid_at", end),
-        supabase
-          .from("accounts_receivable")
-          .select("id,received_at,amount,category_id,status,store_id")
-          .eq("status", "received")
-          .gte("received_at", start)
-          .lte("received_at", end),
+        fetchAllPaged((from, to) =>
+          supabase
+            .from("monthly_revenue")
+            .select("id,year,month,day,gross_revenue,store_id")
+            .gte("year", Number(start.slice(0, 4)))
+            .lte("year", Number(end.slice(0, 4)))
+            .range(from, to),
+        ),
+        fetchAllPaged((from, to) =>
+          supabase
+            .from("accounts_payable")
+            .select("id,paid_at,amount,category_id,status,store_id")
+            .eq("status", "paid")
+            .gte("paid_at", start)
+            .lte("paid_at", end)
+            .range(from, to),
+        ),
+        fetchAllPaged((from, to) =>
+          supabase
+            .from("accounts_receivable")
+            .select("id,received_at,amount,category_id,status,store_id")
+            .eq("status", "received")
+            .gte("received_at", start)
+            .lte("received_at", end)
+            .range(from, to),
+        ),
         supabase.from("finance_categories").select("id,dre_group,kind"),
+        supabase.functions.invoke("dre-ifood-deductions"),
       ]);
+
+
+
 
       if (storesRes.error) throw storesRes.error;
       if (salesRes.error) throw salesRes.error;
@@ -106,19 +123,33 @@ export default function DreByStorePanel() {
         const firstNonFactory = physical.find((s) => !FACTORY_NAMES.includes(s.name.toUpperCase())) ?? physical[0];
         setSelectedStoreId(firstNonFactory.id);
       }
-      setSales(((salesRes.data ?? []) as any[]).map((r) => ({
-        id: r.id,
-        sold_at: r.concluded_at ?? new Date().toISOString(),
-        total_amount: Number(r.total ?? 0),
-        status: r.status,
-        dre_excluded: !!r.dre_excluded,
-        store_id: r.store_id,
-      })) as SaleRow[]);
+      setSales(((salesRes.data ?? []) as any[])
+        .map((r) => {
+          const y = String(r.year).padStart(4, "0");
+          const m = String(r.month).padStart(2, "0");
+          const d = String(r.day ?? 1).padStart(2, "0");
+          return {
+            id: r.id,
+            sold_at: `${y}-${m}-${d}`,
+            total_amount: Number(r.gross_revenue ?? 0),
+            status: "concluded",
+            dre_excluded: false,
+            store_id: r.store_id,
+          };
+        })
+        .filter((r) => r.sold_at >= start && r.sold_at <= end) as SaleRow[]);
+
       setPayables((payRes.data ?? []) as PayableRow[]);
       setReceivables((recRes.data ?? []) as ReceivableRow[]);
       setCatMap(cm);
+      if (!dedRes.error && (dedRes.data as any)?.by_store_month) {
+        setIfoodByStoreMonth((dedRes.data as any).by_store_month as Record<string, number>);
+      } else if (dedRes.error) {
+        console.warn("Falha ao carregar deduções iFood:", dedRes.error);
+      }
     } catch (e: any) {
       toast({ title: "Erro ao carregar DRE da loja", description: e.message, variant: "destructive" });
+
     } finally {
       setLoading(false);
     }
@@ -205,6 +236,24 @@ export default function DreByStorePanel() {
       applyExpense(col, group, debit);
     }
 
+    // Deduções iFood (planilha) para a loja selecionada, somando meses no período
+    const selectedNorm = (stores.find((s) => s.id === selectedStoreId)?.name ?? "")
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    if (selectedNorm) {
+      const sY = Number(start.slice(0, 4)); const sM = Number(start.slice(5, 7));
+      const eY = Number(end.slice(0, 4)); const eM = Number(end.slice(5, 7));
+      for (let y = sY; y <= eY; y++) {
+        const mStart = y === sY ? sM : 1;
+        const mEnd = y === eY ? eM : 12;
+        for (let m = mStart; m <= mEnd; m++) {
+          const k = `${selectedNorm}|${y}-${String(m).padStart(2, "0")}`;
+          const v = ifoodByStoreMonth[k] ?? 0;
+          if (v) col.revenue_deduction += v;
+        }
+      }
+    }
+
+
     // Calcular rateio da fábrica (opcional, só se loja não é fábrica)
     let factoryShare = 0;
     let allocPctValue = 0;
@@ -263,7 +312,7 @@ export default function DreByStorePanel() {
       factoryShare,
       factoryTotal,
     };
-  }, [selectedStoreId, sales, payables, receivables, catMap, stores, includeFactoryShare, selectedIsFactory]);
+  }, [selectedStoreId, sales, payables, receivables, catMap, stores, includeFactoryShare, selectedIsFactory, ifoodByStoreMonth, start, end]);
 
   return (
     <div className="space-y-3">

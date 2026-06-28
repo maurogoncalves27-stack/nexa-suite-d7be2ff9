@@ -11,10 +11,12 @@ import { ThemeProvider } from "@/hooks/useTheme";
 import { useInactivityLogout } from "@/hooks/useInactivityLogout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/AppLayout";
+import { RoleManifest } from "@/components/pwa/RoleManifest";
 
 // Eager: rotas críticas de boot (auth + landing)
 import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
+import NexaEntry from "./pages/NexaEntry.tsx";
 
 // Lazy: demais páginas só carregam ao acessar a rota
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
@@ -77,6 +79,8 @@ const WhatsAppAdmin = lazy(() => import("./pages/WhatsAppAdmin.tsx"));
 const WhatsAppCustomerAdmin = lazy(() => import("./pages/WhatsAppCustomerAdmin.tsx"));
 const WhatsApp = lazy(() => import("./pages/WhatsApp.tsx"));
 const DeliverySettings = lazy(() => import("./pages/DeliverySettings.tsx"));
+const CRM = lazy(() => import("./pages/CRM.tsx"));
+
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const VerifySignature = lazy(() => import("./pages/VerifySignature.tsx"));
 const InventoryReceiving = lazy(() => import("./pages/InventoryReceiving.tsx"));
@@ -88,6 +92,8 @@ const InventoryTransfers = lazy(() => import("./pages/InventoryTransfers.tsx"));
 const PurchaseSuggestions = lazy(() => import("./pages/PurchaseSuggestions.tsx"));
 const InventoryLots = lazy(() => import("./pages/InventoryLots.tsx"));
 const Recipes = lazy(() => import("./pages/Recipes.tsx"));
+const RecipesFactory = lazy(() => import("./pages/RecipesFactory.tsx"));
+
 const RecipeBook = lazy(() => import("./pages/RecipeBook.tsx"));
 const BankReconciliation = lazy(() => import("./pages/BankReconciliation.tsx"));
 const FactoryRequests = lazy(() => import("./pages/FactoryRequests.tsx"));
@@ -115,6 +121,7 @@ const Quotations = lazy(() => import("./pages/Quotations.tsx"));
 const PdvNovo = lazy(() => import("./pages/PdvNovo.tsx"));
 
 const TefPaygoSetup = lazy(() => import("./pages/TefPaygoSetup.tsx"));
+const IFoodWidgetsSettings = lazy(() => import("./pages/IFoodWidgetsSettings.tsx"));
 const PdvCancellations = lazy(() => import("./pages/PdvCancellations.tsx"));
 const StoreHome = lazy(() => import("./pages/StoreHome.tsx"));
 const SmartPos = lazy(() => import("./pages/SmartPos.tsx"));
@@ -130,6 +137,7 @@ const Occurrences = lazy(() => import("./pages/Occurrences.tsx"));
 const OccurrencesReport = lazy(() => import("./pages/OccurrencesReport.tsx"));
 
 const Vault = lazy(() => import("./pages/Vault.tsx"));
+const UsefulLinks = lazy(() => import("./pages/UsefulLinks.tsx"));
 const EquipmentWarranties = lazy(() => import("./pages/EquipmentWarranties.tsx"));
 const AssetInventory = lazy(() => import("./pages/AssetInventory.tsx"));
 const PartnerAuth = lazy(() => import("./pages/PartnerAuth.tsx"));
@@ -143,8 +151,23 @@ const PublicJobDetail = lazy(() => import("./pages/PublicJobDetail.tsx"));
 const CandidateDocumentUpload = lazy(() => import("./pages/CandidateDocumentUpload.tsx"));
 const LegalPage = lazy(() => import("./pages/LegalPage.tsx"));
 const PartnerDashboard = lazy(() => import("./pages/PartnerDashboard.tsx"));
+const ConsultorPanel = lazy(() => import("./pages/ConsultorPanel.tsx"));
 const SelectAccess = lazy(() => import("./pages/SelectAccess.tsx"));
 const MigrateNexa = lazy(() => import("./pages/admin/MigrateNexa.tsx"));
+
+// Site público Aquela Parmê (servido sob /parme/* — e na raiz quando
+// hostname for aquelaparme.com.br via HostnameGuard).
+const ParmeHome = lazy(() => import("./pages/parme/Home.tsx"));
+const ParmeBrand = lazy(() => import("./pages/parme/Brand.tsx"));
+const ParmeSobre = lazy(() => import("./pages/parme/Sobre.tsx"));
+const ParmeReservar = lazy(() => import("./pages/parme/Reservar.tsx"));
+const ParmeEnderecos = lazy(() => import("./pages/parme/Enderecos.tsx"));
+const ParmeSurpresa = lazy(() => import("./pages/parme/Surpresa.tsx"));
+const PedirHome = lazy(() => import("./pages/pedir/PedirHome.tsx"));
+const PedirLoja = lazy(() => import("./pages/pedir/PedirLoja.tsx"));
+const PedirCarrinho = lazy(() => import("./pages/pedir/PedirCarrinho.tsx"));
+const PedirPedido = lazy(() => import("./pages/pedir/PedirPedido.tsx"));
+import { HostnameGuard } from "@/components/parme-site/HostnameGuard";
 
 const queryClient = new QueryClient();
 
@@ -199,11 +222,29 @@ const App = () => (
       <BrowserRouter>
         <ThemeProvider>
         <AuthProvider>
-          
+          <RoleManifest />
           <InactivityWatcher />
+          <HostnameGuard />
           <Suspense fallback={<RouteFallback />}>
           <Routes>
+            {/* Site público Aquela Parmê */}
+            <Route path="/parme" element={<ParmeHome />} />
+            <Route path="/parme/sobre" element={<ParmeSobre />} />
+            <Route path="/parme/reservar" element={<ParmeReservar />} />
+            <Route path="/parme/enderecos" element={<ParmeEnderecos />} />
+            <Route path="/parme/surpresa" element={<ParmeSurpresa />} />
+            <Route path="/parme/vagas" element={<PublicJobs />} />
+            <Route path="/parme/vagas/:id" element={<PublicJobDetail />} />
+            <Route path="/parme/:slug" element={<ParmeBrand />} />
+
+            {/* E-commerce Grupo Aquela Parmê (pedir.aquelaparme.com.br) */}
+            <Route path="/pedir" element={<PedirHome />} />
+            <Route path="/pedir/pedido/:id" element={<PedirPedido />} />
+            <Route path="/pedir/:slug" element={<PedirLoja />} />
+            <Route path="/pedir/:slug/carrinho" element={<PedirCarrinho />} />
+
             <Route path="/auth" element={<Auth />} />
+            <Route path="/nexa" element={<NexaEntry />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/verificar/:type/:id" element={<VerifySignature />} />
             <Route path="/termos" element={<LegalPage variant="terms" />} />
@@ -238,6 +279,9 @@ const App = () => (
             } />
             <Route path="/terceirizado/painel" element={
               <ProtectedRoute redirectTo="/parceiro/login"><OutsourcedDashboard /></ProtectedRoute>
+            } />
+            <Route path="/consultor/painel" element={
+              <ProtectedRoute redirectTo="/parceiro/login"><ConsultorPanel /></ProtectedRoute>
             } />
 
             {/* Preview admin: visualizar painel de parceiro como gestor */}
@@ -338,11 +382,14 @@ const App = () => (
               <Route path="/configuracoes/acessos-externos" element={<Guarded staff><ExternalAccess /></Guarded>} />
               <Route path="/configuracoes/whatsapp-cliente" element={<Guarded staff><WhatsAppCustomerAdmin /></Guarded>} />
               <Route path="/configuracoes/entregas" element={<Guarded staff><DeliverySettings /></Guarded>} />
+              <Route path="/crm" element={<Guarded staff><CRM /></Guarded>} />
+              
               <Route path="/configuracoes/whatsapp" element={<Guarded staff><WhatsAppAdmin /></Guarded>} />
               <Route path="/whatsapp" element={<Guarded staff><WhatsApp /></Guarded>} />
               <Route path="/configuracoes/totem" element={<Guarded staff><TotemConfig /></Guarded>} />
               <Route path="/configuracoes/nfce-tester" element={<Guarded staff><NfceTester /></Guarded>} />
               <Route path="/configuracoes/tef-paygo" element={<Guarded staff><TefPaygoSetup /></Guarded>} />
+              <Route path="/configuracoes/ifood-widgets" element={<Guarded staff><IFoodWidgetsSettings /></Guarded>} />
               <Route path="/recebimento" element={<Guarded><InventoryReceiving /></Guarded>} />
               <Route path="/nf-arquivadas" element={<Guarded><NfArchived /></Guarded>} />
               <Route path="/produtos" element={<Guarded><InventoryProducts /></Guarded>} />
@@ -358,6 +405,8 @@ const App = () => (
               <Route path="/lotes" element={<Guarded><InventoryLots /></Guarded>} />
               <Route path="/perdas" element={<Guarded><InventoryLots /></Guarded>} />
               <Route path="/fichas-tecnicas" element={<Guarded module="fichas_tecnicas"><Recipes /></Guarded>} />
+              <Route path="/fichas-fabrica" element={<Guarded staff module="fichas_tecnicas"><RecipesFactory /></Guarded>} />
+
               <Route path="/receituario" element={<Guarded module="fichas_tecnicas"><RecipeBook /></Guarded>} />
               <Route path="/conciliacao" element={<Guarded staff partner><BankReconciliation /></Guarded>} />
               <Route path="/caixinha" element={<Guarded><PettyCash /></Guarded>} />
@@ -386,6 +435,7 @@ const App = () => (
               <Route path="/ocorrencias/relatorio" element={<Guarded staff partner><OccurrencesReport /></Guarded>} />
               
               <Route path="/cofre" element={<Guarded staff><Vault /></Guarded>} />
+              <Route path="/links-uteis" element={<Guarded><UsefulLinks /></Guarded>} />
               <Route path="/garantias" element={<Guarded><EquipmentWarranties /></Guarded>} />
               <Route path="/patrimonio" element={<Guarded staff><AssetInventory /></Guarded>} />
             </Route>

@@ -10,7 +10,6 @@ import { toast } from "sonner";
 const UNITS = ["UN", "KG", "G", "L", "ML", "CX", "PCT", "FD", "DZ", "MT", "PORCAO"];
 
 interface Product { id: string; name: string; unit: string; average_cost: number; }
-interface KitOption { id: string; name: string; brand_name: string; kit_type: string; items: { product_id: string; quantity: number }[]; }
 
 interface Item {
   id?: string;
@@ -36,18 +35,14 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
   const [saving, setSaving] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [items, setItems] = useState<Item[]>([]);
-  const [kits, setKits] = useState<KitOption[]>([]);
-  const [kitToApply, setKitToApply] = useState<string>("");
 
   useEffect(() => {
     if (!open || !recipeId) return;
     (async () => {
       setLoading(true);
-      const [{ data: prods }, { data: ings }, { data: ks }, { data: kis }] = await Promise.all([
+      const [{ data: prods }, { data: ings }] = await Promise.all([
         supabase.from("inventory_products").select("id, name, unit, average_cost").eq("is_active", true).order("name"),
         supabase.from("recipe_ingredients").select("*").eq("recipe_id", recipeId).order("sort_order"),
-        supabase.from("packaging_kits").select("id, name, kit_type, brand_id, is_active, brands(name)").eq("is_active", true).order("name"),
-        supabase.from("packaging_kit_items").select("kit_id, product_id, quantity"),
       ]);
       setProducts((prods as Product[]) ?? []);
       setItems(
@@ -60,38 +55,10 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
           is_packaging: !!i.is_packaging,
         })),
       );
-      const itemsByKit: Record<string, { product_id: string; quantity: number }[]> = {};
-      (kis ?? []).forEach((it: any) => {
-        (itemsByKit[it.kit_id] ||= []).push({ product_id: it.product_id, quantity: Number(it.quantity) });
-      });
-      setKits(((ks as any[]) ?? []).map((k) => ({
-        id: k.id, name: k.name, kit_type: k.kit_type,
-        brand_name: k.brands?.name ?? "—",
-        items: itemsByKit[k.id] ?? [],
-      })));
       setLoading(false);
     })();
   }, [open, recipeId]);
 
-  const applyKit = () => {
-    const kit = kits.find((k) => k.id === kitToApply);
-    if (!kit) return;
-    setItems((arr) => {
-      const next = [...arr];
-      kit.items.forEach((ki) => {
-        const prod = products.find((p) => p.id === ki.product_id);
-        const existingIdx = next.findIndex((x) => x.product_id === ki.product_id && x.is_packaging);
-        if (existingIdx >= 0) {
-          next[existingIdx] = { ...next[existingIdx], quantity: Number(next[existingIdx].quantity) + ki.quantity };
-        } else {
-          next.push({ product_id: ki.product_id, quantity: ki.quantity, unit: prod?.unit ?? "UN", notes: "", is_packaging: true });
-        }
-      });
-      return next;
-    });
-    toast.success(`Kit "${kit.name}" aplicado`);
-    setKitToApply("");
-  };
 
   const totalCost = items.reduce((sum, i) => {
     const p = products.find((p) => p.id === i.product_id);
@@ -171,23 +138,6 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
                       <Plus className="h-4 w-4 mr-1" /> Adicionar
                     </Button>
                   </div>
-                  {group.isPack && kits.length > 0 && (
-                    <div className="flex flex-col sm:flex-row gap-2 bg-muted/40 rounded-md p-2">
-                      <Select value={kitToApply} onValueChange={setKitToApply}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Aplicar kit pronto…" /></SelectTrigger>
-                        <SelectContent>
-                          {kits.map((k) => (
-                            <SelectItem key={k.id} value={k.id}>
-                              {k.brand_name} • {k.name} ({k.kit_type})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button size="sm" variant="secondary" disabled={!kitToApply} onClick={applyKit}>
-                        Aplicar kit
-                      </Button>
-                    </div>
-                  )}
                   {rows.length === 0 && (
                     <p className="text-sm text-muted-foreground text-center py-4">{group.empty}</p>
                   )}

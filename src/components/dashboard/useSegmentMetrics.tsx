@@ -63,7 +63,6 @@ async function fetchSegmentMetrics(): Promise<Omit<SegmentMetrics, "loading">> {
     tasks,
     stock,
     posMonth,
-    unmapped,
   ] = await Promise.all([
     supabase.from("accounts_payable").select("id", { count: "exact", head: true }).eq("status", "open"),
     supabase.from("accounts_payable").select("id", { count: "exact", head: true }).eq("status", "open").lt("due_date", today),
@@ -77,10 +76,6 @@ async function fetchSegmentMetrics(): Promise<Omit<SegmentMetrics, "loading">> {
     supabase.from("employee_tasks").select("id", { count: "exact", head: true }).eq("is_active", true),
     supabase.from("inventory_stock").select("quantity, min_qty"),
     supabase.from("pdv_orders").select("total").eq("status", "concluded").gte("concluded_at", monthStart).lte("concluded_at", monthEnd + "T23:59:59"),
-    supabase.from("pos_sale_items").select("id", { count: "exact", head: true }).is("recipe_id" as any, null).limit(1).then(
-      (r) => r,
-      () => ({ count: 0 } as any),
-    ),
   ]);
 
   const sumAmount = (rows: any[] | null | undefined) =>
@@ -111,7 +106,7 @@ async function fetchSegmentMetrics(): Promise<Omit<SegmentMetrics, "loading">> {
     productsLowStock,
     posSalesMonth: posRows.length,
     posRevenueMonth,
-    unmappedPosItems: (unmapped as any).count ?? 0,
+    unmappedPosItems: 0,
   };
 }
 

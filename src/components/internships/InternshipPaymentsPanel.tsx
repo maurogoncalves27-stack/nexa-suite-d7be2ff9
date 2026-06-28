@@ -232,6 +232,8 @@ export default function InternshipPaymentsPanel() {
         rows,
         fileName: `bolsa-estagio-${from}-a-${to}`,
         paymentDate,
+        source: "internship",
+        sourceRef: `Bolsa estágio ${from} a ${to}`,
       });
       if (included === 0) { toast.error("Nenhum pagamento válido para exportar."); return; }
       const ids = items.map((i) => i.id);
