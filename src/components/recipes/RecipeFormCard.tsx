@@ -421,11 +421,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
                 </span>
               </div>
               <div className="flex items-center gap-1 flex-wrap">
-                {hideFactory ? (
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                    {storeRecipeKind === "prep" ? "Pré-preparo" : "Prato pronto"}
-                  </Badge>
-                ) : factoryMode ? (
+                {hideFactory ? null : factoryMode ? (
                   <Badge
                     className="text-[10px] px-1.5 py-0 border-transparent"
                     style={
