@@ -462,13 +462,20 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
                 </div>
                 {hideFactory ? (
                   <>
-                    <div className="flex items-center gap-2 rounded-md border p-2">
-                      <Switch
-                        checked={storeRecipeKind === "prep"}
-                        onCheckedChange={(checked) => setStoreRecipeKind(checked ? "prep" : "ready")}
-                      />
-                      <Label className="text-xs">{storeRecipeKind === "prep" ? "Pré-preparo" : "Prato pronto"}</Label>
+                    <div className="space-y-1">
+                      <Label>Tipo da ficha *</Label>
+                      <Select
+                        value={storeRecipeKind}
+                        onValueChange={(v) => setStoreRecipeKind(v as "prep" | "ready")}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ready">Prato pronto</SelectItem>
+                          <SelectItem value="prep">Pré-preparo</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
+
                     {storeRecipeKind === "prep" ? (
                       <div className="space-y-1">
                         <Label>Produto gerado pelo pré-preparo *</Label>
