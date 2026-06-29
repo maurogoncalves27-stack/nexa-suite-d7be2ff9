@@ -354,59 +354,66 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, on
                 </span>
               </div>
               <div className="flex items-center gap-1 flex-wrap">
-                <span
-                  role="button"
-                  tabIndex={0}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const factory = brands.find((b) => isFactoryBrandName(b.name));
-                    if (!factory) {
-                      toast.error("Marca 'PRÉ PREPARO/FÁBRICA' não encontrada");
-                      return;
-                    }
-                    setSelectedBrands((prev) => {
-                      const n = new Set(prev);
-                      if (n.has(factory.id)) n.delete(factory.id);
-                      else n.add(factory.id);
-                      return n;
-                    });
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
+                {!hideFactory && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      (e.currentTarget as HTMLElement).click();
-                    }
-                  }}
-                  className="inline-flex"
-                  title="Clique para alternar Pré-preparo ↔ Pronto"
-                >
-                  <Badge
-                    className="text-[10px] px-1.5 py-0 border-transparent cursor-pointer hover:opacity-80"
-                    style={
-                      isFactory
-                        ? { backgroundColor: "#22c55e", color: "#ffffff" }
-                        : { backgroundColor: "#2563eb", color: "#ffffff" }
-                    }
+                      const factory = brands.find((b) => isFactoryBrandName(b.name));
+                      if (!factory) {
+                        toast.error("Marca 'PRÉ PREPARO/FÁBRICA' não encontrada");
+                        return;
+                      }
+                      setSelectedBrands((prev) => {
+                        const n = new Set(prev);
+                        if (n.has(factory.id)) n.delete(factory.id);
+                        else n.add(factory.id);
+                        return n;
+                      });
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        (e.currentTarget as HTMLElement).click();
+                      }
+                    }}
+                    className="inline-flex"
+                    title="Clique para alternar Pré-preparo ↔ Pronto"
                   >
-                    {isFactory ? "Pré-preparo" : "Pronto"}
-                  </Badge>
-                </span>
-                {brandLabels.slice(0, 3).map((b) => {
-                  const c = colorForBrand(b);
-                  return (
                     <Badge
-                      key={b}
-                      className="text-[10px] px-1.5 py-0 border-transparent hover:opacity-90"
-                      style={{ backgroundColor: c.bg, color: c.text }}
+                      className="text-[10px] px-1.5 py-0 border-transparent cursor-pointer hover:opacity-80"
+                      style={
+                        isFactory
+                          ? { backgroundColor: "#22c55e", color: "#ffffff" }
+                          : { backgroundColor: "#2563eb", color: "#ffffff" }
+                      }
                     >
-                      {b}
+                      {isFactory ? "Pré-preparo" : "Pronto"}
                     </Badge>
-                  );
-                })}
-                {brandLabels.length > 3 && (
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">+{brandLabels.length - 3}</Badge>
+                  </span>
+                )}
+                {brandLabels
+                  .filter((b) => !hideFactory || !isFactoryBrandName(b))
+                  .slice(0, 3)
+                  .map((b) => {
+                    const c = colorForBrand(b);
+                    return (
+                      <Badge
+                        key={b}
+                        className="text-[10px] px-1.5 py-0 border-transparent hover:opacity-90"
+                        style={{ backgroundColor: c.bg, color: c.text }}
+                      >
+                        {b}
+                      </Badge>
+                    );
+                  })}
+                {brandLabels.filter((b) => !hideFactory || !isFactoryBrandName(b)).length > 3 && (
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                    +{brandLabels.filter((b) => !hideFactory || !isFactoryBrandName(b)).length - 3}
+                  </Badge>
                 )}
                 {!form.is_active && <Badge variant="outline" className="text-[10px]">Inativa</Badge>}
               </div>
