@@ -391,6 +391,17 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
                   <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                     {storeRecipeKind === "prep" ? "Pré-preparo" : "Prato pronto"}
                   </Badge>
+                ) : factoryMode ? (
+                  <Badge
+                    className="text-[10px] px-1.5 py-0 border-transparent"
+                    style={
+                      factoryRecipeKind === "porcao"
+                        ? { backgroundColor: "#22c55e", color: "#ffffff" }
+                        : { backgroundColor: "#0ea5e9", color: "#ffffff" }
+                    }
+                  >
+                    {factoryRecipeKind === "porcao" ? "Porção" : "Pré-preparo"}
+                  </Badge>
                 ) : (
                   <span
                     role="button"
@@ -432,6 +443,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
                     </Badge>
                   </span>
                 )}
+
                 {brandLabels
                   .filter((b) => !hideFactory || !isFactoryBrandName(b))
                   .slice(0, 3)
