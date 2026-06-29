@@ -106,7 +106,16 @@ const RecipesFactory = () => {
                 className="pl-9"
               />
             </div>
+            <Select value={kindFilter} onValueChange={(v) => setKindFilter(v as "all" | "porcao" | "prep")}>
+              <SelectTrigger className="w-full sm:w-[220px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as fichas</SelectItem>
+                <SelectItem value="porcao">Porção</SelectItem>
+                <SelectItem value="prep">Pré-preparo</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+
 
 
 
