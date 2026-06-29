@@ -69,13 +69,14 @@ interface Props {
   recipeId: string | null;
   defaultOpen?: boolean;
   initialBrandId?: string | null;
+  hideFactory?: boolean;
   onSaved?: (newId?: string) => void;
   onCancelNew?: () => void;
   onDeleted?: () => void;
   onDuplicated?: (newId: string) => void;
 }
 
-const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCancelNew, onDeleted, onDuplicated }: Props) => {
+const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, onSaved, onCancelNew, onDeleted, onDuplicated }: Props) => {
   const { user } = useAuth();
   const isNew = !recipeId;
   const [loading, setLoading] = useState(false);
