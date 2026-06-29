@@ -190,7 +190,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
       supabase.from("recipes").select("*").eq("id", recipeId).maybeSingle(),
       supabase.from("recipe_brands").select("brand_id").eq("recipe_id", recipeId),
       supabase.from("menu_items").select("id").eq("recipe_id", recipeId).limit(1),
-    ]).then(([{ data: r }, { data: rb }, { data: mi }]) => {
+    ]).then(async ([{ data: r }, { data: rb }, { data: mi }]) => {
       if (r) {
         setForm({
           name: r.name,
@@ -210,7 +210,6 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
           ean: (r as any).ean ?? "",
         });
         setStoreRecipeKind((r as any).scope !== "fabrica" && r.output_product_id ? "prep" : "ready");
-        // Detect factory prep by output product being internal
         if ((r as any).scope === "fabrica") {
           if (r.output_product_id) {
             const { data: prod } = await supabase.from("inventory_products").select("is_internal").eq("id", r.output_product_id).maybeSingle();
