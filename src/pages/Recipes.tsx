@@ -203,6 +203,13 @@ const Recipes = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <ComboRecipeDialog
+        open={creatingCombo}
+        onOpenChange={setCreatingCombo}
+        brandId={activeBrandId}
+        onCreated={() => load()}
+      />
     </div>
   );
 };
