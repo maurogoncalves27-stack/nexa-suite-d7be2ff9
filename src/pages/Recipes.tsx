@@ -109,6 +109,9 @@ const Recipes = () => {
         </div>
         {canReceive && (
           <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setCreatingCombo(true)} className="gap-2">
+              <Package className="h-4 w-4" /> Novo combo
+            </Button>
             <Button onClick={() => setCreatingNew(true)} className="gap-2" disabled={creatingNew}>
               <Plus className="h-4 w-4" /> Nova ficha
             </Button>
