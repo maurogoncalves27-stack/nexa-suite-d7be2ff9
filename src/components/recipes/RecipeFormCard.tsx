@@ -97,7 +97,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
   const [ingredientsOpen, setIngredientsOpen] = useState(false);
   const [generatingBook, setGeneratingBook] = useState(false);
 
-  const isFactory = !hideFactory && brands.some((b) => selectedBrands.has(b.id) && isFactoryBrandName(b.name));
+  const isFactory = factoryMode || (!hideFactory && brands.some((b) => selectedBrands.has(b.id) && isFactoryBrandName(b.name)));
   const initialBrandIsFactory = !!(
     initialBrandId && brands.some((b) => b.id === initialBrandId && isFactoryBrandName(b.name))
   );
@@ -260,7 +260,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
 
   const handleSave = async () => {
     if (!form.name.trim()) { toast.error("Informe o nome da ficha"); return; }
-    const saveAsFactory = !hideFactory && (isFactory || form.scope === "fabrica");
+    const saveAsFactory = factoryMode || (!hideFactory && (isFactory || form.scope === "fabrica"));
     const saveAsStorePrep = !!hideFactory && storeRecipeKind === "prep";
     if ((saveAsFactory || saveAsStorePrep) && !form.output_product_id) {
       toast.error("Selecione o produto gerado pela ficha");
@@ -496,9 +496,9 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
                   </>
                 ) : isFactory ? (
                   <div className="space-y-1">
-                    <Label>Produto final (que será adicionado ao estoque) *</Label>
+                    <Label>Item porcionado gerado por esta ficha *</Label>
                     <Select value={form.output_product_id} onValueChange={(v) => setForm((f) => ({ ...f, output_product_id: v }))}>
-                      <SelectTrigger><SelectValue placeholder="Selecione o produto porcionado" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Selecione o item porcionado" /></SelectTrigger>
                       <SelectContent>
                         {products
                           .filter((p) => (p.category ?? "").toUpperCase() === "PORCIONADOS")
@@ -506,9 +506,10 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
                       </SelectContent>
                     </Select>
                     <p className="text-[11px] text-muted-foreground">
-                      Apenas produtos da categoria <strong>PORCIONADOS</strong> aparecem nas fichas da fábrica.
+                      A fábrica não tem cardápio — o item porcionado é o "cardápio da fábrica". Só produtos da categoria <strong>PORCIONADOS</strong> aparecem aqui. As porções produzidas são transferidas às lojas via Solicitações da Fábrica.
                     </p>
                   </div>
+
                 ) : (
                   <div className="space-y-1">
                     <Label>Item de cardápio vinculado *</Label>
