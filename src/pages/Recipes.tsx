@@ -85,13 +85,8 @@ const Recipes = () => {
 
       if (activeBrand && (!set || !set.has(activeBrand))) return false;
 
-      if (typeFilter === "factory") {
-        // Pré-preparo da loja = ficha que gera um insumo reaproveitável (tem output_product_id)
-        if (!r.output_product_id) return false;
-      } else if (typeFilter === "ready") {
-        // Prato pronto = ficha final (sem output_product_id)
-        if (r.output_product_id) return false;
-      }
+
+
       return !q || r.name.toLowerCase().includes(q);
     });
   }, [recipes, search, activeBrand, recipeBrandMap, typeFilter, factoryBrandId]);
