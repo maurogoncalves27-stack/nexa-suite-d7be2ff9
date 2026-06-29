@@ -31,7 +31,7 @@ const Recipes = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeBrand, setActiveBrand] = useState<string>("");
-  const [typeFilter, setTypeFilter] = useState<"all" | "factory" | "ready">("all");
+  
   const [creatingNew, setCreatingNew] = useState(false);
   const [creatingCombo, setCreatingCombo] = useState(false);
 
@@ -87,9 +87,8 @@ const Recipes = () => {
 
 
 
-      return !q || r.name.toLowerCase().includes(q);
-    });
-  }, [recipes, search, activeBrand, recipeBrandMap, typeFilter, factoryBrandId]);
+  }, [recipes, search, activeBrand, recipeBrandMap, factoryBrandId]);
+
 
 
 
@@ -137,31 +136,8 @@ const Recipes = () => {
                     onChange={(e) => setSearch(e.target.value)}
                     className="pl-9"
                   />
-                </div>
-                <div className="flex gap-1.5">
-                  <Button
-                    size="sm"
-                    variant={typeFilter === "all" ? "default" : "outline"}
-                    onClick={() => setTypeFilter("all")}
-                  >
-                    Todas
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={typeFilter === "factory" ? "default" : "outline"}
-                    onClick={() => setTypeFilter("factory")}
-                  >
-                    Pré-preparo
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={typeFilter === "ready" ? "default" : "outline"}
-                    onClick={() => setTypeFilter("ready")}
-                  >
-                    Prato pronto
-                  </Button>
-                </div>
               </div>
+
 
               {loading ? (
                 <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
