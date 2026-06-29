@@ -116,6 +116,10 @@ const ComboRecipeDialog = ({ open, onOpenChange, brandId, onCreated }: Props) =>
       toast.error("Selecione pelo menos 2 fichas para o combo");
       return;
     }
+    if (selectedBrands.size === 0) {
+      toast.error("Selecione pelo menos uma marca");
+      return;
+    }
     setSaving(true);
     try {
       // 1. Cria a ficha "combo"
