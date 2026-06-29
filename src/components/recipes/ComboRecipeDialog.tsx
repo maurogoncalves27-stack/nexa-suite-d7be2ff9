@@ -34,6 +34,8 @@ const ComboRecipeDialog = ({ open, onOpenChange, brandId, onCreated }: Props) =>
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const [options, setOptions] = useState<RecipeOption[]>([]);
+  const [brandsList, setBrandsList] = useState<BrandRef[]>([]);
+  const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
   const [lines, setLines] = useState<ComboLine[]>([
     { recipe_id: "", quantity: 1 },
     { recipe_id: "", quantity: 1 },
@@ -46,6 +48,7 @@ const ComboRecipeDialog = ({ open, onOpenChange, brandId, onCreated }: Props) =>
       { recipe_id: "", quantity: 1 },
       { recipe_id: "", quantity: 1 },
     ]);
+    setSelectedBrands(new Set(brandId ? [brandId] : []));
     (async () => {
       setLoading(true);
       // Fichas com produto de saída, ativas, somente do universo das lojas.
@@ -57,13 +60,22 @@ const ComboRecipeDialog = ({ open, onOpenChange, brandId, onCreated }: Props) =>
           .not("output_product_id", "is", null)
           .order("name"),
         supabase.from("recipe_brands").select("recipe_id, brand_id"),
-        supabase.from("brands").select("id, name").eq("is_active", true),
+        supabase.from("brands").select("id, name, slug").eq("is_active", true).order("sort_order"),
       ]);
       const factoryBrandIds = new Set(
-        ((brs as BrandRef[]) ?? [])
+        ((brs as any[]) ?? [])
           .filter((b) => /pr[eé]\s*preparo|f[aá]brica/i.test(b.name))
           .map((b) => b.id),
       );
+      const HIDDEN = new Set(["totem", "salao", "salão", "site"]);
+      const visibleBrands = ((brs as any[]) ?? []).filter(
+        (b) =>
+          !factoryBrandIds.has(b.id) &&
+          !HIDDEN.has((b.slug ?? "").toLowerCase()) &&
+          !HIDDEN.has((b.name ?? "").toLowerCase()),
+      );
+      setBrandsList(visibleBrands as BrandRef[]);
+
       const factoryRecipeIds = new Set(
         (links ?? [])
           .filter((l: any) => factoryBrandIds.has(l.brand_id))
@@ -79,6 +91,15 @@ const ComboRecipeDialog = ({ open, onOpenChange, brandId, onCreated }: Props) =>
       setLoading(false);
     })();
   }, [open, brandId]);
+
+  const toggleBrand = (id: string) =>
+    setSelectedBrands((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+
 
   const addLine = () => setLines((arr) => [...arr, { recipe_id: "", quantity: 1 }]);
   const updateLine = (idx: number, patch: Partial<ComboLine>) =>
