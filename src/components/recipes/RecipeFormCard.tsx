@@ -600,6 +600,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
                 {recipeId && <RecipeYieldCostPanel recipeId={recipeId} />}
 
 
+                {!(factoryMode && factoryRecipeKind === "prep") && (
                 <Accordion type="single" collapsible className="border rounded-md">
                   <AccordionItem value="fiscal" className="border-b-0">
                     <AccordionTrigger className="px-3 py-2 text-sm hover:no-underline">
@@ -698,6 +699,8 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
+                )}
+
 
 
 
