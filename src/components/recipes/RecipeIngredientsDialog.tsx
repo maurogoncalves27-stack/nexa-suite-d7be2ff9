@@ -162,13 +162,37 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
                             <div className="col-span-12 sm:col-span-6">
                               <Select value={i.product_id} onValueChange={(v) => {
                                 const prod = products.find((x) => x.id === v);
-                                update(idx, { product_id: v, unit: prod?.unit ?? i.unit });
+                                const ficha = recipeByOutput[v];
+                                update(idx, { product_id: v, unit: ficha?.yield_unit ?? prod?.unit ?? i.unit });
                               }}>
-                                <SelectTrigger><SelectValue placeholder="Produto…" /></SelectTrigger>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Produto ou ficha…" />
+                                </SelectTrigger>
                                 <SelectContent>
-                                  {products.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                  <SelectGroup>
+                                    <SelectLabel>Pré-preparos / Fichas</SelectLabel>
+                                    {Object.values(recipeByOutput).length === 0 && (
+                                      <div className="px-2 py-1 text-xs text-muted-foreground">Nenhuma ficha disponível</div>
+                                    )}
+                                    {Object.values(recipeByOutput)
+                                      .sort((a, b) => a.name.localeCompare(b.name))
+                                      .map((r) => (
+                                        <SelectItem key={r.output_product_id} value={r.output_product_id}>
+                                          🧪 {r.name}
+                                        </SelectItem>
+                                      ))}
+                                  </SelectGroup>
+                                  <SelectGroup>
+                                    <SelectLabel>Insumos / Produtos</SelectLabel>
+                                    {products
+                                      .filter((p) => !recipeByOutput[p.id])
+                                      .map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                  </SelectGroup>
                                 </SelectContent>
                               </Select>
+                              {recipeByOutput[i.product_id] && (
+                                <Badge variant="secondary" className="mt-1 text-[10px]">ficha técnica</Badge>
+                              )}
                             </div>
                             <div className="col-span-5 sm:col-span-2">
                               <Input
