@@ -36,17 +36,26 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
+  const [recipeByOutput, setRecipeByOutput] = useState<Record<string, RecipeRef>>({});
   const [items, setItems] = useState<Item[]>([]);
 
   useEffect(() => {
     if (!open || !recipeId) return;
     (async () => {
       setLoading(true);
-      const [{ data: prods }, { data: ings }] = await Promise.all([
+      const [{ data: prods }, { data: ings }, { data: recs }] = await Promise.all([
         supabase.from("inventory_products").select("id, name, unit, average_cost").eq("is_active", true).order("name"),
         supabase.from("recipe_ingredients").select("*").eq("recipe_id", recipeId).order("sort_order"),
+        supabase.from("recipes").select("id, name, yield_unit, output_product_id").eq("is_active", true).not("output_product_id", "is", null).order("name"),
       ]);
       setProducts((prods as Product[]) ?? []);
+      const map: Record<string, RecipeRef> = {};
+      ((recs as any[]) ?? []).forEach((r) => {
+        if (r.id !== recipeId && r.output_product_id) {
+          map[r.output_product_id] = r as RecipeRef;
+        }
+      });
+      setRecipeByOutput(map);
       setItems(
         (ings ?? []).map((i: any) => ({
           id: i.id,
