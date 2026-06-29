@@ -191,6 +191,7 @@ const Recipes = () => {
                         <RecipeFormCard
                           key={r.id}
                           recipeId={r.id}
+                          hideFactory
                           onSaved={load}
                           onDeleted={load}
                           onDuplicated={load}
