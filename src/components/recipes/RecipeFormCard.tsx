@@ -588,7 +588,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, on
                 <div className="space-y-1.5">
                   <Label>Marcas que usam esta ficha</Label>
                   <div className="flex flex-wrap gap-1.5">
-                    {brands.filter((b) => !/^(totem|sal[aã]o|site)$/i.test(b.name.trim())).map((b) => {
+                    {brands.filter((b) => !/^(totem|sal[aã]o|site)$/i.test(b.name.trim()) && (!hideFactory || !isFactoryBrandName(b.name))).map((b) => {
                       const active = selectedBrands.has(b.id);
                       const c = colorForBrand(b.name);
                       return (
