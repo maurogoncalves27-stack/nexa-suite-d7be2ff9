@@ -134,9 +134,10 @@ const ComboRecipeDialog = ({ open, onOpenChange, brandId, onCreated }: Props) =>
       if (e1) throw e1;
       const newId = newRec!.id as string;
 
-      // 2. Vincula à marca da aba
-      if (brandId) {
-        await supabase.from("recipe_brands").insert({ recipe_id: newId, brand_id: brandId });
+      // 2. Vincula às marcas selecionadas
+      const brandRows = Array.from(selectedBrands).map((bId) => ({ recipe_id: newId, brand_id: bId }));
+      if (brandRows.length > 0) {
+        await supabase.from("recipe_brands").insert(brandRows);
       }
 
       // 3. Insere ingredientes (cada item = output_product_id da ficha selecionada)
