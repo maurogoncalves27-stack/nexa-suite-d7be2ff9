@@ -34,6 +34,8 @@ const ComboRecipeDialog = ({ open, onOpenChange, brandId, onCreated }: Props) =>
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const [options, setOptions] = useState<RecipeOption[]>([]);
+  const [brandsList, setBrandsList] = useState<BrandRef[]>([]);
+  const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
   const [lines, setLines] = useState<ComboLine[]>([
     { recipe_id: "", quantity: 1 },
     { recipe_id: "", quantity: 1 },
@@ -46,6 +48,7 @@ const ComboRecipeDialog = ({ open, onOpenChange, brandId, onCreated }: Props) =>
       { recipe_id: "", quantity: 1 },
       { recipe_id: "", quantity: 1 },
     ]);
+    setSelectedBrands(new Set(brandId ? [brandId] : []));
     (async () => {
       setLoading(true);
       // Fichas com produto de saída, ativas, somente do universo das lojas.
@@ -57,13 +60,22 @@ const ComboRecipeDialog = ({ open, onOpenChange, brandId, onCreated }: Props) =>
           .not("output_product_id", "is", null)
           .order("name"),
         supabase.from("recipe_brands").select("recipe_id, brand_id"),
-        supabase.from("brands").select("id, name").eq("is_active", true),
+        supabase.from("brands").select("id, name, slug").eq("is_active", true).order("sort_order"),
       ]);
       const factoryBrandIds = new Set(
-        ((brs as BrandRef[]) ?? [])
+        ((brs as any[]) ?? [])
           .filter((b) => /pr[eé]\s*preparo|f[aá]brica/i.test(b.name))
           .map((b) => b.id),
       );
+      const HIDDEN = new Set(["totem", "salao", "salão", "site"]);
+      const visibleBrands = ((brs as any[]) ?? []).filter(
+        (b) =>
+          !factoryBrandIds.has(b.id) &&
+          !HIDDEN.has((b.slug ?? "").toLowerCase()) &&
+          !HIDDEN.has((b.name ?? "").toLowerCase()),
+      );
+      setBrandsList(visibleBrands as BrandRef[]);
+
       const factoryRecipeIds = new Set(
         (links ?? [])
           .filter((l: any) => factoryBrandIds.has(l.brand_id))
@@ -80,6 +92,15 @@ const ComboRecipeDialog = ({ open, onOpenChange, brandId, onCreated }: Props) =>
     })();
   }, [open, brandId]);
 
+  const toggleBrand = (id: string) =>
+    setSelectedBrands((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+
+
   const addLine = () => setLines((arr) => [...arr, { recipe_id: "", quantity: 1 }]);
   const updateLine = (idx: number, patch: Partial<ComboLine>) =>
     setLines((arr) => arr.map((l, k) => (k === idx ? { ...l, ...patch } : l)));
@@ -93,6 +114,10 @@ const ComboRecipeDialog = ({ open, onOpenChange, brandId, onCreated }: Props) =>
     const valid = lines.filter((l) => l.recipe_id && l.quantity > 0);
     if (valid.length < 2) {
       toast.error("Selecione pelo menos 2 fichas para o combo");
+      return;
+    }
+    if (selectedBrands.size === 0) {
+      toast.error("Selecione pelo menos uma marca");
       return;
     }
     setSaving(true);
@@ -113,9 +138,10 @@ const ComboRecipeDialog = ({ open, onOpenChange, brandId, onCreated }: Props) =>
       if (e1) throw e1;
       const newId = newRec!.id as string;
 
-      // 2. Vincula à marca da aba
-      if (brandId) {
-        await supabase.from("recipe_brands").insert({ recipe_id: newId, brand_id: brandId });
+      // 2. Vincula às marcas selecionadas
+      const brandRows = Array.from(selectedBrands).map((bId) => ({ recipe_id: newId, brand_id: bId }));
+      if (brandRows.length > 0) {
+        await supabase.from("recipe_brands").insert(brandRows);
       }
 
       // 3. Insere ingredientes (cada item = output_product_id da ficha selecionada)
@@ -169,6 +195,32 @@ const ComboRecipeDialog = ({ open, onOpenChange, brandId, onCreated }: Props) =>
                 placeholder="Ex.: Parmegiana + Churros"
               />
             </div>
+            <div className="space-y-1.5">
+              <Label>Marcas (abas onde o combo aparecerá)</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {brandsList.map((b) => {
+                  const active = selectedBrands.has(b.id);
+                  return (
+                    <button
+                      key={b.id}
+                      type="button"
+                      onClick={() => toggleBrand(b.id)}
+                      className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                        active
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background text-muted-foreground border-border hover:bg-muted"
+                      }`}
+                    >
+                      {b.name}
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedBrands.size === 0 && (
+                <p className="text-xs text-destructive">Selecione pelo menos uma marca.</p>
+              )}
+            </div>
+
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
