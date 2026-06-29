@@ -190,7 +190,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
       supabase.from("recipes").select("*").eq("id", recipeId).maybeSingle(),
       supabase.from("recipe_brands").select("brand_id").eq("recipe_id", recipeId),
       supabase.from("menu_items").select("id").eq("recipe_id", recipeId).limit(1),
-    ]).then(([{ data: r }, { data: rb }, { data: mi }]) => {
+    ]).then(async ([{ data: r }, { data: rb }, { data: mi }]) => {
       if (r) {
         setForm({
           name: r.name,
@@ -210,7 +210,16 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
           ean: (r as any).ean ?? "",
         });
         setStoreRecipeKind((r as any).scope !== "fabrica" && r.output_product_id ? "prep" : "ready");
-        setFactoryRecipeKind(r.output_product_id ? "porcao" : "prep");
+        if ((r as any).scope === "fabrica") {
+          if (r.output_product_id) {
+            const { data: prod } = await supabase.from("inventory_products").select("is_internal").eq("id", r.output_product_id).maybeSingle();
+            setFactoryRecipeKind((prod as any)?.is_internal ? "prep" : "porcao");
+          } else {
+            setFactoryRecipeKind("prep");
+          }
+        } else {
+          setFactoryRecipeKind(r.output_product_id ? "porcao" : "prep");
+        }
 
         setPhotoPath((r as any).photo_path ?? null);
       }
@@ -273,9 +282,34 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
     }
     setSaving(true);
     try {
+      const factoryWantsPrep = saveAsFactory && factoryRecipeKind === "prep";
+      let outputId: string | null = form.output_product_id || null;
+      if (factoryWantsPrep) {
+        if (outputId) {
+          await supabase.from("inventory_products").update({
+            name: form.name.trim(),
+            unit: form.yield_unit,
+          }).eq("id", outputId);
+        } else {
+          const { data: prod, error: pErr } = await supabase
+            .from("inventory_products")
+            .insert({
+              name: form.name.trim(),
+              unit: form.yield_unit,
+              is_internal: true,
+              factory_only: true,
+              product_type: "insumo",
+              is_active: true,
+            })
+            .select("id")
+            .single();
+          if (pErr) throw pErr;
+          outputId = (prod as any).id;
+        }
+      }
       const payload = {
         name: form.name.trim(),
-        output_product_id: factoryWantsOutput || saveAsStorePrep ? form.output_product_id : null,
+        output_product_id: factoryWantsOutput || saveAsStorePrep || factoryWantsPrep ? outputId : null,
         scope: saveAsFactory ? "fabrica" : "loja",
 
         yield_quantity: form.yield_quantity,
