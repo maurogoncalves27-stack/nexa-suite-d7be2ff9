@@ -323,7 +323,7 @@ export default function DrePanel() {
     <Card>
       <CardContent className="pt-4 sm:pt-6 space-y-4">
         <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-          Receita bruta vem do faturamento manual diário. Deduções vêm da planilha "Vendas iFood" (coluna M). Clique nas linhas de despesa para ver as categorias.
+          Receita bruta vem do faturamento manual diário. Despesas vêm do Extrato/+Pagtos pela data de competência (inclui lançamentos ainda não pagos). Custos iFood (planilha) é a única dedução externa. Clique nas linhas de despesa para ver as categorias.
         </p>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
