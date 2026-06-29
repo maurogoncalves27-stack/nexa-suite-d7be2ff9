@@ -225,9 +225,10 @@ export default function DreByStorePanel() {
       applyReceivable(col, group, credit);
     }
 
-    // Despesas diretas da loja
+    // Despesas diretas da loja — pela competência, paga ou não
     for (const p of payables) {
-      if (p.status !== "paid" || !p.paid_at) continue;
+      if (p.status === "cancelled") continue;
+      if (!(p.competence_date ?? p.due_date)) continue;
       const tid = resolveStoreId(p.store_id);
       if (tid !== selectedStoreId) continue;
       const debit = Number(p.amount) || 0;
