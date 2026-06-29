@@ -89,6 +89,8 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
   const [form, setForm] = useState(emptyForm);
   const [storeRecipeKind, setStoreRecipeKind] = useState<"ready" | "prep">("ready");
+  const [factoryRecipeKind, setFactoryRecipeKind] = useState<"porcao" | "prep">("porcao");
+
   const [menuItems, setMenuItems] = useState<MenuItemRow[]>([]);
   const [linkedMenuItemId, setLinkedMenuItemId] = useState<string>("");
   const [photoPath, setPhotoPath] = useState<string | null>(null);
@@ -208,6 +210,8 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
           ean: (r as any).ean ?? "",
         });
         setStoreRecipeKind((r as any).scope !== "fabrica" && r.output_product_id ? "prep" : "ready");
+        setFactoryRecipeKind(r.output_product_id ? "porcao" : "prep");
+
         setPhotoPath((r as any).photo_path ?? null);
       }
       setSelectedBrands(new Set((rb ?? []).map((x: any) => x.brand_id)));
@@ -262,7 +266,8 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
     if (!form.name.trim()) { toast.error("Informe o nome da ficha"); return; }
     const saveAsFactory = factoryMode || (!hideFactory && (isFactory || form.scope === "fabrica"));
     const saveAsStorePrep = !!hideFactory && storeRecipeKind === "prep";
-    if ((saveAsFactory || saveAsStorePrep) && !form.output_product_id) {
+    const factoryWantsOutput = saveAsFactory && factoryRecipeKind === "porcao";
+    if ((factoryWantsOutput || saveAsStorePrep) && !form.output_product_id) {
       toast.error("Selecione o produto gerado pela ficha");
       return;
     }
@@ -270,8 +275,9 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
     try {
       const payload = {
         name: form.name.trim(),
-        output_product_id: saveAsFactory || saveAsStorePrep ? form.output_product_id : null,
+        output_product_id: factoryWantsOutput || saveAsStorePrep ? form.output_product_id : null,
         scope: saveAsFactory ? "fabrica" : "loja",
+
         yield_quantity: form.yield_quantity,
         yield_unit: form.yield_unit,
         shelf_life_hours: form.shelf_life_hours,
@@ -502,20 +508,43 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
                     )}
                   </>
                 ) : isFactory ? (
-                  <div className="space-y-1">
-                    <Label>Item porcionado gerado por esta ficha *</Label>
-                    <Select value={form.output_product_id} onValueChange={(v) => setForm((f) => ({ ...f, output_product_id: v }))}>
-                      <SelectTrigger><SelectValue placeholder="Selecione o item porcionado" /></SelectTrigger>
-                      <SelectContent>
-                        {products
-                          .filter((p) => (p.category ?? "").toUpperCase() === "PORCIONADOS")
-                          .map((p) => <SelectItem key={p.id} value={p.id}>{p.name} ({p.unit})</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-[11px] text-muted-foreground">
-                      A fábrica não tem cardápio — o item porcionado é o "cardápio da fábrica". Só produtos da categoria <strong>PORCIONADOS</strong> aparecem aqui. As porções produzidas são transferidas às lojas via Solicitações da Fábrica.
-                    </p>
-                  </div>
+                  <>
+                    <div className="space-y-1">
+                      <Label>Tipo da ficha *</Label>
+                      <Select
+                        value={factoryRecipeKind}
+                        onValueChange={(v) => setFactoryRecipeKind(v as "porcao" | "prep")}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="porcao">Porção (item porcionado transferido às lojas)</SelectItem>
+                          <SelectItem value="prep">Pré-preparo (insumo usado por outra ficha da fábrica)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {factoryRecipeKind === "porcao" ? (
+                      <div className="space-y-1">
+                        <Label>Item porcionado gerado por esta ficha *</Label>
+                        <Select value={form.output_product_id} onValueChange={(v) => setForm((f) => ({ ...f, output_product_id: v }))}>
+                          <SelectTrigger><SelectValue placeholder="Selecione o item porcionado" /></SelectTrigger>
+                          <SelectContent>
+                            {products
+                              .filter((p) => (p.category ?? "").toUpperCase() === "PORCIONADOS")
+                              .map((p) => <SelectItem key={p.id} value={p.id}>{p.name} ({p.unit})</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[11px] text-muted-foreground">
+                          A fábrica não tem cardápio — o item porcionado é o "cardápio da fábrica". Só produtos da categoria <strong>PORCIONADOS</strong> aparecem aqui. As porções produzidas são transferidas às lojas via Solicitações da Fábrica.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="rounded-md border border-dashed bg-muted/40 p-3 text-[11px] text-muted-foreground">
+                        Pré-preparo da fábrica: não gera item porcionado. Esta ficha será usada como ingrediente dentro de outra ficha da fábrica.
+                      </div>
+                    )}
+                  </>
+
+
 
                 ) : (
                   <div className="space-y-1">
