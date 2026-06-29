@@ -3,9 +3,11 @@ import { Loader2, Plus, Search, FlaskConical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useInventoryPermission } from "@/hooks/useInventoryPermission";
 import RecipeFormCard from "@/components/recipes/RecipeFormCard";
+
 
 interface RecipeRow {
   id: string;
