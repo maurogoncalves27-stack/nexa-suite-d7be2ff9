@@ -391,6 +391,17 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
                   <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                     {storeRecipeKind === "prep" ? "Pré-preparo" : "Prato pronto"}
                   </Badge>
+                ) : factoryMode ? (
+                  <Badge
+                    className="text-[10px] px-1.5 py-0 border-transparent"
+                    style={
+                      factoryRecipeKind === "porcao"
+                        ? { backgroundColor: "#22c55e", color: "#ffffff" }
+                        : { backgroundColor: "#0ea5e9", color: "#ffffff" }
+                    }
+                  >
+                    {factoryRecipeKind === "porcao" ? "Porção" : "Pré-preparo"}
+                  </Badge>
                 ) : (
                   <span
                     role="button"
@@ -432,6 +443,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
                     </Badge>
                   </span>
                 )}
+
                 {brandLabels
                   .filter((b) => !hideFactory || !isFactoryBrandName(b))
                   .slice(0, 3)
@@ -508,20 +520,42 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
                     )}
                   </>
                 ) : isFactory ? (
-                  <div className="space-y-1">
-                    <Label>Item porcionado gerado por esta ficha *</Label>
-                    <Select value={form.output_product_id} onValueChange={(v) => setForm((f) => ({ ...f, output_product_id: v }))}>
-                      <SelectTrigger><SelectValue placeholder="Selecione o item porcionado" /></SelectTrigger>
-                      <SelectContent>
-                        {products
-                          .filter((p) => (p.category ?? "").toUpperCase() === "PORCIONADOS")
-                          .map((p) => <SelectItem key={p.id} value={p.id}>{p.name} ({p.unit})</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-[11px] text-muted-foreground">
-                      A fábrica não tem cardápio — o item porcionado é o "cardápio da fábrica". Só produtos da categoria <strong>PORCIONADOS</strong> aparecem aqui. As porções produzidas são transferidas às lojas via Solicitações da Fábrica.
-                    </p>
-                  </div>
+                  <>
+                    <div className="space-y-1">
+                      <Label>Tipo da ficha *</Label>
+                      <Select
+                        value={factoryRecipeKind}
+                        onValueChange={(v) => setFactoryRecipeKind(v as "porcao" | "prep")}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="porcao">Porção (item porcionado transferido às lojas)</SelectItem>
+                          <SelectItem value="prep">Pré-preparo (insumo usado por outra ficha da fábrica)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {factoryRecipeKind === "porcao" ? (
+                      <div className="space-y-1">
+                        <Label>Item porcionado gerado por esta ficha *</Label>
+                        <Select value={form.output_product_id} onValueChange={(v) => setForm((f) => ({ ...f, output_product_id: v }))}>
+                          <SelectTrigger><SelectValue placeholder="Selecione o item porcionado" /></SelectTrigger>
+                          <SelectContent>
+                            {products
+                              .filter((p) => (p.category ?? "").toUpperCase() === "PORCIONADOS")
+                              .map((p) => <SelectItem key={p.id} value={p.id}>{p.name} ({p.unit})</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[11px] text-muted-foreground">
+                          A fábrica não tem cardápio — o item porcionado é o "cardápio da fábrica". Só produtos da categoria <strong>PORCIONADOS</strong> aparecem aqui. As porções produzidas são transferidas às lojas via Solicitações da Fábrica.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="rounded-md border border-dashed bg-muted/40 p-3 text-[11px] text-muted-foreground">
+                        Pré-preparo da fábrica: não gera item porcionado. Esta ficha será usada como ingrediente dentro de outra ficha da fábrica.
+                      </div>
+                    )}
+                  </>
+
 
 
 
