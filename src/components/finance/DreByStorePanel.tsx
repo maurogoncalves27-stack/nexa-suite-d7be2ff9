@@ -280,7 +280,8 @@ export default function DreByStorePanel() {
       // Acumula despesas da fábrica
       const factoryCol = emptyDreColumn("__f__", "Fábrica");
       for (const p of payables) {
-        if (p.status !== "paid" || !p.paid_at) continue;
+        if (p.status === "cancelled") continue;
+        if (!(p.competence_date ?? p.due_date)) continue;
         const isFactory = p.store_id && factoryStoreIds.has(p.store_id);
         const tid = resolveStoreId(p.store_id);
         const isAssignedToPhysical = tid && grossByStore.has(tid);
