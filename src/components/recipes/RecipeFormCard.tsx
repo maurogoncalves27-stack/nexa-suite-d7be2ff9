@@ -513,46 +513,18 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
                   <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
                 </div>
                 {hideFactory ? (
-                  <>
-                    <div className="space-y-1">
-                      <Label>Tipo da ficha *</Label>
-                      <Select
-                        value={storeRecipeKind}
-                        onValueChange={(v) => setStoreRecipeKind(v as "prep" | "ready")}
-                      >
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="ready">Prato pronto</SelectItem>
-                          <SelectItem value="prep">Pré-preparo</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {storeRecipeKind === "prep" ? (
-                      <div className="space-y-1">
-                        <Label>Produto gerado pelo pré-preparo *</Label>
-                        <Select value={form.output_product_id} onValueChange={(v) => setForm((f) => ({ ...f, output_product_id: v }))}>
-                          <SelectTrigger><SelectValue placeholder="Selecione o produto gerado" /></SelectTrigger>
-                          <SelectContent>
-                            {products.map((p) => <SelectItem key={p.id} value={p.id}>{p.name} ({p.unit})</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    ) : (
-                      <div className="space-y-1">
-                        <Label>Item de cardápio vinculado *</Label>
-                        <Select value={linkedMenuItemId} onValueChange={setLinkedMenuItemId}>
-                          <SelectTrigger><SelectValue placeholder="Selecione o item de cardápio" /></SelectTrigger>
-                          <SelectContent>
-                            {menuItems.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-[11px] text-muted-foreground">
-                          Esta ficha será vinculada ao item de cardápio escolhido (consumo no PDV usa esta ficha).
-                        </p>
-                      </div>
-                    )}
-                  </>
+                  <div className="space-y-1">
+                    <Label>Item de cardápio vinculado *</Label>
+                    <Select value={linkedMenuItemId} onValueChange={setLinkedMenuItemId}>
+                      <SelectTrigger><SelectValue placeholder="Selecione o item de cardápio" /></SelectTrigger>
+                      <SelectContent>
+                        {menuItems.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground">
+                      Esta ficha será vinculada ao item de cardápio escolhido (consumo no PDV usa esta ficha).
+                    </p>
+                  </div>
                 ) : isFactory ? (
                   <>
                     <div className="space-y-1">
