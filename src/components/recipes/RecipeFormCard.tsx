@@ -282,9 +282,34 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
     }
     setSaving(true);
     try {
+      const factoryWantsPrep = saveAsFactory && factoryRecipeKind === "prep";
+      let outputId: string | null = form.output_product_id || null;
+      if (factoryWantsPrep) {
+        if (outputId) {
+          await supabase.from("inventory_products").update({
+            name: form.name.trim(),
+            unit: form.yield_unit,
+          }).eq("id", outputId);
+        } else {
+          const { data: prod, error: pErr } = await supabase
+            .from("inventory_products")
+            .insert({
+              name: form.name.trim(),
+              unit: form.yield_unit,
+              is_internal: true,
+              factory_only: true,
+              product_type: "insumo",
+              is_active: true,
+            })
+            .select("id")
+            .single();
+          if (pErr) throw pErr;
+          outputId = (prod as any).id;
+        }
+      }
       const payload = {
         name: form.name.trim(),
-        output_product_id: factoryWantsOutput || saveAsStorePrep ? form.output_product_id : null,
+        output_product_id: factoryWantsOutput || saveAsStorePrep || factoryWantsPrep ? outputId : null,
         scope: saveAsFactory ? "fabrica" : "loja",
 
         yield_quantity: form.yield_quantity,
