@@ -210,7 +210,17 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
           ean: (r as any).ean ?? "",
         });
         setStoreRecipeKind((r as any).scope !== "fabrica" && r.output_product_id ? "prep" : "ready");
-        setFactoryRecipeKind(r.output_product_id ? "porcao" : "prep");
+        // Detect factory prep by output product being internal
+        if ((r as any).scope === "fabrica") {
+          if (r.output_product_id) {
+            const { data: prod } = await supabase.from("inventory_products").select("is_internal").eq("id", r.output_product_id).maybeSingle();
+            setFactoryRecipeKind((prod as any)?.is_internal ? "prep" : "porcao");
+          } else {
+            setFactoryRecipeKind("prep");
+          }
+        } else {
+          setFactoryRecipeKind(r.output_product_id ? "porcao" : "prep");
+        }
 
         setPhotoPath((r as any).photo_path ?? null);
       }
