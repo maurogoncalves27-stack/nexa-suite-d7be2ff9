@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Plus, Search, ChefHat } from "lucide-react";
+import { Loader2, Plus, Search, ChefHat, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useInventoryPermission } from "@/hooks/useInventoryPermission";
 import RecipeFormCard from "@/components/recipes/RecipeFormCard";
+import ComboRecipeDialog from "@/components/recipes/ComboRecipeDialog";
 
 interface RecipeRow {
   id: string;
@@ -32,6 +33,7 @@ const Recipes = () => {
   const [activeBrand, setActiveBrand] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<"all" | "factory" | "ready">("all");
   const [creatingNew, setCreatingNew] = useState(false);
+  const [creatingCombo, setCreatingCombo] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -107,6 +109,9 @@ const Recipes = () => {
         </div>
         {canReceive && (
           <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setCreatingCombo(true)} className="gap-2">
+              <Package className="h-4 w-4" /> Novo combo
+            </Button>
             <Button onClick={() => setCreatingNew(true)} className="gap-2" disabled={creatingNew}>
               <Plus className="h-4 w-4" /> Nova ficha
             </Button>
@@ -198,6 +203,13 @@ const Recipes = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <ComboRecipeDialog
+        open={creatingCombo}
+        onOpenChange={setCreatingCombo}
+        brandId={activeBrandId}
+        onCreated={() => load()}
+      />
     </div>
   );
 };

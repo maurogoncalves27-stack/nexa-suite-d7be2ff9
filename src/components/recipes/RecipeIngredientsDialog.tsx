@@ -3,13 +3,15 @@ import { Loader2, Plus, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const UNITS = ["UN", "KG", "G", "L", "ML", "CX", "PCT", "FD", "DZ", "MT", "PORCAO"];
 
 interface Product { id: string; name: string; unit: string; average_cost: number; }
+interface RecipeRef { id: string; name: string; yield_unit: string; output_product_id: string; }
 
 interface Item {
   id?: string;
@@ -34,17 +36,26 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
+  const [recipeByOutput, setRecipeByOutput] = useState<Record<string, RecipeRef>>({});
   const [items, setItems] = useState<Item[]>([]);
 
   useEffect(() => {
     if (!open || !recipeId) return;
     (async () => {
       setLoading(true);
-      const [{ data: prods }, { data: ings }] = await Promise.all([
+      const [{ data: prods }, { data: ings }, { data: recs }] = await Promise.all([
         supabase.from("inventory_products").select("id, name, unit, average_cost").eq("is_active", true).order("name"),
         supabase.from("recipe_ingredients").select("*").eq("recipe_id", recipeId).order("sort_order"),
+        supabase.from("recipes").select("id, name, yield_unit, output_product_id").eq("is_active", true).not("output_product_id", "is", null).order("name"),
       ]);
       setProducts((prods as Product[]) ?? []);
+      const map: Record<string, RecipeRef> = {};
+      ((recs as any[]) ?? []).forEach((r) => {
+        if (r.id !== recipeId && r.output_product_id) {
+          map[r.output_product_id] = r as RecipeRef;
+        }
+      });
+      setRecipeByOutput(map);
       setItems(
         (ings ?? []).map((i: any) => ({
           id: i.id,
@@ -151,13 +162,37 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
                             <div className="col-span-12 sm:col-span-6">
                               <Select value={i.product_id} onValueChange={(v) => {
                                 const prod = products.find((x) => x.id === v);
-                                update(idx, { product_id: v, unit: prod?.unit ?? i.unit });
+                                const ficha = recipeByOutput[v];
+                                update(idx, { product_id: v, unit: ficha?.yield_unit ?? prod?.unit ?? i.unit });
                               }}>
-                                <SelectTrigger><SelectValue placeholder="Produto…" /></SelectTrigger>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Produto ou ficha…" />
+                                </SelectTrigger>
                                 <SelectContent>
-                                  {products.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                  <SelectGroup>
+                                    <SelectLabel>Pré-preparos / Fichas</SelectLabel>
+                                    {Object.values(recipeByOutput).length === 0 && (
+                                      <div className="px-2 py-1 text-xs text-muted-foreground">Nenhuma ficha disponível</div>
+                                    )}
+                                    {Object.values(recipeByOutput)
+                                      .sort((a, b) => a.name.localeCompare(b.name))
+                                      .map((r) => (
+                                        <SelectItem key={r.output_product_id} value={r.output_product_id}>
+                                          🧪 {r.name}
+                                        </SelectItem>
+                                      ))}
+                                  </SelectGroup>
+                                  <SelectGroup>
+                                    <SelectLabel>Insumos / Produtos</SelectLabel>
+                                    {products
+                                      .filter((p) => !recipeByOutput[p.id])
+                                      .map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                  </SelectGroup>
                                 </SelectContent>
                               </Select>
+                              {recipeByOutput[i.product_id] && (
+                                <Badge variant="secondary" className="mt-1 text-[10px]">ficha técnica</Badge>
+                              )}
                             </div>
                             <div className="col-span-5 sm:col-span-2">
                               <Input
