@@ -3,9 +3,11 @@ import { Loader2, Plus, Search, FlaskConical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useInventoryPermission } from "@/hooks/useInventoryPermission";
 import RecipeFormCard from "@/components/recipes/RecipeFormCard";
+
 
 interface RecipeRow {
   id: string;
@@ -26,7 +28,9 @@ const RecipesFactory = () => {
   const [recipeBrandMap, setRecipeBrandMap] = useState<Record<string, Set<string>>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [kindFilter, setKindFilter] = useState<"all" | "porcao" | "prep">("all");
   
+
   const [creatingNew, setCreatingNew] = useState(false);
 
   const load = async () => {
@@ -63,9 +67,13 @@ const RecipesFactory = () => {
       // Universo: somente fábrica
       if (!isFactoryScope) return false;
 
+      if (kindFilter === "porcao" && !r.output_product_id) return false;
+      if (kindFilter === "prep" && r.output_product_id) return false;
+
       return !q || r.name.toLowerCase().includes(q);
     });
-  }, [recipes, search, recipeBrandMap, factoryBrandId]);
+  }, [recipes, search, recipeBrandMap, factoryBrandId, kindFilter]);
+
 
 
   return (
@@ -98,7 +106,16 @@ const RecipesFactory = () => {
                 className="pl-9"
               />
             </div>
+            <Select value={kindFilter} onValueChange={(v) => setKindFilter(v as "all" | "porcao" | "prep")}>
+              <SelectTrigger className="w-full sm:w-[220px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as fichas</SelectItem>
+                <SelectItem value="porcao">Porção</SelectItem>
+                <SelectItem value="prep">Pré-preparo</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+
 
 
 
