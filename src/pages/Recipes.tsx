@@ -136,7 +136,9 @@ const Recipes = () => {
                     onChange={(e) => setSearch(e.target.value)}
                     className="pl-9"
                   />
+                </div>
               </div>
+
 
 
               {loading ? (
