@@ -229,7 +229,8 @@ export default function DreAllocatedPanel() {
     const factoryCol = cols.get(FACTORY_KEY)!;
 
     for (const p of payables) {
-      if (p.status !== "paid" || !p.paid_at) continue;
+      if (p.status === "cancelled") continue;
+      if (!(p.competence_date ?? p.due_date)) continue;
       const debit = Number(p.amount) || 0;
       const group = p.category_id ? catMap[p.category_id]?.dre_group ?? null : null;
 
