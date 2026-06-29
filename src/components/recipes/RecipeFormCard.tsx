@@ -692,9 +692,10 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
                       </div>
                     </div>
 
-                    {!isNew && recipeId && (!hideFactory || storeRecipeKind === "ready") && (
+                    {!isNew && recipeId && !hideFactory && (
                       <RecipeMenuItemsSection recipeId={recipeId} />
                     )}
+
                   </>
                 )}
 
