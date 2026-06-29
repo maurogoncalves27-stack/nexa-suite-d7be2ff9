@@ -105,7 +105,7 @@ const ComboRecipeDialog = ({ open, onOpenChange, brandId, onCreated }: Props) =>
           yield_quantity: 1,
           yield_unit: "UN",
           scope: "loja",
-          category: "combo",
+          
           is_active: true,
         })
         .select("id")
