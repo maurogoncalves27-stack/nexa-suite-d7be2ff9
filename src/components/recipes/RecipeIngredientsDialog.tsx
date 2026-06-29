@@ -11,7 +11,8 @@ import { toast } from "sonner";
 const UNITS = ["UN", "KG", "G", "L", "ML", "CX", "PCT", "FD", "DZ", "MT", "PORCAO"];
 
 interface Product { id: string; name: string; unit: string; average_cost: number; }
-interface RecipeRef { id: string; name: string; yield_unit: string; output_product_id: string; }
+interface RecipeRef { id: string; name: string; yield_unit: string; output_product_id: string; scope: "fabrica" | "loja" | null; }
+interface BrandRef { id: string; name: string; }
 
 interface Item {
   id?: string;
@@ -29,28 +30,52 @@ interface Props {
   recipeName: string;
   yieldQuantity: number;
   yieldUnit: string;
+  contextScope?: "fabrica" | "loja";
+  brandIds?: string[];
   onSaved?: () => void;
 }
 
-const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yieldQuantity, yieldUnit, onSaved }: Props) => {
+const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yieldQuantity, yieldUnit, contextScope = "loja", brandIds = [], onSaved }: Props) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [recipeByOutput, setRecipeByOutput] = useState<Record<string, RecipeRef>>({});
   const [items, setItems] = useState<Item[]>([]);
+  const brandKey = brandIds.join("|");
 
   useEffect(() => {
     if (!open || !recipeId) return;
     (async () => {
       setLoading(true);
-      const [{ data: prods }, { data: ings }, { data: recs }] = await Promise.all([
+      const [{ data: prods }, { data: ings }, { data: recs }, { data: links }, { data: brs }] = await Promise.all([
         supabase.from("inventory_products").select("id, name, unit, average_cost").eq("is_active", true).order("name"),
         supabase.from("recipe_ingredients").select("*").eq("recipe_id", recipeId).order("sort_order"),
-        supabase.from("recipes").select("id, name, yield_unit, output_product_id").eq("is_active", true).not("output_product_id", "is", null).order("name"),
+        supabase.from("recipes").select("id, name, yield_unit, output_product_id, scope").eq("is_active", true).not("output_product_id", "is", null).order("name"),
+        supabase.from("recipe_brands").select("recipe_id, brand_id"),
+        supabase.from("brands").select("id, name").eq("is_active", true),
       ]);
       setProducts((prods as Product[]) ?? []);
+      const factoryBrandIds = new Set(
+        ((brs as BrandRef[]) ?? [])
+          .filter((b) => /pr[eé]\s*preparo|f[aá]brica/i.test(b.name))
+          .map((b) => b.id),
+      );
+      const allowedBrandIds = new Set(brandIds.filter((id) => !factoryBrandIds.has(id)));
+      const recipeLinks = new Map<string, Set<string>>();
+      (links ?? []).forEach((l: any) => {
+        if (!recipeLinks.has(l.recipe_id)) recipeLinks.set(l.recipe_id, new Set());
+        recipeLinks.get(l.recipe_id)!.add(l.brand_id);
+      });
       const map: Record<string, RecipeRef> = {};
       ((recs as any[]) ?? []).forEach((r) => {
+        const linkedBrands = recipeLinks.get(r.id) ?? new Set<string>();
+        const linkedFactory = Array.from(linkedBrands).some((id) => factoryBrandIds.has(id));
+        if (contextScope === "loja") {
+          if (r.scope === "fabrica" || linkedFactory) return;
+          if (allowedBrandIds.size > 0 && !Array.from(linkedBrands).some((id) => allowedBrandIds.has(id))) return;
+        } else if (r.scope !== "fabrica" && !linkedFactory) {
+          return;
+        }
         if (r.id !== recipeId && r.output_product_id) {
           map[r.output_product_id] = r as RecipeRef;
         }
@@ -68,7 +93,7 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
       );
       setLoading(false);
     })();
-  }, [open, recipeId]);
+  }, [open, recipeId, contextScope, brandKey]);
 
 
   const totalCost = items.reduce((sum, i) => {
