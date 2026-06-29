@@ -69,13 +69,14 @@ interface Props {
   recipeId: string | null;
   defaultOpen?: boolean;
   initialBrandId?: string | null;
+  hideFactory?: boolean;
   onSaved?: (newId?: string) => void;
   onCancelNew?: () => void;
   onDeleted?: () => void;
   onDuplicated?: (newId: string) => void;
 }
 
-const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCancelNew, onDeleted, onDuplicated }: Props) => {
+const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, onSaved, onCancelNew, onDeleted, onDuplicated }: Props) => {
   const { user } = useAuth();
   const isNew = !recipeId;
   const [loading, setLoading] = useState(false);
@@ -353,59 +354,66 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
                 </span>
               </div>
               <div className="flex items-center gap-1 flex-wrap">
-                <span
-                  role="button"
-                  tabIndex={0}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const factory = brands.find((b) => isFactoryBrandName(b.name));
-                    if (!factory) {
-                      toast.error("Marca 'PRÉ PREPARO/FÁBRICA' não encontrada");
-                      return;
-                    }
-                    setSelectedBrands((prev) => {
-                      const n = new Set(prev);
-                      if (n.has(factory.id)) n.delete(factory.id);
-                      else n.add(factory.id);
-                      return n;
-                    });
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
+                {!hideFactory && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      (e.currentTarget as HTMLElement).click();
-                    }
-                  }}
-                  className="inline-flex"
-                  title="Clique para alternar Pré-preparo ↔ Pronto"
-                >
-                  <Badge
-                    className="text-[10px] px-1.5 py-0 border-transparent cursor-pointer hover:opacity-80"
-                    style={
-                      isFactory
-                        ? { backgroundColor: "#22c55e", color: "#ffffff" }
-                        : { backgroundColor: "#2563eb", color: "#ffffff" }
-                    }
+                      const factory = brands.find((b) => isFactoryBrandName(b.name));
+                      if (!factory) {
+                        toast.error("Marca 'PRÉ PREPARO/FÁBRICA' não encontrada");
+                        return;
+                      }
+                      setSelectedBrands((prev) => {
+                        const n = new Set(prev);
+                        if (n.has(factory.id)) n.delete(factory.id);
+                        else n.add(factory.id);
+                        return n;
+                      });
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        (e.currentTarget as HTMLElement).click();
+                      }
+                    }}
+                    className="inline-flex"
+                    title="Clique para alternar Pré-preparo ↔ Pronto"
                   >
-                    {isFactory ? "Pré-preparo" : "Pronto"}
-                  </Badge>
-                </span>
-                {brandLabels.slice(0, 3).map((b) => {
-                  const c = colorForBrand(b);
-                  return (
                     <Badge
-                      key={b}
-                      className="text-[10px] px-1.5 py-0 border-transparent hover:opacity-90"
-                      style={{ backgroundColor: c.bg, color: c.text }}
+                      className="text-[10px] px-1.5 py-0 border-transparent cursor-pointer hover:opacity-80"
+                      style={
+                        isFactory
+                          ? { backgroundColor: "#22c55e", color: "#ffffff" }
+                          : { backgroundColor: "#2563eb", color: "#ffffff" }
+                      }
                     >
-                      {b}
+                      {isFactory ? "Pré-preparo" : "Pronto"}
                     </Badge>
-                  );
-                })}
-                {brandLabels.length > 3 && (
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">+{brandLabels.length - 3}</Badge>
+                  </span>
+                )}
+                {brandLabels
+                  .filter((b) => !hideFactory || !isFactoryBrandName(b))
+                  .slice(0, 3)
+                  .map((b) => {
+                    const c = colorForBrand(b);
+                    return (
+                      <Badge
+                        key={b}
+                        className="text-[10px] px-1.5 py-0 border-transparent hover:opacity-90"
+                        style={{ backgroundColor: c.bg, color: c.text }}
+                      >
+                        {b}
+                      </Badge>
+                    );
+                  })}
+                {brandLabels.filter((b) => !hideFactory || !isFactoryBrandName(b)).length > 3 && (
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                    +{brandLabels.filter((b) => !hideFactory || !isFactoryBrandName(b)).length - 3}
+                  </Badge>
                 )}
                 {!form.is_active && <Badge variant="outline" className="text-[10px]">Inativa</Badge>}
               </div>
@@ -580,7 +588,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
                 <div className="space-y-1.5">
                   <Label>Marcas que usam esta ficha</Label>
                   <div className="flex flex-wrap gap-1.5">
-                    {brands.filter((b) => !/^(totem|sal[aã]o|site)$/i.test(b.name.trim())).map((b) => {
+                    {brands.filter((b) => !/^(totem|sal[aã]o|site)$/i.test(b.name.trim()) && (!hideFactory || !isFactoryBrandName(b.name))).map((b) => {
                       const active = selectedBrands.has(b.id);
                       const c = colorForBrand(b.name);
                       return (
@@ -626,25 +634,27 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, onSaved, onCanc
                         onCheckedChange={(v) => setForm((f) => ({ ...f, is_active: v }))} />
                       <Label className="text-xs">Ativa</Label>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        checked={isFactory}
-                        onCheckedChange={(checked) => {
-                          const factory = brands.find((b) => isFactoryBrandName(b.name));
-                          if (!factory) {
-                            toast.error("Marca 'PRÉ PREPARO/FÁBRICA' não encontrada");
-                            return;
-                          }
-                          setSelectedBrands((prev) => {
-                            const n = new Set(prev);
-                            if (checked) n.add(factory.id);
-                            else n.delete(factory.id);
-                            return n;
-                          });
-                        }}
-                      />
-                      <Label className="text-xs">{isFactory ? "Pré-preparo" : "Pronto"}</Label>
-                    </div>
+                    {!hideFactory && (
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={isFactory}
+                          onCheckedChange={(checked) => {
+                            const factory = brands.find((b) => isFactoryBrandName(b.name));
+                            if (!factory) {
+                              toast.error("Marca 'PRÉ PREPARO/FÁBRICA' não encontrada");
+                              return;
+                            }
+                            setSelectedBrands((prev) => {
+                              const n = new Set(prev);
+                              if (checked) n.add(factory.id);
+                              else n.delete(factory.id);
+                              return n;
+                            });
+                          }}
+                        />
+                        <Label className="text-xs">{isFactory ? "Pré-preparo" : "Pronto"}</Label>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 justify-end flex-wrap">
                     {!isNew && (

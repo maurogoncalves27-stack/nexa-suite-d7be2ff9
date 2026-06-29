@@ -175,6 +175,7 @@ const Recipes = () => {
                       recipeId={null}
                       defaultOpen
                       initialBrandId={activeBrandId}
+                      hideFactory
                       onCancelNew={() => setCreatingNew(false)}
                       onSaved={() => { setCreatingNew(false); load(); }}
                     />
@@ -190,6 +191,7 @@ const Recipes = () => {
                         <RecipeFormCard
                           key={r.id}
                           recipeId={r.id}
+                          hideFactory
                           onSaved={load}
                           onDeleted={load}
                           onDuplicated={load}
