@@ -175,6 +175,7 @@ const Recipes = () => {
                       recipeId={null}
                       defaultOpen
                       initialBrandId={activeBrandId}
+                      hideFactory
                       onCancelNew={() => setCreatingNew(false)}
                       onSaved={() => { setCreatingNew(false); load(); }}
                     />
