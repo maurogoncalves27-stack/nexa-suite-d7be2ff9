@@ -219,10 +219,9 @@ export default function DrePanel() {
         fetchAllPaged((from, to) =>
           supabase
             .from("accounts_payable")
-            .select("id,paid_at,amount,category_id,status")
-            .eq("status", "paid")
-            .gte("paid_at", periodStart)
-            .lte("paid_at", periodEnd)
+            .select("id,paid_at,due_date,competence_date,amount,category_id,status")
+            .neq("status", "cancelled")
+            .or(`and(competence_date.gte.${periodStart},competence_date.lte.${periodEnd}),and(competence_date.is.null,due_date.gte.${periodStart},due_date.lte.${periodEnd})`)
             .range(from, to),
         ),
         fetchAllPaged((from, to) =>
