@@ -90,10 +90,12 @@ const computeDre = ({
     col.revenue_gross += Number(s.gross_revenue) || 0;
   }
 
-  // Despesas — contas a pagar com status "paid"
+  // Despesas — todos os lançamentos do extrato/+pagtos (pagos ou não), pela data de competência
   for (const p of payables) {
-    if (p.status !== "paid" || !p.paid_at) continue;
-    const key = columnFor(p.paid_at.slice(0, 10));
+    if (p.status === "cancelled") continue;
+    const competence = p.competence_date ?? p.due_date ?? (p.paid_at ? p.paid_at.slice(0, 10) : null);
+    if (!competence) continue;
+    const key = columnFor(competence.slice(0, 10));
     if (!key) continue;
     const col = cols.get(key);
     if (!col) continue;
