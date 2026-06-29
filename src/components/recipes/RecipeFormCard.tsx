@@ -266,7 +266,8 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
     if (!form.name.trim()) { toast.error("Informe o nome da ficha"); return; }
     const saveAsFactory = factoryMode || (!hideFactory && (isFactory || form.scope === "fabrica"));
     const saveAsStorePrep = !!hideFactory && storeRecipeKind === "prep";
-    if ((saveAsFactory || saveAsStorePrep) && !form.output_product_id) {
+    const factoryWantsOutput = saveAsFactory && factoryRecipeKind === "porcao";
+    if ((factoryWantsOutput || saveAsStorePrep) && !form.output_product_id) {
       toast.error("Selecione o produto gerado pela ficha");
       return;
     }
@@ -274,8 +275,9 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
     try {
       const payload = {
         name: form.name.trim(),
-        output_product_id: saveAsFactory || saveAsStorePrep ? form.output_product_id : null,
+        output_product_id: factoryWantsOutput || saveAsStorePrep ? form.output_product_id : null,
         scope: saveAsFactory ? "fabrica" : "loja",
+
         yield_quantity: form.yield_quantity,
         yield_unit: form.yield_unit,
         shelf_life_hours: form.shelf_life_hours,
