@@ -26,6 +26,7 @@ const RecipesFactory = () => {
   const [recipes, setRecipes] = useState<RecipeRow[]>([]);
   const [factoryBrandId, setFactoryBrandId] = useState<string | null>(null);
   const [recipeBrandMap, setRecipeBrandMap] = useState<Record<string, Set<string>>>({});
+  const [internalProductIds, setInternalProductIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [kindFilter, setKindFilter] = useState<"all" | "porcao" | "prep">("all");
