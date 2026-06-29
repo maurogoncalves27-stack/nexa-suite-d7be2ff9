@@ -31,7 +31,7 @@ const Recipes = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeBrand, setActiveBrand] = useState<string>("");
-  const [typeFilter, setTypeFilter] = useState<"all" | "factory" | "ready">("all");
+  
   const [creatingNew, setCreatingNew] = useState(false);
   const [creatingCombo, setCreatingCombo] = useState(false);
 
@@ -85,16 +85,10 @@ const Recipes = () => {
 
       if (activeBrand && (!set || !set.has(activeBrand))) return false;
 
-      if (typeFilter === "factory") {
-        // Pré-preparo da loja = ficha que gera um insumo reaproveitável (tem output_product_id)
-        if (!r.output_product_id) return false;
-      } else if (typeFilter === "ready") {
-        // Prato pronto = ficha final (sem output_product_id)
-        if (r.output_product_id) return false;
-      }
-      return !q || r.name.toLowerCase().includes(q);
-    });
-  }, [recipes, search, activeBrand, recipeBrandMap, typeFilter, factoryBrandId]);
+
+
+  }, [recipes, search, activeBrand, recipeBrandMap, factoryBrandId]);
+
 
 
 
@@ -143,30 +137,9 @@ const Recipes = () => {
                     className="pl-9"
                   />
                 </div>
-                <div className="flex gap-1.5">
-                  <Button
-                    size="sm"
-                    variant={typeFilter === "all" ? "default" : "outline"}
-                    onClick={() => setTypeFilter("all")}
-                  >
-                    Todas
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={typeFilter === "factory" ? "default" : "outline"}
-                    onClick={() => setTypeFilter("factory")}
-                  >
-                    Pré-preparo
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={typeFilter === "ready" ? "default" : "outline"}
-                    onClick={() => setTypeFilter("ready")}
-                  >
-                    Prato pronto
-                  </Button>
-                </div>
               </div>
+
+
 
               {loading ? (
                 <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
