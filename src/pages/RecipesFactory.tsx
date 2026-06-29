@@ -26,6 +26,7 @@ const RecipesFactory = () => {
   const [recipes, setRecipes] = useState<RecipeRow[]>([]);
   const [factoryBrandId, setFactoryBrandId] = useState<string | null>(null);
   const [recipeBrandMap, setRecipeBrandMap] = useState<Record<string, Set<string>>>({});
+  const [internalProductIds, setInternalProductIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [kindFilter, setKindFilter] = useState<"all" | "porcao" | "prep">("all");
@@ -52,6 +53,23 @@ const RecipesFactory = () => {
       map[l.recipe_id].add(l.brand_id);
     });
     setRecipeBrandMap(map);
+
+    // Carrega produtos internos (usados para identificar fichas de pré-preparo)
+    const outputIds = ((recs ?? []) as RecipeRow[])
+      .map((r) => r.output_product_id)
+      .filter((x): x is string => !!x);
+    if (outputIds.length) {
+      const { data: prods } = await supabase
+        .from("inventory_products")
+        .select("id, is_internal")
+        .in("id", outputIds);
+      const internal = new Set<string>();
+      (prods ?? []).forEach((p: any) => { if (p.is_internal) internal.add(p.id); });
+      setInternalProductIds(internal);
+    } else {
+      setInternalProductIds(new Set());
+    }
+
     setLoading(false);
   };
 
@@ -64,15 +82,16 @@ const RecipesFactory = () => {
       const linkedFactory = !!(factoryBrandId && set?.has(factoryBrandId));
       const isFactoryScope = r.scope === "fabrica" || linkedFactory;
 
-      // Universo: somente fábrica
       if (!isFactoryScope) return false;
 
-      if (kindFilter === "porcao" && !r.output_product_id) return false;
-      if (kindFilter === "prep" && r.output_product_id) return false;
+      // prep = sem output_product_id OU output product marcado como interno
+      const isPrep = !r.output_product_id || internalProductIds.has(r.output_product_id);
+      if (kindFilter === "porcao" && isPrep) return false;
+      if (kindFilter === "prep" && !isPrep) return false;
 
       return !q || r.name.toLowerCase().includes(q);
     });
-  }, [recipes, search, recipeBrandMap, factoryBrandId, kindFilter]);
+  }, [recipes, search, recipeBrandMap, factoryBrandId, kindFilter, internalProductIds]);
 
 
 
