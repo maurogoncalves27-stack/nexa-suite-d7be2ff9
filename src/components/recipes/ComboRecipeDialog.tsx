@@ -15,6 +15,8 @@ interface RecipeOption {
   output_product_id: string;
 }
 
+interface BrandRef { id: string; name: string; }
+
 interface ComboLine {
   recipe_id: string;
   quantity: number;
@@ -46,22 +48,31 @@ const ComboRecipeDialog = ({ open, onOpenChange, brandId, onCreated }: Props) =>
     ]);
     (async () => {
       setLoading(true);
-      // Fichas com produto de saída, ativas, e (se brand informada) ligadas à brand
-      const { data: recs } = await supabase
-        .from("recipes")
-        .select("id, name, yield_unit, output_product_id, scope")
-        .eq("is_active", true)
-        .not("output_product_id", "is", null)
-        .order("name");
-
-      let allowed = ((recs as any[]) ?? []).filter((r) => r.scope !== "fabrica");
+      // Fichas com produto de saída, ativas, somente do universo das lojas.
+      const [{ data: recs }, { data: links }, { data: brs }] = await Promise.all([
+        supabase
+          .from("recipes")
+          .select("id, name, yield_unit, output_product_id, scope")
+          .eq("is_active", true)
+          .not("output_product_id", "is", null)
+          .order("name"),
+        supabase.from("recipe_brands").select("recipe_id, brand_id"),
+        supabase.from("brands").select("id, name").eq("is_active", true),
+      ]);
+      const factoryBrandIds = new Set(
+        ((brs as BrandRef[]) ?? [])
+          .filter((b) => /pr[eé]\s*preparo|f[aá]brica/i.test(b.name))
+          .map((b) => b.id),
+      );
+      const factoryRecipeIds = new Set(
+        (links ?? [])
+          .filter((l: any) => factoryBrandIds.has(l.brand_id))
+          .map((l: any) => l.recipe_id),
+      );
+      let allowed = ((recs as any[]) ?? []).filter((r) => r.scope !== "fabrica" && !factoryRecipeIds.has(r.id));
 
       if (brandId) {
-        const { data: links } = await supabase
-          .from("recipe_brands")
-          .select("recipe_id")
-          .eq("brand_id", brandId);
-        const ids = new Set((links ?? []).map((l: any) => l.recipe_id));
+        const ids = new Set((links ?? []).filter((l: any) => l.brand_id === brandId).map((l: any) => l.recipe_id));
         allowed = allowed.filter((r) => ids.has(r.id));
       }
       setOptions(allowed as RecipeOption[]);
