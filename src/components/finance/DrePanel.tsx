@@ -28,6 +28,8 @@ interface SaleRow { sale_date: string; gross_revenue: number }
 interface PayableRow {
   id: string;
   paid_at: string | null;
+  due_date: string | null;
+  competence_date: string | null;
   amount: number;
   category_id: string | null;
   status: string;
@@ -88,10 +90,12 @@ const computeDre = ({
     col.revenue_gross += Number(s.gross_revenue) || 0;
   }
 
-  // Despesas — contas a pagar com status "paid"
+  // Despesas — todos os lançamentos do extrato/+pagtos (pagos ou não), pela data de competência
   for (const p of payables) {
-    if (p.status !== "paid" || !p.paid_at) continue;
-    const key = columnFor(p.paid_at.slice(0, 10));
+    if (p.status === "cancelled") continue;
+    const competence = p.competence_date ?? p.due_date ?? (p.paid_at ? p.paid_at.slice(0, 10) : null);
+    if (!competence) continue;
+    const key = columnFor(competence.slice(0, 10));
     if (!key) continue;
     const col = cols.get(key);
     if (!col) continue;
@@ -215,10 +219,9 @@ export default function DrePanel() {
         fetchAllPaged((from, to) =>
           supabase
             .from("accounts_payable")
-            .select("id,paid_at,amount,category_id,status")
-            .eq("status", "paid")
-            .gte("paid_at", periodStart)
-            .lte("paid_at", periodEnd)
+            .select("id,paid_at,due_date,competence_date,amount,category_id,status")
+            .neq("status", "cancelled")
+            .or(`and(competence_date.gte.${periodStart},competence_date.lte.${periodEnd}),and(competence_date.is.null,due_date.gte.${periodStart},due_date.lte.${periodEnd})`)
             .range(from, to),
         ),
         fetchAllPaged((from, to) =>
@@ -320,7 +323,7 @@ export default function DrePanel() {
     <Card>
       <CardContent className="pt-4 sm:pt-6 space-y-4">
         <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-          Receita bruta vem do faturamento manual diário. Deduções vêm da planilha "Vendas iFood" (coluna M). Clique nas linhas de despesa para ver as categorias.
+          Receita bruta vem do faturamento manual diário. Despesas vêm do Extrato/+Pagtos pela data de competência (inclui lançamentos ainda não pagos). Custos iFood (planilha) é a única dedução externa. Clique nas linhas de despesa para ver as categorias.
         </p>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>

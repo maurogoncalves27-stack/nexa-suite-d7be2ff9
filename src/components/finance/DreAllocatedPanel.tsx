@@ -19,7 +19,7 @@ import {
 type CategoryMap = Record<string, { dre_group: DreGroup | null; kind: string }>;
 
 interface SaleRow { id: string; sold_at: string; total_amount: number; status: string; dre_excluded: boolean; store_id: string }
-interface PayableRow { id: string; paid_at: string | null; amount: number; category_id: string | null; status: string; store_id: string | null }
+interface PayableRow { id: string; paid_at: string | null; due_date: string | null; competence_date: string | null; amount: number; category_id: string | null; status: string; store_id: string | null }
 interface ReceivableRow { id: string; received_at: string | null; amount: number; category_id: string | null; status: string; store_id: string | null }
 interface StoreRow { id: string; name: string; is_virtual: boolean }
 
@@ -84,10 +84,9 @@ export default function DreAllocatedPanel() {
         fetchAllPaged((from, to) =>
           supabase
             .from("accounts_payable")
-            .select("id,paid_at,amount,category_id,status,store_id")
-            .eq("status", "paid")
-            .gte("paid_at", start)
-            .lte("paid_at", end)
+            .select("id,paid_at,due_date,competence_date,amount,category_id,status,store_id")
+            .neq("status", "cancelled")
+            .or(`and(competence_date.gte.${start},competence_date.lte.${end}),and(competence_date.is.null,due_date.gte.${start},due_date.lte.${end})`)
             .range(from, to),
         ),
         fetchAllPaged((from, to) =>
@@ -230,7 +229,8 @@ export default function DreAllocatedPanel() {
     const factoryCol = cols.get(FACTORY_KEY)!;
 
     for (const p of payables) {
-      if (p.status !== "paid" || !p.paid_at) continue;
+      if (p.status === "cancelled") continue;
+      if (!(p.competence_date ?? p.due_date)) continue;
       const debit = Number(p.amount) || 0;
       const group = p.category_id ? catMap[p.category_id]?.dre_group ?? null : null;
 
