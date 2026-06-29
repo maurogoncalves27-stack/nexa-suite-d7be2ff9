@@ -67,9 +67,13 @@ const RecipesFactory = () => {
       // Universo: somente fábrica
       if (!isFactoryScope) return false;
 
+      if (kindFilter === "porcao" && !r.output_product_id) return false;
+      if (kindFilter === "prep" && r.output_product_id) return false;
+
       return !q || r.name.toLowerCase().includes(q);
     });
-  }, [recipes, search, recipeBrandMap, factoryBrandId]);
+  }, [recipes, search, recipeBrandMap, factoryBrandId, kindFilter]);
+
 
 
   return (
