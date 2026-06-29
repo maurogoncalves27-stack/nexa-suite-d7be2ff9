@@ -28,6 +28,8 @@ interface SaleRow { sale_date: string; gross_revenue: number }
 interface PayableRow {
   id: string;
   paid_at: string | null;
+  due_date: string | null;
+  competence_date: string | null;
   amount: number;
   category_id: string | null;
   status: string;
