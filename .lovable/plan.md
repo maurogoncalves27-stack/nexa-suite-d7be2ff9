@@ -1,59 +1,52 @@
-## Diagnóstico
+## Objetivo
 
-Restam **24 "Outro"** ativos em `occurrence_alerts`. Olhando os relatos, eles caem em padrões claros que hoje não têm encaixe no catálogo:
+1. **Combo de loja**: criar uma ficha técnica "combo" juntando 2+ fichas existentes em poucos cliques (ex.: Parmegiana + Churros).
+2. **Pré-preparo dentro do prato pronto**: permitir adicionar uma ficha de pré-preparo como ingrediente de uma ficha de prato pronto (fábrica), com custo somado automaticamente.
 
-| Padrão observado nos relatos | Ocorrência atual | Quantos |
-|---|---|---|
-| "Cliente alega pedido errado, conferido = OK" / "reclamação sem causa interna" | PROBLEMAS COM A QUALIDADE | ~9 |
-| "Reclamação genérica de qualidade sem detalhe" ("problemas de qualidade", "qualidade") | PROBLEMAS COM A QUALIDADE | ~4 |
-| "Erro de preparo/separação" (mandou item errado, trocou box, errei itens) | PROBLEMAS COM A QUALIDADE | ~4 |
-| "Cliente solicitou cancelamento" | PROBLEMAS COM A QUALIDADE | ~2 |
-| "Entregador não entregou item / extraviou" | FALTOU ITENS NO PEDIDO | ~2 |
-| Sobra real sem encaixe | — | 3 |
+Hoje o `recipeCost.ts` já calcula custo recursivamente quando um ingrediente é um produto "produzido" por outra ficha — falta apenas UX para selecionar fichas como item, e um atalho para combos.
+
+---
 
 ## Mudanças
 
-### 1. Adicionar subcategorias ao catálogo `occurrences.subcategory_options`
+### 1. Selecionar "ficha" como ingrediente (resolve item 2)
 
-**PROBLEMAS COM A QUALIDADE DO PEDIDO** (COZINHA) — adicionar:
-- `Cliente alega erro - conferido OK` (recusa de cliente sem causa interna comprovada)
-- `Erro de preparo/separação` (erro interno, mas não é sabor/temperatura/ponto)
-- `Reclamação genérica` (cliente reclama sem detalhar)
-- `Cancelamento solicitado pelo cliente`
+Em `src/components/recipes/RecipeIngredientsDialog.tsx`:
+- Carregar, além de `inventory_products`, a lista de receitas que têm `output_product_id` (são "fichas que viram produto").
+- No `<Select>` de produto, agrupar em duas seções:
+  - **Insumos / Produtos** (atual)
+  - **Pré-preparos / Fichas** — lista as receitas pelo nome, mas o `value` continua sendo o `output_product_id` (mantém schema atual, sem migration).
+- Ao escolher uma ficha, sugerir `unit = yield_unit` da ficha e `quantity = 1`.
+- O custo já é calculado pela média do `inventory_product` produzido; quem produz a ficha alimenta esse custo via "Produzir" — comportamento atual preservado.
 
-**FALTOU ITENS NO PEDIDO** (MONTAGEM) — adicionar:
-- `Extravio pelo entregador` (item saiu da loja mas não chegou)
-- `Item não especificado`
+### 2. Novo botão "Combo" na página de Fichas da loja
 
-### 2. Reclassificar os alertas existentes via UPDATE
+Em `src/pages/Recipes.tsx`, junto ao botão "Nova ficha":
+- Botão **"Novo combo"** abre um diálogo novo `CombooRecipeDialog.tsx`.
 
-Match por palavras-chave no `note` (case-insensitive), só nos registros com `subcategory='Outro'`:
+`src/components/recipes/ComboRecipeDialog.tsx` (novo, ~120 linhas):
+- Campos: nome do combo, marca (pré-selecionada pela aba ativa), seletor múltiplo de **2 ou mais fichas existentes** (filtrado por marca da aba, exclui fábrica), quantidade por ficha (default 1).
+- Ao salvar:
+  1. `INSERT` em `recipes` (`yield_quantity=1`, `yield_unit='UN'`, `scope='loja'`, `category='combo'`, sem `output_product_id`).
+  2. `INSERT` em `recipe_brands` ligando à marca.
+  3. `INSERT` em `recipe_ingredients` — uma linha por ficha selecionada, usando o `output_product_id` da ficha como `product_id`, `quantity` informada, `unit` = `yield_unit` da ficha de origem.
+- Recarrega lista e abre o card recém-criado para ajustes finos.
 
-| Regex no `note` | Nova subcategoria |
-|---|---|
-| `(alega|alegou).*(errad|pedid)` + `(conferid|tudo certo|enviado correct|SIM)` | `Cliente alega erro - conferido OK` |
-| `(errei|errado.*preparo|preparado incorret|separação|enviou.*errad|trocou.*box|3 box.*galinhad)` | `Erro de preparo/separação` |
-| `(solicitação de cancelamento|cliente.*cancel|pediu.*cancel)` | `Cancelamento solicitado pelo cliente` |
-| `(entregador.*não entreg|extravi|não chegou completo|sumiu)` em FALTOU ITENS | `Extravio pelo entregador` |
-| `^(problemas? (com a |de )?qualidade|qualidade)\.?$` (sem mais detalhe) | `Reclamação genérica` |
+### 3. Indicação visual
 
-Tudo idempotente: só atualiza onde `subcategory='Outro'`.
+No `RecipeFormCard` e no select de ingredientes, marcar linhas que vêm de outra ficha com um badge "ficha" (usando `inventory_products.product_type === 'produzido'`) para o usuário ver claramente que é um sub-produto.
 
-### 3. Atualizar prompt da IA em `analyze-occurrences-report/index.ts`
-
-Adicionar regra explícita:
-- "Quando subcategoria for `Cliente alega erro - conferido OK`, **NÃO** trate como falha interna — é recusa de cliente sem causa comprovada. Mencione em `padroes` como sinal de cliente recorrente ou comunicação, não como problema operacional."
-- "Quando subcategoria for `Extravio pelo entregador` (mesmo em FALTOU ITENS), conte como impacto iFood, não como erro interno de montagem."
+---
 
 ## Não muda
 
-- Schema de tabelas (só `UPDATE` em `occurrences.subcategory_options` + `occurrence_alerts.subcategory`).
-- UI do relatório / filtros / agregação.
-- Os 3 casos verdadeiramente "Outro" (sem padrão claro) ficam como estão.
+- Schema do banco (nenhuma migration).
+- `recipeCost.ts` (já suporta recursão até 6 níveis).
+- Página `RecipesFactory.tsx` — só ganha o mesmo seletor agrupado de ingredientes via o componente compartilhado.
+- Receituário / `recipe_books` — intocado.
 
-## Resultado esperado
+## Detalhes técnicos
 
-- "Outro" cai de **24 → ~3** (-87%).
-- IA para de listar "Outro" como causa-raiz na análise.
-- "Cliente alega erro - conferido OK" vira sinal próprio (não contamina mais o índice de erros internos).
-- "Extravio pelo entregador" é contabilizado no `impacto_ifood`, mesmo estando em FALTOU ITENS.
+- Apenas fichas **ativas** com `output_product_id != null` aparecem como opção de ingrediente (uma ficha sem produto de saída não tem custo unitário).
+- Para evitar loop, o seletor exclui a própria receita sendo editada.
+- Combo criado sem `output_product_id` (não vira produto vendável de estoque) — é só uma agregação de fichas para custo/cardápio.
