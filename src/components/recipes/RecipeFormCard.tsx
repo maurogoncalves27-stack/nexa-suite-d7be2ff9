@@ -70,14 +70,16 @@ interface Props {
   defaultOpen?: boolean;
   initialBrandId?: string | null;
   hideFactory?: boolean;
+  factoryMode?: boolean;
   onSaved?: (newId?: string) => void;
   onCancelNew?: () => void;
   onDeleted?: () => void;
   onDuplicated?: (newId: string) => void;
 }
 
-const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, onSaved, onCancelNew, onDeleted, onDuplicated }: Props) => {
+const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, factoryMode, onSaved, onCancelNew, onDeleted, onDuplicated }: Props) => {
   const { user } = useAuth();
+
   const isNew = !recipeId;
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -223,6 +225,11 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, on
   };
 
   const syncBrands = async (rid: string) => {
+    if (factoryMode) {
+      // Fichas da fábrica não têm vínculo com marcas — geram porções transferidas às lojas
+      await supabase.from("recipe_brands").delete().eq("recipe_id", rid);
+      return;
+    }
     await supabase.from("recipe_brands").delete().eq("recipe_id", rid);
     const cleanBrands = Array.from(selectedBrands).filter((brand_id) => {
       const brand = brands.find((b) => b.id === brand_id);
@@ -233,6 +240,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, on
       await supabase.from("recipe_brands").insert(rows);
     }
   };
+
 
   const clearMenuLink = async (rid: string) => {
     await supabase.from("menu_items").update({ recipe_id: null }).eq("recipe_id", rid);
@@ -642,36 +650,46 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, on
 
 
 
-                <div className="space-y-1.5">
-                  <Label>Marcas que usam esta ficha</Label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {brands.filter((b) => !/^(totem|sal[aã]o|site)$/i.test(b.name.trim()) && (!hideFactory || !isFactoryBrandName(b.name))).map((b) => {
-                      const active = selectedBrands.has(b.id);
-                      const c = colorForBrand(b.name);
-                      return (
-                        <button
-                          key={b.id}
-                          type="button"
-                          onClick={() => toggleBrand(b.id)}
-                          className={`text-xs px-2.5 py-1 rounded-full border transition ${
-                            active
-                              ? "border-transparent shadow-sm"
-                              : "bg-background text-muted-foreground border-border hover:bg-muted"
-                          }`}
-                          style={
-                            active ? { backgroundColor: c.bg, color: c.text } : undefined
-                          }
-                        >
-                          {b.name}
-                        </button>
-                      );
-                    })}
+                {factoryMode ? (
+                  <div className="rounded-md border border-dashed bg-muted/40 p-3 text-sm text-muted-foreground">
+                    Esta ficha gera <strong>porções</strong> que são transferidas às lojas via Solicitações da Fábrica.
+                    A fábrica não tem cardápio — defina o <em>produto de saída</em> acima para que as porções entrem no estoque das lojas que solicitarem.
                   </div>
-                </div>
+                ) : (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label>Marcas que usam esta ficha</Label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {brands.filter((b) => !/^(totem|sal[aã]o|site)$/i.test(b.name.trim()) && (!hideFactory || !isFactoryBrandName(b.name))).map((b) => {
+                          const active = selectedBrands.has(b.id);
+                          const c = colorForBrand(b.name);
+                          return (
+                            <button
+                              key={b.id}
+                              type="button"
+                              onClick={() => toggleBrand(b.id)}
+                              className={`text-xs px-2.5 py-1 rounded-full border transition ${
+                                active
+                                  ? "border-transparent shadow-sm"
+                                  : "bg-background text-muted-foreground border-border hover:bg-muted"
+                              }`}
+                              style={
+                                active ? { backgroundColor: c.bg, color: c.text } : undefined
+                              }
+                            >
+                              {b.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
 
-                {!isNew && recipeId && (!hideFactory || storeRecipeKind === "ready") && (
-                  <RecipeMenuItemsSection recipeId={recipeId} />
+                    {!isNew && recipeId && (!hideFactory || storeRecipeKind === "ready") && (
+                      <RecipeMenuItemsSection recipeId={recipeId} />
+                    )}
+                  </>
                 )}
+
 
                 {!isNew && (
                   <Button

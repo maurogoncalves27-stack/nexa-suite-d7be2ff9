@@ -26,7 +26,7 @@ const RecipesFactory = () => {
   const [recipeBrandMap, setRecipeBrandMap] = useState<Record<string, Set<string>>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"all" | "factory" | "ready">("all");
+  
   const [creatingNew, setCreatingNew] = useState(false);
 
   const load = async () => {
@@ -63,16 +63,10 @@ const RecipesFactory = () => {
       // Universo: somente fábrica
       if (!isFactoryScope) return false;
 
-      if (typeFilter === "factory") {
-        // Pré-preparo = vinculado à brand FÁBRICA (insumo de produção)
-        if (!linkedFactory) return false;
-      } else if (typeFilter === "ready") {
-        // Prato pronto = ficha de escopo fábrica que NÃO é insumo (sem brand fábrica)
-        if (linkedFactory) return false;
-      }
       return !q || r.name.toLowerCase().includes(q);
     });
-  }, [recipes, search, recipeBrandMap, typeFilter, factoryBrandId]);
+  }, [recipes, search, recipeBrandMap, factoryBrandId]);
+
 
   return (
     <div className="space-y-4">
@@ -81,7 +75,7 @@ const RecipesFactory = () => {
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
             <FlaskConical className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Fichas técnicas da Fábrica
           </h1>
-          <p className="text-muted-foreground">Receitas de produção da fábrica — pré-preparos (insumos) e pratos prontos.</p>
+          <p className="text-muted-foreground">Cada ficha gera uma porção que é transferida às lojas via Solicitações da Fábrica.</p>
         </div>
         {canReceive && (
           <div className="flex flex-wrap gap-2">
@@ -104,12 +98,9 @@ const RecipesFactory = () => {
                 className="pl-9"
               />
             </div>
-            <div className="flex gap-1.5">
-              <Button size="sm" variant={typeFilter === "all" ? "default" : "outline"} onClick={() => setTypeFilter("all")}>Todas</Button>
-              <Button size="sm" variant={typeFilter === "factory" ? "default" : "outline"} onClick={() => setTypeFilter("factory")}>Pré-preparo</Button>
-              <Button size="sm" variant={typeFilter === "ready" ? "default" : "outline"} onClick={() => setTypeFilter("ready")}>Prato pronto</Button>
-            </div>
           </div>
+
+
 
           {loading ? (
             <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
@@ -120,9 +111,11 @@ const RecipesFactory = () => {
                   recipeId={null}
                   defaultOpen
                   initialBrandId={factoryBrandId}
+                  factoryMode
                   onCancelNew={() => setCreatingNew(false)}
                   onSaved={() => { setCreatingNew(false); load(); }}
                 />
+
               )}
 
               {filtered.length === 0 && !creatingNew ? (
@@ -133,10 +126,12 @@ const RecipesFactory = () => {
                     <RecipeFormCard
                       key={r.id}
                       recipeId={r.id}
+                      factoryMode
                       onSaved={load}
                       onDeleted={load}
                       onDuplicated={load}
                     />
+
                   ))}
                 </div>
               )}

@@ -85,9 +85,10 @@ const Recipes = () => {
 
       if (activeBrand && (!set || !set.has(activeBrand))) return false;
 
-
-
+      return !q || r.name.toLowerCase().includes(q);
+    });
   }, [recipes, search, activeBrand, recipeBrandMap, factoryBrandId]);
+
 
 
 
