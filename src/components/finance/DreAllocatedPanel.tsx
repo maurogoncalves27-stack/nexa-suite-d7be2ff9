@@ -84,10 +84,9 @@ export default function DreAllocatedPanel() {
         fetchAllPaged((from, to) =>
           supabase
             .from("accounts_payable")
-            .select("id,paid_at,amount,category_id,status,store_id")
-            .eq("status", "paid")
-            .gte("paid_at", start)
-            .lte("paid_at", end)
+            .select("id,paid_at,due_date,competence_date,amount,category_id,status,store_id")
+            .neq("status", "cancelled")
+            .or(`and(competence_date.gte.${start},competence_date.lte.${end}),and(competence_date.is.null,due_date.gte.${start},due_date.lte.${end})`)
             .range(from, to),
         ),
         fetchAllPaged((from, to) =>
