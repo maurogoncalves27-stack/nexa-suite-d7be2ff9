@@ -28,7 +28,9 @@ const RecipesFactory = () => {
   const [recipeBrandMap, setRecipeBrandMap] = useState<Record<string, Set<string>>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [kindFilter, setKindFilter] = useState<"all" | "porcao" | "prep">("all");
   
+
   const [creatingNew, setCreatingNew] = useState(false);
 
   const load = async () => {
