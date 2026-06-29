@@ -89,6 +89,8 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
   const [form, setForm] = useState(emptyForm);
   const [storeRecipeKind, setStoreRecipeKind] = useState<"ready" | "prep">("ready");
+  const [factoryRecipeKind, setFactoryRecipeKind] = useState<"porcao" | "prep">("porcao");
+
   const [menuItems, setMenuItems] = useState<MenuItemRow[]>([]);
   const [linkedMenuItemId, setLinkedMenuItemId] = useState<string>("");
   const [photoPath, setPhotoPath] = useState<string | null>(null);
@@ -208,6 +210,8 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
           ean: (r as any).ean ?? "",
         });
         setStoreRecipeKind((r as any).scope !== "fabrica" && r.output_product_id ? "prep" : "ready");
+        setFactoryRecipeKind(r.output_product_id ? "porcao" : "prep");
+
         setPhotoPath((r as any).photo_path ?? null);
       }
       setSelectedBrands(new Set((rb ?? []).map((x: any) => x.brand_id)));
