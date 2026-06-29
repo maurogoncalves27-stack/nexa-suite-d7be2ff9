@@ -191,6 +191,32 @@ const ComboRecipeDialog = ({ open, onOpenChange, brandId, onCreated }: Props) =>
                 placeholder="Ex.: Parmegiana + Churros"
               />
             </div>
+            <div className="space-y-1.5">
+              <Label>Marcas (abas onde o combo aparecerá)</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {brandsList.map((b) => {
+                  const active = selectedBrands.has(b.id);
+                  return (
+                    <button
+                      key={b.id}
+                      type="button"
+                      onClick={() => toggleBrand(b.id)}
+                      className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                        active
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background text-muted-foreground border-border hover:bg-muted"
+                      }`}
+                    >
+                      {b.name}
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedBrands.size === 0 && (
+                <p className="text-xs text-destructive">Selecione pelo menos uma marca.</p>
+              )}
+            </div>
+
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
