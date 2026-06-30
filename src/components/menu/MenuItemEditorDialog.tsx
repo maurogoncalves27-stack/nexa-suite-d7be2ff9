@@ -56,11 +56,12 @@ interface Props {
   stores: Store[];
   defaultBrandId: string;
   defaultStoreId: string;
+  defaultIsCombo?: boolean;
   onSaved: () => void;
 }
 
 export default function MenuItemEditorDialog({
-  open, onOpenChange, itemId, categories, brands, stores, defaultBrandId, defaultStoreId, onSaved,
+  open, onOpenChange, itemId, categories, brands, stores, defaultBrandId, defaultStoreId, defaultIsCombo, onSaved,
 }: Props) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
