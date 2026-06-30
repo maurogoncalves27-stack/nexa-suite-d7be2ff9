@@ -291,9 +291,11 @@ export default function MenuItemEditorDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{itemId ? "Editar item" : "Novo item"}</DialogTitle>
+          <DialogTitle>{itemId ? "Editar item" : (isCombo ? "Novo combo" : "Novo item")}</DialogTitle>
           <DialogDescription>
-            Defina nome, marcas, preço, combo e grupos de complementos (catálogo reutilizável).
+            {isCombo
+              ? "Junte 2 ou mais itens do cardápio em um combo. O preço pode ser a soma dos componentes ou um valor promocional."
+              : "Defina nome, marcas, preço, combo e grupos de complementos (catálogo reutilizável)."}
           </DialogDescription>
         </DialogHeader>
 
