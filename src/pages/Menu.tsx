@@ -354,7 +354,10 @@ export default function Menu() {
         >
           <Copy className="h-4 w-4" /> Replicar
         </Button>
-        <Button size="sm" onClick={() => { setEditingId(null); setEditorOpen(true); }} className="gap-2" disabled={!targetBrandId || !activeStore}>
+        <Button size="sm" variant="outline" onClick={() => { setEditingId(null); setEditorIsCombo(true); setEditorOpen(true); }} className="gap-2" disabled={!targetBrandId || !activeStore}>
+          <Package className="h-4 w-4" /> Novo combo
+        </Button>
+        <Button size="sm" onClick={() => { setEditingId(null); setEditorIsCombo(false); setEditorOpen(true); }} className="gap-2" disabled={!targetBrandId || !activeStore}>
           <Plus className="h-4 w-4" /> Novo item
         </Button>
       </div>
