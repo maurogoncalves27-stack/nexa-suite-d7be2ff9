@@ -68,6 +68,7 @@ export default function Menu() {
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editorIsCombo, setEditorIsCombo] = useState(false);
 
   const [complementsOpen, setComplementsOpen] = useState(false);
   const [replicateOpen, setReplicateOpen] = useState(false);
