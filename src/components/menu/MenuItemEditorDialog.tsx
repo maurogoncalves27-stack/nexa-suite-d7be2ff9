@@ -132,7 +132,7 @@ export default function MenuItemEditorDialog({
         setSelectedStores(((stRes.data ?? []) as any[]).map((r) => r.store_id));
       } else {
         setName(""); setDescription(""); setCategoryId("__none__"); setRecipeId("__none__");
-        setPrice("0"); setIsCombo(false); setIsActive(true);
+        setPrice("0"); setIsCombo(!!defaultIsCombo); setIsActive(true);
         setComponents([]); setLinkedGroupIds([]);
         setSelectedBrands(defaultBrandId ? [defaultBrandId] : []);
         // Por padrão, novos itens ficam disponíveis em todas as 4 lojas
@@ -140,7 +140,7 @@ export default function MenuItemEditorDialog({
       }
       setLoading(false);
     })();
-  }, [open, itemId, defaultBrandId, defaultStoreId, stores]);
+  }, [open, itemId, defaultBrandId, defaultStoreId, defaultIsCombo, stores]);
 
   const componentSum = useMemo(() => components.reduce((sum, c) => {
     const it = allItems.find((x) => x.id === c.child_item_id);
