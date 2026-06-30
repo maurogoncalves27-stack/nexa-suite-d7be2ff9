@@ -597,13 +597,14 @@ export default function Menu() {
 
       <MenuItemEditorDialog
         open={editorOpen}
-        onOpenChange={(v) => { setEditorOpen(v); if (!v) setEditingId(null); }}
+        onOpenChange={(v) => { setEditorOpen(v); if (!v) { setEditingId(null); setEditorIsCombo(false); } }}
         itemId={editingId}
         categories={categories}
         brands={brands}
         stores={stores}
         defaultBrandId={targetBrandId}
         defaultStoreId={activeStore}
+        defaultIsCombo={editorIsCombo}
         onSaved={load}
       />
     </div>
