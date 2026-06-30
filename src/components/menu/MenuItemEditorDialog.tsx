@@ -56,11 +56,12 @@ interface Props {
   stores: Store[];
   defaultBrandId: string;
   defaultStoreId: string;
+  defaultIsCombo?: boolean;
   onSaved: () => void;
 }
 
 export default function MenuItemEditorDialog({
-  open, onOpenChange, itemId, categories, brands, stores, defaultBrandId, defaultStoreId, onSaved,
+  open, onOpenChange, itemId, categories, brands, stores, defaultBrandId, defaultStoreId, defaultIsCombo, onSaved,
 }: Props) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -131,7 +132,7 @@ export default function MenuItemEditorDialog({
         setSelectedStores(((stRes.data ?? []) as any[]).map((r) => r.store_id));
       } else {
         setName(""); setDescription(""); setCategoryId("__none__"); setRecipeId("__none__");
-        setPrice("0"); setIsCombo(false); setIsActive(true);
+        setPrice("0"); setIsCombo(!!defaultIsCombo); setIsActive(true);
         setComponents([]); setLinkedGroupIds([]);
         setSelectedBrands(defaultBrandId ? [defaultBrandId] : []);
         // Por padrão, novos itens ficam disponíveis em todas as 4 lojas
@@ -139,7 +140,7 @@ export default function MenuItemEditorDialog({
       }
       setLoading(false);
     })();
-  }, [open, itemId, defaultBrandId, defaultStoreId, stores]);
+  }, [open, itemId, defaultBrandId, defaultStoreId, defaultIsCombo, stores]);
 
   const componentSum = useMemo(() => components.reduce((sum, c) => {
     const it = allItems.find((x) => x.id === c.child_item_id);
@@ -290,9 +291,11 @@ export default function MenuItemEditorDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{itemId ? "Editar item" : "Novo item"}</DialogTitle>
+          <DialogTitle>{itemId ? "Editar item" : (isCombo ? "Novo combo" : "Novo item")}</DialogTitle>
           <DialogDescription>
-            Defina nome, marcas, preço, combo e grupos de complementos (catálogo reutilizável).
+            {isCombo
+              ? "Junte 2 ou mais itens do cardápio em um combo. O preço pode ser a soma dos componentes ou um valor promocional."
+              : "Defina nome, marcas, preço, combo e grupos de complementos (catálogo reutilizável)."}
           </DialogDescription>
         </DialogHeader>
 
