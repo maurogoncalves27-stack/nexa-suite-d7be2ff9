@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Loader2, FolderPlus, Search, ScanText, Layers, ChevronUp, ChevronDown, Copy, AlertTriangle, Package } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, FolderPlus, Search, ScanText, Layers, ChevronUp, ChevronDown, Copy, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -353,9 +353,6 @@ export default function Menu() {
           disabled={!targetBrandId || stores.length < 2}
         >
           <Copy className="h-4 w-4" /> Replicar
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => { setEditingId(null); setEditorIsCombo(true); setEditorOpen(true); }} className="gap-2" disabled={!targetBrandId || !activeStore}>
-          <Package className="h-4 w-4" /> Novo combo
         </Button>
         <Button size="sm" onClick={() => { setEditingId(null); setEditorIsCombo(false); setEditorOpen(true); }} className="gap-2" disabled={!targetBrandId || !activeStore}>
           <Plus className="h-4 w-4" /> Novo item
