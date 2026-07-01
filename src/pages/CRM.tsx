@@ -58,7 +58,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { IFoodReviewsWidget } from "@/components/crm/IFoodReviewsWidget";
+
 import { ManualPlatformRatings } from "@/components/crm/ManualPlatformRatings";
 
 type Reservation = {
