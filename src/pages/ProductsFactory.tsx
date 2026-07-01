@@ -22,6 +22,26 @@ const TYPES = [
   { value: "embalagem", label: "Embalagem" },
 ] as const;
 
+const SCOPES = [
+  { value: "central", label: "Só Estoque Central" },
+  { value: "factory", label: "Central + Fábrica" },
+  { value: "store", label: "Central + Lojas" },
+  { value: "factory_and_store", label: "Central + Fábrica + Lojas" },
+] as const;
+
+const FLOWS = [
+  { value: "comprado", label: "Comprado (vem de fornecedor)" },
+  { value: "produzido_fabrica", label: "Produzido pela Fábrica" },
+  { value: "misto", label: "Misto (compra ou produção)" },
+] as const;
+
+const ROLES = [
+  { value: "venda_loja", label: "Venda na Loja (cardápio)" },
+  { value: "venda_fabrica", label: "Venda pela Fábrica (cardápio)" },
+  { value: "insumo_producao", label: "Insumo de produção (fábrica)" },
+  { value: "insumo_montagem", label: "Insumo de montagem (loja)" },
+] as const;
+
 interface Product {
   id: string;
   name: string;
@@ -31,6 +51,9 @@ interface Product {
   is_internal: boolean;
   is_active: boolean;
   average_cost: number;
+  stock_scope: string;
+  usage_roles: string[] | null;
+  production_flow: string;
 }
 
 interface Draft {
@@ -40,6 +63,9 @@ interface Draft {
   product_type: "insumo" | "produzido" | "embalagem";
   is_internal: boolean;
   is_active: boolean;
+  stock_scope: string;
+  usage_roles: string[];
+  production_flow: string;
 }
 
 const empty: Draft = {
@@ -49,6 +75,9 @@ const empty: Draft = {
   product_type: "insumo",
   is_internal: false,
   is_active: true,
+  stock_scope: "factory_and_store",
+  usage_roles: ["insumo_producao"],
+  production_flow: "comprado",
 };
 
 const fmtBRL = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -71,7 +100,7 @@ const ProductsFactory = () => {
     setLoading(true);
     const { data } = await supabase
       .from("inventory_products")
-      .select("id, name, category, unit, product_type, is_internal, is_active, average_cost")
+      .select("id, name, category, unit, product_type, is_internal, is_active, average_cost, stock_scope, usage_roles, production_flow")
       .eq("factory_only", true)
       .order("category")
       .order("name");
@@ -107,6 +136,9 @@ const ProductsFactory = () => {
       product_type: (p.product_type as Draft["product_type"]) ?? "insumo",
       is_internal: p.is_internal,
       is_active: p.is_active,
+      stock_scope: p.stock_scope ?? "factory_and_store",
+      usage_roles: p.usage_roles ?? [],
+      production_flow: p.production_flow ?? "comprado",
     });
     setOpen(true);
   };
@@ -123,6 +155,9 @@ const ProductsFactory = () => {
         is_internal: draft.product_type === "produzido" ? true : draft.is_internal,
         is_active: draft.is_active,
         factory_only: true,
+        stock_scope: draft.stock_scope,
+        usage_roles: draft.usage_roles,
+        production_flow: draft.production_flow,
       };
       const { error } = editing
         ? await supabase.from("inventory_products").update(payload).eq("id", editing.id)
@@ -296,6 +331,50 @@ const ProductsFactory = () => {
                 <SelectContent>{TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+
+            <div className="border-t pt-3 space-y-2">
+              <p className="text-sm font-semibold">Classificação (controle de estoque)</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs">Escopo de estoque</Label>
+                  <Select value={draft.stock_scope} onValueChange={(v) => setDraft({ ...draft, stock_scope: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{SCOPES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Fluxo de abastecimento</Label>
+                  <Select value={draft.production_flow} onValueChange={(v) => setDraft({ ...draft, production_flow: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{FLOWS.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Papéis (para que serve — pode marcar mais de um)</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-1">
+                  {ROLES.map((r) => {
+                    const checked = draft.usage_roles.includes(r.value);
+                    return (
+                      <label key={r.value} className="flex items-center gap-2 text-sm cursor-pointer border rounded-md p-2 hover:bg-muted/50">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => setDraft({
+                            ...draft,
+                            usage_roles: e.target.checked
+                              ? [...draft.usage_roles, r.value]
+                              : draft.usage_roles.filter((x) => x !== r.value),
+                          })}
+                        />
+                        <span>{r.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
             <div className="flex items-center justify-between border-t pt-3">
               <Label>Ativo</Label>
               <Switch checked={draft.is_active} onCheckedChange={(v) => setDraft({ ...draft, is_active: v })} />
