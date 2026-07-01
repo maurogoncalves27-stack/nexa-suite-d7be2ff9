@@ -119,11 +119,16 @@ const FactoryMenu = () => {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
-    // Soft-remove: retira do cardápio convertendo em pré-preparo/insumo interno.
-    // Evita quebrar FKs (contagens, fichas, transferências) e preserva histórico.
+    // Soft-remove: retira o papel "venda_fabrica" — preserva FKs e histórico.
+    const { data: cur } = await supabase
+      .from("inventory_products")
+      .select("usage_roles")
+      .eq("id", deleteTarget.id)
+      .maybeSingle();
+    const roles = ((cur?.usage_roles as string[] | null) ?? []).filter((r) => r !== "venda_fabrica");
     const { error } = await supabase
       .from("inventory_products")
-      .update({ product_type: "insumo", is_internal: true })
+      .update({ usage_roles: roles.length ? roles : ["insumo_producao"] })
       .eq("id", deleteTarget.id);
     setDeleting(false);
     if (error) { toast.error(error.message); return; }
