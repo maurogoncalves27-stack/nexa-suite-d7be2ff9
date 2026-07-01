@@ -145,7 +145,7 @@ const ProductsFactory = () => {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-          <Factory className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Produtos da Fábrica
+          <Layers className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Produtos da Fábrica
         </h1>
         <p className="text-muted-foreground">Insumos usados pela fábrica e itens que ela produz. Base exclusiva dos selects das fichas técnicas da fábrica.</p>
       </div>
