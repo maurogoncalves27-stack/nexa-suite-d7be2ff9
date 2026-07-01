@@ -263,22 +263,23 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                     </div>
                   )}
                   <div className="flex flex-wrap gap-2 pt-1">
-                    <Button size="sm" onClick={() => setOpenReply(r)}>
-                      {r.status === "respondido" ? "Editar resposta" : "Responder"}
+                    <Button size="sm" variant="outline" onClick={() => setOpenReply(r)}>
+                      <Pencil className="h-3.5 w-3.5 mr-1" /> Editar
                     </Button>
-                    {r.external_url && (
-                      <Button size="sm" variant="outline" asChild>
-                        <a href={r.external_url} target="_blank" rel="noreferrer">
-                          <ExternalLink className="h-3.5 w-3.5 mr-1" /> Abrir
-                        </a>
-                      </Button>
-                    )}
-                    {r.status !== "ignorado" && (
-                      <Button size="sm" variant="ghost" onClick={async () => {
-                        await supabase.from("customer_reviews").update({ status: "ignorado" }).eq("id", r.id);
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      onClick={async () => {
+                        if (!confirm("Excluir esta avaliação?")) return;
+                        const { error } = await supabase.from("customer_reviews").delete().eq("id", r.id);
+                        if (error) return toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+                        toast({ title: "Avaliação excluída" });
                         load();
-                      }}>Ignorar</Button>
-                    )}
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1" /> Excluir
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
