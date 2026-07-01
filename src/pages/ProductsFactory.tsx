@@ -85,17 +85,27 @@ const fmtBRL = (n: number) => n.toLocaleString("pt-BR", { style: "currency", cur
 
 const ProductsFactory = () => {
   const { canReceive } = useInventoryPermission();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialView = searchParams.get("view") ?? "all";
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState<string>("all");
-  const [kindFilter, setKindFilter] = useState<string>("all");
+  const [viewFilter, setViewFilter] = useState<string>(initialView);
   const [editing, setEditing] = useState<Product | null>(null);
   const [draft, setDraft] = useState<Draft>(empty);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<Product | null>(null);
   const [deletingBusy, setDeletingBusy] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  const onViewChange = (v: string) => {
+    setViewFilter(v);
+    const next = new URLSearchParams(searchParams);
+    if (v === "all") next.delete("view"); else next.set("view", v);
+    setSearchParams(next, { replace: true });
+  };
 
   const load = async () => {
     setLoading(true);
