@@ -293,12 +293,15 @@ const ProductsFactory = () => {
                     <TableHead>Tipo</TableHead>
                     <TableHead>Un.</TableHead>
                     <TableHead className="text-right">Custo médio</TableHead>
+                    <TableHead className="text-center">No cardápio</TableHead>
                     <TableHead className="text-center">Ativo</TableHead>
                     <TableHead className="w-[60px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((p) => (
+                  {filtered.map((p) => {
+                    const inCardapio = (p.usage_roles ?? []).includes("venda_fabrica");
+                    return (
                     <TableRow key={p.id}>
                       <TableCell className="font-medium">{p.name}</TableCell>
                       <TableCell><Badge variant="secondary">{p.category ?? "—"}</Badge></TableCell>
