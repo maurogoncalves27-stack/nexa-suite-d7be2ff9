@@ -1,6 +1,6 @@
 // Google Reviews Sync — Places API (New) via Google Maps connector gateway
-// - action="detect": tenta achar place_id de lojas sem place_id (via searchText)
-// - action="sync"  : busca as últimas 5 reviews de cada loja com place_id e upserta em customer_reviews
+// Fetches Google rating + latest reviews for EACH (store × brand) combination.
+// Stores aggregate rating in store_brand_google and individual reviews in customer_reviews.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -27,13 +27,14 @@ interface Store {
   name: string;
   address: string | null;
   city: string | null;
-  google_place_id: string | null;
-  brand_id: string | null;
+}
+interface Brand {
+  id: string;
+  name: string;
 }
 
-async function searchPlaceId(store: Store): Promise<string | null> {
-  // Prepend brand name so the search finds the restaurant, not the neighborhood.
-  const query = ["Aquela Parme", store.name, store.address, store.city ?? "Brasília, DF"]
+async function searchPlaceId(brandName: string, store: Store): Promise<string | null> {
+  const query = [brandName, store.name, store.address, store.city ?? "Brasília, DF"]
     .filter(Boolean)
     .join(", ");
   const res = await fetch(`${GATEWAY}/places/v1/places:searchText`, {
@@ -47,11 +48,11 @@ async function searchPlaceId(store: Store): Promise<string | null> {
   }
   const data = await res.json();
   const p = data?.places?.[0];
-  if (p) console.log("searchText matched", store.name, "->", p.displayName?.text, p.formattedAddress);
+  if (p) console.log("searchText matched", brandName, store.name, "->", p.displayName?.text, p.formattedAddress);
   return p?.id ?? null;
 }
 
-async function fetchReviews(placeId: string) {
+async function fetchPlace(placeId: string) {
   const res = await fetch(`${GATEWAY}/places/v1/places/${placeId}?languageCode=pt-BR`, {
     method: "GET",
     headers: gwHeaders({ "X-Goog-FieldMask": "id,displayName,rating,userRatingCount,reviews" }),
@@ -69,93 +70,125 @@ Deno.serve(async (req) => {
     const action = (body.action ?? "sync") as "sync" | "detect";
     const storeIdFilter = body.store_id as string | undefined;
 
-    let query = supabase
+    // Real customer-facing stores only (excluir Escritório, Estoque Central, Fábrica).
+    const EXCLUDE = new Set(["ESCRITÓRIO", "ESCRITORIO", "ESTOQUE CENTRAL", "FABRICA", "FÁBRICA", "iFood Homologação"]);
+
+    let storesQ = supabase
       .from("stores")
-      .select("id,name,address,city,google_place_id,brand_id")
+      .select("id,name,address,city")
       .eq("is_active", true)
       .eq("is_virtual", false);
-    if (storeIdFilter) query = query.eq("id", storeIdFilter);
+    if (storeIdFilter) storesQ = storesQ.eq("id", storeIdFilter);
 
-    const { data: stores, error } = await query;
-    if (error) throw error;
+    const [{ data: storesRaw, error: sErr }, { data: brands, error: bErr }] = await Promise.all([
+      storesQ,
+      supabase.from("brands").select("id,name").eq("is_active", true),
+    ]);
+    if (sErr) throw sErr;
+    if (bErr) throw bErr;
+
+    const stores = ((storesRaw ?? []) as Store[]).filter((s) => !EXCLUDE.has(s.name.toUpperCase()));
+    // Somente as 3 marcas que aparecem no Google Business.
+    const TARGET_BRANDS = new Set(["AQUELA PARME", "AQUELA PARMÊ", "BOX CAIPIRA", "AQUELE ESTROGONOFE"]);
+    const brandList = ((brands ?? []) as Brand[]).filter((b) => TARGET_BRANDS.has(b.name.toUpperCase()));
+
+    // Load existing mappings.
+    const { data: existing } = await supabase.from("store_brand_google").select("store_id,brand_id,place_id");
+    const mapKey = (s: string, b: string) => `${s}::${b}`;
+    const placeIdMap = new Map<string, string | null>();
+    for (const r of existing ?? []) placeIdMap.set(mapKey(r.store_id, r.brand_id), r.place_id);
 
     const results: any[] = [];
+    let totalUpserted = 0;
 
-    if (action === "detect") {
-      for (const s of (stores ?? []) as Store[]) {
-        if (s.google_place_id) {
-          results.push({ store: s.name, status: "skipped", place_id: s.google_place_id });
+    for (const store of stores) {
+      for (const brand of brandList) {
+        const key = mapKey(store.id, brand.id);
+        let placeId = placeIdMap.get(key) ?? null;
+
+        // Detect if missing (or when action=detect, always re-detect).
+        if (!placeId || action === "detect") {
+          placeId = await searchPlaceId(brand.name, store);
+          if (!placeId) {
+            await supabase.from("store_brand_google").upsert(
+              { store_id: store.id, brand_id: brand.id, place_id: null, synced_at: new Date().toISOString() },
+              { onConflict: "store_id,brand_id" },
+            );
+            results.push({ store: store.name, brand: brand.name, status: "not_found" });
+            continue;
+          }
+        }
+
+        if (action === "detect") {
+          await supabase.from("store_brand_google").upsert(
+            { store_id: store.id, brand_id: brand.id, place_id: placeId, synced_at: new Date().toISOString() },
+            { onConflict: "store_id,brand_id" },
+          );
+          results.push({ store: store.name, brand: brand.name, status: "detected", place_id: placeId });
           continue;
         }
-        const placeId = await searchPlaceId(s);
-        if (placeId) {
-          await supabase.from("stores").update({ google_place_id: placeId }).eq("id", s.id);
-          results.push({ store: s.name, status: "detected", place_id: placeId });
-        } else {
-          results.push({ store: s.name, status: "not_found" });
-        }
-      }
-      return new Response(JSON.stringify({ ok: true, action, results }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
-    // action = sync
-    let totalUpserted = 0;
-    for (const s of (stores ?? []) as Store[]) {
-      if (!s.google_place_id) {
-        results.push({ store: s.name, status: "no_place_id" });
-        continue;
-      }
-      try {
-        const place = await fetchReviews(s.google_place_id);
-        const reviews = place?.reviews ?? [];
-        let upserted = 0;
-        for (const r of reviews) {
-          // r.name = "places/{placeId}/reviews/{reviewId}"
-          const externalId = String(r.name ?? "").split("/").pop() ?? null;
-          if (!externalId) continue;
-          const publishedAt = r.publishTime ?? new Date().toISOString();
-          const commentText = r.originalText?.text ?? r.text?.text ?? null;
-          const authorName = r.authorAttribution?.displayName ?? null;
-          const rating = typeof r.rating === "number" ? r.rating : null;
+        // action = sync — fetch rating + reviews.
+        try {
+          const place = await fetchPlace(placeId);
+          const rating = typeof place?.rating === "number" ? place.rating : null;
+          const total = typeof place?.userRatingCount === "number" ? place.userRatingCount : null;
+          const reviews = place?.reviews ?? [];
 
-          const { error: upErr } = await supabase.from("customer_reviews").upsert(
+          await supabase.from("store_brand_google").upsert(
             {
-              source: "google",
-              external_id: externalId,
-              external_url: r.googleMapsUri ?? null,
-              rating,
-              comment: commentText,
-              customer_name: authorName,
-              store_id: s.id,
-              brand_id: s.brand_id,
-              status: "novo",
-              published_at: publishedAt,
+              store_id: store.id,
+              brand_id: brand.id,
+              place_id: placeId,
+              avg_rating: rating,
+              total_ratings: total,
+              synced_at: new Date().toISOString(),
             },
-            { onConflict: "source,external_id" }
+            { onConflict: "store_id,brand_id" },
           );
-          if (upErr) console.error("upsert error", upErr);
-          else upserted++;
+
+          let upserted = 0;
+          for (const r of reviews) {
+            const externalId = String(r.name ?? "").split("/").pop() ?? null;
+            if (!externalId) continue;
+            const { error: upErr } = await supabase.from("customer_reviews").upsert(
+              {
+                source: "google",
+                external_id: externalId,
+                external_url: r.googleMapsUri ?? null,
+                rating: typeof r.rating === "number" ? r.rating : null,
+                comment: r.originalText?.text ?? r.text?.text ?? null,
+                customer_name: r.authorAttribution?.displayName ?? null,
+                store_id: store.id,
+                brand_id: brand.id,
+                status: "novo",
+                published_at: r.publishTime ?? new Date().toISOString(),
+              },
+              { onConflict: "source,external_id" },
+            );
+            if (upErr) console.error("upsert review", upErr);
+            else upserted++;
+          }
+          totalUpserted += upserted;
+          results.push({
+            store: store.name,
+            brand: brand.name,
+            status: "ok",
+            rating,
+            total_ratings: total,
+            reviews_fetched: reviews.length,
+            upserted,
+          });
+        } catch (err) {
+          console.error("sync error", store.name, brand.name, err);
+          results.push({ store: store.name, brand: brand.name, status: "error", message: (err as Error).message });
         }
-        totalUpserted += upserted;
-        results.push({
-          store: s.name,
-          status: "ok",
-          reviews_fetched: reviews.length,
-          upserted,
-          overall_rating: place?.rating,
-          total_ratings: place?.userRatingCount,
-        });
-      } catch (err) {
-        console.error("sync error for", s.name, err);
-        results.push({ store: s.name, status: "error", message: (err as Error).message });
       }
     }
 
     return new Response(
       JSON.stringify({ ok: true, action, total_upserted: totalUpserted, results }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
     console.error("google-reviews-sync fatal", err);
