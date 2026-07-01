@@ -125,12 +125,14 @@ const ProductsFactory = () => {
     const q = search.trim().toLowerCase();
     return products.filter((p) => {
       if (catFilter !== "all" && (p.category ?? "") !== catFilter) return false;
-      if (kindFilter === "produzidos" && p.product_type !== "produzido") return false;
-      if (kindFilter === "insumos" && p.product_type === "produzido") return false;
+      const roles = p.usage_roles ?? [];
+      if (viewFilter === "cardapio" && !roles.includes("venda_fabrica")) return false;
+      if (viewFilter === "produzidos" && p.product_type !== "produzido") return false;
+      if (viewFilter === "insumos" && p.product_type === "produzido") return false;
       if (q && !p.name.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [products, search, catFilter, kindFilter]);
+  }, [products, search, catFilter, viewFilter]);
 
   const handleNew = () => {
     setEditing(null);
