@@ -136,6 +136,9 @@ const ProductsFactory = () => {
       product_type: (p.product_type as Draft["product_type"]) ?? "insumo",
       is_internal: p.is_internal,
       is_active: p.is_active,
+      stock_scope: p.stock_scope ?? "factory_and_store",
+      usage_roles: p.usage_roles ?? [],
+      production_flow: p.production_flow ?? "comprado",
     });
     setOpen(true);
   };
@@ -152,6 +155,9 @@ const ProductsFactory = () => {
         is_internal: draft.product_type === "produzido" ? true : draft.is_internal,
         is_active: draft.is_active,
         factory_only: true,
+        stock_scope: draft.stock_scope,
+        usage_roles: draft.usage_roles,
+        production_flow: draft.production_flow,
       };
       const { error } = editing
         ? await supabase.from("inventory_products").update(payload).eq("id", editing.id)
