@@ -213,6 +213,7 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
                                     <SelectLabel>{group.isPack ? "Embalagens / Descartáveis" : "Insumos / Produtos"}</SelectLabel>
                                     {products
                                       .filter((p) => !recipeByOutput[p.id])
+                                      .filter((p) => (contextScope === "fabrica" ? p.factory_only : !p.factory_only))
                                       .filter((p) => {
                                         const isPack = /embalag/i.test(p.category ?? "");
                                         return group.isPack ? isPack : !isPack;
