@@ -13294,6 +13294,94 @@ export type Database = {
           },
         ]
       }
+      remote_access_audit: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          machine_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          machine_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          machine_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "remote_access_audit_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "remote_access_machines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      remote_access_machines: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          hostname: string | null
+          id: string
+          label: string
+          last_seen_at: string | null
+          machine_type: string
+          notes: string | null
+          password: string | null
+          remote_id: string
+          store_id: string | null
+          tool: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          hostname?: string | null
+          id?: string
+          label: string
+          last_seen_at?: string | null
+          machine_type?: string
+          notes?: string | null
+          password?: string | null
+          remote_id: string
+          store_id?: string | null
+          tool?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          hostname?: string | null
+          id?: string
+          label?: string
+          last_seen_at?: string | null
+          machine_type?: string
+          notes?: string | null
+          password?: string | null
+          remote_id?: string
+          store_id?: string | null
+          tool?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "remote_access_machines_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reservations: {
         Row: {
           created_at: string
