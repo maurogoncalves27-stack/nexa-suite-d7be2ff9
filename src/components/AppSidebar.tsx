@@ -154,6 +154,7 @@ const operacaoSections: Section[] = [
   ]},
   { label: "NutriControle", items: [
     { title: "NutriControle", url: "/nutricontrol", icon: LabCoatIcon, staffOnly: true },
+    { title: "Sensores de temperatura", url: "/nutricontrol/sensores", icon: Thermometer, staffOnly: true },
     { title: "Visita técnica", url: "/nutri-visita", icon: ClipboardCheck, staffOnly: true },
     { title: "Relatórios NutriControle", url: "/nutri-relatorios", icon: FileBarChart, staffOnly: true },
     { title: "Manutenções", url: "/nutricontrol?tab=manutencao", icon: Wrench, staffOnly: true },
