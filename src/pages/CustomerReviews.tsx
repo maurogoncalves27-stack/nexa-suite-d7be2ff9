@@ -321,13 +321,25 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                     {meta.label}
                   </div>
                   {isManual && (
-                    <button
-                      type="button"
-                      onClick={() => (isIfood ? setOpenIfoodDialog(true) : setOpenGoogleDialog(true))}
-                      className="text-[10px] text-primary hover:underline"
-                    >
-                      editar por loja
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {isGoogle && (
+                        <button
+                          type="button"
+                          onClick={syncGoogleNow}
+                          disabled={syncingGoogle}
+                          className="text-[10px] text-primary hover:underline disabled:opacity-50"
+                        >
+                          {syncingGoogle ? "sincronizando…" : "sincronizar"}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => (isIfood ? setOpenIfoodDialog(true) : setOpenGoogleDialog(true))}
+                        className="text-[10px] text-primary hover:underline"
+                      >
+                        editar por loja
+                      </button>
+                    </div>
                   )}
                 </div>
                 <div className="text-lg font-semibold flex items-center gap-1">
