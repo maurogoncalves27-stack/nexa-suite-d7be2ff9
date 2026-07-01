@@ -164,7 +164,13 @@ const operacaoSections: Section[] = [
     { title: "CRM", url: "/crm", icon: Headset, staffOnly: true },
     { title: "Central de Ocorrências", url: "/ocorrencias", icon: Siren },
   ]},
+  { label: "Cardápio", items: [
+    { title: "Cardápio", url: "/cardapio", icon: ScanText, staffOnly: true },
+    { title: "Receituário", url: "/receituario", icon: BookMarked, staffOnly: true },
+    { title: "Fichas técnicas", url: "/fichas-tecnicas", icon: ChefHat, staffOnly: true },
+  ]},
 ];
+
 
 // Documentos: Formais | Arquivos | Acessos
 const documentosSections: Section[] = [
@@ -219,12 +225,8 @@ const pdvSections: Section[] = [
   
     
   ]},
-  { label: "Cardápio", items: [
-    { title: "Cardápio", url: "/cardapio", icon: ScanText, staffOnly: true },
-    { title: "Receituário", url: "/receituario", icon: BookMarked, staffOnly: true },
-    { title: "Fichas técnicas", url: "/fichas-tecnicas", icon: ChefHat, staffOnly: true },
-  ]},
 ];
+
 
 // Fábrica: produção (sem rótulos — conforme print)
 const fabricaSections: Section[] = [
