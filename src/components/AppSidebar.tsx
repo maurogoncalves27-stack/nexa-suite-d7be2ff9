@@ -227,6 +227,7 @@ const fabricaSections: Section[] = [
     { title: "Plano semanal", url: "/plano-fabrica", icon: CalendarRange, staffOnly: true },
     { title: "Requisições de urgência", url: "/solicitacoes-fabrica", icon: AlertTriangle, staffOnly: true },
     { title: "Fichas técnicas", url: "/fichas-fabrica", icon: FlaskConical, staffOnly: true },
+    { title: "Produtos", url: "/produtos-fabrica", icon: Layers, staffOnly: true },
     { title: "Cardápio", url: "/cardapio-fabrica", icon: Utensils, staffOnly: true },
     { title: "Receituário", url: "/receituario-fabrica", icon: BookMarked, staffOnly: true },
     { title: "Checklist de separação", url: "/separacao", icon: ClipboardList, staffOnly: true },
