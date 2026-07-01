@@ -1,7 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Headset, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, Clock, Bot, Plug, Globe, Star, ArrowRight, Settings } from "lucide-react";
-import { AgentPanel, IntegrationsPanel } from "@/components/crm/ParmeSettingsPanels";
-import { GoogleReviewsPanel } from "@/components/crm/GoogleReviewsPanel";
+import { Headset, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, Clock, Bot, Globe, Star, ArrowRight, Settings } from "lucide-react";
+import { AgentPanel } from "@/components/crm/ParmeSettingsPanels";
 import { ReservationSettingsDialog } from "@/components/crm/ReservationSettingsDialog";
 import CustomerReviews from "@/pages/CustomerReviews";
 import {
@@ -803,10 +802,6 @@ export default function CRM() {
           <TabsTrigger value="agent" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
             <Bot className="h-4 w-4" />
             <span>Agente IA</span>
-          </TabsTrigger>
-          <TabsTrigger value="integrations" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
-            <Plug className="h-4 w-4" />
-            <span>Integrações</span>
           </TabsTrigger>
         </TabsList>
 
@@ -1647,10 +1642,6 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
           <AgentPanel />
         </TabsContent>
 
-        <TabsContent value="integrations" className="mt-4 space-y-4">
-          <GoogleReviewsPanel />
-          <IntegrationsPanel />
-        </TabsContent>
       </Tabs>
       <ReservationSettingsDialog
         open={reservationSettingsOpen}
