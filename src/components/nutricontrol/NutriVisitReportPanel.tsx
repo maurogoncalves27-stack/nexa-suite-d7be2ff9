@@ -240,7 +240,8 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
         general_notes: generalNotes.trim(),
         signature_url: signatureUrl,
         store_responsible_name: storeResponsible.trim(),
-      })
+        nutritionist_rating: nutriRating,
+      } as any)
       .select()
       .single();
 
@@ -249,6 +250,22 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
       setSaving(false);
       return;
     }
+
+    // Espelha nota da nutricionista em customer_reviews (fonte = nutri) para o CRM
+    try {
+      await supabase.from("customer_reviews").insert({
+        source: "nutri",
+        rating: nutriRating,
+        comment: generalNotes.trim() || `Visita técnica — ${visitorName.trim()}`,
+        customer_name: visitorName.trim(),
+        store_id: currentStoreId,
+        status: "novo",
+        published_at: visitDate,
+      } as any);
+    } catch (e) {
+      console.warn("Falha ao espelhar avaliação da nutricionista no CRM", e);
+    }
+
 
     const responsesToInsert = Object.values(responses).map((r) => ({
       visit_report_id: report.id,
