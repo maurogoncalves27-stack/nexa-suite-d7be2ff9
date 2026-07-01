@@ -108,6 +108,7 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
   const [filterStore, setFilterStore] = useState<string>("all");
 
   const [openNew, setOpenNew] = useState(false);
+  const [editing, setEditing] = useState<Review | null>(null);
   const [openReply, setOpenReply] = useState<Review | null>(null);
 
   async function load() {
