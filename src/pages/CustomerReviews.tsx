@@ -311,8 +311,8 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
 
 /* ---------- Novo registro manual ---------- */
 function NewReviewDialog({
-  open, onOpenChange, brands, stores, onSaved,
-}: { open: boolean; onOpenChange: (o: boolean) => void; brands: Brand[]; stores: Store[]; onSaved: () => void }) {
+  open, onOpenChange, brands, stores, editing, onSaved,
+}: { open: boolean; onOpenChange: (o: boolean) => void; brands: Brand[]; stores: Store[]; editing?: Review | null; onSaved: () => void }) {
   const { toast } = useToast();
   const [source, setSource] = useState<Source>("google");
   const [rating, setRating] = useState<number>(5);
@@ -324,26 +324,47 @@ function NewReviewDialog({
   const [storeId, setStoreId] = useState<string>("none");
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (!open) return;
+    if (editing) {
+      setSource((editing.source as Source) ?? "google");
+      const r = editing.rating ?? 5;
+      setRating(r);
+      setRatingStr(Number(r).toFixed(1).replace(".", ","));
+      setName(editing.customer_name ?? "");
+      setComment(editing.comment ?? "");
+      setUrl(editing.external_url ?? "");
+      setBrandId(editing.brand_id ?? "none");
+      setStoreId(editing.store_id ?? "none");
+    } else {
+      setSource("google"); setRating(5); setRatingStr("5,0");
+      setName(""); setComment(""); setUrl(""); setBrandId("none"); setStoreId("none");
+    }
+  }, [open, editing]);
+
   async function save() {
     if (!comment.trim()) {
       toast({ title: "Escreva o comentário do cliente.", variant: "destructive" });
       return;
     }
     setSaving(true);
-    const { error } = await supabase.from("customer_reviews").insert({
+    const payload = {
       source, rating, comment, customer_name: name || null, external_url: url || null,
       brand_id: brandId === "none" ? null : brandId,
       store_id: storeId === "none" ? null : storeId,
-      published_at: new Date().toISOString(),
-    });
+    };
+    const { error } = editing
+      ? await supabase.from("customer_reviews").update(payload).eq("id", editing.id)
+      : await supabase.from("customer_reviews").insert({ ...payload, published_at: new Date().toISOString() });
     setSaving(false);
     if (error) {
       toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
       return;
     }
-    setName(""); setComment(""); setUrl(""); setBrandId("none"); setStoreId("none"); setRating(5);
+    toast({ title: editing ? "Avaliação atualizada" : "Avaliação adicionada" });
     onSaved();
   }
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
