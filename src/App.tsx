@@ -100,6 +100,7 @@ const RecipeBook = lazy(() => import("./pages/RecipeBook.tsx"));
 const BankReconciliation = lazy(() => import("./pages/BankReconciliation.tsx"));
 const FactoryRequests = lazy(() => import("./pages/FactoryRequests.tsx"));
 const FactoryWeeklyPlan = lazy(() => import("./pages/FactoryWeeklyPlan.tsx"));
+const ReplenishmentSuggestion = lazy(() => import("./pages/ReplenishmentSuggestion.tsx"));
 const PettyCash = lazy(() => import("./pages/PettyCash.tsx"));
 const Faturamento = lazy(() => import("./pages/Faturamento.tsx"));
 const CustomerReviews = lazy(() => import("./pages/CustomerReviews.tsx"));
