@@ -63,6 +63,7 @@ export async function generateRecipeBookFromRecipe(recipeId: string): Promise<st
       yield_text: yieldText,
       prep_time_minutes: recipe.prep_time_minutes,
       source_recipe_name: recipe.name,
+      scope: (recipe as any).scope === "fabrica" ? "fabrica" : "loja",
       created_by: user?.id ?? null,
     })
     .select("id")
