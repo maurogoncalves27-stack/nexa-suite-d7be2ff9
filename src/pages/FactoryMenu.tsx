@@ -117,20 +117,19 @@ const FactoryMenu = () => {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
-    const { error } = await supabase.from("inventory_products").delete().eq("id", deleteTarget.id);
+    // Soft-remove: retira do cardápio convertendo em pré-preparo/insumo interno.
+    // Evita quebrar FKs (contagens, fichas, transferências) e preserva histórico.
+    const { error } = await supabase
+      .from("inventory_products")
+      .update({ product_type: "insumo", is_internal: true })
+      .eq("id", deleteTarget.id);
     setDeleting(false);
-    if (error) {
-      toast.error(
-        /foreign key|violates/i.test(error.message)
-          ? "Este item está em uso em fichas técnicas. Desative-o em vez de excluir."
-          : error.message,
-      );
-      return;
-    }
-    toast.success("Item removido");
+    if (error) { toast.error(error.message); return; }
+    toast.success("Removido do cardápio");
     setDeleteTarget(null);
     load();
   };
+
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
