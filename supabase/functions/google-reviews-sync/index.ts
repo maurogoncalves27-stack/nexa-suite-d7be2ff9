@@ -32,7 +32,10 @@ interface Store {
 }
 
 async function searchPlaceId(store: Store): Promise<string | null> {
-  const query = [store.name, store.address, store.city].filter(Boolean).join(", ");
+  // Prepend brand name so the search finds the restaurant, not the neighborhood.
+  const query = ["Aquela Parme", store.name, store.address, store.city ?? "Brasília, DF"]
+    .filter(Boolean)
+    .join(", ");
   const res = await fetch(`${GATEWAY}/places/v1/places:searchText`, {
     method: "POST",
     headers: gwHeaders({ "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress" }),
@@ -43,7 +46,9 @@ async function searchPlaceId(store: Store): Promise<string | null> {
     return null;
   }
   const data = await res.json();
-  return data?.places?.[0]?.id ?? null;
+  const p = data?.places?.[0];
+  if (p) console.log("searchText matched", store.name, "->", p.displayName?.text, p.formattedAddress);
+  return p?.id ?? null;
 }
 
 async function fetchReviews(placeId: string) {
