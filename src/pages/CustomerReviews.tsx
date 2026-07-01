@@ -20,7 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -259,6 +260,15 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
           <p className="text-muted-foreground">Resenhas recebidas dos canais de venda — responda e acompanhe a média.</p>
         </div>
       )}
+
+      <Tabs defaultValue="painel" className="w-full">
+        <TabsList className="w-full sm:w-auto">
+          <TabsTrigger value="painel">Painel</TabsTrigger>
+          <TabsTrigger value="graficos">Gráficos</TabsTrigger>
+          <TabsTrigger value="comentarios">Comentários</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="painel" forceMount className="space-y-6 mt-4 data-[state=inactive]:hidden">
       {/* Cards por fonte */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
         {perSource.map(({ source, total, novos, avg, hasRatings }) => {
@@ -585,9 +595,123 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
           </Card>
         );
       })()}
+        </TabsContent>
 
+        <TabsContent value="graficos" className="space-y-4 mt-4">
+          {(() => {
+            const parme = brands.find((b) => /parm/i.test(b.name));
+            const box = brands.find((b) => /box/i.test(b.name));
+            const estro = brands.find((b) => /estrog/i.test(b.name));
+            const isFabrica = (name: string) => /f[aá]brica/i.test(name);
+            const nonFabrica = stores.filter((s) => !isFabrica(s.name));
+            const brandCols = [
+              { id: parme?.id, key: "P", label: "Aquela Parmê", color: "hsl(0 72% 51%)" },
+              { id: box?.id, key: "B", label: "Box Caipira", color: "hsl(24 90% 55%)" },
+              { id: estro?.id, key: "E", label: "Aquele Estrogonofê", color: "hsl(20 40% 35%)" },
+            ];
 
+            const buildData = (map: Record<string, ManualEntry>) =>
+              nonFabrica.map((s) => {
+                const row: any = { loja: s.name.replace(/^loja\s+/i, "") };
+                brandCols.forEach((c) => {
+                  if (!c.id) return;
+                  const e = map[`${s.id}::${c.id}`];
+                  row[c.key] = e && e.avg > 0 ? Number(e.avg.toFixed(2)) : null;
+                });
+                return row;
+              });
 
+            const ifoodData = buildData(ifoodByStore);
+            const googleData = buildData(googleByStore);
+
+            const nutriData = stores.map((s) => {
+              const rows = reviews.filter((r) => r.source === "nutri" && r.store_id === s.id && r.rating != null);
+              const avg = rows.length ? rows.reduce((a, b) => a + (b.rating as number), 0) / rows.length : 0;
+              return { loja: s.name.replace(/^loja\s+/i, ""), N: avg > 0 ? Number(avg.toFixed(2)) : null };
+            });
+
+            // Evolução semanal (média ponderada global) — usa history + snapshotOf
+            const weeklyPoints = history.map((h) => {
+              const wAvg = (snap: Record<string, number>, counts: Record<string, ManualEntry>) => {
+                const keys = Object.keys(snap);
+                let sum = 0, n = 0;
+                keys.forEach((k) => {
+                  const c = counts[k]?.count || 1;
+                  sum += snap[k] * c; n += c;
+                });
+                return n ? Number((sum / n).toFixed(2)) : null;
+              };
+              return {
+                semana: h.weekKey.replace(/^\d{4}-/, ""),
+                iFood: wAvg(h.ifood, ifoodByStore),
+                Google: wAvg(h.google, googleByStore),
+              };
+            });
+
+            const ChartCard = ({ title, data, source }: { title: string; data: any[]; source: "brand" | "nutri" }) => (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">{title}</CardTitle>
+                </CardHeader>
+                <CardContent className="p-2 sm:p-3">
+                  <ResponsiveContainer width="100%" height={260}>
+                    <BarChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                      <XAxis dataKey="loja" tick={{ fontSize: 11 }} interval={0} />
+                      <YAxis domain={[0, 5]} tick={{ fontSize: 11 }} />
+                      <ReTooltip contentStyle={{ fontSize: 12 }} />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                      {source === "brand"
+                        ? brandCols.map((c) => (
+                            <Bar key={c.key} dataKey={c.key} name={`${c.key} — ${c.label}`} fill={c.color} radius={[4, 4, 0, 0]} />
+                          ))
+                        : <Bar dataKey="N" name="N — Nutricionista" fill="hsl(142 71% 45%)" radius={[4, 4, 0, 0]} />}
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            );
+
+            return (
+              <>
+                <div className="text-[11px] text-muted-foreground">
+                  Legenda: <b>P</b>=Aquela Parmê · <b>B</b>=Box Caipira · <b>E</b>=Aquele Estrogonofê · <b>N</b>=Nutricionista · <b>G</b>=Google
+                </div>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <ChartCard title="iFood — média por loja e marca" data={ifoodData} source="brand" />
+                  <ChartCard title="Google — média por loja e marca" data={googleData} source="brand" />
+                  <ChartCard title="Nutricionista — média por loja" data={nutriData} source="nutri" />
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm">Evolução semanal (média ponderada)</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-2 sm:p-3">
+                      {weeklyPoints.length < 2 ? (
+                        <div className="text-xs text-muted-foreground text-center py-10">
+                          Ainda sem histórico suficiente. As médias são armazenadas semanalmente à medida que você edita as notas.
+                        </div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height={260}>
+                          <LineChart data={weeklyPoints} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                            <XAxis dataKey="semana" tick={{ fontSize: 11 }} />
+                            <YAxis domain={[0, 5]} tick={{ fontSize: 11 }} />
+                            <ReTooltip contentStyle={{ fontSize: 12 }} />
+                            <Legend wrapperStyle={{ fontSize: 11 }} />
+                            <Line type="monotone" dataKey="iFood" stroke="hsl(0 72% 51%)" strokeWidth={2} dot={{ r: 3 }} />
+                            <Line type="monotone" dataKey="Google" stroke="hsl(217 91% 60%)" strokeWidth={2} dot={{ r: 3 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </>
+            );
+          })()}
+        </TabsContent>
+
+        <TabsContent value="comentarios" className="space-y-6 mt-4">
       <div className="flex flex-col sm:flex-row gap-2">
         <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full sm:w-auto">
           <TabsList className="w-full sm:w-auto">
@@ -698,6 +822,9 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
           })}
         </div>
       )}
+        </TabsContent>
+      </Tabs>
+
 
       <NewReviewDialog
         open={openNew || editing !== null}
