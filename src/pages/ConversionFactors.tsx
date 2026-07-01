@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Scale, Search, Plus, Trash2, Star, AlertCircle } from "lucide-react";
+import { Loader2, Ruler, Search, Plus, Trash2, Star, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
