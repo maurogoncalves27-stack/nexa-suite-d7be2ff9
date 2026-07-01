@@ -68,14 +68,25 @@ const SOURCE_META: Record<Source, { label: string; icon: any; color: string }> =
 };
 
 function Stars({ n }: { n: number | null }) {
+  const value = n ?? 0;
   return (
     <div className="flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Star
-          key={i}
-          className={`h-3.5 w-3.5 ${i <= (n ?? 0) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"}`}
-        />
-      ))}
+      {[1, 2, 3, 4, 5].map((i) => {
+        const fill = Math.max(0, Math.min(1, value - (i - 1)));
+        return (
+          <div key={i} className="relative h-3.5 w-3.5">
+            <Star className="absolute inset-0 h-3.5 w-3.5 text-muted-foreground/30" />
+            {fill > 0 && (
+              <div className="absolute inset-0 overflow-hidden" style={{ width: `${fill * 100}%` }}>
+                <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {n != null && !Number.isInteger(n) && (
+        <span className="ml-1 text-[10px] text-muted-foreground">{n.toFixed(1).replace(".", ",")}</span>
+      )}
     </div>
   );
 }
