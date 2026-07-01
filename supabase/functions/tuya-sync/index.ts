@@ -26,13 +26,13 @@ const HOST = HOST_MAP[DC] ?? HOST_MAP.us;
 
 const sha256 = (s: string) => createHmac('sha256', ACCESS_SECRET).update(s).digest('hex').toUpperCase();
 
-async function getToken(): Promise<string> {
+async function getToken(host: string): Promise<string> {
   const t = Date.now().toString();
   const nonce = crypto.randomUUID().replace(/-/g, '');
   const path = '/v1.0/token?grant_type=1';
   const contentHash = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
   const stringToSign = `GET\n${contentHash}\n\n${path}`;
-  const res = await fetch(HOST + path, {
+  const res = await fetch(host + path, {
     headers: {
       client_id: ACCESS_ID,
       sign: sha256(ACCESS_ID + t + nonce + stringToSign),
@@ -40,16 +40,16 @@ async function getToken(): Promise<string> {
     },
   });
   const j = await res.json();
-  if (!j.success) throw new Error(`token: ${JSON.stringify(j)}`);
+  if (!j.success) throw new Error(`token@${host}: ${JSON.stringify(j)}`);
   return j.result.access_token as string;
 }
 
-async function tuyaGet(path: string, token: string) {
+async function tuyaGet(host: string, path: string, token: string) {
   const t = Date.now().toString();
   const nonce = crypto.randomUUID().replace(/-/g, '');
   const contentHash = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
   const stringToSign = `GET\n${contentHash}\n\n${path}`;
-  const res = await fetch(HOST + path, {
+  const res = await fetch(host + path, {
     headers: {
       client_id: ACCESS_ID, access_token: token,
       sign: sha256(ACCESS_ID + token + t + nonce + stringToSign),
@@ -58,6 +58,32 @@ async function tuyaGet(path: string, token: string) {
   });
   return res.json();
 }
+
+// Try all data centers to find where the device lives
+async function fetchDeviceStatus(deviceId: string) {
+  const dcOrder = [DC, 'us', 'us-e', 'eu', 'eu-w', 'cn', 'in'];
+  const seen = new Set<string>();
+  let lastErr: any = null;
+  for (const dcKey of dcOrder) {
+    const host = HOST_MAP[dcKey];
+    if (!host || seen.has(host)) continue;
+    seen.add(host);
+    try {
+      const token = await getToken(host);
+      const res = await tuyaGet(host, `/v1.0/devices/${deviceId}/status`, token);
+      if (res.success) return { ok: true as const, result: res.result, host, dc: dcKey };
+      lastErr = { host, dc: dcKey, res };
+      // If it's not a DC-permission error, don't keep trying
+      if (res.code !== 28841107 && res.code !== 1106 && res.code !== 2007) {
+        return { ok: false as const, err: lastErr };
+      }
+    } catch (e) {
+      lastErr = { host, dc: dcKey, err: String(e) };
+    }
+  }
+  return { ok: false as const, err: lastErr };
+}
+
 
 function extractTempHumidity(status: Array<{ code: string; value: unknown }>) {
   let temp: number | null = null;
