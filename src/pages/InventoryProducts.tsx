@@ -73,8 +73,6 @@ const empty: DraftProduct = {
   factory_only: false,
   product_type: "insumo",
   requires_expiry: false,
-  purchase_unit: null,
-  pack_size: null,
 };
 
 const fmtBRL = (n: number) =>
