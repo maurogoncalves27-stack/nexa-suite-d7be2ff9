@@ -148,7 +148,71 @@ export default function NutriSensors() {
 
       {loading ? (
         <div className="text-muted-foreground text-sm">Carregando…</div>
-      ) : equips.length === 0 ? (
+      ) : (
+        <>
+          {emsSensors.length > 0 && (
+            <div className="space-y-2">
+              <div>
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Sensores EMS-A (Câmara Fria)</h2>
+                <p className="text-xs text-muted-foreground">Ingestão automática via API EMS-A a cada 5 min.</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {emsSensors.map((s) => {
+                  const store = stores.find((x) => x.id === s.store_id);
+                  const temp = s.last_measurement;
+                  const ageMin = s.last_measured_at
+                    ? (Date.now() - new Date(s.last_measured_at).getTime()) / 60_000
+                    : Infinity;
+                  const online = temp !== null && ageMin < 30;
+                  const outOfRange =
+                    temp !== null &&
+                    ((s.min_value !== null && temp < Number(s.min_value)) ||
+                      (s.max_value !== null && temp > Number(s.max_value)));
+                  const status = !online
+                    ? { label: "Offline", cls: "bg-muted text-muted-foreground", Icon: WifiOff }
+                    : outOfRange
+                      ? { label: "Fora da faixa", cls: "bg-destructive text-destructive-foreground", Icon: Wifi }
+                      : { label: "OK", cls: "bg-success text-success-foreground", Icon: Wifi };
+                  return (
+                    <Card key={s.unique_code}>
+                      <CardHeader className="pb-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <CardTitle className="text-base">{s.label ?? s.unique_code}</CardTitle>
+                          <Badge className={status.cls}>
+                            <status.Icon className="h-3 w-3 mr-1" />
+                            {status.label}
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {store?.name ?? "—"} · Faixa {s.min_value ?? "?"}~{s.max_value ?? "?"}°C · EMS-A
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        <div className={`text-4xl font-bold ${outOfRange ? "text-destructive" : ""}`}>
+                          {temp !== null ? `${temp.toFixed(1)}°C` : "—"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {s.last_measured_at
+                            ? `Atualizado ${formatDistanceToNow(new Date(s.last_measured_at), { addSuffix: true, locale: ptBR })}`
+                            : "Sem leituras ainda"}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {equips.length > 0 && (
+            <div className="space-y-2">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Sensores Tuya Wi-Fi</h2>
+            </div>
+          )}
+        </>
+      )}
+
+      {!loading && equips.length === 0 && emsSensors.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center space-y-3">
             <Thermometer className="h-10 w-10 mx-auto text-muted-foreground" />
