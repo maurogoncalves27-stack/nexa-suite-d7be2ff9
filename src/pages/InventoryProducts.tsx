@@ -41,8 +41,6 @@ interface Product {
   factory_only: boolean;
   product_type: "insumo" | "revenda" | "produzido" | "embalagem" | "personalizado";
   requires_expiry: boolean;
-  purchase_unit: string | null;
-  pack_size: number | null;
 }
 
 interface Store {
