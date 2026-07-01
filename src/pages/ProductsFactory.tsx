@@ -22,6 +22,26 @@ const TYPES = [
   { value: "embalagem", label: "Embalagem" },
 ] as const;
 
+const SCOPES = [
+  { value: "central", label: "Só Estoque Central" },
+  { value: "factory", label: "Central + Fábrica" },
+  { value: "store", label: "Central + Lojas" },
+  { value: "factory_and_store", label: "Central + Fábrica + Lojas" },
+] as const;
+
+const FLOWS = [
+  { value: "comprado", label: "Comprado (vem de fornecedor)" },
+  { value: "produzido_fabrica", label: "Produzido pela Fábrica" },
+  { value: "misto", label: "Misto (compra ou produção)" },
+] as const;
+
+const ROLES = [
+  { value: "venda_loja", label: "Venda na Loja (cardápio)" },
+  { value: "venda_fabrica", label: "Venda pela Fábrica (cardápio)" },
+  { value: "insumo_producao", label: "Insumo de produção (fábrica)" },
+  { value: "insumo_montagem", label: "Insumo de montagem (loja)" },
+] as const;
+
 interface Product {
   id: string;
   name: string;
@@ -31,6 +51,9 @@ interface Product {
   is_internal: boolean;
   is_active: boolean;
   average_cost: number;
+  stock_scope: string;
+  usage_roles: string[] | null;
+  production_flow: string;
 }
 
 interface Draft {
@@ -40,6 +63,9 @@ interface Draft {
   product_type: "insumo" | "produzido" | "embalagem";
   is_internal: boolean;
   is_active: boolean;
+  stock_scope: string;
+  usage_roles: string[];
+  production_flow: string;
 }
 
 const empty: Draft = {
@@ -49,6 +75,9 @@ const empty: Draft = {
   product_type: "insumo",
   is_internal: false,
   is_active: true,
+  stock_scope: "factory_and_store",
+  usage_roles: ["insumo_producao"],
+  production_flow: "comprado",
 };
 
 const fmtBRL = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
