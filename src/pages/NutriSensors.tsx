@@ -327,7 +327,7 @@ function AddSensorDialog({
     const { data: user } = await supabase.auth.getUser();
     const { error } = await supabase.from("nutri_equipment").insert({
       name,
-      equipment_type: "camara",
+      equipment_type: type === "freezer" ? "freezer" : "refrigerator",
       store_id: storeId,
       created_by: user.user!.id,
       tuya_device_id: deviceId,
@@ -337,6 +337,7 @@ function AddSensorDialog({
       alert_delay_minutes: 15,
       tuya_active: true,
     });
+
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Sensor vinculado");
