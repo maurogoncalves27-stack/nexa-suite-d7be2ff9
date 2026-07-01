@@ -239,9 +239,14 @@ const ProductsFactory = () => {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-          <Layers className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Produtos da Fábrica
+          <Layers className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+          {viewFilter === "cardapio" ? "Cardápio da Fábrica" : "Produtos da Fábrica"}
         </h1>
-        <p className="text-muted-foreground">Insumos usados pela fábrica e itens que ela produz. Base exclusiva dos selects das fichas técnicas da fábrica.</p>
+        <p className="text-muted-foreground">
+          {viewFilter === "cardapio"
+            ? "Produtos que a fábrica vende para as lojas. Desmarque \"No cardápio\" para retirar sem excluir o cadastro."
+            : "Cadastro único da fábrica: insumos, embalagens e produzidos. Use \"No cardápio\" para marcar o que a fábrica vende às lojas."}
+        </p>
       </div>
 
       <Card>
