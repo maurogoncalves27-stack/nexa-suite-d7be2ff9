@@ -804,10 +804,6 @@ export default function CRM() {
             <Bot className="h-4 w-4" />
             <span>Agente IA</span>
           </TabsTrigger>
-          <TabsTrigger value="integrations" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
-            <Plug className="h-4 w-4" />
-            <span>Integrações</span>
-          </TabsTrigger>
         </TabsList>
 
         {/* Dashboard */}
@@ -1647,10 +1643,6 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
           <AgentPanel />
         </TabsContent>
 
-        <TabsContent value="integrations" className="mt-4 space-y-4">
-          <GoogleReviewsPanel />
-          <IntegrationsPanel />
-        </TabsContent>
       </Tabs>
       <ReservationSettingsDialog
         open={reservationSettingsOpen}
