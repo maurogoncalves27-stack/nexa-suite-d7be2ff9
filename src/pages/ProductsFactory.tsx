@@ -309,6 +309,23 @@ const ProductsFactory = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleting} onOpenChange={(v) => !v && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir produto?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir <strong>{deleting?.name}</strong> da Fábrica? Se o produto já tem histórico (contagens, fichas, movimentos), ele será apenas removido da Fábrica preservando o histórico.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingBusy}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} disabled={deletingBusy} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {deletingBusy && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
