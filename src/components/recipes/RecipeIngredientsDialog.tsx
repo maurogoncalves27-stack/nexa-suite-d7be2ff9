@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ const UNITS = ["UN", "KG", "G", "L", "ML", "CX", "PCT", "FD", "DZ", "MT", "PORCA
 interface Product { id: string; name: string; unit: string; average_cost: number; category: string | null; factory_only: boolean; usage_roles: string[] | null; }
 interface RecipeRef { id: string; name: string; yield_unit: string; output_product_id: string; scope: "fabrica" | "loja" | null; }
 interface BrandRef { id: string; name: string; }
+interface ConvRef { product_id: string; from_qty: number; to_qty: number; from_unit: string; to_unit: string; is_default: boolean; }
 
 interface Item {
   id?: string;
@@ -21,6 +22,7 @@ interface Item {
   unit: string;
   notes: string;
   is_packaging: boolean;
+  ingredient_state?: "cru" | "pronto" | null;
 }
 
 interface Props {
