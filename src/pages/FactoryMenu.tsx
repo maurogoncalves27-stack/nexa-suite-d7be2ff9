@@ -117,20 +117,19 @@ const FactoryMenu = () => {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
-    const { error } = await supabase.from("inventory_products").delete().eq("id", deleteTarget.id);
+    // Soft-remove: retira do cardápio convertendo em pré-preparo/insumo interno.
+    // Evita quebrar FKs (contagens, fichas, transferências) e preserva histórico.
+    const { error } = await supabase
+      .from("inventory_products")
+      .update({ product_type: "insumo", is_internal: true })
+      .eq("id", deleteTarget.id);
     setDeleting(false);
-    if (error) {
-      toast.error(
-        /foreign key|violates/i.test(error.message)
-          ? "Este item está em uso em fichas técnicas. Desative-o em vez de excluir."
-          : error.message,
-      );
-      return;
-    }
-    toast.success("Item removido");
+    if (error) { toast.error(error.message); return; }
+    toast.success("Removido do cardápio");
     setDeleteTarget(null);
     load();
   };
+
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -264,15 +263,15 @@ const FactoryMenu = () => {
       <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir “{deleteTarget?.name}”?</AlertDialogTitle>
+            <AlertDialogTitle>Remover “{deleteTarget?.name}” do cardápio?</AlertDialogTitle>
             <AlertDialogDescription>
-              O item será removido do cardápio e do cadastro. Se estiver em uso em fichas técnicas, a exclusão será bloqueada — prefira desativar.
+              O item sai do Cardápio da Fábrica e passa a valer como pré-preparo/insumo interno. O cadastro, o histórico e as fichas técnicas que o utilizam permanecem intactos.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} disabled={deleting}>
-              {deleting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Excluir
+              {deleting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Remover
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
