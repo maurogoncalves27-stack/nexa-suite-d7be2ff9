@@ -289,6 +289,8 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
           await supabase.from("inventory_products").update({
             name: form.name.trim(),
             unit: form.yield_unit,
+            is_internal: true,
+            factory_only: true,
           }).eq("id", outputId);
         } else {
           const { data: prod, error: pErr } = await supabase
@@ -306,6 +308,12 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
           if (pErr) throw pErr;
           outputId = (prod as any).id;
         }
+      } else if (factoryWantsOutput && outputId) {
+        // Voltou para Porção: garantir que o produto de saída NÃO seja interno
+        await supabase.from("inventory_products").update({
+          is_internal: false,
+          factory_only: false,
+        }).eq("id", outputId);
       }
       const payload = {
         name: form.name.trim(),
