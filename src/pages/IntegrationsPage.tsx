@@ -157,12 +157,12 @@ const INTEGRATIONS: Integration[] = [
 const ALL_SECRET_NAMES = Array.from(new Set(INTEGRATIONS.flatMap((i) => i.secrets)));
 
 export default function IntegrationsPage() {
-  const { isSuperUser, isStaff } = useAuth();
+  const { isSuperUser, isAdmin } = useAuth();
   const [status, setStatus] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  const canView = isSuperUser || isStaff;
+  const canView = isSuperUser || isAdmin;
 
   async function load() {
     setLoading(true);
