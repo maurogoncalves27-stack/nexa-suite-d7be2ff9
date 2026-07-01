@@ -12886,6 +12886,7 @@ export type Database = {
           photo_path: string | null
           prep_time_minutes: number | null
           preparation_method: string | null
+          scope: string
           source_recipe_name: string | null
           title: string
           updated_at: string
@@ -12900,6 +12901,7 @@ export type Database = {
           photo_path?: string | null
           prep_time_minutes?: number | null
           preparation_method?: string | null
+          scope?: string
           source_recipe_name?: string | null
           title: string
           updated_at?: string
@@ -12914,6 +12916,7 @@ export type Database = {
           photo_path?: string | null
           prep_time_minutes?: number | null
           preparation_method?: string | null
+          scope?: string
           source_recipe_name?: string | null
           title?: string
           updated_at?: string
