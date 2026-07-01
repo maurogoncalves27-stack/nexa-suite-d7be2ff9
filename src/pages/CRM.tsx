@@ -1634,7 +1634,6 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
 
         <TabsContent value="reviews" className="mt-4 space-y-4">
           <ManualPlatformRatings />
-          <IFoodReviewsWidget />
           <CustomerReviews embedded />
         </TabsContent>
 
