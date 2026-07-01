@@ -125,20 +125,19 @@ Deno.serve(async (req) => {
       });
     }
 
-    const token = await getToken();
-
     for (const eq of equipList) {
       try {
-        const statusRes = await tuyaGet(`/v1.0/devices/${eq.tuya_device_id}/status`, token);
-        if (!statusRes.success) {
-          report.errors.push(`${eq.name}: ${JSON.stringify(statusRes)}`);
+        const statusRes = await fetchDeviceStatus(eq.tuya_device_id);
+        if (!statusRes.ok) {
+          report.errors.push(`${eq.name}: ${JSON.stringify(statusRes.err)}`);
           continue;
         }
         const { temp, hum } = extractTempHumidity(statusRes.result ?? []);
         if (temp === null) {
-          report.errors.push(`${eq.name}: leitura sem temperatura`);
+          report.errors.push(`${eq.name}: leitura sem temperatura (dc=${statusRes.dc})`);
           continue;
         }
+
         const now = new Date().toISOString();
 
         // Insert reading
