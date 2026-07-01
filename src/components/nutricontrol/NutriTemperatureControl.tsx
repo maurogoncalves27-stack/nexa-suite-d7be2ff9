@@ -87,6 +87,8 @@ export const NutriTemperatureControl = ({ currentDate, storeId }: Props) => {
   const [formName, setFormName] = useState("");
   const [formType, setFormType] = useState<EquipmentType>("refrigerator");
   const [formSensorCode, setFormSensorCode] = useState<string>("none");
+  // "none" | equipment_id (origem do device Tuya que será movido para este equipamento)
+  const [formTuyaSourceId, setFormTuyaSourceId] = useState<string>("none");
 
   const dateKey = format(currentDate, "yyyy-MM-dd");
 
