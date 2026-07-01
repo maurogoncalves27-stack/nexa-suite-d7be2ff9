@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 const UNITS = ["UN", "KG", "G", "L", "ML", "CX", "PCT", "FD", "DZ", "MT", "PORCAO"];
 
-interface Product { id: string; name: string; unit: string; average_cost: number; }
+interface Product { id: string; name: string; unit: string; average_cost: number; category: string | null; }
 interface RecipeRef { id: string; name: string; yield_unit: string; output_product_id: string; scope: "fabrica" | "loja" | null; }
 interface BrandRef { id: string; name: string; }
 
