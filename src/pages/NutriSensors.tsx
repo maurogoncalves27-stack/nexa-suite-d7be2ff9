@@ -63,7 +63,9 @@ export default function NutriSensors() {
   const [devices, setDevices] = useState<TuyaDevice[]>([]);
   const [loadingDevices, setLoadingDevices] = useState(false);
   const [editing, setEditing] = useState<Equip | null>(null);
+  const [editingEms, setEditingEms] = useState<EmsSensor | null>(null);
   const [emsSensors, setEmsSensors] = useState<EmsSensor[]>([]);
+
 
   async function load() {
     setLoading(true);
