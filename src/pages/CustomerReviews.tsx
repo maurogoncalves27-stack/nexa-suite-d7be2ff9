@@ -312,8 +312,11 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
               {stores.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Button onClick={() => setOpenIfoodDialog(true)} size="sm" variant="outline">
+            <Star className="h-4 w-4 mr-1" /> Avaliação da loja
+          </Button>
           <Button onClick={() => setOpenNew(true)} size="sm">
-            <Plus className="h-4 w-4 mr-1" /> Adicionar
+            <Plus className="h-4 w-4 mr-1" /> Add comentário
           </Button>
         </div>
       </div>
