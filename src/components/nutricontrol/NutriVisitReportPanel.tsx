@@ -286,7 +286,9 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
   // Não limpamos visitorName: continua = nome do logado para o próximo registro
     setGeneralNotes("");
     setStoreResponsible("");
+    setNutriRating(5);
     sigRef.current?.clear();
+
     const reset: Record<string, ChecklistResponse> = {};
     checklistItems.forEach((item) => {
       reset[item.id] = { checklist_item_id: item.id, is_conform: true, observation: "" };
