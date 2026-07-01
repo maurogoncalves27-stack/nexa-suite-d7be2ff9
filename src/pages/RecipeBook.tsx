@@ -226,6 +226,7 @@ const RecipeBook = ({ scope = "loja" }: Props) => {
         onOpenChange={setEditorOpen}
         recipeBookId={editingId}
         onSaved={load}
+        scope={scope}
       />
     </div>
   );
