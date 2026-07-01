@@ -260,6 +260,15 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
           <p className="text-muted-foreground">Resenhas recebidas dos canais de venda — responda e acompanhe a média.</p>
         </div>
       )}
+
+      <Tabs defaultValue="painel" className="w-full">
+        <TabsList className="w-full sm:w-auto">
+          <TabsTrigger value="painel">Painel</TabsTrigger>
+          <TabsTrigger value="graficos">Gráficos</TabsTrigger>
+          <TabsTrigger value="comentarios">Comentários</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="painel" className="space-y-6 mt-4">
       {/* Cards por fonte */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
         {perSource.map(({ source, total, novos, avg, hasRatings }) => {
