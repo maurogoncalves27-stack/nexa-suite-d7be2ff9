@@ -146,12 +146,26 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
     });
   }, [reviews]);
 
-  // Média manual do iFood (não temos acesso automático às notas)
-  const IFOOD_AVG_KEY = "crm.ifood.manual_avg";
-  const IFOOD_COUNT_KEY = "crm.ifood.manual_count";
-  const [ifoodManualAvg, setIfoodManualAvg] = useState<string>(() => localStorage.getItem(IFOOD_AVG_KEY) ?? "");
-  const [ifoodManualCount, setIfoodManualCount] = useState<string>(() => localStorage.getItem(IFOOD_COUNT_KEY) ?? "");
-  const [editingIfood, setEditingIfood] = useState(false);
+  // Média manual do iFood por loja (não temos acesso automático às notas)
+  const IFOOD_STORES_KEY = "crm.ifood.manual_by_store";
+  type IfoodStoreEntry = { avg: number; count: number };
+  const [ifoodByStore, setIfoodByStore] = useState<Record<string, IfoodStoreEntry>>(() => {
+    try { return JSON.parse(localStorage.getItem(IFOOD_STORES_KEY) || "{}"); } catch { return {}; }
+  });
+  const [openIfoodDialog, setOpenIfoodDialog] = useState(false);
+
+  const ifoodAggregate = useMemo(() => {
+    const entries = Object.values(ifoodByStore).filter((e) => e && e.count > 0 && e.avg > 0);
+    const totalCount = entries.reduce((s, e) => s + Number(e.count || 0), 0);
+    const weighted = entries.reduce((s, e) => s + Number(e.avg) * Number(e.count), 0);
+    const avg = totalCount > 0 ? weighted / totalCount : 0;
+    return { avg, totalCount, hasData: totalCount > 0 };
+  }, [ifoodByStore]);
+
+  const saveIfoodStores = (next: Record<string, IfoodStoreEntry>) => {
+    setIfoodByStore(next);
+    localStorage.setItem(IFOOD_STORES_KEY, JSON.stringify(next));
+  };
 
   return (
     <div className={embedded ? "space-y-6" : "space-y-6 p-3 sm:p-4"}>
@@ -170,9 +184,9 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
           const meta = SOURCE_META[source];
           const Icon = meta.icon;
           const isIfood = source === "ifood";
-          const manualAvg = parseFloat((ifoodManualAvg || "").replace(",", ".")) || 0;
-          const displayAvg = isIfood ? manualAvg : avg;
-          const displayHasAvg = isIfood ? manualAvg > 0 : hasRatings;
+          const displayAvg = isIfood ? ifoodAggregate.avg : avg;
+          const displayHasAvg = isIfood ? ifoodAggregate.hasData : hasRatings;
+          const displayCount = isIfood ? ifoodAggregate.totalCount : total;
           return (
             <Card key={source}>
               <CardContent className="p-3 space-y-1">
@@ -184,60 +198,82 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                   {isIfood && (
                     <button
                       type="button"
-                      onClick={() => setEditingIfood((v) => !v)}
+                      onClick={() => setOpenIfoodDialog(true)}
                       className="text-[10px] text-primary hover:underline"
                     >
-                      {editingIfood ? "ok" : "editar"}
+                      editar por loja
                     </button>
                   )}
                 </div>
-                {isIfood && editingIfood ? (
-                  <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      max="5"
-                      placeholder="4.7"
-                      value={ifoodManualAvg}
-                      onChange={(e) => {
-                        setIfoodManualAvg(e.target.value);
-                        localStorage.setItem(IFOOD_AVG_KEY, e.target.value);
-                      }}
-                      className="h-7 text-sm"
-                    />
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 shrink-0" />
-                  </div>
-                ) : (
-                  <div className="text-lg font-semibold flex items-center gap-1">
-                    {displayHasAvg ? displayAvg.toFixed(1) : "—"}
-                    {displayHasAvg && <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />}
-                  </div>
-                )}
-                {isIfood && editingIfood ? (
-                  <Input
-                    type="number"
-                    min="0"
-                    placeholder="Nº de avaliações"
-                    value={ifoodManualCount}
-                    onChange={(e) => {
-                      setIfoodManualCount(e.target.value);
-                      localStorage.setItem(IFOOD_COUNT_KEY, e.target.value);
-                    }}
-                    className="h-7 text-xs"
-                  />
-                ) : (
-                  <div className="text-[10px] text-muted-foreground">
-                    {isIfood
-                      ? `${ifoodManualCount || 0} avaliações (manual)`
-                      : `${total} ${total === 1 ? "avaliação" : "avaliações"}${novos ? ` · ${novos} novas` : ""}`}
-                  </div>
-                )}
+                <div className="text-lg font-semibold flex items-center gap-1">
+                  {displayHasAvg ? displayAvg.toFixed(1) : "—"}
+                  {displayHasAvg && <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />}
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  {isIfood
+                    ? `${displayCount} avaliações (manual)`
+                    : `${total} ${total === 1 ? "avaliação" : "avaliações"}${novos ? ` · ${novos} novas` : ""}`}
+                </div>
               </CardContent>
             </Card>
           );
         })}
       </div>
+
+      {/* Dialog iFood por loja */}
+      <Dialog open={openIfoodDialog} onOpenChange={setOpenIfoodDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShoppingBag className="h-5 w-5 text-primary" />
+              Avaliações iFood por loja
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            Como o iFood não libera as notas via API, informe manualmente a média (0–5) e o nº de avaliações de cada loja. A média geral do card é ponderada pelo nº de avaliações.
+          </p>
+          <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+            {stores.map((s) => {
+              const entry = ifoodByStore[s.id] || { avg: 0, count: 0 };
+              return (
+                <div key={s.id} className="grid grid-cols-[1fr_90px_110px] items-center gap-2 border rounded-md p-2">
+                  <div className="text-sm font-medium truncate">{s.name}</div>
+                  <Input
+                    type="number" step="0.1" min="0" max="5"
+                    placeholder="Média"
+                    value={entry.avg || ""}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value.replace(",", ".")) || 0;
+                      saveIfoodStores({ ...ifoodByStore, [s.id]: { ...entry, avg: v } });
+                    }}
+                    className="h-8 text-sm"
+                  />
+                  <Input
+                    type="number" min="0"
+                    placeholder="Nº aval."
+                    value={entry.count || ""}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10) || 0;
+                      saveIfoodStores({ ...ifoodByStore, [s.id]: { ...entry, count: v } });
+                    }}
+                    className="h-8 text-sm"
+                  />
+                </div>
+              );
+            })}
+            {stores.length === 0 && (
+              <div className="text-xs text-muted-foreground text-center py-6">Nenhuma loja cadastrada.</div>
+            )}
+          </div>
+          <DialogFooter>
+            <div className="text-xs text-muted-foreground mr-auto">
+              Média ponderada: <b>{ifoodAggregate.hasData ? ifoodAggregate.avg.toFixed(2) : "—"}</b> em {ifoodAggregate.totalCount} avaliações
+            </div>
+            <Button onClick={() => setOpenIfoodDialog(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       {/* Filtros */}
       <div className="flex flex-col sm:flex-row gap-2">
