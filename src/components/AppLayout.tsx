@@ -125,6 +125,7 @@ const PAGE_TITLES: PageMeta[] = [
   { match: (p) => p.startsWith("/fichas-fabrica"), title: "Fichas técnicas", group: "Fábrica" },
   { match: (p) => p.startsWith("/fichas-tecnicas"), title: "Fichas técnicas", group: "Estoque" },
 
+  { match: (p) => p.startsWith("/receituario-fabrica"), title: "Receituário", group: "Fábrica" },
   { match: (p) => p.startsWith("/receituario"), title: "Receituário", group: "Estoque" },
   { match: (p) => p.startsWith("/garantias"), title: "Garantias de equipamentos", group: "Documentos" },
   { match: (p) => p.startsWith("/patrimonio"), title: "Patrimônio", group: "Financeiro" },

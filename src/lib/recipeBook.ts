@@ -10,7 +10,7 @@ export async function generateRecipeBookFromRecipe(recipeId: string): Promise<st
   const { data: recipe, error: recipeErr } = await supabase
     .from("recipes")
     .select(
-      "id, name, yield_quantity, yield_unit, prep_time_minutes, photo_path, output_product_id, inventory_products(name, unit)"
+      "id, name, yield_quantity, yield_unit, prep_time_minutes, photo_path, output_product_id, scope, inventory_products(name, unit)"
     )
     .eq("id", recipeId)
     .single();
@@ -63,6 +63,7 @@ export async function generateRecipeBookFromRecipe(recipeId: string): Promise<st
       yield_text: yieldText,
       prep_time_minutes: recipe.prep_time_minutes,
       source_recipe_name: recipe.name,
+      scope: (recipe as any).scope === "fabrica" ? "fabrica" : "loja",
       created_by: user?.id ?? null,
     })
     .select("id")
