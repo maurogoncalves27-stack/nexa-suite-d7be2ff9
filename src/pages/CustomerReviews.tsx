@@ -33,6 +33,8 @@ import {
   MessageCircle,
   Loader2,
   Copy,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -106,6 +108,7 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
   const [filterStore, setFilterStore] = useState<string>("all");
 
   const [openNew, setOpenNew] = useState(false);
+  const [editing, setEditing] = useState<Review | null>(null);
   const [openReply, setOpenReply] = useState<Review | null>(null);
 
   async function load() {
@@ -261,22 +264,23 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                     </div>
                   )}
                   <div className="flex flex-wrap gap-2 pt-1">
-                    <Button size="sm" onClick={() => setOpenReply(r)}>
-                      {r.status === "respondido" ? "Editar resposta" : "Responder"}
+                    <Button size="sm" variant="outline" onClick={() => setEditing(r)}>
+                      <Pencil className="h-3.5 w-3.5 mr-1" /> Editar
                     </Button>
-                    {r.external_url && (
-                      <Button size="sm" variant="outline" asChild>
-                        <a href={r.external_url} target="_blank" rel="noreferrer">
-                          <ExternalLink className="h-3.5 w-3.5 mr-1" /> Abrir
-                        </a>
-                      </Button>
-                    )}
-                    {r.status !== "ignorado" && (
-                      <Button size="sm" variant="ghost" onClick={async () => {
-                        await supabase.from("customer_reviews").update({ status: "ignorado" }).eq("id", r.id);
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      onClick={async () => {
+                        if (!confirm("Excluir esta avaliação?")) return;
+                        const { error } = await supabase.from("customer_reviews").delete().eq("id", r.id);
+                        if (error) return toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+                        toast({ title: "Avaliação excluída" });
                         load();
-                      }}>Ignorar</Button>
-                    )}
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1" /> Excluir
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -286,11 +290,12 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
       )}
 
       <NewReviewDialog
-        open={openNew}
-        onOpenChange={setOpenNew}
+        open={openNew || editing !== null}
+        onOpenChange={(o) => { if (!o) { setOpenNew(false); setEditing(null); } }}
         brands={brands}
         stores={stores}
-        onSaved={() => { setOpenNew(false); load(); }}
+        editing={editing}
+        onSaved={() => { setOpenNew(false); setEditing(null); load(); }}
       />
       <ReplyDialog
         review={openReply}
@@ -306,8 +311,8 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
 
 /* ---------- Novo registro manual ---------- */
 function NewReviewDialog({
-  open, onOpenChange, brands, stores, onSaved,
-}: { open: boolean; onOpenChange: (o: boolean) => void; brands: Brand[]; stores: Store[]; onSaved: () => void }) {
+  open, onOpenChange, brands, stores, editing, onSaved,
+}: { open: boolean; onOpenChange: (o: boolean) => void; brands: Brand[]; stores: Store[]; editing?: Review | null; onSaved: () => void }) {
   const { toast } = useToast();
   const [source, setSource] = useState<Source>("google");
   const [rating, setRating] = useState<number>(5);
@@ -319,31 +324,52 @@ function NewReviewDialog({
   const [storeId, setStoreId] = useState<string>("none");
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (!open) return;
+    if (editing) {
+      setSource((editing.source as Source) ?? "google");
+      const r = editing.rating ?? 5;
+      setRating(r);
+      setRatingStr(Number(r).toFixed(1).replace(".", ","));
+      setName(editing.customer_name ?? "");
+      setComment(editing.comment ?? "");
+      setUrl(editing.external_url ?? "");
+      setBrandId(editing.brand_id ?? "none");
+      setStoreId(editing.store_id ?? "none");
+    } else {
+      setSource("google"); setRating(5); setRatingStr("5,0");
+      setName(""); setComment(""); setUrl(""); setBrandId("none"); setStoreId("none");
+    }
+  }, [open, editing]);
+
   async function save() {
     if (!comment.trim()) {
       toast({ title: "Escreva o comentário do cliente.", variant: "destructive" });
       return;
     }
     setSaving(true);
-    const { error } = await supabase.from("customer_reviews").insert({
+    const payload = {
       source, rating, comment, customer_name: name || null, external_url: url || null,
       brand_id: brandId === "none" ? null : brandId,
       store_id: storeId === "none" ? null : storeId,
-      published_at: new Date().toISOString(),
-    });
+    };
+    const { error } = editing
+      ? await supabase.from("customer_reviews").update(payload).eq("id", editing.id)
+      : await supabase.from("customer_reviews").insert({ ...payload, published_at: new Date().toISOString() });
     setSaving(false);
     if (error) {
       toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
       return;
     }
-    setName(""); setComment(""); setUrl(""); setBrandId("none"); setStoreId("none"); setRating(5);
+    toast({ title: editing ? "Avaliação atualizada" : "Avaliação adicionada" });
     onSaved();
   }
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Adicionar avaliação</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{editing ? "Editar avaliação" : "Adicionar avaliação"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <div>
