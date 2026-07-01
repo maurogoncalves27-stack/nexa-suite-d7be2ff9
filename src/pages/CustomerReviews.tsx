@@ -563,14 +563,15 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                         </td>
                         {brandCols.map((c) => (
                           <td key={`g-${s.id}-${c.short}`} className="border border-border px-2 py-1">
-                            {fabrica ? <span className="text-muted-foreground/40">—</span> : <Cell {...manualCell(googleByStore, s.id, c.id)} />}
+                            {fabrica ? <span className="text-muted-foreground/40">—</span> : <Cell {...manualCell(googleByStore, s.id, c.id)} prev={c.id ? previousAvg("google", `${s.id}::${c.id}`) : null} />}
                           </td>
                         ))}
                         {brandCols.map((c) => (
                           <td key={`i-${s.id}-${c.short}`} className="border border-border px-2 py-1">
-                            {fabrica ? <span className="text-muted-foreground/40">—</span> : <Cell {...manualCell(ifoodByStore, s.id, c.id)} />}
+                            {fabrica ? <span className="text-muted-foreground/40">—</span> : <Cell {...manualCell(ifoodByStore, s.id, c.id)} prev={c.id ? previousAvg("ifood", `${s.id}::${c.id}`) : null} />}
                           </td>
                         ))}
+
                         <td className="border border-border px-2 py-1"><Cell {...n} /></td>
                       </tr>
                     );
