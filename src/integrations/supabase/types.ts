@@ -8280,31 +8280,67 @@ export type Database = {
       }
       nutri_equipment: {
         Row: {
+          alert_delay_minutes: number
           created_at: string
           created_by: string
           ems_sensor_code: string | null
           equipment_type: string
           id: string
+          last_humidity_pct: number | null
+          last_online: boolean
+          last_reading_at: string | null
+          last_temp_c: number | null
+          max_humidity_pct: number | null
+          max_temp_c: number | null
+          min_temp_c: number | null
           name: string
+          out_of_range_since: string | null
           store_id: string | null
+          tuya_active: boolean
+          tuya_device_id: string | null
+          tuya_sensor_type: string | null
         }
         Insert: {
+          alert_delay_minutes?: number
           created_at?: string
           created_by: string
           ems_sensor_code?: string | null
           equipment_type?: string
           id?: string
+          last_humidity_pct?: number | null
+          last_online?: boolean
+          last_reading_at?: string | null
+          last_temp_c?: number | null
+          max_humidity_pct?: number | null
+          max_temp_c?: number | null
+          min_temp_c?: number | null
           name: string
+          out_of_range_since?: string | null
           store_id?: string | null
+          tuya_active?: boolean
+          tuya_device_id?: string | null
+          tuya_sensor_type?: string | null
         }
         Update: {
+          alert_delay_minutes?: number
           created_at?: string
           created_by?: string
           ems_sensor_code?: string | null
           equipment_type?: string
           id?: string
+          last_humidity_pct?: number | null
+          last_online?: boolean
+          last_reading_at?: string | null
+          last_temp_c?: number | null
+          max_humidity_pct?: number | null
+          max_temp_c?: number | null
+          min_temp_c?: number | null
           name?: string
+          out_of_range_since?: string | null
           store_id?: string | null
+          tuya_active?: boolean
+          tuya_device_id?: string | null
+          tuya_sensor_type?: string | null
         }
         Relationships: [
           {
@@ -8826,34 +8862,40 @@ export type Database = {
           created_at: string
           date: string
           equipment_id: string
+          humidity: number | null
           id: string
           note: string
           recorded_at: string
+          source: string
           store_id: string
           temperature: number
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
           date?: string
           equipment_id: string
+          humidity?: number | null
           id?: string
           note?: string
           recorded_at?: string
+          source?: string
           store_id: string
           temperature: number
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
           date?: string
           equipment_id?: string
+          humidity?: number | null
           id?: string
           note?: string
           recorded_at?: string
+          source?: string
           store_id?: string
           temperature?: number
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
