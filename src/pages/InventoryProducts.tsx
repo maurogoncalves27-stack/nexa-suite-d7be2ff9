@@ -41,8 +41,6 @@ interface Product {
   factory_only: boolean;
   product_type: "insumo" | "revenda" | "produzido" | "embalagem" | "personalizado";
   requires_expiry: boolean;
-  purchase_unit: string | null;
-  pack_size: number | null;
 }
 
 interface Store {
@@ -75,8 +73,6 @@ const empty: DraftProduct = {
   factory_only: false,
   product_type: "insumo",
   requires_expiry: false,
-  purchase_unit: null,
-  pack_size: null,
 };
 
 const fmtBRL = (n: number) =>
@@ -305,8 +301,6 @@ const InventoryProducts = () => {
       factory_only: p.factory_only ?? false,
       product_type: p.product_type ?? "insumo",
       requires_expiry: p.requires_expiry ?? false,
-      purchase_unit: p.purchase_unit ?? null,
-      pack_size: p.pack_size ?? null,
     });
     setOpen(true);
   };
@@ -347,8 +341,6 @@ const InventoryProducts = () => {
         factory_only: draft.factory_only,
         product_type: draft.product_type,
         requires_expiry: draft.requires_expiry,
-        purchase_unit: draft.purchase_unit || null,
-        pack_size: draft.purchase_unit && draft.pack_size ? Number(draft.pack_size) : null,
         print_run: draft.is_custom ? draft.print_run : null,
         unit_value: draft.is_custom ? draft.unit_value : null,
         fixed_supplier_id: draft.is_custom ? draft.fixed_supplier_id : null,
@@ -655,49 +647,15 @@ const InventoryProducts = () => {
                 </div>
               </div>
 
-              {/* Conversão de compra → estoque */}
-              <div className="rounded-md border bg-muted/40 p-3 space-y-2">
-                <div className="text-xs font-semibold">Conversão de compra → estoque (opcional)</div>
+              {/* Fator de conversão: gerenciado em /fatores-conversao */}
+              <div className="rounded-md border bg-muted/40 p-3 space-y-1">
+                <div className="text-xs font-semibold">Conversão de compra → estoque</div>
                 <p className="text-xs text-muted-foreground">
-                  Use quando o fornecedor vende em embalagem maior (ex: 1 fardo de 5kg).
-                  O recebimento da NF entrará automaticamente convertido na unidade de estoque ({draft.unit}).
+                  Os fatores de conversão (embalagem do fornecedor, cru→pronto, porcionamento) agora ficam em{" "}
+                  <b>Estoque → Fatores de conversão</b>. Ali você cadastra, por exemplo, que 1 CX = 12 UN ou 1 KG cru = 2,5 KG cozido — e o sistema aplica automaticamente no recebimento da NF, nas fichas técnicas e na sugestão de compra.
                 </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Unidade de compra</Label>
-                    <Select
-                      value={draft.purchase_unit ?? "__none__"}
-                      onValueChange={(v) =>
-                        setDraft((p) => ({
-                          ...p,
-                          purchase_unit: v === "__none__" ? null : v,
-                          pack_size: v === "__none__" ? null : p.pack_size,
-                        }))
-                      }
-                    >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">— Sem conversão —</SelectItem>
-                        {UNITS.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Qtd. por embalagem ({draft.unit})</Label>
-                    <Input
-                      type="number"
-                      step="0.0001"
-                      min={0}
-                      placeholder="Ex: 5"
-                      disabled={!draft.purchase_unit}
-                      value={draft.pack_size ?? ""}
-                      onChange={(e) =>
-                        setDraft((p) => ({ ...p, pack_size: e.target.value ? Number(e.target.value) : null }))
-                      }
-                    />
-                  </div>
-                </div>
               </div>
+
 
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">

@@ -1,4 +1,6 @@
 // Dialog rápido: cria inventory_products a partir da descrição da NF-e e devolve o produto criado.
+// Se o usuário informar unidade de compra + tamanho da embalagem, cria também uma linha
+// em product_conversions (tipo 'compra') — fonte única de fatores de conversão.
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Package } from "lucide-react";
 import { toast } from "sonner";
 
-interface Created { id: string; name: string; unit: string | null; pack_size: number | null; purchase_unit: string | null }
+interface Created { id: string; name: string; unit: string | null }
 
 interface Props {
   open: boolean;
@@ -48,27 +50,34 @@ export default function QuickCreateProductDialog({
     const pack = Number(packSize) || 1;
     setSaving(true);
     try {
+      const insertPayload: Record<string, unknown> = {
+        name: name.trim(),
+        unit,
+        category: category.trim() || null,
+        is_active: true,
+      };
       const { data, error } = await supabase
         .from("inventory_products")
-        .insert({
-          name: name.trim(),
-          unit,
-          purchase_unit: purchaseUnit || unit,
-          pack_size: pack > 0 ? pack : 1,
-          category: category.trim() || null,
-          is_active: true,
-        })
-        .select("id, name, unit, purchase_unit, pack_size")
+        .insert(insertPayload as never)
+        .select("id, name, unit")
         .single();
       if (error) throw error;
+
+      // Cadastra fator de compra em product_conversions quando fizer sentido
+      if (pack > 0 && purchaseUnit && purchaseUnit !== unit) {
+        await supabase.from("product_conversions").insert({
+          product_id: data.id,
+          conversion_type: "compra",
+          from_unit: purchaseUnit,
+          from_qty: 1,
+          to_unit: unit,
+          to_qty: pack,
+          is_default: true,
+        } as never);
+      }
+
       toast.success("Produto cadastrado no estoque");
-      onCreated({
-        id: data.id,
-        name: data.name,
-        unit: data.unit,
-        purchase_unit: data.purchase_unit,
-        pack_size: data.pack_size,
-      } as Created);
+      onCreated({ id: data.id, name: data.name, unit: data.unit });
       onOpenChange(false);
     } catch (e: any) {
       toast.error("Falha ao cadastrar: " + (e.message ?? e));
@@ -86,7 +95,7 @@ export default function QuickCreateProductDialog({
             Cadastrar produto no estoque
           </DialogTitle>
           <DialogDescription>
-            Cadastro rápido a partir da descrição da nota fiscal. Você pode editar depois em /estoque.
+            Cadastro rápido a partir da descrição da nota fiscal. Você pode editar depois em /estoque e ajustar os fatores em /fatores-conversao.
           </DialogDescription>
         </DialogHeader>
 
@@ -130,6 +139,9 @@ export default function QuickCreateProductDialog({
               <p className="text-[10px] text-muted-foreground mt-1">1 {purchaseUnit} = N {unit}</p>
             </div>
           </div>
+          <p className="text-[10px] text-muted-foreground">
+            Quando as duas unidades forem diferentes, um fator de conversão de <b>Compra</b> é criado automaticamente em <i>Fatores de conversão</i>.
+          </p>
         </div>
 
         <DialogFooter>

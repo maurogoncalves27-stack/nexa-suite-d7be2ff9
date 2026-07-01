@@ -16,8 +16,6 @@ import QuickCreateProductDialog from "./QuickCreateProductDialog";
 interface InvProd {
   id: string; name: string;
   unit?: string | null;
-  purchase_unit?: string | null;
-  pack_size?: number | null;
 }
 interface Store { id: string; name: string }
 
@@ -73,7 +71,8 @@ export default function DfeNoteDialog({ noteId, onClose, onImported }: Props) {
   const [products, setProducts] = useState<InvProd[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [invItems, setInvItems] = useState<Record<number, InvItem>>({}); // por line_number
-  const [conversions, setConversions] = useState<Record<string, Conv>>({}); // por product_id
+  const [conversions, setConversions] = useState<Record<string, Conv>>({}); // por product_id (fornecedor)
+  const [productConvs, setProductConvs] = useState<Record<string, { pack_size: number; purchase_unit: string | null }>>({}); // por product_id (product_conversions tipo 'compra')
   const [supplierMap, setSupplierMap] = useState<Record<string, MapEntry>>({}); // por description_norm
   const [loading, setLoading] = useState(false);
   const [reparsing, setReparsing] = useState(false);
@@ -136,7 +135,7 @@ export default function DfeNoteDialog({ noteId, onClose, onImported }: Props) {
       supabase.from("dfe_inbound_notes").select("*").eq("id", noteId).single(),
       supabase.from("dfe_inbound_items").select("*").eq("note_id", noteId).order("line_number"),
       supabase.from("inventory_products")
-        .select("id, name, unit, purchase_unit, pack_size")
+        .select("id, name, unit")
         .eq("is_active", true).order("name").limit(5000),
       supabase.from("stores").select("id, name").eq("is_virtual", false).eq("is_active", true).order("name"),
     ]);
@@ -144,8 +143,26 @@ export default function DfeNoteDialog({ noteId, onClose, onImported }: Props) {
     let rawItems = (itemsRes.data as DfeItem[]) ?? [];
     const storeList = (storesRes.data as Store[]) ?? [];
     setNote(n);
-    setProducts((prodRes.data as InvProd[]) ?? []);
+    const prodList = (prodRes.data as InvProd[]) ?? [];
+    setProducts(prodList);
     setStores(storeList);
+
+    // Carrega fatores de conversão de compra (tabela product_conversions) para todos os produtos ativos
+    if (prodList.length > 0) {
+      const { data: pcs } = await supabase
+        .from("product_conversions")
+        .select("product_id, from_unit, from_qty, to_qty, is_default")
+        .eq("conversion_type", "compra")
+        .in("product_id", prodList.map((p) => p.id));
+      const pcMap: Record<string, { pack_size: number; purchase_unit: string | null }> = {};
+      ((pcs ?? []) as any[]).forEach((r) => {
+        const packSize = Number(r.from_qty) > 0 ? Number(r.to_qty) / Number(r.from_qty) : Number(r.to_qty);
+        if (!pcMap[r.product_id] || r.is_default) {
+          pcMap[r.product_id] = { pack_size: packSize, purchase_unit: r.from_unit };
+        }
+      });
+      setProductConvs(pcMap);
+    }
 
     // Default loja destino = ESTOQUE CENTRAL quando ainda não definido e nota não importada
     if (n && !n.target_store_id && !n.imported_invoice_id) {
@@ -236,7 +253,7 @@ export default function DfeNoteDialog({ noteId, onClose, onImported }: Props) {
   }, [noteId, load]);
 
   // Cadastra produto rápido a partir da descrição da NF e vincula automaticamente.
-  const handleQuickCreated = async (it: DfeItem, created: { id: string; name: string; unit: string | null; purchase_unit: string | null; pack_size: number | null }) => {
+  const handleQuickCreated = async (it: DfeItem, created: { id: string; name: string; unit: string | null }) => {
     // adiciona ao catálogo local
     setProducts((prev) => prev.some((p) => p.id === created.id) ? prev : [...prev, created]);
     // vincula no item da nota
@@ -294,8 +311,8 @@ export default function DfeNoteDialog({ noteId, onClose, onImported }: Props) {
   const effectiveConv = (productId: string | null): { pack_size: number; source: "supplier" | "product" | "none" } => {
     if (!productId) return { pack_size: 1, source: "none" };
     if (conversions[productId]) return { pack_size: conversions[productId].pack_size, source: "supplier" };
-    const p = productById[productId];
-    if (p?.pack_size && Number(p.pack_size) > 0) return { pack_size: Number(p.pack_size), source: "product" };
+    const pc = productConvs[productId];
+    if (pc && pc.pack_size > 0) return { pack_size: pc.pack_size, source: "product" };
     return { pack_size: 1, source: "none" };
   };
 
