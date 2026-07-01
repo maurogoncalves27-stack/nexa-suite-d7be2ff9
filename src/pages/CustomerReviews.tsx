@@ -44,7 +44,7 @@ import {
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-type Source = "google" | "ifood" | "nutri" | "falae" | "outro";
+type Source = "google" | "ifood" | "nutri";
 type Status = "novo" | "respondido" | "ignorado";
 
 interface Review {
@@ -71,8 +71,6 @@ const SOURCE_META: Record<Source, { label: string; icon: any; color: string }> =
   google: { label: "Google", icon: Globe, color: "bg-blue-500/10 text-blue-700 dark:text-blue-300" },
   ifood: { label: "iFood", icon: ShoppingBag, color: "bg-red-500/10 text-red-700 dark:text-red-300" },
   nutri: { label: "Nutri", icon: MessageCircle, color: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" },
-  falae: { label: "Falaê", icon: MessageCircle, color: "bg-muted text-muted-foreground" },
-  outro: { label: "Outro", icon: MessageCircle, color: "bg-muted text-muted-foreground" },
 };
 
 
@@ -174,7 +172,7 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
   }, [reviews, tab, filterSource, filterBrand, filterStore]);
 
   const perSource = useMemo(() => {
-    const sources: Source[] = ["google", "ifood", "nutri", "falae", "outro"];
+    const sources: Source[] = ["google", "ifood", "nutri"];
     return sources.map((src) => {
       const rows = reviews.filter((r) => r.source === src);
       const ratings = rows.filter((r) => r.rating).map((r) => r.rating as number);
