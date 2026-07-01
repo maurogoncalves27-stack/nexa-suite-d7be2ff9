@@ -25,6 +25,7 @@ interface Props {
   onOpenChange: (v: boolean) => void;
   recipeBookId: string | null;
   onSaved: () => void;
+  scope?: "loja" | "fabrica";
 }
 
 const RecipeBookEditorDialog = ({ open, onOpenChange, recipeBookId, onSaved }: Props) => {
