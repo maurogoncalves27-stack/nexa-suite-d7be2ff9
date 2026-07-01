@@ -98,6 +98,9 @@ const FactoryMenu = () => {
         product_type: "produzido",
         is_internal: true,
         factory_only: true,
+        stock_scope: "factory_and_store",
+        usage_roles: ["venda_fabrica", "insumo_montagem"],
+        production_flow: "produzido_fabrica",
       };
       const { error } = editing
         ? await supabase.from("inventory_products").update(payload).eq("id", editing.id)
