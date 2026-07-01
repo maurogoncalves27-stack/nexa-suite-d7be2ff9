@@ -38,10 +38,9 @@ const RecipesFactory = () => {
     setLoading(true);
     // Uma única ida ao banco: recipes + join com inventory_products (is_internal)
     const [{ data: recs }, { data: brs }, { data: links }] = await Promise.all([
-      supabase
-        .from("recipes")
+      (supabase.from("recipes") as any)
         .select("id, name, yield_quantity, yield_unit, is_active, output_product_id, scope, inventory_products:output_product_id(is_internal)")
-        .eq("scope" as any, "fabrica")
+        .eq("scope", "fabrica")
         .order("name"),
       supabase.from("brands").select("id, name, slug").eq("is_active", true).order("sort_order"),
       supabase.from("recipe_brands").select("recipe_id, brand_id"),
