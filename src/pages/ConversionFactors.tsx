@@ -123,7 +123,7 @@ const ConversionFactors = () => {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-          <Scale className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Fatores de conversão
+          <Ruler className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Fatores de conversão
         </h1>
         <p className="text-muted-foreground">
           Cadastro único para transformar unidades: <b>compra</b> (embalagem do fornecedor), <b>preparo</b> (cru → pronto) e <b>porcionamento</b> (peça → porção). O sistema aplica automático nas fichas técnicas, sugestão de compra e recebimento.
