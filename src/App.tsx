@@ -406,6 +406,7 @@ const App = () => (
               <Route path="/envio-itens" element={<Guarded><InventoryTransfers /></Guarded>} />
               <Route path="/solicitacoes-fabrica" element={<Guarded><FactoryRequests /></Guarded>} />
               <Route path="/plano-fabrica" element={<Guarded staff><FactoryWeeklyPlan /></Guarded>} />
+              <Route path="/sugestao-abastecimento" element={<Guarded staff><ReplenishmentSuggestion /></Guarded>} />
               <Route path="/separacao" element={<Guarded staff><SeparationChecklist /></Guarded>} />
               <Route path="/sugestao-transferencia" element={<Guarded><InventoryTransfers /></Guarded>} />
               <Route path="/sugestao-compra" element={<Guarded staff><PurchaseSuggestions /></Guarded>} />
