@@ -182,7 +182,7 @@ const PAGE_TITLES: PageMeta[] = [
   { match: (p) => p.startsWith("/configuracoes/tef-paygo"), title: "TEF PayGo", group: "PDV" },
   { match: (p) => p.startsWith("/configuracoes/tef-payer"), title: "TEF Payer", group: "PDV" },
   { match: (p) => p.startsWith("/configuracoes/tef-paygo"), title: "TEF PayGo (instalação)", group: "Configurações" },
-  { match: (p) => p.startsWith("/configuracoes/ifood-widgets"), title: "Widgets iFood", group: "Configurações" },
+  
   { match: (p) => p.startsWith("/configuracoes/tef-payer"), title: "TEF Payer (homologação)", group: "Configurações" },
   { match: (p) => p.startsWith("/configuracoes/acesso-remoto"), title: "Acesso remoto", group: "Configurações" },
   { match: (p) => p.startsWith("/configuracoes/integracoes"), title: "Integrações e credenciais" },
