@@ -63,7 +63,9 @@ export default function NutriSensors() {
   const [devices, setDevices] = useState<TuyaDevice[]>([]);
   const [loadingDevices, setLoadingDevices] = useState(false);
   const [editing, setEditing] = useState<Equip | null>(null);
+  const [editingEms, setEditingEms] = useState<EmsSensor | null>(null);
   const [emsSensors, setEmsSensors] = useState<EmsSensor[]>([]);
+
 
   async function load() {
     setLoading(true);
@@ -196,8 +198,12 @@ export default function NutriSensors() {
                             ? `Atualizado ${formatDistanceToNow(new Date(s.last_measured_at), { addSuffix: true, locale: ptBR })}`
                             : "Sem leituras ainda"}
                         </div>
+                        <Button variant="outline" size="sm" className="w-full" onClick={() => setEditingEms(s)}>
+                          <Settings2 className="h-4 w-4 mr-2" /> Configurar
+                        </Button>
                       </CardContent>
                     </Card>
+
                   );
                 })}
               </div>
@@ -291,9 +297,104 @@ export default function NutriSensors() {
         onOpenChange={(o) => !o && setEditing(null)}
         onSaved={() => { setEditing(null); load(); }}
       />
+
+      <EditEmsSensorDialog
+        sensor={editingEms}
+        stores={stores}
+        onOpenChange={(o) => !o && setEditingEms(null)}
+        onSaved={() => { setEditingEms(null); load(); }}
+      />
     </div>
   );
 }
+
+function EditEmsSensorDialog({
+  sensor, stores, onOpenChange, onSaved,
+}: {
+  sensor: EmsSensor | null;
+  stores: Store[];
+  onOpenChange: (o: boolean) => void;
+  onSaved: () => void;
+}) {
+  const [label, setLabel] = useState("");
+  const [storeId, setStoreId] = useState<string>("");
+  const [minV, setMinV] = useState<string>("");
+  const [maxV, setMaxV] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (sensor) {
+      setLabel(sensor.label ?? "");
+      setStoreId(sensor.store_id ?? "");
+      setMinV(sensor.min_value?.toString() ?? "");
+      setMaxV(sensor.max_value?.toString() ?? "");
+    }
+  }, [sensor]);
+
+  async function save() {
+    if (!sensor) return;
+    setSaving(true);
+    const { error } = await supabase.from("ems_sensors")
+      .update({
+        label: label || null,
+        store_id: storeId || null,
+        min_value: minV === "" ? null : Number(minV),
+        max_value: maxV === "" ? null : Number(maxV),
+      })
+      .eq("unique_code", sensor.unique_code);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Sensor atualizado");
+    onSaved();
+  }
+
+  return (
+    <Dialog open={!!sensor} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Configurar sensor EMS-A</DialogTitle>
+        </DialogHeader>
+        {sensor && (
+          <div className="space-y-3">
+            <div>
+              <Label>Apelido</Label>
+              <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Ex: Câmara Fria Cozinha" />
+            </div>
+            <div>
+              <Label>Loja</Label>
+              <Select value={storeId} onValueChange={setStoreId}>
+                <SelectTrigger><SelectValue placeholder="Escolha…" /></SelectTrigger>
+                <SelectContent>
+                  {stores.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Temp. mínima (°C)</Label>
+                <Input type="number" step="0.1" value={minV} onChange={(e) => setMinV(e.target.value)} />
+              </div>
+              <div>
+                <Label>Temp. máxima (°C)</Label>
+                <Input type="number" step="0.1" value={maxV} onChange={(e) => setMaxV(e.target.value)} />
+              </div>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Código do sensor: <code>{sensor.unique_code}</code>
+            </div>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button onClick={save} disabled={saving}>Salvar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 function AddSensorDialog({
   open, onOpenChange, loading, devices, stores, onSaved,
