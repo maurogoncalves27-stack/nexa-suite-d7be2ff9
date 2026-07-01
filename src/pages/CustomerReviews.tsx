@@ -116,21 +116,52 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
   const [editing, setEditing] = useState<Review | null>(null);
   const [openReply, setOpenReply] = useState<Review | null>(null);
 
+  const [syncingGoogle, setSyncingGoogle] = useState(false);
+
   async function load() {
     setLoading(true);
     const ALLOWED_STORES = ["ASA SUL", "ASA NORTE", "AGUAS CLARAS", "ÁGUAS CLARAS", "LAGO SUL", "FABRICA", "FÁBRICA"];
     const ALLOWED_BRANDS = ["AQUELA PARME", "AQUELA PARMÊ", "AQUELE ESTROGONOFE", "AQUELE ESTROGONOFÊ", "BOX CAIPIRA"];
-    const [r, b, s] = await Promise.all([
+    const [r, b, s, g] = await Promise.all([
       supabase.from("customer_reviews").select("*").order("published_at", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false }).limit(500),
       supabase.from("brands").select("id,name").order("name"),
       supabase.from("stores").select("id,name").eq("is_virtual", false).order("name"),
+      supabase.from("store_brand_google").select("store_id,brand_id,avg_rating,total_ratings"),
     ]);
     if (r.data) setReviews(r.data as Review[]);
     if (b.data) setBrands((b.data as Brand[]).filter((x) => ALLOWED_BRANDS.includes(x.name.trim().toUpperCase())));
     if (s.data) setStores((s.data as Store[]).filter((x) => ALLOWED_STORES.includes(x.name.trim().toUpperCase())));
+    // Hidrata notas do Google (por loja × marca) a partir do sync automático.
+    if (g.data && g.data.length > 0) {
+      const merged: Record<string, ManualEntry> = { ...googleByStore };
+      for (const row of g.data as Array<{ store_id: string; brand_id: string; avg_rating: number | null; total_ratings: number | null }>) {
+        if (row.avg_rating == null) continue;
+        merged[`${row.store_id}::${row.brand_id}`] = {
+          avg: Number(row.avg_rating),
+          count: Number(row.total_ratings ?? 0),
+        };
+      }
+      setGoogleByStore(merged);
+      localStorage.setItem(GOOGLE_STORES_KEY, JSON.stringify(merged));
+    }
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
+
+  async function syncGoogleNow() {
+    setSyncingGoogle(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("google-reviews-sync", { body: { action: "sync" } });
+      if (error) throw error;
+      const ok = (data?.results ?? []).filter((r: any) => r.status === "ok").length;
+      toast({ title: "Google sincronizado", description: `${ok} combinações loja×marca atualizadas.` });
+      await load();
+    } catch (err: any) {
+      toast({ title: "Falha na sincronização", description: err?.message ?? String(err), variant: "destructive" });
+    } finally {
+      setSyncingGoogle(false);
+    }
+  }
 
   const filtered = useMemo(() => {
     return reviews.filter((r) => {
