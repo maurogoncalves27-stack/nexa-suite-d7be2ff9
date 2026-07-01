@@ -75,15 +75,38 @@ async function calcRecipeCostInternal(
 
   const { data: ings } = await supabase
     .from("recipe_ingredients")
-    .select("product_id, quantity, unit, product:inventory_products(name, product_type)")
+    .select("product_id, quantity, unit, ingredient_state, product:inventory_products(name, product_type)")
     .eq("recipe_id", recipeId);
+
+  const productIds = Array.from(new Set((ings ?? []).map((i: any) => i.product_id)));
+  const { data: convs } = productIds.length
+    ? await supabase
+        .from("product_conversions")
+        .select("product_id, from_qty, to_qty, is_default")
+        .eq("conversion_type", "preparo")
+        .in("product_id", productIds)
+    : { data: [] as any[] };
+  const prepByProduct = new Map<string, { from_qty: number; to_qty: number }>();
+  ((convs as any[]) ?? []).forEach((c) => {
+    const existing = prepByProduct.get(c.product_id);
+    if (!existing || c.is_default) prepByProduct.set(c.product_id, { from_qty: Number(c.from_qty), to_qty: Number(c.to_qty) });
+  });
 
   const lines: RecipeCostResult["ingredientLines"] = [];
   let total = 0;
   let inputBase = 0;
 
   for (const i of (ings ?? []) as any[]) {
-    const qty = Number(i.quantity ?? 0);
+    let qty = Number(i.quantity ?? 0);
+    // Se o ingrediente é usado "pronto" e o produto tem fator de preparo,
+    // converte para cru (baixa real de estoque).
+    if (i.ingredient_state === "pronto") {
+      const c = prepByProduct.get(i.product_id);
+      if (c && c.from_qty > 0 && c.to_qty > 0) {
+        const preparedPerRaw = c.to_qty / c.from_qty;
+        if (preparedPerRaw > 0) qty = qty / preparedPerRaw;
+      }
+    }
     const unitCost = await costPerUnitOfProduct(i.product_id, new Set(visited), depth);
     const lineCost = qty * unitCost;
     const isProduced = i.product?.product_type === "produzido";
