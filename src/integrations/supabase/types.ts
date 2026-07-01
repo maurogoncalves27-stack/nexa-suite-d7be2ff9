@@ -6704,13 +6704,16 @@ export type Database = {
           photo_path: string | null
           print_run: number | null
           product_type: string
+          production_flow: string
           purchase_unit: string | null
           reference_unit_cost: number | null
           requires_expiry: boolean
+          stock_scope: string
           unidade_tributavel: string | null
           unit: string
           unit_value: number | null
           updated_at: string
+          usage_roles: string[]
         }
         Insert: {
           art_file_url?: string | null
@@ -6744,13 +6747,16 @@ export type Database = {
           photo_path?: string | null
           print_run?: number | null
           product_type?: string
+          production_flow?: string
           purchase_unit?: string | null
           reference_unit_cost?: number | null
           requires_expiry?: boolean
+          stock_scope?: string
           unidade_tributavel?: string | null
           unit?: string
           unit_value?: number | null
           updated_at?: string
+          usage_roles?: string[]
         }
         Update: {
           art_file_url?: string | null
@@ -6784,13 +6790,16 @@ export type Database = {
           photo_path?: string | null
           print_run?: number | null
           product_type?: string
+          production_flow?: string
           purchase_unit?: string | null
           reference_unit_cost?: number | null
           requires_expiry?: boolean
+          stock_scope?: string
           unidade_tributavel?: string | null
           unit?: string
           unit_value?: number | null
           updated_at?: string
+          usage_roles?: string[]
         }
         Relationships: [
           {
