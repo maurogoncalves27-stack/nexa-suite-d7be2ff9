@@ -199,7 +199,8 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
                   <div className="space-y-2">
                     {rows.map(({ it: i, idx }) => {
                       const p = products.find((p) => p.id === i.product_id);
-                      const subtotal = i.quantity * Number(p?.average_cost ?? 0);
+                      const subtotal = rawEquivalent(i) * Number(p?.average_cost ?? 0);
+                      const prep = prepConvByProduct[i.product_id];
                       return (
                         <div key={idx} className="border rounded-md p-2 space-y-2">
                           <div className="grid grid-cols-12 gap-2">
