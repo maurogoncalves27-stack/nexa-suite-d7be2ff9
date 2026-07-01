@@ -48,7 +48,7 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
     (async () => {
       setLoading(true);
       const [{ data: prods }, { data: ings }, { data: recs }, { data: links }, { data: brs }] = await Promise.all([
-        supabase.from("inventory_products").select("id, name, unit, average_cost, category, factory_only").eq("is_active", true).order("name"),
+        supabase.from("inventory_products").select("id, name, unit, average_cost, category, factory_only, usage_roles").eq("is_active", true).order("name"),
         supabase.from("recipe_ingredients").select("*").eq("recipe_id", recipeId).order("sort_order"),
         supabase.from("recipes").select("id, name, yield_unit, output_product_id, scope").eq("is_active", true).not("output_product_id", "is", null).order("name"),
         supabase.from("recipe_brands").select("recipe_id, brand_id"),
