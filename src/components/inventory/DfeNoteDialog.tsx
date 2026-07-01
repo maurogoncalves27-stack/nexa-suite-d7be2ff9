@@ -293,8 +293,8 @@ export default function DfeNoteDialog({ noteId, onClose, onImported }: Props) {
   const effectiveConv = (productId: string | null): { pack_size: number; source: "supplier" | "product" | "none" } => {
     if (!productId) return { pack_size: 1, source: "none" };
     if (conversions[productId]) return { pack_size: conversions[productId].pack_size, source: "supplier" };
-    const p = productById[productId];
-    if (p?.pack_size && Number(p.pack_size) > 0) return { pack_size: Number(p.pack_size), source: "product" };
+    const pc = productConvs[productId];
+    if (pc && pc.pack_size > 0) return { pack_size: pc.pack_size, source: "product" };
     return { pack_size: 1, source: "none" };
   };
 
