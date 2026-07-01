@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -148,13 +149,19 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
     });
   }, [reviews]);
 
-  // Média manual do iFood por loja (não temos acesso automático às notas)
-  const IFOOD_STORES_KEY = "crm.ifood.manual_by_store";
-  type IfoodStoreEntry = { avg: number; count: number };
-  const [ifoodByStore, setIfoodByStore] = useState<Record<string, IfoodStoreEntry>>(() => {
+  // Média manual do iFood por loja+marca (Fábrica não vende no iFood)
+  const IFOOD_STORES_KEY = "crm.ifood.manual_by_store_brand";
+  type IfoodEntry = { avg: number; count: number };
+  // key = `${storeId}::${brandId}`
+  const [ifoodByStore, setIfoodByStore] = useState<Record<string, IfoodEntry>>(() => {
     try { return JSON.parse(localStorage.getItem(IFOOD_STORES_KEY) || "{}"); } catch { return {}; }
   });
   const [openIfoodDialog, setOpenIfoodDialog] = useState(false);
+
+  const ifoodStores = useMemo(
+    () => stores.filter((s) => !/f[aá]brica/i.test(s.name)),
+    [stores]
+  );
 
   const ifoodAggregate = useMemo(() => {
     const entries = Object.values(ifoodByStore).filter((e) => e && e.count > 0 && e.avg > 0);
@@ -164,7 +171,16 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
     return { avg, totalCount, hasData: totalCount > 0 };
   }, [ifoodByStore]);
 
-  const saveIfoodStores = (next: Record<string, IfoodStoreEntry>) => {
+  const storeAggregate = (storeId: string) => {
+    const entries = brands
+      .map((b) => ifoodByStore[`${storeId}::${b.id}`])
+      .filter((e) => e && e.count > 0 && e.avg > 0);
+    const totalCount = entries.reduce((s, e) => s + Number(e.count || 0), 0);
+    const weighted = entries.reduce((s, e) => s + Number(e.avg) * Number(e.count), 0);
+    return { avg: totalCount > 0 ? weighted / totalCount : 0, totalCount };
+  };
+
+  const saveIfoodStores = (next: Record<string, IfoodEntry>) => {
     setIfoodByStore(next);
     localStorage.setItem(IFOOD_STORES_KEY, JSON.stringify(next));
   };
@@ -234,37 +250,66 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
           <p className="text-xs text-muted-foreground">
             Como o iFood não libera as notas via API, informe manualmente a média (0–5) e o nº de avaliações de cada loja. A média geral do card é ponderada pelo nº de avaliações.
           </p>
-          <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
-            {stores.map((s) => {
-              const entry = ifoodByStore[s.id] || { avg: 0, count: 0 };
-              return (
-                <div key={s.id} className="grid grid-cols-[1fr_90px_110px] items-center gap-2 border rounded-md p-2">
-                  <div className="text-sm font-medium truncate">{s.name}</div>
-                  <Input
-                    type="number" step="0.1" min="0" max="5"
-                    placeholder="Média"
-                    value={entry.avg || ""}
-                    onChange={(e) => {
-                      const v = parseFloat(e.target.value.replace(",", ".")) || 0;
-                      saveIfoodStores({ ...ifoodByStore, [s.id]: { ...entry, avg: v } });
-                    }}
-                    className="h-8 text-sm"
-                  />
-                  <Input
-                    type="number" min="0"
-                    placeholder="Nº aval."
-                    value={entry.count || ""}
-                    onChange={(e) => {
-                      const v = parseInt(e.target.value, 10) || 0;
-                      saveIfoodStores({ ...ifoodByStore, [s.id]: { ...entry, count: v } });
-                    }}
-                    className="h-8 text-sm"
-                  />
-                </div>
-              );
-            })}
-            {stores.length === 0 && (
-              <div className="text-xs text-muted-foreground text-center py-6">Nenhuma loja cadastrada.</div>
+          <div className="max-h-[55vh] overflow-y-auto pr-1">
+            <Accordion type="multiple" className="w-full">
+              {ifoodStores.map((s) => {
+                const agg = storeAggregate(s.id);
+                return (
+                  <AccordionItem key={s.id} value={s.id}>
+                    <AccordionTrigger className="py-2 hover:no-underline">
+                      <div className="flex items-center justify-between w-full pr-2">
+                        <span className="text-sm font-medium">{s.name}</span>
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          {agg.totalCount > 0 ? (
+                            <>
+                              {agg.avg.toFixed(1)}
+                              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                              <span>· {agg.totalCount}</span>
+                            </>
+                          ) : "—"}
+                        </span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-2 pt-1">
+                      {brands.map((b) => {
+                        const key = `${s.id}::${b.id}`;
+                        const entry = ifoodByStore[key] || { avg: 0, count: 0 };
+                        return (
+                          <div key={b.id} className="grid grid-cols-[1fr_90px_110px] items-center gap-2 border rounded-md p-2">
+                            <div className="text-xs font-medium truncate">{b.name}</div>
+                            <Input
+                              type="number" step="0.1" min="0" max="5"
+                              placeholder="Média"
+                              value={entry.avg || ""}
+                              onChange={(e) => {
+                                const v = parseFloat(e.target.value.replace(",", ".")) || 0;
+                                saveIfoodStores({ ...ifoodByStore, [key]: { ...entry, avg: v } });
+                              }}
+                              className="h-8 text-sm"
+                            />
+                            <Input
+                              type="number" min="0"
+                              placeholder="Nº aval."
+                              value={entry.count || ""}
+                              onChange={(e) => {
+                                const v = parseInt(e.target.value, 10) || 0;
+                                saveIfoodStores({ ...ifoodByStore, [key]: { ...entry, count: v } });
+                              }}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                        );
+                      })}
+                      {brands.length === 0 && (
+                        <div className="text-xs text-muted-foreground text-center py-2">Nenhuma marca cadastrada.</div>
+                      )}
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+            {ifoodStores.length === 0 && (
+              <div className="text-xs text-muted-foreground text-center py-6">Nenhuma loja disponível.</div>
             )}
           </div>
           <DialogFooter>
