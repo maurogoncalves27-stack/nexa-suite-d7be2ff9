@@ -263,15 +263,15 @@ const FactoryMenu = () => {
       <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir “{deleteTarget?.name}”?</AlertDialogTitle>
+            <AlertDialogTitle>Remover “{deleteTarget?.name}” do cardápio?</AlertDialogTitle>
             <AlertDialogDescription>
-              O item será removido do cardápio e do cadastro. Se estiver em uso em fichas técnicas, a exclusão será bloqueada — prefira desativar.
+              O item sai do Cardápio da Fábrica e passa a valer como pré-preparo/insumo interno. O cadastro, o histórico e as fichas técnicas que o utilizam permanecem intactos.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} disabled={deleting}>
-              {deleting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Excluir
+              {deleting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Remover
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
