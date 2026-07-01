@@ -64,6 +64,8 @@ const ProductsFactory = () => {
   const [draft, setDraft] = useState<Draft>(empty);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState<Product | null>(null);
+  const [deletingBusy, setDeletingBusy] = useState(false);
 
   const load = async () => {
     setLoading(true);
