@@ -50,11 +50,13 @@ interface VisitReport {
   user_id: string;
   created_at: string;
   store_id: string;
+  nutritionist_rating: number | null;
 }
 
 interface VisitReportWithResponses extends VisitReport {
   responses: { checklist_item_id: string; is_conform: boolean; observation: string }[];
 }
+
 
 interface NutriVisitReportPanelProps {
   hideHistory?: boolean;
@@ -82,8 +84,10 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
   const [visitDate, setVisitDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [generalNotes, setGeneralNotes] = useState("");
   const [storeResponsible, setStoreResponsible] = useState("");
+  const [nutriRating, setNutriRating] = useState<number>(5);
   const [responses, setResponses] = useState<Record<string, ChecklistResponse>>({});
   const [saving, setSaving] = useState(false);
+
 
   // Admin: manage checklist items
   const [newItemName, setNewItemName] = useState("");
@@ -236,7 +240,8 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
         general_notes: generalNotes.trim(),
         signature_url: signatureUrl,
         store_responsible_name: storeResponsible.trim(),
-      })
+        nutritionist_rating: nutriRating,
+      } as any)
       .select()
       .single();
 
@@ -245,6 +250,22 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
       setSaving(false);
       return;
     }
+
+    // Espelha nota da nutricionista em customer_reviews (fonte = nutri) para o CRM
+    try {
+      await supabase.from("customer_reviews").insert({
+        source: "nutri",
+        rating: nutriRating,
+        comment: generalNotes.trim() || `Visita técnica — ${visitorName.trim()}`,
+        customer_name: visitorName.trim(),
+        store_id: currentStoreId,
+        status: "novo",
+        published_at: visitDate,
+      } as any);
+    } catch (e) {
+      console.warn("Falha ao espelhar avaliação da nutricionista no CRM", e);
+    }
+
 
     const responsesToInsert = Object.values(responses).map((r) => ({
       visit_report_id: report.id,
@@ -265,7 +286,9 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
   // Não limpamos visitorName: continua = nome do logado para o próximo registro
     setGeneralNotes("");
     setStoreResponsible("");
+    setNutriRating(5);
     sigRef.current?.clear();
+
     const reset: Record<string, ChecklistResponse> = {};
     checklistItems.forEach((item) => {
       reset[item.id] = { checklist_item_id: item.id, is_conform: true, observation: "" };
@@ -638,6 +661,44 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
                       maxLength={1000}
                     />
                   </div>
+
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">
+                      Nota da nutricionista para a loja (0 a 5, aceita meia estrela)
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={5}
+                        step={0.5}
+                        value={nutriRating}
+                        onChange={(e) => {
+                          const v = Number(e.target.value);
+                          if (Number.isNaN(v)) return;
+                          setNutriRating(Math.max(0, Math.min(5, v)));
+                        }}
+                        className="h-9 text-sm w-24"
+                      />
+                      <div className="flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map((i) => {
+                          const fill = Math.max(0, Math.min(1, nutriRating - (i - 1)));
+                          return (
+                            <div key={i} className="relative w-4 h-4">
+                              <svg viewBox="0 0 24 24" className="absolute inset-0 w-full h-full text-muted-foreground/40" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                              <div className="absolute inset-0 overflow-hidden" style={{ width: `${fill * 100}%` }}>
+                                <svg viewBox="0 0 24 24" className="w-4 h-4 text-primary" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        Vai para <b>CRM → Avaliações</b> como fonte <b>Nutri</b>.
+                      </span>
+                    </div>
+                  </div>
+
 
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Nome do responsável pela loja</label>
