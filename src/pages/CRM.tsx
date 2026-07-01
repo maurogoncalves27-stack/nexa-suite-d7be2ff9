@@ -1777,10 +1777,73 @@ function CRMDashboard({
   const pendingRes = resByStatus.find((s) => s.status === "Pendente")?.count ?? 0;
   const openTickets = ticketsByStatus.find((s) => s.status === "Aberto")?.count ?? 0;
 
+  // Avaliações por fonte (Google / iFood / Nutri)
+  const [ratingAverages, setRatingAverages] = useState<{ google: { avg: number; n: number }; ifood: { avg: number; n: number }; nutri: { avg: number; n: number } }>({
+    google: { avg: 0, n: 0 },
+    ifood: { avg: 0, n: 0 },
+    nutri: { avg: 0, n: 0 },
+  });
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("customer_reviews")
+        .select("source, rating")
+        .not("rating", "is", null)
+        .in("source", ["google", "ifood", "nutri"]);
+      const rows = (data ?? []) as { source: string; rating: number }[];
+      const agg = { google: { sum: 0, n: 0 }, ifood: { sum: 0, n: 0 }, nutri: { sum: 0, n: 0 } } as Record<string, { sum: number; n: number }>;
+      rows.forEach((r) => {
+        if (agg[r.source]) {
+          agg[r.source].sum += Number(r.rating) || 0;
+          agg[r.source].n += 1;
+        }
+      });
+      setRatingAverages({
+        google: { avg: agg.google.n ? agg.google.sum / agg.google.n : 0, n: agg.google.n },
+        ifood: { avg: agg.ifood.n ? agg.ifood.sum / agg.ifood.n : 0, n: agg.ifood.n },
+        nutri: { avg: agg.nutri.n ? agg.nutri.sum / agg.nutri.n : 0, n: agg.nutri.n },
+      });
+    })();
+  }, []);
+
+  const ratingCards = [
+    { key: "google", label: "Nota Google", color: "text-blue-600 dark:text-blue-400" },
+    { key: "ifood", label: "Nota iFood", color: "text-red-600 dark:text-red-400" },
+    { key: "nutri", label: "Nota Nutri", color: "text-emerald-600 dark:text-emerald-400" },
+  ] as const;
+
   return (
     <div className="space-y-4">
+      {/* Notas por fonte */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {ratingCards.map((c) => {
+          const r = ratingAverages[c.key];
+          return (
+            <Card key={c.key}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+                  <Star className={`h-4 w-4 ${c.color}`} /> {c.label}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-2xl font-bold ${c.color}`}>
+                    {r.n > 0 ? r.avg.toFixed(1).replace(".", ",") : "—"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {r.n} {r.n === 1 ? "avaliação" : "avaliações"}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
