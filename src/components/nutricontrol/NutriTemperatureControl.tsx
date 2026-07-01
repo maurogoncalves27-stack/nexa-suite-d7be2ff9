@@ -627,6 +627,40 @@ export const NutriTemperatureControl = ({ currentDate, storeId }: Props) => {
                 </p>
               )}
             </div>
+            {editingId && (() => {
+              // Todos os sensores Tuya vinculados nesta loja (inclui o próprio equipamento se já tiver)
+              const tuyaOptions = equipment.filter((e) => !!e.tuya_device_id);
+              return (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5">
+                    <Radio className="h-3.5 w-3.5 text-primary" /> Sensor Tuya (opcional)
+                  </Label>
+                  <Select value={formTuyaSourceId} onValueChange={setFormTuyaSourceId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sem sensor Tuya" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {tuyaOptions.map((e) => (
+                        <SelectItem key={e.id} value={e.id}>
+                          {e.id === editingId ? "(vinculado atualmente)" : `Mover de "${e.name}"`}
+                          <span className="text-muted-foreground text-xs ml-2">{e.tuya_device_id?.slice(0, 10)}…</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {tuyaOptions.length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground">
+                      Nenhum sensor Tuya pareado nesta loja. Pareie em Sensores IoT.
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      Selecione um sensor pareado para transferi-lo para este equipamento. O equipamento origem é removido se for apenas um placeholder do sensor.
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
