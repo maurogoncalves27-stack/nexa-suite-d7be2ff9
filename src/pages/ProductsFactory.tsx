@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Plus, Pencil, Search, Layers } from "lucide-react";
+import { Loader2, Plus, Pencil, Search, Layers, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -63,6 +64,8 @@ const ProductsFactory = () => {
   const [draft, setDraft] = useState<Draft>(empty);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState<Product | null>(null);
+  const [deletingBusy, setDeletingBusy] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -141,6 +144,31 @@ const ProductsFactory = () => {
     setProducts((arr) => arr.map((x) => (x.id === p.id ? { ...x, is_active: value } : x)));
   };
 
+  const handleConfirmDelete = async () => {
+    if (!deleting) return;
+    setDeletingBusy(true);
+    try {
+      const { error } = await supabase.from("inventory_products").delete().eq("id", deleting.id);
+      if (error) {
+        // FK conflict → soft remove (tira da fábrica)
+        const { error: err2 } = await supabase
+          .from("inventory_products")
+          .update({ factory_only: false, is_active: false })
+          .eq("id", deleting.id);
+        if (err2) throw err2;
+        toast.success("Produto removido da Fábrica (histórico preservado)");
+      } else {
+        toast.success("Produto excluído");
+      }
+      setDeleting(null);
+      load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao excluir");
+    } finally {
+      setDeletingBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -216,13 +244,18 @@ const ProductsFactory = () => {
                       <TableCell className="text-center">
                         <Switch checked={p.is_active} onCheckedChange={(v) => toggleActive(p, v)} disabled={!canReceive} />
                       </TableCell>
-                      <TableCell>
-                        {canReceive && (
+                    <TableCell className="w-[100px]">
+                      {canReceive && (
+                        <div className="flex gap-1 justify-end">
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(p)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
-                        )}
-                      </TableCell>
+                          <Button variant="ghost" size="icon" onClick={() => setDeleting(p)} className="text-destructive hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -276,6 +309,23 @@ const ProductsFactory = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleting} onOpenChange={(v) => !v && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir produto?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir <strong>{deleting?.name}</strong> da Fábrica? Se o produto já tem histórico (contagens, fichas, movimentos), ele será apenas removido da Fábrica preservando o histórico.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingBusy}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} disabled={deletingBusy} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {deletingBusy && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
