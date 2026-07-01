@@ -215,6 +215,12 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
                                       .filter((p) => !recipeByOutput[p.id])
                                       .filter((p) => (contextScope === "fabrica" ? p.factory_only : !p.factory_only))
                                       .filter((p) => {
+                                        // Ingrediente precisa ser insumo (produção ou montagem). Embalagens usam grupo próprio.
+                                        const roles = p.usage_roles ?? [];
+                                        if (roles.length === 0) return true; // legado sem classificação
+                                        return roles.includes("insumo_producao") || roles.includes("insumo_montagem");
+                                      })
+                                      .filter((p) => {
                                         const isPack = /embalag/i.test(p.category ?? "");
                                         return group.isPack ? isPack : !isPack;
                                       })
