@@ -317,6 +317,16 @@ const ProductsFactory = () => {
                       <TableCell>{p.unit}</TableCell>
                       <TableCell className="text-right">{fmtBRL(Number(p.average_cost || 0))}</TableCell>
                       <TableCell className="text-center">
+                        <div className="inline-flex items-center gap-1">
+                          {togglingId === p.id && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                          <Switch
+                            checked={inCardapio}
+                            onCheckedChange={(v) => toggleCardapio(p, v)}
+                            disabled={!canReceive || togglingId === p.id}
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
                         <Switch checked={p.is_active} onCheckedChange={(v) => toggleActive(p, v)} disabled={!canReceive} />
                       </TableCell>
                     <TableCell className="w-[100px]">
@@ -332,7 +342,8 @@ const ProductsFactory = () => {
                       )}
                     </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
