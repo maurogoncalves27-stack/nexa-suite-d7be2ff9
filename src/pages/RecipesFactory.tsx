@@ -17,6 +17,7 @@ interface RecipeRow {
   is_active: boolean;
   output_product_id: string | null;
   scope: "fabrica" | "loja" | null;
+  output_is_internal: boolean;
 }
 
 interface Brand { id: string; name: string; slug: string; }
@@ -26,25 +27,36 @@ const RecipesFactory = () => {
   const [recipes, setRecipes] = useState<RecipeRow[]>([]);
   const [factoryBrandId, setFactoryBrandId] = useState<string | null>(null);
   const [recipeBrandMap, setRecipeBrandMap] = useState<Record<string, Set<string>>>({});
-  const [internalProductIds, setInternalProductIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [kindFilter, setKindFilter] = useState<"all" | "porcao" | "prep">("all");
-  
+
 
   const [creatingNew, setCreatingNew] = useState(false);
 
   const load = async () => {
     setLoading(true);
+    // Uma única ida ao banco: recipes + join com inventory_products (is_internal)
     const [{ data: recs }, { data: brs }, { data: links }] = await Promise.all([
       supabase
         .from("recipes")
-        .select("id, name, yield_quantity, yield_unit, is_active, output_product_id, scope")
+        .select("id, name, yield_quantity, yield_unit, is_active, output_product_id, scope, inventory_products:output_product_id(is_internal)")
+        .eq("scope" as any, "fabrica")
         .order("name"),
       supabase.from("brands").select("id, name, slug").eq("is_active", true).order("sort_order"),
       supabase.from("recipe_brands").select("recipe_id, brand_id"),
     ]);
-    setRecipes((recs as unknown as RecipeRow[]) ?? []);
+    const rows: RecipeRow[] = ((recs as any[]) ?? []).map((r) => ({
+      id: r.id,
+      name: r.name,
+      yield_quantity: r.yield_quantity,
+      yield_unit: r.yield_unit,
+      is_active: r.is_active,
+      output_product_id: r.output_product_id,
+      scope: r.scope,
+      output_is_internal: !!r.inventory_products?.is_internal,
+    }));
+    setRecipes(rows);
     const fb = ((brs as Brand[]) ?? []).find((b) => /pr[eé]\s*preparo|f[aá]brica/i.test(b.name));
     setFactoryBrandId(fb?.id ?? null);
     const map: Record<string, Set<string>> = {};
@@ -53,23 +65,6 @@ const RecipesFactory = () => {
       map[l.recipe_id].add(l.brand_id);
     });
     setRecipeBrandMap(map);
-
-    // Carrega produtos internos (usados para identificar fichas de pré-preparo)
-    const outputIds = ((recs ?? []) as RecipeRow[])
-      .map((r) => r.output_product_id)
-      .filter((x): x is string => !!x);
-    if (outputIds.length) {
-      const { data: prods } = await supabase
-        .from("inventory_products")
-        .select("id, is_internal")
-        .in("id", outputIds);
-      const internal = new Set<string>();
-      (prods ?? []).forEach((p: any) => { if (p.is_internal) internal.add(p.id); });
-      setInternalProductIds(internal);
-    } else {
-      setInternalProductIds(new Set());
-    }
-
     setLoading(false);
   };
 
@@ -78,20 +73,21 @@ const RecipesFactory = () => {
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return recipes.filter((r) => {
+      // scope='fabrica' já filtrado na query; ainda aceitamos vínculo legado por marca fábrica
       const set = recipeBrandMap[r.id];
       const linkedFactory = !!(factoryBrandId && set?.has(factoryBrandId));
       const isFactoryScope = r.scope === "fabrica" || linkedFactory;
-
       if (!isFactoryScope) return false;
 
-      // prep = sem output_product_id OU output product marcado como interno
-      const isPrep = !r.output_product_id || internalProductIds.has(r.output_product_id);
+      // prep = sem output_product_id OU output marcado como interno
+      const isPrep = !r.output_product_id || r.output_is_internal;
       if (kindFilter === "porcao" && isPrep) return false;
       if (kindFilter === "prep" && !isPrep) return false;
 
       return !q || r.name.toLowerCase().includes(q);
     });
-  }, [recipes, search, recipeBrandMap, factoryBrandId, kindFilter, internalProductIds]);
+  }, [recipes, search, recipeBrandMap, factoryBrandId, kindFilter]);
+
 
 
 
