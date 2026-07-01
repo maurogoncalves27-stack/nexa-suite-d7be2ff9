@@ -301,8 +301,6 @@ const InventoryProducts = () => {
       factory_only: p.factory_only ?? false,
       product_type: p.product_type ?? "insumo",
       requires_expiry: p.requires_expiry ?? false,
-      purchase_unit: p.purchase_unit ?? null,
-      pack_size: p.pack_size ?? null,
     });
     setOpen(true);
   };
