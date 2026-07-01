@@ -63,15 +63,39 @@ export default function NutriSensors() {
   const [devices, setDevices] = useState<TuyaDevice[]>([]);
   const [loadingDevices, setLoadingDevices] = useState(false);
   const [editing, setEditing] = useState<Equip | null>(null);
+  const [emsSensors, setEmsSensors] = useState<EmsSensor[]>([]);
 
   async function load() {
     setLoading(true);
-    const [{ data: st }, { data: eq }] = await Promise.all([
+    const [{ data: st }, { data: eq }, { data: ems }] = await Promise.all([
       supabase.from("stores").select("id, name").eq("is_active", true).eq("is_virtual", false).order("name"),
       supabase.from("nutri_equipment").select("*").not("tuya_device_id", "is", null).order("name"),
+      supabase.from("ems_sensors").select("unique_code, label, min_value, max_value, store_id").order("label"),
     ]);
     setStores(st ?? []);
     setEquips((eq ?? []) as Equip[]);
+    // fetch latest reading for each EMS sensor
+    const emsList: EmsSensor[] = await Promise.all(
+      (ems ?? []).map(async (s: any) => {
+        const { data: r } = await supabase
+          .from("ems_sensor_readings")
+          .select("measurement, measured_at")
+          .eq("sensor_code", s.unique_code)
+          .order("measured_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        return {
+          unique_code: s.unique_code,
+          label: s.label,
+          min_value: s.min_value,
+          max_value: s.max_value,
+          store_id: s.store_id,
+          last_measurement: r?.measurement != null ? Number(r.measurement) : null,
+          last_measured_at: r?.measured_at ?? null,
+        };
+      })
+    );
+    setEmsSensors(emsList);
     setLoading(false);
   }
 
