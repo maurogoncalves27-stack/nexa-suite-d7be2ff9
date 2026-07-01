@@ -16506,6 +16506,7 @@ export type Database = {
           transfer_id: string
         }[]
       }
+      email_queue_dispatch: { Args: never; Returns: undefined }
       employee_time_clock_payroll: {
         Args: { _employee_id: string }
         Returns: boolean
