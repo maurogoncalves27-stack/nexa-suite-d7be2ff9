@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 const UNITS = ["UN", "KG", "G", "L", "ML", "CX", "PCT", "FD", "DZ", "MT", "PORCAO"];
 
-interface Product { id: string; name: string; unit: string; average_cost: number; }
+interface Product { id: string; name: string; unit: string; average_cost: number; category: string | null; }
 interface RecipeRef { id: string; name: string; yield_unit: string; output_product_id: string; scope: "fabrica" | "loja" | null; }
 interface BrandRef { id: string; name: string; }
 
@@ -48,7 +48,7 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
     (async () => {
       setLoading(true);
       const [{ data: prods }, { data: ings }, { data: recs }, { data: links }, { data: brs }] = await Promise.all([
-        supabase.from("inventory_products").select("id, name, unit, average_cost").eq("is_active", true).order("name"),
+        supabase.from("inventory_products").select("id, name, unit, average_cost, category").eq("is_active", true).order("name"),
         supabase.from("recipe_ingredients").select("*").eq("recipe_id", recipeId).order("sort_order"),
         supabase.from("recipes").select("id, name, yield_unit, output_product_id, scope").eq("is_active", true).not("output_product_id", "is", null).order("name"),
         supabase.from("recipe_brands").select("recipe_id, brand_id"),
@@ -194,23 +194,29 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
                                   <SelectValue placeholder="Produto ou ficha…" />
                                 </SelectTrigger>
                                 <SelectContent>
+                                  {!group.isPack && (
+                                    <SelectGroup>
+                                      <SelectLabel>Pré-preparos / Fichas</SelectLabel>
+                                      {Object.values(recipeByOutput).length === 0 && (
+                                        <div className="px-2 py-1 text-xs text-muted-foreground">Nenhuma ficha disponível</div>
+                                      )}
+                                      {Object.values(recipeByOutput)
+                                        .sort((a, b) => a.name.localeCompare(b.name))
+                                        .map((r) => (
+                                          <SelectItem key={r.output_product_id} value={r.output_product_id}>
+                                            🧪 {r.name}
+                                          </SelectItem>
+                                        ))}
+                                    </SelectGroup>
+                                  )}
                                   <SelectGroup>
-                                    <SelectLabel>Pré-preparos / Fichas</SelectLabel>
-                                    {Object.values(recipeByOutput).length === 0 && (
-                                      <div className="px-2 py-1 text-xs text-muted-foreground">Nenhuma ficha disponível</div>
-                                    )}
-                                    {Object.values(recipeByOutput)
-                                      .sort((a, b) => a.name.localeCompare(b.name))
-                                      .map((r) => (
-                                        <SelectItem key={r.output_product_id} value={r.output_product_id}>
-                                          🧪 {r.name}
-                                        </SelectItem>
-                                      ))}
-                                  </SelectGroup>
-                                  <SelectGroup>
-                                    <SelectLabel>Insumos / Produtos</SelectLabel>
+                                    <SelectLabel>{group.isPack ? "Embalagens / Descartáveis" : "Insumos / Produtos"}</SelectLabel>
                                     {products
                                       .filter((p) => !recipeByOutput[p.id])
+                                      .filter((p) => {
+                                        const isPack = /embalag/i.test(p.category ?? "");
+                                        return group.isPack ? isPack : !isPack;
+                                      })
                                       .map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                                   </SelectGroup>
                                 </SelectContent>
