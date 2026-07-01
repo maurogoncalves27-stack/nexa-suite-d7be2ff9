@@ -262,7 +262,7 @@ export default function IntegrationsPage() {
         <CrmIntegrationsPanel />
       </div>
 
-
+      <div className="space-y-8">
         {grouped.map(([cat, items]) => (
           <div key={cat} className="space-y-3">
             <h2 className="text-lg font-semibold text-muted-foreground uppercase tracking-wide">{cat}</h2>
