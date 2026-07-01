@@ -34,6 +34,12 @@ interface Equipment {
   equipment_type: EquipmentType;
   store_id: string | null;
   ems_sensor_code: string | null;
+  tuya_device_id: string | null;
+  tuya_sensor_type: string | null;
+  last_temp_c: number | null;
+  last_humidity_pct: number | null;
+  last_reading_at: string | null;
+  last_online: boolean;
 }
 
 interface EmsSensor {
