@@ -333,52 +333,120 @@ function TemperatureReport({ from, to, storeId, storeMap }: ReportProps) {
   useEffect(() => {
     setLoading(true);
     let q = supabase.from("nutri_temperature_readings")
-      .select("date, recorded_at, temperature, note, store_id, nutri_equipment(name)")
+      .select("date, recorded_at, temperature, note, store_id, equipment_id, nutri_equipment(name)")
       .gte("date", from).lte("date", to)
-      .order("recorded_at", { ascending: false });
+      .order("date", { ascending: false });
     if (storeId !== "all") q = q.eq("store_id", storeId);
     q.then(({ data }) => { setRows(data ?? []); setLoading(false); });
   }, [from, to, storeId]);
 
-  const buildRows = () => rows.map(r => ({
-    data: r.date, hora: format(new Date(r.recorded_at), "HH:mm"),
-    loja: storeMap[r.store_id] ?? "—", equipamento: r.nutri_equipment?.name ?? "—",
-    temperatura_C: r.temperature, observacao: r.note ?? "",
+  // Agrega por (loja, equipamento, dia): min/máx/média/n leituras
+  type Daily = {
+    date: string;
+    store_id: string;
+    equipment_id: string;
+    equipment: string;
+    count: number;
+    min: number;
+    max: number;
+    avg: number;
+    _sum: number;
+    firstAt: string;
+    lastAt: string;
+  };
+  const daily: Daily[] = useMemo(() => {
+    const map = new Map<string, Daily>();
+    for (const r of rows) {
+      const t = Number(r.temperature);
+      if (!Number.isFinite(t)) continue;
+      const eqName = r.nutri_equipment?.name ?? "—";
+      const key = `${r.store_id}|${r.equipment_id}|${r.date}`;
+      const cur = map.get(key);
+      if (!cur) {
+        map.set(key, {
+          date: r.date,
+          store_id: r.store_id,
+          equipment_id: r.equipment_id,
+          equipment: eqName,
+          count: 1,
+          min: t,
+          max: t,
+          avg: t,
+          _sum: t,
+          firstAt: r.recorded_at,
+          lastAt: r.recorded_at,
+        });
+      } else {
+        cur.count += 1;
+        cur._sum += t;
+        cur.avg = cur._sum / cur.count;
+        if (t < cur.min) cur.min = t;
+        if (t > cur.max) cur.max = t;
+        if (r.recorded_at < cur.firstAt) cur.firstAt = r.recorded_at;
+        if (r.recorded_at > cur.lastAt) cur.lastAt = r.recorded_at;
+      }
+    }
+    return Array.from(map.values()).sort((a, b) =>
+      a.date === b.date ? a.equipment.localeCompare(b.equipment) : (a.date < b.date ? 1 : -1)
+    );
+  }, [rows]);
+
+  const buildRows = () => daily.map(d => ({
+    data: d.date,
+    loja: storeMap[d.store_id] ?? "—",
+    equipamento: d.equipment,
+    leituras: d.count,
+    min_C: d.min.toFixed(1),
+    max_C: d.max.toFixed(1),
+    media_C: d.avg.toFixed(1),
+    primeira: format(new Date(d.firstAt), "HH:mm"),
+    ultima: format(new Date(d.lastAt), "HH:mm"),
   }));
 
-  const renderRow = (r: any, i: number, includeStore: boolean) => (
+  const renderRow = (d: Daily, i: number, includeStore: boolean) => (
     <TableRow key={i}>
-      <TableCell>{format(new Date(r.date), "dd/MM/yyyy")}</TableCell>
-      <TableCell>{format(new Date(r.recorded_at), "HH:mm")}</TableCell>
-      {includeStore && <TableCell>{storeMap[r.store_id] ?? "—"}</TableCell>}
-      <TableCell>{r.nutri_equipment?.name ?? "—"}</TableCell>
-      <TableCell className="font-mono">{r.temperature}</TableCell>
-      <TableCell className="max-w-xs truncate">{r.note}</TableCell>
+      <TableCell>{format(new Date(d.date), "dd/MM/yyyy")}</TableCell>
+      {includeStore && <TableCell>{storeMap[d.store_id] ?? "—"}</TableCell>}
+      <TableCell>{d.equipment}</TableCell>
+      <TableCell className="text-right">{d.count}</TableCell>
+      <TableCell className="font-mono text-right">{d.min.toFixed(1)}</TableCell>
+      <TableCell className="font-mono text-right">{d.max.toFixed(1)}</TableCell>
+      <TableCell className="font-mono text-right">{d.avg.toFixed(1)}</TableCell>
+      <TableCell className="text-xs text-muted-foreground">
+        {format(new Date(d.firstAt), "HH:mm")}–{format(new Date(d.lastAt), "HH:mm")}
+      </TableCell>
+    </TableRow>
+  );
+
+  const headerCells = (includeStore: boolean) => (
+    <TableRow>
+      <TableHead>Data</TableHead>
+      {includeStore && <TableHead>Loja</TableHead>}
+      <TableHead>Equipamento</TableHead>
+      <TableHead className="text-right">Leituras</TableHead>
+      <TableHead className="text-right">Mín (°C)</TableHead>
+      <TableHead className="text-right">Máx (°C)</TableHead>
+      <TableHead className="text-right">Média (°C)</TableHead>
+      <TableHead>Janela</TableHead>
     </TableRow>
   );
 
   return (
-    <ReportShell title="Temperatura" count={rows.length} loading={loading} baseFilename={`temperatura_${from}_${to}`} getRows={buildRows}>
+    <ReportShell title="Temperatura (diário)" count={daily.length} loading={loading} baseFilename={`temperatura_diario_${from}_${to}`} getRows={buildRows}>
       {storeId === "all" ? (
-        groupByStore(rows, storeMap).map(([name, group]) => (
+        groupByStore(daily, storeMap).map(([name, group]) => (
           <div key={name}>
             <GroupHeader name={name} count={group.length} />
             <Table>
-              <TableHeader><TableRow>
-                <TableHead>Data</TableHead><TableHead>Hora</TableHead>
-                <TableHead>Equipamento</TableHead><TableHead>Temp. (°C)</TableHead><TableHead>Obs.</TableHead>
-              </TableRow></TableHeader>
-              <TableBody>{group.slice(0, 200).map((r, i) => renderRow(r, i, false))}</TableBody>
+              <TableHeader>{headerCells(false)}</TableHeader>
+              <TableBody>{group.slice(0, 300).map((r, i) => renderRow(r as Daily, i, false))}</TableBody>
             </Table>
           </div>
         ))
       ) : (
         <Table>
-          <TableHeader><TableRow>
-            <TableHead>Data</TableHead><TableHead>Hora</TableHead><TableHead>Loja</TableHead>
-            <TableHead>Equipamento</TableHead><TableHead>Temp. (°C)</TableHead><TableHead>Obs.</TableHead>
-          </TableRow></TableHeader>
-          <TableBody>{rows.slice(0, 200).map((r, i) => renderRow(r, i, true))}</TableBody>
+          <TableHeader>{headerCells(true)}</TableHeader>
+          <TableBody>{daily.slice(0, 500).map((d, i) => renderRow(d, i, true))}</TableBody>
         </Table>
       )}
     </ReportShell>
