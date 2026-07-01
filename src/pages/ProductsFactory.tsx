@@ -244,15 +244,18 @@ const ProductsFactory = () => {
                       <TableCell className="text-center">
                         <Switch checked={p.is_active} onCheckedChange={(v) => toggleActive(p, v)} disabled={!canReceive} />
                       </TableCell>
-                      <TableCell>
-                        {canReceive && (
+                    <TableCell className="w-[100px]">
+                      {canReceive && (
+                        <div className="flex gap-1 justify-end">
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(p)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                          <Button variant="ghost" size="icon" onClick={() => setDeleting(p)} className="text-destructive hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
                 </TableBody>
               </Table>
             </div>
