@@ -458,7 +458,7 @@ export const NutriTemperatureControl = ({ currentDate, storeId }: Props) => {
                   </Badge>
                 </div>
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 text-primary border-primary/40">
-                  <Radio className="h-2.5 w-2.5" /> Automático (EMS-A)
+                  <Radio className="h-2.5 w-2.5" /> Automático ({isTuya ? "Tuya" : "EMS-A"})
                 </Badge>
               </div>
 
