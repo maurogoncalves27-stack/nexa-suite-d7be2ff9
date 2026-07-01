@@ -36,7 +36,10 @@ import {
   Copy,
   Pencil,
   Trash2,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
+
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -190,14 +193,59 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
     return { avg: totalCount > 0 ? weighted / totalCount : 0, totalCount };
   };
 
+  // Histórico semanal de médias manuais (para setinhas de tendência)
+  // { weekKey: "YYYY-Www", ts, ifood: {key: avg}, google: {key: avg} }
+  const HISTORY_KEY = "crm.reviews.weekly_history";
+  type WeekSnap = { weekKey: string; ts: number; ifood: Record<string, number>; google: Record<string, number> };
+  const [history, setHistory] = useState<WeekSnap[]>(() => {
+    try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); } catch { return []; }
+  });
+  const getWeekKey = (d = new Date()) => {
+    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const dayNum = date.getUTCDay() || 7;
+    date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return `${date.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+  };
+  const snapshotOf = (map: Record<string, ManualEntry>): Record<string, number> => {
+    const out: Record<string, number> = {};
+    Object.entries(map).forEach(([k, v]) => { if (v && v.avg > 0) out[k] = v.avg; });
+    return out;
+  };
+  const persistHistory = (ifoodMap: Record<string, ManualEntry>, googleMap: Record<string, ManualEntry>) => {
+    const wk = getWeekKey();
+    const snap: WeekSnap = { weekKey: wk, ts: Date.now(), ifood: snapshotOf(ifoodMap), google: snapshotOf(googleMap) };
+    setHistory((prev) => {
+      const others = prev.filter((s) => s.weekKey !== wk);
+      const next = [...others, snap].sort((a, b) => a.weekKey.localeCompare(b.weekKey));
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+  const previousAvg = (source: "ifood" | "google", key: string): number | null => {
+    // Última semana anterior à corrente que tenha valor
+    const wk = getWeekKey();
+    for (let i = history.length - 1; i >= 0; i--) {
+      const s = history[i];
+      if (s.weekKey >= wk) continue;
+      const v = s[source]?.[key];
+      if (typeof v === "number" && v > 0) return v;
+    }
+    return null;
+  };
+
   const saveIfoodStores = (next: Record<string, IfoodEntry>) => {
     setIfoodByStore(next);
     localStorage.setItem(IFOOD_STORES_KEY, JSON.stringify(next));
+    persistHistory(next, googleByStore);
   };
   const saveGoogleStores = (next: Record<string, ManualEntry>) => {
     setGoogleByStore(next);
     localStorage.setItem(GOOGLE_STORES_KEY, JSON.stringify(next));
+    persistHistory(ifoodByStore, next);
   };
+
 
 
   return (
@@ -440,19 +488,27 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
           return { avg: e?.avg ?? 0, n: e?.count ?? 0 };
         };
 
-        const Cell = ({ avg, n }: { avg: number; n: number }) => {
+        const Cell = ({ avg, n, prev }: { avg: number; n: number; prev?: number | null }) => {
           if (!n || !avg) return <span className="text-muted-foreground/60">—</span>;
           const color =
             avg >= 4.5 ? "text-emerald-600 dark:text-emerald-400"
             : avg >= 4.0 ? "text-yellow-600 dark:text-yellow-400"
             : "text-destructive";
+          const diff = prev != null ? avg - prev : 0;
+          const trendUp = prev != null && diff > 0.05;
+          const trendDown = prev != null && diff < -0.05;
           return (
             <div className="leading-tight">
-              <div className={`font-semibold tabular-nums ${color}`}>{avg.toFixed(1).replace(".", ",")}</div>
+              <div className={`font-semibold tabular-nums ${color} flex items-center justify-center gap-0.5`}>
+                {avg.toFixed(1).replace(".", ",")}
+                {trendUp && <ArrowUp className="h-3 w-3 text-blue-500" strokeWidth={3} aria-label={`subiu de ${prev!.toFixed(1)}`} />}
+                {trendDown && <ArrowDown className="h-3 w-3 text-destructive" strokeWidth={3} aria-label={`caiu de ${prev!.toFixed(1)}`} />}
+              </div>
               <div className="text-[10px] text-muted-foreground tabular-nums">{n}</div>
             </div>
           );
         };
+
 
         const orderedStores = [...stores].sort((a, b) => {
           const af = isFabrica(a.name) ? 1 : 0;
@@ -507,14 +563,15 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                         </td>
                         {brandCols.map((c) => (
                           <td key={`g-${s.id}-${c.short}`} className="border border-border px-2 py-1">
-                            {fabrica ? <span className="text-muted-foreground/40">—</span> : <Cell {...manualCell(googleByStore, s.id, c.id)} />}
+                            {fabrica ? <span className="text-muted-foreground/40">—</span> : <Cell {...manualCell(googleByStore, s.id, c.id)} prev={c.id ? previousAvg("google", `${s.id}::${c.id}`) : null} />}
                           </td>
                         ))}
                         {brandCols.map((c) => (
                           <td key={`i-${s.id}-${c.short}`} className="border border-border px-2 py-1">
-                            {fabrica ? <span className="text-muted-foreground/40">—</span> : <Cell {...manualCell(ifoodByStore, s.id, c.id)} />}
+                            {fabrica ? <span className="text-muted-foreground/40">—</span> : <Cell {...manualCell(ifoodByStore, s.id, c.id)} prev={c.id ? previousAvg("ifood", `${s.id}::${c.id}`) : null} />}
                           </td>
                         ))}
+
                         <td className="border border-border px-2 py-1"><Cell {...n} /></td>
                       </tr>
                     );
