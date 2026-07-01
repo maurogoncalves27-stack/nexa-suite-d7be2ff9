@@ -1,5 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Store, ShieldCheck, Handshake, Link2, Eye, Settings as SettingsIcon, FlaskConical, CreditCard } from "lucide-react";
+import { Store, ShieldCheck, Handshake, Link2, Eye, Settings as SettingsIcon, FlaskConical, CreditCard, Monitor } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import StoresPanel from "@/components/settings/StoresPanel";
