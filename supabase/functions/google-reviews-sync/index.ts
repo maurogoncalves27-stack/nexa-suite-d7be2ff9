@@ -88,7 +88,9 @@ Deno.serve(async (req) => {
     if (bErr) throw bErr;
 
     const stores = ((storesRaw ?? []) as Store[]).filter((s) => !EXCLUDE.has(s.name.toUpperCase()));
-    const brandList = (brands ?? []) as Brand[];
+    // Somente as 3 marcas que aparecem no Google Business.
+    const TARGET_BRANDS = new Set(["AQUELA PARME", "AQUELA PARMÊ", "BOX CAIPIRA", "AQUELE ESTROGONOFE"]);
+    const brandList = ((brands ?? []) as Brand[]).filter((b) => TARGET_BRANDS.has(b.name.toUpperCase()));
 
     // Load existing mappings.
     const { data: existing } = await supabase.from("store_brand_google").select("store_id,brand_id,place_id");
