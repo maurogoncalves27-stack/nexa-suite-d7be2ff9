@@ -134,7 +134,7 @@ export default function DfeNoteDialog({ noteId, onClose, onImported }: Props) {
       supabase.from("dfe_inbound_notes").select("*").eq("id", noteId).single(),
       supabase.from("dfe_inbound_items").select("*").eq("note_id", noteId).order("line_number"),
       supabase.from("inventory_products")
-        .select("id, name, unit, purchase_unit, pack_size")
+        .select("id, name, unit")
         .eq("is_active", true).order("name").limit(5000),
       supabase.from("stores").select("id, name").eq("is_virtual", false).eq("is_active", true).order("name"),
     ]);
