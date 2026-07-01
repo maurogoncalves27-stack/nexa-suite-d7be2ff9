@@ -12207,6 +12207,56 @@ export type Database = {
           },
         ]
       }
+      product_conversions: {
+        Row: {
+          conversion_type: string
+          created_at: string
+          from_qty: number
+          from_unit: string
+          id: string
+          is_default: boolean
+          notes: string | null
+          product_id: string
+          to_qty: number
+          to_unit: string
+          updated_at: string
+        }
+        Insert: {
+          conversion_type: string
+          created_at?: string
+          from_qty: number
+          from_unit: string
+          id?: string
+          is_default?: boolean
+          notes?: string | null
+          product_id: string
+          to_qty: number
+          to_unit: string
+          updated_at?: string
+        }
+        Update: {
+          conversion_type?: string
+          created_at?: string
+          from_qty?: number
+          from_unit?: string
+          id?: string
+          is_default?: boolean
+          notes?: string | null
+          product_id?: string
+          to_qty?: number
+          to_unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_conversions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_store_links: {
         Row: {
           created_at: string
@@ -13046,6 +13096,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          ingredient_state: string | null
           is_packaging: boolean
           notes: string | null
           product_id: string
@@ -13057,6 +13108,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          ingredient_state?: string | null
           is_packaging?: boolean
           notes?: string | null
           product_id: string
@@ -13068,6 +13120,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          ingredient_state?: string | null
           is_packaging?: boolean
           notes?: string | null
           product_id?: string

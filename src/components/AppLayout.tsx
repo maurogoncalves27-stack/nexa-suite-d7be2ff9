@@ -123,6 +123,7 @@ const PAGE_TITLES: PageMeta[] = [
   { match: (p) => p.startsWith("/transferencias"), title: "Transferências", group: "Estoque" },
   { match: (p) => p.startsWith("/perdas"), title: "Lotes, validades e perdas", group: "Estoque" },
   { match: (p) => p.startsWith("/lotes"), title: "Lotes, validades e perdas", group: "Estoque" },
+  { match: (p) => p.startsWith("/fatores-conversao"), title: "Fatores de conversão", group: "Estoque" },
   { match: (p) => p.startsWith("/fichas-fabrica"), title: "Fichas técnicas", group: "Fábrica" },
   { match: (p) => p.startsWith("/produtos-fabrica"), title: "Produtos da Fábrica", group: "Fábrica" },
   { match: (p) => p.startsWith("/cardapio-fabrica"), title: "Cardápio", group: "Fábrica" },

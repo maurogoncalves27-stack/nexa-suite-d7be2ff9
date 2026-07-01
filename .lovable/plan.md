@@ -1,117 +1,71 @@
-## Diagnóstico da situação atual
-
-**O que temos hoje no banco (277 produtos ativos, 6 lojas físicas + Escritório):**
-
-| Tipo         | Total | `factory_only` | `is_internal` |
-| ------------ | ----- | -------------- | ------------- |
-| insumo       | 212   | 53             | 66            |
-| revenda      | 26    | 0              | 0             |
-| produzido    | 26    | 14             | 14            |
-| personalizado| 8     | 0              | 0             |
-| embalagem    | 5     | 5              | 0             |
-
-- 659 vínculos em `product_store_links` (produto ↔ loja "sugerida").
-- 1.239 linhas em `inventory_stock` — **todo produto aparece em toda loja** (205 em cada loja + 214 no Estoque Central). Isso gera ruído: refri aparece na Fábrica, farinha aparece no PDV, etc.
-- 102 fichas técnicas (`recipes`), 82 itens de cardápio (`menu_items`).
-- Fluxo Fábrica→Loja hoje usa `factory_requests` (8 pedidos) e `inventory_transfers` (1). Recebimento entra tudo no **Estoque Central**.
-
-**Problemas que isso está causando (e você já sentiu):**
-
-1. **Cardápio da fábrica poluído** — aparece pré-preparo/insumo porque não há regra clara do que é "vendável" vs "insumo de produção".
-2. **Duplicidade e itens no lugar errado** — o mesmo item tem versão fábrica e versão loja, e o filtro atual é uma flag frágil (`factory_only`) sem contrapartida "loja_only" nem "compartilhado".
-3. **Saldo de estoque inflado** — cada produto aparece em todas as lojas mesmo quando não faz sentido (refri no Estoque Central da Fábrica, farinha na loja).
-4. **Não fica claro quem consome o quê** — insumo que a fábrica usa pra produzir X e insumo que a loja usa pra montar prato Y estão misturados no mesmo balde.
-5. **Fluxo Estoque Central → Fábrica → Loja não é explícito** — hoje é "tudo em todo lugar" e a movimentação depende de contagem, não de regra.
+## Escolhas confirmadas
+1. **Cardápio da Fábrica** consolidado em `/produtos-fabrica` como visão filtrada.
+2. **Cru ↔ pronto** = fator no produto (um único cadastro; a ficha declara se usa cru ou pronto).
 
 ---
 
-## Proposta: modelo de 3 eixos (escopo · uso · fluxo)
+## Fase A — Consolidar Cardápio
 
-Em vez de flags soltas, cada produto passa a ter **3 atributos claros**:
+- `/cardapio-fabrica` vira redirect → `/produtos-fabrica?view=cardapio`.
+- Em `/produtos-fabrica`:
+  - Filtro "Visão": Todos · Cardápio · Só insumos · Só produzidos (lê `?view=` da URL).
+  - Nova coluna **No cardápio** com switch que liga/desliga o papel `venda_fabrica` em `usage_roles`.
+- Sidebar mantém o link "Cardápio da fábrica" apontando para `/produtos-fabrica?view=cardapio`.
+- Redirect também em `AppLayout` PAGE_TITLES.
 
-### 1) `stock_scope` — onde o produto pode ter estoque
-- `central` — só Estoque Central (ex.: chega da nota fiscal e é redistribuído; nunca aparece em contagem de loja).
-- `factory` — Estoque Central + Fábrica.
-- `store` — Estoque Central + Lojas.
-- `factory_and_store` — em todos.
-- **Efeito:** `inventory_stock` é gerado só nas lojas do escopo. Contagens, mínimo/máximo e alertas de ruptura passam a fazer sentido.
+## Fase B — Fatores de conversão
 
-### 2) `usage_role` — pra que serve
-- `venda_loja` — vai pro cardápio de loja (refri, sobremesa pronta, etc.).
-- `venda_fabrica` — vai pro cardápio da fábrica (produto acabado que a fábrica vende p/ a loja em pacote/kg).
-- `insumo_producao` — matéria-prima de ficha técnica (nunca vira item de cardápio).
-- `insumo_montagem` — usado na loja pra montar prato (ex.: molho pronto que veio da fábrica).
-- Um produto pode ter **mais de um papel** (ex.: "MOLHO ALHO E ÓLEO" = `venda_fabrica` + `insumo_montagem` na loja).
+### B.1 Migração
 
-### 3) `production_flow` — como é abastecido
-- `comprado` — vem de fornecedor externo (nota fiscal → Estoque Central).
-- `produzido_fabrica` — a fábrica produz (baixa insumos, gera saldo).
-- `misto` — pode ser comprado OU produzido (fallback).
+Nova tabela `public.product_conversions`:
 
----
+```
+id · product_id (FK inventory_products) · conversion_type ('compra'|'preparo'|'porcionamento')
+· from_unit · from_qty numeric · to_unit · to_qty numeric
+· notes · is_default bool · created_at · updated_at
+```
 
-## O que muda em cada tela
+- GRANTs para `authenticated` e `service_role`, RLS: leitura para authenticated, escrita para admin/manager (via `has_role`).
+- Índice `(product_id, conversion_type)` + único em `(product_id, from_unit, to_unit, conversion_type)`.
+- Trigger `updated_at`.
+- **Backfill**:
+  - Para cada produto com `purchase_unit` e `pack_size > 0` → linha `compra` (1 `purchase_unit` = `pack_size` `unit`, `is_default=true`).
+  - Para cada `recipes` com `output_product_id` e insumo principal identificável → linha `preparo` cru→pronto (fator = `yield_quantity / input_base`). Onde não for possível derivar automaticamente, deixar para cadastro manual.
+- Coluna `recipe_ingredients.ingredient_state text` (`cru`|`pronto`|null), default null.
 
-**Cardápio Fábrica (`/cardapio-fabrica`)**
-- Mostra só produtos com `usage_role` contendo `venda_fabrica`.
-- Insumos e pré-preparos somem automaticamente (resolve o problema de "polpa de tomate no cardápio").
-- Botão "Adicionar ao cardápio" só lista candidatos elegíveis.
+### B.2 Página `/fatores-conversao`
 
-**Cardápio Loja (`/cardapio` por marca)**
-- Só produtos com `venda_loja` ou receitas cujo produto final tenha esse papel.
+- Item de sidebar em **Estoque › Cadastros** (ícone `Ruler` ou `Scale`).
+- Lista de produtos com contagem de conversões por tipo; badge alerta em produtos sem nenhuma conversão.
+- Filtros: busca, tipo, "sem conversão", categoria.
+- Editor inline por produto: adicionar/remover linhas, marcar `is_default`, notas.
+- Cabeçalho segue padrão obrigatório (h1 + ícone `text-primary` igual ao do sidebar).
 
-**Estoque (`/estoque`)**
-- Filtro extra "Escopo" (Central / Fábrica / Loja).
-- Loja X só vê produtos do escopo `store` ou `factory_and_store`.
-- Estoque Central vê tudo (é o hub).
-- Produtos `infinite_stock` continuam invisíveis (regra atual preservada).
+### B.3 Consumo pelo sistema
 
-**Fichas técnicas (`/fichas-tecnicas`)**
-- Ingredientes só podem ser produtos com `insumo_producao` ou `insumo_montagem`.
-- Impede erro de colocar refrigerante como ingrediente de prato.
+- `src/lib/conversions.ts` com helpers: `getConversions(productId)`, `resolveFactor(productId, fromUnit, toUnit, type?)`, `toBaseQty(productId, qty, unit)`.
+- **Editor de ficha** (`RecipeIngredientsDialog`): se o ingrediente tiver conversão `preparo`, mostra toggle **Cru / Pronto**; grava `ingredient_state`. Cálculo de custo sempre no cru (baixa real de estoque).
+- **Custo da ficha** (`recipeCost.ts`): quando `ingredient_state='pronto'`, divide qty pelo fator antes de multiplicar pelo custo unitário.
+- **Sugestão de abastecimento** (`ReplenishmentSuggestion`): converte "3 kg cozido" em "1,2 kg cru" quando o produto tem `preparo` e o consumo é de item cozido.
+- **Recebimento DFe** (`DfeNoteDialog`, `QuickCreateProductDialog`): passa a olhar `product_conversions` tipo `compra` (por produto) antes do `pack_size` legado. `dfe_supplier_unit_conversion` continua sendo o "override por fornecedor".
+- **Receituário PDF** (`recipeBookPdf`): exibe fator cru→pronto no cabeçalho quando existir.
 
-**Fluxo de abastecimento (novo, dashboard rápido)**
-- **Recebimento (Estoque Central):** tudo entra aqui via nota (já funciona).
-- **Distribuição sugerida:** botão "Sugerir transferência" que, com base em `min_qty`/`target_qty` de cada loja e no `production_flow`, gera:
-  - Transferência Central → Loja (comprados).
-  - Ordem de produção Fábrica (produzidos) + transferência Fábrica → Loja depois de pronto.
-- **Pedido da Loja → Fábrica/Central:** já existe (`factory_requests`); ampliar pra aceitar itens `comprado` (vai pro Central) e `produzido` (vai pra Fábrica) no mesmo pedido, roteando automático.
+## Fase C — Descontinuar duplicidade
 
----
-
-## Plano de execução (faseado, sem quebrar nada)
-
-**Fase 1 — Modelo de dados (migração)**
-- Adicionar em `inventory_products`:
-  - `stock_scope text` (default `factory_and_store` p/ compatibilidade).
-  - `usage_roles text[]` (array; default derivado do `product_type` atual).
-  - `production_flow text` (default `comprado`).
-- Backfill automático usando as flags atuais (`factory_only`, `is_internal`, `product_type`) — nada se perde.
-- Manter `factory_only`/`is_internal` por 1-2 releases como sombra pra rollback, depois descontinuar.
-
-**Fase 2 — Limpeza do `inventory_stock`**
-- Trigger: ao criar/alterar produto, sincroniza linhas de `inventory_stock` só nas lojas do `stock_scope`.
-- Script único de faxina inicial: remove linhas com `quantity=0` que não pertencem ao escopo (preserva histórico de movimento).
-
-**Fase 3 — Telas**
-- Cardápio Fábrica: filtro por `usage_roles @> {venda_fabrica}`.
-- Estoque: filtro de escopo + esconder o que não pertence.
-- Fichas técnicas: seletor de ingrediente restrito a insumos.
-- Ficha do produto (`/produtos-fabrica` e `/estoque/produtos`): 3 selects novos (escopo, papéis, fluxo) num único bloco "Classificação".
-
-**Fase 4 — Distribuição inteligente (opcional, próximo passo)**
-- Painel "Sugestão de abastecimento" no Estoque Central: lê saldo × target de cada loja e propõe transferência/produção em 1 clique.
+- Após validação (1-2 semanas), `purchase_unit`/`pack_size` na ficha do produto ficam **read-only** com aviso "editar em Fatores de Conversão".
+- Remoção final em release posterior.
 
 ---
 
-## Detalhes técnicos (para referência)
+## Detalhes técnicos
 
-- Nenhuma tabela nova além dos 3 campos em `inventory_products` — máximo reuso.
-- `usage_roles` como `text[]` permite produto com múltiplos papéis sem duplicar cadastro (elimina a raiz das duplicidades que você já viu).
-- Trigger de sincronização de `inventory_stock` idempotente (safe pra rodar várias vezes).
-- Todas as telas afetadas: `FactoryMenu.tsx`, `ProductsFactory.tsx`, `InventoryStock.tsx`, `MenuManager.tsx`, editor de fichas em `src/components/recipes/`, `NewRequestDialog.tsx`.
-- Compatível com `infinite_stock`, `product_store_links` e o fluxo iFood/PDV existentes (não mexo em nada de venda/TEF).
+- Nenhum dado se perde: backfill preserva `purchase_unit`/`pack_size` e fichas de pré-preparo existentes.
+- Compatível com `infinite_stock` (fator irrelevante), modelo de 3 eixos (`stock_scope`/`usage_roles`/`production_flow`) e páginas já entregues.
+- Arquivos afetados:
+  - `src/App.tsx` (nova rota + redirect), `src/components/AppSidebar.tsx`, `src/components/AppLayout.tsx`.
+  - `src/pages/ProductsFactory.tsx`, remover uso principal de `src/pages/FactoryMenu.tsx` (mantido só como redirect até 1 release).
+  - Novo `src/pages/ConversionFactors.tsx`, novo `src/lib/conversions.ts`.
+  - `src/components/recipes/RecipeIngredientsDialog.tsx`, `src/lib/recipeCost.ts`, `src/lib/recipeBookPdf.ts`.
+  - `src/pages/ReplenishmentSuggestion.tsx`, `src/components/inventory/DfeNoteDialog.tsx`, `src/components/inventory/QuickCreateProductDialog.tsx`.
 
----
-
-**Confirma que faz sentido esse modelo (escopo + papéis + fluxo)?** Se sim, começo pela Fase 1 (migração + backfill) e já entrego a Fase 3 (telas usando os novos campos) na sequência.
+Faseamento executado nesta ordem: A → B.1 (migração) → B.2 (página) → B.3 (integrações).

@@ -13,6 +13,7 @@ const UNITS = ["UN", "KG", "G", "L", "ML", "CX", "PCT", "FD", "DZ", "MT", "PORCA
 interface Product { id: string; name: string; unit: string; average_cost: number; category: string | null; factory_only: boolean; usage_roles: string[] | null; }
 interface RecipeRef { id: string; name: string; yield_unit: string; output_product_id: string; scope: "fabrica" | "loja" | null; }
 interface BrandRef { id: string; name: string; }
+interface ConvRef { product_id: string; from_qty: number; to_qty: number; from_unit: string; to_unit: string; is_default: boolean; }
 
 interface Item {
   id?: string;
@@ -21,6 +22,7 @@ interface Item {
   unit: string;
   notes: string;
   is_packaging: boolean;
+  ingredient_state?: "cru" | "pronto" | null;
 }
 
 interface Props {
@@ -41,18 +43,20 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
   const [products, setProducts] = useState<Product[]>([]);
   const [recipeByOutput, setRecipeByOutput] = useState<Record<string, RecipeRef>>({});
   const [items, setItems] = useState<Item[]>([]);
+  const [prepConvByProduct, setPrepConvByProduct] = useState<Record<string, ConvRef>>({});
   const brandKey = brandIds.join("|");
 
   useEffect(() => {
     if (!open || !recipeId) return;
     (async () => {
       setLoading(true);
-      const [{ data: prods }, { data: ings }, { data: recs }, { data: links }, { data: brs }] = await Promise.all([
+      const [{ data: prods }, { data: ings }, { data: recs }, { data: links }, { data: brs }, { data: convs }] = await Promise.all([
         supabase.from("inventory_products").select("id, name, unit, average_cost, category, factory_only, usage_roles").eq("is_active", true).order("name"),
         supabase.from("recipe_ingredients").select("*").eq("recipe_id", recipeId).order("sort_order"),
         supabase.from("recipes").select("id, name, yield_unit, output_product_id, scope").eq("is_active", true).not("output_product_id", "is", null).order("name"),
         supabase.from("recipe_brands").select("recipe_id, brand_id"),
         supabase.from("brands").select("id, name").eq("is_active", true),
+        supabase.from("product_conversions").select("product_id, from_qty, to_qty, from_unit, to_unit, is_default").eq("conversion_type", "preparo"),
       ]);
       setProducts((prods as Product[]) ?? []);
       const factoryBrandIds = new Set(
@@ -81,6 +85,11 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
         }
       });
       setRecipeByOutput(map);
+      const prepMap: Record<string, ConvRef> = {};
+      ((convs as ConvRef[]) ?? []).forEach((c) => {
+        if (!prepMap[c.product_id] || c.is_default) prepMap[c.product_id] = c;
+      });
+      setPrepConvByProduct(prepMap);
       setItems(
         (ings ?? []).map((i: any) => ({
           id: i.id,
@@ -89,21 +98,30 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
           unit: i.unit,
           notes: i.notes ?? "",
           is_packaging: !!i.is_packaging,
+          ingredient_state: i.ingredient_state ?? null,
         })),
       );
       setLoading(false);
     })();
   }, [open, recipeId, contextScope, brandKey]);
 
+  // Custo: quando ingrediente é "pronto", converte para cru antes de multiplicar pelo custo real.
+  const rawEquivalent = (i: Item): number => {
+    if (i.ingredient_state !== "pronto") return i.quantity;
+    const c = prepConvByProduct[i.product_id];
+    if (!c) return i.quantity;
+    const preparedPerRaw = Number(c.to_qty) / Number(c.from_qty);
+    return preparedPerRaw > 0 ? i.quantity / preparedPerRaw : i.quantity;
+  };
 
   const totalCost = items.reduce((sum, i) => {
     const p = products.find((p) => p.id === i.product_id);
-    return sum + i.quantity * Number(p?.average_cost ?? 0);
+    return sum + rawEquivalent(i) * Number(p?.average_cost ?? 0);
   }, 0);
   const costPerUnit = yieldQuantity > 0 ? totalCost / yieldQuantity : 0;
 
   const add = (isPack: boolean) =>
-    setItems((arr) => [...arr, { product_id: "", quantity: 1, unit: "UN", notes: "", is_packaging: isPack }]);
+    setItems((arr) => [...arr, { product_id: "", quantity: 1, unit: "UN", notes: "", is_packaging: isPack, ingredient_state: null }]);
   const update = (idx: number, patch: Partial<Item>) =>
     setItems((arr) => arr.map((i, k) => (k === idx ? { ...i, ...patch } : i)));
   const remove = (idx: number) => setItems((arr) => arr.filter((_, k) => k !== idx));
@@ -126,6 +144,7 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
             notes: i.notes || null,
             sort_order: k,
             is_packaging: i.is_packaging,
+            ingredient_state: i.ingredient_state ?? null,
           })),
         );
         if (error) throw error;
@@ -180,7 +199,8 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
                   <div className="space-y-2">
                     {rows.map(({ it: i, idx }) => {
                       const p = products.find((p) => p.id === i.product_id);
-                      const subtotal = i.quantity * Number(p?.average_cost ?? 0);
+                      const subtotal = rawEquivalent(i) * Number(p?.average_cost ?? 0);
+                      const prep = prepConvByProduct[i.product_id];
                       return (
                         <div key={idx} className="border rounded-md p-2 space-y-2">
                           <div className="grid grid-cols-12 gap-2">
@@ -252,17 +272,38 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
                               </Button>
                             </div>
                           </div>
-                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground gap-2">
                             <Input
                               placeholder="Observação (opcional)"
                               value={i.notes}
                               onChange={(e) => update(idx, { notes: e.target.value })}
-                              className="h-7 text-xs"
+                              className="h-7 text-xs flex-1"
                             />
+                            {prep && !group.isPack && (
+                              <div className="flex items-center gap-1 shrink-0">
+                                <span className="text-[10px]">Estado:</span>
+                                <Select
+                                  value={i.ingredient_state ?? "cru"}
+                                  onValueChange={(v) => update(idx, { ingredient_state: v as "cru" | "pronto" })}
+                                >
+                                  <SelectTrigger className="h-7 w-[110px] text-xs"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="cru">Cru</SelectItem>
+                                    <SelectItem value="pronto">Pronto</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
                             <span className="ml-2 whitespace-nowrap">
                               {subtotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                             </span>
                           </div>
+                          {prep && i.ingredient_state === "pronto" && (
+                            <p className="text-[10px] text-muted-foreground pl-1">
+                              Baixa real: {rawEquivalent(i).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {prep.from_unit} de cru
+                              (fator {(Number(prep.to_qty) / Number(prep.from_qty)).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}× {prep.to_unit}/{prep.from_unit})
+                            </p>
+                          )}
                         </div>
                       );
                     })}

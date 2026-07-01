@@ -101,6 +101,7 @@ const BankReconciliation = lazy(() => import("./pages/BankReconciliation.tsx"));
 const FactoryRequests = lazy(() => import("./pages/FactoryRequests.tsx"));
 const FactoryWeeklyPlan = lazy(() => import("./pages/FactoryWeeklyPlan.tsx"));
 const ReplenishmentSuggestion = lazy(() => import("./pages/ReplenishmentSuggestion.tsx"));
+const ConversionFactors = lazy(() => import("./pages/ConversionFactors.tsx"));
 const PettyCash = lazy(() => import("./pages/PettyCash.tsx"));
 const Faturamento = lazy(() => import("./pages/Faturamento.tsx"));
 const CustomerReviews = lazy(() => import("./pages/CustomerReviews.tsx"));
@@ -407,6 +408,7 @@ const App = () => (
               <Route path="/solicitacoes-fabrica" element={<Guarded><FactoryRequests /></Guarded>} />
               <Route path="/plano-fabrica" element={<Guarded staff><FactoryWeeklyPlan /></Guarded>} />
               <Route path="/sugestao-abastecimento" element={<Guarded staff><ReplenishmentSuggestion /></Guarded>} />
+              <Route path="/fatores-conversao" element={<Guarded staff><ConversionFactors /></Guarded>} />
               <Route path="/separacao" element={<Guarded staff><SeparationChecklist /></Guarded>} />
               <Route path="/sugestao-transferencia" element={<Guarded><InventoryTransfers /></Guarded>} />
               <Route path="/sugestao-compra" element={<Guarded staff><PurchaseSuggestions /></Guarded>} />

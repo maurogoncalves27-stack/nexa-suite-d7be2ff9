@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Plus, Pencil, Search, Layers, Trash2 } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { Loader2, Plus, Pencil, Search, Layers, Trash2, Utensils } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -84,17 +85,27 @@ const fmtBRL = (n: number) => n.toLocaleString("pt-BR", { style: "currency", cur
 
 const ProductsFactory = () => {
   const { canReceive } = useInventoryPermission();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialView = searchParams.get("view") ?? "all";
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState<string>("all");
-  const [kindFilter, setKindFilter] = useState<string>("all");
+  const [viewFilter, setViewFilter] = useState<string>(initialView);
   const [editing, setEditing] = useState<Product | null>(null);
   const [draft, setDraft] = useState<Draft>(empty);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<Product | null>(null);
   const [deletingBusy, setDeletingBusy] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  const onViewChange = (v: string) => {
+    setViewFilter(v);
+    const next = new URLSearchParams(searchParams);
+    if (v === "all") next.delete("view"); else next.set("view", v);
+    setSearchParams(next, { replace: true });
+  };
 
   const load = async () => {
     setLoading(true);
@@ -114,12 +125,14 @@ const ProductsFactory = () => {
     const q = search.trim().toLowerCase();
     return products.filter((p) => {
       if (catFilter !== "all" && (p.category ?? "") !== catFilter) return false;
-      if (kindFilter === "produzidos" && p.product_type !== "produzido") return false;
-      if (kindFilter === "insumos" && p.product_type === "produzido") return false;
+      const roles = p.usage_roles ?? [];
+      if (viewFilter === "cardapio" && !roles.includes("venda_fabrica")) return false;
+      if (viewFilter === "produzidos" && p.product_type !== "produzido") return false;
+      if (viewFilter === "insumos" && p.product_type === "produzido") return false;
       if (q && !p.name.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [products, search, catFilter, kindFilter]);
+  }, [products, search, catFilter, viewFilter]);
 
   const handleNew = () => {
     setEditing(null);
@@ -179,6 +192,24 @@ const ProductsFactory = () => {
     setProducts((arr) => arr.map((x) => (x.id === p.id ? { ...x, is_active: value } : x)));
   };
 
+  const toggleCardapio = async (p: Product, value: boolean) => {
+    setTogglingId(p.id);
+    const current = p.usage_roles ?? [];
+    const next = value
+      ? Array.from(new Set([...current, "venda_fabrica"]))
+      : current.filter((r) => r !== "venda_fabrica");
+    const finalRoles = next.length ? next : ["insumo_producao"];
+    setProducts((arr) => arr.map((x) => (x.id === p.id ? { ...x, usage_roles: finalRoles } : x)));
+    const { error } = await supabase.from("inventory_products").update({ usage_roles: finalRoles }).eq("id", p.id);
+    setTogglingId(null);
+    if (error) {
+      toast.error(error.message);
+      setProducts((arr) => arr.map((x) => (x.id === p.id ? { ...x, usage_roles: current } : x)));
+      return;
+    }
+    toast.success(value ? "Adicionado ao cardápio" : "Removido do cardápio");
+  };
+
   const handleConfirmDelete = async () => {
     if (!deleting) return;
     setDeletingBusy(true);
@@ -208,9 +239,14 @@ const ProductsFactory = () => {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-          <Layers className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Produtos da Fábrica
+          <Layers className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+          {viewFilter === "cardapio" ? "Cardápio da Fábrica" : "Produtos da Fábrica"}
         </h1>
-        <p className="text-muted-foreground">Insumos usados pela fábrica e itens que ela produz. Base exclusiva dos selects das fichas técnicas da fábrica.</p>
+        <p className="text-muted-foreground">
+          {viewFilter === "cardapio"
+            ? "Produtos que a fábrica vende para as lojas. Desmarque \"No cardápio\" para retirar sem excluir o cadastro."
+            : "Cadastro único da fábrica: insumos, embalagens e produzidos. Use \"No cardápio\" para marcar o que a fábrica vende às lojas."}
+        </p>
       </div>
 
       <Card>
@@ -228,12 +264,13 @@ const ProductsFactory = () => {
                   {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Select value={kindFilter} onValueChange={setKindFilter}>
-                <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
+              <Select value={viewFilter} onValueChange={onViewChange}>
+                <SelectTrigger className="w-full sm:w-[220px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos os tipos</SelectItem>
-                  <SelectItem value="insumos">Insumos / Embalagens</SelectItem>
+                  <SelectItem value="all">Todos os produtos</SelectItem>
+                  <SelectItem value="cardapio">📋 Cardápio (vende p/ loja)</SelectItem>
                   <SelectItem value="produzidos">Produzidos pela fábrica</SelectItem>
+                  <SelectItem value="insumos">Insumos / Embalagens</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -256,12 +293,15 @@ const ProductsFactory = () => {
                     <TableHead>Tipo</TableHead>
                     <TableHead>Un.</TableHead>
                     <TableHead className="text-right">Custo médio</TableHead>
+                    <TableHead className="text-center">No cardápio</TableHead>
                     <TableHead className="text-center">Ativo</TableHead>
                     <TableHead className="w-[60px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((p) => (
+                  {filtered.map((p) => {
+                    const inCardapio = (p.usage_roles ?? []).includes("venda_fabrica");
+                    return (
                     <TableRow key={p.id}>
                       <TableCell className="font-medium">{p.name}</TableCell>
                       <TableCell><Badge variant="secondary">{p.category ?? "—"}</Badge></TableCell>
@@ -276,6 +316,16 @@ const ProductsFactory = () => {
                       </TableCell>
                       <TableCell>{p.unit}</TableCell>
                       <TableCell className="text-right">{fmtBRL(Number(p.average_cost || 0))}</TableCell>
+                      <TableCell className="text-center">
+                        <div className="inline-flex items-center gap-1">
+                          {togglingId === p.id && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                          <Switch
+                            checked={inCardapio}
+                            onCheckedChange={(v) => toggleCardapio(p, v)}
+                            disabled={!canReceive || togglingId === p.id}
+                          />
+                        </div>
+                      </TableCell>
                       <TableCell className="text-center">
                         <Switch checked={p.is_active} onCheckedChange={(v) => toggleActive(p, v)} disabled={!canReceive} />
                       </TableCell>
@@ -292,7 +342,8 @@ const ProductsFactory = () => {
                       )}
                     </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
