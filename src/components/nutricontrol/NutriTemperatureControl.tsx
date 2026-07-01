@@ -201,6 +201,7 @@ export const NutriTemperatureControl = ({ currentDate, storeId }: Props) => {
     setFormName("");
     setFormType("refrigerator");
     setFormSensorCode("none");
+    setFormTuyaSourceId("none");
     setDialogOpen(true);
   };
 
@@ -209,6 +210,8 @@ export const NutriTemperatureControl = ({ currentDate, storeId }: Props) => {
     setFormName(eq.name);
     setFormType(eq.equipment_type);
     setFormSensorCode(eq.ems_sensor_code ?? "none");
+    // se este equipamento já tem sensor Tuya vinculado, "origem" é ele mesmo
+    setFormTuyaSourceId(eq.tuya_device_id ? eq.id : "none");
     setDialogOpen(true);
   };
 
