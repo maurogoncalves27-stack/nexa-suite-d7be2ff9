@@ -322,7 +322,112 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
       </Dialog>
 
 
-      {/* Filtros */}
+      {/* Matriz de notas por loja (modelo antigo) */}
+      {(() => {
+        const parme = brands.find((b) => /parm/i.test(b.name));
+        const box = brands.find((b) => /box/i.test(b.name));
+        const estro = brands.find((b) => /estrog/i.test(b.name));
+        const isFabrica = (name: string) => /f[aá]brica/i.test(name);
+
+        const avgBySource = (storeId: string, src: Source) => {
+          const rows = reviews.filter(
+            (r) => r.source === src && r.store_id === storeId && r.rating != null,
+          );
+          if (rows.length === 0) return { avg: 0, n: 0 };
+          const sum = rows.reduce((s, r) => s + (r.rating as number), 0);
+          return { avg: sum / rows.length, n: rows.length };
+        };
+
+        const ifoodCell = (storeId: string, brandId?: string) => {
+          if (!brandId) return { avg: 0, n: 0 };
+          const e = ifoodByStore[`${storeId}::${brandId}`];
+          return { avg: e?.avg ?? 0, n: e?.count ?? 0 };
+        };
+
+        const Cell = ({ avg, n }: { avg: number; n: number }) => {
+          if (!n || !avg) return <span className="text-muted-foreground/60">—</span>;
+          const color =
+            avg >= 4.5 ? "text-emerald-600 dark:text-emerald-400"
+            : avg >= 4.0 ? "text-yellow-600 dark:text-yellow-400"
+            : "text-destructive";
+          return (
+            <div className="leading-tight">
+              <div className={`font-semibold tabular-nums ${color}`}>{avg.toFixed(1).replace(".", ",")}</div>
+              <div className="text-[10px] text-muted-foreground tabular-nums">{n}</div>
+            </div>
+          );
+        };
+
+        const orderedStores = [...stores].sort((a, b) => {
+          const af = isFabrica(a.name) ? 1 : 0;
+          const bf = isFabrica(b.name) ? 1 : 0;
+          if (af !== bf) return af - bf;
+          return a.name.localeCompare(b.name);
+        });
+
+        return (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Star className="h-4 w-4 text-primary" /> Quadro de notas por loja
+              </CardTitle>
+              <p className="text-[11px] text-muted-foreground">
+                <b>G</b>=Google · <b>P</b>=iFood Aquela Parmê · <b>B</b>=iFood Box Caipira · <b>E</b>=iFood Aquele Estrogonofê · <b>N</b>=Nutri · <b>F</b>=Fábrica
+              </p>
+            </CardHeader>
+            <CardContent className="p-2 sm:p-3 overflow-x-auto">
+              <table className="w-full text-center text-xs border-collapse min-w-[560px]">
+                <thead>
+                  <tr>
+                    <th className="border border-border bg-muted/40 px-2 py-1 text-left">Loja</th>
+                    <th className="border border-border bg-muted/40 px-2 py-1" title="Google">G</th>
+                    <th className="border border-border bg-muted/40 px-2 py-1" title="iFood Aquela Parmê">P</th>
+                    <th className="border border-border bg-muted/40 px-2 py-1" title="iFood Box Caipira">B</th>
+                    <th className="border border-border bg-muted/40 px-2 py-1" title="iFood Aquele Estrogonofê">E</th>
+                    <th className="border border-border bg-muted/40 px-2 py-1" title="Nutricionista">N</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orderedStores.map((s) => {
+                    const fabrica = isFabrica(s.name);
+                    const g = avgBySource(s.id, "google");
+                    const n = avgBySource(s.id, "nutri");
+                    const p = ifoodCell(s.id, parme?.id);
+                    const b = ifoodCell(s.id, box?.id);
+                    const e = ifoodCell(s.id, estro?.id);
+                    return (
+                      <tr key={s.id}>
+                        <td className="border border-border px-2 py-1 text-left font-medium whitespace-nowrap">
+                          {s.name}
+                          {fabrica && <span className="ml-1 text-[10px] text-muted-foreground">(F)</span>}
+                        </td>
+                        <td className="border border-border px-2 py-1">
+                          {fabrica ? <span className="text-muted-foreground/40">—</span> : <Cell {...g} />}
+                        </td>
+                        <td className="border border-border px-2 py-1">
+                          {fabrica ? <span className="text-muted-foreground/40">—</span> : <Cell {...p} />}
+                        </td>
+                        <td className="border border-border px-2 py-1">
+                          {fabrica ? <span className="text-muted-foreground/40">—</span> : <Cell {...b} />}
+                        </td>
+                        <td className="border border-border px-2 py-1">
+                          {fabrica ? <span className="text-muted-foreground/40">—</span> : <Cell {...e} />}
+                        </td>
+                        <td className="border border-border px-2 py-1"><Cell {...n} /></td>
+                      </tr>
+                    );
+                  })}
+                  {orderedStores.length === 0 && (
+                    <tr><td colSpan={6} className="border border-border py-4 text-muted-foreground">Nenhuma loja.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
+
       <div className="flex flex-col sm:flex-row gap-2">
         <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full sm:w-auto">
           <TabsList className="w-full sm:w-auto">
