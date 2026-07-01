@@ -192,6 +192,24 @@ const ProductsFactory = () => {
     setProducts((arr) => arr.map((x) => (x.id === p.id ? { ...x, is_active: value } : x)));
   };
 
+  const toggleCardapio = async (p: Product, value: boolean) => {
+    setTogglingId(p.id);
+    const current = p.usage_roles ?? [];
+    const next = value
+      ? Array.from(new Set([...current, "venda_fabrica"]))
+      : current.filter((r) => r !== "venda_fabrica");
+    const finalRoles = next.length ? next : ["insumo_producao"];
+    setProducts((arr) => arr.map((x) => (x.id === p.id ? { ...x, usage_roles: finalRoles } : x)));
+    const { error } = await supabase.from("inventory_products").update({ usage_roles: finalRoles }).eq("id", p.id);
+    setTogglingId(null);
+    if (error) {
+      toast.error(error.message);
+      setProducts((arr) => arr.map((x) => (x.id === p.id ? { ...x, usage_roles: current } : x)));
+      return;
+    }
+    toast.success(value ? "Adicionado ao cardápio" : "Removido do cardápio");
+  };
+
   const handleConfirmDelete = async () => {
     if (!deleting) return;
     setDeletingBusy(true);
