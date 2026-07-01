@@ -93,6 +93,7 @@ const PurchaseSuggestions = lazy(() => import("./pages/PurchaseSuggestions.tsx")
 const InventoryLots = lazy(() => import("./pages/InventoryLots.tsx"));
 const Recipes = lazy(() => import("./pages/Recipes.tsx"));
 const RecipesFactory = lazy(() => import("./pages/RecipesFactory.tsx"));
+const FactoryMenu = lazy(() => import("./pages/FactoryMenu.tsx"));
 
 const RecipeBook = lazy(() => import("./pages/RecipeBook.tsx"));
 const BankReconciliation = lazy(() => import("./pages/BankReconciliation.tsx"));
@@ -410,6 +411,7 @@ const App = () => (
               <Route path="/perdas" element={<Guarded><InventoryLots /></Guarded>} />
               <Route path="/fichas-tecnicas" element={<Guarded module="fichas_tecnicas"><Recipes /></Guarded>} />
               <Route path="/fichas-fabrica" element={<Guarded staff module="fichas_tecnicas"><RecipesFactory /></Guarded>} />
+              <Route path="/cardapio-fabrica" element={<Guarded staff module="fichas_tecnicas"><FactoryMenu /></Guarded>} />
 
               <Route path="/receituario" element={<Guarded module="fichas_tecnicas"><RecipeBook /></Guarded>} />
               <Route path="/receituario-fabrica" element={<Guarded staff module="fichas_tecnicas"><RecipeBook scope="fabrica" /></Guarded>} />
