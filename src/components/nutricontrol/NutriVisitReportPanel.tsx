@@ -50,11 +50,13 @@ interface VisitReport {
   user_id: string;
   created_at: string;
   store_id: string;
+  nutritionist_rating: number | null;
 }
 
 interface VisitReportWithResponses extends VisitReport {
   responses: { checklist_item_id: string; is_conform: boolean; observation: string }[];
 }
+
 
 interface NutriVisitReportPanelProps {
   hideHistory?: boolean;
@@ -82,8 +84,10 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
   const [visitDate, setVisitDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [generalNotes, setGeneralNotes] = useState("");
   const [storeResponsible, setStoreResponsible] = useState("");
+  const [nutriRating, setNutriRating] = useState<number>(5);
   const [responses, setResponses] = useState<Record<string, ChecklistResponse>>({});
   const [saving, setSaving] = useState(false);
+
 
   // Admin: manage checklist items
   const [newItemName, setNewItemName] = useState("");
