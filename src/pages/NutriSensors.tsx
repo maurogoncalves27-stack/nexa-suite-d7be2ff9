@@ -198,8 +198,12 @@ export default function NutriSensors() {
                             ? `Atualizado ${formatDistanceToNow(new Date(s.last_measured_at), { addSuffix: true, locale: ptBR })}`
                             : "Sem leituras ainda"}
                         </div>
+                        <Button variant="outline" size="sm" className="w-full" onClick={() => setEditingEms(s)}>
+                          <Settings2 className="h-4 w-4 mr-2" /> Configurar
+                        </Button>
                       </CardContent>
                     </Card>
+
                   );
                 })}
               </div>
