@@ -298,6 +298,7 @@ function NewReviewDialog({
   const { toast } = useToast();
   const [source, setSource] = useState<Source>("google");
   const [rating, setRating] = useState<number>(5);
+  const [ratingStr, setRatingStr] = useState<string>("5,0");
   const [name, setName] = useState("");
   const [comment, setComment] = useState("");
   const [url, setUrl] = useState("");
