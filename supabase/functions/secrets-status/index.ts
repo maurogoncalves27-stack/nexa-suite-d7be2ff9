@@ -26,10 +26,8 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
-    const { data: isSuper } = await admin.rpc('is_super_user', { _uid: userRes.user.id }).maybeSingle().then(
-      (r) => ({ data: r.data as unknown as boolean }),
-      () => ({ data: false }),
-    );
+    const { data: isSuperData } = await admin.rpc('is_super_user', { _user_id: userRes.user.id });
+    const isSuper = !!isSuperData;
 
     // Fallback: check user_roles for admin
     let allowed = !!isSuper;
