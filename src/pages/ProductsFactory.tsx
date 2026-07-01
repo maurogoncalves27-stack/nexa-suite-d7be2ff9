@@ -241,12 +241,13 @@ const ProductsFactory = () => {
                   {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Select value={kindFilter} onValueChange={setKindFilter}>
-                <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
+              <Select value={viewFilter} onValueChange={onViewChange}>
+                <SelectTrigger className="w-full sm:w-[220px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos os tipos</SelectItem>
-                  <SelectItem value="insumos">Insumos / Embalagens</SelectItem>
+                  <SelectItem value="all">Todos os produtos</SelectItem>
+                  <SelectItem value="cardapio">📋 Cardápio (vende p/ loja)</SelectItem>
                   <SelectItem value="produzidos">Produzidos pela fábrica</SelectItem>
+                  <SelectItem value="insumos">Insumos / Embalagens</SelectItem>
                 </SelectContent>
               </Select>
             </div>
