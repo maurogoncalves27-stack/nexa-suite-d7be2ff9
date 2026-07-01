@@ -13687,6 +13687,57 @@ export type Database = {
         }
         Relationships: []
       }
+      store_brand_google: {
+        Row: {
+          avg_rating: number | null
+          brand_id: string
+          created_at: string
+          id: string
+          place_id: string | null
+          store_id: string
+          synced_at: string | null
+          total_ratings: number | null
+          updated_at: string
+        }
+        Insert: {
+          avg_rating?: number | null
+          brand_id: string
+          created_at?: string
+          id?: string
+          place_id?: string | null
+          store_id: string
+          synced_at?: string | null
+          total_ratings?: number | null
+          updated_at?: string
+        }
+        Update: {
+          avg_rating?: number | null
+          brand_id?: string
+          created_at?: string
+          id?: string
+          place_id?: string | null
+          store_id?: string
+          synced_at?: string | null
+          total_ratings?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_brand_google_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_brand_google_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_fiscal_credentials: {
         Row: {
           created_at: string
