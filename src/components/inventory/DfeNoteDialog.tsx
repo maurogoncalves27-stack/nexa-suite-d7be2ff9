@@ -71,7 +71,8 @@ export default function DfeNoteDialog({ noteId, onClose, onImported }: Props) {
   const [products, setProducts] = useState<InvProd[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [invItems, setInvItems] = useState<Record<number, InvItem>>({}); // por line_number
-  const [conversions, setConversions] = useState<Record<string, Conv>>({}); // por product_id
+  const [conversions, setConversions] = useState<Record<string, Conv>>({}); // por product_id (fornecedor)
+  const [productConvs, setProductConvs] = useState<Record<string, { pack_size: number; purchase_unit: string | null }>>({}); // por product_id (product_conversions tipo 'compra')
   const [supplierMap, setSupplierMap] = useState<Record<string, MapEntry>>({}); // por description_norm
   const [loading, setLoading] = useState(false);
   const [reparsing, setReparsing] = useState(false);
