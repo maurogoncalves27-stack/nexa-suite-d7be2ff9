@@ -217,9 +217,12 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
           const meta = SOURCE_META[source];
           const Icon = meta.icon;
           const isIfood = source === "ifood";
-          const displayAvg = isIfood ? ifoodAggregate.avg : avg;
-          const displayHasAvg = isIfood ? ifoodAggregate.hasData : hasRatings;
-          const displayCount = isIfood ? ifoodAggregate.totalCount : total;
+          const isGoogle = source === "google";
+          const isManual = isIfood || isGoogle;
+          const manualAgg = isIfood ? ifoodAggregate : isGoogle ? googleAggregate : null;
+          const displayAvg = manualAgg ? manualAgg.avg : avg;
+          const displayHasAvg = manualAgg ? manualAgg.hasData : hasRatings;
+          const displayCount = manualAgg ? manualAgg.totalCount : total;
           return (
             <Card key={source}>
               <CardContent className="p-3 space-y-1">
@@ -228,10 +231,10 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                     <Icon className="h-3.5 w-3.5" />
                     {meta.label}
                   </div>
-                  {isIfood && (
+                  {isManual && (
                     <button
                       type="button"
-                      onClick={() => setOpenIfoodDialog(true)}
+                      onClick={() => (isIfood ? setOpenIfoodDialog(true) : setOpenGoogleDialog(true))}
                       className="text-[10px] text-primary hover:underline"
                     >
                       editar por loja
@@ -243,7 +246,7 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                   {displayHasAvg && <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />}
                 </div>
                 <div className="text-[10px] text-muted-foreground">
-                  {isIfood
+                  {isManual
                     ? `${displayCount} avaliações (manual)`
                     : `${total} ${total === 1 ? "avaliação" : "avaliações"}${novos ? ` · ${novos} novas` : ""}`}
                 </div>
@@ -251,6 +254,7 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
             </Card>
           );
         })}
+
       </div>
 
       {/* Dialog iFood por loja */}
