@@ -15,7 +15,10 @@ import {
   Cell,
   CartesianGrid,
   Legend,
+  LineChart,
+  Line,
 } from "recharts";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1783,15 +1786,17 @@ function CRMDashboard({
     ifood: { avg: 0, n: 0 },
     nutri: { avg: 0, n: 0 },
   });
+  const [reviewRows, setReviewRows] = useState<{ source: string; rating: number; published_at: string | null; created_at: string }[]>([]);
 
   useEffect(() => {
     (async () => {
       const { data } = await supabase
         .from("customer_reviews")
-        .select("source, rating")
+        .select("source, rating, published_at, created_at")
         .not("rating", "is", null)
         .in("source", ["google", "ifood", "nutri"]);
-      const rows = (data ?? []) as { source: string; rating: number }[];
+      const rows = (data ?? []) as { source: string; rating: number; published_at: string | null; created_at: string }[];
+      setReviewRows(rows);
       const agg = { google: { sum: 0, n: 0 }, ifood: { sum: 0, n: 0 }, nutri: { sum: 0, n: 0 } } as Record<string, { sum: number; n: number }>;
       rows.forEach((r) => {
         if (agg[r.source]) {
@@ -1806,6 +1811,51 @@ function CRMDashboard({
       });
     })();
   }, []);
+
+  // Série mensal (últimos 6 meses) de nota média por fonte
+  const ratingMonthly = useMemo(() => {
+    const buckets: { key: string; label: string; google: number | null; ifood: number | null; nutri: number | null; _sums: Record<string, { s: number; n: number }> }[] = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      buckets.push({
+        key,
+        label: format(d, "MMM/yy", { locale: ptBR }),
+        google: null, ifood: null, nutri: null,
+        _sums: { google: { s: 0, n: 0 }, ifood: { s: 0, n: 0 }, nutri: { s: 0, n: 0 } },
+      });
+    }
+    reviewRows.forEach((r) => {
+      const dateStr = r.published_at || r.created_at;
+      if (!dateStr) return;
+      const key = dateStr.slice(0, 7);
+      const b = buckets.find((x) => x.key === key);
+      if (!b || !b._sums[r.source]) return;
+      b._sums[r.source].s += Number(r.rating) || 0;
+      b._sums[r.source].n += 1;
+    });
+    return buckets.map((b) => ({
+      label: b.label,
+      google: b._sums.google.n ? +(b._sums.google.s / b._sums.google.n).toFixed(2) : null,
+      ifood: b._sums.ifood.n ? +(b._sums.ifood.s / b._sums.ifood.n).toFixed(2) : null,
+      nutri: b._sums.nutri.n ? +(b._sums.nutri.s / b._sums.nutri.n).toFixed(2) : null,
+    }));
+  }, [reviewRows]);
+
+  // Distribuição de notas (1 a 5, por fonte, agrupando meia estrela para o inteiro mais próximo)
+  const ratingDistribution = useMemo(() => {
+    const stars = [1, 2, 3, 4, 5].map((n) => ({ nota: `${n}★`, Google: 0, iFood: 0, Nutri: 0 }));
+    reviewRows.forEach((r) => {
+      const bucket = Math.min(5, Math.max(1, Math.round(Number(r.rating) || 0)));
+      const idx = bucket - 1;
+      if (r.source === "google") stars[idx].Google += 1;
+      else if (r.source === "ifood") stars[idx].iFood += 1;
+      else if (r.source === "nutri") stars[idx].Nutri += 1;
+    });
+    return stars;
+  }, [reviewRows]);
+
 
   const ratingCards = [
     { key: "google", label: "Nota Google", color: "text-blue-600 dark:text-blue-400" },
@@ -1886,8 +1936,86 @@ function CRMDashboard({
         </Card>
       </div>
 
+      {/* Gráficos de avaliações */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Star className="h-4 w-4 text-primary" />
+              Nota média por fonte — últimos 6 meses
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 w-full">
+              {reviewRows.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                  Ainda sem avaliações registradas
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={ratingMonthly}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                    <YAxis domain={[0, 5]} tick={{ fontSize: 11 }} />
+                    <ReTooltip
+                      contentStyle={{
+                        background: "hsl(var(--popover))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: 8,
+                      }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Line type="monotone" dataKey="google" name="Google" stroke="#2563eb" strokeWidth={2} connectNulls dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="ifood" name="iFood" stroke="#dc2626" strokeWidth={2} connectNulls dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="nutri" name="Nutri" stroke="#059669" strokeWidth={2} connectNulls dot={{ r: 3 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Star className="h-4 w-4 text-primary" />
+              Distribuição de notas por fonte
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 w-full">
+              {reviewRows.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                  Ainda sem avaliações registradas
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={ratingDistribution}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="nota" tick={{ fontSize: 11 }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                    <ReTooltip
+                      contentStyle={{
+                        background: "hsl(var(--popover))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: 8,
+                      }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Bar dataKey="Google" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="iFood" fill="#dc2626" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Nutri" fill="#059669" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Reservas — próximos 14 dias</CardTitle>
