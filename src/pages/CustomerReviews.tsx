@@ -369,7 +369,7 @@ function NewReviewDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Adicionar avaliação</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{editing ? "Editar avaliação" : "Adicionar avaliação"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <div>
