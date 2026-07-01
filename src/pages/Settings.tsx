@@ -21,6 +21,12 @@ const Settings = () => {
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
           <Button asChild variant="outline" size="sm" className="gap-2">
+            <Link to="/configuracoes/acesso-remoto">
+              <Monitor className="h-4 w-4" />
+              Acesso remoto
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm" className="gap-2">
             <Link to="/configuracoes/tef-payer">
               <CreditCard className="h-4 w-4" />
               TEF Payer
