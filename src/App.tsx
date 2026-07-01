@@ -93,6 +93,7 @@ const PurchaseSuggestions = lazy(() => import("./pages/PurchaseSuggestions.tsx")
 const InventoryLots = lazy(() => import("./pages/InventoryLots.tsx"));
 const Recipes = lazy(() => import("./pages/Recipes.tsx"));
 const RecipesFactory = lazy(() => import("./pages/RecipesFactory.tsx"));
+const FactoryMenu = lazy(() => import("./pages/FactoryMenu.tsx"));
 
 const RecipeBook = lazy(() => import("./pages/RecipeBook.tsx"));
 const BankReconciliation = lazy(() => import("./pages/BankReconciliation.tsx"));
