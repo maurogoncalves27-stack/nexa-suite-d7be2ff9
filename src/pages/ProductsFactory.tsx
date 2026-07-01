@@ -331,6 +331,50 @@ const ProductsFactory = () => {
                 <SelectContent>{TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+
+            <div className="border-t pt-3 space-y-2">
+              <p className="text-sm font-semibold">Classificação (controle de estoque)</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs">Escopo de estoque</Label>
+                  <Select value={draft.stock_scope} onValueChange={(v) => setDraft({ ...draft, stock_scope: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{SCOPES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Fluxo de abastecimento</Label>
+                  <Select value={draft.production_flow} onValueChange={(v) => setDraft({ ...draft, production_flow: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{FLOWS.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Papéis (para que serve — pode marcar mais de um)</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-1">
+                  {ROLES.map((r) => {
+                    const checked = draft.usage_roles.includes(r.value);
+                    return (
+                      <label key={r.value} className="flex items-center gap-2 text-sm cursor-pointer border rounded-md p-2 hover:bg-muted/50">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => setDraft({
+                            ...draft,
+                            usage_roles: e.target.checked
+                              ? [...draft.usage_roles, r.value]
+                              : draft.usage_roles.filter((x) => x !== r.value),
+                          })}
+                        />
+                        <span>{r.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
             <div className="flex items-center justify-between border-t pt-3">
               <Label>Ativo</Label>
               <Switch checked={draft.is_active} onCheckedChange={(v) => setDraft({ ...draft, is_active: v })} />
