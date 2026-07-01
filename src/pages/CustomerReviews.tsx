@@ -290,11 +290,12 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
       )}
 
       <NewReviewDialog
-        open={openNew}
-        onOpenChange={setOpenNew}
+        open={openNew || editing !== null}
+        onOpenChange={(o) => { if (!o) { setOpenNew(false); setEditing(null); } }}
         brands={brands}
         stores={stores}
-        onSaved={() => { setOpenNew(false); load(); }}
+        editing={editing}
+        onSaved={() => { setOpenNew(false); setEditing(null); load(); }}
       />
       <ReplyDialog
         review={openReply}
