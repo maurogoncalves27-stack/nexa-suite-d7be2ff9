@@ -6700,12 +6700,10 @@ export type Database = {
           ncm: string | null
           notes: string | null
           origem_mercadoria: string | null
-          pack_size: number | null
           photo_path: string | null
           print_run: number | null
           product_type: string
           production_flow: string
-          purchase_unit: string | null
           reference_unit_cost: number | null
           requires_expiry: boolean
           stock_scope: string
@@ -6743,12 +6741,10 @@ export type Database = {
           ncm?: string | null
           notes?: string | null
           origem_mercadoria?: string | null
-          pack_size?: number | null
           photo_path?: string | null
           print_run?: number | null
           product_type?: string
           production_flow?: string
-          purchase_unit?: string | null
           reference_unit_cost?: number | null
           requires_expiry?: boolean
           stock_scope?: string
@@ -6786,12 +6782,10 @@ export type Database = {
           ncm?: string | null
           notes?: string | null
           origem_mercadoria?: string | null
-          pack_size?: number | null
           photo_path?: string | null
           print_run?: number | null
           product_type?: string
           production_flow?: string
-          purchase_unit?: string | null
           reference_unit_cost?: number | null
           requires_expiry?: boolean
           stock_scope?: string
