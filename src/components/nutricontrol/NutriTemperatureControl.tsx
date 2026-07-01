@@ -232,6 +232,55 @@ export const NutriTemperatureControl = ({ currentDate, storeId }: Props) => {
         toast.error("Erro ao atualizar equipamento");
         return;
       }
+
+      // Transferência de sensor Tuya vindo de outro equipamento -> este
+      const sourceId = formTuyaSourceId;
+      if (sourceId && sourceId !== "none" && sourceId !== editingId) {
+        const source = equipment.find((e) => e.id === sourceId);
+        if (source?.tuya_device_id) {
+          const tuyaFields = {
+            tuya_device_id: source.tuya_device_id,
+            tuya_sensor_type: source.tuya_sensor_type,
+            last_temp_c: source.last_temp_c,
+            last_humidity_pct: source.last_humidity_pct,
+            last_reading_at: source.last_reading_at,
+            last_online: source.last_online,
+          };
+          // 1) libera o device na origem para não violar UNIQUE(tuya_device_id)
+          const { error: e1 } = await supabase
+            .from("nutri_equipment")
+            .update({
+              tuya_device_id: null,
+              tuya_sensor_type: null,
+              last_temp_c: null,
+              last_humidity_pct: null,
+              last_reading_at: null,
+            })
+            .eq("id", sourceId);
+          if (e1) { toast.error("Erro ao liberar sensor de origem"); return; }
+          // 2) vincula no destino
+          const { error: e2 } = await supabase
+            .from("nutri_equipment")
+            .update(tuyaFields)
+            .eq("id", editingId);
+          if (e2) { toast.error("Erro ao vincular sensor Tuya"); return; }
+          // 3) remove o equipamento "vazio" que era só o placeholder do sensor
+          const isPlaceholder = /^refrigerador\s*\d+$/i.test(source.name) || /^sensor/i.test(source.name);
+          if (isPlaceholder) {
+            await supabase.from("nutri_equipment").delete().eq("id", sourceId);
+          }
+          toast.success("Sensor Tuya vinculado ao equipamento");
+        }
+      } else if (sourceId === "none") {
+        // desvincula tuya deste equipamento (se tinha)
+        const cur = equipment.find((e) => e.id === editingId);
+        if (cur?.tuya_device_id) {
+          await supabase
+            .from("nutri_equipment")
+            .update({ tuya_device_id: null, tuya_sensor_type: null })
+            .eq("id", editingId);
+        }
+      }
       toast.success("Equipamento atualizado");
     } else {
       const { error } = await supabase.from("nutri_equipment").insert({
