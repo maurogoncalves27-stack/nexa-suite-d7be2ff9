@@ -341,8 +341,6 @@ const InventoryProducts = () => {
         factory_only: draft.factory_only,
         product_type: draft.product_type,
         requires_expiry: draft.requires_expiry,
-        purchase_unit: draft.purchase_unit || null,
-        pack_size: draft.purchase_unit && draft.pack_size ? Number(draft.pack_size) : null,
         print_run: draft.is_custom ? draft.print_run : null,
         unit_value: draft.is_custom ? draft.unit_value : null,
         fixed_supplier_id: draft.is_custom ? draft.fixed_supplier_id : null,
