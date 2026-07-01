@@ -117,6 +117,7 @@ const PAGE_TITLES: PageMeta[] = [
   { match: (p) => p.startsWith("/sugestao-transferencia"), title: "Transferências", group: "Estoque" },
   { match: (p) => p.startsWith("/envio-itens"), title: "Transferências", group: "Estoque" },
   { match: (p) => p.startsWith("/plano-fabrica"), title: "Plano semanal da fábrica", group: "Estoque" },
+  { match: (p) => p.startsWith("/sugestao-abastecimento"), title: "Sugestão de abastecimento", group: "Estoque" },
   { match: (p) => p.startsWith("/separacao"), title: "Checklist de separação", group: "Estoque" },
   { match: (p) => p.startsWith("/solicitacoes-fabrica"), title: "Solicitações de urgência", group: "Estoque" },
   { match: (p) => p.startsWith("/transferencias"), title: "Transferências", group: "Estoque" },
