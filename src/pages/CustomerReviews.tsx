@@ -149,13 +149,19 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
     });
   }, [reviews]);
 
-  // Média manual do iFood por loja (não temos acesso automático às notas)
-  const IFOOD_STORES_KEY = "crm.ifood.manual_by_store";
-  type IfoodStoreEntry = { avg: number; count: number };
-  const [ifoodByStore, setIfoodByStore] = useState<Record<string, IfoodStoreEntry>>(() => {
+  // Média manual do iFood por loja+marca (Fábrica não vende no iFood)
+  const IFOOD_STORES_KEY = "crm.ifood.manual_by_store_brand";
+  type IfoodEntry = { avg: number; count: number };
+  // key = `${storeId}::${brandId}`
+  const [ifoodByStore, setIfoodByStore] = useState<Record<string, IfoodEntry>>(() => {
     try { return JSON.parse(localStorage.getItem(IFOOD_STORES_KEY) || "{}"); } catch { return {}; }
   });
   const [openIfoodDialog, setOpenIfoodDialog] = useState(false);
+
+  const ifoodStores = useMemo(
+    () => stores.filter((s) => !/f[aá]brica/i.test(s.name)),
+    [stores]
+  );
 
   const ifoodAggregate = useMemo(() => {
     const entries = Object.values(ifoodByStore).filter((e) => e && e.count > 0 && e.avg > 0);
@@ -165,7 +171,16 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
     return { avg, totalCount, hasData: totalCount > 0 };
   }, [ifoodByStore]);
 
-  const saveIfoodStores = (next: Record<string, IfoodStoreEntry>) => {
+  const storeAggregate = (storeId: string) => {
+    const entries = brands
+      .map((b) => ifoodByStore[`${storeId}::${b.id}`])
+      .filter((e) => e && e.count > 0 && e.avg > 0);
+    const totalCount = entries.reduce((s, e) => s + Number(e.count || 0), 0);
+    const weighted = entries.reduce((s, e) => s + Number(e.avg) * Number(e.count), 0);
+    return { avg: totalCount > 0 ? weighted / totalCount : 0, totalCount };
+  };
+
+  const saveIfoodStores = (next: Record<string, IfoodEntry>) => {
     setIfoodByStore(next);
     localStorage.setItem(IFOOD_STORES_KEY, JSON.stringify(next));
   };
