@@ -663,6 +663,44 @@ export default function NutriVisitReportPanel({ hideHistory = false, hideForm = 
                   </div>
 
                   <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">
+                      Nota da nutricionista para a loja (0 a 5, aceita meia estrela)
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={5}
+                        step={0.5}
+                        value={nutriRating}
+                        onChange={(e) => {
+                          const v = Number(e.target.value);
+                          if (Number.isNaN(v)) return;
+                          setNutriRating(Math.max(0, Math.min(5, v)));
+                        }}
+                        className="h-9 text-sm w-24"
+                      />
+                      <div className="flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map((i) => {
+                          const fill = Math.max(0, Math.min(1, nutriRating - (i - 1)));
+                          return (
+                            <div key={i} className="relative w-4 h-4">
+                              <svg viewBox="0 0 24 24" className="absolute inset-0 w-full h-full text-muted-foreground/40" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                              <div className="absolute inset-0 overflow-hidden" style={{ width: `${fill * 100}%` }}>
+                                <svg viewBox="0 0 24 24" className="w-4 h-4 text-primary" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        Vai para <b>CRM → Avaliações</b> como fonte <b>Nutri</b>.
+                      </span>
+                    </div>
+                  </div>
+
+
+                  <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Nome do responsável pela loja</label>
                     <Input
                       placeholder="Nome completo"
