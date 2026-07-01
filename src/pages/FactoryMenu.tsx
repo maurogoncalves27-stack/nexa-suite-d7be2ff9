@@ -56,8 +56,7 @@ const FactoryMenu = () => {
     const { data, error } = await supabase
       .from("inventory_products")
       .select("id, name, category, unit, is_active, average_cost")
-      .eq("factory_only", true)
-      .eq("product_type", "produzido")
+      .contains("usage_roles", ["venda_fabrica"])
       .order("category")
       .order("name");
     if (error) toast.error(error.message);
