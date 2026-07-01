@@ -223,16 +223,21 @@ const pdvSections: Section[] = [
 
 // Fábrica: produção (sem rótulos — conforme print)
 const fabricaSections: Section[] = [
-  { items: [
+  { label: "Planejamento", items: [
     { title: "Plano semanal", url: "/plano-fabrica", icon: CalendarRange, staffOnly: true },
     { title: "Requisições de urgência", url: "/solicitacoes-fabrica", icon: AlertTriangle, staffOnly: true },
-    { title: "Fichas técnicas", url: "/fichas-fabrica", icon: FlaskConical, staffOnly: true },
+  ]},
+  { label: "Catálogo", items: [
     { title: "Produtos", url: "/produtos-fabrica", icon: Layers, staffOnly: true },
+    { title: "Fichas técnicas", url: "/fichas-fabrica", icon: FlaskConical, staffOnly: true },
     { title: "Cardápio", url: "/cardapio-fabrica", icon: Utensils, staffOnly: true },
     { title: "Receituário", url: "/receituario-fabrica", icon: BookMarked, staffOnly: true },
+  ]},
+  { label: "Operação", items: [
     { title: "Checklist de separação", url: "/separacao", icon: ClipboardList, staffOnly: true },
   ]},
 ];
+
 
 
 // Versões flat (mantidas para getFirstItemUrl)
