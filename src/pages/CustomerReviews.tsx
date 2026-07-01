@@ -341,6 +341,83 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
       </Dialog>
 
 
+      {/* Dialog Google por loja/marca */}
+      <Dialog open={openGoogleDialog} onOpenChange={setOpenGoogleDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5 text-primary" />
+              Avaliações Google por loja
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            Informe manualmente a média (0–5) e o nº de avaliações do Google de cada marca dentro de cada loja. A média geral do card é ponderada.
+          </p>
+          <div className="max-h-[55vh] overflow-y-auto pr-1">
+            <Accordion type="multiple" className="w-full">
+              {googleStores.map((s) => {
+                const agg = storeAggregate(s.id, googleByStore);
+                return (
+                  <AccordionItem key={s.id} value={s.id}>
+                    <AccordionTrigger className="py-2 hover:no-underline">
+                      <div className="flex items-center justify-between w-full pr-2">
+                        <span className="text-sm font-medium">{s.name}</span>
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          {agg.totalCount > 0 ? (
+                            <>
+                              {agg.avg.toFixed(1)}
+                              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                              <span>· {agg.totalCount}</span>
+                            </>
+                          ) : "—"}
+                        </span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-2 pt-1">
+                      {brands.map((b) => {
+                        const key = `${s.id}::${b.id}`;
+                        const entry = googleByStore[key] || { avg: 0, count: 0 };
+                        return (
+                          <div key={b.id} className="grid grid-cols-[1fr_90px_110px] items-center gap-2 border rounded-md p-2">
+                            <div className="text-xs font-medium truncate">{b.name}</div>
+                            <Input
+                              type="number" step="0.1" min="0" max="5"
+                              placeholder="Média"
+                              value={entry.avg || ""}
+                              onChange={(e) => {
+                                const v = parseFloat(e.target.value.replace(",", ".")) || 0;
+                                saveGoogleStores({ ...googleByStore, [key]: { ...entry, avg: v } });
+                              }}
+                              className="h-8 text-sm"
+                            />
+                            <Input
+                              type="number" min="0"
+                              placeholder="Nº aval."
+                              value={entry.count || ""}
+                              onChange={(e) => {
+                                const v = parseInt(e.target.value, 10) || 0;
+                                saveGoogleStores({ ...googleByStore, [key]: { ...entry, count: v } });
+                              }}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                        );
+                      })}
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+          </div>
+          <DialogFooter>
+            <div className="text-xs text-muted-foreground mr-auto">
+              Média ponderada: <b>{googleAggregate.hasData ? googleAggregate.avg.toFixed(2) : "—"}</b> em {googleAggregate.totalCount} avaliações
+            </div>
+            <Button onClick={() => setOpenGoogleDialog(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Matriz de notas por loja (modelo antigo) */}
       {(() => {
         const parme = brands.find((b) => /parm/i.test(b.name));
@@ -357,9 +434,9 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
           return { avg: sum / rows.length, n: rows.length };
         };
 
-        const ifoodCell = (storeId: string, brandId?: string) => {
+        const manualCell = (map: Record<string, ManualEntry>, storeId: string, brandId?: string) => {
           if (!brandId) return { avg: 0, n: 0 };
-          const e = ifoodByStore[`${storeId}::${brandId}`];
+          const e = map[`${storeId}::${brandId}`];
           return { avg: e?.avg ?? 0, n: e?.count ?? 0 };
         };
 
@@ -384,6 +461,12 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
           return a.name.localeCompare(b.name);
         });
 
+        const brandCols: { id: string | undefined; short: string; title: string }[] = [
+          { id: parme?.id, short: "P", title: "Aquela Parmê" },
+          { id: box?.id, short: "B", title: "Box Caipira" },
+          { id: estro?.id, short: "E", title: "Aquele Estrogonofê" },
+        ];
+
         return (
           <Card>
             <CardHeader className="pb-2">
@@ -391,53 +474,53 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                 <Star className="h-4 w-4 text-primary" /> Quadro de notas por loja
               </CardTitle>
               <p className="text-[11px] text-muted-foreground">
-                <b>G</b>=Google · <b>P</b>=iFood Aquela Parmê · <b>B</b>=iFood Box Caipira · <b>E</b>=iFood Aquele Estrogonofê · <b>N</b>=Nutri · <b>F</b>=Fábrica
+                <b>G</b>=Google · <b>I</b>=iFood · <b>N</b>=Nutri · <b>P</b>=Aquela Parmê · <b>B</b>=Box Caipira · <b>E</b>=Aquele Estrogonofê · (F)=Fábrica
               </p>
             </CardHeader>
             <CardContent className="p-2 sm:p-3 overflow-x-auto">
-              <table className="w-full text-center text-xs border-collapse min-w-[560px]">
+              <table className="w-full text-center text-xs border-collapse min-w-[640px]">
                 <thead>
                   <tr>
-                    <th className="border border-border bg-muted/40 px-2 py-1 text-left">Loja</th>
-                    <th className="border border-border bg-muted/40 px-2 py-1" title="Google">G</th>
-                    <th className="border border-border bg-muted/40 px-2 py-1" title="iFood Aquela Parmê">P</th>
-                    <th className="border border-border bg-muted/40 px-2 py-1" title="iFood Box Caipira">B</th>
-                    <th className="border border-border bg-muted/40 px-2 py-1" title="iFood Aquele Estrogonofê">E</th>
-                    <th className="border border-border bg-muted/40 px-2 py-1" title="Nutricionista">N</th>
+                    <th rowSpan={2} className="border border-border bg-muted/40 px-2 py-1 text-left align-middle">Loja</th>
+                    <th colSpan={3} className="border border-border bg-muted/40 px-2 py-1">Google</th>
+                    <th colSpan={3} className="border border-border bg-muted/40 px-2 py-1">iFood</th>
+                    <th rowSpan={2} className="border border-border bg-muted/40 px-2 py-1 align-middle" title="Nutricionista">N</th>
+                  </tr>
+                  <tr>
+                    {brandCols.map((c) => (
+                      <th key={`g-${c.short}`} className="border border-border bg-muted/20 px-2 py-1" title={`Google ${c.title}`}>{c.short}</th>
+                    ))}
+                    {brandCols.map((c) => (
+                      <th key={`i-${c.short}`} className="border border-border bg-muted/20 px-2 py-1" title={`iFood ${c.title}`}>{c.short}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {orderedStores.map((s) => {
                     const fabrica = isFabrica(s.name);
-                    const g = avgBySource(s.id, "google");
                     const n = avgBySource(s.id, "nutri");
-                    const p = ifoodCell(s.id, parme?.id);
-                    const b = ifoodCell(s.id, box?.id);
-                    const e = ifoodCell(s.id, estro?.id);
                     return (
                       <tr key={s.id}>
                         <td className="border border-border px-2 py-1 text-left font-medium whitespace-nowrap">
                           {s.name}
                           {fabrica && <span className="ml-1 text-[10px] text-muted-foreground">(F)</span>}
                         </td>
-                        <td className="border border-border px-2 py-1">
-                          {fabrica ? <span className="text-muted-foreground/40">—</span> : <Cell {...g} />}
-                        </td>
-                        <td className="border border-border px-2 py-1">
-                          {fabrica ? <span className="text-muted-foreground/40">—</span> : <Cell {...p} />}
-                        </td>
-                        <td className="border border-border px-2 py-1">
-                          {fabrica ? <span className="text-muted-foreground/40">—</span> : <Cell {...b} />}
-                        </td>
-                        <td className="border border-border px-2 py-1">
-                          {fabrica ? <span className="text-muted-foreground/40">—</span> : <Cell {...e} />}
-                        </td>
+                        {brandCols.map((c) => (
+                          <td key={`g-${s.id}-${c.short}`} className="border border-border px-2 py-1">
+                            {fabrica ? <span className="text-muted-foreground/40">—</span> : <Cell {...manualCell(googleByStore, s.id, c.id)} />}
+                          </td>
+                        ))}
+                        {brandCols.map((c) => (
+                          <td key={`i-${s.id}-${c.short}`} className="border border-border px-2 py-1">
+                            {fabrica ? <span className="text-muted-foreground/40">—</span> : <Cell {...manualCell(ifoodByStore, s.id, c.id)} />}
+                          </td>
+                        ))}
                         <td className="border border-border px-2 py-1"><Cell {...n} /></td>
                       </tr>
                     );
                   })}
                   {orderedStores.length === 0 && (
-                    <tr><td colSpan={6} className="border border-border py-4 text-muted-foreground">Nenhuma loja.</td></tr>
+                    <tr><td colSpan={8} className="border border-border py-4 text-muted-foreground">Nenhuma loja.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -445,6 +528,7 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
           </Card>
         );
       })()}
+
 
 
       <div className="flex flex-col sm:flex-row gap-2">
