@@ -411,6 +411,7 @@ const App = () => (
               <Route path="/perdas" element={<Guarded><InventoryLots /></Guarded>} />
               <Route path="/fichas-tecnicas" element={<Guarded module="fichas_tecnicas"><Recipes /></Guarded>} />
               <Route path="/fichas-fabrica" element={<Guarded staff module="fichas_tecnicas"><RecipesFactory /></Guarded>} />
+              <Route path="/cardapio-fabrica" element={<Guarded staff module="fichas_tecnicas"><FactoryMenu /></Guarded>} />
 
               <Route path="/receituario" element={<Guarded module="fichas_tecnicas"><RecipeBook /></Guarded>} />
               <Route path="/receituario-fabrica" element={<Guarded staff module="fichas_tecnicas"><RecipeBook scope="fabrica" /></Guarded>} />
