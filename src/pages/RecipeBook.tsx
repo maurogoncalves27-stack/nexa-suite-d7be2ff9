@@ -42,10 +42,10 @@ const RecipeBook = ({ scope = "loja" }: Props) => {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("recipe_books")
+    const { data, error } = await (supabase
+      .from("recipe_books") as any)
       .select("id, title, description, photo_path, yield_text, prep_time_minutes, source_recipe_name, ingredients, preparation_method, created_at")
-      .eq("scope" as any, scope)
+      .eq("scope", scope)
       .order("title");
     if (error) toast.error(error.message);
     setItems((data as RecipeBookRow[]) ?? []);
