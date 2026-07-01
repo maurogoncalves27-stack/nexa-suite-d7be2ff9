@@ -37,6 +37,15 @@ type TuyaDevice = {
   category?: string;
   online?: boolean;
 };
+type EmsSensor = {
+  unique_code: string;
+  label: string | null;
+  min_value: number | null;
+  max_value: number | null;
+  store_id: string | null;
+  last_measurement: number | null;
+  last_measured_at: string | null;
+};
 
 const SENSOR_DEFAULTS: Record<string, { min: number; max: number; label: string }> = {
   freezer: { min: -25, max: -15, label: "Congelador" },
