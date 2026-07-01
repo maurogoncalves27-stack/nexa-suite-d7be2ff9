@@ -193,14 +193,59 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
     return { avg: totalCount > 0 ? weighted / totalCount : 0, totalCount };
   };
 
+  // Histórico semanal de médias manuais (para setinhas de tendência)
+  // { weekKey: "YYYY-Www", ts, ifood: {key: avg}, google: {key: avg} }
+  const HISTORY_KEY = "crm.reviews.weekly_history";
+  type WeekSnap = { weekKey: string; ts: number; ifood: Record<string, number>; google: Record<string, number> };
+  const [history, setHistory] = useState<WeekSnap[]>(() => {
+    try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); } catch { return []; }
+  });
+  const getWeekKey = (d = new Date()) => {
+    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const dayNum = date.getUTCDay() || 7;
+    date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return `${date.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+  };
+  const snapshotOf = (map: Record<string, ManualEntry>): Record<string, number> => {
+    const out: Record<string, number> = {};
+    Object.entries(map).forEach(([k, v]) => { if (v && v.avg > 0) out[k] = v.avg; });
+    return out;
+  };
+  const persistHistory = (ifoodMap: Record<string, ManualEntry>, googleMap: Record<string, ManualEntry>) => {
+    const wk = getWeekKey();
+    const snap: WeekSnap = { weekKey: wk, ts: Date.now(), ifood: snapshotOf(ifoodMap), google: snapshotOf(googleMap) };
+    setHistory((prev) => {
+      const others = prev.filter((s) => s.weekKey !== wk);
+      const next = [...others, snap].sort((a, b) => a.weekKey.localeCompare(b.weekKey));
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+  const previousAvg = (source: "ifood" | "google", key: string): number | null => {
+    // Última semana anterior à corrente que tenha valor
+    const wk = getWeekKey();
+    for (let i = history.length - 1; i >= 0; i--) {
+      const s = history[i];
+      if (s.weekKey >= wk) continue;
+      const v = s[source]?.[key];
+      if (typeof v === "number" && v > 0) return v;
+    }
+    return null;
+  };
+
   const saveIfoodStores = (next: Record<string, IfoodEntry>) => {
     setIfoodByStore(next);
     localStorage.setItem(IFOOD_STORES_KEY, JSON.stringify(next));
+    persistHistory(next, googleByStore);
   };
   const saveGoogleStores = (next: Record<string, ManualEntry>) => {
     setGoogleByStore(next);
     localStorage.setItem(GOOGLE_STORES_KEY, JSON.stringify(next));
+    persistHistory(ifoodByStore, next);
   };
+
 
 
   return (
