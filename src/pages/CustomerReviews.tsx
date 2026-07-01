@@ -68,14 +68,25 @@ const SOURCE_META: Record<Source, { label: string; icon: any; color: string }> =
 };
 
 function Stars({ n }: { n: number | null }) {
+  const value = n ?? 0;
   return (
     <div className="flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Star
-          key={i}
-          className={`h-3.5 w-3.5 ${i <= (n ?? 0) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"}`}
-        />
-      ))}
+      {[1, 2, 3, 4, 5].map((i) => {
+        const fill = Math.max(0, Math.min(1, value - (i - 1)));
+        return (
+          <div key={i} className="relative h-3.5 w-3.5">
+            <Star className="absolute inset-0 h-3.5 w-3.5 text-muted-foreground/30" />
+            {fill > 0 && (
+              <div className="absolute inset-0 overflow-hidden" style={{ width: `${fill * 100}%` }}>
+                <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {n != null && !Number.isInteger(n) && (
+        <span className="ml-1 text-[10px] text-muted-foreground">{n.toFixed(1).replace(".", ",")}</span>
+      )}
     </div>
   );
 }
@@ -298,6 +309,7 @@ function NewReviewDialog({
   const { toast } = useToast();
   const [source, setSource] = useState<Source>("google");
   const [rating, setRating] = useState<number>(5);
+  const [ratingStr, setRatingStr] = useState<string>("5,0");
   const [name, setName] = useState("");
   const [comment, setComment] = useState("");
   const [url, setUrl] = useState("");
@@ -345,13 +357,31 @@ function NewReviewDialog({
               </Select>
             </div>
             <div>
-              <Label>Nota</Label>
-              <Select value={String(rating)} onValueChange={(v) => setRating(Number(v))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {[1, 2, 3, 4, 5].map((n) => <SelectItem key={n} value={String(n)}>{n} ★</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Label>Nota (1 a 5, aceita 1 casa decimal — ex: 4,6)</Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={ratingStr}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(",", ".");
+                  setRatingStr(e.target.value);
+                  const n = parseFloat(raw);
+                  if (!isNaN(n) && n >= 1 && n <= 5) {
+                    setRating(Math.round(n * 10) / 10);
+                  }
+                }}
+                onBlur={() => {
+                  const n = parseFloat(ratingStr.replace(",", "."));
+                  if (isNaN(n) || n < 1 || n > 5) {
+                    setRating(5); setRatingStr("5,0");
+                  } else {
+                    const clamped = Math.round(n * 10) / 10;
+                    setRating(clamped);
+                    setRatingStr(clamped.toFixed(1).replace(".", ","));
+                  }
+                }}
+                placeholder="Ex: 4,6"
+              />
             </div>
           </div>
           <div>
