@@ -12,14 +12,16 @@ const ACCESS_SECRET = Deno.env.get('TUYA_ACCESS_SECRET') ?? '';
 const DC = (Deno.env.get('TUYA_DATA_CENTER') ?? 'us').toLowerCase();
 
 const HOST_MAP: Record<string, string> = {
-  us: 'https://openapi.tuyaus.com',
-  'us-e': 'https://openapi-ueaz.tuyaus.com',
+  us: 'https://openapi.tuyaus.com',        // Western America (default)
+  'us-e': 'https://openapi.tuyaus.com',    // Western America (alias — user's subscription)
+  'us-east': 'https://openapi-ueaz.tuyaus.com', // Eastern America (não usar)
   eu: 'https://openapi.tuyaeu.com',
   'eu-w': 'https://openapi-weaz.tuyaeu.com',
   cn: 'https://openapi.tuyacn.com',
   in: 'https://openapi.tuyain.com',
   sg: 'https://openapi.tuyaus.com',
 };
+
 const HOST = HOST_MAP[DC] ?? HOST_MAP.us;
 
 function sign(str: string) {
@@ -120,9 +122,10 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e.message ?? e) }), {
+    return new Response(JSON.stringify({ error: String(e.message ?? e), host: HOST, dc: DC }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
+
 });
