@@ -264,7 +264,7 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                     </div>
                   )}
                   <div className="flex flex-wrap gap-2 pt-1">
-                    <Button size="sm" variant="outline" onClick={() => setOpenReply(r)}>
+                    <Button size="sm" variant="outline" onClick={() => setEditing(r)}>
                       <Pencil className="h-3.5 w-3.5 mr-1" /> Editar
                     </Button>
                     <Button
