@@ -109,6 +109,7 @@ const estoqueSections: Section[] = [
   ]},
   { label: "Cadastros", items: [
     { title: "Produtos", url: "/produtos", icon: Package },
+    { title: "Fatores de conversão", url: "/fatores-conversao", icon: Ruler, staffOnly: true },
   ]},
 ];
 
