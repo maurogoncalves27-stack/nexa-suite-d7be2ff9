@@ -34,6 +34,12 @@ interface Equipment {
   equipment_type: EquipmentType;
   store_id: string | null;
   ems_sensor_code: string | null;
+  tuya_device_id: string | null;
+  tuya_sensor_type: string | null;
+  last_temp_c: number | null;
+  last_humidity_pct: number | null;
+  last_reading_at: string | null;
+  last_online: boolean;
 }
 
 interface EmsSensor {
@@ -81,6 +87,8 @@ export const NutriTemperatureControl = ({ currentDate, storeId }: Props) => {
   const [formName, setFormName] = useState("");
   const [formType, setFormType] = useState<EquipmentType>("refrigerator");
   const [formSensorCode, setFormSensorCode] = useState<string>("none");
+  // "none" | equipment_id (origem do device Tuya que será movido para este equipamento)
+  const [formTuyaSourceId, setFormTuyaSourceId] = useState<string>("none");
 
   const dateKey = format(currentDate, "yyyy-MM-dd");
 
@@ -193,6 +201,7 @@ export const NutriTemperatureControl = ({ currentDate, storeId }: Props) => {
     setFormName("");
     setFormType("refrigerator");
     setFormSensorCode("none");
+    setFormTuyaSourceId("none");
     setDialogOpen(true);
   };
 
@@ -201,6 +210,8 @@ export const NutriTemperatureControl = ({ currentDate, storeId }: Props) => {
     setFormName(eq.name);
     setFormType(eq.equipment_type);
     setFormSensorCode(eq.ems_sensor_code ?? "none");
+    // se este equipamento já tem sensor Tuya vinculado, "origem" é ele mesmo
+    setFormTuyaSourceId(eq.tuya_device_id ? eq.id : "none");
     setDialogOpen(true);
   };
 
@@ -220,6 +231,55 @@ export const NutriTemperatureControl = ({ currentDate, storeId }: Props) => {
       if (error) {
         toast.error("Erro ao atualizar equipamento");
         return;
+      }
+
+      // Transferência de sensor Tuya vindo de outro equipamento -> este
+      const sourceId = formTuyaSourceId;
+      if (sourceId && sourceId !== "none" && sourceId !== editingId) {
+        const source = equipment.find((e) => e.id === sourceId);
+        if (source?.tuya_device_id) {
+          const tuyaFields = {
+            tuya_device_id: source.tuya_device_id,
+            tuya_sensor_type: source.tuya_sensor_type,
+            last_temp_c: source.last_temp_c,
+            last_humidity_pct: source.last_humidity_pct,
+            last_reading_at: source.last_reading_at,
+            last_online: source.last_online,
+          };
+          // 1) libera o device na origem para não violar UNIQUE(tuya_device_id)
+          const { error: e1 } = await supabase
+            .from("nutri_equipment")
+            .update({
+              tuya_device_id: null,
+              tuya_sensor_type: null,
+              last_temp_c: null,
+              last_humidity_pct: null,
+              last_reading_at: null,
+            })
+            .eq("id", sourceId);
+          if (e1) { toast.error("Erro ao liberar sensor de origem"); return; }
+          // 2) vincula no destino
+          const { error: e2 } = await supabase
+            .from("nutri_equipment")
+            .update(tuyaFields)
+            .eq("id", editingId);
+          if (e2) { toast.error("Erro ao vincular sensor Tuya"); return; }
+          // 3) remove o equipamento "vazio" que era só o placeholder do sensor
+          const isPlaceholder = /^refrigerador\s*\d+$/i.test(source.name) || /^sensor/i.test(source.name);
+          if (isPlaceholder) {
+            await supabase.from("nutri_equipment").delete().eq("id", sourceId);
+          }
+          toast.success("Sensor Tuya vinculado ao equipamento");
+        }
+      } else if (sourceId === "none") {
+        // desvincula tuya deste equipamento (se tinha)
+        const cur = equipment.find((e) => e.id === editingId);
+        if (cur?.tuya_device_id) {
+          await supabase
+            .from("nutri_equipment")
+            .update({ tuya_device_id: null, tuya_sensor_type: null })
+            .eq("id", editingId);
+        }
       }
       toast.success("Equipamento atualizado");
     } else {
@@ -357,11 +417,16 @@ export const NutriTemperatureControl = ({ currentDate, storeId }: Props) => {
         const Icon = eq.equipment_type === "freezer" ? Snowflake : Thermometer;
         const typeLabel = eq.equipment_type === "freezer" ? "Congelador" : "Refrigerador";
         const limitLabel = eq.equipment_type === "freezer" ? "até 0°C" : "até 8°C";
-        const isAuto = !!eq.ems_sensor_code;
-        const live = isAuto ? liveBySensor[eq.ems_sensor_code!] : null;
-        const stats = isAuto ? statsBySensor[eq.ems_sensor_code!] : null;
+        const isTuya = !!eq.tuya_device_id;
+        const isAuto = !!eq.ems_sensor_code || isTuya;
+        const emsLive = eq.ems_sensor_code ? liveBySensor[eq.ems_sensor_code] : null;
+        const tuyaLive = isTuya && eq.last_temp_c != null && eq.last_reading_at
+          ? { temperature: Number(eq.last_temp_c), measured_at: eq.last_reading_at }
+          : null;
+        const live = emsLive ?? tuyaLive;
+        const stats = eq.ems_sensor_code ? statsBySensor[eq.ems_sensor_code] : null;
         const liveAgeMin = live ? (Date.now() - new Date(live.measured_at).getTime()) / 60000 : Infinity;
-        const isOnline = live && liveAgeMin < 30;
+        const isOnline = isTuya ? (eq.last_online && liveAgeMin < 30) : (!!live && liveAgeMin < 30);
 
         const isColdChamber = /c[âa]mara\s*fria/i.test(eq.name);
         const hideManageButtons = isColdChamber;
@@ -393,7 +458,7 @@ export const NutriTemperatureControl = ({ currentDate, storeId }: Props) => {
                   </Badge>
                 </div>
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 text-primary border-primary/40">
-                  <Radio className="h-2.5 w-2.5" /> Automático (EMS-A)
+                  <Radio className="h-2.5 w-2.5" /> Automático ({isTuya ? "Tuya" : "EMS-A"})
                 </Badge>
               </div>
 
@@ -562,6 +627,40 @@ export const NutriTemperatureControl = ({ currentDate, storeId }: Props) => {
                 </p>
               )}
             </div>
+            {editingId && (() => {
+              // Todos os sensores Tuya vinculados nesta loja (inclui o próprio equipamento se já tiver)
+              const tuyaOptions = equipment.filter((e) => !!e.tuya_device_id);
+              return (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5">
+                    <Radio className="h-3.5 w-3.5 text-primary" /> Sensor Tuya (opcional)
+                  </Label>
+                  <Select value={formTuyaSourceId} onValueChange={setFormTuyaSourceId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sem sensor Tuya" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {tuyaOptions.map((e) => (
+                        <SelectItem key={e.id} value={e.id}>
+                          {e.id === editingId ? "(vinculado atualmente)" : `Mover de "${e.name}"`}
+                          <span className="text-muted-foreground text-xs ml-2">{e.tuya_device_id?.slice(0, 10)}…</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {tuyaOptions.length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground">
+                      Nenhum sensor Tuya pareado nesta loja. Pareie em Sensores IoT.
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      Selecione um sensor pareado para transferi-lo para este equipamento. O equipamento origem é removido se for apenas um placeholder do sensor.
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
