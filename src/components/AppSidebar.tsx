@@ -161,6 +161,7 @@ const operacaoSections: Section[] = [
     { title: "Vale Gás", url: "/financeiro/vale-gas", icon: Flame, staffOnly: false },
   ]},
   { label: "Atendimento", items: [
+    { title: "CRM", url: "/crm", icon: Headset, staffOnly: true },
     { title: "Central de Ocorrências", url: "/ocorrencias", icon: Siren },
   ]},
 ];
