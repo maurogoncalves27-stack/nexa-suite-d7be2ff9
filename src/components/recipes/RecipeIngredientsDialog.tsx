@@ -208,9 +208,13 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
                                       ))}
                                   </SelectGroup>
                                   <SelectGroup>
-                                    <SelectLabel>Insumos / Produtos</SelectLabel>
+                                    <SelectLabel>{group.isPack ? "Embalagens / Descartáveis" : "Insumos / Produtos"}</SelectLabel>
                                     {products
                                       .filter((p) => !recipeByOutput[p.id])
+                                      .filter((p) => {
+                                        const isPack = /embalag/i.test(p.category ?? "");
+                                        return group.isPack ? isPack : !isPack;
+                                      })
                                       .map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                                   </SelectGroup>
                                 </SelectContent>
