@@ -144,6 +144,31 @@ const ProductsFactory = () => {
     setProducts((arr) => arr.map((x) => (x.id === p.id ? { ...x, is_active: value } : x)));
   };
 
+  const handleConfirmDelete = async () => {
+    if (!deleting) return;
+    setDeletingBusy(true);
+    try {
+      const { error } = await supabase.from("inventory_products").delete().eq("id", deleting.id);
+      if (error) {
+        // FK conflict → soft remove (tira da fábrica)
+        const { error: err2 } = await supabase
+          .from("inventory_products")
+          .update({ factory_only: false, is_active: false })
+          .eq("id", deleting.id);
+        if (err2) throw err2;
+        toast.success("Produto removido da Fábrica (histórico preservado)");
+      } else {
+        toast.success("Produto excluído");
+      }
+      setDeleting(null);
+      load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao excluir");
+    } finally {
+      setDeletingBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
