@@ -488,19 +488,27 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
           return { avg: e?.avg ?? 0, n: e?.count ?? 0 };
         };
 
-        const Cell = ({ avg, n }: { avg: number; n: number }) => {
+        const Cell = ({ avg, n, prev }: { avg: number; n: number; prev?: number | null }) => {
           if (!n || !avg) return <span className="text-muted-foreground/60">—</span>;
           const color =
             avg >= 4.5 ? "text-emerald-600 dark:text-emerald-400"
             : avg >= 4.0 ? "text-yellow-600 dark:text-yellow-400"
             : "text-destructive";
+          const diff = prev != null ? avg - prev : 0;
+          const trendUp = prev != null && diff > 0.05;
+          const trendDown = prev != null && diff < -0.05;
           return (
             <div className="leading-tight">
-              <div className={`font-semibold tabular-nums ${color}`}>{avg.toFixed(1).replace(".", ",")}</div>
+              <div className={`font-semibold tabular-nums ${color} flex items-center justify-center gap-0.5`}>
+                {avg.toFixed(1).replace(".", ",")}
+                {trendUp && <ArrowUp className="h-3 w-3 text-blue-500" strokeWidth={3} aria-label={`subiu de ${prev!.toFixed(1)}`} />}
+                {trendDown && <ArrowDown className="h-3 w-3 text-destructive" strokeWidth={3} aria-label={`caiu de ${prev!.toFixed(1)}`} />}
+              </div>
               <div className="text-[10px] text-muted-foreground tabular-nums">{n}</div>
             </div>
           );
         };
+
 
         const orderedStores = [...stores].sort((a, b) => {
           const af = isFabrica(a.name) ? 1 : 0;
