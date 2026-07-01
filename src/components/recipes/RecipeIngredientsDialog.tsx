@@ -105,15 +105,23 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
     })();
   }, [open, recipeId, contextScope, brandKey]);
 
+  // Custo: quando ingrediente é "pronto", converte para cru antes de multiplicar pelo custo real.
+  const rawEquivalent = (i: Item): number => {
+    if (i.ingredient_state !== "pronto") return i.quantity;
+    const c = prepConvByProduct[i.product_id];
+    if (!c) return i.quantity;
+    const preparedPerRaw = Number(c.to_qty) / Number(c.from_qty);
+    return preparedPerRaw > 0 ? i.quantity / preparedPerRaw : i.quantity;
+  };
 
   const totalCost = items.reduce((sum, i) => {
     const p = products.find((p) => p.id === i.product_id);
-    return sum + i.quantity * Number(p?.average_cost ?? 0);
+    return sum + rawEquivalent(i) * Number(p?.average_cost ?? 0);
   }, 0);
   const costPerUnit = yieldQuantity > 0 ? totalCost / yieldQuantity : 0;
 
   const add = (isPack: boolean) =>
-    setItems((arr) => [...arr, { product_id: "", quantity: 1, unit: "UN", notes: "", is_packaging: isPack }]);
+    setItems((arr) => [...arr, { product_id: "", quantity: 1, unit: "UN", notes: "", is_packaging: isPack, ingredient_state: null }]);
   const update = (idx: number, patch: Partial<Item>) =>
     setItems((arr) => arr.map((i, k) => (k === idx ? { ...i, ...patch } : i)));
   const remove = (idx: number) => setItems((arr) => arr.filter((_, k) => k !== idx));
@@ -136,6 +144,7 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
             notes: i.notes || null,
             sort_order: k,
             is_packaging: i.is_packaging,
+            ingredient_state: i.ingredient_state ?? null,
           })),
         );
         if (error) throw error;
