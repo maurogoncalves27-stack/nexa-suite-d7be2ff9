@@ -96,6 +96,7 @@ const documentosItems: Item[] = [
 const estoqueSections: Section[] = [
   { label: "Movimentação", items: [
     { title: "Entrada de mercadorias", url: "/recebimento", icon: PackageCheck },
+    { title: "Sugestão de abastecimento", url: "/sugestao-abastecimento", icon: Sparkles, staffOnly: true },
     { title: "Transferências", url: "/transferencias", icon: ArrowLeftRight, staffOnly: true },
     { title: "Requisições de urgência", url: "/solicitacoes-fabrica", icon: AlertTriangle },
     { title: "Plano semanal da fábrica", url: "/plano-fabrica", icon: CalendarRange, staffOnly: true },
