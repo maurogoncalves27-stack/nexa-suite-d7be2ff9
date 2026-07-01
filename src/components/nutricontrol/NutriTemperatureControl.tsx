@@ -428,7 +428,7 @@ export const NutriTemperatureControl = ({ currentDate, storeId }: Props) => {
         const liveAgeMin = live ? (Date.now() - new Date(live.measured_at).getTime()) / 60000 : Infinity;
         const isOnline = isTuya ? (eq.last_online && liveAgeMin < 30) : (!!live && liveAgeMin < 30);
 
-        const isColdChamber = /c[âa]mara\s*fria/i.test(eq.name);
+        const isColdChamber = /c[âa]mara\s*(fria|frigor)/i.test(eq.name);
         const hideManageButtons = isColdChamber;
 
         if (isAuto) {
