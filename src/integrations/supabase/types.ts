@@ -13761,6 +13761,7 @@ export type Database = {
           code: string | null
           created_at: string
           geofence_radius_m: number
+          google_place_id: string | null
           id: string
           ifood_auto_accept: boolean
           ifood_environment: string
@@ -13799,6 +13800,7 @@ export type Database = {
           code?: string | null
           created_at?: string
           geofence_radius_m?: number
+          google_place_id?: string | null
           id?: string
           ifood_auto_accept?: boolean
           ifood_environment?: string
@@ -13837,6 +13839,7 @@ export type Database = {
           code?: string | null
           created_at?: string
           geofence_radius_m?: number
+          google_place_id?: string | null
           id?: string
           ifood_auto_accept?: boolean
           ifood_environment?: string

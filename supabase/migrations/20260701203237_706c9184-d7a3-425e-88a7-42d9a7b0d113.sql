@@ -1,0 +1,2 @@
+ALTER TABLE public.stores ADD COLUMN IF NOT EXISTS google_place_id text;
+CREATE UNIQUE INDEX IF NOT EXISTS customer_reviews_source_external_id_uidx ON public.customer_reviews (source, external_id) WHERE external_id IS NOT NULL;
