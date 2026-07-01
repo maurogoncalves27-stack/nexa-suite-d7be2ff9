@@ -33,6 +33,8 @@ import {
   MessageCircle,
   Loader2,
   Copy,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
