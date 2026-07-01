@@ -253,7 +253,7 @@ export default function DfeNoteDialog({ noteId, onClose, onImported }: Props) {
   }, [noteId, load]);
 
   // Cadastra produto rápido a partir da descrição da NF e vincula automaticamente.
-  const handleQuickCreated = async (it: DfeItem, created: { id: string; name: string; unit: string | null; purchase_unit: string | null; pack_size: number | null }) => {
+  const handleQuickCreated = async (it: DfeItem, created: { id: string; name: string; unit: string | null }) => {
     // adiciona ao catálogo local
     setProducts((prev) => prev.some((p) => p.id === created.id) ? prev : [...prev, created]);
     // vincula no item da nota
