@@ -346,13 +346,31 @@ function NewReviewDialog({
               </Select>
             </div>
             <div>
-              <Label>Nota</Label>
-              <Select value={String(rating)} onValueChange={(v) => setRating(Number(v))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {[1, 2, 3, 4, 5].map((n) => <SelectItem key={n} value={String(n)}>{n} ★</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Label>Nota (1 a 5, aceita 1 casa decimal — ex: 4,6)</Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={ratingStr}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(",", ".");
+                  setRatingStr(e.target.value);
+                  const n = parseFloat(raw);
+                  if (!isNaN(n) && n >= 1 && n <= 5) {
+                    setRating(Math.round(n * 10) / 10);
+                  }
+                }}
+                onBlur={() => {
+                  const n = parseFloat(ratingStr.replace(",", "."));
+                  if (isNaN(n) || n < 1 || n > 5) {
+                    setRating(5); setRatingStr("5,0");
+                  } else {
+                    const clamped = Math.round(n * 10) / 10;
+                    setRating(clamped);
+                    setRatingStr(clamped.toFixed(1).replace(".", ","));
+                  }
+                }}
+                placeholder="Ex: 4,6"
+              />
             </div>
           </div>
           <div>
