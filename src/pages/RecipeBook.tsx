@@ -26,7 +26,11 @@ interface RecipeBookRow {
   created_at: string;
 }
 
-const RecipeBook = () => {
+interface Props {
+  scope?: "loja" | "fabrica";
+}
+
+const RecipeBook = ({ scope = "loja" }: Props) => {
   const { isAdmin, isManager } = useAuth();
   const canEdit = isAdmin || isManager;
 
@@ -41,6 +45,7 @@ const RecipeBook = () => {
     const { data, error } = await supabase
       .from("recipe_books")
       .select("id, title, description, photo_path, yield_text, prep_time_minutes, source_recipe_name, ingredients, preparation_method, created_at")
+      .eq("scope" as any, scope)
       .order("title");
     if (error) toast.error(error.message);
     setItems((data as RecipeBookRow[]) ?? []);
