@@ -7606,56 +7606,6 @@ export type Database = {
         }
         Relationships: []
       }
-      manual_platform_ratings: {
-        Row: {
-          brand: string | null
-          created_at: string
-          created_by: string | null
-          id: string
-          notes: string | null
-          reviews_count: number | null
-          score: number
-          source: string
-          store_id: string
-          updated_at: string
-          week_start: string
-        }
-        Insert: {
-          brand?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          notes?: string | null
-          reviews_count?: number | null
-          score: number
-          source: string
-          store_id: string
-          updated_at?: string
-          week_start: string
-        }
-        Update: {
-          brand?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          notes?: string | null
-          reviews_count?: number | null
-          score?: number
-          source?: string
-          store_id?: string
-          updated_at?: string
-          week_start?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "manual_platform_ratings_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       medical_certificates: {
         Row: {
           certificate_date: string
@@ -9038,6 +8988,7 @@ export type Database = {
           created_at: string
           general_notes: string
           id: string
+          nutritionist_rating: number | null
           signature_url: string | null
           store_id: string
           store_responsible_name: string
@@ -9049,6 +9000,7 @@ export type Database = {
           created_at?: string
           general_notes?: string
           id?: string
+          nutritionist_rating?: number | null
           signature_url?: string | null
           store_id: string
           store_responsible_name?: string
@@ -9060,6 +9012,7 @@ export type Database = {
           created_at?: string
           general_notes?: string
           id?: string
+          nutritionist_rating?: number | null
           signature_url?: string | null
           store_id?: string
           store_responsible_name?: string
