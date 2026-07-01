@@ -66,8 +66,9 @@ const RecipeBook = ({ scope = "loja" }: Props) => {
     );
   }, [items, search]);
 
+  const showPhotos = scope !== "fabrica";
   const photoUrl = (path: string | null) =>
-    path ? supabase.storage.from("recipe-book-photos").getPublicUrl(path).data.publicUrl : null;
+    showPhotos && path ? supabase.storage.from("recipe-book-photos").getPublicUrl(path).data.publicUrl : null;
 
   const handleDelete = async (item: RecipeBookRow) => {
     if (item.photo_path) {
