@@ -43,18 +43,20 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
   const [products, setProducts] = useState<Product[]>([]);
   const [recipeByOutput, setRecipeByOutput] = useState<Record<string, RecipeRef>>({});
   const [items, setItems] = useState<Item[]>([]);
+  const [prepConvByProduct, setPrepConvByProduct] = useState<Record<string, ConvRef>>({});
   const brandKey = brandIds.join("|");
 
   useEffect(() => {
     if (!open || !recipeId) return;
     (async () => {
       setLoading(true);
-      const [{ data: prods }, { data: ings }, { data: recs }, { data: links }, { data: brs }] = await Promise.all([
+      const [{ data: prods }, { data: ings }, { data: recs }, { data: links }, { data: brs }, { data: convs }] = await Promise.all([
         supabase.from("inventory_products").select("id, name, unit, average_cost, category, factory_only, usage_roles").eq("is_active", true).order("name"),
         supabase.from("recipe_ingredients").select("*").eq("recipe_id", recipeId).order("sort_order"),
         supabase.from("recipes").select("id, name, yield_unit, output_product_id, scope").eq("is_active", true).not("output_product_id", "is", null).order("name"),
         supabase.from("recipe_brands").select("recipe_id, brand_id"),
         supabase.from("brands").select("id, name").eq("is_active", true),
+        supabase.from("product_conversions").select("product_id, from_qty, to_qty, from_unit, to_unit, is_default").eq("conversion_type", "preparo"),
       ]);
       setProducts((prods as Product[]) ?? []);
       const factoryBrandIds = new Set(
@@ -83,6 +85,11 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
         }
       });
       setRecipeByOutput(map);
+      const prepMap: Record<string, ConvRef> = {};
+      ((convs as ConvRef[]) ?? []).forEach((c) => {
+        if (!prepMap[c.product_id] || c.is_default) prepMap[c.product_id] = c;
+      });
+      setPrepConvByProduct(prepMap);
       setItems(
         (ings ?? []).map((i: any) => ({
           id: i.id,
@@ -91,6 +98,7 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
           unit: i.unit,
           notes: i.notes ?? "",
           is_packaging: !!i.is_packaging,
+          ingredient_state: i.ingredient_state ?? null,
         })),
       );
       setLoading(false);
