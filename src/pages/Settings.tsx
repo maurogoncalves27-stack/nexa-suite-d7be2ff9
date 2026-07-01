@@ -1,5 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Store, ShieldCheck, Handshake, Link2, Eye, Settings as SettingsIcon, FlaskConical, CreditCard, Monitor } from "lucide-react";
+import { Store, ShieldCheck, Handshake, Link2, Eye, Settings as SettingsIcon, FlaskConical, CreditCard, Monitor, KeyRound } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import StoresPanel from "@/components/settings/StoresPanel";
@@ -19,7 +19,13 @@ const Settings = () => {
           </h1>
           <p className="text-muted-foreground">Centralize aqui as configurações do sistema.</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
+          <Button asChild variant="outline" size="sm" className="gap-2">
+            <Link to="/configuracoes/integracoes">
+              <KeyRound className="h-4 w-4" />
+              Integrações e APIs
+            </Link>
+          </Button>
           <Button asChild variant="outline" size="sm" className="gap-2">
             <Link to="/configuracoes/acesso-remoto">
               <Monitor className="h-4 w-4" />

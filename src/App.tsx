@@ -83,6 +83,7 @@ const DeliverySettings = lazy(() => import("./pages/DeliverySettings.tsx"));
 const CRM = lazy(() => import("./pages/CRM.tsx"));
 
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+const IntegrationsPage = lazy(() => import("./pages/IntegrationsPage.tsx"));
 const VerifySignature = lazy(() => import("./pages/VerifySignature.tsx"));
 const InventoryReceiving = lazy(() => import("./pages/InventoryReceiving.tsx"));
 const NfArchived = lazy(() => import("./pages/NfArchived.tsx"));
@@ -387,6 +388,7 @@ const App = () => (
               <Route path="/pasta-colaborador" element={<Guarded staff accountant><EmployeeFolders /></Guarded>} />
               <Route path="/recrutamento" element={<Guarded staff><Recruitment /></Guarded>} />
               <Route path="/configuracoes" element={<Guarded staff><Settings /></Guarded>} />
+              <Route path="/configuracoes/integracoes" element={<Guarded staff><IntegrationsPage /></Guarded>} />
               <Route path="/configuracoes/acessos-externos" element={<Guarded staff><ExternalAccess /></Guarded>} />
               <Route path="/configuracoes/whatsapp-cliente" element={<Guarded staff><WhatsAppCustomerAdmin /></Guarded>} />
               <Route path="/configuracoes/entregas" element={<Guarded staff><DeliverySettings /></Guarded>} />
