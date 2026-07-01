@@ -16,8 +16,6 @@ import QuickCreateProductDialog from "./QuickCreateProductDialog";
 interface InvProd {
   id: string; name: string;
   unit?: string | null;
-  purchase_unit?: string | null;
-  pack_size?: number | null;
 }
 interface Store { id: string; name: string }
 
