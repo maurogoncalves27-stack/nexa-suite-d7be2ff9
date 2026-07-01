@@ -143,8 +143,26 @@ export default function DfeNoteDialog({ noteId, onClose, onImported }: Props) {
     let rawItems = (itemsRes.data as DfeItem[]) ?? [];
     const storeList = (storesRes.data as Store[]) ?? [];
     setNote(n);
-    setProducts((prodRes.data as InvProd[]) ?? []);
+    const prodList = (prodRes.data as InvProd[]) ?? [];
+    setProducts(prodList);
     setStores(storeList);
+
+    // Carrega fatores de conversão de compra (tabela product_conversions) para todos os produtos ativos
+    if (prodList.length > 0) {
+      const { data: pcs } = await supabase
+        .from("product_conversions")
+        .select("product_id, from_unit, from_qty, to_qty, is_default")
+        .eq("conversion_type", "compra")
+        .in("product_id", prodList.map((p) => p.id));
+      const pcMap: Record<string, { pack_size: number; purchase_unit: string | null }> = {};
+      ((pcs ?? []) as any[]).forEach((r) => {
+        const packSize = Number(r.from_qty) > 0 ? Number(r.to_qty) / Number(r.from_qty) : Number(r.to_qty);
+        if (!pcMap[r.product_id] || r.is_default) {
+          pcMap[r.product_id] = { pack_size: packSize, purchase_unit: r.from_unit };
+        }
+      });
+      setProductConvs(pcMap);
+    }
 
     // Default loja destino = ESTOQUE CENTRAL quando ainda não definido e nota não importada
     if (n && !n.target_store_id && !n.imported_invoice_id) {
