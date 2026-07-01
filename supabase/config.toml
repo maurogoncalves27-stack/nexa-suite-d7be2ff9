@@ -23,3 +23,9 @@ verify_jwt = true
 
 [functions.parme-delete-reservation]
 verify_jwt = true
+
+[functions.tuya-sync]
+verify_jwt = false
+
+[functions.tuya-list-devices]
+verify_jwt = true

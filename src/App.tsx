@@ -70,6 +70,7 @@ const NutriVisit = lazy(() => import("./pages/NutriVisit.tsx"));
 const NutriVisitHistorico = lazy(() => import("./pages/NutriVisitHistorico.tsx"));
 const Checklists = lazy(() => import("./pages/Checklists.tsx"));
 const Nutricontrol = lazy(() => import("./pages/Nutricontrol.tsx"));
+const NutriSensors = lazy(() => import("./pages/NutriSensors.tsx"));
 const NutritionistPanel = lazy(() => import("./pages/NutritionistPanel.tsx"));
 
 const EmployeeFolders = lazy(() => import("./pages/EmployeeFolders.tsx"));
@@ -378,6 +379,7 @@ const App = () => (
               <Route path="/rescisoes" element={<Guarded staff><Rescissions /></Guarded>} />
               <Route path="/checklists" element={<Guarded><Checklists /></Guarded>} />
               <Route path="/nutricontrol" element={<Guarded module="nutricontrol"><Nutricontrol /></Guarded>} />
+              <Route path="/nutricontrol/sensores" element={<Guarded module="nutricontrol"><NutriSensors /></Guarded>} />
               
               <Route path="/ponto" element={<Guarded staff><TimeClock /></Guarded>} />
               <Route path="/banco-horas" element={<Guarded staff><BancoHoras /></Guarded>} />
