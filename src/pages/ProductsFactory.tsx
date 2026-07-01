@@ -256,6 +256,8 @@ const ProductsFactory = () => {
                         </div>
                       )}
                     </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>
