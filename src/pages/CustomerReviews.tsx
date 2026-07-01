@@ -113,14 +113,16 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
 
   async function load() {
     setLoading(true);
+    const ALLOWED_STORES = ["ASA SUL", "ASA NORTE", "AGUAS CLARAS", "ÁGUAS CLARAS", "LAGO SUL", "FABRICA", "FÁBRICA"];
+    const ALLOWED_BRANDS = ["AQUELA PARME", "AQUELA PARMÊ", "AQUELE ESTROGONOFE", "AQUELE ESTROGONOFÊ", "BOX CAIPIRA"];
     const [r, b, s] = await Promise.all([
       supabase.from("customer_reviews").select("*").order("published_at", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false }).limit(500),
       supabase.from("brands").select("id,name").order("name"),
       supabase.from("stores").select("id,name").eq("is_virtual", false).order("name"),
     ]);
     if (r.data) setReviews(r.data as Review[]);
-    if (b.data) setBrands(b.data as Brand[]);
-    if (s.data) setStores(s.data as Store[]);
+    if (b.data) setBrands((b.data as Brand[]).filter((x) => ALLOWED_BRANDS.includes(x.name.trim().toUpperCase())));
+    if (s.data) setStores((s.data as Store[]).filter((x) => ALLOWED_STORES.includes(x.name.trim().toUpperCase())));
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
