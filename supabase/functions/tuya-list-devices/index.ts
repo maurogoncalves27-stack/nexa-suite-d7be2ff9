@@ -89,29 +89,32 @@ Deno.serve(async (req) => {
 
     const token = await getToken();
 
-    // Get UID linked to this cloud project
-    const projRes = await tuyaGet(`/v1.3/iot-03/users?page_no=1&page_size=100`, token);
-    if (!projRes.success) throw new Error(`users list error: ${JSON.stringify(projRes)}`);
-    const users = projRes.result?.list ?? [];
-
-    // Collect devices for each app-linked user
+    // List ALL devices linked to app users associated to this Cloud Project
+    // Endpoint oficial "associated-users/devices" (paginado por last_row_key)
     const all: any[] = [];
-    for (const u of users) {
-      const uid = u.uid;
-      const dRes = await tuyaGet(`/v1.0/users/${uid}/devices`, token);
-      if (dRes.success && Array.isArray(dRes.result)) {
-        for (const d of dRes.result) {
-          all.push({
-            device_id: d.id,
-            name: d.name,
-            category: d.category,
-            product_name: d.product_name,
-            online: d.online,
-            uid,
-          });
-        }
+    let lastRowKey = '';
+    for (let i = 0; i < 20; i++) {
+      const qs = new URLSearchParams({ size: '100' });
+      if (lastRowKey) qs.set('last_row_key', lastRowKey);
+      const path = `/v1.0/iot-01/associated-users/devices?${qs.toString()}`;
+      const dRes = await tuyaGet(path, token);
+      if (!dRes.success) throw new Error(`devices list error: ${JSON.stringify(dRes)}`);
+      const devices = dRes.result?.devices ?? [];
+      for (const d of devices) {
+        all.push({
+          device_id: d.id,
+          name: d.name,
+          category: d.category,
+          product_name: d.product_name,
+          online: d.online,
+          uid: d.uid,
+        });
       }
+      if (!dRes.result?.has_more) break;
+      lastRowKey = dRes.result?.last_row_key ?? '';
+      if (!lastRowKey) break;
     }
+
 
     return new Response(JSON.stringify({ devices: all, host: HOST, dc: DC }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
