@@ -417,11 +417,16 @@ export const NutriTemperatureControl = ({ currentDate, storeId }: Props) => {
         const Icon = eq.equipment_type === "freezer" ? Snowflake : Thermometer;
         const typeLabel = eq.equipment_type === "freezer" ? "Congelador" : "Refrigerador";
         const limitLabel = eq.equipment_type === "freezer" ? "até 0°C" : "até 8°C";
-        const isAuto = !!eq.ems_sensor_code;
-        const live = isAuto ? liveBySensor[eq.ems_sensor_code!] : null;
-        const stats = isAuto ? statsBySensor[eq.ems_sensor_code!] : null;
+        const isTuya = !!eq.tuya_device_id;
+        const isAuto = !!eq.ems_sensor_code || isTuya;
+        const emsLive = eq.ems_sensor_code ? liveBySensor[eq.ems_sensor_code] : null;
+        const tuyaLive = isTuya && eq.last_temp_c != null && eq.last_reading_at
+          ? { temperature: Number(eq.last_temp_c), measured_at: eq.last_reading_at }
+          : null;
+        const live = emsLive ?? tuyaLive;
+        const stats = eq.ems_sensor_code ? statsBySensor[eq.ems_sensor_code] : null;
         const liveAgeMin = live ? (Date.now() - new Date(live.measured_at).getTime()) / 60000 : Infinity;
-        const isOnline = live && liveAgeMin < 30;
+        const isOnline = isTuya ? (eq.last_online && liveAgeMin < 30) : (!!live && liveAgeMin < 30);
 
         const isColdChamber = /c[âa]mara\s*fria/i.test(eq.name);
         const hideManageButtons = isColdChamber;
