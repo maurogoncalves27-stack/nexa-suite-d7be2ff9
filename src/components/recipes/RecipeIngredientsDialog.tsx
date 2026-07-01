@@ -272,17 +272,38 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
                               </Button>
                             </div>
                           </div>
-                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground gap-2">
                             <Input
                               placeholder="Observação (opcional)"
                               value={i.notes}
                               onChange={(e) => update(idx, { notes: e.target.value })}
-                              className="h-7 text-xs"
+                              className="h-7 text-xs flex-1"
                             />
+                            {prep && !group.isPack && (
+                              <div className="flex items-center gap-1 shrink-0">
+                                <span className="text-[10px]">Estado:</span>
+                                <Select
+                                  value={i.ingredient_state ?? "cru"}
+                                  onValueChange={(v) => update(idx, { ingredient_state: v as "cru" | "pronto" })}
+                                >
+                                  <SelectTrigger className="h-7 w-[110px] text-xs"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="cru">Cru</SelectItem>
+                                    <SelectItem value="pronto">Pronto</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
                             <span className="ml-2 whitespace-nowrap">
                               {subtotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                             </span>
                           </div>
+                          {prep && i.ingredient_state === "pronto" && (
+                            <p className="text-[10px] text-muted-foreground pl-1">
+                              Baixa real: {rawEquivalent(i).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {prep.from_unit} de cru
+                              (fator {(Number(prep.to_qty) / Number(prep.from_qty)).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}× {prep.to_unit}/{prep.from_unit})
+                            </p>
+                          )}
                         </div>
                       );
                     })}
