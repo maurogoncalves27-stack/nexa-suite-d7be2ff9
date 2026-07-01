@@ -1647,7 +1647,8 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
           <AgentPanel />
         </TabsContent>
 
-        <TabsContent value="integrations" className="mt-4">
+        <TabsContent value="integrations" className="mt-4 space-y-4">
+          <GoogleReviewsPanel />
           <IntegrationsPanel />
         </TabsContent>
       </Tabs>
