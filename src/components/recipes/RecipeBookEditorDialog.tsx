@@ -28,7 +28,8 @@ interface Props {
   scope?: "loja" | "fabrica";
 }
 
-const RecipeBookEditorDialog = ({ open, onOpenChange, recipeBookId, onSaved }: Props) => {
+const RecipeBookEditorDialog = ({ open, onOpenChange, recipeBookId, onSaved, scope = "loja" }: Props) => {
+  const showPhoto = scope !== "fabrica";
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
