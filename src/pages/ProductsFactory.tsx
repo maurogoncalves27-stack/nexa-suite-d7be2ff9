@@ -100,7 +100,7 @@ const ProductsFactory = () => {
     setLoading(true);
     const { data } = await supabase
       .from("inventory_products")
-      .select("id, name, category, unit, product_type, is_internal, is_active, average_cost")
+      .select("id, name, category, unit, product_type, is_internal, is_active, average_cost, stock_scope, usage_roles, production_flow")
       .eq("factory_only", true)
       .order("category")
       .order("name");
