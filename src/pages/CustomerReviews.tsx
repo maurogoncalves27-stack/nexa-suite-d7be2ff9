@@ -135,13 +135,23 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
     });
   }, [reviews, tab, filterSource, filterBrand, filterStore]);
 
-  const stats = useMemo(() => {
-    const total = reviews.length;
-    const novos = reviews.filter((r) => r.status === "novo").length;
-    const ratings = reviews.filter((r) => r.rating).map((r) => r.rating as number);
-    const avg = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
-    return { total, novos, avg };
+  const perSource = useMemo(() => {
+    const sources: Source[] = ["google", "ifood", "nutri", "falae", "outro"];
+    return sources.map((src) => {
+      const rows = reviews.filter((r) => r.source === src);
+      const ratings = rows.filter((r) => r.rating).map((r) => r.rating as number);
+      const avg = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
+      const novos = rows.filter((r) => r.status === "novo").length;
+      return { source: src, total: rows.length, novos, avg, hasRatings: ratings.length > 0 };
+    });
   }, [reviews]);
+
+  // Média manual do iFood (não temos acesso automático às notas)
+  const IFOOD_AVG_KEY = "crm.ifood.manual_avg";
+  const IFOOD_COUNT_KEY = "crm.ifood.manual_count";
+  const [ifoodManualAvg, setIfoodManualAvg] = useState<string>(() => localStorage.getItem(IFOOD_AVG_KEY) ?? "");
+  const [ifoodManualCount, setIfoodManualCount] = useState<string>(() => localStorage.getItem(IFOOD_COUNT_KEY) ?? "");
+  const [editingIfood, setEditingIfood] = useState(false);
 
   return (
     <div className={embedded ? "space-y-6" : "space-y-6 p-3 sm:p-4"}>
@@ -154,30 +164,79 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
           <p className="text-muted-foreground">Resenhas recebidas dos canais de venda — responda e acompanhe a média.</p>
         </div>
       )}
-      {/* Header KPIs */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-
-        <Card>
-          <CardContent className="p-3">
-            <div className="text-xs text-muted-foreground">Total</div>
-            <div className="text-xl font-semibold">{stats.total}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <div className="text-xs text-muted-foreground">Novos</div>
-            <div className="text-xl font-semibold">{stats.novos}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <div className="text-xs text-muted-foreground">Média</div>
-            <div className="text-xl font-semibold flex items-center gap-1">
-              {stats.avg.toFixed(1)}
-              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-            </div>
-          </CardContent>
-        </Card>
+      {/* Cards por fonte */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+        {perSource.map(({ source, total, novos, avg, hasRatings }) => {
+          const meta = SOURCE_META[source];
+          const Icon = meta.icon;
+          const isIfood = source === "ifood";
+          const manualAvg = parseFloat((ifoodManualAvg || "").replace(",", ".")) || 0;
+          const displayAvg = isIfood ? manualAvg : avg;
+          const displayHasAvg = isIfood ? manualAvg > 0 : hasRatings;
+          return (
+            <Card key={source}>
+              <CardContent className="p-3 space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Icon className="h-3.5 w-3.5" />
+                    {meta.label}
+                  </div>
+                  {isIfood && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingIfood((v) => !v)}
+                      className="text-[10px] text-primary hover:underline"
+                    >
+                      {editingIfood ? "ok" : "editar"}
+                    </button>
+                  )}
+                </div>
+                {isIfood && editingIfood ? (
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="5"
+                      placeholder="4.7"
+                      value={ifoodManualAvg}
+                      onChange={(e) => {
+                        setIfoodManualAvg(e.target.value);
+                        localStorage.setItem(IFOOD_AVG_KEY, e.target.value);
+                      }}
+                      className="h-7 text-sm"
+                    />
+                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 shrink-0" />
+                  </div>
+                ) : (
+                  <div className="text-lg font-semibold flex items-center gap-1">
+                    {displayHasAvg ? displayAvg.toFixed(1) : "—"}
+                    {displayHasAvg && <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />}
+                  </div>
+                )}
+                {isIfood && editingIfood ? (
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder="Nº de avaliações"
+                    value={ifoodManualCount}
+                    onChange={(e) => {
+                      setIfoodManualCount(e.target.value);
+                      localStorage.setItem(IFOOD_COUNT_KEY, e.target.value);
+                    }}
+                    className="h-7 text-xs"
+                  />
+                ) : (
+                  <div className="text-[10px] text-muted-foreground">
+                    {isIfood
+                      ? `${ifoodManualCount || 0} avaliações (manual)`
+                      : `${total} ${total === 1 ? "avaliação" : "avaliações"}${novos ? ` · ${novos} novas` : ""}`}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Filtros */}
