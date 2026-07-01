@@ -161,6 +161,7 @@ const operacaoSections: Section[] = [
     { title: "Vale Gás", url: "/financeiro/vale-gas", icon: Flame, staffOnly: false },
   ]},
   { label: "Atendimento", items: [
+    { title: "CRM", url: "/crm", icon: Headset, staffOnly: true },
     { title: "Central de Ocorrências", url: "/ocorrencias", icon: Siren },
   ]},
 ];
@@ -214,7 +215,8 @@ const pdvSections: Section[] = [
     { title: "Totem", url: "/configuracoes/totem", icon: Monitor, staffOnly: true },
     { title: "WhatsApp", url: "/whatsapp", icon: MessageCircle, staffOnly: true },
     { title: "Entregas", url: "/configuracoes/entregas", icon: Bike, staffOnly: true },
-    { title: "CRM", url: "/crm", icon: Headset, staffOnly: true },
+    
+  
     
   ]},
   { label: "Cardápio", items: [
