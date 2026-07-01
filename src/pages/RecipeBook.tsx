@@ -66,8 +66,9 @@ const RecipeBook = ({ scope = "loja" }: Props) => {
     );
   }, [items, search]);
 
+  const showPhotos = scope !== "fabrica";
   const photoUrl = (path: string | null) =>
-    path ? supabase.storage.from("recipe-book-photos").getPublicUrl(path).data.publicUrl : null;
+    showPhotos && path ? supabase.storage.from("recipe-book-photos").getPublicUrl(path).data.publicUrl : null;
 
   const handleDelete = async (item: RecipeBookRow) => {
     if (item.photo_path) {
@@ -145,12 +146,14 @@ const RecipeBook = ({ scope = "loja" }: Props) => {
                 const url = photoUrl(r.photo_path);
                 return (
                   <div key={r.id} className="border rounded-md overflow-hidden flex flex-col">
-                    {url ? (
-                      <img src={url} alt={r.title} className="h-40 w-full object-cover" />
-                    ) : (
-                      <div className="h-40 w-full bg-muted flex items-center justify-center">
-                        <BookMarked className="h-10 w-10 text-muted-foreground" />
-                      </div>
+                    {showPhotos && (
+                      url ? (
+                        <img src={url} alt={r.title} className="h-40 w-full object-cover" />
+                      ) : (
+                        <div className="h-40 w-full bg-muted flex items-center justify-center">
+                          <BookMarked className="h-10 w-10 text-muted-foreground" />
+                        </div>
+                      )
                     )}
                     <div className="p-3 flex-1 flex flex-col gap-1">
                       <p className="font-medium leading-tight">{r.title}</p>
@@ -223,6 +226,7 @@ const RecipeBook = ({ scope = "loja" }: Props) => {
         onOpenChange={setEditorOpen}
         recipeBookId={editingId}
         onSaved={load}
+        scope={scope}
       />
     </div>
   );

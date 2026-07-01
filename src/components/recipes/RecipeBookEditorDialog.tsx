@@ -25,9 +25,11 @@ interface Props {
   onOpenChange: (v: boolean) => void;
   recipeBookId: string | null;
   onSaved: () => void;
+  scope?: "loja" | "fabrica";
 }
 
-const RecipeBookEditorDialog = ({ open, onOpenChange, recipeBookId, onSaved }: Props) => {
+const RecipeBookEditorDialog = ({ open, onOpenChange, recipeBookId, onSaved, scope = "loja" }: Props) => {
+  const showPhoto = scope !== "fabrica";
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -179,43 +181,45 @@ const RecipeBookEditorDialog = ({ open, onOpenChange, recipeBookId, onSaved }: P
               </div>
             </div>
 
-            <div>
-              <Label>Foto do prato</Label>
-              <div className="mt-1 flex items-center gap-3">
-                {photoUrl ? (
-                  <img src={photoUrl} alt={data.title} className="h-20 w-20 rounded object-cover border" />
-                ) : (
-                  <div className="h-20 w-20 rounded border bg-muted flex items-center justify-center text-muted-foreground">
-                    <ImageIcon className="h-6 w-6" />
-                  </div>
-                )}
-                <div className="flex flex-col gap-1.5">
-                  <label>
-                    <Button asChild size="sm" variant="outline" disabled={uploadingPhoto}>
-                      <span className="cursor-pointer gap-1">
-                        {uploadingPhoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                        {data.photo_path ? "Trocar foto" : "Enviar foto"}
-                      </span>
-                    </Button>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) void handlePhotoUpload(f);
-                        e.target.value = "";
-                      }}
-                    />
-                  </label>
-                  {data.photo_path && (
-                    <Button size="sm" variant="ghost" className="text-destructive gap-1" onClick={handlePhotoRemove}>
-                      <Trash2 className="h-4 w-4" /> Remover
-                    </Button>
+            {showPhoto && (
+              <div>
+                <Label>Foto do prato</Label>
+                <div className="mt-1 flex items-center gap-3">
+                  {photoUrl ? (
+                    <img src={photoUrl} alt={data.title} className="h-20 w-20 rounded object-cover border" />
+                  ) : (
+                    <div className="h-20 w-20 rounded border bg-muted flex items-center justify-center text-muted-foreground">
+                      <ImageIcon className="h-6 w-6" />
+                    </div>
                   )}
+                  <div className="flex flex-col gap-1.5">
+                    <label>
+                      <Button asChild size="sm" variant="outline" disabled={uploadingPhoto}>
+                        <span className="cursor-pointer gap-1">
+                          {uploadingPhoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                          {data.photo_path ? "Trocar foto" : "Enviar foto"}
+                        </span>
+                      </Button>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) void handlePhotoUpload(f);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                    {data.photo_path && (
+                      <Button size="sm" variant="ghost" className="text-destructive gap-1" onClick={handlePhotoRemove}>
+                        <Trash2 className="h-4 w-4" /> Remover
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             <div>
               <Label>Ingredientes</Label>
