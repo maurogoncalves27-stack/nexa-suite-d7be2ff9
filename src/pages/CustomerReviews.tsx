@@ -151,29 +151,39 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
 
   // Média manual do iFood por loja+marca (Fábrica não vende no iFood)
   const IFOOD_STORES_KEY = "crm.ifood.manual_by_store_brand";
-  type IfoodEntry = { avg: number; count: number };
+  // Média manual do Google por loja+marca (Fábrica não tem Google público)
+  const GOOGLE_STORES_KEY = "crm.google.manual_by_store_brand";
+  type ManualEntry = { avg: number; count: number };
+  type IfoodEntry = ManualEntry;
   // key = `${storeId}::${brandId}`
   const [ifoodByStore, setIfoodByStore] = useState<Record<string, IfoodEntry>>(() => {
     try { return JSON.parse(localStorage.getItem(IFOOD_STORES_KEY) || "{}"); } catch { return {}; }
   });
+  const [googleByStore, setGoogleByStore] = useState<Record<string, ManualEntry>>(() => {
+    try { return JSON.parse(localStorage.getItem(GOOGLE_STORES_KEY) || "{}"); } catch { return {}; }
+  });
   const [openIfoodDialog, setOpenIfoodDialog] = useState(false);
+  const [openGoogleDialog, setOpenGoogleDialog] = useState(false);
 
   const ifoodStores = useMemo(
     () => stores.filter((s) => !/f[aá]brica/i.test(s.name)),
     [stores]
   );
+  const googleStores = ifoodStores;
 
-  const ifoodAggregate = useMemo(() => {
-    const entries = Object.values(ifoodByStore).filter((e) => e && e.count > 0 && e.avg > 0);
+  const aggregateByStoreMap = (map: Record<string, ManualEntry>) => {
+    const entries = Object.values(map).filter((e) => e && e.count > 0 && e.avg > 0);
     const totalCount = entries.reduce((s, e) => s + Number(e.count || 0), 0);
     const weighted = entries.reduce((s, e) => s + Number(e.avg) * Number(e.count), 0);
     const avg = totalCount > 0 ? weighted / totalCount : 0;
     return { avg, totalCount, hasData: totalCount > 0 };
-  }, [ifoodByStore]);
+  };
+  const ifoodAggregate = useMemo(() => aggregateByStoreMap(ifoodByStore), [ifoodByStore]);
+  const googleAggregate = useMemo(() => aggregateByStoreMap(googleByStore), [googleByStore]);
 
-  const storeAggregate = (storeId: string) => {
+  const storeAggregate = (storeId: string, map: Record<string, ManualEntry> = ifoodByStore) => {
     const entries = brands
-      .map((b) => ifoodByStore[`${storeId}::${b.id}`])
+      .map((b) => map[`${storeId}::${b.id}`])
       .filter((e) => e && e.count > 0 && e.avg > 0);
     const totalCount = entries.reduce((s, e) => s + Number(e.count || 0), 0);
     const weighted = entries.reduce((s, e) => s + Number(e.avg) * Number(e.count), 0);
@@ -184,6 +194,11 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
     setIfoodByStore(next);
     localStorage.setItem(IFOOD_STORES_KEY, JSON.stringify(next));
   };
+  const saveGoogleStores = (next: Record<string, ManualEntry>) => {
+    setGoogleByStore(next);
+    localStorage.setItem(GOOGLE_STORES_KEY, JSON.stringify(next));
+  };
+
 
   return (
     <div className={embedded ? "space-y-6" : "space-y-6 p-3 sm:p-4"}>
