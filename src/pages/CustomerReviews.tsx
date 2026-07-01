@@ -37,7 +37,7 @@ import {
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-type Source = "google" | "ifood" | "falae" | "outro";
+type Source = "google" | "ifood" | "nutri" | "falae" | "outro";
 type Status = "novo" | "respondido" | "ignorado";
 
 interface Review {
@@ -63,9 +63,11 @@ interface Store { id: string; name: string }
 const SOURCE_META: Record<Source, { label: string; icon: any; color: string }> = {
   google: { label: "Google", icon: Globe, color: "bg-blue-500/10 text-blue-700 dark:text-blue-300" },
   ifood: { label: "iFood", icon: ShoppingBag, color: "bg-red-500/10 text-red-700 dark:text-red-300" },
-  falae: { label: "Falaê", icon: MessageCircle, color: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" },
+  nutri: { label: "Nutri", icon: MessageCircle, color: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" },
+  falae: { label: "Falaê", icon: MessageCircle, color: "bg-muted text-muted-foreground" },
   outro: { label: "Outro", icon: MessageCircle, color: "bg-muted text-muted-foreground" },
 };
+
 
 function Stars({ n }: { n: number | null }) {
   const value = n ?? 0;
@@ -192,8 +194,8 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
               <SelectItem value="all">Todas as fontes</SelectItem>
               <SelectItem value="google">Google</SelectItem>
               <SelectItem value="ifood">iFood</SelectItem>
-              <SelectItem value="falae">Falaê</SelectItem>
-              <SelectItem value="outro">Outro</SelectItem>
+              <SelectItem value="nutri">Nutri</SelectItem>
+
             </SelectContent>
           </Select>
           <Select value={filterBrand} onValueChange={setFilterBrand}>
@@ -351,8 +353,8 @@ function NewReviewDialog({
                 <SelectContent>
                   <SelectItem value="google">Google</SelectItem>
                   <SelectItem value="ifood">iFood</SelectItem>
-                  <SelectItem value="falae">Falaê</SelectItem>
-                  <SelectItem value="outro">Outro</SelectItem>
+                  <SelectItem value="nutri">Nutri</SelectItem>
+
                 </SelectContent>
               </Select>
             </div>
