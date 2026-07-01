@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { GoogleReviewsPanel } from "@/components/crm/GoogleReviewsPanel";
+import { IntegrationsPanel as CrmIntegrationsPanel } from "@/components/crm/ParmeSettingsPanels";
 
 type Integration = {
   id: string;
@@ -254,7 +256,13 @@ export default function IntegrationsPage() {
         </CardContent>
       </Card>
 
-      <div className="space-y-8">
+      {/* Painéis operacionais migrados do CRM */}
+      <div className="space-y-4">
+        <GoogleReviewsPanel />
+        <CrmIntegrationsPanel />
+      </div>
+
+
         {grouped.map(([cat, items]) => (
           <div key={cat} className="space-y-3">
             <h2 className="text-lg font-semibold text-muted-foreground uppercase tracking-wide">{cat}</h2>
