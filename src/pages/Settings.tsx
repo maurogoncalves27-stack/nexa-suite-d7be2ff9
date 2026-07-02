@@ -1,5 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Store, ShieldCheck, Handshake, Link2, Eye, Settings as SettingsIcon, FlaskConical, CreditCard, Monitor, KeyRound } from "lucide-react";
+import { Store, ShieldCheck, Handshake, Link2, Eye, Settings as SettingsIcon, FlaskConical, CreditCard, Monitor, KeyRound, Router } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import StoresPanel from "@/components/settings/StoresPanel";
@@ -24,6 +24,12 @@ const Settings = () => {
             <Link to="/configuracoes/integracoes">
               <KeyRound className="h-4 w-4" />
               Integrações e APIs
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm" className="gap-2">
+            <Link to="/configuracoes/rede-lojas">
+              <Router className="h-4 w-4" />
+              Rede das lojas
             </Link>
           </Button>
           <Button asChild variant="outline" size="sm" className="gap-2">

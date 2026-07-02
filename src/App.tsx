@@ -138,6 +138,7 @@ const Garcom = lazy(() => import("./pages/Garcom.tsx"));
 const Totem = lazy(() => import("./pages/Totem.tsx"));
 const TotemConfig = lazy(() => import("./pages/TotemConfig.tsx"));
 const NfceTester = lazy(() => import("./pages/NfceTester.tsx"));
+const NetworkMonitor = lazy(() => import("./pages/NetworkMonitor.tsx"));
 
 const Menu = lazy(() => import("./pages/Menu.tsx"));
 const ComplementsCatalog = lazy(() => import("./pages/ComplementsCatalog.tsx"));
@@ -402,6 +403,7 @@ const App = () => (
               
               <Route path="/configuracoes/tef-payer" element={<Guarded staff><TefPayerSetup /></Guarded>} />
               <Route path="/configuracoes/acesso-remoto" element={<Guarded staff><RemoteAccess /></Guarded>} />
+              <Route path="/configuracoes/rede-lojas" element={<Guarded staff><NetworkMonitor /></Guarded>} />
               <Route path="/recebimento" element={<Guarded><InventoryReceiving /></Guarded>} />
               <Route path="/nf-arquivadas" element={<Guarded><NfArchived /></Guarded>} />
               <Route path="/produtos" element={<Guarded><InventoryProducts /></Guarded>} />
