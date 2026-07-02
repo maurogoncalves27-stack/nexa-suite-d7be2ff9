@@ -1505,6 +1505,7 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                           <TableCell className="text-sm font-medium">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span>{String(nome)}</span>
+                              <SeverityBadge triage={c.triage} />
                               {ticketsCount > 0 && (
                                 <Badge variant="outline" className="text-[10px] h-5">
                                   <Ticket className="h-3 w-3 mr-1" />{ticketsCount}
