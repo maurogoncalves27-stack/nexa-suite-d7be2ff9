@@ -743,6 +743,23 @@ export default function CRM() {
     });
   }, [conversations, q]);
 
+  const visibleConversations = useMemo(() => {
+    let list = filteredConversations;
+    if (convIssueFilter === "issues") list = list.filter((c) => c.triage?.has_issue);
+    else if (convIssueFilter === "critical") list = list.filter((c) => c.triage?.has_issue && (c.triage?.severity === "critical" || c.triage?.severity === "high"));
+    else if (convIssueFilter === "waiting") list = list.filter((c) => c.triage?.has_issue && !(c.related_tickets?.length));
+    else if (convIssueFilter === "praise") list = list.filter((c) => c.triage?.category === "elogio");
+    // Ordenação: severidade desc, depois última msg desc
+    return [...list].sort((a, b) => {
+      const sa = SEVERITY_RANK[a.triage?.severity ?? "none"] ?? 0;
+      const sb = SEVERITY_RANK[b.triage?.severity ?? "none"] ?? 0;
+      if (sa !== sb) return sb - sa;
+      const ta = new Date(a.last_message_at ?? 0).getTime();
+      const tb = new Date(b.last_message_at ?? 0).getTime();
+      return tb - ta;
+    });
+  }, [filteredConversations, convIssueFilter]);
+
 
   return (
     <div className="space-y-6 p-4 md:p-6">
