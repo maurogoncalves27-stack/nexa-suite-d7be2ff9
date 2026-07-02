@@ -753,12 +753,8 @@ export default function CRM() {
         </div>
       </div>
 
-      <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="w-full h-auto p-1 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-1 bg-muted">
-          <TabsTrigger value="dashboard" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
-            <LayoutDashboard className="h-4 w-4" />
-            <span>Dashboard</span>
-          </TabsTrigger>
+      <Tabs defaultValue="reservations" className="w-full">
+        <TabsList className="w-full h-auto p-1 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-1 bg-muted sticky top-[68px] z-[9] backdrop-blur">
           <TabsTrigger value="reservations" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
             <Calendar className="h-4 w-4" />
             <span>Reservas</span>
@@ -790,19 +786,11 @@ export default function CRM() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Dashboard */}
-        <TabsContent value="dashboard" className="mt-4">
-          <CRMDashboard
-            reservations={filteredReservations}
-            tickets={filteredTickets}
-            conversations={filteredConversations}
-          />
-        </TabsContent>
-
-
         {/* Reservas */}
         <TabsContent value="reservations" className="mt-4 space-y-3">
+          <ReservationsKPIs reservations={filteredReservations} />
           <div className="flex justify-end">
+
             <Button
               variant="outline"
               size="sm"
