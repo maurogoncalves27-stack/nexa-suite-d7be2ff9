@@ -1672,7 +1672,8 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
 
 
 
-        <TabsContent value="agent" className="mt-4">
+        <TabsContent value="agent" className="mt-4 space-y-6">
+          <GianaAnalyticsPanel />
           <AgentPanel />
         </TabsContent>
 
