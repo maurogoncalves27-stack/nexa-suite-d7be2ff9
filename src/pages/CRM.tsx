@@ -419,6 +419,7 @@ export default function CRM() {
   const [convMsgsError, setConvMsgsError] = useState<string | null>(null);
   const [showClientInfo, setShowClientInfo] = useState(false);
   const [search, setSearch] = useState("");
+  const [convIssueFilter, setConvIssueFilter] = useState<"all" | "issues" | "critical" | "waiting" | "praise">("all");
 
   async function load() {
     setLoading(true);
