@@ -288,14 +288,13 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
         </div>
       )}
 
-      <Tabs defaultValue="painel" className="w-full">
+      <Tabs defaultValue="graficos" className="w-full">
         <TabsList className="w-full sm:w-auto">
-          <TabsTrigger value="painel">Painel</TabsTrigger>
-          <TabsTrigger value="graficos">Gráficos</TabsTrigger>
+          <TabsTrigger value="graficos">Visão geral</TabsTrigger>
           <TabsTrigger value="comentarios">Comentários</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="painel" forceMount className="space-y-6 mt-4 data-[state=inactive]:hidden">
+        <TabsContent value="graficos" className="space-y-6 mt-4">
       {/* Cards por fonte */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
         {perSource.map(({ source, total, novos, avg, hasRatings }) => {
@@ -515,9 +514,7 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
         </DialogContent>
       </Dialog>
 
-        </TabsContent>
-
-        <TabsContent value="graficos" className="space-y-4 mt-4">
+        {/* Gráficos consolidados */}
           {(() => {
             const parme = brands.find((b) => /parm/i.test(b.name));
             const box = brands.find((b) => /box/i.test(b.name));
