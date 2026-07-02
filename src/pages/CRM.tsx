@@ -1626,3 +1626,110 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
   );
 }
 
+
+// ---------- KPI strips por aba ----------
+
+function StatCard({ icon: Icon, label, value, tone = "default" }: {
+  icon: any; label: string; value: string | number;
+  tone?: "default" | "success" | "warning" | "destructive" | "primary";
+}) {
+  const toneCls =
+    tone === "success" ? "text-success" :
+    tone === "warning" ? "text-warning" :
+    tone === "destructive" ? "text-destructive" :
+    tone === "primary" ? "text-primary" : "text-foreground";
+  const bgCls =
+    tone === "success" ? "bg-success/10" :
+    tone === "warning" ? "bg-warning/10" :
+    tone === "destructive" ? "bg-destructive/10" :
+    tone === "primary" ? "bg-primary/10" : "bg-muted";
+  return (
+    <Card>
+      <CardContent className="p-3 flex items-center gap-3">
+        <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${bgCls}`}>
+          <Icon className={`h-4 w-4 ${toneCls}`} />
+        </div>
+        <div className="min-w-0">
+          <div className="text-[11px] text-muted-foreground truncate">{label}</div>
+          <div className={`text-xl font-bold tabular-nums ${toneCls}`}>{value}</div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ReservationsKPIs({ reservations }: { reservations: Reservation[] }) {
+  const stats = useMemo(() => {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const in7 = new Date(today); in7.setDate(in7.getDate() + 7);
+    let hoje = 0, prox7 = 0, pend = 0, conf = 0;
+    reservations.forEach((r) => {
+      const st = (r.status ?? "").toLowerCase();
+      if (st === "pending") pend++;
+      if (st === "confirmed") conf++;
+      if (!r.reservation_date) return;
+      const d = new Date(r.reservation_date); d.setHours(0,0,0,0);
+      if (d.getTime() === today.getTime()) hoje++;
+      if (d >= today && d <= in7) prox7++;
+    });
+    return { hoje, prox7, pend, conf };
+  }, [reservations]);
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      <StatCard icon={Calendar} label="Hoje" value={stats.hoje} tone="primary" />
+      <StatCard icon={Calendar} label="Próximos 7 dias" value={stats.prox7} />
+      <StatCard icon={Clock} label="Pendentes" value={stats.pend} tone="warning" />
+      <StatCard icon={CheckCircle} label="Confirmadas" value={stats.conf} tone="success" />
+    </div>
+  );
+}
+
+function TicketsKPIs({ tickets }: { tickets: Ticket[] }) {
+  const stats = useMemo(() => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    let abertos = 0, andamento = 0, resolvHoje = 0, total = tickets.length;
+    tickets.forEach((t) => {
+      const st = (t.status ?? "").toLowerCase();
+      if (st === "open") abertos++;
+      else if (st === "in_progress" || st === "in-progress") andamento++;
+      if ((st === "resolved" || st === "closed") && (t.updated_at ?? t.created_at ?? "").slice(0, 10) === todayStr) resolvHoje++;
+    });
+    return { abertos, andamento, resolvHoje, total };
+  }, [tickets]);
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      <StatCard icon={AlertCircle} label="Abertos" value={stats.abertos} tone="destructive" />
+      <StatCard icon={Loader2} label="Em andamento" value={stats.andamento} tone="warning" />
+      <StatCard icon={CheckCircle2} label="Resolvidos hoje" value={stats.resolvHoje} tone="success" />
+      <StatCard icon={Ticket} label="Total" value={stats.total} />
+    </div>
+  );
+}
+
+function ConversationsKPIs({ conversations }: { conversations: Conversation[] }) {
+  const stats = useMemo(() => {
+    const now = Date.now();
+    const dia = 24 * 60 * 60 * 1000;
+    let ult24 = 0, semResposta = 0;
+    const marcas = new Map<string, number>();
+    conversations.forEach((c: any) => {
+      const msgs = Array.isArray(c.messages) ? c.messages : [];
+      const last = msgs[msgs.length - 1];
+      const lastTs = last?.timestamp || last?.created_at || c.updated_at || c.created_at;
+      if (lastTs && now - new Date(lastTs).getTime() <= dia) ult24++;
+      if (last && isClientMessage(last)) semResposta++;
+      const m = (c.extracted?.marca as string) ?? "Sem marca";
+      marcas.set(m, (marcas.get(m) ?? 0) + 1);
+    });
+    const top = Array.from(marcas.entries()).sort((a,b) => b[1] - a[1])[0];
+    return { total: conversations.length, ult24, semResposta, topMarca: top ? top[0] : "—" };
+  }, [conversations]);
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      <StatCard icon={MessageSquare} label="Total" value={stats.total} />
+      <StatCard icon={AlertCircle} label="Sem resposta" value={stats.semResposta} tone="warning" />
+      <StatCard icon={Clock} label="Últimas 24h" value={stats.ult24} tone="primary" />
+      <StatCard icon={Users} label="Top marca" value={stats.topMarca} />
+    </div>
+  );
+}
