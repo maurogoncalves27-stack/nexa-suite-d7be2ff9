@@ -1382,6 +1382,7 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
         {/* Conversas */}
         <TabsContent value="conversations" className="mt-4 space-y-3">
           <ConversationsKPIs conversations={filteredConversations} />
+          <TabSearch value={search} onChange={setSearch} placeholder="Buscar conversa por cliente, telefone, mensagem…" />
           <Card>
             <CardContent className="p-0 overflow-x-auto">
               <Table>
