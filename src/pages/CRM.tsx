@@ -1073,6 +1073,7 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
         {/* Tickets */}
         <TabsContent value="tickets" className="mt-4 space-y-3">
           <TicketsKPIs tickets={filteredTickets} />
+          <TabSearch value={search} onChange={setSearch} placeholder="Buscar ticket por pedido, título, contato…" />
           <Card>
             <CardContent className="p-0 overflow-x-auto">
               <Table>
