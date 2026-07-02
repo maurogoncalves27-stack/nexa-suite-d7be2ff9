@@ -514,9 +514,7 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
         </DialogContent>
       </Dialog>
 
-        </TabsContent>
-
-        <TabsContent value="graficos" className="space-y-4 mt-4">
+        {/* Gráficos consolidados */}
           {(() => {
             const parme = brands.find((b) => /parm/i.test(b.name));
             const box = brands.find((b) => /box/i.test(b.name));
