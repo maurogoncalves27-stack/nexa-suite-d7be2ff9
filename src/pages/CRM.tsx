@@ -1,23 +1,8 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Headset, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, LayoutDashboard, TrendingUp, Clock, Bot, Globe, Star, ArrowRight, Settings } from "lucide-react";
+import { Headset, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, Clock, Bot, Globe, Star, ArrowRight, Settings, AlertCircle, CheckCircle, Users } from "lucide-react";
 import { AgentPanel } from "@/components/crm/ParmeSettingsPanels";
 import { ReservationSettingsDialog } from "@/components/crm/ReservationSettingsDialog";
 import CustomerReviews from "@/pages/CustomerReviews";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip as ReTooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  CartesianGrid,
-  Legend,
-  LineChart,
-  Line,
-} from "recharts";
 
 import {
   AlertDialog,
@@ -768,12 +753,8 @@ export default function CRM() {
         </div>
       </div>
 
-      <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="w-full h-auto p-1 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-1 bg-muted">
-          <TabsTrigger value="dashboard" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
-            <LayoutDashboard className="h-4 w-4" />
-            <span>Dashboard</span>
-          </TabsTrigger>
+      <Tabs defaultValue="reservations" className="w-full">
+        <TabsList className="w-full h-auto p-1 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-1 bg-muted sticky top-[68px] z-[9] backdrop-blur">
           <TabsTrigger value="reservations" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
             <Calendar className="h-4 w-4" />
             <span>Reservas</span>
@@ -805,19 +786,11 @@ export default function CRM() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Dashboard */}
-        <TabsContent value="dashboard" className="mt-4">
-          <CRMDashboard
-            reservations={filteredReservations}
-            tickets={filteredTickets}
-            conversations={filteredConversations}
-          />
-        </TabsContent>
-
-
         {/* Reservas */}
         <TabsContent value="reservations" className="mt-4 space-y-3">
+          <ReservationsKPIs reservations={filteredReservations} />
           <div className="flex justify-end">
+
             <Button
               variant="outline"
               size="sm"
@@ -1110,7 +1083,8 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
         </TabsContent>
 
         {/* Tickets */}
-        <TabsContent value="tickets" className="mt-4">
+        <TabsContent value="tickets" className="mt-4 space-y-3">
+          <TicketsKPIs tickets={filteredTickets} />
           <Card>
             <CardContent className="p-0 overflow-x-auto">
               <Table>
@@ -1417,7 +1391,8 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
         </TabsContent>
 
         {/* Conversas */}
-        <TabsContent value="conversations" className="mt-4">
+        <TabsContent value="conversations" className="mt-4 space-y-3">
+          <ConversationsKPIs conversations={filteredConversations} />
           <Card>
             <CardContent className="p-0 overflow-x-auto">
               <Table>
@@ -1651,551 +1626,110 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
   );
 }
 
-// ---------- CRM Dashboard ----------
 
-const CHART_COLORS = [
-  "hsl(var(--primary))",
-  "hsl(var(--success))",
-  "hsl(var(--warning))",
-  "hsl(var(--destructive))",
-  "hsl(var(--accent))",
-  "hsl(var(--muted-foreground))",
-];
+// ---------- KPI strips por aba ----------
 
-function CRMDashboard({
-  reservations,
-  tickets,
-  conversations,
-}: {
-  reservations: Reservation[];
-  tickets: Ticket[];
-  conversations: Conversation[];
+function StatCard({ icon: Icon, label, value, tone = "default" }: {
+  icon: any; label: string; value: string | number;
+  tone?: "default" | "success" | "warning" | "destructive" | "primary";
 }) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  // Status breakdown reservas
-  const resByStatus = useMemo(() => {
-    const m = new Map<string, number>();
-    reservations.forEach((r) => {
-      const k = (r.status ?? "—").toLowerCase();
-      m.set(k, (m.get(k) ?? 0) + 1);
-    });
-    return Array.from(m.entries()).map(([status, count]) => ({
-      status: translateStatus(status),
-      count,
-    }));
-  }, [reservations]);
-
-  // Status breakdown tickets
-  const ticketsByStatus = useMemo(() => {
-    const m = new Map<string, number>();
-    tickets.forEach((t) => {
-      const k = (t.status ?? "—").toLowerCase();
-      m.set(k, (m.get(k) ?? 0) + 1);
-    });
-    return Array.from(m.entries()).map(([status, count]) => ({
-      status: translateStatus(status),
-      count,
-    }));
-  }, [tickets]);
-
-  // Reservas próximas (a partir de hoje)
-  const upcoming = useMemo(() => {
-    return reservations
-      .filter((r) => {
-        if (!r.reservation_date) return false;
-        const d = new Date(r.reservation_date);
-        d.setHours(0, 0, 0, 0);
-        return d >= today;
-      })
-      .sort((a, b) => (a.reservation_date! > b.reservation_date! ? 1 : -1))
-      .slice(0, 6);
-  }, [reservations]);
-
-  // Reservas por dia (próximos 14 dias)
-  const resPerDay = useMemo(() => {
-    const buckets: { day: string; count: number; label: string }[] = [];
-    for (let i = 0; i < 14; i++) {
-      const d = new Date(today);
-      d.setDate(d.getDate() + i);
-      const key = d.toISOString().slice(0, 10);
-      buckets.push({
-        day: key,
-        label: format(d, "dd/MM", { locale: ptBR }),
-        count: 0,
-      });
-    }
-    reservations.forEach((r) => {
-      if (!r.reservation_date) return;
-      const key = r.reservation_date.slice(0, 10);
-      const b = buckets.find((x) => x.day === key);
-      if (b) b.count++;
-    });
-    return buckets;
-  }, [reservations]);
-
-  // Tickets criados últimos 14 dias
-  const ticketsPerDay = useMemo(() => {
-    const buckets: { day: string; label: string; count: number }[] = [];
-    for (let i = 13; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      buckets.push({
-        day: key,
-        label: format(d, "dd/MM", { locale: ptBR }),
-        count: 0,
-      });
-    }
-    tickets.forEach((t) => {
-      if (!t.created_at) return;
-      const key = t.created_at.slice(0, 10);
-      const b = buckets.find((x) => x.day === key);
-      if (b) b.count++;
-    });
-    return buckets;
-  }, [tickets]);
-
-  // Conversas por marca
-  const convByBrand = useMemo(() => {
-    const m = new Map<string, number>();
-    conversations.forEach((c) => {
-      const marca = (c.extracted?.marca as string) ?? "Sem marca";
-      m.set(marca, (m.get(marca) ?? 0) + 1);
-    });
-    return Array.from(m.entries())
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 6);
-  }, [conversations]);
-
-  const pendingRes = resByStatus.find((s) => s.status === "Pendente")?.count ?? 0;
-  const openTickets = ticketsByStatus.find((s) => s.status === "Aberto")?.count ?? 0;
-
-  // Avaliações por fonte (Google / iFood / Nutri)
-  const [ratingAverages, setRatingAverages] = useState<{ google: { avg: number; n: number }; ifood: { avg: number; n: number }; nutri: { avg: number; n: number } }>({
-    google: { avg: 0, n: 0 },
-    ifood: { avg: 0, n: 0 },
-    nutri: { avg: 0, n: 0 },
-  });
-  const [reviewRows, setReviewRows] = useState<{ source: string; rating: number; published_at: string | null; created_at: string }[]>([]);
-
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("customer_reviews")
-        .select("source, rating, published_at, created_at")
-        .not("rating", "is", null)
-        .in("source", ["google", "ifood", "nutri"]);
-      const rows = (data ?? []) as { source: string; rating: number; published_at: string | null; created_at: string }[];
-      setReviewRows(rows);
-      const agg = { google: { sum: 0, n: 0 }, ifood: { sum: 0, n: 0 }, nutri: { sum: 0, n: 0 } } as Record<string, { sum: number; n: number }>;
-      rows.forEach((r) => {
-        if (agg[r.source]) {
-          agg[r.source].sum += Number(r.rating) || 0;
-          agg[r.source].n += 1;
-        }
-      });
-      setRatingAverages({
-        google: { avg: agg.google.n ? agg.google.sum / agg.google.n : 0, n: agg.google.n },
-        ifood: { avg: agg.ifood.n ? agg.ifood.sum / agg.ifood.n : 0, n: agg.ifood.n },
-        nutri: { avg: agg.nutri.n ? agg.nutri.sum / agg.nutri.n : 0, n: agg.nutri.n },
-      });
-    })();
-  }, []);
-
-  // Série mensal (últimos 6 meses) de nota média por fonte
-  const ratingMonthly = useMemo(() => {
-    const buckets: { key: string; label: string; google: number | null; ifood: number | null; nutri: number | null; _sums: Record<string, { s: number; n: number }> }[] = [];
-    const now = new Date();
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      buckets.push({
-        key,
-        label: format(d, "MMM/yy", { locale: ptBR }),
-        google: null, ifood: null, nutri: null,
-        _sums: { google: { s: 0, n: 0 }, ifood: { s: 0, n: 0 }, nutri: { s: 0, n: 0 } },
-      });
-    }
-    reviewRows.forEach((r) => {
-      const dateStr = r.published_at || r.created_at;
-      if (!dateStr) return;
-      const key = dateStr.slice(0, 7);
-      const b = buckets.find((x) => x.key === key);
-      if (!b || !b._sums[r.source]) return;
-      b._sums[r.source].s += Number(r.rating) || 0;
-      b._sums[r.source].n += 1;
-    });
-    return buckets.map((b) => ({
-      label: b.label,
-      google: b._sums.google.n ? +(b._sums.google.s / b._sums.google.n).toFixed(2) : null,
-      ifood: b._sums.ifood.n ? +(b._sums.ifood.s / b._sums.ifood.n).toFixed(2) : null,
-      nutri: b._sums.nutri.n ? +(b._sums.nutri.s / b._sums.nutri.n).toFixed(2) : null,
-    }));
-  }, [reviewRows]);
-
-  // Distribuição de notas (1 a 5, por fonte, agrupando meia estrela para o inteiro mais próximo)
-  const ratingDistribution = useMemo(() => {
-    const stars = [1, 2, 3, 4, 5].map((n) => ({ nota: `${n}★`, Google: 0, iFood: 0, Nutri: 0 }));
-    reviewRows.forEach((r) => {
-      const bucket = Math.min(5, Math.max(1, Math.round(Number(r.rating) || 0)));
-      const idx = bucket - 1;
-      if (r.source === "google") stars[idx].Google += 1;
-      else if (r.source === "ifood") stars[idx].iFood += 1;
-      else if (r.source === "nutri") stars[idx].Nutri += 1;
-    });
-    return stars;
-  }, [reviewRows]);
-
-
-  const ratingCards = [
-    { key: "google", label: "Nota Google", color: "text-blue-600 dark:text-blue-400" },
-    { key: "ifood", label: "Nota iFood", color: "text-red-600 dark:text-red-400" },
-    { key: "nutri", label: "Nota Nutri", color: "text-emerald-600 dark:text-emerald-400" },
-  ] as const;
-
+  const toneCls =
+    tone === "success" ? "text-success" :
+    tone === "warning" ? "text-warning" :
+    tone === "destructive" ? "text-destructive" :
+    tone === "primary" ? "text-primary" : "text-foreground";
+  const bgCls =
+    tone === "success" ? "bg-success/10" :
+    tone === "warning" ? "bg-warning/10" :
+    tone === "destructive" ? "bg-destructive/10" :
+    tone === "primary" ? "bg-primary/10" : "bg-muted";
   return (
-    <div className="space-y-4">
-      {/* Notas por fonte */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {ratingCards.map((c) => {
-          const r = ratingAverages[c.key];
-          return (
-            <Card key={c.key}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-                  <Star className={`h-4 w-4 ${c.color}`} /> {c.label}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-baseline gap-2">
-                  <span className={`text-2xl font-bold ${c.color}`}>
-                    {r.n > 0 ? r.avg.toFixed(1).replace(".", ",") : "—"}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {r.n} {r.n === 1 ? "avaliação" : "avaliações"}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+    <Card>
+      <CardContent className="p-3 flex items-center gap-3">
+        <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${bgCls}`}>
+          <Icon className={`h-4 w-4 ${toneCls}`} />
+        </div>
+        <div className="min-w-0">
+          <div className="text-[11px] text-muted-foreground truncate">{label}</div>
+          <div className={`text-xl font-bold tabular-nums ${toneCls}`}>{value}</div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-              <Clock className="h-4 w-4" /> Reservas pendentes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-warning">{pendingRes}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-              <Calendar className="h-4 w-4" /> Próximas reservas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{upcoming.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-              <Ticket className="h-4 w-4" /> Tickets abertos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">{openTickets}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" /> Conversas (total)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{conversations.length}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Gráficos de avaliações */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Star className="h-4 w-4 text-primary" />
-              Nota média por fonte — últimos 6 meses
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 w-full">
-              {reviewRows.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-                  Ainda sem avaliações registradas
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={ratingMonthly}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                    <YAxis domain={[0, 5]} tick={{ fontSize: 11 }} />
-                    <ReTooltip
-                      contentStyle={{
-                        background: "hsl(var(--popover))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: 8,
-                      }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Line type="monotone" dataKey="google" name="Google" stroke="#2563eb" strokeWidth={2} connectNulls dot={{ r: 3 }} />
-                    <Line type="monotone" dataKey="ifood" name="iFood" stroke="#dc2626" strokeWidth={2} connectNulls dot={{ r: 3 }} />
-                    <Line type="monotone" dataKey="nutri" name="Nutri" stroke="#059669" strokeWidth={2} connectNulls dot={{ r: 3 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Star className="h-4 w-4 text-primary" />
-              Distribuição de notas por fonte
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 w-full">
-              {reviewRows.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-                  Ainda sem avaliações registradas
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={ratingDistribution}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="nota" tick={{ fontSize: 11 }} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                    <ReTooltip
-                      contentStyle={{
-                        background: "hsl(var(--popover))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: 8,
-                      }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Bar dataKey="Google" fill="#2563eb" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="iFood" fill="#dc2626" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="Nutri" fill="#059669" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Reservas — próximos 14 dias</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={resPerDay}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <ReTooltip
-                    contentStyle={{
-                      background: "hsl(var(--popover))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: 8,
-                    }}
-                  />
-                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Tickets — últimos 14 dias</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={ticketsPerDay}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <ReTooltip
-                    contentStyle={{
-                      background: "hsl(var(--popover))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: 8,
-                    }}
-                  />
-                  <Bar dataKey="count" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Status das reservas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 w-full">
-              {resByStatus.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-                  Sem dados
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={resByStatus}
-                      dataKey="count"
-                      nameKey="status"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      label={(e) => `${e.status}: ${e.count}`}
-                    >
-                      {resByStatus.map((_, i) => (
-                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <ReTooltip
-                      contentStyle={{
-                        background: "hsl(var(--popover))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: 8,
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Conversas por marca</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 w-full">
-              {convByBrand.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-                  Sem dados
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={convByBrand} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      tick={{ fontSize: 11 }}
-                      width={110}
-                    />
-                    <ReTooltip
-                      contentStyle={{
-                        background: "hsl(var(--popover))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: 8,
-                      }}
-                    />
-                    <Bar dataKey="value" fill="hsl(var(--accent))" radius={[0, 4, 4, 0]}>
-                      {convByBrand.map((_, i) => (
-                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Próximas reservas */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Calendar className="h-4 w-4" /> Próximas reservas
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {upcoming.length === 0 ? (
-            <div className="p-6 text-center text-sm text-muted-foreground">
-              Nenhuma reserva futura.
-            </div>
-          ) : (
-            <div className="divide-y">
-              {upcoming.map((r) => (
-                <div
-                  key={r.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3"
-                >
-                  <div>
-                    <div className="font-medium">{r.name ?? "—"}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {r.phone ?? "—"} · {r.party_size ?? "?"} pessoas
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-sm">
-                      {fmtDate(r.reservation_date)}{" "}
-                      <span className="text-muted-foreground">
-                        {r.reservation_time?.slice(0, 5) ?? ""}
-                      </span>
-                    </div>
-                    <Badge
-                      variant={
-                        r.status === "confirmed"
-                          ? "default"
-                          : r.status === "cancelled"
-                            ? "destructive"
-                            : "outline"
-                      }
-                      className={
-                        r.status === "confirmed"
-                          ? "bg-success text-success-foreground hover:bg-success/90"
-                          : undefined
-                      }
-                    >
-                      {translateStatus(r.status)}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+function ReservationsKPIs({ reservations }: { reservations: Reservation[] }) {
+  const stats = useMemo(() => {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const in7 = new Date(today); in7.setDate(in7.getDate() + 7);
+    let hoje = 0, prox7 = 0, pend = 0, conf = 0;
+    reservations.forEach((r) => {
+      const st = (r.status ?? "").toLowerCase();
+      if (st === "pending") pend++;
+      if (st === "confirmed") conf++;
+      if (!r.reservation_date) return;
+      const d = new Date(r.reservation_date); d.setHours(0,0,0,0);
+      if (d.getTime() === today.getTime()) hoje++;
+      if (d >= today && d <= in7) prox7++;
+    });
+    return { hoje, prox7, pend, conf };
+  }, [reservations]);
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      <StatCard icon={Calendar} label="Hoje" value={stats.hoje} tone="primary" />
+      <StatCard icon={Calendar} label="Próximos 7 dias" value={stats.prox7} />
+      <StatCard icon={Clock} label="Pendentes" value={stats.pend} tone="warning" />
+      <StatCard icon={CheckCircle} label="Confirmadas" value={stats.conf} tone="success" />
     </div>
   );
 }
 
+function TicketsKPIs({ tickets }: { tickets: Ticket[] }) {
+  const stats = useMemo(() => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    let abertos = 0, andamento = 0, resolvHoje = 0, total = tickets.length;
+    tickets.forEach((t) => {
+      const st = (t.status ?? "").toLowerCase();
+      if (st === "open") abertos++;
+      else if (st === "in_progress" || st === "in-progress") andamento++;
+      if ((st === "resolved" || st === "closed") && ((t.created_at ?? "").slice(0, 10) === todayStr)) resolvHoje++;
+    });
+    return { abertos, andamento, resolvHoje, total };
+  }, [tickets]);
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      <StatCard icon={AlertCircle} label="Abertos" value={stats.abertos} tone="destructive" />
+      <StatCard icon={Loader2} label="Em andamento" value={stats.andamento} tone="warning" />
+      <StatCard icon={CheckCircle2} label="Resolvidos hoje" value={stats.resolvHoje} tone="success" />
+      <StatCard icon={Ticket} label="Total" value={stats.total} />
+    </div>
+  );
+}
+
+function ConversationsKPIs({ conversations }: { conversations: Conversation[] }) {
+  const stats = useMemo(() => {
+    const now = Date.now();
+    const dia = 24 * 60 * 60 * 1000;
+    let ult24 = 0, semResposta = 0;
+    const marcas = new Map<string, number>();
+    conversations.forEach((c: any) => {
+      const msgs = Array.isArray(c.messages) ? c.messages : [];
+      const last = msgs[msgs.length - 1];
+      const lastTs = last?.timestamp || last?.created_at || c.updated_at || c.created_at;
+      if (lastTs && now - new Date(lastTs).getTime() <= dia) ult24++;
+      if (last && isClientMessage(last)) semResposta++;
+      const m = (c.extracted?.marca as string) ?? "Sem marca";
+      marcas.set(m, (marcas.get(m) ?? 0) + 1);
+    });
+    const top = Array.from(marcas.entries()).sort((a,b) => b[1] - a[1])[0];
+    return { total: conversations.length, ult24, semResposta, topMarca: top ? top[0] : "—" };
+  }, [conversations]);
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      <StatCard icon={MessageSquare} label="Total" value={stats.total} />
+      <StatCard icon={AlertCircle} label="Sem resposta" value={stats.semResposta} tone="warning" />
+      <StatCard icon={Clock} label="Últimas 24h" value={stats.ult24} tone="primary" />
+      <StatCard icon={Users} label="Top marca" value={stats.topMarca} />
+    </div>
+  );
+}
