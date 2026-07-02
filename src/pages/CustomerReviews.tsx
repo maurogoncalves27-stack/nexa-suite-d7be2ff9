@@ -327,13 +327,15 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                           {syncingGoogle ? "sincronizando…" : "sincronizar"}
                         </button>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => (isIfood ? setOpenIfoodDialog(true) : setOpenGoogleDialog(true))}
-                        className="text-[10px] text-primary hover:underline"
-                      >
-                        editar por loja
-                      </button>
+                      {isIfood && (
+                        <button
+                          type="button"
+                          onClick={() => setOpenIfoodDialog(true)}
+                          className="text-[10px] text-primary hover:underline"
+                        >
+                          editar por loja
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
