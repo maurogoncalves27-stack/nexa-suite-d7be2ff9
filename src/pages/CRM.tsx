@@ -1724,31 +1724,53 @@ function TicketsKPIs({ tickets }: { tickets: Ticket[] }) {
 
 function ConversationsKPIs({ conversations }: { conversations: Conversation[] }) {
   const stats = useMemo(() => {
-    const now = Date.now();
-    const dia = 24 * 60 * 60 * 1000;
-    let ult24 = 0, semResposta = 0;
-    const marcas = new Map<string, number>();
-    conversations.forEach((c: any) => {
+    let comProblema = 0, criticos = 0, semTicket = 0, semResposta = 0;
+    conversations.forEach((c) => {
       const msgs = Array.isArray(c.messages) ? c.messages : [];
       const last = msgs[msgs.length - 1];
-      const lastTs = last?.timestamp || last?.created_at || c.updated_at || c.created_at;
-      if (lastTs && now - new Date(lastTs).getTime() <= dia) ult24++;
       if (last && isClientMessage(last)) semResposta++;
-      const m = (c.extracted?.marca as string) ?? "Sem marca";
-      marcas.set(m, (marcas.get(m) ?? 0) + 1);
+      const t = c.triage;
+      if (t?.has_issue) {
+        comProblema++;
+        if (t.severity === "critical" || t.severity === "high") criticos++;
+        if (!c.related_tickets?.length) semTicket++;
+      }
     });
-    const top = Array.from(marcas.entries()).sort((a,b) => b[1] - a[1])[0];
-    return { total: conversations.length, ult24, semResposta, topMarca: top ? top[0] : "—" };
+    return { total: conversations.length, comProblema, criticos, semTicket, semResposta };
   }, [conversations]);
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      <StatCard icon={AlertTriangle} label="Com problema" value={stats.comProblema} tone={stats.comProblema ? "destructive" : "default"} />
+      <StatCard icon={AlertCircle} label="Críticos/Altos" value={stats.criticos} tone={stats.criticos ? "destructive" : "default"} />
+      <StatCard icon={Ticket} label="Sem ticket" value={stats.semTicket} tone={stats.semTicket ? "warning" : "default"} />
       <StatCard icon={MessageSquare} label="Total" value={stats.total} />
-      <StatCard icon={AlertCircle} label="Sem resposta" value={stats.semResposta} tone="warning" />
-      <StatCard icon={Clock} label="Últimas 24h" value={stats.ult24} tone="primary" />
-      <StatCard icon={Users} label="Top marca" value={stats.topMarca} />
     </div>
   );
 }
+
+function SeverityBadge({ triage }: { triage?: Conversation["triage"] }) {
+  if (!triage || !triage.has_issue) {
+    if (triage?.category === "elogio") {
+      return <Badge className="bg-success text-success-foreground hover:bg-success/90">Elogio</Badge>;
+    }
+    return null;
+  }
+  const sev = triage.severity ?? "medium";
+  const cls =
+    sev === "critical" || sev === "high"
+      ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+      : sev === "medium"
+        ? "bg-warning text-warning-foreground hover:bg-warning/90"
+        : "bg-muted text-foreground";
+  const label = CATEGORY_LABEL[triage.category ?? "outro"] ?? "Problema";
+  return (
+    <Badge className={cls}>
+      <AlertTriangle className="h-3 w-3 mr-1" />
+      {label}
+    </Badge>
+  );
+}
+
 
 function TabSearch({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
   return (
