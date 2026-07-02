@@ -730,23 +730,14 @@ export default function CRM() {
             Reservas, tickets e conversas extraídas pela Giana (Parmê).
           </p>
         </div>
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <div className="relative flex-1 md:w-72">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar nome, telefone, pedido…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-10"
-            />
-          </div>
-          <Button asChild variant="outline" size="icon" className="shrink-0" title="Ver site">
-            <a href="https://aquelaparme.com.br" target="_blank" rel="noopener noreferrer">
-              <Globe className="h-4 w-4" />
-            </a>
-          </Button>
-        </div>
+        <Button asChild variant="outline" className="gap-2 shrink-0">
+          <a href="https://aquelaparme.com.br" target="_blank" rel="noopener noreferrer">
+            <Globe className="h-4 w-4" />
+            Ver site
+          </a>
+        </Button>
       </div>
+
 
       <Tabs defaultValue="reservations" className="w-full">
         <TabsList className="w-full h-auto p-1 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-1 bg-muted">
@@ -785,6 +776,7 @@ export default function CRM() {
         {/* Reservas */}
         <TabsContent value="reservations" className="mt-4 space-y-3">
           <ReservationsKPIs reservations={filteredReservations} />
+          <TabSearch value={search} onChange={setSearch} placeholder="Buscar reserva por nome, telefone, e-mail…" />
           <div className="flex justify-end">
 
             <Button
@@ -1081,6 +1073,7 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
         {/* Tickets */}
         <TabsContent value="tickets" className="mt-4 space-y-3">
           <TicketsKPIs tickets={filteredTickets} />
+          <TabSearch value={search} onChange={setSearch} placeholder="Buscar ticket por pedido, título, contato…" />
           <Card>
             <CardContent className="p-0 overflow-x-auto">
               <Table>
@@ -1389,6 +1382,7 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
         {/* Conversas */}
         <TabsContent value="conversations" className="mt-4 space-y-3">
           <ConversationsKPIs conversations={filteredConversations} />
+          <TabSearch value={search} onChange={setSearch} placeholder="Buscar conversa por cliente, telefone, mensagem…" />
           <Card>
             <CardContent className="p-0 overflow-x-auto">
               <Table>
@@ -1726,6 +1720,20 @@ function ConversationsKPIs({ conversations }: { conversations: Conversation[] })
       <StatCard icon={AlertCircle} label="Sem resposta" value={stats.semResposta} tone="warning" />
       <StatCard icon={Clock} label="Últimas 24h" value={stats.ult24} tone="primary" />
       <StatCard icon={Users} label="Top marca" value={stats.topMarca} />
+    </div>
+  );
+}
+
+function TabSearch({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
+  return (
+    <div className="relative">
+      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+      <Input
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="pl-9 h-10"
+      />
     </div>
   );
 }
