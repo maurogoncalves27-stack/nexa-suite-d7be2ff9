@@ -92,7 +92,7 @@ const tools = [
     type: 'function',
     function: {
       name: 'set_delivery',
-      description: 'Define nome do cliente, endereço de entrega completo e forma de pagamento (pix ou cartao).',
+      description: 'Define pedido para ENTREGA: nome, endereço completo e forma de pagamento.',
       parameters: {
         type: 'object',
         properties: {
@@ -107,8 +107,24 @@ const tools = [
   {
     type: 'function',
     function: {
+      name: 'set_pickup',
+      description: 'Define pedido para RETIRADA na loja: nome, horário desejado e forma de pagamento. Não pede endereço.',
+      parameters: {
+        type: 'object',
+        properties: {
+          customer_name: { type: 'string' },
+          pickup_time: { type: 'string', description: 'horário desejado de retirada, ex: "19:30" ou "assim que ficar pronto"' },
+          payment_method: { type: 'string', enum: ['pix', 'cartao'] },
+        },
+        required: ['customer_name', 'pickup_time', 'payment_method'], additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'checkout',
-      description: 'Fecha o pedido, cria a ordem no PDV e gera link de pagamento Mercado Pago. Só chamar depois que o cliente confirmou o pedido e os dados de entrega já estão setados.',
+      description: 'Fecha o pedido, cria a ordem no PDV e gera link de pagamento Mercado Pago. Só chamar depois que o cliente confirmou o pedido e set_delivery OU set_pickup já foi executado.',
       parameters: { type: 'object', properties: {}, additionalProperties: false },
     },
   },
@@ -186,18 +202,30 @@ async function runTool(name: string, args: any, ctx: { supabase: any; conversati
       const cart = await getOrCreateCart(supabase, conversation.phone, conversation.store_id);
       await supabase.from('pdv_whatsapp_carts').update({
         customer_name: args.customer_name,
-        delivery_address: { raw: args.address },
+        delivery_address: { type: 'delivery', raw: args.address },
         payment_method: args.payment_method,
       }).eq('id', cart.id);
-      return { ok: true };
+      return { ok: true, fulfillment: 'delivery' };
+    }
+    if (name === 'set_pickup') {
+      const cart = await getOrCreateCart(supabase, conversation.phone, conversation.store_id);
+      await supabase.from('pdv_whatsapp_carts').update({
+        customer_name: args.customer_name,
+        delivery_address: { type: 'pickup', pickup_time: args.pickup_time },
+        payment_method: args.payment_method,
+      }).eq('id', cart.id);
+      return { ok: true, fulfillment: 'pickup', pickup_time: args.pickup_time };
     }
     if (name === 'checkout') {
       const cart = await getOrCreateCart(supabase, conversation.phone, conversation.store_id);
       const items: any[] = Array.isArray(cart.items) ? cart.items : [];
       if (!items.length) return { error: 'Carrinho vazio.' };
       if (!cart.customer_name || !cart.delivery_address) {
-        return { error: 'Faltam dados de entrega. Chame set_delivery antes.' };
+        return { error: 'Faltam dados. Chame set_delivery (entrega) ou set_pickup (retirada) antes.' };
       }
+
+      const fulfillment = (cart.delivery_address as any)?.type === 'pickup' ? 'pickup' : 'delivery';
+      const pickupTimeReq = fulfillment === 'pickup' ? (cart.delivery_address as any)?.pickup_time || null : null;
 
       // canal WhatsApp da loja
       const { data: channel } = await supabase.from('pdv_channels')
@@ -205,18 +233,34 @@ async function runTool(name: string, args: any, ctx: { supabase: any; conversati
       if (!channel) return { error: 'Canal WhatsApp não configurado para esta loja.' };
 
       const subtotal = items.reduce((s, x) => s + x.quantity * x.unit_price, 0);
+      const pickupCode = fulfillment === 'pickup'
+        ? String(Math.floor(100 + Math.random() * 900))
+        : null;
 
-      const { data: order, error: orderErr } = await supabase.from('pdv_orders').insert({
+      const orderPayload: Record<string, unknown> = {
         store_id: conversation.store_id,
         channel_id: channel.id,
         status: 'pending_payment',
-        order_type: 'delivery',
+        order_type: fulfillment === 'pickup' ? 'takeout' : 'delivery',
         customer_name: cart.customer_name,
         customer_phone: conversation.phone,
-        delivery_address: cart.delivery_address,
         subtotal, total: subtotal,
-        source_payload: { source: 'whatsapp', cart_id: cart.id },
-      }).select().single();
+        source_payload: {
+          source: 'whatsapp',
+          cart_id: cart.id,
+          fulfillment,
+          pickup_time_requested: pickupTimeReq,
+        },
+      };
+      if (fulfillment === 'delivery') {
+        orderPayload.delivery_address = cart.delivery_address;
+      } else {
+        orderPayload.pickup_code = pickupCode;
+        orderPayload.notes = pickupTimeReq ? `Retirada solicitada: ${pickupTimeReq}` : 'Retirada na loja';
+      }
+
+      const { data: order, error: orderErr } = await supabase.from('pdv_orders')
+        .insert(orderPayload).select().single();
       if (orderErr || !order) return { error: 'Falha ao criar pedido.', detail: orderErr };
 
       const orderItems = items.map((x) => ({
@@ -241,6 +285,9 @@ async function runTool(name: string, args: any, ctx: { supabase: any; conversati
       return {
         ok: true,
         order_id: order.id,
+        fulfillment,
+        pickup_code: pickupCode,
+        pickup_time: pickupTimeReq,
         total: subtotal.toFixed(2),
         payment_link: linkData.init_point,
       };
@@ -258,9 +305,9 @@ REGRAS CRÍTICAS:
 - NUNCA invente preços, descrições ou itens do cardápio. Sempre use search_menu antes de citar produto.
 - NUNCA invente horários/endereços — use get_store_info.
 - Reclamações: confirme e chame register_complaint.
-- Pedidos pelo WhatsApp: SE get_store_info devolver sales_enabled=true, monte o pedido com add_to_cart, view_cart, set_delivery, checkout (nessa ordem). Se sales_enabled=false, oriente a pedir pelo iFood ou telefone.
-- Antes de checkout, confirme o pedido com o cliente e tenha nome, endereço e forma de pagamento via set_delivery.
-- Quando o checkout retornar payment_link, envie o link cru ao cliente em uma linha, e diga que o pedido vai pra cozinha assim que o pagamento for confirmado.
+- Pedidos pelo WhatsApp: SE get_store_info devolver sales_enabled=true, monte o pedido com add_to_cart, view_cart, depois PERGUNTE se é para RETIRAR na loja ou ENTREGA. Se retirada, chame set_pickup (nome, horário desejado, forma de pagamento). Se entrega, chame set_delivery (nome, endereço, forma de pagamento). Depois checkout.
+- Antes de checkout, confirme o pedido com o cliente e tenha set_pickup OU set_delivery já executado. Nunca peça endereço para retirada.
+- Quando o checkout retornar payment_link, envie o link cru ao cliente em uma linha, informe o total e — se for retirada — cite o pickup_code e o horário combinado. Diga que o pedido vai pra cozinha assim que o pagamento for confirmado.
 - Mensagens curtas (no máx 3 linhas). Emojis com moderação.`;
 
 Deno.serve(async (req) => {
