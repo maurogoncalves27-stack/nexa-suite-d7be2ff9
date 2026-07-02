@@ -1083,7 +1083,8 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
         </TabsContent>
 
         {/* Tickets */}
-        <TabsContent value="tickets" className="mt-4">
+        <TabsContent value="tickets" className="mt-4 space-y-3">
+          <TicketsKPIs tickets={filteredTickets} />
           <Card>
             <CardContent className="p-0 overflow-x-auto">
               <Table>
