@@ -212,13 +212,30 @@ Deno.serve(async (req) => {
 
     // batch mode
     const limit = Math.min(Number(body?.limit ?? 30), 100);
-    const { data, error } = await supabase
+    // Prioriza não-triadas; se restar espaço, reprocessa as mais antigas (mensagens novas depois da triagem tratamos aqui).
+    const { data: pending, error } = await supabase
       .from("chat_conversations")
       .select("id, messages, last_message_at, triaged_at")
-      .or("triaged_at.is.null,last_message_at.gt.triaged_at")
+      .is("triaged_at", null)
       .order("last_message_at", { ascending: false, nullsFirst: false })
       .limit(limit);
     if (error) throw error;
+    let data = pending ?? [];
+    const remaining = limit - data.length;
+    if (remaining > 0) {
+      // Busca conversas com mensagem nova depois da última triagem
+      const { data: stale } = await supabase
+        .from("chat_conversations")
+        .select("id, messages, last_message_at, triaged_at")
+        .not("triaged_at", "is", null)
+        .not("last_message_at", "is", null)
+        .order("triaged_at", { ascending: true })
+        .limit(remaining * 3);
+      const filtered = (stale ?? []).filter((c: any) =>
+        c.last_message_at && c.triaged_at && new Date(c.last_message_at) > new Date(c.triaged_at)
+      ).slice(0, remaining);
+      data = [...data, ...filtered];
+    }
 
     const results: any[] = [];
     for (const c of (data ?? []) as ConvRow[]) {
