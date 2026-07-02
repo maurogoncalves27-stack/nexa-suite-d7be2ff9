@@ -183,13 +183,7 @@ async function runTool(name: string, args: any, ctx: { supabase: any; conversati
       return { items, total: total.toFixed(2), customer_name: cart.customer_name, delivery_address: cart.delivery_address };
     }
     if (name === 'set_delivery') {
-      const cart = await getOrCreateCart(supabase, conversation.phone, conversation.store_id);
-      await supabase.from('pdv_whatsapp_carts').update({
-        customer_name: args.customer_name,
-        delivery_address: { type: 'delivery', raw: args.address },
-        payment_method: args.payment_method,
-      }).eq('id', cart.id);
-      return { ok: true, fulfillment: 'delivery' };
+      return { error: 'Entrega indisponível no momento. Ofereça apenas RETIRADA na loja (set_pickup).' };
     }
     if (name === 'set_pickup') {
       const cart = await getOrCreateCart(supabase, conversation.phone, conversation.store_id);
