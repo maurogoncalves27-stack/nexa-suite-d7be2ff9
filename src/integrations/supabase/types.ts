@@ -8251,6 +8251,172 @@ export type Database = {
           },
         ]
       }
+      network_alert_recipients: {
+        Row: {
+          channel: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          phone: string
+          store_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          phone: string
+          store_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          phone?: string
+          store_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_alert_recipients_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_devices: {
+        Row: {
+          created_at: string
+          current_status: string
+          flap_debounce_seconds: number
+          heartbeat_interval_seconds: number
+          heartbeat_tolerance_seconds: number
+          id: string
+          is_active: boolean
+          last_event_at: string | null
+          last_heartbeat_at: string | null
+          last_public_ip: string | null
+          name: string
+          notes: string | null
+          store_id: string
+          updated_at: string
+          wan_primary_label: string
+          wan_secondary_label: string
+          webhook_token: string
+        }
+        Insert: {
+          created_at?: string
+          current_status?: string
+          flap_debounce_seconds?: number
+          heartbeat_interval_seconds?: number
+          heartbeat_tolerance_seconds?: number
+          id?: string
+          is_active?: boolean
+          last_event_at?: string | null
+          last_heartbeat_at?: string | null
+          last_public_ip?: string | null
+          name: string
+          notes?: string | null
+          store_id: string
+          updated_at?: string
+          wan_primary_label?: string
+          wan_secondary_label?: string
+          webhook_token?: string
+        }
+        Update: {
+          created_at?: string
+          current_status?: string
+          flap_debounce_seconds?: number
+          heartbeat_interval_seconds?: number
+          heartbeat_tolerance_seconds?: number
+          id?: string
+          is_active?: boolean
+          last_event_at?: string | null
+          last_heartbeat_at?: string | null
+          last_public_ip?: string | null
+          name?: string
+          notes?: string | null
+          store_id?: string
+          updated_at?: string
+          wan_primary_label?: string
+          wan_secondary_label?: string
+          webhook_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_devices_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_wan_events: {
+        Row: {
+          created_at: string
+          device_id: string
+          duration_seconds: number | null
+          event_type: string
+          id: string
+          payload: Json | null
+          public_ip: string | null
+          store_id: string
+          suppress_reason: string | null
+          suppressed: boolean
+          wan_active: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          duration_seconds?: number | null
+          event_type: string
+          id?: string
+          payload?: Json | null
+          public_ip?: string | null
+          store_id: string
+          suppress_reason?: string | null
+          suppressed?: boolean
+          wan_active?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          duration_seconds?: number | null
+          event_type?: string
+          id?: string
+          payload?: Json | null
+          public_ip?: string | null
+          store_id?: string
+          suppress_reason?: string | null
+          suppressed?: boolean
+          wan_active?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_wan_events_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "network_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_wan_events_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nfe_inbox: {
         Row: {
           chave_acesso: string
