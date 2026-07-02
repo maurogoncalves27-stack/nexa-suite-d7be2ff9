@@ -776,6 +776,7 @@ export default function CRM() {
         {/* Reservas */}
         <TabsContent value="reservations" className="mt-4 space-y-3">
           <ReservationsKPIs reservations={filteredReservations} />
+          <TabSearch value={search} onChange={setSearch} placeholder="Buscar reserva por nome, telefone, e-mail…" />
           <div className="flex justify-end">
 
             <Button
