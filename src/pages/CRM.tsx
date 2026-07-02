@@ -1468,14 +1468,14 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                         Carregando…
                       </TableCell>
                     </TableRow>
-                  ) : filteredConversations.length === 0 ? (
+                  ) : visibleConversations.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                         Nenhuma conversa.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredConversations.map((c: any) => {
+                    visibleConversations.map((c: any) => {
                       const phone =
                         c.client_meta?.phone ??
                         c.client_meta?.telefone ??
@@ -1483,9 +1483,11 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                       const nome = pickClientName(c);
                       const msgs = Array.isArray(c.messages) ? c.messages : [];
                       const clientMsgs = msgs.filter((m: any) => isClientMessage(m));
-                      const preview = clientMsgs.length
-                        ? messageText(clientMsgs[clientMsgs.length - 1]).slice(0, 80)
-                        : "—";
+                      const preview = c.triage?.summary
+                        ? c.triage.summary
+                        : (clientMsgs.length
+                            ? messageText(clientMsgs[clientMsgs.length - 1]).slice(0, 80)
+                            : "—");
                       const ticketsCount = c.related_tickets?.length ?? 0;
                       const reservPhone = onlyDigits(String(phone));
                       const reservCount = reservPhone.length >= 8
