@@ -136,9 +136,10 @@ async function runTool(name: string, args: any, ctx: { supabase: any; conversati
         name: store?.name, address: store?.address, phone: store?.phone,
         opening_hours: cfg?.opening_hours || 'Consulte a loja',
         sales_enabled: !!cfg?.sales_enabled,
-        payment_methods: cfg?.sales_enabled
-          ? ['PIX (link Mercado Pago)', 'Cartão (link Mercado Pago)']
-          : ['Pix', 'Cartão', 'Dinheiro (entrega)'],
+        fulfillment_available: ['pickup'],
+        delivery_available: false,
+        delivery_unavailable_message: 'Entrega ainda não disponível pelo WhatsApp — só retirada na loja. Para entrega, peça pelo iFood.',
+        payment_methods: ['PIX (link Mercado Pago)', 'Cartão (link Mercado Pago)'],
       };
     }
     if (name === 'search_menu') {
