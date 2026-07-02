@@ -1426,6 +1426,28 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
         {/* Conversas */}
         <TabsContent value="conversations" className="mt-4 space-y-3">
           <ConversationsKPIs conversations={filteredConversations} />
+          <div className="flex flex-wrap items-center gap-1.5">
+            {([
+              { key: "all", label: "Todos" },
+              { key: "issues", label: "Problemas" },
+              { key: "critical", label: "Críticos" },
+              { key: "waiting", label: "Sem ticket" },
+              { key: "praise", label: "Elogios" },
+            ] as const).map((f) => {
+              const active = convIssueFilter === f.key;
+              return (
+                <Button
+                  key={f.key}
+                  size="sm"
+                  variant={active ? "default" : "outline"}
+                  className="h-7 rounded-full px-3 text-xs"
+                  onClick={() => setConvIssueFilter(f.key)}
+                >
+                  {f.label}
+                </Button>
+              );
+            })}
+          </div>
           <TabSearch value={search} onChange={setSearch} placeholder="Buscar conversa por cliente, telefone, mensagem…" />
           <Card>
             <CardContent className="p-0 overflow-x-auto">
