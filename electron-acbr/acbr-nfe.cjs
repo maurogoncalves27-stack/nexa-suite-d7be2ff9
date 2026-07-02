@@ -1,5 +1,6 @@
 // ============================================================
-// Wrapper koffi em torno da ACBrLibNFe (ACBrNFe64.dll)
+// ACBrLib NFe Windows: usar DLL **ST/StdCall** (API NFE_Inicializar(ini, chave)).
+// A variante MT exige handle (NFE_Inicializar(&handle, ini, chave)) — incompatível com este wrapper.
 // ============================================================
 // Doc oficial: https://acbr.sourceforge.io/ACBrLib/UnitACBrLibNFe.html
 //
@@ -16,6 +17,8 @@ const fs = require("fs");
 const koffi = require("koffi");
 
 const ACBR_BASE = process.env.ACBR_BASE || "C:\\NexaACBr\\bin";
+// DLL Demo do fórum ACBr exige eChaveCrypt="demo". Build PRO/comercial usa "".
+const ACBR_CHAVE_CRYPT = process.env.ACBR_CHAVE_CRYPT ?? "demo";
 const IS_32BIT = process.arch === "ia32";
 const DLL_NAME = IS_32BIT ? "ACBrNFe32.dll" : "ACBrNFe64.dll";
 const DLL_PATH = path.join(ACBR_BASE, DLL_NAME);
@@ -78,6 +81,16 @@ function explainInitFailure(retCode, acbrMessage = "") {
     hints.push(`ACBrLib.ini parece mínimo demais (seções encontradas: ${info.iniSections.join(", ") || "nenhuma"})`);
   }
 
+  const iniHints = [
+    "[DFe] Senha do PFX corrompida ou divergente de [DFeSSL] (ex.: hash em vez da senha real)",
+    "[DFe] SSLXmlSignLib deve ser 4 (LibXml2); valor 1 (XmlSec) não vem compilado na ACBrLib",
+    "[DFe] SSLHttpLib=3 (OpenSSL HTTP) exige libcurl na pasta da DLL — prefira 1 (WinINet) ou 2 (WinHttp)",
+    "[NFe] Ambiente deve bater com [Webservice] e [Emitente] (2=homolog, 1=produção)",
+    "[NFe] VersaoDF=4.00 e ModeloDF=65 para NFC-e",
+    "ACBrLib.ini salvo com UTF-8 BOM quebra o parser — salvar sem BOM",
+  ];
+  hints.push(`checklist INI: ${iniHints.join(" | ")}`);
+
   const suffix = hints.length ? ` Diagnóstico: ${hints.join("; ")}.` : "";
   return `NFE_Inicializar falhou (${retCode})${acbrMessage ? `: ${acbrMessage}` : ""}.${suffix}`;
 }
@@ -86,9 +99,6 @@ function load() {
   if (lib) return lib;
   if (!fs.existsSync(DLL_PATH)) {
     throw new Error(`${DLL_NAME} não encontrada em ${DLL_PATH}. Confira ACBR_BASE.`);
-  }
-  if (!fs.existsSync(INI_PATH)) {
-    throw new Error(`ACBrLib.ini não encontrado em ${INI_PATH}.`);
   }
   // Garante que as DLLs dependentes (libxml2, libxslt, libxmlsec, openssl etc.)
   // sejam encontradas pelo loader do Windows: precisamos do ACBR_BASE no PATH
@@ -124,6 +134,8 @@ function load() {
   };
 
   bind("Inicializar", "NFE_Inicializar", "int", ["string", "string"], true);
+  bind("ConfigLer", "NFE_ConfigLer", "int", ["string"]);
+  bind("ConfigGravarValor", "NFE_ConfigGravarValor", "int", ["string", "string", "string"]);
   bind("Finalizar", "NFE_Finalizar", "int", [], true);
   bind("UltimoRetorno", "NFE_UltimoRetorno", "int", ["_Out_ char*", "_Inout_ int*"], true);
   bind("Nome", "NFE_Nome", "int", ["_Out_ char*", "_Inout_ int*"]);
@@ -170,14 +182,71 @@ function ultimoRetorno() {
   return msg;
 }
 
+function readIniValue(section, key) {
+  if (!fs.existsSync(INI_PATH)) return "";
+  const re = new RegExp(`^\\[${section}\\][\\s\\S]*?^${key}=(.*)$`, "m");
+  const match = fs.readFileSync(INI_PATH, "utf-8").match(re);
+  return match ? match[1].trim() : "";
+}
+
+function configGravar(sessao, chave, valor) {
+  if (!fn.ConfigGravarValor) return 0;
+  const r = fn.ConfigGravarValor(sessao, chave, String(valor ?? ""));
+  if (r !== 0) {
+    const err = ultimoRetorno();
+    throw new Error(`NFE_ConfigGravarValor [${sessao}] ${chave} (${r})${err ? `: ${err}` : ""}`);
+  }
+  return r;
+}
+
+function applyCertConfig() {
+  const pfxPath = process.env.ACBR_PFX_PATH || readIniValue("DFe", "ArquivoPFX");
+  const pfxSenha = process.env.ACBR_PFX_PASSWORD || readIniValue("DFe", "Senha");
+  if (!pfxPath || !pfxSenha) return;
+  // Com chave "demo", Senha no INI pode vir criptografada; reaplicar em texto puro.
+  configGravar("DFe", "SSLCryptLib", process.env.ACBR_SSL_CRYPT_LIB || "1");
+  configGravar("DFe", "ArquivoPFX", pfxPath);
+  configGravar("DFe", "Senha", pfxSenha);
+}
+
+function tryInit(chave, iniPath) {
+  return fn.Inicializar(chave || "", iniPath || "");
+}
+
 function ensureInit() {
   if (initialized) return;
   load();
-  const r = fn.Inicializar(INI_PATH, "");
+  const chave = ACBR_CHAVE_CRYPT;
+  const ini = fs.existsSync(INI_PATH) ? INI_PATH : "";
+  // Preferir init vazio + ConfigLer para Senha do PFX em texto puro (DLL Demo).
+  const attempts = [
+    [chave, ""],
+    [ini, chave],
+    [chave, ini],
+    [ini, ""],
+    ["", ""],
+  ];
+  let r = -1;
+  let loadedIni = false;
+  for (const [a, b] of attempts) {
+    r = tryInit(a, b);
+    if (r === 0) {
+      loadedIni = Boolean(b && b.toLowerCase().endsWith(".ini"));
+      break;
+    }
+  }
   if (r !== 0) {
     const err = ultimoRetorno();
     throw new Error(explainInitFailure(r, err));
   }
+  if (!loadedIni && ini && fn.ConfigLer) {
+    const lr = fn.ConfigLer(ini);
+    if (lr !== 0) {
+      const err = ultimoRetorno();
+      throw new Error(`NFE_ConfigLer (${lr})${err ? `: ${err}` : ""}. Revise ${ini}. ModeloDF=1 (NFC-e), Ambiente=1 (homolog).`);
+    }
+  }
+  applyCertConfig();
   initialized = true;
 }
 
