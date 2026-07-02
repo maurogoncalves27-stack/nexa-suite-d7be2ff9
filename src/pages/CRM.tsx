@@ -775,12 +775,15 @@ export default function CRM() {
             Reservas, tickets e conversas extraídas pela Giana (Parmê).
           </p>
         </div>
-        <Button asChild variant="outline" className="gap-2 shrink-0">
-          <a href="https://aquelaparme.com.br" target="_blank" rel="noopener noreferrer">
-            <Globe className="h-4 w-4" />
-            Ver site
-          </a>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <CrmAiInsightsButton />
+          <Button asChild variant="outline" className="gap-2">
+            <a href="https://aquelaparme.com.br" target="_blank" rel="noopener noreferrer">
+              <Globe className="h-4 w-4" />
+              Ver site
+            </a>
+          </Button>
+        </div>
       </div>
 
 
