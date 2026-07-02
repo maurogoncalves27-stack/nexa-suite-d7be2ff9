@@ -785,7 +785,7 @@ export default function CRM() {
 
 
       <Tabs defaultValue="reservations" className="w-full">
-        <TabsList className="w-full h-auto p-1 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-1 bg-muted">
+        <TabsList className="w-full h-auto p-1 grid grid-cols-2 md:grid-cols-4 gap-1 bg-muted">
 
           <TabsTrigger value="reservations" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
             <Calendar className="h-4 w-4" />
@@ -794,16 +794,9 @@ export default function CRM() {
               {filteredReservations.length}
             </Badge>
           </TabsTrigger>
-          <TabsTrigger value="tickets" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
-            <Ticket className="h-4 w-4" />
-            <span>Tickets</span>
-            <Badge variant="secondary" className="ml-0.5 h-5 px-1.5 text-[10px] font-semibold tabular-nums">
-              {filteredTickets.length}
-            </Badge>
-          </TabsTrigger>
           <TabsTrigger value="conversations" className="gap-1.5 py-2 data-[state=active]:shadow-sm">
             <MessageSquare className="h-4 w-4" />
-            <span>Conversas</span>
+            <span>Atendimento</span>
             <Badge variant="secondary" className="ml-0.5 h-5 px-1.5 text-[10px] font-semibold tabular-nums">
               {filteredConversations.length}
             </Badge>
