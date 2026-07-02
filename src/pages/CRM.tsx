@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Headset, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, Clock, Bot, Globe, Star, ArrowRight, Settings, AlertCircle, AlertTriangle, CheckCircle, Users, Sparkles, RefreshCw } from "lucide-react";
 import { AgentPanel } from "@/components/crm/ParmeSettingsPanels";
+import { GianaAnalyticsPanel } from "@/components/crm/GianaAnalyticsPanel";
 import { ReservationSettingsDialog } from "@/components/crm/ReservationSettingsDialog";
 import CustomerReviews from "@/pages/CustomerReviews";
 
@@ -1672,7 +1673,8 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
 
 
 
-        <TabsContent value="agent" className="mt-4">
+        <TabsContent value="agent" className="mt-4 space-y-6">
+          <GianaAnalyticsPanel />
           <AgentPanel />
         </TabsContent>
 

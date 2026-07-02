@@ -1160,6 +1160,8 @@ export type Database = {
         Row: {
           client_meta: Json | null
           created_at: string
+          feedback_rating: string | null
+          feedback_requested_at: string | null
           id: string
           last_message_at: string
           message_count: number
@@ -1172,6 +1174,8 @@ export type Database = {
         Insert: {
           client_meta?: Json | null
           created_at?: string
+          feedback_rating?: string | null
+          feedback_requested_at?: string | null
           id?: string
           last_message_at?: string
           message_count?: number
@@ -1184,6 +1188,8 @@ export type Database = {
         Update: {
           client_meta?: Json | null
           created_at?: string
+          feedback_rating?: string | null
+          feedback_requested_at?: string | null
           id?: string
           last_message_at?: string
           message_count?: number
@@ -5171,6 +5177,111 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      giana_feedback: {
+        Row: {
+          answered_at: string | null
+          asked_at: string
+          brand_id: string | null
+          comment: string | null
+          conversation_id: string | null
+          conversation_source: string
+          created_at: string
+          id: string
+          phone: string | null
+          rating: string | null
+          raw_response: string | null
+          sentiment: string | null
+          store_id: string | null
+        }
+        Insert: {
+          answered_at?: string | null
+          asked_at?: string
+          brand_id?: string | null
+          comment?: string | null
+          conversation_id?: string | null
+          conversation_source?: string
+          created_at?: string
+          id?: string
+          phone?: string | null
+          rating?: string | null
+          raw_response?: string | null
+          sentiment?: string | null
+          store_id?: string | null
+        }
+        Update: {
+          answered_at?: string | null
+          asked_at?: string
+          brand_id?: string | null
+          comment?: string | null
+          conversation_id?: string | null
+          conversation_source?: string
+          created_at?: string
+          id?: string
+          phone?: string | null
+          rating?: string | null
+          raw_response?: string | null
+          sentiment?: string | null
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "giana_feedback_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "giana_feedback_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      giana_weekly_reports: {
+        Row: {
+          analysis: Json
+          conversations_analyzed: number | null
+          conversations_total: number | null
+          created_at: string
+          error: string | null
+          id: string
+          metrics: Json
+          status: string
+          triggered_by: string | null
+          week_end: string
+          week_start: string
+        }
+        Insert: {
+          analysis?: Json
+          conversations_analyzed?: number | null
+          conversations_total?: number | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          metrics?: Json
+          status?: string
+          triggered_by?: string | null
+          week_end: string
+          week_start: string
+        }
+        Update: {
+          analysis?: Json
+          conversations_analyzed?: number | null
+          conversations_total?: number | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          metrics?: Json
+          status?: string
+          triggered_by?: string | null
+          week_end?: string
+          week_start?: string
+        }
+        Relationships: []
       }
       google_reviews: {
         Row: {
@@ -15974,6 +16085,7 @@ export type Database = {
           id: string
           off_hours_message: string | null
           opening_hours: string | null
+          prompt_history: Json
           sales_enabled: boolean
           sales_off_message: string | null
           store_id: string
@@ -15986,6 +16098,7 @@ export type Database = {
           id?: string
           off_hours_message?: string | null
           opening_hours?: string | null
+          prompt_history?: Json
           sales_enabled?: boolean
           sales_off_message?: string | null
           store_id: string
@@ -15998,6 +16111,7 @@ export type Database = {
           id?: string
           off_hours_message?: string | null
           opening_hours?: string | null
+          prompt_history?: Json
           sales_enabled?: boolean
           sales_off_message?: string | null
           store_id?: string
@@ -16019,6 +16133,8 @@ export type Database = {
           context_summary: string | null
           created_at: string
           customer_name: string | null
+          feedback_rating: string | null
+          feedback_requested_at: string | null
           id: string
           last_message_at: string
           phone: string
@@ -16030,6 +16146,8 @@ export type Database = {
           context_summary?: string | null
           created_at?: string
           customer_name?: string | null
+          feedback_rating?: string | null
+          feedback_requested_at?: string | null
           id?: string
           last_message_at?: string
           phone: string
@@ -16041,6 +16159,8 @@ export type Database = {
           context_summary?: string | null
           created_at?: string
           customer_name?: string | null
+          feedback_rating?: string | null
+          feedback_requested_at?: string | null
           id?: string
           last_message_at?: string
           phone?: string
