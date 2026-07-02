@@ -92,7 +92,7 @@ const tools = [
     type: 'function',
     function: {
       name: 'set_delivery',
-      description: 'Define nome do cliente, endereço de entrega completo e forma de pagamento (pix ou cartao).',
+      description: 'Define pedido para ENTREGA: nome, endereço completo e forma de pagamento.',
       parameters: {
         type: 'object',
         properties: {
@@ -107,8 +107,24 @@ const tools = [
   {
     type: 'function',
     function: {
+      name: 'set_pickup',
+      description: 'Define pedido para RETIRADA na loja: nome, horário desejado e forma de pagamento. Não pede endereço.',
+      parameters: {
+        type: 'object',
+        properties: {
+          customer_name: { type: 'string' },
+          pickup_time: { type: 'string', description: 'horário desejado de retirada, ex: "19:30" ou "assim que ficar pronto"' },
+          payment_method: { type: 'string', enum: ['pix', 'cartao'] },
+        },
+        required: ['customer_name', 'pickup_time', 'payment_method'], additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'checkout',
-      description: 'Fecha o pedido, cria a ordem no PDV e gera link de pagamento Mercado Pago. Só chamar depois que o cliente confirmou o pedido e os dados de entrega já estão setados.',
+      description: 'Fecha o pedido, cria a ordem no PDV e gera link de pagamento Mercado Pago. Só chamar depois que o cliente confirmou o pedido e set_delivery OU set_pickup já foi executado.',
       parameters: { type: 'object', properties: {}, additionalProperties: false },
     },
   },
