@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Headset, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, Clock, Bot, Globe, Star, ArrowRight, Settings, AlertCircle, CheckCircle, Users } from "lucide-react";
+import { Headset, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, Clock, Bot, Globe, Star, ArrowRight, Settings, AlertCircle, AlertTriangle, CheckCircle, Users, Sparkles, RefreshCw } from "lucide-react";
 import { AgentPanel } from "@/components/crm/ParmeSettingsPanels";
 import { ReservationSettingsDialog } from "@/components/crm/ReservationSettingsDialog";
 import CustomerReviews from "@/pages/CustomerReviews";
