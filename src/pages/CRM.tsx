@@ -1723,3 +1723,17 @@ function ConversationsKPIs({ conversations }: { conversations: Conversation[] })
     </div>
   );
 }
+
+function TabSearch({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
+  return (
+    <div className="relative">
+      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+      <Input
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="pl-9 h-10"
+      />
+    </div>
+  );
+}
