@@ -92,6 +92,32 @@ type Conversation = {
   source?: "chat" | "ticket";
   related_ticket?: Ticket;
   related_tickets?: Ticket[];
+  triage?: {
+    has_issue?: boolean;
+    severity?: "none" | "low" | "medium" | "high" | "critical";
+    category?: string;
+    summary?: string;
+    keywords?: string[];
+    customer_sentiment?: string;
+    needs_human?: boolean;
+    source?: "ai" | "heuristic";
+    detected_at?: string;
+  } | null;
+  triaged_at?: string | null;
+};
+
+const SEVERITY_RANK: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1, none: 0 };
+const CATEGORY_LABEL: Record<string, string> = {
+  reclamacao: "Reclamação",
+  atraso: "Atraso",
+  item_faltando: "Item faltando",
+  item_errado: "Item errado",
+  qualidade: "Qualidade",
+  cobranca: "Cobrança",
+  reembolso: "Reembolso",
+  elogio: "Elogio",
+  duvida: "Dúvida",
+  outro: "Outro",
 };
 
 const NON_CLIENT_ROLES = new Set(["assistant", "ai", "bot", "system", "model", "tool"]);
