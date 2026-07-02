@@ -1165,6 +1165,8 @@ export type Database = {
           message_count: number
           messages: Json
           session_id: string
+          triage: Json | null
+          triaged_at: string | null
           updated_at: string
         }
         Insert: {
@@ -1175,6 +1177,8 @@ export type Database = {
           message_count?: number
           messages?: Json
           session_id: string
+          triage?: Json | null
+          triaged_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -1185,6 +1189,8 @@ export type Database = {
           message_count?: number
           messages?: Json
           session_id?: string
+          triage?: Json | null
+          triaged_at?: string | null
           updated_at?: string
         }
         Relationships: []
