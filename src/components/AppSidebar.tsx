@@ -237,7 +237,7 @@ const fabricaSections: Section[] = [
   { label: "Catálogo", items: [
     { title: "Produtos", url: "/produtos-fabrica", icon: Layers, staffOnly: true },
     { title: "Fichas técnicas", url: "/fichas-fabrica", icon: FlaskConical, staffOnly: true },
-    { title: "Cardápio", url: "/produtos-fabrica?view=cardapio", icon: Utensils, staffOnly: true },
+    // { title: "Cardápio", url: "/produtos-fabrica?view=cardapio", icon: Utensils, staffOnly: true }, // oculto a pedido
     { title: "Receituário", url: "/receituario-fabrica", icon: BookMarked, staffOnly: true },
   ]},
   { label: "Operação", items: [
