@@ -93,6 +93,53 @@ Deno.serve(async (req) => {
       zapi_message_id: zapiMessageId,
     });
 
+    // Se estamos aguardando resposta de feedback, interceptamos e não chamamos a IA
+    if (conv!.feedback_requested_at && !conv!.feedback_rating) {
+      const t = String(text).toLowerCase().trim();
+      let rating: 'positive' | 'negative' | null = null;
+      if (/👍|👌|😀|😄|🙂|❤️|bom|boa|ótim|otim|excelent|top|gost|adore|show|joia|jóia|maravilh|10|nota\s*10|perfeito|resolveu/.test(t)) rating = 'positive';
+      else if (/👎|😠|😡|🤬|ruim|péssim|pessim|horr[íi]vel|nao\s*gost|não\s*gost|demor|lent|erro|errad|problema|reclam|insatisfeit|zero/.test(t)) rating = 'negative';
+
+      await supabase.from('giana_feedback').insert({
+        conversation_id: conv!.id,
+        conversation_source: 'whatsapp',
+        phone,
+        store_id: conv!.store_id,
+        rating,
+        raw_response: text,
+        comment: rating ? null : text,
+        sentiment: rating === 'positive' ? 'positive' : rating === 'negative' ? 'negative' : null,
+        answered_at: new Date().toISOString(),
+      });
+      await supabase.from('whatsapp_customer_conversations')
+        .update({ feedback_rating: rating ?? 'text', status: 'closed' })
+        .eq('id', conv!.id);
+
+      // agradecimento breve
+      const thanks = rating === 'positive'
+        ? 'Que bom saber! 💛 Obrigada pelo retorno.'
+        : rating === 'negative'
+          ? 'Obrigada pelo retorno — vou passar pra equipe pra melhorarmos. 🙏'
+          : 'Obrigada pelo retorno! 🙏';
+      await supabase.from('whatsapp_customer_messages').insert({
+        conversation_id: conv!.id, role: 'assistant', content: thanks,
+      });
+      // reusa a mesma função de envio via Z-API
+      const ZAPI_INSTANCE = Deno.env.get('ZAPI_CUSTOMER_INSTANCE_ID') || '';
+      const ZAPI_TOKEN = Deno.env.get('ZAPI_CUSTOMER_TOKEN') || '';
+      const ZAPI_CLIENT_TOKEN = Deno.env.get('ZAPI_CUSTOMER_CLIENT_TOKEN') || '';
+      if (ZAPI_INSTANCE && ZAPI_TOKEN) {
+        fetch(`https://api.z-api.io/instances/${ZAPI_INSTANCE}/token/${ZAPI_TOKEN}/send-text`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Client-Token': ZAPI_CLIENT_TOKEN },
+          body: JSON.stringify({ phone, message: thanks }),
+        }).catch(() => {});
+      }
+      return new Response(JSON.stringify({ ok: true, feedback: rating ?? 'text' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // dispara IA em background
     fetch(`${SUPABASE_URL}/functions/v1/whatsapp-customer-ai-reply`, {
       method: 'POST',
