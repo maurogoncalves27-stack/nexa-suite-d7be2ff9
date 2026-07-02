@@ -1391,7 +1391,8 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
         </TabsContent>
 
         {/* Conversas */}
-        <TabsContent value="conversations" className="mt-4">
+        <TabsContent value="conversations" className="mt-4 space-y-3">
+          <ConversationsKPIs conversations={filteredConversations} />
           <Card>
             <CardContent className="p-0 overflow-x-auto">
               <Table>
