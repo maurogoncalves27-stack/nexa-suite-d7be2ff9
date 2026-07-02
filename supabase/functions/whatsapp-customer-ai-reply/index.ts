@@ -91,24 +91,8 @@ const tools = [
   {
     type: 'function',
     function: {
-      name: 'set_delivery',
-      description: 'Define pedido para ENTREGA: nome, endereço completo e forma de pagamento.',
-      parameters: {
-        type: 'object',
-        properties: {
-          customer_name: { type: 'string' },
-          address: { type: 'string', description: 'endereço completo (rua, nº, bairro, complemento)' },
-          payment_method: { type: 'string', enum: ['pix', 'cartao'] },
-        },
-        required: ['customer_name', 'address', 'payment_method'], additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
       name: 'set_pickup',
-      description: 'Define pedido para RETIRADA na loja: nome, horário desejado e forma de pagamento. Não pede endereço.',
+      description: 'Define pedido para RETIRADA na loja: nome, horário desejado e forma de pagamento. Não pede endereço. RETIRADA é a ÚNICA modalidade disponível hoje.',
       parameters: {
         type: 'object',
         properties: {
@@ -124,7 +108,7 @@ const tools = [
     type: 'function',
     function: {
       name: 'checkout',
-      description: 'Fecha o pedido, cria a ordem no PDV e gera link de pagamento Mercado Pago. Só chamar depois que o cliente confirmou o pedido e set_delivery OU set_pickup já foi executado.',
+      description: 'Fecha o pedido, cria a ordem no PDV e gera link de pagamento Mercado Pago. Só chamar depois que o cliente confirmou o pedido e set_pickup já foi executado.',
       parameters: { type: 'object', properties: {}, additionalProperties: false },
     },
   },
@@ -152,9 +136,10 @@ async function runTool(name: string, args: any, ctx: { supabase: any; conversati
         name: store?.name, address: store?.address, phone: store?.phone,
         opening_hours: cfg?.opening_hours || 'Consulte a loja',
         sales_enabled: !!cfg?.sales_enabled,
-        payment_methods: cfg?.sales_enabled
-          ? ['PIX (link Mercado Pago)', 'Cartão (link Mercado Pago)']
-          : ['Pix', 'Cartão', 'Dinheiro (entrega)'],
+        fulfillment_available: ['pickup'],
+        delivery_available: false,
+        delivery_unavailable_message: 'Entrega ainda não disponível pelo WhatsApp — só retirada na loja. Para entrega, peça pelo iFood.',
+        payment_methods: ['PIX (link Mercado Pago)', 'Cartão (link Mercado Pago)'],
       };
     }
     if (name === 'search_menu') {
@@ -199,13 +184,7 @@ async function runTool(name: string, args: any, ctx: { supabase: any; conversati
       return { items, total: total.toFixed(2), customer_name: cart.customer_name, delivery_address: cart.delivery_address };
     }
     if (name === 'set_delivery') {
-      const cart = await getOrCreateCart(supabase, conversation.phone, conversation.store_id);
-      await supabase.from('pdv_whatsapp_carts').update({
-        customer_name: args.customer_name,
-        delivery_address: { type: 'delivery', raw: args.address },
-        payment_method: args.payment_method,
-      }).eq('id', cart.id);
-      return { ok: true, fulfillment: 'delivery' };
+      return { error: 'Entrega indisponível no momento. Ofereça apenas RETIRADA na loja (set_pickup).' };
     }
     if (name === 'set_pickup') {
       const cart = await getOrCreateCart(supabase, conversation.phone, conversation.store_id);
@@ -305,9 +284,10 @@ REGRAS CRÍTICAS:
 - NUNCA invente preços, descrições ou itens do cardápio. Sempre use search_menu antes de citar produto.
 - NUNCA invente horários/endereços — use get_store_info.
 - Reclamações: confirme e chame register_complaint.
-- Pedidos pelo WhatsApp: SE get_store_info devolver sales_enabled=true, monte o pedido com add_to_cart, view_cart, depois PERGUNTE se é para RETIRAR na loja ou ENTREGA. Se retirada, chame set_pickup (nome, horário desejado, forma de pagamento). Se entrega, chame set_delivery (nome, endereço, forma de pagamento). Depois checkout.
-- Antes de checkout, confirme o pedido com o cliente e tenha set_pickup OU set_delivery já executado. Nunca peça endereço para retirada.
-- Quando o checkout retornar payment_link, envie o link cru ao cliente em uma linha, informe o total e — se for retirada — cite o pickup_code e o horário combinado. Diga que o pedido vai pra cozinha assim que o pagamento for confirmado.
+- Pedidos pelo WhatsApp: SE get_store_info devolver sales_enabled=true, monte o pedido com add_to_cart, view_cart, depois chame set_pickup (nome, horário desejado, forma de pagamento) e checkout.
+- IMPORTANTE: ENTREGA está INDISPONÍVEL pelo WhatsApp — só RETIRADA na loja. Se o cliente pedir entrega, explique que ainda não temos entrega por aqui e oriente a pedir pelo iFood, OU seguir com retirada.
+- Antes de checkout, confirme o pedido e tenha set_pickup já executado. Nunca peça endereço.
+- Quando o checkout retornar payment_link, envie o link cru em uma linha, informe o total, o pickup_code e o horário combinado. Diga que o pedido vai pra cozinha assim que o pagamento for confirmado.
 - Mensagens curtas (no máx 3 linhas). Emojis com moderação.`;
 
 Deno.serve(async (req) => {
