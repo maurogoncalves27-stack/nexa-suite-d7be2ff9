@@ -738,9 +738,6 @@ export default function CRM() {
         </Button>
       </div>
 
-      {/* Componente reutilizável de busca por aba */}
-      {/* (declarado inline abaixo via variável searchBar) */}
-      </div>
 
       <Tabs defaultValue="reservations" className="w-full">
         <TabsList className="w-full h-auto p-1 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-1 bg-muted">
