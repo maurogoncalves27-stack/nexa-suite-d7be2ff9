@@ -91,24 +91,8 @@ const tools = [
   {
     type: 'function',
     function: {
-      name: 'set_delivery',
-      description: 'Define pedido para ENTREGA: nome, endereço completo e forma de pagamento.',
-      parameters: {
-        type: 'object',
-        properties: {
-          customer_name: { type: 'string' },
-          address: { type: 'string', description: 'endereço completo (rua, nº, bairro, complemento)' },
-          payment_method: { type: 'string', enum: ['pix', 'cartao'] },
-        },
-        required: ['customer_name', 'address', 'payment_method'], additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
       name: 'set_pickup',
-      description: 'Define pedido para RETIRADA na loja: nome, horário desejado e forma de pagamento. Não pede endereço.',
+      description: 'Define pedido para RETIRADA na loja: nome, horário desejado e forma de pagamento. Não pede endereço. RETIRADA é a ÚNICA modalidade disponível hoje.',
       parameters: {
         type: 'object',
         properties: {
@@ -124,7 +108,7 @@ const tools = [
     type: 'function',
     function: {
       name: 'checkout',
-      description: 'Fecha o pedido, cria a ordem no PDV e gera link de pagamento Mercado Pago. Só chamar depois que o cliente confirmou o pedido e set_delivery OU set_pickup já foi executado.',
+      description: 'Fecha o pedido, cria a ordem no PDV e gera link de pagamento Mercado Pago. Só chamar depois que o cliente confirmou o pedido e set_pickup já foi executado.',
       parameters: { type: 'object', properties: {}, additionalProperties: false },
     },
   },
