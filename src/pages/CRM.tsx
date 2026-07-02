@@ -1692,7 +1692,7 @@ function TicketsKPIs({ tickets }: { tickets: Ticket[] }) {
       const st = (t.status ?? "").toLowerCase();
       if (st === "open") abertos++;
       else if (st === "in_progress" || st === "in-progress") andamento++;
-      if ((st === "resolved" || st === "closed") && (t.updated_at ?? t.created_at ?? "").slice(0, 10) === todayStr) resolvHoje++;
+      if ((st === "resolved" || st === "closed") && ((t.created_at ?? "").slice(0, 10) === todayStr)) resolvHoje++;
     });
     return { abertos, andamento, resolvHoje, total };
   }, [tickets]);
