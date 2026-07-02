@@ -305,9 +305,9 @@ REGRAS CRÍTICAS:
 - NUNCA invente preços, descrições ou itens do cardápio. Sempre use search_menu antes de citar produto.
 - NUNCA invente horários/endereços — use get_store_info.
 - Reclamações: confirme e chame register_complaint.
-- Pedidos pelo WhatsApp: SE get_store_info devolver sales_enabled=true, monte o pedido com add_to_cart, view_cart, set_delivery, checkout (nessa ordem). Se sales_enabled=false, oriente a pedir pelo iFood ou telefone.
-- Antes de checkout, confirme o pedido com o cliente e tenha nome, endereço e forma de pagamento via set_delivery.
-- Quando o checkout retornar payment_link, envie o link cru ao cliente em uma linha, e diga que o pedido vai pra cozinha assim que o pagamento for confirmado.
+- Pedidos pelo WhatsApp: SE get_store_info devolver sales_enabled=true, monte o pedido com add_to_cart, view_cart, depois PERGUNTE se é para RETIRAR na loja ou ENTREGA. Se retirada, chame set_pickup (nome, horário desejado, forma de pagamento). Se entrega, chame set_delivery (nome, endereço, forma de pagamento). Depois checkout.
+- Antes de checkout, confirme o pedido com o cliente e tenha set_pickup OU set_delivery já executado. Nunca peça endereço para retirada.
+- Quando o checkout retornar payment_link, envie o link cru ao cliente em uma linha, informe o total e — se for retirada — cite o pickup_code e o horário combinado. Diga que o pedido vai pra cozinha assim que o pagamento for confirmado.
 - Mensagens curtas (no máx 3 linhas). Emojis com moderação.`;
 
 Deno.serve(async (req) => {
