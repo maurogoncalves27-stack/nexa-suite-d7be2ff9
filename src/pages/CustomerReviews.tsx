@@ -37,8 +37,6 @@ import {
   Copy,
   Pencil,
   Trash2,
-  ArrowUp,
-  ArrowDown,
 } from "lucide-react";
 
 import { format, parseISO } from "date-fns";
