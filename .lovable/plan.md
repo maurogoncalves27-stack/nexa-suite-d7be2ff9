@@ -1,53 +1,81 @@
-
 ## Objetivo
-Mudanças 100% visuais no CRM e no painel de avaliações. Nada de alterar dados/edge functions/tabelas.
+Deixar a aba Conversas do CRM capaz de **filtrar conversas onde há problema detectável** (reclamação, atraso, item errado/faltando, cobrança, qualidade, etc.), sem esperar o cliente falar com um humano.
 
-## 1. Remover aba "Dashboard" do CRM (`src/pages/CRM.tsx`)
-- Remover `<TabsTrigger value="dashboard">` e o `<TabsContent value="dashboard">` (linhas ~773‑776 e 809‑815).
-- Remover o componente `CRMDashboard` inteiro (função + imports não usados: `Star`, `Clock`, `translateStatus` se ficarem órfãos, recharts se não usados em outro lugar).
-- Aba padrão passa a ser **Reservas** (`defaultValue="reservations"`).
-- Ajustar a grid do `TabsList` de 6 para 5 colunas.
+Hoje já existe alguma detecção espalhada, mas nada consolidado no CRM:
+- `parme-chat` (Giana) tem tool `registrar_problema_pedido` que cria ticket — funciona só quando a IA em runtime decide chamar.
+- `whatsapp-customer-ai-reply` tem `register_complaint` (canal separado).
+- `CRM.tsx` linha 344 tem só um regex simples ("reclama|ruim|frio|atrasou…") gerando um campo "Tom".
+- Não há classificação persistida por conversa, nem filtro/badge/KPI de "problema".
 
-## 2. Distribuir os KPIs úteis nas abas certas (mini-cards no topo de cada aba)
-Cada aba ganha uma faixa enxuta de KPIs (3‑4 cards pequenos) que respondem "o que preciso saber hoje?":
+## Arquitetura proposta (2 camadas)
 
-- **Reservas** (topo): Hoje · Próximos 7 dias · Pendentes · Confirmadas. Mini sparkline de reservas nos próximos 14 dias (o `resPerDay` que já existia).
-- **Tickets** (topo): Abertos · Em andamento · Resolvidos hoje · SLA vencendo. Sparkline de tickets criados nos últimos 14 dias.
-- **Conversas** (topo): Total · Sem resposta · Últimas 24h · Top marca. Barra horizontal compacta com top marcas (`convByBrand`).
-- **Avaliações** (aba do CRM): médias Google / iFood / Nutri (os 3 cards que já existiam) + link "ver detalhes" que leva para o módulo completo de Avaliações.
-- **Agente IA**: sem KPI adicional (mantém como está).
+**Camada 1 — Heurística rápida (síncrona, no client + no edge):**
+Regex + palavras-chave por categoria (reclamacao, atraso, item_faltando, item_errado, qualidade, cobranca, reembolso, elogio, duvida). Roda em toda conversa, muito barato. Já dá um `has_issue` e uma `category` provisórios.
 
-Os cálculos (`resByStatus`, `ticketsByStatus`, `resPerDay`, `ticketsPerDay`, `convByBrand`, `ratingAverages`) são movidos para dentro dos respectivos `TabsContent` (ou extraídos como sub-componentes `ReservationsHeaderKPIs`, `TicketsHeaderKPIs`, etc.) para não perder nada útil do dashboard antigo.
+**Camada 2 — Classificação com IA (assíncrona, no servidor):**
+Só rodada quando (a) a heurística acusou indício ou (b) a conversa tem ≥3 mensagens do cliente e ainda não foi triada. Usa **Lovable AI Gateway** (`google/gemini-2.5-flash` — barato e bom em PT-BR) com prompt curto retornando JSON estruturado:
+```json
+{
+  "has_issue": true,
+  "severity": "high",           // none | low | medium | high | critical
+  "category": "atraso",         // enum fechado
+  "summary": "Pedido #4821 atrasou 40min e chegou frio.",
+  "keywords": ["atraso","frio"],
+  "customer_sentiment": "frustrated",
+  "needs_human": true
+}
+```
 
-## 3. Remover a matriz de notas por loja (`src/pages/CustomerReviews.tsx`)
-- Remover o bloco "Quadro de notas por loja" (linhas 520‑638) inteiro dentro do `TabsContent value="painel"`.
-- A informação já está coberta pelos cards por loja/marca acima e pela aba **Gráficos**.
+Resultado gravado em nova coluna `chat_conversations.triage jsonb` (+ `triaged_at timestamptz`). Isso torna o filtro/ordenação triviais no client — nada de reprocessar mensagens toda hora.
 
-## 4. Revisão geral / melhorias visuais (CRM + Avaliações)
+## Mudanças
 
-Ajustes de UI/UX sem tocar em regra de negócio:
+### Backend
+1. **Migration**: adicionar em `chat_conversations`:
+   - `triage jsonb` (nullable)
+   - `triaged_at timestamptz` (nullable)
+   - índice parcial `WHERE triage->>'has_issue' = 'true'` para queries de "problemas".
 
-- **Cabeçalho unificado** no padrão obrigatório do projeto (`h1` + ícone `text-primary` + descrição) — hoje o CRM usa um cabeçalho custom; padronizar.
-- **TabsList sticky** no topo com blur (`sticky top-0 z-10 backdrop-blur bg-background/80`) para não perder navegação em telas longas.
-- **Filtros compactados** numa barra única (loja + período + busca) usando `Popover` de "Filtros avançados" no mobile, em vez de vários selects empilhados.
-- **Cards de KPI** com estilo consistente: ícone à esquerda em círculo `bg-primary/10`, número grande tabular-nums, delta vs. semana anterior quando fizer sentido (mesma seta azul↑ / vermelha↓ já usada em Avaliações — reaproveitar componente).
-- **Cores semânticas** (usar tokens `success`/`warning`/`destructive`/`primary`) em vez das classes cruas `text-emerald-*`, `text-blue-*`, `text-red-*` que aparecem nos ratingCards e nas células da matriz — atende a regra "IDENTIDADE VISUAL IMUTÁVEL".
-- **Reservas**: transformar a lista em cards no mobile (padrão mobile-first) com badge de status colorido; no desktop mantém tabela.
-- **Tickets**: agrupar visualmente por status (colunas tipo mini-kanban colapsáveis) no desktop; lista simples com filtro de status no mobile.
-- **Conversas**: split-view (lista à esquerda + detalhe à direita) no desktop ≥lg; drawer no mobile.
-- **Avaliações (aba do CRM)**: manter apenas as 3 médias + últimos 5 comentários recentes + CTA "Abrir painel completo".
-- **Painel de Avaliações** (`CustomerReviews.tsx`): após remover a matriz, reorganizar a aba "Painel" em 2 colunas no desktop (cards por marca/loja à esquerda, resumo + últimos comentários à direita) para reduzir scroll.
-- **Empty states** com ícone + frase curta + ação primária em todas as listas vazias.
-- **Skeletons** consistentes durante `loading` em vez de "Carregando…" em texto.
+2. **Edge function `triage-conversation`** (nova):
+   - Input: `{ conversation_id }` ou `{ batch: true, limit: 20 }`.
+   - Fluxo por conversa: carrega mensagens do cliente → passa heurística → se `has_issue` OU `msgs.length ≥ 3` chama Lovable AI → merge resultado → `update chat_conversations set triage=..., triaged_at=now()`.
+   - Idempotente: só reprocessa se `last_message_at > triaged_at` ou `triage IS NULL`.
+
+3. **Cron** (5 min): `select supabase.functions.invoke('triage-conversation', { body: { batch: true, limit: 30 } })`. Fila natural — nunca trava a IA principal.
+
+4. **Botão "Reanalisar"** no dialog da conversa → dispara triage sob demanda.
+
+### Frontend (`src/pages/CRM.tsx` — aba Conversas, só visual/UX)
+1. **KPIs adicionais**: "Com problema", "Críticos", "Sem ticket" (usando `triage->>severity`).
+2. **Filtros pill no topo da lista**: `[Todos] [Problemas] [Críticos] [Sem resposta] [Elogios]` + Select de categoria.
+3. **Badge de severidade** na linha (cores dos tokens: destructive/warning/success/muted). Ícone `AlertTriangle` para high/critical.
+4. **Coluna "Assunto"** substitui a "Prévia" quando `triage.summary` existe (mais útil que os primeiros 80 chars).
+5. **Ordenação padrão**: severidade desc, depois `last_message_at` desc — problemas críticos primeiro.
+6. **Ação inline "Abrir ticket"** quando `triage.has_issue && related_tickets.length === 0` → cria `support_tickets` já preenchido com summary/categoria/telefone extraído.
+
+## Fluxo completo (ciclo detecção → resolução)
+1. Cliente conversa via Giana/WhatsApp → mensagens gravadas em `chat_conversations`.
+2. Cron `triage-conversation` marca `triage`.
+3. CRM mostra badge/filtro; equipe vê "Problemas" no topo.
+4. Se já virou ticket via `registrar_problema_pedido`, `related_tickets` liga os dois; ticket resolvido → conversa some do filtro "Aguardando".
+5. Se não virou ticket, botão "Abrir ticket" no CRM cria.
 
 ## Detalhes técnicos
-- Arquivos alterados: `src/pages/CRM.tsx` (grande refactor visual), `src/pages/CustomerReviews.tsx` (remover matriz + reorganizar painel).
-- Novos sub-componentes locais em `CRM.tsx`: `ReservationsHeaderKPIs`, `TicketsHeaderKPIs`, `ConversationsHeaderKPIs`, `ReviewsMiniPanel` — todos puramente presentacionais, recebendo os arrays já filtrados por props.
-- Nenhuma mudança em Supabase, tipos, hooks de dados ou edge functions.
-- Sem novas dependências. Recharts e lucide-react já disponíveis.
-- Typecheck após alterações (`tsgo`) para garantir que remoção do `CRMDashboard` não deixou imports órfãos.
+- Modelo IA: `google/gemini-2.5-flash` via `LOVABLE_API_KEY` (grátis até 06/10/2026, sem custo neste período).
+- JSON schema forçado via `response_format: { type: 'json_schema', ...}` para não ter parsing frágil.
+- Rate: batch de 20‑30 por rodada, timeout 15s, retry único.
+- Custo esperado: <200 tokens in / 100 tokens out por conversa; ~R$0 no período grátis.
+- Sem mudança em `parme-chat` / `whatsapp-customer-ai-reply` — a triage é **complementar** e classifica todo o histórico, inclusive as conversas onde a IA não chamou o tool.
 
 ## Fora de escopo
-- Não mudar filtros de negócio, não tocar em queries, não alterar `google-reviews-sync` nem tabelas.
-- Não mexer na aba **Agente IA**.
-- Não redesenhar as cores/marca — só migrar hardcoded para tokens existentes.
+- Não reescrever a Giana nem mexer em `parme-chat`.
+- Não criar respostas automáticas ao cliente na triage.
+- Não mudar schema de `support_tickets`.
+
+## Arquivos afetados
+- `supabase/migrations/…_add_triage_to_conversations.sql` (novo)
+- `supabase/functions/triage-conversation/index.ts` (novo)
+- `supabase/functions/_shared/triage-heuristic.ts` (novo — regex/keywords compartilhados)
+- Cron via `supabase/migrations` (`select cron.schedule(...)` a cada 5 min)
+- `src/pages/CRM.tsx` — KPIs de conversas, filtros pill, coluna Assunto, badge, botão "Abrir ticket"
+- `src/integrations/supabase/types.ts` — auto-gerado após migration

@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Headset, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, Clock, Bot, Globe, Star, ArrowRight, Settings, AlertCircle, CheckCircle, Users } from "lucide-react";
+import { Headset, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, Clock, Bot, Globe, Star, ArrowRight, Settings, AlertCircle, AlertTriangle, CheckCircle, Users, Sparkles, RefreshCw } from "lucide-react";
 import { AgentPanel } from "@/components/crm/ParmeSettingsPanels";
 import { ReservationSettingsDialog } from "@/components/crm/ReservationSettingsDialog";
 import CustomerReviews from "@/pages/CustomerReviews";
@@ -92,6 +92,32 @@ type Conversation = {
   source?: "chat" | "ticket";
   related_ticket?: Ticket;
   related_tickets?: Ticket[];
+  triage?: {
+    has_issue?: boolean;
+    severity?: "none" | "low" | "medium" | "high" | "critical";
+    category?: string;
+    summary?: string;
+    keywords?: string[];
+    customer_sentiment?: string;
+    needs_human?: boolean;
+    source?: "ai" | "heuristic";
+    detected_at?: string;
+  } | null;
+  triaged_at?: string | null;
+};
+
+const SEVERITY_RANK: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1, none: 0 };
+const CATEGORY_LABEL: Record<string, string> = {
+  reclamacao: "Reclamação",
+  atraso: "Atraso",
+  item_faltando: "Item faltando",
+  item_errado: "Item errado",
+  qualidade: "Qualidade",
+  cobranca: "Cobrança",
+  reembolso: "Reembolso",
+  elogio: "Elogio",
+  duvida: "Dúvida",
+  outro: "Outro",
 };
 
 const NON_CLIENT_ROLES = new Set(["assistant", "ai", "bot", "system", "model", "tool"]);
@@ -393,6 +419,7 @@ export default function CRM() {
   const [convMsgsError, setConvMsgsError] = useState<string | null>(null);
   const [showClientInfo, setShowClientInfo] = useState(false);
   const [search, setSearch] = useState("");
+  const [convIssueFilter, setConvIssueFilter] = useState<"all" | "issues" | "critical" | "waiting" | "praise">("all");
 
   async function load() {
     setLoading(true);
@@ -715,6 +742,23 @@ export default function CRM() {
       return true;
     });
   }, [conversations, q]);
+
+  const visibleConversations = useMemo(() => {
+    let list = filteredConversations;
+    if (convIssueFilter === "issues") list = list.filter((c) => c.triage?.has_issue);
+    else if (convIssueFilter === "critical") list = list.filter((c) => c.triage?.has_issue && (c.triage?.severity === "critical" || c.triage?.severity === "high"));
+    else if (convIssueFilter === "waiting") list = list.filter((c) => c.triage?.has_issue && !(c.related_tickets?.length));
+    else if (convIssueFilter === "praise") list = list.filter((c) => c.triage?.category === "elogio");
+    // Ordenação: severidade desc, depois última msg desc
+    return [...list].sort((a, b) => {
+      const sa = SEVERITY_RANK[a.triage?.severity ?? "none"] ?? 0;
+      const sb = SEVERITY_RANK[b.triage?.severity ?? "none"] ?? 0;
+      if (sa !== sb) return sb - sa;
+      const ta = new Date(a.last_message_at ?? 0).getTime();
+      const tb = new Date(b.last_message_at ?? 0).getTime();
+      return tb - ta;
+    });
+  }, [filteredConversations, convIssueFilter]);
 
 
   return (
@@ -1382,6 +1426,28 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
         {/* Conversas */}
         <TabsContent value="conversations" className="mt-4 space-y-3">
           <ConversationsKPIs conversations={filteredConversations} />
+          <div className="flex flex-wrap items-center gap-1.5">
+            {([
+              { key: "all", label: "Todos" },
+              { key: "issues", label: "Problemas" },
+              { key: "critical", label: "Críticos" },
+              { key: "waiting", label: "Sem ticket" },
+              { key: "praise", label: "Elogios" },
+            ] as const).map((f) => {
+              const active = convIssueFilter === f.key;
+              return (
+                <Button
+                  key={f.key}
+                  size="sm"
+                  variant={active ? "default" : "outline"}
+                  className="h-7 rounded-full px-3 text-xs"
+                  onClick={() => setConvIssueFilter(f.key)}
+                >
+                  {f.label}
+                </Button>
+              );
+            })}
+          </div>
           <TabSearch value={search} onChange={setSearch} placeholder="Buscar conversa por cliente, telefone, mensagem…" />
           <Card>
             <CardContent className="p-0 overflow-x-auto">
@@ -1402,14 +1468,14 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                         Carregando…
                       </TableCell>
                     </TableRow>
-                  ) : filteredConversations.length === 0 ? (
+                  ) : visibleConversations.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                         Nenhuma conversa.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredConversations.map((c: any) => {
+                    visibleConversations.map((c: any) => {
                       const phone =
                         c.client_meta?.phone ??
                         c.client_meta?.telefone ??
@@ -1417,9 +1483,11 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                       const nome = pickClientName(c);
                       const msgs = Array.isArray(c.messages) ? c.messages : [];
                       const clientMsgs = msgs.filter((m: any) => isClientMessage(m));
-                      const preview = clientMsgs.length
-                        ? messageText(clientMsgs[clientMsgs.length - 1]).slice(0, 80)
-                        : "—";
+                      const preview = c.triage?.summary
+                        ? c.triage.summary
+                        : (clientMsgs.length
+                            ? messageText(clientMsgs[clientMsgs.length - 1]).slice(0, 80)
+                            : "—");
                       const ticketsCount = c.related_tickets?.length ?? 0;
                       const reservPhone = onlyDigits(String(phone));
                       const reservCount = reservPhone.length >= 8
@@ -1437,6 +1505,7 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                           <TableCell className="text-sm font-medium">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span>{String(nome)}</span>
+                              <SeverityBadge triage={c.triage} />
                               {ticketsCount > 0 && (
                                 <Badge variant="outline" className="text-[10px] h-5">
                                   <Ticket className="h-3 w-3 mr-1" />{ticketsCount}
@@ -1698,31 +1767,53 @@ function TicketsKPIs({ tickets }: { tickets: Ticket[] }) {
 
 function ConversationsKPIs({ conversations }: { conversations: Conversation[] }) {
   const stats = useMemo(() => {
-    const now = Date.now();
-    const dia = 24 * 60 * 60 * 1000;
-    let ult24 = 0, semResposta = 0;
-    const marcas = new Map<string, number>();
-    conversations.forEach((c: any) => {
+    let comProblema = 0, criticos = 0, semTicket = 0, semResposta = 0;
+    conversations.forEach((c) => {
       const msgs = Array.isArray(c.messages) ? c.messages : [];
       const last = msgs[msgs.length - 1];
-      const lastTs = last?.timestamp || last?.created_at || c.updated_at || c.created_at;
-      if (lastTs && now - new Date(lastTs).getTime() <= dia) ult24++;
       if (last && isClientMessage(last)) semResposta++;
-      const m = (c.extracted?.marca as string) ?? "Sem marca";
-      marcas.set(m, (marcas.get(m) ?? 0) + 1);
+      const t = c.triage;
+      if (t?.has_issue) {
+        comProblema++;
+        if (t.severity === "critical" || t.severity === "high") criticos++;
+        if (!c.related_tickets?.length) semTicket++;
+      }
     });
-    const top = Array.from(marcas.entries()).sort((a,b) => b[1] - a[1])[0];
-    return { total: conversations.length, ult24, semResposta, topMarca: top ? top[0] : "—" };
+    return { total: conversations.length, comProblema, criticos, semTicket, semResposta };
   }, [conversations]);
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      <StatCard icon={AlertTriangle} label="Com problema" value={stats.comProblema} tone={stats.comProblema ? "destructive" : "default"} />
+      <StatCard icon={AlertCircle} label="Críticos/Altos" value={stats.criticos} tone={stats.criticos ? "destructive" : "default"} />
+      <StatCard icon={Ticket} label="Sem ticket" value={stats.semTicket} tone={stats.semTicket ? "warning" : "default"} />
       <StatCard icon={MessageSquare} label="Total" value={stats.total} />
-      <StatCard icon={AlertCircle} label="Sem resposta" value={stats.semResposta} tone="warning" />
-      <StatCard icon={Clock} label="Últimas 24h" value={stats.ult24} tone="primary" />
-      <StatCard icon={Users} label="Top marca" value={stats.topMarca} />
     </div>
   );
 }
+
+function SeverityBadge({ triage }: { triage?: Conversation["triage"] }) {
+  if (!triage || !triage.has_issue) {
+    if (triage?.category === "elogio") {
+      return <Badge className="bg-success text-success-foreground hover:bg-success/90">Elogio</Badge>;
+    }
+    return null;
+  }
+  const sev = triage.severity ?? "medium";
+  const cls =
+    sev === "critical" || sev === "high"
+      ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+      : sev === "medium"
+        ? "bg-warning text-warning-foreground hover:bg-warning/90"
+        : "bg-muted text-foreground";
+  const label = CATEGORY_LABEL[triage.category ?? "outro"] ?? "Problema";
+  return (
+    <Badge className={cls}>
+      <AlertTriangle className="h-3 w-3 mr-1" />
+      {label}
+    </Badge>
+  );
+}
+
 
 function TabSearch({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
   return (
