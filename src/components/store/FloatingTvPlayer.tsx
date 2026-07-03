@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Tv, X, Minus, Volume2, VolumeX, ExternalLink, GripHorizontal } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Tv, X, Minus, Volume2, VolumeX, GripHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "store.tv.state";
 const CHANNEL_ID = "UCd0Ya-h5tXvvwK1_Q_urMkw"; // CazéTV
-const YT_LIVE_URL = "https://www.youtube.com/@CazeTV/live";
+
 const W = 320;
 const H = 180;
 const HEADER_H = 32;
@@ -143,13 +142,8 @@ export default function FloatingTvPlayer() {
             onError={() => setFailed(true)}
           />
         ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-3 text-center text-xs text-muted-foreground bg-card">
-            <p>Não foi possível carregar o player.</p>
-            <Button asChild size="sm" variant="outline">
-              <a href={YT_LIVE_URL} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-3.5 w-3.5 mr-1" /> Abrir no YouTube
-              </a>
-            </Button>
+          <div className="absolute inset-0 flex items-center justify-center p-3 text-center text-xs text-muted-foreground bg-card">
+            <p>Não foi possível carregar o player. Tente novamente mais tarde.</p>
           </div>
         )}
       </div>
