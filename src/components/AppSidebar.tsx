@@ -59,6 +59,8 @@ const rhGroups: Group[] = [
       { title: "Escalas", url: "/escalas", icon: CalendarClock, staffOnly: true },
       { title: "Férias", url: "/ferias", icon: Plane, staffOnly: true },
       { title: "Atestados Médicos", url: "/atestados", icon: Stethoscope, staffOnly: true },
+      { title: "PCMSO", url: "/pcmso", icon: Activity, staffOnly: true },
+      { title: "Saúde Mental (NR-1)", url: "/rh/saude-mental", icon: HeartHandshake, staffOnly: true },
       { title: "Uniformes", url: "/uniformes", icon: Shirt, staffOnly: true },
     ],
   },
