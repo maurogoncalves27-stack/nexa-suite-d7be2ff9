@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Tv, X, Minus, Volume2, VolumeX, ExternalLink, GripHorizontal } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Tv, X, Minus, Volume2, VolumeX, GripHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "store.tv.state";
