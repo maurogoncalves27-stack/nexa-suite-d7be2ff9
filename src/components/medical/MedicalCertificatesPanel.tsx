@@ -656,7 +656,12 @@ export default function MedicalCertificatesPanel() {
                       <Stethoscope className="h-5 w-5 mt-0.5 shrink-0 text-primary" />
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="font-semibold text-sm sm:text-base">{employeeName(c.employee_id)}</span>
+                          <span className={cn("font-semibold text-sm sm:text-base", isTerminated(c.employee_id) && "text-muted-foreground line-through")}>
+                            {employeeName(c.employee_id)}
+                          </span>
+                          {isTerminated(c.employee_id) && (
+                            <Badge variant="outline" className="text-[10px] border-muted-foreground/40 text-muted-foreground">Desligado</Badge>
+                          )}
                           {statusBadge}
                           {c.cid_code && <Badge variant="secondary" className="text-[10px]">{c.cid_code}</Badge>}
                           <Badge variant="outline" className="text-[10px]">{c.days_off} {c.days_off === 1 ? "dia" : "dias"}</Badge>
