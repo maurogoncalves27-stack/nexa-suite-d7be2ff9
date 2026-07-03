@@ -133,8 +133,6 @@ export default function StoreHome() {
           </div>
         </DialogContent>
       </Dialog>
-
-      <FloatingTvPlayer />
     </div>
   );
 }
