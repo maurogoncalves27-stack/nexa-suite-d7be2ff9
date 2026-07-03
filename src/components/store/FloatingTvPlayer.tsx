@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Tv, X, Minus, Volume2, VolumeX, GripHorizontal, Settings2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +18,34 @@ type LiveInfo = {
   embeddable?: boolean | null;
   blocked?: boolean;
 };
+
+const YOUTUBE_API_SRC = "https://www.youtube.com/iframe_api";
+let youtubeApiPromise: Promise<any> | null = null;
+
+function loadYouTubeApi() {
+  if (typeof window === "undefined") return Promise.reject(new Error("Sem janela"));
+  const w = window as any;
+  if (w.YT?.Player) return Promise.resolve(w.YT);
+  if (youtubeApiPromise) return youtubeApiPromise;
+
+  youtubeApiPromise = new Promise((resolve, reject) => {
+    const previousReady = w.onYouTubeIframeAPIReady;
+    w.onYouTubeIframeAPIReady = () => {
+      previousReady?.();
+      resolve(w.YT);
+    };
+
+    if (!document.querySelector(`script[src="${YOUTUBE_API_SRC}"]`)) {
+      const script = document.createElement("script");
+      script.src = YOUTUBE_API_SRC;
+      script.async = true;
+      script.onerror = () => reject(new Error("Falha ao carregar YouTube"));
+      document.head.appendChild(script);
+    }
+  });
+
+  return youtubeApiPromise;
+}
 
 const defaultState = (): State => ({
   open: false,
@@ -62,6 +90,8 @@ export default function FloatingTvPlayer() {
   const [blockedVideoId, setBlockedVideoId] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const dragRef = useRef<{ dx: number; dy: number } | null>(null);
+  const playerContainerRef = useRef<HTMLDivElement | null>(null);
+  const playerRef = useRef<any>(null);
   const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
 
   useEffect(() => {
@@ -113,12 +143,6 @@ export default function FloatingTvPlayer() {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   // Prioridade: vídeo manual > live detectada via API > fallback embed do canal
   const activeVideoId = state.videoId || liveInfo.videoId || "";
-  const src = useMemo(() => {
-    const common = `autoplay=1&mute=${state.muted ? 1 : 0}&playsinline=1&rel=0&modestbranding=1&iv_load_policy=3&fs=0&origin=${encodeURIComponent(origin)}`;
-    if (activeVideoId) return `https://www.youtube-nocookie.com/embed/${activeVideoId}?${common}`;
-    return `https://www.youtube.com/embed/live_stream?channel=${CHANNEL_ID}&${common}`;
-  }, [activeVideoId, state.muted, origin]);
-
   const validateManualVideo = async (videoId: string) => {
     if (!videoId) return;
     setChecking(true);
@@ -133,6 +157,68 @@ export default function FloatingTvPlayer() {
     } finally {
       setChecking(false);
     }
+  };
+
+  useEffect(() => {
+    if (!state.open || !activeVideoId || blockedVideoId === activeVideoId) return;
+    let cancelled = false;
+    setFailed(false);
+    setLoaded(false);
+
+    loadYouTubeApi()
+      .then((YT) => {
+        if (cancelled || !playerContainerRef.current) return;
+        playerRef.current?.destroy?.();
+        playerContainerRef.current.innerHTML = "";
+
+        const target = document.createElement("div");
+        playerContainerRef.current.appendChild(target);
+
+        playerRef.current = new YT.Player(target, {
+          width: "100%",
+          height: "100%",
+          videoId: activeVideoId,
+          playerVars: {
+            autoplay: 1,
+            mute: state.muted ? 1 : 0,
+            playsinline: 1,
+            rel: 0,
+            modestbranding: 1,
+            iv_load_policy: 3,
+            fs: 0,
+            origin,
+          },
+          events: {
+            onReady: (event: any) => {
+              setLoaded(true);
+              if (state.muted) event.target.mute?.();
+              else event.target.unMute?.();
+              event.target.playVideo?.();
+            },
+            onError: () => {
+              setFailed(true);
+              setBlockedVideoId(activeVideoId);
+            },
+          },
+        });
+      })
+      .catch(() => setFailed(true));
+
+    return () => {
+      cancelled = true;
+      playerRef.current?.destroy?.();
+      playerRef.current = null;
+    };
+  }, [state.open, activeVideoId, state.muted, origin, blockedVideoId]);
+
+  const openActiveVideo = () => {
+    if (!activeVideoId) return;
+    const popup = window.open(
+      `https://www.youtube.com/watch?v=${activeVideoId}`,
+      "cazetv",
+      "width=420,height=260,popup=yes,noopener,noreferrer",
+    );
+    if (popup) popup.opener = null;
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
@@ -281,17 +367,7 @@ export default function FloatingTvPlayer() {
 
       <div className="relative bg-black" style={{ aspectRatio: "16 / 9" }}>
         {hasStream && !failed && !isEmbedBlocked ? (
-          <iframe
-            key={`${activeVideoId}-${state.muted ? "m" : "u"}`}
-            src={src}
-            title="CazéTV ao vivo"
-            className="absolute inset-0 w-full h-full"
-            frameBorder={0}
-            allow="autoplay; encrypted-media; picture-in-picture"
-            allowFullScreen
-            onLoad={() => setLoaded(true)}
-            onError={() => setFailed(true)}
-          />
+          <div ref={playerContainerRef} className="absolute inset-0 w-full h-full" />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-3 text-center text-xs text-muted-foreground bg-card">
             {!hasStream ? (
@@ -311,7 +387,7 @@ export default function FloatingTvPlayer() {
                 <p>Este vídeo está bloqueado para tocar dentro do sistema.</p>
                 <button
                   type="button"
-                  onClick={() => window.open(`https://www.youtube.com/watch?v=${activeVideoId}`, "cazetv", "width=420,height=260,popup=yes")}
+                  onClick={openActiveVideo}
                   className="text-primary hover:underline"
                 >
                   Abrir em janela pequena
