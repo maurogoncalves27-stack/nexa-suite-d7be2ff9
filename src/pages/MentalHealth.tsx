@@ -137,13 +137,15 @@ export default function MentalHealth({ embedded = false }: { embedded?: boolean 
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-          <Brain className="h-6 w-6 md:h-7 md:w-7 text-primary" />
-          Saúde Mental (NR-1)
-        </h1>
-        <p className="text-muted-foreground">Monitoramento anônimo por loja + acompanhamento confidencial de alertas.</p>
-      </div>
+      {!embedded && (
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+            <Brain className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+            Saúde Mental (NR-1)
+          </h1>
+          <p className="text-muted-foreground">Monitoramento anônimo por loja + acompanhamento confidencial de alertas.</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
