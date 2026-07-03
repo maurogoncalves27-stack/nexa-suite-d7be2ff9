@@ -382,18 +382,21 @@ export default function FloatingTvPlayer() {
               </>
             ) : (
               <>
-                <p>Este vídeo está bloqueado para tocar dentro do sistema.</p>
+                <p>O YouTube bloqueia esta live dentro de outros sites (proteção da CazéTV/FIFA).</p>
                 <button
                   type="button"
                   onClick={openActiveVideo}
-                  className="text-primary hover:underline"
+                  className="text-primary hover:underline font-medium"
                 >
-                  Abrir em janela pequena
+                  Abrir no YouTube (nova aba)
                 </button>
+                <p className="text-[10px] opacity-70 leading-tight px-2">
+                  Dica: no YouTube, clique com o botão direito no vídeo → <b>Picture-in-picture</b> para deixar flutuando sobre o PDV.
+                </p>
                 <button
                   type="button"
                   onClick={() => { setUrlInput(state.videoId); setShowSettings(true); setFailed(false); setBlockedVideoId(null); }}
-                  className="text-primary hover:underline"
+                  className="text-primary hover:underline text-[11px]"
                 >
                   Colar outro link do YouTube
                 </button>
