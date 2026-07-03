@@ -19,18 +19,27 @@ async function scrapeLiveVideoId(channelId: string): Promise<string | null> {
   }
 }
 
-async function verifyLive(videoId: string, apiKey: string): Promise<{ live: boolean; title?: string }> {
+async function verifyVideo(
+  videoId: string,
+  apiKey: string,
+): Promise<{ exists: boolean; live: boolean; embeddable: boolean | null; title?: string }> {
   try {
     const r = await fetch(
-      `https://www.googleapis.com/youtube/v3/videos?part=snippet,liveStreamingDetails&id=${videoId}&key=${apiKey}`,
+      `https://www.googleapis.com/youtube/v3/videos?part=snippet,liveStreamingDetails,status&id=${videoId}&key=${apiKey}`,
     );
     const d = await r.json();
     const item = d.items?.[0];
-    if (!item) return { live: false };
-    const isLive = item.snippet?.liveBroadcastContent === "live";
-    return { live: isLive, title: item.snippet?.title };
+    if (!item) return { exists: false, live: false, embeddable: null };
+    const isLive = item.snippet?.liveBroadcastContent === "live" ||
+      (!!item.liveStreamingDetails?.actualStartTime && !item.liveStreamingDetails?.actualEndTime);
+    return {
+      exists: true,
+      live: isLive,
+      embeddable: typeof item.status?.embeddable === "boolean" ? item.status.embeddable : null,
+      title: item.snippet?.title,
+    };
   } catch {
-    return { live: false };
+    return { exists: false, live: false, embeddable: null };
   }
 }
 
@@ -39,15 +48,48 @@ Deno.serve(async (req) => {
   try {
     const apiKey = Deno.env.get("YOUTUBE_API_KEY") || "";
     const url = new URL(req.url);
-    const channelId = url.searchParams.get("channelId") || DEFAULT_CHANNEL;
+    let body: { channelId?: string; videoId?: string } = {};
+    if (req.method !== "GET") {
+      try {
+        body = await req.json();
+      } catch {
+        body = {};
+      }
+    }
+    const channelId = body.channelId || url.searchParams.get("channelId") || DEFAULT_CHANNEL;
+    const directVideoId = body.videoId || url.searchParams.get("videoId") || "";
+
+    if (directVideoId && apiKey) {
+      const v = await verifyVideo(directVideoId, apiKey);
+      return new Response(
+        JSON.stringify({
+          exists: v.exists,
+          live: v.live,
+          videoId: directVideoId,
+          title: v.title || null,
+          embeddable: v.embeddable,
+          blocked: v.embeddable === false,
+          source: "video-api",
+        }),
+        { headers: { ...CORS, "Content-Type": "application/json" } },
+      );
+    }
 
     // 1) Scrape /live — mais rápido/atualizado do que search API
     const scrapedId = await scrapeLiveVideoId(channelId);
     if (scrapedId && apiKey) {
-      const v = await verifyLive(scrapedId, apiKey);
+      const v = await verifyVideo(scrapedId, apiKey);
       if (v.live) {
         return new Response(
-          JSON.stringify({ live: true, videoId: scrapedId, title: v.title, channelId, source: "scrape" }),
+          JSON.stringify({
+            live: true,
+            videoId: scrapedId,
+            title: v.title,
+            channelId,
+            embeddable: v.embeddable,
+            blocked: v.embeddable === false,
+            source: "scrape",
+          }),
           { headers: { ...CORS, "Content-Type": "application/json" } },
         );
       }
@@ -74,6 +116,8 @@ Deno.serve(async (req) => {
           videoId,
           title: item?.snippet?.title || null,
           channelId,
+          embeddable: null,
+          blocked: false,
           source: "search-api",
         }),
         { headers: { ...CORS, "Content-Type": "application/json" } },
