@@ -17549,6 +17549,7 @@ export type Database = {
         | "contabilidade"
         | "partner"
         | "waiter"
+        | "mental_health"
       automation_trigger_type:
         | "late_arrival"
         | "wrong_punch"
@@ -17778,6 +17779,7 @@ export const Constants = {
         "contabilidade",
         "partner",
         "waiter",
+        "mental_health",
       ],
       automation_trigger_type: [
         "late_arrival",
