@@ -22,6 +22,7 @@ interface Employee {
   id: string;
   full_name: string;
   store_id: string;
+  status?: string;
   store?: { name: string };
 }
 
