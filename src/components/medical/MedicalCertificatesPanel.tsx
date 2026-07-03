@@ -22,6 +22,7 @@ interface Employee {
   id: string;
   full_name: string;
   store_id: string;
+  status?: string;
   store?: { name: string };
 }
 
@@ -138,8 +139,7 @@ export default function MedicalCertificatesPanel() {
     const [{ data: emps }, { data: cs }] = await Promise.all([
       supabase
         .from("employees")
-        .select("id, full_name, store_id, store:stores!employees_store_id_fkey(name)")
-        .in("status", ["active", "in_training", "on_leave"])
+        .select("id, full_name, store_id, status, store:stores!employees_store_id_fkey(name)")
         .order("full_name"),
       supabase
         .from("medical_certificates")
@@ -513,7 +513,17 @@ export default function MedicalCertificatesPanel() {
     [certs, filterEmployee]
   );
 
-  const employeeName = (id: string) => employees.find((e) => e.id === id)?.full_name ?? "—";
+  const activeEmployees = useMemo(
+    () => employees.filter((e) => ["active", "in_training", "on_leave"].includes(e.status ?? "active")),
+    [employees]
+  );
+  const employeeName = (id: string) => {
+    const e = employees.find((x) => x.id === id);
+    if (!e) return "Colaborador removido";
+    const terminated = e.status === "terminated";
+    return terminated ? `${e.full_name} (desligado)` : e.full_name;
+  };
+  const isTerminated = (id: string) => employees.find((x) => x.id === id)?.status === "terminated";
 
   const stats = useMemo(() => {
     const yearStart = startOfYear(new Date());
@@ -646,7 +656,12 @@ export default function MedicalCertificatesPanel() {
                       <Stethoscope className="h-5 w-5 mt-0.5 shrink-0 text-primary" />
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="font-semibold text-sm sm:text-base">{employeeName(c.employee_id)}</span>
+                          <span className={cn("font-semibold text-sm sm:text-base", isTerminated(c.employee_id) && "text-muted-foreground line-through")}>
+                            {employeeName(c.employee_id)}
+                          </span>
+                          {isTerminated(c.employee_id) && (
+                            <Badge variant="outline" className="text-[10px] border-muted-foreground/40 text-muted-foreground">Desligado</Badge>
+                          )}
                           {statusBadge}
                           {c.cid_code && <Badge variant="secondary" className="text-[10px]">{c.cid_code}</Badge>}
                           <Badge variant="outline" className="text-[10px]">{c.days_off} {c.days_off === 1 ? "dia" : "dias"}</Badge>
@@ -724,7 +739,7 @@ export default function MedicalCertificatesPanel() {
                     <CommandList>
                       <CommandEmpty>Nenhum colaborador encontrado.</CommandEmpty>
                       <CommandGroup>
-                        {employees.map((e) => (
+                        {activeEmployees.map((e) => (
                           <CommandItem
                             key={e.id}
                             value={e.full_name}
