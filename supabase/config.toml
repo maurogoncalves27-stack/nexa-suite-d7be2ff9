@@ -29,6 +29,3 @@ verify_jwt = false
 
 [functions.tuya-list-devices]
 verify_jwt = true
-
-[functions.youtube-live]
-verify_jwt = false
