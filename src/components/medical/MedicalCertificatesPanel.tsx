@@ -139,8 +139,7 @@ export default function MedicalCertificatesPanel() {
     const [{ data: emps }, { data: cs }] = await Promise.all([
       supabase
         .from("employees")
-        .select("id, full_name, store_id, store:stores!employees_store_id_fkey(name)")
-        .in("status", ["active", "in_training", "on_leave"])
+        .select("id, full_name, store_id, status, store:stores!employees_store_id_fkey(name)")
         .order("full_name"),
       supabase
         .from("medical_certificates")
