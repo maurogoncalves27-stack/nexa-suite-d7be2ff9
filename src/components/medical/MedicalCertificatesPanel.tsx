@@ -513,7 +513,17 @@ export default function MedicalCertificatesPanel() {
     [certs, filterEmployee]
   );
 
-  const employeeName = (id: string) => employees.find((e) => e.id === id)?.full_name ?? "—";
+  const activeEmployees = useMemo(
+    () => employees.filter((e) => ["active", "in_training", "on_leave"].includes(e.status ?? "active")),
+    [employees]
+  );
+  const employeeName = (id: string) => {
+    const e = employees.find((x) => x.id === id);
+    if (!e) return "Colaborador removido";
+    const terminated = e.status === "terminated";
+    return terminated ? `${e.full_name} (desligado)` : e.full_name;
+  };
+  const isTerminated = (id: string) => employees.find((x) => x.id === id)?.status === "terminated";
 
   const stats = useMemo(() => {
     const yearStart = startOfYear(new Date());
