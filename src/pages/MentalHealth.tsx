@@ -42,7 +42,7 @@ const statusLabel = (s: string) =>
 const statusColor = (s: string) =>
   s === "open" ? "destructive" : s === "in_progress" ? "default" : "secondary";
 
-export default function MentalHealth() {
+export default function MentalHealth({ embedded = false }: { embedded?: boolean } = {}) {
   const [loading, setLoading] = useState(true);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [agg, setAgg] = useState<StoreAgg[]>([]);
