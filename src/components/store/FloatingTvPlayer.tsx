@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Tv, X, Minus, Volume2, VolumeX, GripHorizontal } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Tv, X, Minus, Volume2, VolumeX, GripHorizontal, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "store.tv.state";
@@ -9,14 +9,24 @@ const W = 320;
 const H = 180;
 const HEADER_H = 32;
 
-type State = { open: boolean; x: number; y: number; muted: boolean };
+type State = { open: boolean; x: number; y: number; muted: boolean; videoId: string };
 
 const defaultState = (): State => ({
   open: false,
   x: typeof window !== "undefined" ? window.innerWidth - W - 16 : 16,
   y: typeof window !== "undefined" ? window.innerHeight - H - HEADER_H - 16 : 16,
   muted: true,
+  videoId: "",
 });
+
+function parseVideoId(input: string): string {
+  const s = input.trim();
+  if (!s) return "";
+  const m = s.match(/(?:v=|youtu\.be\/|\/live\/|\/embed\/|\/shorts\/)([A-Za-z0-9_-]{11})/);
+  if (m) return m[1];
+  if (/^[A-Za-z0-9_-]{11}$/.test(s)) return s;
+  return "";
+}
 
 const loadState = (): State => {
   try {
