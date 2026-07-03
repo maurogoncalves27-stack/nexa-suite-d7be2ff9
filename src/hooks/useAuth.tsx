@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, ReactNode } fr
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
-export type AppRole = "admin" | "manager" | "employee" | "trainee" | "supplier" | "outsourced" | "nutritionist" | "hr" | "contabilidade" | "partner";
+export type AppRole = "admin" | "manager" | "employee" | "trainee" | "supplier" | "outsourced" | "nutritionist" | "hr" | "contabilidade" | "partner" | "waiter" | "mental_health";
 
 /**
  * IDs de usuárias com permissão especial total (super-acesso):

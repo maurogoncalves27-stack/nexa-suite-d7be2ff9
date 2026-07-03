@@ -7733,6 +7733,7 @@ export type Database = {
           days_off: number
           doctor_crm: string | null
           doctor_name: string | null
+          document_type: string
           employee_id: string
           file_name: string | null
           file_path: string | null
@@ -7741,6 +7742,7 @@ export type Database = {
           inss_benefit_number: string | null
           inss_benefit_type: string | null
           inss_referral: boolean
+          is_pcmso: boolean
           leave_applied: boolean
           leave_end_date: string | null
           leave_start_date: string | null
@@ -7752,6 +7754,7 @@ export type Database = {
           size_bytes: number | null
           status: string
           updated_at: string
+          valid_until: string | null
         }
         Insert: {
           certificate_date: string
@@ -7762,6 +7765,7 @@ export type Database = {
           days_off?: number
           doctor_crm?: string | null
           doctor_name?: string | null
+          document_type?: string
           employee_id: string
           file_name?: string | null
           file_path?: string | null
@@ -7770,6 +7774,7 @@ export type Database = {
           inss_benefit_number?: string | null
           inss_benefit_type?: string | null
           inss_referral?: boolean
+          is_pcmso?: boolean
           leave_applied?: boolean
           leave_end_date?: string | null
           leave_start_date?: string | null
@@ -7781,6 +7786,7 @@ export type Database = {
           size_bytes?: number | null
           status?: string
           updated_at?: string
+          valid_until?: string | null
         }
         Update: {
           certificate_date?: string
@@ -7791,6 +7797,7 @@ export type Database = {
           days_off?: number
           doctor_crm?: string | null
           doctor_name?: string | null
+          document_type?: string
           employee_id?: string
           file_name?: string | null
           file_path?: string | null
@@ -7799,6 +7806,7 @@ export type Database = {
           inss_benefit_number?: string | null
           inss_benefit_type?: string | null
           inss_referral?: boolean
+          is_pcmso?: boolean
           leave_applied?: boolean
           leave_end_date?: string | null
           leave_start_date?: string | null
@@ -7810,6 +7818,7 @@ export type Database = {
           size_bytes?: number | null
           status?: string
           updated_at?: string
+          valid_until?: string | null
         }
         Relationships: [
           {
@@ -7817,6 +7826,125 @@ export type Database = {
             columns: ["infraction_id"]
             isOneToOne: false
             referencedRelation: "employee_infractions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mental_health_alerts: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          employee_id: string
+          id: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          rule: string
+          status: string
+          triggered_at: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          employee_id: string
+          id?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          rule: string
+          status?: string
+          triggered_at?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          employee_id?: string
+          id?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          rule?: string
+          status?: string
+          triggered_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mental_health_alerts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mental_health_alerts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mental_health_followups: {
+        Row: {
+          alert_id: string | null
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          followup_date: string
+          id: string
+          notes: string | null
+          pcmso_document_id: string | null
+          type: string
+        }
+        Insert: {
+          alert_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          followup_date?: string
+          id?: string
+          notes?: string | null
+          pcmso_document_id?: string | null
+          type: string
+        }
+        Update: {
+          alert_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          followup_date?: string
+          id?: string
+          notes?: string | null
+          pcmso_document_id?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mental_health_followups_alert_id_fkey"
+            columns: ["alert_id"]
+            isOneToOne: false
+            referencedRelation: "mental_health_alerts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mental_health_followups_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mental_health_followups_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mental_health_followups_pcmso_document_id_fkey"
+            columns: ["pcmso_document_id"]
+            isOneToOne: false
+            referencedRelation: "medical_certificates"
             referencedColumns: ["id"]
           },
         ]
@@ -8247,6 +8375,57 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mood_checkins: {
+        Row: {
+          comment: string | null
+          created_at: string
+          employee_id: string
+          id: string
+          mood_score: number | null
+          needs_support: boolean
+          skipped: boolean
+          user_id: string
+          week_start: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          employee_id: string
+          id?: string
+          mood_score?: number | null
+          needs_support?: boolean
+          skipped?: boolean
+          user_id: string
+          week_start: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          employee_id?: string
+          id?: string
+          mood_score?: number | null
+          needs_support?: boolean
+          skipped?: boolean
+          user_id?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mood_checkins_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mood_checkins_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -12490,6 +12669,8 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          pcmso_periodicity_months: number
+          pcmso_requires_psychosocial: boolean
           sort_order: number
           time_clock_payroll: boolean
           time_clock_required: boolean
@@ -12502,6 +12683,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          pcmso_periodicity_months?: number
+          pcmso_requires_psychosocial?: boolean
           sort_order?: number
           time_clock_payroll?: boolean
           time_clock_required?: boolean
@@ -12514,6 +12697,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          pcmso_periodicity_months?: number
+          pcmso_requires_psychosocial?: boolean
           sort_order?: number
           time_clock_payroll?: boolean
           time_clock_required?: boolean
@@ -16728,6 +16913,26 @@ export type Database = {
         }
         Relationships: []
       }
+      v_mood_weekly_store_agg: {
+        Row: {
+          avg_mood: number | null
+          low_count: number | null
+          respondents: number | null
+          skipped_count: number | null
+          store_id: string | null
+          store_name: string | null
+          week_start: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       _migration_list_tables: { Args: never; Returns: Json }
@@ -17549,6 +17754,7 @@ export type Database = {
         | "contabilidade"
         | "partner"
         | "waiter"
+        | "mental_health"
       automation_trigger_type:
         | "late_arrival"
         | "wrong_punch"
@@ -17778,6 +17984,7 @@ export const Constants = {
         "contabilidade",
         "partner",
         "waiter",
+        "mental_health",
       ],
       automation_trigger_type: [
         "late_arrival",

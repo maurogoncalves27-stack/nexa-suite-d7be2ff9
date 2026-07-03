@@ -65,6 +65,8 @@ const Infractions = lazy(() => import("./pages/Infractions.tsx"));
 const AutomationRules = lazy(() => import("./pages/AutomationRules.tsx"));
 const PositionBonuses = lazy(() => import("./pages/PositionBonuses.tsx"));
 const MedicalCertificates = lazy(() => import("./pages/MedicalCertificates.tsx"));
+const Pcmso = lazy(() => import("./pages/Pcmso.tsx"));
+const MentalHealth = lazy(() => import("./pages/MentalHealth.tsx"));
 const NutriReports = lazy(() => import("./pages/NutriReports.tsx"));
 const NutriVisit = lazy(() => import("./pages/NutriVisit.tsx"));
 const NutriVisitHistorico = lazy(() => import("./pages/NutriVisitHistorico.tsx"));
@@ -351,6 +353,12 @@ const App = () => (
               <Route path="/regras-automaticas" element={<Guarded staff><AutomationRules /></Guarded>} />
               <Route path="/bonus-cargo" element={<Guarded staff><PositionBonuses /></Guarded>} />
               <Route path="/atestados" element={<Guarded staff accountant><MedicalCertificates /></Guarded>} />
+              <Route path="/pcmso" element={
+                <ProtectedRoute requireRoles={["admin", "manager", "hr", "mental_health"]}><Pcmso /></ProtectedRoute>
+              } />
+              <Route path="/rh/saude-mental" element={
+                <ProtectedRoute requireRoles={["admin", "hr", "mental_health"]}><MentalHealth /></ProtectedRoute>
+              } />
               <Route path="/nutri-relatorios" element={<Guarded module="nutri_relatorios"><NutriReports /></Guarded>} />
               <Route path="/nutri-visita" element={<Guarded module="nutri_visita"><NutriVisit /></Guarded>} />
               <Route path="/nutri-visita/historico" element={<Guarded module="nutri_visita"><NutriVisitHistorico /></Guarded>} />
