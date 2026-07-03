@@ -739,7 +739,7 @@ export default function MedicalCertificatesPanel() {
                     <CommandList>
                       <CommandEmpty>Nenhum colaborador encontrado.</CommandEmpty>
                       <CommandGroup>
-                        {employees.map((e) => (
+                        {activeEmployees.map((e) => (
                           <CommandItem
                             key={e.id}
                             value={e.full_name}
