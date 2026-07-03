@@ -40,7 +40,7 @@ interface Doc {
   employee?: { full_name: string; store?: { name: string } | null };
 }
 
-export default function Pcmso() {
+export default function Pcmso({ embedded = false }: { embedded?: boolean } = {}) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [docs, setDocs] = useState<Doc[]>([]);
   const [loading, setLoading] = useState(true);
