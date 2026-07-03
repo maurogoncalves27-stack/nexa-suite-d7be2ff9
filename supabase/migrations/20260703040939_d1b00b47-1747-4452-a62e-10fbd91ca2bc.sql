@@ -1,0 +1,1 @@
+ALTER VIEW public.v_mood_weekly_store_agg SET (security_invoker = true);
