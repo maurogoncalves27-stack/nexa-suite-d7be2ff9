@@ -42,12 +42,22 @@ export default function FloatingTvPlayer() {
   const [state, setState] = useState<State>(() => (typeof window !== "undefined" ? loadState() : defaultState()));
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [urlInput, setUrlInput] = useState("");
   const dragRef = useRef<{ dx: number; dy: number } | null>(null);
   const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
 
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
   }, [state]);
+
+  useEffect(() => {
+    if (!state.open) return;
+    setFailed(false);
+    setLoaded(false);
+    const t = setTimeout(() => setLoaded((l) => { if (!l) setFailed(true); return l; }), 6000);
+    return () => clearTimeout(t);
+  }, [state.open, state.muted, state.videoId]);
 
   useEffect(() => {
     if (!state.open) return;
