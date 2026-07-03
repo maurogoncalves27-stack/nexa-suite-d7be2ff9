@@ -17,6 +17,7 @@ import {
   Loader2,
 } from "lucide-react";
 import PdvNovo from "./PdvNovo";
+import FloatingTvPlayer from "@/components/store/FloatingTvPlayer";
 
 const Nutricontrol = lazy(() => import("./Nutricontrol"));
 const InventoryCounts = lazy(() => import("./InventoryCounts"));
@@ -132,6 +133,8 @@ export default function StoreHome() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <FloatingTvPlayer />
     </div>
   );
 }
