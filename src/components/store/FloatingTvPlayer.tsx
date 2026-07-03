@@ -4,13 +4,20 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
 const STORAGE_KEY = "store.tv.state";
-const CHANNEL_ID = "UCd0Ya-h5tXvvwK1_Q_urMkw"; // CazéTV
+const CHANNEL_ID = "UCZiYbVptd3PVPf4f6eR6UaQ"; // CazéTV (@CazeTV)
 
 const W = 320;
 const H = 180;
 const HEADER_H = 32;
 
 type State = { open: boolean; x: number; y: number; muted: boolean; videoId: string };
+type LiveInfo = {
+  live: boolean;
+  videoId: string | null;
+  title: string | null;
+  embeddable?: boolean | null;
+  blocked?: boolean;
+};
 
 const defaultState = (): State => ({
   open: false,
@@ -47,11 +54,12 @@ export default function FloatingTvPlayer() {
   const [loaded, setLoaded] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [urlInput, setUrlInput] = useState("");
-  const [liveInfo, setLiveInfo] = useState<{ live: boolean; videoId: string | null; title: string | null }>({
+  const [liveInfo, setLiveInfo] = useState<LiveInfo>({
     live: false,
     videoId: null,
     title: null,
   });
+  const [blockedVideoId, setBlockedVideoId] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const dragRef = useRef<{ dx: number; dy: number } | null>(null);
   const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
@@ -69,7 +77,16 @@ export default function FloatingTvPlayer() {
       const { data } = await supabase.functions.invoke("youtube-live", {
         body: { channelId: CHANNEL_ID },
       });
-      if (data) setLiveInfo({ live: !!data.live, videoId: data.videoId ?? null, title: data.title ?? null });
+      if (data) {
+        setLiveInfo({
+          live: !!data.live,
+          videoId: data.videoId ?? null,
+          title: data.title ?? null,
+          embeddable: data.embeddable ?? null,
+          blocked: !!data.blocked,
+        });
+        if (data.videoId && data.blocked) setBlockedVideoId(data.videoId);
+      }
     } catch {
       // ignore
     } finally {
@@ -98,9 +115,25 @@ export default function FloatingTvPlayer() {
   const activeVideoId = state.videoId || liveInfo.videoId || "";
   const src = useMemo(() => {
     const common = `autoplay=1&mute=${state.muted ? 1 : 0}&playsinline=1&rel=0&modestbranding=1&iv_load_policy=3&fs=0&origin=${encodeURIComponent(origin)}`;
-    if (activeVideoId) return `https://www.youtube.com/embed/${activeVideoId}?${common}`;
+    if (activeVideoId) return `https://www.youtube-nocookie.com/embed/${activeVideoId}?${common}`;
     return `https://www.youtube.com/embed/live_stream?channel=${CHANNEL_ID}&${common}`;
   }, [activeVideoId, state.muted, origin]);
+
+  const validateManualVideo = async (videoId: string) => {
+    if (!videoId) return;
+    setChecking(true);
+    setBlockedVideoId(null);
+    try {
+      const { data } = await supabase.functions.invoke("youtube-live", {
+        body: { videoId },
+      });
+      if (data?.blocked) setBlockedVideoId(videoId);
+    } catch {
+      // se não validar, tenta carregar normalmente
+    } finally {
+      setChecking(false);
+    }
+  };
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (isMobile) return;
@@ -134,10 +167,11 @@ export default function FloatingTvPlayer() {
     : { left: state.x, top: state.y, width: W };
 
   const hasStream = !!activeVideoId;
+  const isEmbedBlocked = !!activeVideoId && blockedVideoId === activeVideoId;
   const statusLabel = state.videoId
-    ? "vídeo fixo"
+    ? isEmbedBlocked ? "bloqueado no site" : "vídeo fixo"
     : liveInfo.live
-      ? "ao vivo"
+      ? liveInfo.blocked ? "ao vivo bloqueado" : "ao vivo"
       : checking
         ? "verificando…"
         : "sem transmissão";
@@ -225,6 +259,7 @@ export default function FloatingTvPlayer() {
               onClick={() => {
                 const id = parseVideoId(urlInput);
                 setState((s) => ({ ...s, videoId: id }));
+                validateManualVideo(id);
                 setShowSettings(false);
               }}
               className="h-7 px-2 text-xs rounded bg-primary text-primary-foreground hover:opacity-90"
@@ -245,7 +280,7 @@ export default function FloatingTvPlayer() {
       )}
 
       <div className="relative bg-black" style={{ aspectRatio: "16 / 9" }}>
-        {hasStream && !failed ? (
+        {hasStream && !failed && !isEmbedBlocked ? (
           <iframe
             key={`${activeVideoId}-${state.muted ? "m" : "u"}`}
             src={src}
@@ -273,10 +308,17 @@ export default function FloatingTvPlayer() {
               </>
             ) : (
               <>
-                <p>Não foi possível carregar este vídeo (embed bloqueado).</p>
+                <p>Este vídeo está bloqueado para tocar dentro do sistema.</p>
                 <button
                   type="button"
-                  onClick={() => { setUrlInput(state.videoId); setShowSettings(true); setFailed(false); }}
+                  onClick={() => window.open(`https://www.youtube.com/watch?v=${activeVideoId}`, "cazetv", "width=420,height=260,popup=yes")}
+                  className="text-primary hover:underline"
+                >
+                  Abrir em janela pequena
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setUrlInput(state.videoId); setShowSettings(true); setFailed(false); setBlockedVideoId(null); }}
                   className="text-primary hover:underline"
                 >
                   Colar outro link do YouTube
