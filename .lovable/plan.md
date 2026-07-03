@@ -1,151 +1,52 @@
 ## Objetivo
+Unificar **Atestados Médicos**, **PCMSO** e **Saúde Mental (NR-1)** em uma única página **"Saúde Ocupacional"** com abas, mantendo todas as funcionalidades atuais e respeitando as permissões distintas de cada módulo.
 
-Atender **NR-1** (gestão de riscos psicossociais) com:
-1. Check-in **semanal** de humor no primeiro acesso da semana.
-2. Painel RH de **Saúde Mental** com alertas automáticos.
-3. Transformar módulo de Atestados em **Atestados & PCMSO**, permitindo upload de ASO/exames ocupacionais/laudos e vinculação com os alertas de humor.
+## Nova página
 
----
+**Rota:** `/saude-ocupacional` (as rotas antigas `/atestados`, `/pcmso`, `/rh/saude-mental` continuam funcionando via redirect para a aba correta, para não quebrar links/bookmarks).
 
-## Parte 1 — Check-in de humor (colaborador)
+**Layout:** cabeçalho padrão + `Tabs` mobile-first com 3 abas:
 
-**Quando:** modal aparece no 1º acesso da semana (segunda a domingo), em qualquer área do app. Pode pular ("prefiro não responder"), mas fica registrado.
+1. **Atestados** — painel atual (`MedicalCertificatesPanel`).
+2. **PCMSO** — conteúdo atual de `Pcmso.tsx` (ASO, laudos, exames com validade).
+3. **Saúde Mental** — conteúdo atual de `MentalHealth.tsx` (heatmap, alertas, acompanhamentos).
 
-**Como responde:**
-- 5 emojis: 😄 Ótimo · 😊 Bem · 😐 Neutro · 😟 Baixo · 😢 Muito baixo (score 5→1)
-- Campo texto opcional "quer comentar algo? (confidencial)"
-- Ao escolher 😟 ou 😢, aparece bloco fixo: *"Se precisar conversar, o RH está disponível. Ligue [telefone] ou marque atendimento confidencial [botão]."*
+**Ícone/título:** `HeartPulse` + "Saúde Ocupacional" com subtítulo "Atestados, PCMSO e saúde mental (NR-1)".
 
-**Confidencialidade:** comentário e nome só visíveis para RH e psicólogo (nova role). Gestor de loja NUNCA vê individual — só agregado anônimo da unidade.
+## Permissões por aba
 
----
+Cada aba é renderizada só se o usuário tem acesso; abas bloqueadas somem do `TabsList` (não aparecem desabilitadas):
 
-## Parte 2 — Painel RH `/rh/saude-mental`
+- **Atestados:** staff + contabilidade (mesma regra de hoje).
+- **PCMSO:** admin, manager, hr, mental_health.
+- **Saúde Mental:** admin, hr, mental_health.
 
-Nova página no menu **RH**, acesso `hr_admin` + nova role `mental_health` (psicólogo/técnico SESMT).
+Se o usuário só tem acesso a uma aba, ela abre direto sem mostrar as tabs. Se não tem acesso a nenhuma, redireciona para `/`.
 
-**Conteúdo:**
-- **Cards resumo semana atual:** total respondentes, % participação, humor médio, nº alertas ativos.
-- **Heatmap por loja/setor** (agregado, sem nomes) — cores fixas por loja.
-- **Evolução 12 semanas** (linha) — humor médio da empresa e por loja.
-- **Lista de alertas ativos** (identificado, só para RH/psicólogo):
-  - Regra: colaborador registrou 😟/😢 em **3 check-ins consecutivos** OU 4 dos últimos 6.
-  - Cada alerta: nome, loja, histórico últimas 8 semanas, comentários, botão **"Registrar acompanhamento"** (data, tipo — conversa/encaminhamento SESMT/afastamento — nota confidencial).
-  - Botão **"Vincular a PCMSO"** cria/liga ao registro PCMSO do colaborador.
-- **Histórico individual** (ao clicar no colaborador): linha do tempo humor + acompanhamentos + docs PCMSO relacionados.
-- **Exportar relatório NR-1** (PDF) por período.
+## Sidebar
 
----
+No grupo **Recursos Humanos → Jornada**, substituir os 3 itens atuais por **1 item único**:
 
-## Parte 3 — Módulo Atestados → **Atestados & PCMSO**
+- "Saúde Ocupacional" (`HeartPulse`) → `/saude-ocupacional`
 
-Rota renomeada `/atestados` → `/atestados-pcmso`. Duas abas:
+Os 3 itens antigos deixam de aparecer no menu.
 
-### Aba 1 — Atestados (funcionamento atual, intocado)
+## Navegação profunda
 
-### Aba 2 — PCMSO
-Reaproveita `medical_certificates` adicionando categorização por `document_type`:
-- `aso_admissional`
-- `aso_periodico`
-- `aso_demissional`
-- `aso_mudanca_funcao`
-- `aso_retorno_trabalho`
-- `laudo_pcmso` (documento-base do programa)
-- `laudo_psicossocial` (NR-1 específico)
-- `exame_complementar`
-- `acompanhamento_saude_mental` (gerado pelo painel)
+Query param `?tab=atestados|pcmso|saude-mental` controla a aba ativa (permite linkar direto). Redirects:
 
-**UI da aba PCMSO:**
-- Tabela por colaborador × tipo de exame com **próxima data prevista** (baseada em periodicidade cadastrada por função em `positions` — novo campo `pcmso_periodicity_months`, default 12).
-- Semáforo: 🟢 em dia · 🟡 vence em 30 dias · 🔴 vencido.
-- Botão "Upload ASO/Laudo" abre form: colaborador, tipo, data emissão, data validade, médico, arquivo. Arquivo vai para pasta do colaborador (imutável, conforme regra do projeto).
-- Filtro por loja, função, status, tipo.
-- **Aba adicional "Programa PCMSO"**: upload do laudo-base anual da empresa/loja (não vinculado a colaborador).
-
----
-
-## Parte 4 — Sidebar e navegação
-
-- Renomear item "Atestados Médicos" → **"Atestados & PCMSO"**.
-- Novo item em RH: **"Saúde Mental (NR-1)"** com ícone `HeartPulse`, acesso `hr_admin`/`mental_health`.
-- Atualizar `PAGE_TITLES` em `AppLayout.tsx`.
-
----
+- `/atestados` → `/saude-ocupacional?tab=atestados`
+- `/pcmso` → `/saude-ocupacional?tab=pcmso`
+- `/rh/saude-mental` → `/saude-ocupacional?tab=saude-mental`
 
 ## Detalhes técnicos
 
-### Novas tabelas
-```sql
--- Check-ins semanais
-mood_checkins (
-  id, employee_id, user_id, week_start (date, segunda),
-  mood_score (1-5, null = pulou),
-  comment (text, criptografado no client? — v1 fica plain, RLS restrito),
-  needs_support (bool, derivado de score<=2),
-  created_at,
-  UNIQUE(employee_id, week_start)
-)
+- Criar `src/pages/OccupationalHealth.tsx` com o container de tabs + gating por role via `useAuth`.
+- Refatorar `Pcmso.tsx` e `MentalHealth.tsx` extraindo o **corpo** (sem o header `<h1>`) para componentes reutilizáveis (`PcmsoPanel`, `MentalHealthPanel`) — o header vira responsabilidade da nova página. Os arquivos de página antigos passam a apenas renderizar o novo `OccupationalHealth` já com a aba correta, para os redirects funcionarem.
+- Atualizar `PAGE_TITLES` em `src/components/AppLayout.tsx`: mais específica primeiro (`/saude-ocupacional` → "Saúde Ocupacional", grupo "Jornada"); manter os matches antigos por compatibilidade.
+- Atualizar `ACCOUNTANT_URLS` no sidebar para incluir `/saude-ocupacional` (contabilidade acessa só a aba Atestados).
+- Não mexer em migrations, tabelas, edge functions nem regras de RLS — só reorganização de UI/rotas.
 
--- Alertas gerados
-mental_health_alerts (
-  id, employee_id, triggered_at, rule ('3_consecutive_low'|'4_of_6_low'),
-  status ('open'|'in_progress'|'resolved'|'dismissed'),
-  assigned_to (uuid, hr/psicólogo),
-  resolved_at, resolution_notes
-)
-
--- Acompanhamentos (histórico confidencial)
-mental_health_followups (
-  id, alert_id (nullable), employee_id,
-  followup_date, type ('conversation'|'sesmt_referral'|'external_referral'|'leave'|'other'),
-  notes (text), created_by, created_at,
-  pcmso_document_id (fk medical_certificates, nullable)
-)
-```
-
-### Alterações em tabelas existentes
-```sql
-ALTER TABLE medical_certificates
-  ADD COLUMN document_type text DEFAULT 'atestado',
-  ADD COLUMN valid_until date,
-  ADD COLUMN is_pcmso boolean DEFAULT false;
-
-ALTER TABLE positions
-  ADD COLUMN pcmso_periodicity_months int DEFAULT 12,
-  ADD COLUMN pcmso_requires_psychosocial boolean DEFAULT false;
-```
-
-### RLS
-- `mood_checkins`: colaborador vê/insere só o próprio; RH e psicólogo veem todos; gestor de loja **não vê** (nem agregado sai daqui — vem de view).
-- View `v_mood_weekly_store_agg` (SECURITY DEFINER) → só métricas agregadas por loja/semana, sem employee_id. Gestor consulta essa view.
-- `mental_health_alerts` e `_followups`: só RH e nova role `mental_health`.
-- `medical_certificates` PCMSO: mesmas policies atuais + nova role `mental_health` para leitura.
-
-### Nova role
-Adicionar `mental_health` em `app_role` enum. Cadastrada via `/configuracoes/usuarios` como qualquer outra.
-
-### Automação de alertas
-Trigger `AFTER INSERT` em `mood_checkins` roda função `check_mood_alert_rules(employee_id)`:
-- busca últimos 6 check-ins,
-- aplica regras,
-- se dispara e não existe alerta open → cria em `mental_health_alerts` + insere `user_notifications` para todos os `hr_admin`/`mental_health`.
-
-### Arquivamento PCMSO na pasta do colaborador
-Todo upload PCMSO passa por `uploadEmployeePdfBlob` (regra do projeto), com subpasta `pcmso/<tipo>/`.
-
----
-
-## O que fica de fora desta iteração
-
-- Chat/vídeo com psicólogo dentro do app (só telefone/link externo por enquanto).
-- eSocial S-2220 (monitoramento saúde) — só quando módulo PCMSO estiver populado.
-- Questionário psicossocial completo (COPSOQ/PROCARE) — v2, quando NR-1 exigir avaliação estruturada.
-
----
-
-## Ordem de entrega
-1. Migration (tabelas + role + trigger).
-2. Modal semanal de humor + hook `useWeeklyMoodCheckin`.
-3. Página `/rh/saude-mental` (cards, heatmap, alertas, drill-down).
-4. Refactor `/atestados` → `/atestados-pcmso` com aba PCMSO.
-5. Sidebar + PAGE_TITLES + memory (regras do módulo).
+## Fora de escopo
+- Não alterar formulários, gráficos ou lógica interna dos 3 módulos.
+- Não mexer no check-in semanal de humor (`WeeklyMoodCheckin` continua no `AppLayout`).
