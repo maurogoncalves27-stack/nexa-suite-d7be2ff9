@@ -67,6 +67,7 @@ const PositionBonuses = lazy(() => import("./pages/PositionBonuses.tsx"));
 const MedicalCertificates = lazy(() => import("./pages/MedicalCertificates.tsx"));
 const Pcmso = lazy(() => import("./pages/Pcmso.tsx"));
 const MentalHealth = lazy(() => import("./pages/MentalHealth.tsx"));
+const OccupationalHealth = lazy(() => import("./pages/OccupationalHealth.tsx"));
 const NutriReports = lazy(() => import("./pages/NutriReports.tsx"));
 const NutriVisit = lazy(() => import("./pages/NutriVisit.tsx"));
 const NutriVisitHistorico = lazy(() => import("./pages/NutriVisitHistorico.tsx"));
