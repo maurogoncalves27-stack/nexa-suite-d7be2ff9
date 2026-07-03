@@ -500,6 +500,7 @@ export const AppLayout = ({ children }: { children?: ReactNode }) => {
               </div>
             )}
             <EnsureUserSignature />
+            <WeeklyMoodCheckin />
             <WarningSignatureDialog />
             {children ?? <Outlet />}
           </main>
