@@ -279,7 +279,7 @@ export function AppSidebar() {
   const logoUrl = typeof window !== "undefined" ? localStorage.getItem("app.theme.logo") : null;
   const isStaff = isAdmin || isManager;
   // Itens que o contador pode ver mesmo não sendo staff
-  const ACCOUNTANT_URLS = new Set<string>(["/folha", "/pasta-colaborador", "/contabilidade", "/colaboradores", "/atestados", "/infracoes"]);
+  const ACCOUNTANT_URLS = new Set<string>(["/folha", "/pasta-colaborador", "/contabilidade", "/colaboradores", "/atestados", "/saude-ocupacional", "/infracoes"]);
   const canSeeItem = (item: Item) => {
     if (!item.staffOnly) return true;
     if (isStaff) return true;
