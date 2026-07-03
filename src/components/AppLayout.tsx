@@ -60,7 +60,10 @@ const PAGE_TITLES: PageMeta[] = [
   { match: (p) => p.startsWith("/ponto"), title: "Ponto", group: "Jornada" },
   { match: (p) => p.startsWith("/escalas"), title: "Escalas", group: "Jornada" },
   { match: (p) => p.startsWith("/ferias"), title: "Férias", group: "Jornada" },
+  { match: (p) => p.startsWith("/saude-ocupacional"), title: "Saúde Ocupacional", group: "Jornada" },
   { match: (p) => p.startsWith("/atestados"), title: "Atestados Médicos", group: "Jornada" },
+  { match: (p) => p.startsWith("/pcmso"), title: "PCMSO", group: "Jornada" },
+  { match: (p) => p.startsWith("/rh/saude-mental"), title: "Saúde Mental (NR-1)", group: "Jornada" },
   { match: (p) => p.startsWith("/uniformes"), title: "Uniformes", group: "Jornada" },
   { match: (p) => p.startsWith("/tarefas"), title: "Tarefas", group: "Jornada" },
 

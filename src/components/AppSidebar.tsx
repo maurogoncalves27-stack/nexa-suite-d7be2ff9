@@ -2,7 +2,7 @@ import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Users, GraduationCap, Award, Wallet, BookOpen, Briefcase, LogOut, CalendarClock, UserCircle, HeartHandshake, Plane, Shirt, Clock, FolderOpen, Fingerprint, UserSearch, Settings, ChevronRight, Megaphone, ShieldAlert, FileText, Stethoscope, ClipboardCheck, Gift, ReceiptText, Bus, ListChecks, FileSignature, Wrench, RefreshCw, Package, ShoppingCart, DollarSign, Truck, ShoppingBag, TrendingUp, FileBarChart, Landmark, Lock, ChefHat, ScanText, Layers, Send, UsersRound, AlertTriangle, Monitor, ShieldCheck, Factory, Search, Siren, Boxes, PackageCheck, CalendarDays, ClipboardList, Tags, ScrollText, BadgePercent, Coins, Building2, Scale, BookMarked, Archive, FolderLock, ArrowLeftRight, Calculator, Flame, Hourglass, Trophy, Star, Percent, HandCoins, UserX, Sparkles, Activity , BarChart2 , History , CalendarRange , Receipt , Building , FileSpreadsheet , PiggyBank , BadgeCheck , Banknote , XCircle, MessageCircle, Smartphone, Bike, CreditCard, Headset, Link2, FlaskConical, Utensils, Ruler, Thermometer } from "lucide-react";
+import { LayoutDashboard, Users, GraduationCap, Award, Wallet, BookOpen, Briefcase, LogOut, CalendarClock, UserCircle, HeartHandshake, HeartPulse, Plane, Shirt, Clock, FolderOpen, Fingerprint, UserSearch, Settings, ChevronRight, Megaphone, ShieldAlert, FileText, Stethoscope, ClipboardCheck, Gift, ReceiptText, Bus, ListChecks, FileSignature, Wrench, RefreshCw, Package, ShoppingCart, DollarSign, Truck, ShoppingBag, TrendingUp, FileBarChart, Landmark, Lock, ChefHat, ScanText, Layers, Send, UsersRound, AlertTriangle, Monitor, ShieldCheck, Factory, Search, Siren, Boxes, PackageCheck, CalendarDays, ClipboardList, Tags, ScrollText, BadgePercent, Coins, Building2, Scale, BookMarked, Archive, FolderLock, ArrowLeftRight, Calculator, Flame, Hourglass, Trophy, Star, Percent, HandCoins, UserX, Sparkles, Activity , BarChart2 , History , CalendarRange , Receipt , Building , FileSpreadsheet , PiggyBank , BadgeCheck , Banknote , XCircle, MessageCircle, Smartphone, Bike, CreditCard, Headset, Link2, FlaskConical, Utensils, Ruler, Thermometer } from "lucide-react";
 import { openCommandPalette } from "@/components/CommandPalette";
 import { toast } from "@/hooks/use-toast";
 
@@ -58,9 +58,7 @@ const rhGroups: Group[] = [
       { title: "Ponto", url: "/ponto", icon: Clock, staffOnly: true },
       { title: "Escalas", url: "/escalas", icon: CalendarClock, staffOnly: true },
       { title: "Férias", url: "/ferias", icon: Plane, staffOnly: true },
-      { title: "Atestados Médicos", url: "/atestados", icon: Stethoscope, staffOnly: true },
-      { title: "PCMSO", url: "/pcmso", icon: Activity, staffOnly: true },
-      { title: "Saúde Mental (NR-1)", url: "/rh/saude-mental", icon: HeartHandshake, staffOnly: true },
+      { title: "Saúde Ocupacional", url: "/saude-ocupacional", icon: HeartPulse, staffOnly: true },
       { title: "Uniformes", url: "/uniformes", icon: Shirt, staffOnly: true },
     ],
   },
@@ -281,7 +279,7 @@ export function AppSidebar() {
   const logoUrl = typeof window !== "undefined" ? localStorage.getItem("app.theme.logo") : null;
   const isStaff = isAdmin || isManager;
   // Itens que o contador pode ver mesmo não sendo staff
-  const ACCOUNTANT_URLS = new Set<string>(["/folha", "/pasta-colaborador", "/contabilidade", "/colaboradores", "/atestados", "/infracoes"]);
+  const ACCOUNTANT_URLS = new Set<string>(["/folha", "/pasta-colaborador", "/contabilidade", "/colaboradores", "/atestados", "/saude-ocupacional", "/infracoes"]);
   const canSeeItem = (item: Item) => {
     if (!item.staffOnly) return true;
     if (isStaff) return true;

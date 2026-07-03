@@ -40,7 +40,7 @@ interface Doc {
   employee?: { full_name: string; store?: { name: string } | null };
 }
 
-export default function Pcmso() {
+export default function Pcmso({ embedded = false }: { embedded?: boolean } = {}) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [docs, setDocs] = useState<Doc[]>([]);
   const [loading, setLoading] = useState(true);
@@ -169,13 +169,17 @@ export default function Pcmso() {
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-            <HeartPulse className="h-6 w-6 md:h-7 md:w-7 text-primary" />
-            PCMSO
-          </h1>
-          <p className="text-muted-foreground">Programa de Controle Médico de Saúde Ocupacional — ASO, laudos e exames.</p>
-        </div>
+        {embedded ? (
+          <div />
+        ) : (
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+              <HeartPulse className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+              PCMSO
+            </h1>
+            <p className="text-muted-foreground">Programa de Controle Médico de Saúde Ocupacional — ASO, laudos e exames.</p>
+          </div>
+        )}
         <Button onClick={() => { reset(); setOpen(true); }}>
           <Plus className="h-4 w-4 mr-2" /> Novo documento
         </Button>

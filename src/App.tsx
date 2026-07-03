@@ -67,6 +67,7 @@ const PositionBonuses = lazy(() => import("./pages/PositionBonuses.tsx"));
 const MedicalCertificates = lazy(() => import("./pages/MedicalCertificates.tsx"));
 const Pcmso = lazy(() => import("./pages/Pcmso.tsx"));
 const MentalHealth = lazy(() => import("./pages/MentalHealth.tsx"));
+const OccupationalHealth = lazy(() => import("./pages/OccupationalHealth.tsx"));
 const NutriReports = lazy(() => import("./pages/NutriReports.tsx"));
 const NutriVisit = lazy(() => import("./pages/NutriVisit.tsx"));
 const NutriVisitHistorico = lazy(() => import("./pages/NutriVisitHistorico.tsx"));
@@ -352,11 +353,16 @@ const App = () => (
               <Route path="/infracoes" element={<Guarded staff accountant><Infractions /></Guarded>} />
               <Route path="/regras-automaticas" element={<Guarded staff><AutomationRules /></Guarded>} />
               <Route path="/bonus-cargo" element={<Guarded staff><PositionBonuses /></Guarded>} />
-              <Route path="/atestados" element={<Guarded staff accountant><MedicalCertificates /></Guarded>} />
-              <Route path="/pcmso" element={
+              <Route path="/saude-ocupacional" element={<Guarded staff accountant><OccupationalHealth /></Guarded>} />
+              <Route path="/atestados" element={<Navigate to="/saude-ocupacional?tab=atestados" replace />} />
+              <Route path="/pcmso" element={<Navigate to="/saude-ocupacional?tab=pcmso" replace />} />
+              <Route path="/rh/saude-mental" element={<Navigate to="/saude-ocupacional?tab=saude-mental" replace />} />
+              {/* Rotas legadas diretas mantidas para uso interno/deep-links históricos */}
+              <Route path="/atestados-legado" element={<Guarded staff accountant><MedicalCertificates /></Guarded>} />
+              <Route path="/pcmso-legado" element={
                 <ProtectedRoute requireRoles={["admin", "manager", "hr", "mental_health"]}><Pcmso /></ProtectedRoute>
               } />
-              <Route path="/rh/saude-mental" element={
+              <Route path="/rh/saude-mental-legado" element={
                 <ProtectedRoute requireRoles={["admin", "hr", "mental_health"]}><MentalHealth /></ProtectedRoute>
               } />
               <Route path="/nutri-relatorios" element={<Guarded module="nutri_relatorios"><NutriReports /></Guarded>} />
