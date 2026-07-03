@@ -4,7 +4,7 @@ const CORS = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const DEFAULT_CHANNEL = "UCd0Ya-h5tXvvwK1_Q_urMkw"; // CazéTV
+const DEFAULT_CHANNEL = "UCZiYbVptd3PVPf4f6eR6UaQ"; // CazéTV (@CazeTV)
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
