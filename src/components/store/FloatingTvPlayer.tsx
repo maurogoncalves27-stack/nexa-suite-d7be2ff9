@@ -59,13 +59,6 @@ export default function FloatingTvPlayer() {
     return () => clearTimeout(t);
   }, [state.open, state.muted, state.videoId]);
 
-  useEffect(() => {
-    if (!state.open) return;
-    setFailed(false);
-    setLoaded(false);
-    const t = setTimeout(() => setLoaded((l) => { if (!l) setFailed(true); return l; }), 6000);
-    return () => clearTimeout(t);
-  }, [state.open, state.muted]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (isMobile) return;
