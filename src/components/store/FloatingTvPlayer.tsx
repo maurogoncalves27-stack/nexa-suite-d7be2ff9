@@ -213,12 +213,10 @@ export default function FloatingTvPlayer() {
 
   const openActiveVideo = () => {
     if (!activeVideoId) return;
-    const popup = window.open(
-      `https://www.youtube.com/watch?v=${activeVideoId}`,
-      "cazetv",
-      "width=420,height=260,popup=yes,noopener,noreferrer",
-    );
-    if (popup) popup.opener = null;
+    // Abre em nova aba do YouTube (domínio próprio → não sofre bloqueio de embed).
+    // Popups pequenos costumam ser bloqueados pelo Chrome para conteúdo com DRM/live,
+    // por isso usamos aba normal e o colaborador pode usar Picture-in-Picture (botão do próprio YouTube).
+    window.open(`https://www.youtube.com/watch?v=${activeVideoId}`, "_blank", "noopener,noreferrer");
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
