@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Tv, X, Minus, Volume2, VolumeX, GripHorizontal, Settings2 } from "lucide-react";
+import { Tv, X, Minus, Volume2, VolumeX, GripHorizontal, Settings2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 const STORAGE_KEY = "store.tv.state";
 const CHANNEL_ID = "UCd0Ya-h5tXvvwK1_Q_urMkw"; // CazéTV
@@ -39,26 +40,67 @@ const loadState = (): State => {
 };
 
 export default function FloatingTvPlayer() {
-  const [state, setState] = useState<State>(() => (typeof window !== "undefined" ? loadState() : defaultState()));
+  const [state, setState] = useState<State>(() =>
+    typeof window !== "undefined" ? loadState() : defaultState(),
+  );
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [urlInput, setUrlInput] = useState("");
+  const [liveInfo, setLiveInfo] = useState<{ live: boolean; videoId: string | null; title: string | null }>({
+    live: false,
+    videoId: null,
+    title: null,
+  });
+  const [checking, setChecking] = useState(false);
   const dragRef = useRef<{ dx: number; dy: number } | null>(null);
   const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch {}
   }, [state]);
+
+  // Detecta live automaticamente via edge function
+  const checkLive = async () => {
+    setChecking(true);
+    try {
+      const { data } = await supabase.functions.invoke("youtube-live", {
+        body: { channelId: CHANNEL_ID },
+      });
+      if (data) setLiveInfo({ live: !!data.live, videoId: data.videoId ?? null, title: data.title ?? null });
+    } catch {
+      // ignore
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!state.open) return;
+    checkLive();
+    const interval = setInterval(checkLive, 5 * 60 * 1000); // revalida a cada 5min
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.open]);
 
   useEffect(() => {
     if (!state.open) return;
     setFailed(false);
     setLoaded(false);
-    const t = setTimeout(() => setLoaded((l) => { if (!l) setFailed(true); return l; }), 6000);
+    const t = setTimeout(() => setLoaded((l) => { if (!l) setFailed(true); return l; }), 8000);
     return () => clearTimeout(t);
-  }, [state.open, state.muted, state.videoId]);
+  }, [state.open, state.muted, state.videoId, liveInfo.videoId]);
 
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  // Prioridade: vídeo manual > live detectada via API > fallback embed do canal
+  const activeVideoId = state.videoId || liveInfo.videoId || "";
+  const src = useMemo(() => {
+    const common = `autoplay=1&mute=${state.muted ? 1 : 0}&playsinline=1&rel=0&modestbranding=1&iv_load_policy=3&fs=0&origin=${encodeURIComponent(origin)}`;
+    if (activeVideoId) return `https://www.youtube.com/embed/${activeVideoId}?${common}`;
+    return `https://www.youtube.com/embed/live_stream?channel=${CHANNEL_ID}&${common}`;
+  }, [activeVideoId, state.muted, origin]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (isMobile) return;
@@ -87,24 +129,21 @@ export default function FloatingTvPlayer() {
     );
   }
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const src = useMemo(() => {
-    const common = `autoplay=1&mute=${state.muted ? 1 : 0}&playsinline=1&rel=0&modestbranding=1&iv_load_policy=3&fs=0&origin=${encodeURIComponent(origin)}`;
-    if (state.videoId) {
-      return `https://www.youtube.com/embed/${state.videoId}?${common}`;
-    }
-    return `https://www.youtube.com/embed/live_stream?channel=${CHANNEL_ID}&${common}`;
-  }, [state.videoId, state.muted, origin]);
-
   const style: React.CSSProperties = isMobile
     ? { left: "5vw", right: "5vw", bottom: 16, width: "90vw" }
     : { left: state.x, top: state.y, width: W };
 
+  const hasStream = !!activeVideoId;
+  const statusLabel = state.videoId
+    ? "vídeo fixo"
+    : liveInfo.live
+      ? "ao vivo"
+      : checking
+        ? "verificando…"
+        : "sem transmissão";
+
   return (
-    <div
-      className="fixed z-[60] rounded-lg border bg-card shadow-2xl overflow-hidden"
-      style={style}
-    >
+    <div className="fixed z-[60] rounded-lg border bg-card shadow-2xl overflow-hidden" style={style}>
       <div
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -118,9 +157,18 @@ export default function FloatingTvPlayer() {
         <div className="flex items-center gap-1.5 text-xs font-medium text-foreground min-w-0">
           {!isMobile && <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
           <Tv className="h-3.5 w-3.5 text-primary shrink-0" />
-          <span className="truncate">CazéTV • ao vivo</span>
+          <span className="truncate">CazéTV • {statusLabel}</span>
         </div>
         <div className="flex items-center gap-0.5">
+          <button
+            type="button"
+            onClick={checkLive}
+            disabled={checking}
+            className="h-6 w-6 rounded hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-50"
+            title="Verificar live agora"
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5", checking && "animate-spin")} />
+          </button>
           <button
             type="button"
             onClick={() => { setUrlInput(state.videoId); setShowSettings((v) => !v); }}
@@ -190,16 +238,16 @@ export default function FloatingTvPlayer() {
               onClick={() => { setState((s) => ({ ...s, videoId: "" })); setUrlInput(""); }}
               className="text-[10px] text-muted-foreground hover:text-foreground underline"
             >
-              Voltar para canal CazéTV
+              Voltar para live automática da CazéTV
             </button>
           )}
         </div>
       )}
 
       <div className="relative bg-black" style={{ aspectRatio: "16 / 9" }}>
-        {!failed ? (
+        {hasStream && !failed ? (
           <iframe
-            key={`${state.videoId || "channel"}-${state.muted ? "m" : "u"}`}
+            key={`${activeVideoId}-${state.muted ? "m" : "u"}`}
             src={src}
             title="CazéTV ao vivo"
             className="absolute inset-0 w-full h-full"
@@ -211,14 +259,30 @@ export default function FloatingTvPlayer() {
           />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-3 text-center text-xs text-muted-foreground bg-card">
-            <p>Não foi possível carregar este vídeo (o canal pode ter bloqueado embed).</p>
-            <button
-              type="button"
-              onClick={() => { setUrlInput(state.videoId); setShowSettings(true); setFailed(false); }}
-              className="text-primary hover:underline"
-            >
-              Colar outro link do YouTube
-            </button>
+            {!hasStream ? (
+              <>
+                <Tv className="h-6 w-6 text-muted-foreground" />
+                <p>Sem transmissão ao vivo no momento.</p>
+                <button
+                  type="button"
+                  onClick={checkLive}
+                  className="text-primary hover:underline"
+                >
+                  Verificar novamente
+                </button>
+              </>
+            ) : (
+              <>
+                <p>Não foi possível carregar este vídeo (embed bloqueado).</p>
+                <button
+                  type="button"
+                  onClick={() => { setUrlInput(state.videoId); setShowSettings(true); setFailed(false); }}
+                  className="text-primary hover:underline"
+                >
+                  Colar outro link do YouTube
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>
