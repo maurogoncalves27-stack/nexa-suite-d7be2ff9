@@ -213,12 +213,10 @@ export default function FloatingTvPlayer() {
 
   const openActiveVideo = () => {
     if (!activeVideoId) return;
-    const popup = window.open(
-      `https://www.youtube.com/watch?v=${activeVideoId}`,
-      "cazetv",
-      "width=420,height=260,popup=yes,noopener,noreferrer",
-    );
-    if (popup) popup.opener = null;
+    // Abre em nova aba do YouTube (domínio próprio → não sofre bloqueio de embed).
+    // Popups pequenos costumam ser bloqueados pelo Chrome para conteúdo com DRM/live,
+    // por isso usamos aba normal e o colaborador pode usar Picture-in-Picture (botão do próprio YouTube).
+    window.open(`https://www.youtube.com/watch?v=${activeVideoId}`, "_blank", "noopener,noreferrer");
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
@@ -384,18 +382,21 @@ export default function FloatingTvPlayer() {
               </>
             ) : (
               <>
-                <p>Este vídeo está bloqueado para tocar dentro do sistema.</p>
+                <p>O YouTube bloqueia esta live dentro de outros sites (proteção da CazéTV/FIFA).</p>
                 <button
                   type="button"
                   onClick={openActiveVideo}
-                  className="text-primary hover:underline"
+                  className="text-primary hover:underline font-medium"
                 >
-                  Abrir em janela pequena
+                  Abrir no YouTube (nova aba)
                 </button>
+                <p className="text-[10px] opacity-70 leading-tight px-2">
+                  Dica: no YouTube, clique com o botão direito no vídeo → <b>Picture-in-picture</b> para deixar flutuando sobre o PDV.
+                </p>
                 <button
                   type="button"
                   onClick={() => { setUrlInput(state.videoId); setShowSettings(true); setFailed(false); setBlockedVideoId(null); }}
-                  className="text-primary hover:underline"
+                  className="text-primary hover:underline text-[11px]"
                 >
                   Colar outro link do YouTube
                 </button>
