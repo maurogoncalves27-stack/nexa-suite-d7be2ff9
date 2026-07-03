@@ -8,6 +8,7 @@ import { EmployeeSidebar } from "@/components/EmployeeSidebar";
 import { NutritionistSidebar } from "@/components/NutritionistSidebar";
 import WarningSignatureDialog from "@/components/warnings/WarningSignatureDialog";
 import EnsureUserSignature from "@/components/auth/EnsureUserSignature";
+import WeeklyMoodCheckin from "@/components/mental-health/WeeklyMoodCheckin";
 import NotificationsBell from "@/components/notifications/NotificationsBell";
 import { Button } from "@/components/ui/button";
 import { PanelLeft, Search, UserSearch, ArrowLeft, Home, LogOut } from "lucide-react";
