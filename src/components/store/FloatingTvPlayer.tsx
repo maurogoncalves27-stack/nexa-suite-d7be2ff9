@@ -145,7 +145,6 @@ export default function FloatingTvPlayer() {
           <div className="absolute inset-0 flex items-center justify-center p-3 text-center text-xs text-muted-foreground bg-card">
             <p>Não foi possível carregar o player. Tente novamente mais tarde.</p>
           </div>
-          </div>
         )}
       </div>
     </div>
