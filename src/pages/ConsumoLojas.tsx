@@ -142,24 +142,24 @@ export default function ConsumoLojas() {
         }
       });
 
-      // Gás: usar purchases via requests recebidos (com store_id).
-      const purchaseMap = new Map(
-        (gasPurRes.data ?? []).map((p) => [
-          p.id,
-          {
-            unit: Number(p.quantity || 0) > 0 ? Number(p.total_amount || 0) / Number(p.quantity) : 0,
-            perUnitQty: 1,
-          },
-        ]),
-      );
+      // Gás: contar botijões recebidos (gas_voucher_requests) por loja e usar preço médio das compras do mês.
+      const purchases = gasPurRes.data ?? [];
+      let totalQty = 0;
+      let totalValor = 0;
+      purchases.forEach((p) => {
+        totalQty += Number(p.quantity || 0);
+        totalValor += Number(p.total_amount || 0);
+      });
+      const avgUnit =
+        totalQty > 0
+          ? totalValor / totalQty
+          : Number(purchases[0]?.unit_price ?? 0) || 110; // fallback razoável
       const gasBtjByStore = new Map<string, number>();
       const gasValorByStore = new Map<string, number>();
       (gasReqRes.data ?? []).forEach((r) => {
-        if (!r.store_id || !r.purchase_id) return;
-        const p = purchaseMap.get(r.purchase_id);
-        if (!p) return;
+        if (!r.store_id) return;
         gasBtjByStore.set(r.store_id, (gasBtjByStore.get(r.store_id) ?? 0) + 1);
-        gasValorByStore.set(r.store_id, (gasValorByStore.get(r.store_id) ?? 0) + p.unit);
+        gasValorByStore.set(r.store_id, (gasValorByStore.get(r.store_id) ?? 0) + avgUnit);
       });
 
       // Óleo: nº de trocas
