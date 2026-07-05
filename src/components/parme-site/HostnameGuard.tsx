@@ -20,8 +20,13 @@ const SITE_ALIASES: Record<string, string> = {
   "/sobre": "/parme/sobre",
   "/reservar": "/parme/reservar",
   "/enderecos": "/parme/enderecos",
-  "/surpresa": "/parme/surpresa",
   "/vagas": "/parme/vagas",
+};
+
+// Rotas que devem ir DIRETO para um arquivo estático em public/ — sem passar
+// pelo React Router (evita flash de 404 e garante que o HTML real seja servido).
+const STATIC_HTML_ROUTES: Record<string, string> = {
+  "/surpresa": "/surpresa.html",
 };
 
 // Prefixos que também devem ser reescritos para /parme/* (rotas dinâmicas).
