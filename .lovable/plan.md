@@ -1,52 +1,33 @@
-## Objetivo
-Unificar **Atestados Médicos**, **PCMSO** e **Saúde Mental (NR-1)** em uma única página **"Saúde Ocupacional"** com abas, mantendo todas as funcionalidades atuais e respeitando as permissões distintas de cada módulo.
+# Corrigir 404 em aquelaparme.com.br/surpresa
 
-## Nova página
+## Causa
+`public/surpresa.html` existe e o servidor responde 200, mas o SPA intercepta a URL:
 
-**Rota:** `/saude-ocupacional` (as rotas antigas `/atestados`, `/pcmso`, `/rh/saude-mental` continuam funcionando via redirect para a aba correta, para não quebrar links/bookmarks).
+1. Usuário abre `aquelaparme.com.br/surpresa`.
+2. Servidor faz fallback pro `index.html` (comportamento normal de SPA).
+3. React Router não tem rota `/surpresa` (só `/parme/surpresa`) → renderiza `NotFound` ("404 Oops!").
+4. Só depois o `useEffect` do `HostnameGuard` roda e tenta `navigate("/parme/surpresa")`, que por sua vez carrega `pages/parme/Surpresa.tsx` e faz `window.location.replace("/surpresa.html")`.
 
-**Layout:** cabeçalho padrão + `Tabs` mobile-first com 3 abas:
+Resultado: o usuário vê o 404 do React antes do redirect — e em navegações client-side o arquivo estático `surpresa.html` nem sempre é buscado.
 
-1. **Atestados** — painel atual (`MedicalCertificatesPanel`).
-2. **PCMSO** — conteúdo atual de `Pcmso.tsx` (ASO, laudos, exames com validade).
-3. **Saúde Mental** — conteúdo atual de `MentalHealth.tsx` (heatmap, alertas, acompanhamentos).
+## Correção (mínima, só apresentação/roteamento)
 
-**Ícone/título:** `HeartPulse` + "Saúde Ocupacional" com subtítulo "Atestados, PCMSO e saúde mental (NR-1)".
+1. **`src/components/parme-site/HostnameGuard.tsx`**
+   - Tratar `/surpresa` (e futuros arquivos estáticos) como caso especial: em vez de `navigate("/parme/surpresa")`, fazer `window.location.replace("/surpresa.html")` direto. Assim o browser busca o arquivo estático real e nunca cai no SPA.
+   - Fazer isso de forma síncrona antes do primeiro render (já dentro do `useEffect`, mas com early-return), evitando o flash do NotFound.
 
-## Permissões por aba
+2. **`src/App.tsx`**
+   - Adicionar rota client-side `/surpresa` que renderiza um componente que apenas faz `window.location.replace("/surpresa.html")` (mesmo padrão do `pages/parme/Surpresa.tsx` já existente). Isso cobre acessos por outros hosts (nexa.*, lovable.app, localhost) sem depender do HostnameGuard.
 
-Cada aba é renderizada só se o usuário tem acesso; abas bloqueadas somem do `TabsList` (não aparecem desabilitadas):
+3. **Opcional (evita flash em qualquer rota "estática" futura)**
+   - Extrair a lista de paths que devem escapar do SPA (`/surpresa`, e outros HTML soltos em `public/` se houver) numa constante única em `HostnameGuard` para reuso.
 
-- **Atestados:** staff + contabilidade (mesma regra de hoje).
-- **PCMSO:** admin, manager, hr, mental_health.
-- **Saúde Mental:** admin, hr, mental_health.
+## O que NÃO muda
+- `public/surpresa.html` fica como está.
+- Nenhuma rota nova é criada no servidor; apenas o comportamento client-side é corrigido.
+- Zero mudança em backend, banco, edge functions ou nos demais fluxos do site Parmê / app NEXA.
 
-Se o usuário só tem acesso a uma aba, ela abre direto sem mostrar as tabs. Se não tem acesso a nenhuma, redireciona para `/`.
-
-## Sidebar
-
-No grupo **Recursos Humanos → Jornada**, substituir os 3 itens atuais por **1 item único**:
-
-- "Saúde Ocupacional" (`HeartPulse`) → `/saude-ocupacional`
-
-Os 3 itens antigos deixam de aparecer no menu.
-
-## Navegação profunda
-
-Query param `?tab=atestados|pcmso|saude-mental` controla a aba ativa (permite linkar direto). Redirects:
-
-- `/atestados` → `/saude-ocupacional?tab=atestados`
-- `/pcmso` → `/saude-ocupacional?tab=pcmso`
-- `/rh/saude-mental` → `/saude-ocupacional?tab=saude-mental`
-
-## Detalhes técnicos
-
-- Criar `src/pages/OccupationalHealth.tsx` com o container de tabs + gating por role via `useAuth`.
-- Refatorar `Pcmso.tsx` e `MentalHealth.tsx` extraindo o **corpo** (sem o header `<h1>`) para componentes reutilizáveis (`PcmsoPanel`, `MentalHealthPanel`) — o header vira responsabilidade da nova página. Os arquivos de página antigos passam a apenas renderizar o novo `OccupationalHealth` já com a aba correta, para os redirects funcionarem.
-- Atualizar `PAGE_TITLES` em `src/components/AppLayout.tsx`: mais específica primeiro (`/saude-ocupacional` → "Saúde Ocupacional", grupo "Jornada"); manter os matches antigos por compatibilidade.
-- Atualizar `ACCOUNTANT_URLS` no sidebar para incluir `/saude-ocupacional` (contabilidade acessa só a aba Atestados).
-- Não mexer em migrations, tabelas, edge functions nem regras de RLS — só reorganização de UI/rotas.
-
-## Fora de escopo
-- Não alterar formulários, gráficos ou lógica interna dos 3 módulos.
-- Não mexer no check-in semanal de humor (`WeeklyMoodCheckin` continua no `AppLayout`).
+## Validação
+- Abrir `https://aquelaparme.com.br/surpresa` → deve carregar direto `surpresa.html` sem passar pelo 404.
+- Abrir `https://nexa.aquelaparme.com.br/surpresa` → deve continuar indo pro `/auth` (comportamento atual preservado).
+- Abrir `/parme/surpresa` diretamente → continua funcionando (redireciona pro HTML).
