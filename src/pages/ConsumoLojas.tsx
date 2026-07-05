@@ -95,13 +95,13 @@ export default function ConsumoLojas() {
           .lte("competence_date", to),
         supabase
           .from("gas_voucher_purchases")
-          .select("id, total_amount, quantity, purchased_at")
+          .select("id, total_amount, quantity, unit_price, purchased_at")
           .gte("purchased_at", from)
           .lte("purchased_at", to),
         supabase
           .from("gas_voucher_requests")
-          .select("purchase_id, store_id, received_at")
-          .not("purchase_id", "is", null)
+          .select("store_id, received_at, status")
+          .eq("status", "received")
           .gte("received_at", `${from}T00:00:00`)
           .lte("received_at", `${to}T23:59:59`),
         supabase
