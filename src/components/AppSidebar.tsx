@@ -151,6 +151,7 @@ const operacaoSections: Section[] = [
   { label: "Rotina diária", items: [
     { title: "Check-lists", url: "/checklists-gerenciar", icon: ClipboardCheck, staffOnly: true },
     { title: "Tarefas", url: "/tarefas", icon: ListChecks, staffOnly: true },
+    { title: "Consumo x Faturamento", url: "/consumo-lojas", icon: Gauge, staffOnly: true },
   ]},
   { label: "NutriControle", items: [
     { title: "NutriControle", url: "/nutricontrol", icon: LabCoatIcon, staffOnly: true },
