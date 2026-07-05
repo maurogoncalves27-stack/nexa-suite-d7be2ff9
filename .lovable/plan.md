@@ -1,33 +1,60 @@
-# Corrigir 404 em aquelaparme.com.br/surpresa
+## O que vou construir
 
-## Causa
-`public/surpresa.html` existe e o servidor responde 200, mas o SPA intercepta a URL:
+Uma página única de comparativo entre lojas reunindo o que já é lançado hoje — **sem cadastro novo, sem tabelas novas, sem migração**. Só leitura e agregação.
 
-1. Usuário abre `aquelaparme.com.br/surpresa`.
-2. Servidor faz fallback pro `index.html` (comportamento normal de SPA).
-3. React Router não tem rota `/surpresa` (só `/parme/surpresa`) → renderiza `NotFound` ("404 Oops!").
-4. Só depois o `useEffect` do `HostnameGuard` roda e tenta `navigate("/parme/surpresa")`, que por sua vez carrega `pages/parme/Surpresa.tsx` e faz `window.location.replace("/surpresa.html")`.
+### Onde fica
+- Novo item no sidebar, no grupo **Operação**: **"Consumo x Faturamento"** (ícone `Gauge` ou `BarChart3`).
+- Rota: `/consumo-lojas`.
+- Adiciono em `PAGE_TITLES` (AppLayout) e no `AppSidebar`.
 
-Resultado: o usuário vê o 404 do React antes do redirect — e em navegações client-side o arquivo estático `surpresa.html` nem sempre é buscado.
+### Layout (mobile-first, cabeçalho padrão)
 
-## Correção (mínima, só apresentação/roteamento)
+```text
+┌─────────────────────────────────────────┐
+│ [Ícone] Consumo x Faturamento           │
+│ Compare consumo e faturamento por loja. │
+├─────────────────────────────────────────┤
+│ [Filtro período: mês/ano ▾]  [Loja ▾]   │
+├─────────────────────────────────────────┤
+│ Tabela comparativa                      │
+│  Loja | Fatur. | Água R$ | Luz R$ |     │
+│       | %fat   | %fat    | %fat   |     │
+│       | Gás(btj+R$) | Óleo(#trocas)     │
+├─────────────────────────────────────────┤
+│ Gráfico barras: % consumo / faturamento │
+│ por loja (uma barra por insumo)         │
+└─────────────────────────────────────────┘
+```
 
-1. **`src/components/parme-site/HostnameGuard.tsx`**
-   - Tratar `/surpresa` (e futuros arquivos estáticos) como caso especial: em vez de `navigate("/parme/surpresa")`, fazer `window.location.replace("/surpresa.html")` direto. Assim o browser busca o arquivo estático real e nunca cai no SPA.
-   - Fazer isso de forma síncrona antes do primeiro render (já dentro do `useEffect`, mas com early-return), evitando o flash do NotFound.
+Cores de loja seguem a paleta fixa (Asa Norte verde, Águas Claras azul, Asa Sul amarelo, Lago Sul rosa). Nada de cores hardcoded — só tokens do design system.
 
-2. **`src/App.tsx`**
-   - Adicionar rota client-side `/surpresa` que renderiza um componente que apenas faz `window.location.replace("/surpresa.html")` (mesmo padrão do `pages/parme/Surpresa.tsx` já existente). Isso cobre acessos por outros hosts (nexa.*, lovable.app, localhost) sem depender do HostnameGuard.
+### De onde vem cada dado (nada é criado)
 
-3. **Opcional (evita flash em qualquer rota "estática" futura)**
-   - Extrair a lista de paths que devem escapar do SPA (`/surpresa`, e outros HTML soltos em `public/` se houver) numa constante única em `HostnameGuard` para reuso.
+| Insumo | Fonte | Métrica exibida |
+|---|---|---|
+| **Faturamento** | `monthly_revenue` (agrupado por store_id no mês) | R$ bruto |
+| **Água** | `accounts_payable` filtrando `category_id = 3e964f5d…` (Água e esgoto), somando `amount` por `store_id` × mês da `competence_date` | R$ e % do faturamento |
+| **Luz** | idem, categoria `5f5803ab…` (Energia elétrica) | R$ e % do faturamento |
+| **Gás** | `gas_voucher_purchases` (soma `total_amount` e `quantity` de botijões) casada via `gas_voucher_requests.purchase_id → store_id` no mês; + categoria financeira `Gás`/`Vale Gás` como fallback | R$, nº de botijões, % do faturamento |
+| **Óleo** | `nutri_oil_quality_records` filtrando `changed=true`, agrupado por `store_id` e `date` no mês | Nº de trocas de fritadeira |
 
-## O que NÃO muda
-- `public/surpresa.html` fica como está.
-- Nenhuma rota nova é criada no servidor; apenas o comportamento client-side é corrigido.
-- Zero mudança em backend, banco, edge functions ou nos demais fluxos do site Parmê / app NEXA.
+Só lojas físicas (`stores.is_virtual=false`) e sem Fábrica/Estoque Central, seguindo a regra do projeto.
 
-## Validação
-- Abrir `https://aquelaparme.com.br/surpresa` → deve carregar direto `surpresa.html` sem passar pelo 404.
-- Abrir `https://nexa.aquelaparme.com.br/surpresa` → deve continuar indo pro `/auth` (comportamento atual preservado).
-- Abrir `/parme/surpresa` diretamente → continua funcionando (redireciona pro HTML).
+### Interações
+- Filtro de **período**: mês/ano (padrão = mês atual). Opção "últimos 3 meses" para ver tendência.
+- Filtro de **loja**: todas ou uma específica.
+- Toggle **R$ absoluto** ↔ **% do faturamento** na tabela.
+- Botão **Exportar CSV** da tabela.
+
+### O que fica fora deste plano
+- Nenhuma tela de cadastro nova (leituras de m³/kWh continuam fora — usamos só R$).
+- Nenhum alerta/limite (podemos adicionar depois se você quiser).
+- Nenhuma mudança em NutriControle, Financeiro ou Vale Gás — só leitura.
+
+### Arquivos afetados
+
+- **Novo**: `src/pages/ConsumoLojas.tsx` (página).
+- **Novo**: `src/components/consumo/ConsumoTable.tsx` e `ConsumoChart.tsx` (opcional, para manter arquivos pequenos).
+- **Editar**: `src/App.tsx` (rota), `src/components/AppSidebar.tsx` (item no grupo Operação), `src/components/AppLayout.tsx` (PAGE_TITLES).
+
+Se aprovar, implemento direto — nenhuma migração de banco envolvida.

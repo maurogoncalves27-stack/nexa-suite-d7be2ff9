@@ -109,6 +109,7 @@ const ReplenishmentSuggestion = lazy(() => import("./pages/ReplenishmentSuggesti
 const ConversionFactors = lazy(() => import("./pages/ConversionFactors.tsx"));
 const PettyCash = lazy(() => import("./pages/PettyCash.tsx"));
 const Faturamento = lazy(() => import("./pages/Faturamento.tsx"));
+const ConsumoLojas = lazy(() => import("./pages/ConsumoLojas.tsx"));
 const CustomerReviews = lazy(() => import("./pages/CustomerReviews.tsx"));
 const SeparationChecklist = lazy(() => import("./pages/SeparationChecklist.tsx"));
 const Finance = lazy(() => import("./pages/Finance.tsx"));
@@ -368,6 +369,7 @@ const App = () => (
                 <ProtectedRoute requireRoles={["admin", "hr", "mental_health"]}><MentalHealth /></ProtectedRoute>
               } />
               <Route path="/nutri-relatorios" element={<Guarded module="nutri_relatorios"><NutriReports /></Guarded>} />
+              <Route path="/consumo-lojas" element={<Guarded staff><ConsumoLojas /></Guarded>} />
               <Route path="/nutri-visita" element={<Guarded module="nutri_visita"><NutriVisit /></Guarded>} />
               <Route path="/nutri-visita/historico" element={<Guarded module="nutri_visita"><NutriVisitHistorico /></Guarded>} />
               <Route path="/colaboradores" element={<Guarded staff accountant><Employees /></Guarded>} />
