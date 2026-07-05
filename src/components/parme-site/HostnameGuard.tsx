@@ -68,6 +68,13 @@ export function HostnameGuard() {
       return;
     }
 
+    // Rotas para arquivos estáticos em public/ — pular o SPA em qualquer host.
+    const staticTarget = STATIC_HTML_ROUTES[loc.pathname];
+    if (staticTarget) {
+      window.location.replace(staticTarget + loc.search + loc.hash);
+      return;
+    }
+
     if (!SITE_HOSTS.has(host)) return;
     if (loc.pathname.startsWith("/parme")) return;
     if (loc.pathname === "/nexa") return; // atalho para o app NEXA — não reescrever
