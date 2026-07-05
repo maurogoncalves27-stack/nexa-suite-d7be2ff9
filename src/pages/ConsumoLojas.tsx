@@ -226,6 +226,7 @@ export default function ConsumoLojas() {
         "Água %": r.faturamento ? +(r.aguaValor / r.faturamento * 100).toFixed(2) : 0,
         "Luz %": r.faturamento ? +(r.luzValor / r.faturamento * 100).toFixed(2) : 0,
         "Gás %": r.faturamento ? +(r.gasValor / r.faturamento * 100).toFixed(2) : 0,
+        "Trocas de óleo": r.oleoTrocas,
       })),
     [rows],
   );
@@ -422,11 +423,20 @@ export default function ConsumoLojas() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="loja" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
                   <YAxis
+                    yAxisId="left"
                     tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
                     tickFormatter={(v) => `${v}%`}
                   />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    allowDecimals={false}
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                  />
                   <Tooltip
-                    formatter={(v: number) => `${v}%`}
+                    formatter={(v: number, name: string) =>
+                      name === "Trocas de óleo" ? [v, name] : [`${v}%`, name]
+                    }
                     contentStyle={{
                       background: "hsl(var(--card))",
                       border: "1px solid hsl(var(--border))",
@@ -434,9 +444,10 @@ export default function ConsumoLojas() {
                     }}
                   />
                   <Legend />
-                  <Bar dataKey="Água %" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="Luz %" fill="hsl(var(--warning))" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="Gás %" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+                  <Bar yAxisId="left" dataKey="Água %" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar yAxisId="left" dataKey="Luz %" fill="hsl(var(--warning))" radius={[4, 4, 0, 0]} />
+                  <Bar yAxisId="left" dataKey="Gás %" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+                  <Bar yAxisId="right" dataKey="Trocas de óleo" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
