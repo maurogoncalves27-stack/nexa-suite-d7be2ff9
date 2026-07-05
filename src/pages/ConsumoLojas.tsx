@@ -226,6 +226,7 @@ export default function ConsumoLojas() {
         "Água %": r.faturamento ? +(r.aguaValor / r.faturamento * 100).toFixed(2) : 0,
         "Luz %": r.faturamento ? +(r.luzValor / r.faturamento * 100).toFixed(2) : 0,
         "Gás %": r.faturamento ? +(r.gasValor / r.faturamento * 100).toFixed(2) : 0,
+        "Trocas de óleo": r.oleoTrocas,
       })),
     [rows],
   );
