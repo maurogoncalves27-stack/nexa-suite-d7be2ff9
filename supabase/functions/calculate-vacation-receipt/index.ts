@@ -95,6 +95,9 @@ async function buildVacationPdf(opts: {
   schedule: any;
   calc: {
     monthlySalary: number;
+    avgVariables: number;
+    variablesMonths: number;
+    composedMonthly: number;
     dailyBase: number;
     vacationDays: number;
     sellDays: number;
@@ -111,6 +114,7 @@ async function buildVacationPdf(opts: {
     netTotal: number;
   };
 }): Promise<Uint8Array> {
+
 
   const { employee, store, schedule, calc } = opts;
   const pdf = await PDFDocument.create();
