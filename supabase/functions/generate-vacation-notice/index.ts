@@ -215,8 +215,9 @@ Deno.serve(async (req) => {
         user_id: employee.user_id,
         title: "Aviso prévio de férias",
         message: `Suas férias de ${fmtDateBR(schedule.start_date)} a ${fmtDateBR(schedule.end_date)} foram aprovadas. Confirme a ciência do aviso prévio.`,
-        type: "info",
-        link: "/area-colaborador?tab=vacation",
+        category: "hr",
+        tag: `vacation-notice:${scheduleId}`,
+        url: "/area-colaborador?tab=vacation",
       });
     }
 
