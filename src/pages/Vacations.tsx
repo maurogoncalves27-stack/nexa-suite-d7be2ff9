@@ -538,7 +538,11 @@ export default function Vacations() {
                 {rows
                   .flatMap((r) => r.schedules.map((s) => ({ ...s, name: r.employee.full_name })))
                   .sort((a, b) => a.start_date.localeCompare(b.start_date))
-                  .map((s) => (
+                  .map((s) => {
+                    const rec = receiptMap[s.id];
+                    const canReceipt = s.status === "approved" || s.status === "in_progress" || s.status === "completed";
+                    const busy = processingId === s.id;
+                    return (
                     <div key={s.id} className="rounded-lg border bg-card p-3 space-y-2">
                       <div className="flex items-start justify-between gap-2">
                         <div className="font-medium text-sm min-w-0 flex-1">{s.name}</div>
@@ -552,23 +556,40 @@ export default function Vacations() {
                           <span><span className="text-muted-foreground">Dias:</span> <strong>{s.days_count}</strong></span>
                           <span><span className="text-muted-foreground">Abono:</span> <strong>{s.sell_days > 0 ? `${s.sell_days} d` : "—"}</strong></span>
                         </div>
+                        {rec && (
+                          <div className="flex items-center gap-2 pt-1">
+                            <Badge variant={rec.payment_status === "paid" ? "default" : "outline"} className="text-[10px]">
+                              Recibo: {rec.payment_status === "paid" ? "Pago" : "A pagar"}
+                            </Badge>
+                            <span className="text-muted-foreground">R$ {rec.net_total.toFixed(2)}</span>
+                            {rec.payment_due_date && <span className="text-muted-foreground">venc. {formatDate(rec.payment_due_date)}</span>}
+                          </div>
+                        )}
                       </div>
-                      {(s.status === "pending" || (s.status !== "cancelled" && s.status !== "completed")) && (
-                        <div className="flex gap-2 pt-1">
-                          {s.status === "pending" && (
-                            <Button size="sm" variant="outline" onClick={() => handleApprove(s.id)} className="flex-1 gap-1">
-                              <CheckCircle2 className="h-3 w-3" /> Aprovar
-                            </Button>
-                          )}
-                          {s.status !== "cancelled" && s.status !== "completed" && (
-                            <Button size="sm" variant="ghost" onClick={() => handleCancel(s.id)} className="flex-1 gap-1 text-destructive">
-                              <Trash2 className="h-3 w-3" /> Cancelar
-                            </Button>
-                          )}
-                        </div>
-                      )}
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {s.status === "pending" && (
+                          <Button size="sm" variant="outline" disabled={busy} onClick={() => handleApprove(s.id)} className="gap-1">
+                            {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />} Aprovar
+                          </Button>
+                        )}
+                        {canReceipt && rec?.pdf_url && (
+                          <Button size="sm" variant="outline" onClick={() => handleOpenReceipt(rec)} className="gap-1">
+                            <FileText className="h-3 w-3" /> Recibo
+                          </Button>
+                        )}
+                        {canReceipt && isAdmin && (
+                          <Button size="sm" variant="ghost" disabled={busy} onClick={() => handleGenerateReceipt(s.id)} className="gap-1">
+                            {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />} {rec ? "Reprocessar" : "Gerar recibo"}
+                          </Button>
+                        )}
+                        {s.status !== "cancelled" && s.status !== "completed" && (
+                          <Button size="sm" variant="ghost" onClick={() => handleCancel(s.id)} className="gap-1 text-destructive">
+                            <Trash2 className="h-3 w-3" /> Cancelar
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  ))}
+                  );})}
               </div>
 
               {/* Desktop: table */}
