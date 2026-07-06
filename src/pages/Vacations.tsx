@@ -602,6 +602,7 @@ export default function Vacations() {
                       <TableHead>Dias</TableHead>
                       <TableHead>Abono</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Recibo</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -609,7 +610,11 @@ export default function Vacations() {
                     {rows
                       .flatMap((r) => r.schedules.map((s) => ({ ...s, name: r.employee.full_name })))
                       .sort((a, b) => a.start_date.localeCompare(b.start_date))
-                      .map((s) => (
+                      .map((s) => {
+                        const rec = receiptMap[s.id];
+                        const canReceipt = s.status === "approved" || s.status === "in_progress" || s.status === "completed";
+                        const busy = processingId === s.id;
+                        return (
                         <TableRow key={s.id}>
                           <TableCell className="font-medium">{s.name}</TableCell>
                           <TableCell>{formatDate(s.start_date)} → {formatDate(s.end_date)}</TableCell>
@@ -620,10 +625,33 @@ export default function Vacations() {
                               {STATUS_LABEL[s.status] ?? s.status}
                             </Badge>
                           </TableCell>
+                          <TableCell className="text-xs">
+                            {rec ? (
+                              <div className="flex flex-col gap-0.5">
+                                <Badge variant={rec.payment_status === "paid" ? "default" : "outline"} className="w-fit text-[10px]">
+                                  {rec.payment_status === "paid" ? "Pago" : "A pagar"}
+                                </Badge>
+                                <span className="font-mono">R$ {Number(rec.net_total).toFixed(2)}</span>
+                                {rec.payment_due_date && <span className="text-muted-foreground">venc. {formatDate(rec.payment_due_date)}</span>}
+                              </div>
+                            ) : canReceipt ? (
+                              <span className="text-muted-foreground">—</span>
+                            ) : null}
+                          </TableCell>
                           <TableCell className="text-right space-x-2">
                             {s.status === "pending" && (
-                              <Button size="sm" variant="outline" onClick={() => handleApprove(s.id)} className="gap-1">
-                                <CheckCircle2 className="h-3 w-3" /> Aprovar
+                              <Button size="sm" variant="outline" disabled={busy} onClick={() => handleApprove(s.id)} className="gap-1">
+                                {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />} Aprovar
+                              </Button>
+                            )}
+                            {canReceipt && rec?.pdf_url && (
+                              <Button size="sm" variant="outline" onClick={() => handleOpenReceipt(rec)} className="gap-1">
+                                <FileText className="h-3 w-3" /> Recibo
+                              </Button>
+                            )}
+                            {canReceipt && isAdmin && (
+                              <Button size="sm" variant="ghost" disabled={busy} onClick={() => handleGenerateReceipt(s.id)} className="gap-1">
+                                {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />} {rec ? "Reprocessar" : "Gerar"}
                               </Button>
                             )}
                             {s.status !== "cancelled" && s.status !== "completed" && (
@@ -633,7 +661,7 @@ export default function Vacations() {
                             )}
                           </TableCell>
                         </TableRow>
-                      ))}
+                      );})}
                   </TableBody>
                 </Table>
               </div>
