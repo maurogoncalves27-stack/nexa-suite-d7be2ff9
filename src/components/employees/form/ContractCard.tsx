@@ -7,7 +7,8 @@ import {
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Briefcase, ShieldAlert } from "lucide-react";
+import { Briefcase, ShieldAlert, Wrench } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import PositionSelect from "@/components/employees/PositionSelect";
 import { Field, WorkScheduleField, type EmployeeState, type SetEmployee } from "./shared";
 import {
