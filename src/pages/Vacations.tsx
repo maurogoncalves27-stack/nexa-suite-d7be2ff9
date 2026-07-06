@@ -12,10 +12,20 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Plane, Plus, AlertTriangle, Loader2, Trash2, CheckCircle2 } from "lucide-react";
+import { Plane, Plus, AlertTriangle, Loader2, Trash2, CheckCircle2, FileText, RefreshCw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { RISK_LABEL, RISK_BADGE, STATUS_LABEL, formatDate, type VacationRisk, type VacationStatus } from "@/lib/vacation";
+
+interface VacationReceipt {
+  id: string;
+  vacation_schedule_id: string;
+  gross_total: number;
+  net_total: number;
+  payment_status: string;
+  payment_due_date: string | null;
+  pdf_url: string | null;
+}
 
 interface EmployeeRow {
   id: string;
