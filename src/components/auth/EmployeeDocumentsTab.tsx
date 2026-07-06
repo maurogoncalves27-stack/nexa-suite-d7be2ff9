@@ -330,6 +330,17 @@ export default function EmployeeDocumentsTab({
       onDownload: () => handleDownloadReceipt(r),
     });
   });
+  signedPayslips.forEach((p) => {
+    const monthLabel = MONTHS_PT[p.reference_month - 1];
+    signedDocs.push({
+      key: `pay:${p.id}`,
+      title: `Holerite ${monthLabel}/${p.reference_year}`,
+      subtitle: p.signed_at
+        ? `Assinado em ${new Date(p.signed_at).toLocaleString("pt-BR")}`
+        : "Assinado",
+      onDownload: () => handleDownloadPayslip(p),
+    });
+  });
 
   const isIntern = (() => {
     const v = (employeeContractType ?? "").toLowerCase();
