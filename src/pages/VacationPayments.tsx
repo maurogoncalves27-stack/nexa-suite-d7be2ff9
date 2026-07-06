@@ -116,38 +116,17 @@ function CalculationBreakdown({ r }: { r: VacationReceiptRow }) {
       {variablesHistory.length > 0 && (
         <details className="text-xs border-t border-border pt-3">
           <summary className="cursor-pointer font-semibold text-muted-foreground">
-            Detalhamento da média variável ({variablesHistory.length} holerite{variablesHistory.length > 1 ? "s" : ""})
+            Detalhamento da produtividade CCT
           </summary>
-          <div className="overflow-x-auto mt-2">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="text-left text-muted-foreground">
-                  <th className="py-1">Ref.</th>
-                  <th className="py-1 text-right">Produtividade</th>
-                  <th className="py-1 text-right">Horas extras</th>
-                  <th className="py-1 text-right">Ad. noturno</th>
-                  <th className="py-1 text-right">Feriado</th>
-                  <th className="py-1 text-right">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {variablesHistory.map((v, i) => (
-                  <tr key={i} className="border-t border-border/50">
-                    <td className="py-1">{String(v.m).padStart(2, "0")}/{v.y}</td>
-                    <td className="py-1 text-right font-mono">{fmtBRL(v.productivity)}</td>
-                    <td className="py-1 text-right font-mono">{fmtBRL(v.overtime)}</td>
-                    <td className="py-1 text-right font-mono">{fmtBRL(v.night)}</td>
-                    <td className="py-1 text-right font-mono">{fmtBRL(v.holiday)}</td>
-                    <td className="py-1 text-right font-mono font-semibold">{fmtBRL(v.total)}</td>
-                  </tr>
-                ))}
-                <tr className="border-t border-border font-semibold">
-                  <td className="py-1">Média ({variablesMonths}m)</td>
-                  <td colSpan={4}></td>
-                  <td className="py-1 text-right font-mono text-primary">{fmtBRL(avgVariables)}</td>
-                </tr>
-              </tbody>
-            </table>
+          <div className="mt-2 space-y-1">
+            {variablesHistory.map((v, i) => (
+              <div key={i} className="flex justify-between border-b border-border/50 py-1">
+                <span>{v.label}</span>
+                <span className="font-mono">
+                  {v.label.includes("%") ? `${(v.value * 100).toFixed(0)}%` : v.label.includes("Avos") ? v.value : fmtBRL(v.value)}
+                </span>
+              </div>
+            ))}
           </div>
         </details>
       )}
