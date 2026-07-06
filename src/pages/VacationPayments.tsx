@@ -56,7 +56,11 @@ const fmtBRL = (n: number) => Number(n ?? 0).toLocaleString("pt-BR", { style: "c
 
 function CalculationBreakdown({ r }: { r: VacationReceiptRow }) {
   const details = r.calculation_details || {};
-  const dailyBase = Number(details.daily_base ?? (Number(r.monthly_salary) / 30));
+  const avgVariables = Number(details.avg_variables ?? 0);
+  const variablesMonths = Number(details.variables_months ?? 0);
+  const composedMonthly = Number(details.composed_monthly ?? Number(r.monthly_salary));
+  const variablesHistory: Array<{ y: number; m: number; productivity: number; overtime: number; night: number; holiday: number; total: number }> = Array.isArray(details.variables_history) ? details.variables_history : [];
+  const dailyBase = Number(details.daily_base ?? (composedMonthly / 30));
   const taxBase = Number(details.tax_base ?? (Number(r.vacation_base) + Number(r.one_third)));
   const dependents = Number(details.dependents ?? 0);
   const totalDiscounts = Number(r.inss) + Number(r.irrf);
@@ -67,15 +71,23 @@ function CalculationBreakdown({ r }: { r: VacationReceiptRow }) {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-1">
-          <div className="text-xs uppercase text-muted-foreground font-semibold">Base</div>
-          <div className="flex justify-between"><span>Salário mensal</span><span className="font-mono">{fmtBRL(Number(r.monthly_salary))}</span></div>
-          <div className="flex justify-between"><span>Diária (÷ 30)</span><span className="font-mono">{fmtBRL(dailyBase)}/dia</span></div>
+          <div className="text-xs uppercase text-muted-foreground font-semibold">Base (Súmula 45 TST / CCT)</div>
+          <div className="flex justify-between"><span>Salário contratual</span><span className="font-mono">{fmtBRL(Number(r.monthly_salary))}</span></div>
+          <div className="flex justify-between">
+            <span>Média variáveis {variablesMonths > 0 ? `(${variablesMonths}m)` : ""}</span>
+            <span className="font-mono">{fmtBRL(avgVariables)}</span>
+          </div>
+          <div className="flex justify-between font-semibold border-t border-border pt-1 mt-1">
+            <span>Salário composto</span><span className="font-mono">{fmtBRL(composedMonthly)}</span>
+          </div>
+          <div className="flex justify-between"><span>Diária (composto ÷ 30)</span><span className="font-mono">{fmtBRL(dailyBase)}/dia</span></div>
           <div className="flex justify-between"><span>Dias de gozo</span><span className="font-mono">{r.vacation_days}</span></div>
           {r.sell_days > 0 && (
             <div className="flex justify-between"><span>Dias vendidos (abono)</span><span className="font-mono">{r.sell_days}</span></div>
           )}
           <div className="flex justify-between"><span>Dependentes IRRF</span><span className="font-mono">{dependents}</span></div>
         </div>
+
         <div className="space-y-1">
           <div className="text-xs uppercase text-muted-foreground font-semibold">Proventos</div>
           <div className="flex justify-between"><span>Férias: {fmtBRL(dailyBase)} × {r.vacation_days}</span><span className="font-mono">{fmtBRL(Number(r.vacation_base))}</span></div>
