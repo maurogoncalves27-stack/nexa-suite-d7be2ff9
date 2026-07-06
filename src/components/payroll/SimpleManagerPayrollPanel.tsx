@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, ChevronLeft, ChevronRight, Loader2, ChevronRight as ChevronRightIcon, Check, Trash2, CheckCheck, Lock, Hourglass, CheckCircle2 } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Loader2, ChevronRight as ChevronRightIcon, Check, Trash2, CheckCheck, Lock, Hourglass, CheckCircle2, Plus, X } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
 import { useToast } from "@/hooks/use-toast";
