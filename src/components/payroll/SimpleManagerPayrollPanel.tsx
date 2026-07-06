@@ -531,7 +531,7 @@ export default function SimpleManagerPayrollPanel() {
           const rubs: RubricRow[] = [];
           const push = (description: string, kind: "earning" | "deduction", value: number) => {
             if (Number(value) === 0) return;
-            rubs.push({ id: `${r.id}-${description}`, row_id: r.id, code: null, description, kind, value: Number(value) });
+            rubs.push({ id: `${r.id}-${kind}-${description}`, row_id: r.id, code: null, description, kind, value: Number(value) });
           };
           const details = r.calculation_details ?? {};
           const cct26Earning = Number(details.cct26_earning ?? 0);
