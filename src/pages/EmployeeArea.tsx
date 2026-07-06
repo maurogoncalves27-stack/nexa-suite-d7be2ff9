@@ -611,7 +611,7 @@ export default function EmployeeArea({ impersonateUserId, managerView = false }:
                         return;
                       }
                       toast({ title: "Ciência registrada", description: "Obrigado por confirmar." });
-                      load();
+                      loadAll();
                     }}
                   >
                     Confirmo ciência
