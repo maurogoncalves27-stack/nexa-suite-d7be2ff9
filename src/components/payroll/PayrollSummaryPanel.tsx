@@ -426,6 +426,7 @@ export default function PayrollSummaryPanel() {
       .from("employees")
       .select("id, full_name, cpf, registration_number, position, contract_type, esocial_category")
       .not("status", "in", "(terminated,in_training)")
+      .eq("exclude_from_payroll", false)
       .order("full_name");
     setEmployees(((data ?? []) as EmployeeOption[]).filter((employee) => !isInternshipEmployee(employee)));
   };
