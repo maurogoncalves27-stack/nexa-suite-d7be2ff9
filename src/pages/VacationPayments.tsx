@@ -59,7 +59,7 @@ function CalculationBreakdown({ r }: { r: VacationReceiptRow }) {
   const avgVariables = Number(details.avg_variables ?? 0);
   const variablesMonths = Number(details.variables_months ?? 0);
   const composedMonthly = Number(details.composed_monthly ?? Number(r.monthly_salary));
-  const variablesHistory: Array<{ y: number; m: number; productivity: number; overtime: number; night: number; holiday: number; total: number }> = Array.isArray(details.variables_history) ? details.variables_history : [];
+  const variablesHistory: Array<{ label: string; value: number }> = Array.isArray(details.variables_history) ? details.variables_history : [];
   const dailyBase = Number(details.daily_base ?? (composedMonthly / 30));
   const taxBase = Number(details.tax_base ?? (Number(r.vacation_base) + Number(r.one_third)));
   const dependents = Number(details.dependents ?? 0);
