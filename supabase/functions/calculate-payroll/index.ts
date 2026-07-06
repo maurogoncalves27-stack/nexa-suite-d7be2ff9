@@ -616,6 +616,17 @@ Deno.serve(async (req: Request) => {
       const inssLeavePay = r2(dailyBase * inssEmployerDays);
       const vacationDeduction = r2(dailyBase * vacationDaysInMonth);
 
+      // Mês INTEIRO em férias: nenhum dia de salário normal e sem afastamento INSS.
+      // Nesse caso, pagamentos/descontos vão no RECIBO de férias (fora deste motor):
+      //   - não descontamos VT (não há passagem em férias);
+      //   - adiantamento e plano de saúde do mês NÃO são deferidos automaticamente
+      //     (o adiantamento típico de férias já é acertado no recibo).
+      const fullMonthVacation = !hasPartialMonth
+        && inssTotalDays === 0
+        && vacationDaysInMonth > 0
+        && salaryWorkedDays === 0;
+
+
 
       // VT calculado mais abaixo (após apurar faltas/afastamentos),
       // pois o acerto cobre dias escalados sem batida (VT creditado e não usado).
