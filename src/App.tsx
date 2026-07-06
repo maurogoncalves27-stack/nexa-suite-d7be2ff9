@@ -392,6 +392,7 @@ const App = () => (
               <Route path="/treinamentos" element={<Guarded staff><Trainings /></Guarded>} />
               <Route path="/clima" element={<Guarded staff><Climate /></Guarded>} />
               <Route path="/ferias" element={<Guarded staff><Vacations /></Guarded>} />
+              <Route path="/pagamentos/ferias" element={<Guarded staff><VacationPayments /></Guarded>} />
               <Route path="/uniformes" element={<Guarded staff><Uniforms /></Guarded>} />
               <Route path="/escalas" element={<Guarded staff><Schedules /></Guarded>} />
               
