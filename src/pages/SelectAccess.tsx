@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { Loader2, Briefcase, Crown, User, Apple, Truck } from "lucide-react";
+import { Loader2, Briefcase, Crown, User, Apple, Truck, Calculator } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { setViewMode, type ViewMode } from "@/hooks/useViewMode";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,6 +17,8 @@ interface Option {
 const SelectAccess = () => {
   const { loading, user, roles, isAdmin, isManager, isPartner, isSupplier, isSuperUser, hasRole, signOut } = useAuth();
   const isNutritionist = hasRole("nutritionist");
+  const isContabilidade = hasRole("contabilidade");
+
   const navigate = useNavigate();
 
   const options = useMemo<Option[]>(() => {
@@ -64,8 +66,18 @@ const SelectAccess = () => {
         to: "/fornecedor/painel",
       });
     }
+    if (isContabilidade || isSuperUser) {
+      list.push({
+        mode: "contabilidade",
+        title: "Contador",
+        description: "Painel da contabilidade: folhas para aprovação e envio de XML.",
+        icon: Calculator,
+        to: "/contabilidade",
+      });
+    }
     return list;
-  }, [isAdmin, isManager, isPartner, isSupplier, isSuperUser, isNutritionist]);
+  }, [isAdmin, isManager, isPartner, isSupplier, isSuperUser, isNutritionist, isContabilidade]);
+
 
   // Se só tem 1 opção, entra direto.
   useEffect(() => {
