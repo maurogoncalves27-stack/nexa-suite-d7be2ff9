@@ -562,6 +562,16 @@ Deno.serve(async (req: Request) => {
 
 
     const rows: any[] = [];
+    // Diferimentos de desconto (adiantamento/plano de saúde/saldo residual)
+    // gerados quando a folha do mês ficaria negativa — são lançados como
+    // desconto automático no mês seguinte em payroll_advances.
+    const deferralsToApply: Array<{
+      employee_id: string;
+      store_id: string | null;
+      advance: number;
+      health_plan: number;
+      residual: number;
+    }> = [];
 
     for (const emp of employees ?? []) {
       // Data oficial de admissão CLT (admission_date) tem prioridade sobre hire_date
