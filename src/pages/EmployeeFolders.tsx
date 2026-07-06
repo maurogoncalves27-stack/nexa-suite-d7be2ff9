@@ -100,9 +100,27 @@ export default function EmployeeFolders() {
   const handleDownload = async (doc: DocRow) => {
     setDownloadingId(doc.id);
     try {
+      // Alguns registros (ex.: holerites assinados) guardam o caminho já com o prefixo
+      // do bucket de origem, ex.: "payroll-receipts/<emp>/2026-06-signed.pdf".
+      // Detectamos esse prefixo e usamos o bucket correto para gerar a URL assinada.
+      const KNOWN_BUCKETS = [
+        "payroll-receipts",
+        "employee-documents",
+        "medical-certificates",
+        "contracts",
+      ];
+      let bucket = "employee-documents";
+      let path = doc.file_path;
+      for (const b of KNOWN_BUCKETS) {
+        if (path.startsWith(`${b}/`)) {
+          bucket = b;
+          path = path.slice(b.length + 1);
+          break;
+        }
+      }
       const { data, error } = await supabase.storage
-        .from("employee-documents")
-        .createSignedUrl(doc.file_path, 60);
+        .from(bucket)
+        .createSignedUrl(path, 60);
       if (error || !data) throw error ?? new Error("URL não gerada");
       window.open(data.signedUrl, "_blank", "noopener");
     } catch (e: any) {
