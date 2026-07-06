@@ -390,22 +390,36 @@ export default function VacationPayments() {
                 </TableHeader>
                 <TableBody>
                   {receipts.filter((r) => r.payment_status === "paid").slice(0, 20).map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell className="font-medium">{r.employee?.full_name ?? "—"}</TableCell>
-                      <TableCell className="text-xs">
-                        {r.schedule ? `${formatDate(r.schedule.start_date)} → ${formatDate(r.schedule.end_date)}` : "—"}
-                      </TableCell>
-                      <TableCell className="font-mono">{fmtBRL(Number(r.net_total))}</TableCell>
-                      <TableCell className="text-xs">{r.paid_at ? new Date(r.paid_at).toLocaleDateString("pt-BR") : "—"}</TableCell>
-                      <TableCell className="text-right">
-                        {r.pdf_url && (
-                          <Button size="sm" variant="outline" onClick={() => handleOpenReceipt(r)} className="gap-1">
-                            <FileText className="h-3 w-3" /> PDF
+                    <Fragment key={r.id}>
+                      <TableRow>
+                        <TableCell className="font-medium">{r.employee?.full_name ?? "—"}</TableCell>
+                        <TableCell className="text-xs">
+                          {r.schedule ? `${formatDate(r.schedule.start_date)} → ${formatDate(r.schedule.end_date)}` : "—"}
+                        </TableCell>
+                        <TableCell className="font-mono">{fmtBRL(Number(r.net_total))}</TableCell>
+                        <TableCell className="text-xs">{r.paid_at ? new Date(r.paid_at).toLocaleDateString("pt-BR") : "—"}</TableCell>
+                        <TableCell className="text-right space-x-1">
+                          <Button size="sm" variant="ghost" onClick={() => toggleExpanded(r.id)} className="gap-1" aria-label="Ver memória de cálculo">
+                            <Calculator className="h-3 w-3" />
+                            <ChevronDown className={`h-3 w-3 transition-transform ${expanded.has(r.id) ? "rotate-180" : ""}`} />
                           </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
+                          {r.pdf_url && (
+                            <Button size="sm" variant="outline" onClick={() => handleOpenReceipt(r)} className="gap-1">
+                              <FileText className="h-3 w-3" /> PDF
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                      {expanded.has(r.id) && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="bg-muted/10">
+                            <CalculationBreakdown r={r} />
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </Fragment>
                   ))}
+
                 </TableBody>
               </Table>
             </div>
