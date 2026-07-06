@@ -616,6 +616,17 @@ Deno.serve(async (req: Request) => {
       const inssLeavePay = r2(dailyBase * inssEmployerDays);
       const vacationDeduction = r2(dailyBase * vacationDaysInMonth);
 
+      // Mês INTEIRO em férias: nenhum dia de salário normal e sem afastamento INSS.
+      // Nesse caso, pagamentos/descontos vão no RECIBO de férias (fora deste motor):
+      //   - não descontamos VT (não há passagem em férias);
+      //   - adiantamento e plano de saúde do mês NÃO são deferidos automaticamente
+      //     (o adiantamento típico de férias já é acertado no recibo).
+      const fullMonthVacation = !hasPartialMonth
+        && inssTotalDays === 0
+        && vacationDaysInMonth > 0
+        && salaryWorkedDays === 0;
+
+
 
       // VT calculado mais abaixo (após apurar faltas/afastamentos),
       // pois o acerto cobre dias escalados sem batida (VT creditado e não usado).
@@ -754,7 +765,7 @@ Deno.serve(async (req: Request) => {
       //      do VT, pois a passagem foi paga e não foi usada.
       //   3) Esse acerto entra no transport_discount; transport_voucher continua
       //      sendo o valor cheio creditado no mês.
-      if (vt) {
+      if (vt && !fullMonthVacation) {
         const daily = Number(vt.daily_value ?? 0);
         const wdpm = Number(vt.working_days_per_month ?? 22);
         const fullVoucher = r2(daily * wdpm);
@@ -849,7 +860,7 @@ Deno.serve(async (req: Request) => {
       let deferredAdvance = 0;
       let deferredHealth = 0;
       let deferredResidual = 0;
-      if (netPay < 0) {
+      if (netPay < 0 && !fullMonthVacation) {
         let deficit = r2(-netPay);
         if (advance > 0 && deficit > 0) {
           deferredAdvance = r2(Math.min(advance, deficit));
@@ -879,6 +890,13 @@ Deno.serve(async (req: Request) => {
           residual: deferredResidual,
         });
       }
+      // Mês inteiro em férias: se ainda houver líquido negativo (adiantamento/plano
+      // de saúde sem contrapartida), apenas exibe zero — o acerto acontece no
+      // recibo de férias; não deferimos parcelas automaticamente.
+      if (fullMonthVacation && netPay < 0) {
+        netPay = 0;
+      }
+
 
       rows.push({
         employee_id: emp.id,
@@ -944,6 +962,7 @@ Deno.serve(async (req: Request) => {
           deferred_advance: deferredAdvance,
           deferred_health_plan: deferredHealth,
           deferred_residual: deferredResidual,
+          full_month_vacation: fullMonthVacation,
           tables_version: "2026-07",
         },
         calculated_at: new Date().toISOString(),
