@@ -43,6 +43,7 @@ const NightAddition = lazy(() => import("./pages/NightAddition.tsx"));
 const Trainings = lazy(() => import("./pages/Trainings.tsx"));
 const Climate = lazy(() => import("./pages/Climate.tsx"));
 const Vacations = lazy(() => import("./pages/Vacations.tsx"));
+const VacationPayments = lazy(() => import("./pages/VacationPayments.tsx"));
 const Uniforms = lazy(() => import("./pages/Uniforms.tsx"));
 const EmployeeArea = lazy(() => import("./pages/EmployeeArea.tsx"));
 const ManagerArea = lazy(() => import("./pages/ManagerArea.tsx"));
