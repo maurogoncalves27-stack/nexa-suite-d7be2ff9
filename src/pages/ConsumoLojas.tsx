@@ -192,6 +192,22 @@ export default function ConsumoLojas() {
           };
         });
 
+      // Rateio água/luz 50/50 Asa Sul × Fábrica (dividem o mesmo espaço físico).
+      // A fatura normalmente vem lançada só na Asa Sul; somamos qualquer lançamento
+      // eventual na Fábrica e redistribuímos meio a meio. Gás e óleo permanecem separados.
+      const asaSul = out.find((r) => r.storeName === ASA_SUL_NAME);
+      const fabrica = out.find((r) => r.storeName === FABRICA_NAME);
+      if (asaSul && fabrica) {
+        const aguaTotal = asaSul.aguaValor + fabrica.aguaValor;
+        const luzTotal = asaSul.luzValor + fabrica.luzValor;
+        asaSul.aguaValor = aguaTotal / 2;
+        fabrica.aguaValor = aguaTotal / 2;
+        asaSul.luzValor = luzTotal / 2;
+        fabrica.luzValor = luzTotal / 2;
+      }
+      // Fábrica não realiza trocas de óleo (fritadeiras ficam nas lojas).
+      if (fabrica) fabrica.oleoTrocas = 0;
+
       setRows(out);
     } catch (err) {
       console.error(err);
