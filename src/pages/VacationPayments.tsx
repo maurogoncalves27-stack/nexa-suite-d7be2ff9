@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plane, Download, CheckCircle2, FileText, Loader2 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Plane, Download, CheckCircle2, FileText, Loader2, ChevronDown, Calculator } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { formatDate } from "@/lib/vacation";
 import { exportC6PixFile } from "@/lib/c6Export";
+
 
 interface VacationReceiptRow {
   id: string;
