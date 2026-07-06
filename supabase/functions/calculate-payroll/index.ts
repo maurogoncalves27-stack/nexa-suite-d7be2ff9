@@ -962,6 +962,7 @@ Deno.serve(async (req: Request) => {
           deferred_advance: deferredAdvance,
           deferred_health_plan: deferredHealth,
           deferred_residual: deferredResidual,
+          full_month_vacation: fullMonthVacation,
           tables_version: "2026-07",
         },
         calculated_at: new Date().toISOString(),
