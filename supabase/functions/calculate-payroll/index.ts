@@ -829,12 +829,12 @@ Deno.serve(async (req: Request) => {
         ? Number(existing.health_plan)
         : Number(emp.health_plan_copay ?? 0);
 
-      // Salário-família: proporcional aos dias efetivamente trabalhados
-      // (workedDays já considera admissão/demissão; subtrai faltas injustificadas).
-      const familyDaysWorked = Math.max(0, workedDays - absentDays);
+      // Salário-família: proporcional aos dias contratuais (workedDays já considera
+      // admissão/demissão). NÃO subtrai faltas injustificadas — alinhado com a EXACT
+      // (CLT: cota devida por vínculo no mês, faltas são descontadas separadamente).
       familyAllowance =
         proportionalSalary <= FAMILY_ALLOWANCE_LIMIT && deps.under14 > 0
-          ? r2(deps.under14 * FAMILY_ALLOWANCE_QUOTA * (familyDaysWorked / lastDay))
+          ? r2(deps.under14 * FAMILY_ALLOWANCE_QUOTA * (workedDays / lastDay))
           : 0;
       
 
