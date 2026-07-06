@@ -173,6 +173,85 @@ export default function SimpleManagerPayrollPanel() {
     }
   };
 
+  const startEditManual = (m: ManualRubric) => {
+    if (isLocked) { toast.error("Folha consolidada/aprovada — somente leitura"); return; }
+    setEditingManualId(m.id);
+    setEditingManualDesc(m.description ?? "");
+    setEditingManualValue(String(m.total_amount).replace(".", ","));
+  };
+  const cancelEditManual = () => {
+    setEditingManualId(null);
+    setEditingManualDesc("");
+    setEditingManualValue("");
+  };
+  const saveEditManual = async (m: ManualRubric, employeeId: string) => {
+    if (isLocked) { toast.error("Folha consolidada/aprovada — somente leitura"); return; }
+    const desc = editingManualDesc.trim();
+    const newVal = parseMoneyInput(editingManualValue);
+    if (!desc) { toast.error("Informe uma descrição"); return; }
+    if (!(newVal > 0)) { toast.error("Informe um valor válido"); return; }
+    setSavingManualId(m.id);
+    try {
+      const { error } = await (supabase as any)
+        .from("payroll_advances")
+        .update({ description: desc, total_amount: newVal })
+        .eq("id", m.id);
+      if (error) throw error;
+      // Atualiza também a parcela do mês para refletir no cálculo
+      const { error: instErr } = await (supabase as any)
+        .from("payroll_advance_installments")
+        .update({ amount: newVal })
+        .eq("advance_id", m.id)
+        .eq("reference_year", refYear)
+        .eq("reference_month", refMonth);
+      if (instErr) throw instErr;
+      const { error: fnErr } = await supabase.functions.invoke("calculate-payroll", {
+        body: { year: refYear, month: refMonth, employee_id: employeeId },
+      });
+      if (fnErr) throw fnErr;
+      toast.success("Rubrica atualizada");
+      cancelEditManual();
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao atualizar rubrica");
+    } finally {
+      setSavingManualId(null);
+    }
+  };
+  const removeManual = async (m: ManualRubric, employeeId: string) => {
+    if (isLocked) { toast.error("Folha consolidada/aprovada — somente leitura"); return; }
+    const label = m.description ?? (m.type === "earning" ? "Provento" : "Desconto");
+    const warn = m.installments_count > 1
+      ? `Remover "${label}"? Isso apagará TODAS as ${m.installments_count} parcelas (inclusive de meses futuros).`
+      : `Remover "${label}" desta folha?`;
+    if (!confirm(warn)) return;
+    setRemovingManualId(m.id);
+    try {
+      const { error: instErr } = await (supabase as any)
+        .from("payroll_advance_installments")
+        .delete()
+        .eq("advance_id", m.id);
+      if (instErr) throw instErr;
+      const { error } = await (supabase as any)
+        .from("payroll_advances")
+        .delete()
+        .eq("id", m.id);
+      if (error) throw error;
+      const { error: fnErr } = await supabase.functions.invoke("calculate-payroll", {
+        body: { year: refYear, month: refMonth, employee_id: employeeId },
+      });
+      if (fnErr) throw fnErr;
+      toast.success("Rubrica removida");
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao remover rubrica");
+    } finally {
+      setRemovingManualId(null);
+    }
+  };
+
+
+
 
   // Mapeamento "Descrição da rubrica sintética" -> coluna em payroll_calculated.
   // Itens em calculation_details ficam em JSON e são tratados à parte.
