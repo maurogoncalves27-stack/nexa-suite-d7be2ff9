@@ -860,7 +860,7 @@ Deno.serve(async (req: Request) => {
       let deferredAdvance = 0;
       let deferredHealth = 0;
       let deferredResidual = 0;
-      if (netPay < 0) {
+      if (netPay < 0 && !fullMonthVacation) {
         let deficit = r2(-netPay);
         if (advance > 0 && deficit > 0) {
           deferredAdvance = r2(Math.min(advance, deficit));
