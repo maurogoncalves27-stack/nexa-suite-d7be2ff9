@@ -25,8 +25,10 @@ const CATEG_LUZ = "5f5803ab-d8eb-439d-b82d-e42d3e413c36";
 const CATEG_GAS = "58c72c4a-fd1b-431d-b205-36f1333a62f9";
 const CATEG_VALE_GAS = "409dbcd7-379a-4b06-85c7-1bf92ef815c3";
 
-// Lojas físicas de operação (sem Escritório, Estoque Central, Fábrica)
-const STORE_ORDER = ["ASA NORTE", "ÁGUAS CLARAS", "ASA SUL", "LAGO SUL"];
+// Lojas físicas de operação (Fábrica incluída — divide água/luz 50/50 com Asa Sul)
+const STORE_ORDER = ["ASA NORTE", "ÁGUAS CLARAS", "ASA SUL", "LAGO SUL", "FÁBRICA"];
+const FABRICA_NAME = "FÁBRICA";
+const ASA_SUL_NAME = "ASA SUL";
 
 // Paleta fixa do sistema (HSL via tokens)
 const STORE_COLOR: Record<string, string> = {
@@ -34,6 +36,7 @@ const STORE_COLOR: Record<string, string> = {
   "ÁGUAS CLARAS": "hsl(var(--primary))",
   "ASA SUL": "hsl(var(--warning))",
   "LAGO SUL": "hsl(340 82% 60%)",
+  "FÁBRICA": "hsl(25 60% 40%)",
 };
 
 type Store = { id: string; name: string };
@@ -188,6 +191,22 @@ export default function ConsumoLojas() {
             oleoTrocas: oleoByStore.get(s.id) ?? 0,
           };
         });
+
+      // Rateio água/luz 50/50 Asa Sul × Fábrica (dividem o mesmo espaço físico).
+      // A fatura normalmente vem lançada só na Asa Sul; somamos qualquer lançamento
+      // eventual na Fábrica e redistribuímos meio a meio. Gás e óleo permanecem separados.
+      const asaSul = out.find((r) => r.storeName === ASA_SUL_NAME);
+      const fabrica = out.find((r) => r.storeName === FABRICA_NAME);
+      if (asaSul && fabrica) {
+        const aguaTotal = asaSul.aguaValor + fabrica.aguaValor;
+        const luzTotal = asaSul.luzValor + fabrica.luzValor;
+        asaSul.aguaValor = aguaTotal / 2;
+        fabrica.aguaValor = aguaTotal / 2;
+        asaSul.luzValor = luzTotal / 2;
+        fabrica.luzValor = luzTotal / 2;
+      }
+      // Fábrica não realiza trocas de óleo (fritadeiras ficam nas lojas).
+      if (fabrica) fabrica.oleoTrocas = 0;
 
       setRows(out);
     } catch (err) {
