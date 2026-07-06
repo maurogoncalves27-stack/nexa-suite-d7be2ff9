@@ -148,6 +148,7 @@ export default function EmployeeDocumentsTab({
         })),
       );
       setSignedReceipts((recs ?? []) as any[]);
+      setSignedPayslips((pays ?? []) as any[]);
       setLoading(false);
     })();
   }, [user, employeeId, employeePosition]);
