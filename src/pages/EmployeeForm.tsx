@@ -208,7 +208,9 @@ const EMPTY_EMPLOYEE = {
   foreigner_rnm: "",
   foreigner_visa_type: "",
   foreigner_arrival_date: "",
+  exclude_from_payroll: false,
 };
+
 
 export default function EmployeeForm() {
   const { id } = useParams();
