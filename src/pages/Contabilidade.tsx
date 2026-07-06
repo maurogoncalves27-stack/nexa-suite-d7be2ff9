@@ -10,8 +10,9 @@ import {
 } from "@/components/ui/dialog";
 import {
   Calculator, Download, Check, ArrowLeft, FileText, Loader2, AlertTriangle, History, FileDown,
-  Users, FolderOpen, Stethoscope, ShieldAlert,
+  Users, FolderOpen, Stethoscope, ShieldAlert, Plane, LogOut, Bus, Wallet, Award, Receipt,
 } from "lucide-react";
+
 import { toast } from "@/hooks/use-toast";
 import { Link, Navigate } from "react-router-dom";
 import { buildS1200Xml, downloadS1200Xml } from "@/lib/esocialS1200Export";
