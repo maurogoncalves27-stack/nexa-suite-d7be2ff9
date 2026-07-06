@@ -125,6 +125,8 @@ const employeeSchema = z.object({
   foreigner_rnm: optStr(30),
   foreigner_visa_type: optStr(30),
   foreigner_arrival_date: optStr(),
+  // Flag de teste/desenvolvimento
+  exclude_from_payroll: z.boolean().optional().default(false),
 });
 
 const EMPTY_EMPLOYEE = {
