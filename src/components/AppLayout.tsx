@@ -50,6 +50,7 @@ const PAGE_TITLES: PageMeta[] = [
   { match: (p) => p.startsWith("/colaboradores"), title: "Cadastros", group: "Pessoas" },
   { match: (p) => p.startsWith("/recrutamento"), title: "Recrutamento", group: "Pessoas" },
   { match: (p) => p.startsWith("/estagio/pagamentos"), title: "Bolsa Estágio", group: "Pagamentos" },
+  { match: (p) => p.startsWith("/pagamentos/ferias"), title: "Pagamento de férias", group: "Pagamentos" },
   { match: (p) => p.startsWith("/estagio"), title: "Estágio", group: "Pessoas" },
   
   { match: (p) => p.startsWith("/atribuicoes"), title: "Atribuições por cargo", group: "Pessoas" },
