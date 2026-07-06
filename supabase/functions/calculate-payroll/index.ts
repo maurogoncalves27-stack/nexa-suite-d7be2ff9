@@ -747,10 +747,40 @@ Deno.serve(async (req: Request) => {
       }
       const dsrLossDays = weeksWithAbsence.size;
 
+      // ===== Horas faltas (saída antecipada / entrada tardia) =====
+      // Para cada dia com escala prevista E com pontos batidos, comparamos os
+      // minutos efetivamente trabalhados com o previsto. Se faltarem mais que
+      // a tolerância, geramos "horas faltas" (rubrica separada da falta cheia).
+      // Não conta em dias justificados nem em dias considerados falta cheia.
+      const PARTIAL_TOLERANCE_MIN = 10;
+      let partialMissingMinutes = 0;
+      const partialMissingByDate = new Map<string, number>();
+      const workedMinByDate = new Map<string, number>();
+      for (const seg of segments) {
+        workedMinByDate.set(seg.date, (workedMinByDate.get(seg.date) ?? 0) + Math.max(0, seg.endMin - seg.startMin));
+      }
+      const empScheduleMinutes = scheduleMinutesMap.get(emp.id);
+      if (timeClockImpactsPayroll && empScheduleMinutes) {
+        for (const [d, expectedMin] of empScheduleMinutes) {
+          if (!workedDates.has(d)) continue; // sem batida = falta cheia (já tratada)
+          if (justifiedDates.has(d)) continue;
+          const worked = workedMinByDate.get(d) ?? 0;
+          const missing = expectedMin - worked;
+          if (missing > PARTIAL_TOLERANCE_MIN) {
+            partialMissingMinutes += missing;
+            partialMissingByDate.set(d, missing);
+          }
+        }
+      }
+      const partialMissingHours = r2(partialMissingMinutes / 60);
+      const partialHourlyRate = baseSalary > 0 ? baseSalary / 220 : 0;
+      const partialHoursDiscount = r2(partialMissingHours * partialHourlyRate);
+
       // Base diária proporcional aos dias do mês de referência (lastDay), NÃO 30 fixo.
       const dailyRateAbs = baseSalary / lastDay;
-      const absenceDiscount = r2(absentDays * dailyRateAbs);
+      const absenceDiscount = r2(absentDays * dailyRateAbs + partialHoursDiscount);
       const dsrLossDiscount = r2(dsrLossDays * dailyRateAbs);
+
 
       // Falta injustificada zera a produtividade do período (apenas quando o
       // ponto deste colaborador impacta folha — supervisor não perde produtividade
