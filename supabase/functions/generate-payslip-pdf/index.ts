@@ -49,6 +49,12 @@ function buildEarningsAndDiscounts(p: any): {
 } {
   const earnings: Earning[] = [];
   const discounts: Discount[] = [];
+  const details = p.calculation_details ?? {};
+  const cct26Earning = Number(details.cct26_earning ?? 0);
+  const otherEarningsResidual = Math.max(0, Number(p.other_earnings ?? 0) - cct26Earning);
+  const vacationBase = Number(details.vacation_payroll_base ?? 0);
+  const vacationOneThird = Number(details.vacation_payroll_one_third ?? 0);
+  const vacationInssProvision = Number(details.vacation_payroll_inss_provision ?? 0);
 
   if (Number(p.proportional_salary) > 0)
     earnings.push({
@@ -79,9 +85,17 @@ function buildEarningsAndDiscounts(p: any): {
       label: "Vale Alimentação",
       amount: Number(p.food_voucher),
     });
-  if (Number(p.other_earnings) > 0)
-    earnings.push({ label: "Outros Proventos", amount: Number(p.other_earnings) });
-  if (Number(p.vacation_days_in_month) > 0)
+  if (cct26Earning > 0)
+    earnings.push({ label: "Diferença reajuste CCT26", amount: cct26Earning });
+  if (otherEarningsResidual > 0)
+    earnings.push({ label: "Outros Proventos", amount: otherEarningsResidual });
+  if (vacationBase > 0)
+    earnings.push({ label: "Férias", ref: `${p.vacation_days_in_month} dias`, amount: vacationBase });
+  if (vacationOneThird > 0)
+    earnings.push({ label: "1/3 de Férias", amount: vacationOneThird });
+  if (vacationInssProvision > 0)
+    earnings.push({ label: "INSS - Provisão de Férias", amount: vacationInssProvision });
+  if (Number(p.vacation_days_in_month) > 0 && vacationBase <= 0)
     earnings.push({
       label: "Férias gozadas (recibo próprio)",
       ref: `${p.vacation_days_in_month} dias`,
@@ -101,6 +115,12 @@ function buildEarningsAndDiscounts(p: any): {
     discounts.push({ label: "Plano de Saúde", amount: Number(p.health_plan) });
   if (Number(p.advance) > 0)
     discounts.push({ label: "Adiantamento", amount: Number(p.advance) });
+  if (vacationBase > 0)
+    discounts.push({ label: "Adiantamento de Férias", amount: vacationBase });
+  if (vacationOneThird > 0)
+    discounts.push({ label: "Adiantamento de 1/3 de Férias", amount: vacationOneThird });
+  if (vacationInssProvision > 0)
+    discounts.push({ label: "INSS - Provisão de Férias", amount: vacationInssProvision });
   if (Number(p.absence_discount) > 0)
     discounts.push({
       label: "Faltas",
