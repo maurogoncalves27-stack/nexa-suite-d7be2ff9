@@ -223,16 +223,17 @@ export default function Vacations() {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
       return;
     }
-    // Trigger no banco chama a edge function via pg_net, mas também chamamos aqui
-    // de forma síncrona pra garantir o recibo antes do reload da UI.
-    const { error: fnErr } = await supabase.functions.invoke("calculate-vacation-receipt", {
-      body: { vacation_schedule_id: id },
-    });
+    // Trigger no banco chama as edge functions via pg_net, mas também chamamos aqui
+    // de forma síncrona pra garantir recibo + aviso antes do reload da UI.
+    const [{ error: fnErr }] = await Promise.all([
+      supabase.functions.invoke("calculate-vacation-receipt", { body: { vacation_schedule_id: id } }),
+      supabase.functions.invoke("generate-vacation-notice", { body: { vacation_schedule_id: id } }),
+    ]);
     setProcessingId(null);
     if (fnErr) {
       toast({ title: "Aprovada — recibo em processamento", description: "O recibo será gerado em instantes." });
     } else {
-      toast({ title: "Programação aprovada", description: "Recibo de férias gerado." });
+      toast({ title: "Programação aprovada", description: "Recibo e aviso prévio gerados." });
     }
     load();
   };
