@@ -80,6 +80,7 @@ export default function Vacations() {
   const { isAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Row[]>([]);
+  const [receiptMap, setReceiptMap] = useState<Record<string, VacationReceipt>>({});
   const [filter, setFilter] = useState<"all" | VacationRisk>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
@@ -93,6 +94,7 @@ export default function Vacations() {
     notes: "",
   });
   const [saving, setSaving] = useState(false);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
