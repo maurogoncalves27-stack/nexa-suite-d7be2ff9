@@ -317,7 +317,7 @@ export default function VacationPayments() {
                 </TableHeader>
                 <TableBody>
                   {pending.map((r) => (
-                    <FragmentRows key={r.id}>
+                    <Fragment key={r.id}>
                       <TableRow>
                         <TableCell>
                           <Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} />
@@ -357,7 +357,7 @@ export default function VacationPayments() {
                           </TableCell>
                         </TableRow>
                       )}
-                    </FragmentRows>
+                    </Fragment>
                   ))}
 
 
