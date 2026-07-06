@@ -95,6 +95,7 @@ async function buildVacationPdf(opts: {
   schedule: any;
   calc: {
     monthlySalary: number;
+    dailyBase: number;
     vacationDays: number;
     sellDays: number;
     vacationBase: number;
@@ -102,12 +103,15 @@ async function buildVacationPdf(opts: {
     sellAmount: number;
     sellOneThird: number;
     grossTotal: number;
+    taxBase: number;
+    dependents: number;
     inss: number;
     irrf: number;
     fgts: number;
     netTotal: number;
   };
 }): Promise<Uint8Array> {
+
   const { employee, store, schedule, calc } = opts;
   const pdf = await PDFDocument.create();
   pdf.setTitle(`Recibo de Férias - ${employee.full_name}`);
@@ -204,13 +208,41 @@ async function buildVacationPdf(opts: {
 
   y -= 8;
   page.drawText(`FGTS do mês (informativo): ${fmtBRL(calc.fgts)}`, { x: left, y, size: 8, font: helv, color: gray });
-  y -= 24;
+  y -= 20;
+
+  // ===== Memória de cálculo =====
+  page.drawLine({ start: { x: left, y }, end: { x: right, y }, thickness: 0.5, color: line });
+  y -= 14;
+  page.drawText("MEMÓRIA DE CÁLCULO", { x: left, y, size: 10, font: bold, color: black });
+  y -= 14;
+
+  const memo = (label: string, value: string) => {
+    page.drawText(label, { x: left, y, size: 8, font: helv, color: gray });
+    page.drawText(value, { x: left + 300, y, size: 8, font: helv, color: black });
+    y -= 11;
+  };
+  memo("Salário mensal base", fmtBRL(calc.monthlySalary));
+  memo("Diária (salário ÷ 30)", `${fmtBRL(calc.dailyBase)}/dia`);
+  memo(`Férias: ${fmtBRL(calc.dailyBase)} × ${calc.vacationDays} dias`, fmtBRL(calc.vacationBase));
+  memo(`1/3 constitucional: ${fmtBRL(calc.vacationBase)} ÷ 3`, fmtBRL(calc.oneThird));
+  if (calc.sellDays > 0) {
+    memo(`Abono pecuniário: ${fmtBRL(calc.dailyBase)} × ${calc.sellDays} dias`, fmtBRL(calc.sellAmount));
+    memo(`1/3 s/ abono: ${fmtBRL(calc.sellAmount)} ÷ 3`, fmtBRL(calc.sellOneThird));
+  }
+  memo("Total bruto", fmtBRL(calc.grossTotal));
+  y -= 4;
+  memo("Base tributável (férias + 1/3)", `${fmtBRL(calc.taxBase)} — abono é isento`);
+  memo(`INSS s/ ${fmtBRL(calc.taxBase)} (tabela progressiva 2026)`, fmtBRL(calc.inss));
+  memo(`IRRF (base − INSS − ${calc.dependents} dep.) — desc. simplif.`, fmtBRL(calc.irrf));
+  memo("Líquido = bruto − INSS − IRRF", fmtBRL(calc.netTotal));
+  y -= 10;
 
   page.drawLine({ start: { x: left, y }, end: { x: right, y }, thickness: 0.5, color: line });
   y -= 14;
   page.drawText("Assinatura do(a) Colaborador(a)", { x: left, y, size: 8, font: helv, color: gray });
   y -= 10;
   page.drawText(employee.full_name || "", { x: left, y, size: 9, font: bold });
+
 
   return await pdf.save();
 }
@@ -323,11 +355,12 @@ Deno.serve(async (req) => {
     const pdfBytes = await buildVacationPdf({
       employee, store, schedule,
       calc: {
-        monthlySalary, vacationDays, sellDays,
+        monthlySalary, dailyBase: r2(dailyBase), vacationDays, sellDays,
         vacationBase, oneThird, sellAmount, sellOneThird,
-        grossTotal, inss, irrf, fgts, netTotal,
+        grossTotal, taxBase, dependents, inss, irrf, fgts, netTotal,
       },
     });
+
     const fileName = `recibo-ferias-${refYear}-${String(refMonth).padStart(2, "0")}-${(employee.full_name || "").replace(/[^A-Za-z0-9]+/g, "_")}.pdf`;
     const path = `${schedule.employee_id}/${Date.now()}-${Math.random().toString(36).slice(2)}.pdf`;
     await admin.storage.from("employee-documents").upload(path, pdfBytes, { contentType: "application/pdf" });
