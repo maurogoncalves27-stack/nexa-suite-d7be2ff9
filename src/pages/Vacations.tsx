@@ -126,6 +126,19 @@ export default function Vacations() {
       schedules: allSchedules.filter((s) => s.employee_id === e.id),
     }));
     setRows(newRows);
+
+    const scheduleIds = allSchedules.map((s) => s.id);
+    if (scheduleIds.length > 0) {
+      const { data: recData } = await supabase
+        .from("vacation_receipts" as any)
+        .select("id, vacation_schedule_id, gross_total, net_total, payment_status, payment_due_date, pdf_url")
+        .in("vacation_schedule_id", scheduleIds);
+      const map: Record<string, VacationReceipt> = {};
+      ((recData ?? []) as any[]).forEach((r) => { map[r.vacation_schedule_id] = r as VacationReceipt; });
+      setReceiptMap(map);
+    } else {
+      setReceiptMap({});
+    }
     setLoading(false);
   };
 
