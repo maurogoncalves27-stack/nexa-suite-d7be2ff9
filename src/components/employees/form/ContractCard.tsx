@@ -452,6 +452,29 @@ export default function ContractCard({
             </label>
           </div>
         </div>
+
+        {canToggleExclude && (
+          <div className="mt-4 p-4 rounded-lg border border-warning/40 bg-warning/5 space-y-2">
+            <h3 className="font-semibold text-sm flex items-center gap-2">
+              <Wrench className="h-4 w-4 text-warning" /> Colaborador de teste / desenvolvimento
+            </h3>
+            <label className="flex items-start gap-3 rounded-md border bg-background p-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-primary mt-0.5"
+                checked={!!employee.exclude_from_payroll}
+                onChange={(e) => setEmployee({ ...employee, exclude_from_payroll: e.target.checked })}
+              />
+              <span className="text-sm select-none">
+                <span className="font-medium">Ignorar na folha de pagamento</span>
+                <span className="block text-xs text-muted-foreground mt-0.5">
+                  Use apenas para usuários de teste/desenvolvimento. O colaborador continua ativo e com acesso,
+                  mas não entra no cálculo da folha, vale-transporte, bonificações nem exportações (C6, eSocial, holerites).
+                </span>
+              </span>
+            </label>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
