@@ -40,6 +40,8 @@ export default function ContractCard({
   onOpenNewPosition?: () => void;
   hideHeader?: boolean;
 }) {
+  const { isAdmin, isSuperUser } = useAuth();
+  const canToggleExclude = isAdmin || isSuperUser;
   const [pendingTermination, setPendingTermination] = useState(false);
   const [termDate, setTermDate] = useState<string>("");
   return (
