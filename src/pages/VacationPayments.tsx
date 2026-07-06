@@ -66,11 +66,14 @@ export default function VacationPayments() {
       .from("vacation_receipts" as any)
       .select(`
         id, vacation_schedule_id, employee_id, reference_year, reference_month,
-        gross_total, net_total, payment_status, payment_due_date, paid_at,
-        pdf_url, accounts_payable_id,
+        monthly_salary, vacation_days, sell_days, vacation_base, one_third,
+        sell_amount, sell_one_third, gross_total, inss, irrf, fgts, net_total,
+        payment_status, payment_due_date, paid_at, pdf_url, accounts_payable_id,
+        calculation_details,
         employee:employees(full_name, cpf, pix_key, pix_key_type, allocated_store_id, store_id),
         schedule:vacation_schedules(start_date, end_date, days_count)
       `)
+
       .order("payment_due_date", { ascending: true });
     setReceipts((data ?? []) as unknown as VacationReceiptRow[]);
     setSelected(new Set());
