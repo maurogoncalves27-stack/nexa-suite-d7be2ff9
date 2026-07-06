@@ -95,6 +95,7 @@ async function buildVacationPdf(opts: {
   schedule: any;
   calc: {
     monthlySalary: number;
+    dailyBase: number;
     vacationDays: number;
     sellDays: number;
     vacationBase: number;
@@ -102,12 +103,15 @@ async function buildVacationPdf(opts: {
     sellAmount: number;
     sellOneThird: number;
     grossTotal: number;
+    taxBase: number;
+    dependents: number;
     inss: number;
     irrf: number;
     fgts: number;
     netTotal: number;
   };
 }): Promise<Uint8Array> {
+
   const { employee, store, schedule, calc } = opts;
   const pdf = await PDFDocument.create();
   pdf.setTitle(`Recibo de Férias - ${employee.full_name}`);
