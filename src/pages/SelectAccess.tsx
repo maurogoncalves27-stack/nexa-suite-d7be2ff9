@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { Loader2, Briefcase, Crown, User, Apple, Truck } from "lucide-react";
+import { Loader2, Briefcase, Crown, User, Apple, Truck, Calculator } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { setViewMode, type ViewMode } from "@/hooks/useViewMode";
 import { Card, CardContent } from "@/components/ui/card";
