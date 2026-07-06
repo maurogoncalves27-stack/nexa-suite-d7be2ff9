@@ -66,8 +66,18 @@ const SelectAccess = () => {
         to: "/fornecedor/painel",
       });
     }
+    if (isContabilidade || isSuperUser) {
+      list.push({
+        mode: "contabilidade",
+        title: "Contador",
+        description: "Painel da contabilidade: folhas para aprovação e envio de XML.",
+        icon: Calculator,
+        to: "/contabilidade",
+      });
+    }
     return list;
-  }, [isAdmin, isManager, isPartner, isSupplier, isSuperUser, isNutritionist]);
+  }, [isAdmin, isManager, isPartner, isSupplier, isSuperUser, isNutritionist, isContabilidade]);
+
 
   // Se só tem 1 opção, entra direto.
   useEffect(() => {
