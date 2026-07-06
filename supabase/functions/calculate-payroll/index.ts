@@ -765,7 +765,7 @@ Deno.serve(async (req: Request) => {
       //      do VT, pois a passagem foi paga e não foi usada.
       //   3) Esse acerto entra no transport_discount; transport_voucher continua
       //      sendo o valor cheio creditado no mês.
-      if (vt) {
+      if (vt && !fullMonthVacation) {
         const daily = Number(vt.daily_value ?? 0);
         const wdpm = Number(vt.working_days_per_month ?? 22);
         const fullVoucher = r2(daily * wdpm);
