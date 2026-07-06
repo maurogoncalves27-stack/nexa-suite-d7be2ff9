@@ -421,8 +421,19 @@ Deno.serve(async (req: Request) => {
     (certRes.data ?? []).forEach((c: any) => {
       if (c.leave_start_date && c.leave_end_date) addJustified(c.employee_id, c.leave_start_date, c.leave_end_date);
     });
+    // Férias: marca como justificado E acumula dias no mês por colaborador
+    const vacationDaysMap = new Map<string, number>();
+    const countDaysInPeriod = (startIso: string, endIso: string): number => {
+      const s = new Date(`${Math.max(startIso, periodStart) === startIso ? startIso : periodStart}T00:00:00`);
+      const e = new Date(`${Math.min(endIso, periodEnd) === endIso ? endIso : periodEnd}T00:00:00`);
+      if (e < s) return 0;
+      return Math.floor((e.getTime() - s.getTime()) / 86400000) + 1;
+    };
     (vacRes.data ?? []).forEach((v: any) => {
-      if (v.start_date && v.end_date) addJustified(v.employee_id, v.start_date, v.end_date);
+      if (!v.start_date || !v.end_date) return;
+      addJustified(v.employee_id, v.start_date, v.end_date);
+      const days = countDaysInPeriod(v.start_date, v.end_date);
+      vacationDaysMap.set(v.employee_id, (vacationDaysMap.get(v.employee_id) ?? 0) + days);
     });
     // Tratativas do ponto aprovadas/resolvidas (falta justificada, atestado lançado
     // como tratativa, atraso justificado, esquecimento de batida com entry criada).
