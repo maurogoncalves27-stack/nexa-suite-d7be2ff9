@@ -825,10 +825,50 @@ Deno.serve(async (req: Request) => {
       const totalEarnings = r2(
         proportionalSalary + inssLeavePay + productivity + nightAddition + holidayPay + familyAllowance + otherEarnings,
       );
-      const totalDiscounts = r2(
+      let totalDiscounts = r2(
         inss + irrf + transportDiscount + vtUnusedAdjustment + advance + infractionDiscount + healthPlan + otherDiscounts + absenceDiscount + dsrLossDiscount,
       );
-      const netPay = r2(totalEarnings - totalDiscounts);
+      let netPay = r2(totalEarnings - totalDiscounts);
+
+      // ===== Nunca deixar salário negativo =====
+      // Se a folha ficar negativa, adiantamento e plano de saúde do mês são
+      // reduzidos (na ordem: adiantamento → plano de saúde) e o valor deferido
+      // é lançado como desconto AUTOMÁTICO no mês seguinte (rollover em
+      // payroll_advances tipo 'deduction'). Se ainda restar déficit, o saldo
+      // remanescente também é diferido para não deixar o líquido negativo.
+      let deferredAdvance = 0;
+      let deferredHealth = 0;
+      let deferredResidual = 0;
+      if (netPay < 0) {
+        let deficit = r2(-netPay);
+        if (advance > 0 && deficit > 0) {
+          deferredAdvance = r2(Math.min(advance, deficit));
+          advance = r2(advance - deferredAdvance);
+          deficit = r2(deficit - deferredAdvance);
+        }
+        if (healthPlan > 0 && deficit > 0) {
+          deferredHealth = r2(Math.min(healthPlan, deficit));
+          healthPlan = r2(healthPlan - deferredHealth);
+          deficit = r2(deficit - deferredHealth);
+        }
+        if (deficit > 0) {
+          deferredResidual = deficit;
+        }
+        totalDiscounts = r2(
+          inss + irrf + transportDiscount + vtUnusedAdjustment + advance + infractionDiscount + healthPlan + otherDiscounts + absenceDiscount + dsrLossDiscount,
+        );
+        netPay = r2(totalEarnings - totalDiscounts);
+        if (netPay < 0) netPay = 0; // garantia final
+      }
+      if (deferredAdvance + deferredHealth + deferredResidual > 0) {
+        deferralsToApply.push({
+          employee_id: emp.id,
+          store_id: emp.store_id ?? null,
+          advance: deferredAdvance,
+          health_plan: deferredHealth,
+          residual: deferredResidual,
+        });
+      }
 
       rows.push({
         employee_id: emp.id,
@@ -891,6 +931,9 @@ Deno.serve(async (req: Request) => {
           inss_suspension_days: inssSuspensionDays,
           vacation_days_in_month: vacationDaysInMonth,
           vacation_deduction: vacationDeduction,
+          deferred_advance: deferredAdvance,
+          deferred_health_plan: deferredHealth,
+          deferred_residual: deferredResidual,
           tables_version: "2026-07",
         },
         calculated_at: new Date().toISOString(),
