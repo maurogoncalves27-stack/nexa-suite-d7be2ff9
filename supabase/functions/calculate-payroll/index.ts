@@ -959,6 +959,67 @@ Deno.serve(async (req: Request) => {
       if (upErr) throw upErr;
     }
 
+    // ===== Rollover: lança diferimentos como desconto no mês seguinte =====
+    // Chave de idempotência: marcador no início da descrição contendo o mês
+    // de origem — a cada recálculo do mês M, apagamos as rubricas rollover
+    // que M gerou para M+1 e recriamos com os valores atuais.
+    const nextMonth = month === 12 ? 1 : month + 1;
+    const nextYear = month === 12 ? year + 1 : year;
+    const sourceTag = `[Diferido ${String(month).padStart(2, "0")}/${year}]`;
+    if (deferralsToApply.length > 0) {
+      const affectedEmpIds = Array.from(new Set(deferralsToApply.map((d) => d.employee_id)));
+      // Remove rollovers anteriores desta origem (idempotência) — sempre limpa
+      // antes de recriar, evitando duplicar em recálculos sucessivos.
+      const { error: delErr } = await supabase
+        .from("payroll_advances")
+        .delete()
+        .in("employee_id", affectedEmpIds)
+        .eq("start_year", nextYear)
+        .eq("start_month", nextMonth)
+        .like("description", `${sourceTag}%`);
+      if (delErr) console.warn("[calculate-payroll] falha limpando rollovers antigos:", delErr.message);
+
+      const rolloverRows: any[] = [];
+      for (const d of deferralsToApply) {
+        if (d.advance > 0) rolloverRows.push({
+          employee_id: d.employee_id, store_id: d.store_id, type: "deduction",
+          total_amount: d.advance, installments_count: 1,
+          start_year: nextYear, start_month: nextMonth,
+          description: `${sourceTag} Adiantamento diferido`,
+        });
+        if (d.health_plan > 0) rolloverRows.push({
+          employee_id: d.employee_id, store_id: d.store_id, type: "deduction",
+          total_amount: d.health_plan, installments_count: 1,
+          start_year: nextYear, start_month: nextMonth,
+          description: `${sourceTag} Plano de saúde diferido`,
+        });
+        if (d.residual > 0) rolloverRows.push({
+          employee_id: d.employee_id, store_id: d.store_id, type: "deduction",
+          total_amount: d.residual, installments_count: 1,
+          start_year: nextYear, start_month: nextMonth,
+          description: `${sourceTag} Saldo negativo diferido`,
+        });
+      }
+      if (rolloverRows.length > 0) {
+        const { error: insErr } = await supabase.from("payroll_advances").insert(rolloverRows);
+        if (insErr) console.warn("[calculate-payroll] falha criando rollovers:", insErr.message);
+      }
+    } else {
+      // Sem diferimentos neste recálculo — ainda assim limpa rollovers órfãos
+      // (caso um recálculo anterior tivesse gerado e agora não precise mais).
+      const empIdsScope = (employees ?? []).map((e: any) => e.id);
+      if (empIdsScope.length > 0) {
+        await supabase
+          .from("payroll_advances")
+          .delete()
+          .in("employee_id", empIdsScope)
+          .eq("start_year", nextYear)
+          .eq("start_month", nextMonth)
+          .like("description", `${sourceTag}%`);
+      }
+    }
+
+
     return new Response(
       JSON.stringify({
         ok: true,
