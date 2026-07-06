@@ -179,7 +179,7 @@ export default function EmployeeArea({ impersonateUserId, managerView = false }:
     const [{ data: vac }, { data: pend }, { data: evals }, { data: reqs }] = await Promise.all([
       supabase
         .from("vacation_schedules")
-        .select("id, start_date, end_date, days_count, sell_days, status")
+        .select("id, start_date, end_date, days_count, sell_days, status, notice_pdf_url, notice_generated_at, notice_acknowledged_at, acquisition_start, acquisition_end")
         .eq("employee_id", emp.id)
         .order("start_date", { ascending: false }),
       supabase.rpc("employee_uniform_pending", { _employee_id: emp.id }),
