@@ -114,6 +114,14 @@ export default function SimpleManagerPayrollPanel() {
   const [addValue, setAddValue] = useState<string>("");
   const [savingAdd, setSavingAdd] = useState(false);
 
+  // ----- Rubricas manuais já lançadas no mês (payroll_advances) -----
+  const [manualByEmp, setManualByEmp] = useState<Record<string, ManualRubric[]>>({});
+  const [editingManualId, setEditingManualId] = useState<string | null>(null);
+  const [editingManualDesc, setEditingManualDesc] = useState<string>("");
+  const [editingManualValue, setEditingManualValue] = useState<string>("");
+  const [savingManualId, setSavingManualId] = useState<string | null>(null);
+  const [removingManualId, setRemovingManualId] = useState<string | null>(null);
+
   const openAddRubric = (rowId: string) => {
     setAddingForRowId(rowId);
     setAddKind("earning");
