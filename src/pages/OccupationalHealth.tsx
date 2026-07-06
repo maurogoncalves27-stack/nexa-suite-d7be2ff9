@@ -6,8 +6,9 @@ import { useAuth } from "@/hooks/useAuth";
 import MedicalCertificates from "./MedicalCertificates";
 import Pcmso from "./Pcmso";
 import MentalHealth from "./MentalHealth";
+import SstDocumentsPanel from "@/components/sst/SstDocumentsPanel";
 
-type TabKey = "atestados" | "pcmso" | "saude-mental";
+type TabKey = "atestados" | "pcmso" | "saude-mental" | "documentos-sst";
 
 export default function OccupationalHealth() {
   const [params, setParams] = useSearchParams();
