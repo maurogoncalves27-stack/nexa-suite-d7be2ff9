@@ -813,6 +813,8 @@ Deno.serve(async (req: Request) => {
         inss_leave_days: inssEmployerDays,
         inss_leave_pay: inssLeavePay,
         inss_suspension_days: inssSuspensionDays,
+        vacation_days_in_month: vacationDaysInMonth,
+        vacation_deduction: vacationDeduction,
         inss,
         irrf,
         fgts,
