@@ -305,30 +305,27 @@ Deno.serve(async (req) => {
       ? r2(Number(employee.salary ?? 0) * monthlyHours)
       : Number(employee.salary ?? 0);
 
-    // Média das verbas variáveis dos últimos 12 holerites (Súmula 45 TST, CLT art. 142 §§5-6)
-    // Produtividade CCT (5%), horas extras, adicional noturno e feriado trabalhado integram a base.
-    const { data: payHistory } = await admin
-      .from("payroll_calculated")
-      .select("reference_year, reference_month, productivity, overtime_amount, calculation_details")
-      .eq("employee_id", schedule.employee_id)
-      .order("reference_year", { ascending: false })
-      .order("reference_month", { ascending: false })
-      .limit(12);
-    const variablesHistory: Array<{ y: number; m: number; productivity: number; overtime: number; night: number; holiday: number; total: number }> = [];
-    let sumVariables = 0;
-    for (const p of payHistory ?? []) {
-      const cd = (p.calculation_details ?? {}) as any;
-      const productivity = Number(p.productivity ?? 0);
-      const overtime = Number(p.overtime_amount ?? 0);
-      const night = Number(cd.night_addition ?? 0);
-      const holiday = Number(cd.holiday_pay ?? 0);
-      const total = productivity + overtime + night + holiday;
-      variablesHistory.push({ y: p.reference_year, m: p.reference_month, productivity, overtime, night, holiday, total });
-      sumVariables += total;
-    }
-    const variablesMonths = variablesHistory.length;
-    const avgVariables = variablesMonths > 0 ? r2(sumVariables / variablesMonths) : 0;
+    // Produtividade CCT DF (5%) integrada às férias — regra da contabilidade:
+    // salário atual × 5% × (avos ÷ 12). Avos = meses adquiridos no período aquisitivo.
+    const acqStart = new Date(`${schedule.acquisition_start}T00:00:00`);
+    const acqEnd = new Date(`${schedule.acquisition_end}T00:00:00`);
+    const vacStart = new Date(`${schedule.start_date}T00:00:00`);
+    const cutoff = vacStart < acqEnd ? vacStart : acqEnd;
+    const monthsDiff =
+      (cutoff.getFullYear() - acqStart.getFullYear()) * 12 +
+      (cutoff.getMonth() - acqStart.getMonth());
+    const avosCount = Math.max(0, Math.min(12, monthsDiff));
+    const productivityRate = 0.05;
+    const avgVariables = r2(monthlySalary * productivityRate * (avosCount / 12));
+    const variablesMonths = avosCount;
+    const variablesHistory: Array<{ label: string; value: number }> = [
+      { label: "Salário atual", value: monthlySalary },
+      { label: "% produtividade CCT", value: productivityRate },
+      { label: "Avos adquiridos", value: avosCount },
+      { label: "Fórmula: salário × 5% × (avos ÷ 12)", value: avgVariables },
+    ];
     const composedMonthly = r2(monthlySalary + avgVariables);
+
 
     const vacationDays = Number(schedule.days_count ?? 0);
     const sellDays = Number(schedule.sell_days ?? 0);
