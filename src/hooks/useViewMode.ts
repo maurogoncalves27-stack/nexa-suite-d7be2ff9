@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
 
-export type ViewMode = "gestor" | "socio" | "colaborador" | "nutricionista" | "fornecedor";
+export type ViewMode = "gestor" | "socio" | "colaborador" | "nutricionista" | "fornecedor" | "contabilidade";
 
 const STORAGE_KEY = "rh:viewMode";
 
-const VALID: ViewMode[] = ["gestor", "socio", "colaborador", "nutricionista", "fornecedor"];
+const VALID: ViewMode[] = ["gestor", "socio", "colaborador", "nutricionista", "fornecedor", "contabilidade"];
+
 
 const read = (): ViewMode | null => {
   if (typeof window === "undefined") return null;
