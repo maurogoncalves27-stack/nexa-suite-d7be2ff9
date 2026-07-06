@@ -646,6 +646,7 @@ export default function EmployeeForm() {
       foreigner_rnm: safeData.foreigner_rnm || null,
       foreigner_visa_type: safeData.foreigner_visa_type || null,
       foreigner_arrival_date: safeData.foreigner_arrival_date || null,
+      exclude_from_payroll: !!safeData.exclude_from_payroll,
     };
 
     let savedId = id as string | undefined;
