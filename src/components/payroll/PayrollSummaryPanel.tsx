@@ -1199,7 +1199,8 @@ export default function PayrollSummaryPanel() {
       const { data: emps } = await supabase
         .from("employees")
         .select("id, full_name, contract_type, status, cpf, birth_date, gender, mother_name, admission_date, hire_date, termination_date, position, salary, esocial_category, ctps_number, work_regime, journey_type, weekly_hours, salary_type")
-        .eq("status", "active");
+        .eq("status", "active")
+        .eq("exclude_from_payroll", false);
       // Só bloqueia por colaboradores que efetivamente entram nesta folha:
       // admissão até o último dia do mês de referência (e não desligados antes do início).
       const periodEnd = new Date(refYear, refMonth, 0).toISOString().slice(0, 10); // último dia do mês
