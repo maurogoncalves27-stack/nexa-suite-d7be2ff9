@@ -240,15 +240,18 @@ export default function ConsumoLojas() {
 
   const chartData = useMemo(
     () =>
-      rows.map((r) => ({
-        loja: r.storeName,
-        "Água %": r.faturamento ? +(r.aguaValor / r.faturamento * 100).toFixed(2) : 0,
-        "Luz %": r.faturamento ? +(r.luzValor / r.faturamento * 100).toFixed(2) : 0,
-        "Gás %": r.faturamento ? +(r.gasValor / r.faturamento * 100).toFixed(2) : 0,
-        "Trocas de óleo": r.oleoTrocas,
-      })),
+      rows
+        .filter((r) => r.storeName !== FABRICA_NAME)
+        .map((r) => ({
+          loja: r.storeName,
+          "Água %": r.faturamento ? +(r.aguaValor / r.faturamento * 100).toFixed(2) : 0,
+          "Luz %": r.faturamento ? +(r.luzValor / r.faturamento * 100).toFixed(2) : 0,
+          "Gás %": r.faturamento ? +(r.gasValor / r.faturamento * 100).toFixed(2) : 0,
+          "Trocas de óleo": r.oleoTrocas,
+        })),
     [rows],
   );
+
 
   function exportCsv() {
     const header = [
