@@ -79,6 +79,7 @@ export default function EmployeeDocumentsTab({
   const [lgpd, setLgpd] = useState<LgpdConsent | null>(null);
   const [customSignatures, setCustomSignatures] = useState<CustomDocSignature[]>([]);
   const [signedReceipts, setSignedReceipts] = useState<any[]>([]);
+  const [signedPayslips, setSignedPayslips] = useState<any[]>([]);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [contractStatus, setContractStatus] = useState<{
     pending: boolean;
