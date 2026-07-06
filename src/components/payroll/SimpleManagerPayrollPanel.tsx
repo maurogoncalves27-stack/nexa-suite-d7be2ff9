@@ -43,6 +43,14 @@ interface RubricRow {
   kind: "earning" | "deduction" | "informative";
   value: number;
 }
+interface ManualRubric {
+  id: string; // payroll_advances.id
+  employee_id: string;
+  type: "earning" | "deduction";
+  description: string | null;
+  total_amount: number;
+  installments_count: number;
+}
 
 const money = (v: number) =>
   Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
