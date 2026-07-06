@@ -227,10 +227,10 @@ async function buildVacationPdf(opts: {
   };
   memo("Salário contratual", fmtBRL(calc.monthlySalary));
   if (calc.variablesMonths > 0) {
-    memo(`Média variáveis ${calc.variablesMonths}m (prod.+HE+not.+fer.)`, fmtBRL(calc.avgVariables));
-    memo("Salário composto (contratual + média)", fmtBRL(calc.composedMonthly));
+    memo(`Produtividade CCT (5% x ${calc.variablesMonths}/12 avos)`, fmtBRL(calc.avgVariables));
+    memo("Salário composto (contratual + produtividade)", fmtBRL(calc.composedMonthly));
   } else {
-    memo("Sem holerites nos últimos 12m", "média variáveis = R$ 0,00");
+    memo("Sem avos adquiridos", "produtividade = R$ 0,00");
   }
   memo("Diária (composto ÷ 30)", `${fmtBRL(calc.dailyBase)}/dia`);
 
