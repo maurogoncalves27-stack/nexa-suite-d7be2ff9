@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, ChevronLeft, ChevronRight, Loader2, ChevronRight as ChevronRightIcon, Check, Trash2, CheckCheck, Lock, Hourglass, CheckCircle2 } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Loader2, ChevronRight as ChevronRightIcon, Check, Trash2, CheckCheck, Lock, Hourglass, CheckCircle2, Plus, X } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
 import { useToast } from "@/hooks/use-toast";
@@ -97,6 +98,65 @@ export default function SimpleManagerPayrollPanel() {
   const [editingRubricId, setEditingRubricId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
   const [savingRubricId, setSavingRubricId] = useState<string | null>(null);
+
+  // ----- Adição de rubrica manual (provento/desconto pontual do mês) -----
+  const [addingForRowId, setAddingForRowId] = useState<string | null>(null);
+  const [addKind, setAddKind] = useState<"earning" | "deduction">("earning");
+  const [addDesc, setAddDesc] = useState<string>("");
+  const [addValue, setAddValue] = useState<string>("");
+  const [savingAdd, setSavingAdd] = useState(false);
+
+  const openAddRubric = (rowId: string) => {
+    setAddingForRowId(rowId);
+    setAddKind("earning");
+    setAddDesc("");
+    setAddValue("");
+  };
+  const cancelAddRubric = () => {
+    setAddingForRowId(null);
+    setAddDesc("");
+    setAddValue("");
+  };
+  const saveNewRubric = async (row: ImportRow) => {
+    if (isLocked) { toast.error("Folha consolidada/aprovada — somente leitura"); return; }
+    if (!isFromCalc) { toast.error("Rubrica manual disponível apenas em folhas calculadas"); return; }
+    if (!row.employee_id) { toast.error("Colaborador sem vínculo válido"); return; }
+    const desc = addDesc.trim();
+    if (!desc) { toast.error("Informe uma descrição"); return; }
+    const amt = parseMoneyInput(addValue);
+    if (!(amt > 0)) { toast.error("Informe um valor válido"); return; }
+    setSavingAdd(true);
+    try {
+      const { data: emp } = await (supabase as any)
+        .from("employees").select("store_id").eq("id", row.employee_id).maybeSingle();
+      const { data: authData } = await supabase.auth.getUser();
+      const { error } = await (supabase as any).from("payroll_advances").insert({
+        employee_id: row.employee_id,
+        store_id: emp?.store_id ?? null,
+        type: addKind, // 'earning' | 'deduction'
+        total_amount: amt,
+        installments_count: 1,
+        start_year: refYear,
+        start_month: refMonth,
+        description: desc,
+        created_by: authData?.user?.id ?? null,
+      });
+      if (error) throw error;
+      // Recalcula folha do colaborador para refletir a nova rubrica
+      const { error: fnErr } = await supabase.functions.invoke("calculate-payroll", {
+        body: { year: refYear, month: refMonth, employee_id: row.employee_id },
+      });
+      if (fnErr) throw fnErr;
+      toast.success(addKind === "earning" ? "Provento incluído" : "Desconto incluído");
+      cancelAddRubric();
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao incluir rubrica");
+    } finally {
+      setSavingAdd(false);
+    }
+  };
+
 
   // Mapeamento "Descrição da rubrica sintética" -> coluna em payroll_calculated.
   // Itens em calculation_details ficam em JSON e são tratados à parte.
@@ -628,6 +688,74 @@ export default function SimpleManagerPayrollPanel() {
                                     ))}
                                   </TableBody>
                                 </Table>
+                                {isFromCalc && !isLocked && (
+                                  <div className="border-t p-2">
+                                    {addingForRowId === r.id ? (
+                                      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:flex-wrap">
+                                        <div className="flex-1 min-w-[140px]">
+                                          <Label className="text-[11px] text-muted-foreground">Tipo</Label>
+                                          <Select value={addKind} onValueChange={(v) => setAddKind(v as any)}>
+                                            <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="earning">Provento (+)</SelectItem>
+                                              <SelectItem value="deduction">Desconto (−)</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                        <div className="flex-[2] min-w-[180px]">
+                                          <Label className="text-[11px] text-muted-foreground">Descrição</Label>
+                                          <Input
+                                            autoFocus
+                                            value={addDesc}
+                                            onChange={(e) => setAddDesc(e.target.value)}
+                                            placeholder="Ex.: Bônus de campanha"
+                                            className="h-8"
+                                          />
+                                        </div>
+                                        <div className="w-32">
+                                          <Label className="text-[11px] text-muted-foreground">Valor (R$)</Label>
+                                          <Input
+                                            value={addValue}
+                                            onChange={(e) => setAddValue(e.target.value)}
+                                            placeholder="0,00"
+                                            inputMode="decimal"
+                                            className="h-8 text-right"
+                                          />
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          <Button
+                                            size="sm"
+                                            onClick={() => saveNewRubric(r)}
+                                            disabled={savingAdd}
+                                            className="h-8"
+                                          >
+                                            {savingAdd ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1" />}
+                                            Salvar
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={cancelAddRubric}
+                                            disabled={savingAdd}
+                                            className="h-8"
+                                            aria-label="Cancelar"
+                                          >
+                                            <X className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => openAddRubric(r.id)}
+                                        className="h-8 gap-1"
+                                      >
+                                        <Plus className="h-3.5 w-3.5" /> Rubrica manual
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
                                 <div className="flex items-center justify-end gap-2 p-2 border-t flex-wrap">
                                   {isOk ? (
                                     <Button
