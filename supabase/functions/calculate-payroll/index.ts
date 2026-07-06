@@ -937,6 +937,10 @@ Deno.serve(async (req: Request) => {
           absence_discount: absenceDiscount,
           dsr_loss_days: dsrLossDays,
           dsr_loss_discount: dsrLossDiscount,
+          partial_hours_missing: partialMissingHours,
+          partial_hours_discount: partialHoursDiscount,
+          partial_hours_dates: Array.from(partialMissingByDate.entries()).map(([d, m]) => ({ date: d, missing_min: m })),
+
           vt_unused_days: vtUnusedDays,
           vt_unused_adjustment: vtUnusedAdjustment,
           inss_leave_days: inssEmployerDays,
