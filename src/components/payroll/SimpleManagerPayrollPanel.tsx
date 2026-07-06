@@ -99,6 +99,65 @@ export default function SimpleManagerPayrollPanel() {
   const [editValue, setEditValue] = useState<string>("");
   const [savingRubricId, setSavingRubricId] = useState<string | null>(null);
 
+  // ----- Adição de rubrica manual (provento/desconto pontual do mês) -----
+  const [addingForRowId, setAddingForRowId] = useState<string | null>(null);
+  const [addKind, setAddKind] = useState<"earning" | "deduction">("earning");
+  const [addDesc, setAddDesc] = useState<string>("");
+  const [addValue, setAddValue] = useState<string>("");
+  const [savingAdd, setSavingAdd] = useState(false);
+
+  const openAddRubric = (rowId: string) => {
+    setAddingForRowId(rowId);
+    setAddKind("earning");
+    setAddDesc("");
+    setAddValue("");
+  };
+  const cancelAddRubric = () => {
+    setAddingForRowId(null);
+    setAddDesc("");
+    setAddValue("");
+  };
+  const saveNewRubric = async (row: ImportRow) => {
+    if (isLocked) { toast.error("Folha consolidada/aprovada — somente leitura"); return; }
+    if (!isFromCalc) { toast.error("Rubrica manual disponível apenas em folhas calculadas"); return; }
+    if (!row.employee_id) { toast.error("Colaborador sem vínculo válido"); return; }
+    const desc = addDesc.trim();
+    if (!desc) { toast.error("Informe uma descrição"); return; }
+    const amt = parseMoneyInput(addValue);
+    if (!(amt > 0)) { toast.error("Informe um valor válido"); return; }
+    setSavingAdd(true);
+    try {
+      const { data: emp } = await (supabase as any)
+        .from("employees").select("store_id").eq("id", row.employee_id).maybeSingle();
+      const { data: authData } = await supabase.auth.getUser();
+      const { error } = await (supabase as any).from("payroll_advances").insert({
+        employee_id: row.employee_id,
+        store_id: emp?.store_id ?? null,
+        type: addKind, // 'earning' | 'deduction'
+        total_amount: amt,
+        installments_count: 1,
+        start_year: refYear,
+        start_month: refMonth,
+        description: desc,
+        created_by: authData?.user?.id ?? null,
+      });
+      if (error) throw error;
+      // Recalcula folha do colaborador para refletir a nova rubrica
+      const { error: fnErr } = await supabase.functions.invoke("calculate-payroll", {
+        body: { year: refYear, month: refMonth, employee_id: row.employee_id },
+      });
+      if (fnErr) throw fnErr;
+      toast.success(addKind === "earning" ? "Provento incluído" : "Desconto incluído");
+      cancelAddRubric();
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao incluir rubrica");
+    } finally {
+      setSavingAdd(false);
+    }
+  };
+
+
   // Mapeamento "Descrição da rubrica sintética" -> coluna em payroll_calculated.
   // Itens em calculation_details ficam em JSON e são tratados à parte.
   const CALC_COLUMN_BY_DESC: Record<string, string> = {
