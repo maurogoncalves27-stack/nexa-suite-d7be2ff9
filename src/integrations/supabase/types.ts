@@ -3844,6 +3844,7 @@ export type Database = {
           email: string | null
           esocial_category: string | null
           ethnicity: string | null
+          exclude_from_payroll: boolean
           exempt_from_timeclock: boolean
           experience_contract_days: number | null
           experience_extension_days: number | null
@@ -3941,6 +3942,7 @@ export type Database = {
           email?: string | null
           esocial_category?: string | null
           ethnicity?: string | null
+          exclude_from_payroll?: boolean
           exempt_from_timeclock?: boolean
           experience_contract_days?: number | null
           experience_extension_days?: number | null
@@ -4038,6 +4040,7 @@ export type Database = {
           email?: string | null
           esocial_category?: string | null
           ethnicity?: string | null
+          exclude_from_payroll?: boolean
           exempt_from_timeclock?: boolean
           experience_contract_days?: number | null
           experience_extension_days?: number | null
