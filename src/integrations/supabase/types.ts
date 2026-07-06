@@ -16309,6 +16309,10 @@ export type Database = {
           id: string
           installment_number: number
           notes: string | null
+          notice_acknowledged_at: string | null
+          notice_acknowledged_ip: string | null
+          notice_generated_at: string | null
+          notice_pdf_url: string | null
           sell_days: number
           start_date: string
           status: string
@@ -16327,6 +16331,10 @@ export type Database = {
           id?: string
           installment_number?: number
           notes?: string | null
+          notice_acknowledged_at?: string | null
+          notice_acknowledged_ip?: string | null
+          notice_generated_at?: string | null
+          notice_pdf_url?: string | null
           sell_days?: number
           start_date: string
           status?: string
@@ -16345,6 +16353,10 @@ export type Database = {
           id?: string
           installment_number?: number
           notes?: string | null
+          notice_acknowledged_at?: string | null
+          notice_acknowledged_ip?: string | null
+          notice_generated_at?: string | null
+          notice_pdf_url?: string | null
           sell_days?: number
           start_date?: string
           status?: string
@@ -17190,6 +17202,10 @@ export type Database = {
         Returns: {
           path: string
         }[]
+      }
+      acknowledge_vacation_notice: {
+        Args: { _ip?: string; _schedule_id: string }
+        Returns: undefined
       }
       active_maintenance_for_employee: {
         Args: { _user_id: string }
