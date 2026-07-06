@@ -82,7 +82,16 @@ const ROLE_MAP: Array<{ prefix: string; config: RoleManifestConfig }> = [
       appleIcon: "/icons/nexa-consultor-512.png",
     },
   },
+  {
+    prefix: "/contabilidade",
+    config: {
+      manifest: "/manifest-contabilidade.json",
+      themeColor: "#4f46e5",
+      appleIcon: "/icons/nexa-contabilidade-512.png",
+    },
+  },
 ];
+
 
 function resolveConfig(pathname: string): RoleManifestConfig {
   const match = ROLE_MAP.find((entry) => pathname.startsWith(entry.prefix));
