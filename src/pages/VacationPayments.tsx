@@ -52,7 +52,59 @@ interface VacationReceiptRow {
 }
 
 
-const fmtBRL = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const fmtBRL = (n: number) => Number(n ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+function CalculationBreakdown({ r }: { r: VacationReceiptRow }) {
+  const details = r.calculation_details || {};
+  const dailyBase = Number(details.daily_base ?? (Number(r.monthly_salary) / 30));
+  const taxBase = Number(details.tax_base ?? (Number(r.vacation_base) + Number(r.one_third)));
+  const dependents = Number(details.dependents ?? 0);
+  const totalDiscounts = Number(r.inss) + Number(r.irrf);
+  return (
+    <div className="rounded-md border border-border bg-muted/30 p-4 space-y-3 text-sm">
+      <div className="flex items-center gap-2 font-semibold">
+        <Calculator className="h-4 w-4 text-primary" /> Memória de cálculo
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <div className="text-xs uppercase text-muted-foreground font-semibold">Base</div>
+          <div className="flex justify-between"><span>Salário mensal</span><span className="font-mono">{fmtBRL(Number(r.monthly_salary))}</span></div>
+          <div className="flex justify-between"><span>Diária (÷ 30)</span><span className="font-mono">{fmtBRL(dailyBase)}/dia</span></div>
+          <div className="flex justify-between"><span>Dias de gozo</span><span className="font-mono">{r.vacation_days}</span></div>
+          {r.sell_days > 0 && (
+            <div className="flex justify-between"><span>Dias vendidos (abono)</span><span className="font-mono">{r.sell_days}</span></div>
+          )}
+          <div className="flex justify-between"><span>Dependentes IRRF</span><span className="font-mono">{dependents}</span></div>
+        </div>
+        <div className="space-y-1">
+          <div className="text-xs uppercase text-muted-foreground font-semibold">Proventos</div>
+          <div className="flex justify-between"><span>Férias: {fmtBRL(dailyBase)} × {r.vacation_days}</span><span className="font-mono">{fmtBRL(Number(r.vacation_base))}</span></div>
+          <div className="flex justify-between"><span>1/3 constitucional (÷ 3)</span><span className="font-mono">{fmtBRL(Number(r.one_third))}</span></div>
+          {r.sell_days > 0 && (
+            <>
+              <div className="flex justify-between"><span>Abono: {fmtBRL(dailyBase)} × {r.sell_days}</span><span className="font-mono">{fmtBRL(Number(r.sell_amount))}</span></div>
+              <div className="flex justify-between"><span>1/3 s/ abono</span><span className="font-mono">{fmtBRL(Number(r.sell_one_third))}</span></div>
+            </>
+          )}
+          <div className="flex justify-between border-t border-border pt-1 mt-1 font-semibold"><span>Total bruto</span><span className="font-mono">{fmtBRL(Number(r.gross_total))}</span></div>
+        </div>
+      </div>
+      <div className="space-y-1 border-t border-border pt-3">
+        <div className="text-xs uppercase text-muted-foreground font-semibold">Descontos</div>
+        <div className="flex justify-between"><span>Base tributável (férias + 1/3, abono é isento)</span><span className="font-mono">{fmtBRL(taxBase)}</span></div>
+        <div className="flex justify-between"><span>INSS s/ base (tabela progressiva 2026)</span><span className="font-mono">{fmtBRL(Number(r.inss))}</span></div>
+        <div className="flex justify-between"><span>IRRF (base − INSS − {dependents} dep., desc. simplificado)</span><span className="font-mono">{fmtBRL(Number(r.irrf))}</span></div>
+        <div className="flex justify-between border-t border-border pt-1 mt-1 font-semibold"><span>Total descontos</span><span className="font-mono">{fmtBRL(totalDiscounts)}</span></div>
+      </div>
+      <div className="flex justify-between border-t border-border pt-3 font-bold text-base">
+        <span>Líquido = bruto − INSS − IRRF</span>
+        <span className="font-mono text-primary">{fmtBRL(Number(r.net_total))}</span>
+      </div>
+      <div className="text-xs text-muted-foreground">FGTS (informativo, 8% s/ base): {fmtBRL(Number(r.fgts))}</div>
+    </div>
+  );
+}
+
 
 export default function VacationPayments() {
   const [loading, setLoading] = useState(true);
