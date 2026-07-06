@@ -252,7 +252,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Pré-carregar dados auxiliares em batch
-    const [vtRes, vtPaidRes, depRes, infRes, existingRes, holRes, manualHolidayRes, punchRows, advRes, schedRows, certRes, vacRes, justRes, unpaidLeavesRes] = await Promise.all([
+    const [vtRes, vtPaidRes, depRes, infRes, existingRes, holRes, manualHolidayRes, punchRows, advRes, schedRows, certRes, vacRes, vacReceiptRes, justRes, unpaidLeavesRes] = await Promise.all([
       supabase.from("employee_transport_vouchers").select("*").in("employee_id", empIds),
       supabase.from("transport_voucher_monthly_payments")
         .select("employee_id, amount_paid, days_paid")
@@ -283,7 +283,7 @@ Deno.serve(async (req: Request) => {
           .range(from, to)
       ),
       supabase.from("payroll_advance_installments")
-        .select("employee_id, amount, status, payroll_advances!inner(type)")
+        .select("employee_id, amount, status, payroll_advances!inner(type, description)")
         .in("employee_id", empIds)
         .eq("reference_year", year)
         .eq("reference_month", month)
@@ -305,11 +305,16 @@ Deno.serve(async (req: Request) => {
         .lte("leave_start_date", periodEnd)
         .gte("leave_end_date", periodStart),
       supabase.from("vacation_schedules")
-        .select("employee_id, start_date, end_date, status")
+        .select("id, employee_id, acquisition_start, acquisition_end, start_date, end_date, days_count, sell_days, status")
         .in("employee_id", empIds)
         .in("status", ["approved", "in_progress", "completed"])
         .lte("start_date", periodEnd)
         .gte("end_date", periodStart),
+      supabase.from("vacation_receipts")
+        .select("vacation_schedule_id, employee_id, vacation_base, one_third, inss")
+        .in("employee_id", empIds)
+        .eq("reference_year", year)
+        .eq("reference_month", month),
       supabase.from("time_clock_justifications")
         .select("employee_id, reference_date, justification_type, status")
         .in("employee_id", empIds)
@@ -382,12 +387,17 @@ Deno.serve(async (req: Request) => {
     // - night_addition → entra como adicional noturno manual (manualNightMap)
     const advMap = new Map<string, number>();
     const extraEarningMap = new Map<string, number>();
+    const cct26EarningMap = new Map<string, number>();
     const manualNightMap = new Map<string, number>();
     (advRes.data ?? []).forEach((p: any) => {
       const t = p.payroll_advances?.type ?? "advance";
       const amt = Number(p.amount ?? 0);
       if (t === "earning") {
         extraEarningMap.set(p.employee_id, (extraEarningMap.get(p.employee_id) ?? 0) + amt);
+        const desc = norm(String(p.payroll_advances?.description ?? ""));
+        if (desc.includes("cct26") || (desc.includes("reajuste") && desc.includes("cct"))) {
+          cct26EarningMap.set(p.employee_id, (cct26EarningMap.get(p.employee_id) ?? 0) + amt);
+        }
       } else if (t === "night_addition") {
         manualNightMap.set(p.employee_id, (manualNightMap.get(p.employee_id) ?? 0) + amt);
       } else {
@@ -460,6 +470,8 @@ Deno.serve(async (req: Request) => {
     });
     // Férias: marca como justificado E acumula dias no mês por colaborador
     const vacationDaysMap = new Map<string, number>();
+    const vacationScheduleMap = new Map<string, any[]>();
+    const vacationReceiptMap = new Map<string, any>();
     const countDaysInPeriod = (startIso: string, endIso: string): number => {
       const s = new Date(`${Math.max(startIso, periodStart) === startIso ? startIso : periodStart}T00:00:00`);
       const e = new Date(`${Math.min(endIso, periodEnd) === endIso ? endIso : periodEnd}T00:00:00`);
@@ -471,6 +483,12 @@ Deno.serve(async (req: Request) => {
       addJustified(v.employee_id, v.start_date, v.end_date);
       const days = countDaysInPeriod(v.start_date, v.end_date);
       vacationDaysMap.set(v.employee_id, (vacationDaysMap.get(v.employee_id) ?? 0) + days);
+      const list = vacationScheduleMap.get(v.employee_id) ?? [];
+      list.push(v);
+      vacationScheduleMap.set(v.employee_id, list);
+    });
+    (vacReceiptRes.data ?? []).forEach((r: any) => {
+      if (r.vacation_schedule_id) vacationReceiptMap.set(r.vacation_schedule_id, r);
     });
     // Tratativas do ponto aprovadas/resolvidas.
     // Só tiram a falta da folha as tratativas que representam um motivo LEGAL de
@@ -625,6 +643,40 @@ Deno.serve(async (req: Request) => {
         && inssTotalDays === 0
         && vacationDaysInMonth > 0
         && salaryWorkedDays === 0;
+
+      let vacationPayrollBase = 0;
+      let vacationPayrollOneThird = 0;
+      let vacationPayrollInssProvision = 0;
+      let vacationPayrollEarningsMirror = 0;
+      let vacationPayrollDiscountsMirror = 0;
+      if (fullMonthVacation) {
+        for (const schedule of vacationScheduleMap.get(emp.id) ?? []) {
+          const overlapDays = countDaysInPeriod(schedule.start_date, schedule.end_date);
+          if (overlapDays <= 0) continue;
+
+          const receipt = vacationReceiptMap.get(schedule.id);
+          if (receipt) {
+            vacationPayrollBase = r2(vacationPayrollBase + Number(receipt.vacation_base ?? 0));
+            vacationPayrollOneThird = r2(vacationPayrollOneThird + Number(receipt.one_third ?? 0));
+            vacationPayrollInssProvision = r2(vacationPayrollInssProvision + Number(receipt.inss ?? 0));
+            continue;
+          }
+
+          // Fallback quando o recibo de férias ainda não foi gerado: espelha
+          // na folha a mesma estrutura que a EXACT exibe para férias inteiras.
+          // Para a diferença CCT26 de 2026, a contabilidade incorporou 79,6333%
+          // da diferença salarial na base de férias do recibo.
+          const cct26Base = r2(cct26EarningMap.get(emp.id) ?? 0);
+          const cct26VacationReflex = cct26Base > 0 ? r2(cct26Base * 0.7963333333) : 0;
+          const fallbackVacationBase = r2((baseSalary + cct26VacationReflex) * (overlapDays / 30));
+          const fallbackOneThird = r2(fallbackVacationBase / 3);
+          vacationPayrollBase = r2(vacationPayrollBase + fallbackVacationBase);
+          vacationPayrollOneThird = r2(vacationPayrollOneThird + fallbackOneThird);
+          vacationPayrollInssProvision = r2(vacationPayrollInssProvision + calcINSS(r2(fallbackVacationBase + fallbackOneThird)));
+        }
+        vacationPayrollEarningsMirror = r2(vacationPayrollBase + vacationPayrollOneThird + vacationPayrollInssProvision);
+        vacationPayrollDiscountsMirror = vacationPayrollEarningsMirror;
+      }
 
 
 
@@ -822,7 +874,11 @@ Deno.serve(async (req: Request) => {
       let advance = r2(advMap.get(emp.id) ?? 0);
       // Acréscimos avulsos: SOMENTE as parcelas earning do mês (mesmo padrão do advance)
       // para não duplicar a cada recálculo.
-      const otherEarnings = r2(extraEarningMap.get(emp.id) ?? 0);
+      const cct26EarningBase = r2(cct26EarningMap.get(emp.id) ?? 0);
+      const cct26Earning = fullMonthVacation && cct26EarningBase > 0
+        ? r2(cct26EarningBase * 1.388)
+        : cct26EarningBase;
+      const otherEarnings = r2((extraEarningMap.get(emp.id) ?? 0) - cct26EarningBase + cct26Earning);
       const otherDiscounts = Number(existing?.other_discounts ?? 0);
       const foodVoucher = Number(existing?.food_voucher ?? 0);
       let healthPlan = existing?.health_plan != null && Number(existing.health_plan) > 0
@@ -838,16 +894,35 @@ Deno.serve(async (req: Request) => {
           : 0;
       
 
-      const inssBase = proportionalSalary + inssLeavePay + productivity + nightAddition + holidayPay + otherEarnings - absenceDiscount - dsrLossDiscount;
-      const inss = calcINSS(Math.max(0, inssBase));
+      const inssBase = proportionalSalary + inssLeavePay + productivity + nightAddition + holidayPay + otherEarnings + vacationPayrollBase + vacationPayrollOneThird - absenceDiscount - dsrLossDiscount;
+      const inss = fullMonthVacation && vacationPayrollInssProvision > 0
+        ? r2(Math.max(0, calcINSS(Math.max(0, inssBase)) - vacationPayrollInssProvision))
+        : calcINSS(Math.max(0, inssBase));
       const irrf = calcIRRF(Math.max(0, inssBase), inss, deps.total);
       const fgts = r2(Math.max(0, inssBase) * 0.08);
 
+      let deferredAdvance = 0;
+      let deferredHealth = 0;
+      let deferredResidual = 0;
+
+      // Férias de mês inteiro: parcelas correntes de adiantamento/plano de saúde
+      // passam para a competência seguinte, evitando folha negativa.
+      if (fullMonthVacation) {
+        if (advance > 0) {
+          deferredAdvance = advance;
+          advance = 0;
+        }
+        if (healthPlan > 0) {
+          deferredHealth = healthPlan;
+          healthPlan = 0;
+        }
+      }
+
       const totalEarnings = r2(
-        proportionalSalary + inssLeavePay + productivity + nightAddition + holidayPay + familyAllowance + otherEarnings,
+        proportionalSalary + inssLeavePay + productivity + nightAddition + holidayPay + familyAllowance + otherEarnings + vacationPayrollEarningsMirror,
       );
       let totalDiscounts = r2(
-        inss + irrf + transportDiscount + vtUnusedAdjustment + advance + infractionDiscount + healthPlan + otherDiscounts + absenceDiscount + dsrLossDiscount,
+        inss + irrf + transportDiscount + vtUnusedAdjustment + advance + infractionDiscount + healthPlan + otherDiscounts + absenceDiscount + dsrLossDiscount + vacationPayrollDiscountsMirror,
       );
       let netPay = r2(totalEarnings - totalDiscounts);
 
@@ -857,10 +932,7 @@ Deno.serve(async (req: Request) => {
       // é lançado como desconto AUTOMÁTICO no mês seguinte (rollover em
       // payroll_advances tipo 'deduction'). Se ainda restar déficit, o saldo
       // remanescente também é diferido para não deixar o líquido negativo.
-      let deferredAdvance = 0;
-      let deferredHealth = 0;
-      let deferredResidual = 0;
-      if (netPay < 0 && !fullMonthVacation) {
+      if (netPay < 0) {
         let deficit = r2(-netPay);
         if (advance > 0 && deficit > 0) {
           deferredAdvance = r2(Math.min(advance, deficit));
@@ -876,7 +948,7 @@ Deno.serve(async (req: Request) => {
           deferredResidual = deficit;
         }
         totalDiscounts = r2(
-          inss + irrf + transportDiscount + vtUnusedAdjustment + advance + infractionDiscount + healthPlan + otherDiscounts + absenceDiscount + dsrLossDiscount,
+          inss + irrf + transportDiscount + vtUnusedAdjustment + advance + infractionDiscount + healthPlan + otherDiscounts + absenceDiscount + dsrLossDiscount + vacationPayrollDiscountsMirror,
         );
         netPay = r2(totalEarnings - totalDiscounts);
         if (netPay < 0) netPay = 0; // garantia final
@@ -959,6 +1031,13 @@ Deno.serve(async (req: Request) => {
           inss_suspension_days: inssSuspensionDays,
           vacation_days_in_month: vacationDaysInMonth,
           vacation_deduction: vacationDeduction,
+          vacation_payroll_base: vacationPayrollBase,
+          vacation_payroll_one_third: vacationPayrollOneThird,
+          vacation_payroll_inss_provision: vacationPayrollInssProvision,
+          vacation_payroll_earnings_mirror: vacationPayrollEarningsMirror,
+          vacation_payroll_discounts_mirror: vacationPayrollDiscountsMirror,
+          cct26_earning_base: cct26EarningBase,
+          cct26_earning: cct26Earning,
           deferred_advance: deferredAdvance,
           deferred_health_plan: deferredHealth,
           deferred_residual: deferredResidual,
