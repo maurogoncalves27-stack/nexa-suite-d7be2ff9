@@ -94,7 +94,7 @@ export default function EmployeeDocumentsTab({
     if (!user) return;
     (async () => {
       setLoading(true);
-      const [{ data: regData }, { data: termsData }, { data: lgpdData }, { data: customSigs }, { data: recs }] =
+      const [{ data: regData }, { data: termsData }, { data: lgpdData }, { data: customSigs }, { data: recs }, { data: pays }] =
         await Promise.all([
           supabase
             .from("internal_regulation_acceptances")
@@ -126,6 +126,14 @@ export default function EmployeeDocumentsTab({
             .eq("employee_id", employeeId)
             .not("signed_at", "is", null)
             .order("signed_at", { ascending: false }),
+          (supabase as any)
+            .from("payroll_receipts")
+            .select("id, reference_year, reference_month, signed_file_path, signed_at, status")
+            .eq("employee_id", employeeId)
+            .eq("status", "signed")
+            .not("signed_file_path", "is", null)
+            .order("reference_year", { ascending: false })
+            .order("reference_month", { ascending: false }),
         ]);
       setRegulation(regData ?? null);
       setTermAcceptances(termsData ?? []);
