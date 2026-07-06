@@ -151,6 +151,16 @@ export default function NotificationsBell() {
         },
         () => load(),
       )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "hr_announcements" },
+        () => loadAnnouncements(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "hr_announcements" },
+        () => loadAnnouncements(),
+      )
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
