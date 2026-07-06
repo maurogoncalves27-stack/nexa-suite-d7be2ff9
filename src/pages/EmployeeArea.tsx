@@ -569,6 +569,57 @@ export default function EmployeeArea({ impersonateUserId, managerView = false }:
         )}
 
         <TabsContent value="vacation">
+          {vacations.filter((v: any) => v.status === "approved" && v.notice_pdf_url && !v.notice_acknowledged_at).map((v: any) => (
+            <Card key={`notice-${v.id}`} className="mb-4 border-warning bg-warning/5">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <AlertTriangle className="h-5 w-5 text-warning" />
+                  Aviso prévio de férias — ação necessária
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm">
+                  Suas férias de <strong>{format(new Date(v.start_date), "dd/MM/yyyy")}</strong> a{" "}
+                  <strong>{format(new Date(v.end_date), "dd/MM/yyyy")}</strong> ({v.days_count} dias
+                  {v.sell_days > 0 ? ` + ${v.sell_days} de abono` : ""}) foram aprovadas.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Leia o aviso prévio (art. 135 CLT) e confirme a ciência.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      const { data } = await supabase.storage
+                        .from("employee-documents")
+                        .createSignedUrl(v.notice_pdf_url, 300);
+                      if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+                    }}
+                  >
+                    <FileText className="h-4 w-4 mr-1" /> Ver aviso (PDF)
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      const { error } = await supabase.rpc("acknowledge_vacation_notice", {
+                        _schedule_id: v.id,
+                        _ip: null,
+                      });
+                      if (error) {
+                        toast({ title: "Erro", description: error.message, variant: "destructive" });
+                        return;
+                      }
+                      toast({ title: "Ciência registrada", description: "Obrigado por confirmar." });
+                      load();
+                    }}
+                  >
+                    Confirmo ciência
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
           <Card>
             <CardHeader><CardTitle>Histórico de férias</CardTitle></CardHeader>
             <CardContent>
@@ -576,10 +627,17 @@ export default function EmployeeArea({ impersonateUserId, managerView = false }:
                 <p className="text-sm text-muted-foreground">Nenhum período registrado.</p>
               ) : (
                 <ul className="divide-y">
-                  {vacations.map((v) => (
-                    <li key={v.id} className="py-2 flex items-center justify-between text-sm">
+                  {vacations.map((v: any) => (
+                    <li key={v.id} className="py-2 flex items-center justify-between text-sm gap-2 flex-wrap">
                       <span>{format(new Date(v.start_date), "dd/MM/yyyy")} → {format(new Date(v.end_date), "dd/MM/yyyy")} ({v.days_count} dias)</span>
-                      <Badge variant="outline">{v.status}</Badge>
+                      <div className="flex items-center gap-2">
+                        {v.notice_acknowledged_at && (
+                          <Badge variant="outline" className="text-[10px] text-success border-success/50">
+                            Aviso ciente
+                          </Badge>
+                        )}
+                        <Badge variant="outline">{v.status}</Badge>
+                      </div>
                     </li>
                   ))}
                 </ul>
