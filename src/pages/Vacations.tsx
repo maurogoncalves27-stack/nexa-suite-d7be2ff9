@@ -213,17 +213,59 @@ export default function Vacations() {
   };
 
   const handleApprove = async (id: string) => {
+    setProcessingId(id);
     const { error } = await supabase
       .from("vacation_schedules" as any)
       .update({ status: "approved", approved_at: new Date().toISOString() } as any)
       .eq("id", id);
     if (error) {
+      setProcessingId(null);
       toast({ title: "Erro", description: error.message, variant: "destructive" });
       return;
     }
-    toast({ title: "Programação aprovada" });
+    // Trigger no banco chama a edge function via pg_net, mas também chamamos aqui
+    // de forma síncrona pra garantir o recibo antes do reload da UI.
+    const { error: fnErr } = await supabase.functions.invoke("calculate-vacation-receipt", {
+      body: { vacation_schedule_id: id },
+    });
+    setProcessingId(null);
+    if (fnErr) {
+      toast({ title: "Aprovada — recibo em processamento", description: "O recibo será gerado em instantes." });
+    } else {
+      toast({ title: "Programação aprovada", description: "Recibo de férias gerado." });
+    }
     load();
   };
+
+  const handleGenerateReceipt = async (id: string) => {
+    setProcessingId(id);
+    const { error } = await supabase.functions.invoke("calculate-vacation-receipt", {
+      body: { vacation_schedule_id: id },
+    });
+    setProcessingId(null);
+    if (error) {
+      toast({ title: "Erro ao gerar recibo", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Recibo (re)gerado" });
+    load();
+  };
+
+  const handleOpenReceipt = async (receipt: VacationReceipt) => {
+    if (!receipt.pdf_url) {
+      toast({ title: "PDF ainda não disponível", variant: "destructive" });
+      return;
+    }
+    const { data, error } = await supabase.storage
+      .from("employee-documents")
+      .createSignedUrl(receipt.pdf_url, 300);
+    if (error || !data?.signedUrl) {
+      toast({ title: "Erro ao abrir PDF", description: error?.message, variant: "destructive" });
+      return;
+    }
+    window.open(data.signedUrl, "_blank");
+  };
+
 
   const handleCancel = async (id: string) => {
     if (!confirm("Cancelar esta programação?")) return;
