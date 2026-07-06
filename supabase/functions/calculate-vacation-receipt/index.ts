@@ -386,11 +386,13 @@ Deno.serve(async (req) => {
     const pdfBytes = await buildVacationPdf({
       employee, store, schedule,
       calc: {
-        monthlySalary, dailyBase: r2(dailyBase), vacationDays, sellDays,
+        monthlySalary, avgVariables, variablesMonths, composedMonthly,
+        dailyBase: r2(dailyBase), vacationDays, sellDays,
         vacationBase, oneThird, sellAmount, sellOneThird,
         grossTotal, taxBase, dependents, inss, irrf, fgts, netTotal,
       },
     });
+
 
     const fileName = `recibo-ferias-${refYear}-${String(refMonth).padStart(2, "0")}-${(employee.full_name || "").replace(/[^A-Za-z0-9]+/g, "_")}.pdf`;
     const path = `${schedule.employee_id}/${Date.now()}-${Math.random().toString(36).slice(2)}.pdf`;
