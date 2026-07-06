@@ -296,11 +296,17 @@ export default function Contabilidade() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {[
               { to: "/folha", icon: FileText, label: "Folha de pagamento" },
-              { to: "/colaboradores", icon: Users, label: "Colaboradores" },
-              { to: "/pasta-colaborador", icon: FolderOpen, label: "Pasta do colaborador" },
+              { to: "/rescisoes", icon: LogOut, label: "Rescisões" },
+              { to: "/ferias", icon: Plane, label: "Férias" },
+              { to: "/adiantamentos", icon: Wallet, label: "Adiantamentos" },
+              { to: "/vale-transporte", icon: Bus, label: "Vale-transporte" },
+              { to: "/bonificacoes", icon: Award, label: "Bonificações" },
               { to: "/atestados", icon: Stethoscope, label: "Atestados" },
               { to: "/infracoes", icon: ShieldAlert, label: "Advertências" },
+              { to: "/colaboradores", icon: Users, label: "Colaboradores" },
+              { to: "/pasta-colaborador", icon: FolderOpen, label: "Pasta do colaborador" },
             ].map(({ to, icon: Icon, label }) => (
+
               <Button
                 key={to}
                 asChild
