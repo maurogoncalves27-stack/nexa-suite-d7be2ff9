@@ -76,6 +76,11 @@ export default function OccupationalHealth() {
               <Pcmso embedded />
             </TabsContent>
           )}
+          {canSstDocs && (
+            <TabsContent value="documentos-sst" className="mt-4">
+              <SstDocumentsPanel />
+            </TabsContent>
+          )}
           {canMental && (
             <TabsContent value="saude-mental" className="mt-4">
               <MentalHealth embedded />
@@ -90,5 +95,6 @@ export default function OccupationalHealth() {
 function SingleTab({ tab }: { tab: TabKey }) {
   if (tab === "atestados") return <MedicalCertificates embedded />;
   if (tab === "pcmso") return <Pcmso embedded />;
+  if (tab === "documentos-sst") return <SstDocumentsPanel />;
   return <MentalHealth embedded />;
 }
