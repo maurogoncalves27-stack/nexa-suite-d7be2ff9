@@ -847,7 +847,9 @@ Deno.serve(async (req: Request) => {
           inss_leave_days: inssEmployerDays,
           inss_leave_pay: inssLeavePay,
           inss_suspension_days: inssSuspensionDays,
-          tables_version: "2026-04",
+          vacation_days_in_month: vacationDaysInMonth,
+          vacation_deduction: vacationDeduction,
+          tables_version: "2026-07",
         },
         calculated_at: new Date().toISOString(),
       });
