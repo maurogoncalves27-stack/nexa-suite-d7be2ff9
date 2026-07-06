@@ -389,21 +389,26 @@ Deno.serve(async (req: Request) => {
     const extraEarningMap = new Map<string, number>();
     const cct26EarningMap = new Map<string, number>();
     const manualNightMap = new Map<string, number>();
+    const manualAbsenceMap = new Map<string, number>();
     (advRes.data ?? []).forEach((p: any) => {
       const t = p.payroll_advances?.type ?? "advance";
       const amt = Number(p.amount ?? 0);
+      const desc = norm(String(p.payroll_advances?.description ?? ""));
       if (t === "earning") {
         extraEarningMap.set(p.employee_id, (extraEarningMap.get(p.employee_id) ?? 0) + amt);
-        const desc = norm(String(p.payroll_advances?.description ?? ""));
         if (desc.includes("cct26") || (desc.includes("reajuste") && desc.includes("cct"))) {
           cct26EarningMap.set(p.employee_id, (cct26EarningMap.get(p.employee_id) ?? 0) + amt);
         }
       } else if (t === "night_addition") {
         manualNightMap.set(p.employee_id, (manualNightMap.get(p.employee_id) ?? 0) + amt);
+      } else if (desc.includes("hora") && desc.includes("falta")) {
+        // Deduções manuais de "Horas Falta" entram como desconto de faltas, não adiantamento
+        manualAbsenceMap.set(p.employee_id, (manualAbsenceMap.get(p.employee_id) ?? 0) + amt);
       } else {
         advMap.set(p.employee_id, (advMap.get(p.employee_id) ?? 0) + amt);
       }
     });
+
 
     // Feriados: separa nacionais (store_id null) dos vinculados a loja
     const holidayDateById = new Map<string, string>();
