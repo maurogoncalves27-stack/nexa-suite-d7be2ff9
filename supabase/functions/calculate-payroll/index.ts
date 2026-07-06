@@ -804,8 +804,9 @@ Deno.serve(async (req: Request) => {
 
       // Base diária proporcional aos dias do mês de referência (lastDay), NÃO 30 fixo.
       const dailyRateAbs = baseSalary / lastDay;
-      const absenceDiscount = r2(absentDays * dailyRateAbs);
+      const absenceDiscount = r2(absentDays * dailyRateAbs + (manualAbsenceMap.get(emp.id) ?? 0));
       const dsrLossDiscount = r2(dsrLossDays * dailyRateAbs);
+
 
       // Falta injustificada zera a produtividade do período (apenas quando o
       // ponto deste colaborador impacta folha — supervisor não perde produtividade
