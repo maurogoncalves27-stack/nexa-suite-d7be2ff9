@@ -291,7 +291,7 @@ Deno.serve(async (req: Request) => {
       // Escala: também paginado — ~30 dias × N colaboradores facilmente passa de 1000.
       fetchAllPaged((from, to) =>
         supabase.from("work_schedules")
-          .select("employee_id, schedule_date, is_day_off, start_time, end_time")
+          .select("employee_id, schedule_date, is_day_off, start_time")
           .in("employee_id", empIds)
           .gte("schedule_date", periodStart)
           .lte("schedule_date", periodEnd)
@@ -315,13 +315,7 @@ Deno.serve(async (req: Request) => {
         .in("employee_id", empIds)
         .gte("reference_date", periodStart)
         .lte("reference_date", periodEnd)
-        .in("status", ["approved", "resolved"])
-        // Apenas tratativas que efetivamente justificam ausência no dia:
-        // forgotten_punch (esquecimento de batida — a entry manual acompanha)
-        // e late_arrival (atraso justificado — dia foi trabalhado). Tipos
-        // "absence", "early_leave" e "other" NÃO removem a falta/hora falta.
-        .in("justification_type", ["forgotten_punch", "late_arrival"]),
-
+        .in("status", ["approved", "resolved"]),
       supabase.from("employee_leaves")
         .select("employee_id, start_date, end_date, is_paid")
         .in("employee_id", empIds)
@@ -437,34 +431,12 @@ Deno.serve(async (req: Request) => {
 
     // Escala prevista por colaborador (apenas dias com turno = não folga e tem start_time)
     const scheduleMap = new Map<string, Set<string>>();
-    // Minutos escalados por (colaborador, data). Usado para apurar "horas faltas"
-    // (dia com pontos mas trabalhou menos que o previsto — ex.: saída antecipada).
-    // Desconta 60 min de intervalo intra-jornada quando a jornada > 6h.
-    const scheduleMinutesMap = new Map<string, Map<string, number>>();
-    const toMinutes = (hhmmss: string | null | undefined): number | null => {
-      if (!hhmmss) return null;
-      const [h, m] = hhmmss.split(":").map((v) => Number(v));
-      if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
-      return h * 60 + m;
-    };
     (schedRes.data ?? []).forEach((s: any) => {
       if (s.is_day_off || !s.start_time) return;
       const set = scheduleMap.get(s.employee_id) ?? new Set<string>();
       set.add(s.schedule_date);
       scheduleMap.set(s.employee_id, set);
-      const sMin = toMinutes(s.start_time);
-      const eMin = toMinutes(s.end_time);
-      if (sMin !== null && eMin !== null) {
-        let dur = eMin - sMin;
-        if (dur <= 0) dur += 1440; // vira o dia (12x36 noturno)
-        // Jornadas > 6h têm 1h de intervalo intra-jornada (CLT art. 71).
-        if (dur > 360) dur -= 60;
-        const inner = scheduleMinutesMap.get(s.employee_id) ?? new Map<string, number>();
-        inner.set(s.schedule_date, dur);
-        scheduleMinutesMap.set(s.employee_id, inner);
-      }
     });
-
 
     // Datas justificadas (atestado aprovado ou férias) — não contam como falta
     const justifiedMap = new Map<string, Set<string>>();
@@ -747,40 +719,10 @@ Deno.serve(async (req: Request) => {
       }
       const dsrLossDays = weeksWithAbsence.size;
 
-      // ===== Horas faltas (saída antecipada / entrada tardia) =====
-      // Para cada dia com escala prevista E com pontos batidos, comparamos os
-      // minutos efetivamente trabalhados com o previsto. Se faltarem mais que
-      // a tolerância, geramos "horas faltas" (rubrica separada da falta cheia).
-      // Não conta em dias justificados nem em dias considerados falta cheia.
-      const PARTIAL_TOLERANCE_MIN = 10;
-      let partialMissingMinutes = 0;
-      const partialMissingByDate = new Map<string, number>();
-      const workedMinByDate = new Map<string, number>();
-      for (const seg of segments) {
-        workedMinByDate.set(seg.date, (workedMinByDate.get(seg.date) ?? 0) + Math.max(0, seg.endMin - seg.startMin));
-      }
-      const empScheduleMinutes = scheduleMinutesMap.get(emp.id);
-      if (timeClockImpactsPayroll && empScheduleMinutes) {
-        for (const [d, expectedMin] of empScheduleMinutes) {
-          if (!workedDates.has(d)) continue; // sem batida = falta cheia (já tratada)
-          if (justifiedDates.has(d)) continue;
-          const worked = workedMinByDate.get(d) ?? 0;
-          const missing = expectedMin - worked;
-          if (missing > PARTIAL_TOLERANCE_MIN) {
-            partialMissingMinutes += missing;
-            partialMissingByDate.set(d, missing);
-          }
-        }
-      }
-      const partialMissingHours = r2(partialMissingMinutes / 60);
-      const partialHourlyRate = baseSalary > 0 ? baseSalary / 220 : 0;
-      const partialHoursDiscount = r2(partialMissingHours * partialHourlyRate);
-
       // Base diária proporcional aos dias do mês de referência (lastDay), NÃO 30 fixo.
       const dailyRateAbs = baseSalary / lastDay;
-      const absenceDiscount = r2(absentDays * dailyRateAbs + partialHoursDiscount);
+      const absenceDiscount = r2(absentDays * dailyRateAbs);
       const dsrLossDiscount = r2(dsrLossDays * dailyRateAbs);
-
 
       // Falta injustificada zera a produtividade do período (apenas quando o
       // ponto deste colaborador impacta folha — supervisor não perde produtividade
@@ -937,10 +879,6 @@ Deno.serve(async (req: Request) => {
           absence_discount: absenceDiscount,
           dsr_loss_days: dsrLossDays,
           dsr_loss_discount: dsrLossDiscount,
-          partial_hours_missing: partialMissingHours,
-          partial_hours_discount: partialHoursDiscount,
-          partial_hours_dates: Array.from(partialMissingByDate.entries()).map(([d, m]) => ({ date: d, missing_min: m })),
-
           vt_unused_days: vtUnusedDays,
           vt_unused_adjustment: vtUnusedAdjustment,
           inss_leave_days: inssEmployerDays,
