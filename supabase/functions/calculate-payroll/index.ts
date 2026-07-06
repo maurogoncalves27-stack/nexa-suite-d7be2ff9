@@ -437,12 +437,34 @@ Deno.serve(async (req: Request) => {
 
     // Escala prevista por colaborador (apenas dias com turno = não folga e tem start_time)
     const scheduleMap = new Map<string, Set<string>>();
+    // Minutos escalados por (colaborador, data). Usado para apurar "horas faltas"
+    // (dia com pontos mas trabalhou menos que o previsto — ex.: saída antecipada).
+    // Desconta 60 min de intervalo intra-jornada quando a jornada > 6h.
+    const scheduleMinutesMap = new Map<string, Map<string, number>>();
+    const toMinutes = (hhmmss: string | null | undefined): number | null => {
+      if (!hhmmss) return null;
+      const [h, m] = hhmmss.split(":").map((v) => Number(v));
+      if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+      return h * 60 + m;
+    };
     (schedRes.data ?? []).forEach((s: any) => {
       if (s.is_day_off || !s.start_time) return;
       const set = scheduleMap.get(s.employee_id) ?? new Set<string>();
       set.add(s.schedule_date);
       scheduleMap.set(s.employee_id, set);
+      const sMin = toMinutes(s.start_time);
+      const eMin = toMinutes(s.end_time);
+      if (sMin !== null && eMin !== null) {
+        let dur = eMin - sMin;
+        if (dur <= 0) dur += 1440; // vira o dia (12x36 noturno)
+        // Jornadas > 6h têm 1h de intervalo intra-jornada (CLT art. 71).
+        if (dur > 360) dur -= 60;
+        const inner = scheduleMinutesMap.get(s.employee_id) ?? new Map<string, number>();
+        inner.set(s.schedule_date, dur);
+        scheduleMinutesMap.set(s.employee_id, inner);
+      }
     });
+
 
     // Datas justificadas (atestado aprovado ou férias) — não contam como falta
     const justifiedMap = new Map<string, Set<string>>();
