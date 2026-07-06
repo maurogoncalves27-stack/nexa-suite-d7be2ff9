@@ -808,13 +808,13 @@ Deno.serve(async (req: Request) => {
       const existing = existingMap.get(emp.id);
       // Adiantamento: usa SOMENTE as parcelas do mês (payroll_advance_installments).
       // Não soma com o existing.advance para evitar duplicar a cada recálculo.
-      const advance = r2(advMap.get(emp.id) ?? 0);
+      let advance = r2(advMap.get(emp.id) ?? 0);
       // Acréscimos avulsos: SOMENTE as parcelas earning do mês (mesmo padrão do advance)
       // para não duplicar a cada recálculo.
       const otherEarnings = r2(extraEarningMap.get(emp.id) ?? 0);
       const otherDiscounts = Number(existing?.other_discounts ?? 0);
       const foodVoucher = Number(existing?.food_voucher ?? 0);
-      const healthPlan = existing?.health_plan != null && Number(existing.health_plan) > 0
+      let healthPlan = existing?.health_plan != null && Number(existing.health_plan) > 0
         ? Number(existing.health_plan)
         : Number(emp.health_plan_copay ?? 0);
 
