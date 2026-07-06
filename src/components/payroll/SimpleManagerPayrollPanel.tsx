@@ -811,6 +811,95 @@ export default function SimpleManagerPayrollPanel() {
                                     ))}
                                   </TableBody>
                                 </Table>
+                                {isFromCalc && r.employee_id && (manualByEmp[r.employee_id]?.length ?? 0) > 0 && (
+                                  <div className="border-t px-2 py-2 space-y-1">
+                                    <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                                      Rubricas manuais deste mês
+                                    </div>
+                                    {(manualByEmp[r.employee_id!] ?? []).map((m) => (
+                                      <div key={m.id} className="flex items-center gap-2 rounded border bg-background px-2 py-1.5">
+                                        {editingManualId === m.id ? (
+                                          <>
+                                            <Badge variant={m.type === "deduction" ? "destructive" : "default"} className="text-[10px] shrink-0">
+                                              {m.type === "earning" ? "Provento" : "Desconto"}
+                                            </Badge>
+                                            <Input
+                                              value={editingManualDesc}
+                                              onChange={(e) => setEditingManualDesc(e.target.value)}
+                                              placeholder="Descrição"
+                                              className="h-7 text-xs flex-1 min-w-[120px]"
+                                            />
+                                            <Input
+                                              value={editingManualValue}
+                                              onChange={(e) => setEditingManualValue(e.target.value)}
+                                              placeholder="0,00"
+                                              inputMode="decimal"
+                                              className="h-7 text-xs w-24 text-right"
+                                            />
+                                            <Button
+                                              size="sm"
+                                              onClick={() => saveEditManual(m, r.employee_id!)}
+                                              disabled={savingManualId === m.id || isLocked}
+                                              className="h-7 px-2"
+                                              aria-label="Salvar"
+                                            >
+                                              {savingManualId === m.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              variant="ghost"
+                                              onClick={cancelEditManual}
+                                              disabled={savingManualId === m.id}
+                                              className="h-7 px-2"
+                                              aria-label="Cancelar"
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </Button>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Badge variant={m.type === "deduction" ? "destructive" : "default"} className="text-[10px] shrink-0">
+                                              {m.type === "earning" ? "Provento" : "Desconto"}
+                                            </Badge>
+                                            <span className="text-xs flex-1 truncate">
+                                              {m.description ?? "—"}
+                                              {m.installments_count > 1 && (
+                                                <span className="text-muted-foreground ml-1">
+                                                  (parcelado {m.installments_count}x)
+                                                </span>
+                                              )}
+                                            </span>
+                                            <span className="text-xs font-mono w-24 text-right">
+                                              {money(m.total_amount)}
+                                            </span>
+                                            <Button
+                                              size="sm"
+                                              variant="ghost"
+                                              onClick={() => startEditManual(m)}
+                                              disabled={isLocked}
+                                              className="h-7 px-2"
+                                              title={isLocked ? "Folha bloqueada" : "Editar"}
+                                              aria-label="Editar"
+                                            >
+                                              Editar
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              variant="ghost"
+                                              onClick={() => removeManual(m, r.employee_id!)}
+                                              disabled={removingManualId === m.id || isLocked}
+                                              className="h-7 px-2 text-destructive hover:text-destructive"
+                                              title={isLocked ? "Folha bloqueada" : "Remover"}
+                                              aria-label="Remover"
+                                            >
+                                              {removingManualId === m.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                                            </Button>
+                                          </>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                                 {isFromCalc && !isLocked && (
                                   <div className="border-t p-2">
                                     {addingForRowId === r.id ? (
