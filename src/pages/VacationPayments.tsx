@@ -317,6 +317,7 @@ export default function VacationPayments() {
                 </TableHeader>
                 <TableBody>
                   {pending.map((r) => (
+                    <>
                     <TableRow key={r.id}>
                       <TableCell>
                         <Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} />
@@ -335,6 +336,10 @@ export default function VacationPayments() {
                         ) : "—"}
                       </TableCell>
                       <TableCell className="text-right space-x-1">
+                        <Button size="sm" variant="ghost" onClick={() => toggleExpanded(r.id)} className="gap-1" aria-label="Ver memória de cálculo">
+                          <Calculator className="h-3 w-3" />
+                          <ChevronDown className={`h-3 w-3 transition-transform ${expanded.has(r.id) ? "rotate-180" : ""}`} />
+                        </Button>
                         {r.pdf_url && (
                           <Button size="sm" variant="outline" onClick={() => handleOpenReceipt(r)} className="gap-1">
                             <FileText className="h-3 w-3" /> PDF
@@ -345,7 +350,16 @@ export default function VacationPayments() {
                         </Button>
                       </TableCell>
                     </TableRow>
+                    {expanded.has(r.id) && (
+                      <TableRow key={`${r.id}-details`}>
+                        <TableCell colSpan={7} className="bg-muted/10">
+                          <CalculationBreakdown r={r} />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    </>
                   ))}
+
                 </TableBody>
               </Table>
             </div>
