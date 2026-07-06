@@ -443,7 +443,12 @@ export default function EmployeesList() {
                     {renderPendencyBadge(e)}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={statusVariant(e.status)}>{statusLabel[e.status] ?? e.status}</Badge>
+                    <div className="flex flex-col gap-1">
+                      <Badge variant={statusVariant(e.status)}>{statusLabel[e.status] ?? e.status}</Badge>
+                      {e.exclude_from_payroll && (
+                        <Badge variant="outline" className="text-[10px] border-warning/50 text-warning w-fit">Fora da folha</Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell onClick={(ev) => ev.stopPropagation()}>
                     {!isInternship(e.contract_type) && (
