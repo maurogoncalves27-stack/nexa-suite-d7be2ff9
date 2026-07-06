@@ -113,9 +113,48 @@ function CalculationBreakdown({ r }: { r: VacationReceiptRow }) {
         <span className="font-mono text-primary">{fmtBRL(Number(r.net_total))}</span>
       </div>
       <div className="text-xs text-muted-foreground">FGTS (informativo, 8% s/ base): {fmtBRL(Number(r.fgts))}</div>
+      {variablesHistory.length > 0 && (
+        <details className="text-xs border-t border-border pt-3">
+          <summary className="cursor-pointer font-semibold text-muted-foreground">
+            Detalhamento da média variável ({variablesHistory.length} holerite{variablesHistory.length > 1 ? "s" : ""})
+          </summary>
+          <div className="overflow-x-auto mt-2">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-left text-muted-foreground">
+                  <th className="py-1">Ref.</th>
+                  <th className="py-1 text-right">Produtividade</th>
+                  <th className="py-1 text-right">Horas extras</th>
+                  <th className="py-1 text-right">Ad. noturno</th>
+                  <th className="py-1 text-right">Feriado</th>
+                  <th className="py-1 text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {variablesHistory.map((v, i) => (
+                  <tr key={i} className="border-t border-border/50">
+                    <td className="py-1">{String(v.m).padStart(2, "0")}/{v.y}</td>
+                    <td className="py-1 text-right font-mono">{fmtBRL(v.productivity)}</td>
+                    <td className="py-1 text-right font-mono">{fmtBRL(v.overtime)}</td>
+                    <td className="py-1 text-right font-mono">{fmtBRL(v.night)}</td>
+                    <td className="py-1 text-right font-mono">{fmtBRL(v.holiday)}</td>
+                    <td className="py-1 text-right font-mono font-semibold">{fmtBRL(v.total)}</td>
+                  </tr>
+                ))}
+                <tr className="border-t border-border font-semibold">
+                  <td className="py-1">Média ({variablesMonths}m)</td>
+                  <td colSpan={4}></td>
+                  <td className="py-1 text-right font-mono text-primary">{fmtBRL(avgVariables)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+      )}
     </div>
   );
 }
+
 
 
 export default function VacationPayments() {
