@@ -688,6 +688,74 @@ export default function SimpleManagerPayrollPanel() {
                                     ))}
                                   </TableBody>
                                 </Table>
+                                {isFromCalc && !isLocked && (
+                                  <div className="border-t p-2">
+                                    {addingForRowId === r.id ? (
+                                      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:flex-wrap">
+                                        <div className="flex-1 min-w-[140px]">
+                                          <Label className="text-[11px] text-muted-foreground">Tipo</Label>
+                                          <Select value={addKind} onValueChange={(v) => setAddKind(v as any)}>
+                                            <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="earning">Provento (+)</SelectItem>
+                                              <SelectItem value="deduction">Desconto (−)</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                        <div className="flex-[2] min-w-[180px]">
+                                          <Label className="text-[11px] text-muted-foreground">Descrição</Label>
+                                          <Input
+                                            autoFocus
+                                            value={addDesc}
+                                            onChange={(e) => setAddDesc(e.target.value)}
+                                            placeholder="Ex.: Bônus de campanha"
+                                            className="h-8"
+                                          />
+                                        </div>
+                                        <div className="w-32">
+                                          <Label className="text-[11px] text-muted-foreground">Valor (R$)</Label>
+                                          <Input
+                                            value={addValue}
+                                            onChange={(e) => setAddValue(e.target.value)}
+                                            placeholder="0,00"
+                                            inputMode="decimal"
+                                            className="h-8 text-right"
+                                          />
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          <Button
+                                            size="sm"
+                                            onClick={() => saveNewRubric(r)}
+                                            disabled={savingAdd}
+                                            className="h-8"
+                                          >
+                                            {savingAdd ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1" />}
+                                            Salvar
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={cancelAddRubric}
+                                            disabled={savingAdd}
+                                            className="h-8"
+                                            aria-label="Cancelar"
+                                          >
+                                            <X className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => openAddRubric(r.id)}
+                                        className="h-8 gap-1"
+                                      >
+                                        <Plus className="h-3.5 w-3.5" /> Rubrica manual
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
                                 <div className="flex items-center justify-end gap-2 p-2 border-t flex-wrap">
                                   {isOk ? (
                                     <Button
