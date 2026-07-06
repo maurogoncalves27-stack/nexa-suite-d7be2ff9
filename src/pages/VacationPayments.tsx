@@ -18,13 +18,24 @@ interface VacationReceiptRow {
   employee_id: string;
   reference_year: number;
   reference_month: number;
+  monthly_salary: number;
+  vacation_days: number;
+  sell_days: number;
+  vacation_base: number;
+  one_third: number;
+  sell_amount: number;
+  sell_one_third: number;
   gross_total: number;
+  inss: number;
+  irrf: number;
+  fgts: number;
   net_total: number;
   payment_status: string;
   payment_due_date: string | null;
   paid_at: string | null;
   pdf_url: string | null;
   accounts_payable_id: string | null;
+  calculation_details: any;
   employee?: {
     full_name: string;
     cpf: string | null;
@@ -39,6 +50,7 @@ interface VacationReceiptRow {
     days_count: number;
   } | null;
 }
+
 
 const fmtBRL = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
