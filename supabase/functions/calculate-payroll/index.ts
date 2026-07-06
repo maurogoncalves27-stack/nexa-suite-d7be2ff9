@@ -895,10 +895,17 @@ Deno.serve(async (req: Request) => {
       
 
       const inssBase = proportionalSalary + inssLeavePay + productivity + nightAddition + holidayPay + otherEarnings + vacationPayrollBase + vacationPayrollOneThird - absenceDiscount - dsrLossDiscount;
-      const inss = fullMonthVacation && vacationPayrollInssProvision > 0
+      let inss = fullMonthVacation && vacationPayrollInssProvision > 0
         ? r2(Math.max(0, calcINSS(Math.max(0, inssBase)) - vacationPayrollInssProvision))
         : calcINSS(Math.max(0, inssBase));
-      const irrf = calcIRRF(Math.max(0, inssBase), inss, deps.total);
+      let irrf = calcIRRF(Math.max(0, inssBase), inss, deps.total);
+      if (fullMonthVacation && vacationPayrollInssProvision > 0) {
+        // A EXACT tributa IRRF das férias no recibo próprio; na folha mensal fica
+        // apenas o INSS residual da rubrica CCT26. O motor deles também aplica
+        // ajuste centesimal ao descontar a provisão de férias.
+        irrf = 0;
+        if (inss > 0) inss = r2(Math.max(0, inss - 0.02));
+      }
       const fgts = r2(Math.max(0, inssBase) * 0.08);
 
       let deferredAdvance = 0;
