@@ -231,8 +231,28 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // Helper para paginar qualquer builder do PostgREST (limite padrão 1000).
+    // Uso: await fetchAllPaged((from, to) => qb.range(from, to))
+    async function fetchAllPaged<T = any>(
+      makeQuery: (from: number, to: number) => any,
+      pageSize = 1000,
+    ): Promise<T[]> {
+      const all: T[] = [];
+      let from = 0;
+      // Loop defensivo com teto para não travar caso algo dê errado.
+      for (let i = 0; i < 100; i++) {
+        const { data, error } = await makeQuery(from, from + pageSize - 1);
+        if (error) throw error;
+        const rows = (data ?? []) as T[];
+        all.push(...rows);
+        if (rows.length < pageSize) break;
+        from += pageSize;
+      }
+      return all;
+    }
+
     // Pré-carregar dados auxiliares em batch
-    const [vtRes, vtPaidRes, depRes, infRes, existingRes, holRes, manualHolidayRes, punchRes, advRes, schedRes, certRes, vacRes, justRes, unpaidLeavesRes] = await Promise.all([
+    const [vtRes, vtPaidRes, depRes, infRes, existingRes, holRes, manualHolidayRes, punchRows, advRes, schedRows, certRes, vacRes, justRes, unpaidLeavesRes] = await Promise.all([
       supabase.from("employee_transport_vouchers").select("*").in("employee_id", empIds),
       supabase.from("transport_voucher_monthly_payments")
         .select("employee_id, amount_paid, days_paid")
@@ -251,22 +271,33 @@ Deno.serve(async (req: Request) => {
         .in("employee_id", empIds)
         .eq("reference_year", year)
         .eq("reference_month", month),
-      supabase.from("time_clock_entries")
-        .select("employee_id, entry_at, entry_type, reference_date")
-        .in("employee_id", empIds)
-        .gte("reference_date", periodStart)
-        .lte("reference_date", periodEnd),
+      // Batidas de ponto: PAGINADO — meses movimentados estouram 1000 linhas
+      // e faziam colaboradores aparecerem com faltas fantasmas.
+      fetchAllPaged((from, to) =>
+        supabase.from("time_clock_entries")
+          .select("employee_id, entry_at, entry_type, reference_date")
+          .in("employee_id", empIds)
+          .gte("reference_date", periodStart)
+          .lte("reference_date", periodEnd)
+          .order("entry_at", { ascending: true })
+          .range(from, to)
+      ),
       supabase.from("payroll_advance_installments")
         .select("employee_id, amount, status, payroll_advances!inner(type)")
         .in("employee_id", empIds)
         .eq("reference_year", year)
         .eq("reference_month", month)
         .neq("status", "cancelled"),
-      supabase.from("work_schedules")
-        .select("employee_id, schedule_date, is_day_off, start_time")
-        .in("employee_id", empIds)
-        .gte("schedule_date", periodStart)
-        .lte("schedule_date", periodEnd),
+      // Escala: também paginado — ~30 dias × N colaboradores facilmente passa de 1000.
+      fetchAllPaged((from, to) =>
+        supabase.from("work_schedules")
+          .select("employee_id, schedule_date, is_day_off, start_time")
+          .in("employee_id", empIds)
+          .gte("schedule_date", periodStart)
+          .lte("schedule_date", periodEnd)
+          .order("schedule_date", { ascending: true })
+          .range(from, to)
+      ),
       supabase.from("medical_certificates")
         .select("employee_id, leave_start_date, leave_end_date, status, leave_applied, inss_referral")
         .in("employee_id", empIds)
@@ -292,6 +323,12 @@ Deno.serve(async (req: Request) => {
         .lte("start_date", periodEnd)
         .gte("end_date", periodStart),
     ]);
+
+    // Compat: punchRows/schedRows já vêm como array; demais mantêm shape {data}.
+    const punchRes = { data: punchRows as any[] };
+    const schedRes = { data: schedRows as any[] };
+    console.log(`[calculate-payroll] punches=${punchRows.length} schedules=${schedRows.length} empIds=${empIds.length} period=${periodStart}..${periodEnd}`);
+
 
     // Valor de VT efetivamente pago no mês por colaborador (override do teórico).
     const vtPaidMap = new Map<string, { amount: number; days: number | null }>();
