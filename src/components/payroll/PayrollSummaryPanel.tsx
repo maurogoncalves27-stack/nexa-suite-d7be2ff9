@@ -979,14 +979,42 @@ export default function PayrollSummaryPanel() {
     )) return;
     try {
       const nowIso = new Date().toISOString();
-      // Persiste o estado "enviado" (apenas para imports reais; pseudo-meta não persiste)
-      if (!meta.id.startsWith("calculated-")) {
-        await (supabase as any)
+      let effectiveMetaId = meta.id;
+      // Se ainda não existe um payroll_imports para o período (folha calculada
+      // pelo motor, sem XML importado), criamos um "marcador" para servir de
+      // ponte com o painel da contabilidade.
+      if (meta.id.startsWith("calculated-")) {
+        const { data: upserted, error: upErr } = await (supabase as any)
           .from("payroll_imports")
-          .update({ sent_to_accounting_at: nowIso, sent_to_accounting_by: user?.id ?? null })
+          .upsert(
+            {
+              ref_year: refYear,
+              ref_month: refMonth,
+              file_name: `folha-calculada-${refYear}-${String(refMonth).padStart(2, "0")}`,
+              uploaded_by: user?.id ?? null,
+              competence: `${String(refMonth).padStart(2, "0")}/${refYear}`,
+              workflow_status: "em_revisao_contabilidade",
+              sent_to_accounting_at: nowIso,
+              sent_to_accounting_by: user?.id ?? null,
+            },
+            { onConflict: "ref_year,ref_month" },
+          )
+          .select("id")
+          .maybeSingle();
+        if (upErr) throw upErr;
+        effectiveMetaId = upserted?.id ?? meta.id;
+      } else {
+        const { error: updErr } = await (supabase as any)
+          .from("payroll_imports")
+          .update({
+            sent_to_accounting_at: nowIso,
+            sent_to_accounting_by: user?.id ?? null,
+            workflow_status: "em_revisao_contabilidade",
+          })
           .eq("id", meta.id);
+        if (updErr) throw updErr;
       }
-      setMeta({ ...meta, sent_to_accounting_at: nowIso, sent_to_accounting_by: user?.id ?? null });
+      setMeta({ ...meta, id: effectiveMetaId, sent_to_accounting_at: nowIso, sent_to_accounting_by: user?.id ?? null });
       try { window.dispatchEvent(new CustomEvent("payroll:status-changed")); } catch {}
 
       toast({
@@ -997,6 +1025,7 @@ export default function PayrollSummaryPanel() {
       toast({ title: "Falha ao enviar", description: e.message ?? String(e), variant: "destructive" });
     }
   };
+
 
   // Função reusável: gera holerites e dispara assinaturas
   const sendSignaturesAction = async (): Promise<{ generated: number; skipped: number; errors: number }> => {
