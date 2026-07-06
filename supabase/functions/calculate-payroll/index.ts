@@ -291,7 +291,7 @@ Deno.serve(async (req: Request) => {
       // Escala: também paginado — ~30 dias × N colaboradores facilmente passa de 1000.
       fetchAllPaged((from, to) =>
         supabase.from("work_schedules")
-          .select("employee_id, schedule_date, is_day_off, start_time")
+          .select("employee_id, schedule_date, is_day_off, start_time, end_time")
           .in("employee_id", empIds)
           .gte("schedule_date", periodStart)
           .lte("schedule_date", periodEnd)
@@ -315,7 +315,13 @@ Deno.serve(async (req: Request) => {
         .in("employee_id", empIds)
         .gte("reference_date", periodStart)
         .lte("reference_date", periodEnd)
-        .in("status", ["approved", "resolved"]),
+        .in("status", ["approved", "resolved"])
+        // Apenas tratativas que efetivamente justificam ausência no dia:
+        // forgotten_punch (esquecimento de batida — a entry manual acompanha)
+        // e late_arrival (atraso justificado — dia foi trabalhado). Tipos
+        // "absence", "early_leave" e "other" NÃO removem a falta/hora falta.
+        .in("justification_type", ["forgotten_punch", "late_arrival"]),
+
       supabase.from("employee_leaves")
         .select("employee_id, start_date, end_date, is_paid")
         .in("employee_id", empIds)
