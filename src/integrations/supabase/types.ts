@@ -17100,6 +17100,7 @@ export type Database = {
       }
       apply_shift_swap: { Args: { _swap_id: string }; Returns: undefined }
       approve_inventory_count: { Args: { _count_id: string }; Returns: Json }
+      auto_complete_past_vacations: { Args: never; Returns: number }
       bulk_create_recipes_from_pos_names: {
         Args: { _names: string[] }
         Returns: Json
