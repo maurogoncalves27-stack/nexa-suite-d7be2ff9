@@ -74,7 +74,7 @@ function CalculationBreakdown({ r }: { r: VacationReceiptRow }) {
           <div className="text-xs uppercase text-muted-foreground font-semibold">Base (Súmula 45 TST / CCT)</div>
           <div className="flex justify-between"><span>Salário contratual</span><span className="font-mono">{fmtBRL(Number(r.monthly_salary))}</span></div>
           <div className="flex justify-between">
-            <span>Média variáveis {variablesMonths > 0 ? `(${variablesMonths}m)` : ""}</span>
+            <span>Produtividade CCT {variablesMonths > 0 ? `(5% × ${variablesMonths}/12 avos)` : ""}</span>
             <span className="font-mono">{fmtBRL(avgVariables)}</span>
           </div>
           <div className="flex justify-between font-semibold border-t border-border pt-1 mt-1">
