@@ -111,6 +111,13 @@ export default function VacationPayments() {
   const [receipts, setReceipts] = useState<VacationReceiptRow[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [exporting, setExporting] = useState(false);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggleExpanded = (id: string) => {
+    const next = new Set(expanded);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setExpanded(next);
+  };
+
 
   const load = async () => {
     setLoading(true);
