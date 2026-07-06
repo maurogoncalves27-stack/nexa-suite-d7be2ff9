@@ -317,48 +317,49 @@ export default function VacationPayments() {
                 </TableHeader>
                 <TableBody>
                   {pending.map((r) => (
-                    <>
-                    <TableRow key={r.id}>
-                      <TableCell>
-                        <Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} />
-                      </TableCell>
-                      <TableCell className="font-medium">{r.employee?.full_name ?? "—"}</TableCell>
-                      <TableCell className="text-xs">
-                        {r.schedule ? `${formatDate(r.schedule.start_date)} → ${formatDate(r.schedule.end_date)} (${r.schedule.days_count}d)` : "—"}
-                      </TableCell>
-                      <TableCell className="font-mono">{fmtBRL(Number(r.gross_total))}</TableCell>
-                      <TableCell className="font-mono font-semibold">{fmtBRL(Number(r.net_total))}</TableCell>
-                      <TableCell>
-                        {r.payment_due_date ? (
-                          <Badge variant={new Date(`${r.payment_due_date}T00:00:00`) <= new Date() ? "destructive" : "outline"}>
-                            {formatDate(r.payment_due_date)}
-                          </Badge>
-                        ) : "—"}
-                      </TableCell>
-                      <TableCell className="text-right space-x-1">
-                        <Button size="sm" variant="ghost" onClick={() => toggleExpanded(r.id)} className="gap-1" aria-label="Ver memória de cálculo">
-                          <Calculator className="h-3 w-3" />
-                          <ChevronDown className={`h-3 w-3 transition-transform ${expanded.has(r.id) ? "rotate-180" : ""}`} />
-                        </Button>
-                        {r.pdf_url && (
-                          <Button size="sm" variant="outline" onClick={() => handleOpenReceipt(r)} className="gap-1">
-                            <FileText className="h-3 w-3" /> PDF
+                    <FragmentRows key={r.id}>
+                      <TableRow>
+                        <TableCell>
+                          <Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} />
+                        </TableCell>
+                        <TableCell className="font-medium">{r.employee?.full_name ?? "—"}</TableCell>
+                        <TableCell className="text-xs">
+                          {r.schedule ? `${formatDate(r.schedule.start_date)} → ${formatDate(r.schedule.end_date)} (${r.schedule.days_count}d)` : "—"}
+                        </TableCell>
+                        <TableCell className="font-mono">{fmtBRL(Number(r.gross_total))}</TableCell>
+                        <TableCell className="font-mono font-semibold">{fmtBRL(Number(r.net_total))}</TableCell>
+                        <TableCell>
+                          {r.payment_due_date ? (
+                            <Badge variant={new Date(`${r.payment_due_date}T00:00:00`) <= new Date() ? "destructive" : "outline"}>
+                              {formatDate(r.payment_due_date)}
+                            </Badge>
+                          ) : "—"}
+                        </TableCell>
+                        <TableCell className="text-right space-x-1">
+                          <Button size="sm" variant="ghost" onClick={() => toggleExpanded(r.id)} className="gap-1" aria-label="Ver memória de cálculo">
+                            <Calculator className="h-3 w-3" />
+                            <ChevronDown className={`h-3 w-3 transition-transform ${expanded.has(r.id) ? "rotate-180" : ""}`} />
                           </Button>
-                        )}
-                        <Button size="sm" variant="ghost" onClick={() => handleMarkPaid(r.id)} className="gap-1">
-                          <CheckCircle2 className="h-3 w-3" /> Pagar
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                    {expanded.has(r.id) && (
-                      <TableRow key={`${r.id}-details`}>
-                        <TableCell colSpan={7} className="bg-muted/10">
-                          <CalculationBreakdown r={r} />
+                          {r.pdf_url && (
+                            <Button size="sm" variant="outline" onClick={() => handleOpenReceipt(r)} className="gap-1">
+                              <FileText className="h-3 w-3" /> PDF
+                            </Button>
+                          )}
+                          <Button size="sm" variant="ghost" onClick={() => handleMarkPaid(r.id)} className="gap-1">
+                            <CheckCircle2 className="h-3 w-3" /> Pagar
+                          </Button>
                         </TableCell>
                       </TableRow>
-                    )}
-                    </>
+                      {expanded.has(r.id) && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="bg-muted/10">
+                            <CalculationBreakdown r={r} />
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </FragmentRows>
                   ))}
+
 
                 </TableBody>
               </Table>
