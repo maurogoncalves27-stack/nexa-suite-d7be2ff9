@@ -551,15 +551,18 @@ Deno.serve(async (req: Request) => {
       const inssEmployerDays = (inssEmployerDaysMap.get(emp.id)?.size ?? 0);
       const inssSuspensionDays = (inssSuspensionDaysMap.get(emp.id)?.size ?? 0);
       const inssTotalDays = inssEmployerDays + inssSuspensionDays;
-      // Dias pagos como salário normal: descontamos os dias de afastamento previdenciário
-      // (tanto os 15 do empregador quanto os de suspensão) — os primeiros viram rubrica
-      // própria, os outros não geram pagamento algum.
-      const salaryWorkedDays = Math.max(0, workedDays - inssTotalDays);
+      // ===== Férias gozadas no mês (pagas em recibo próprio) =====
+      // Dias descontados do salário proporcional; valor bruto vai no recibo,
+      // NÃO reincide INSS/IRRF na folha (já tributado no recibo).
+      const vacationDaysInMonth = Math.min(vacationDaysMap.get(emp.id) ?? 0, workedDays);
+      // Dias pagos como salário normal na folha: descontamos afastamento INSS + férias.
+      const salaryWorkedDays = Math.max(0, workedDays - inssTotalDays - vacationDaysInMonth);
       const dailyBase = baseSalary / lastDay;
-      const proportionalSalary = (hasPartialMonth || inssTotalDays > 0)
+      const proportionalSalary = (hasPartialMonth || inssTotalDays > 0 || vacationDaysInMonth > 0)
         ? r2(dailyBase * salaryWorkedDays)
         : baseSalary;
       const inssLeavePay = r2(dailyBase * inssEmployerDays);
+      const vacationDeduction = r2(dailyBase * vacationDaysInMonth);
 
 
       // VT calculado mais abaixo (após apurar faltas/afastamentos),
