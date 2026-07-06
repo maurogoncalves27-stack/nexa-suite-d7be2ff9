@@ -890,6 +890,13 @@ Deno.serve(async (req: Request) => {
           residual: deferredResidual,
         });
       }
+      // Mês inteiro em férias: se ainda houver líquido negativo (adiantamento/plano
+      // de saúde sem contrapartida), apenas exibe zero — o acerto acontece no
+      // recibo de férias; não deferimos parcelas automaticamente.
+      if (fullMonthVacation && netPay < 0) {
+        netPay = 0;
+      }
+
 
       rows.push({
         employee_id: emp.id,
