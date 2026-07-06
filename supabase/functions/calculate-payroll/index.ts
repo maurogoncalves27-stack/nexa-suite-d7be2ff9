@@ -472,11 +472,16 @@ Deno.serve(async (req: Request) => {
       const days = countDaysInPeriod(v.start_date, v.end_date);
       vacationDaysMap.set(v.employee_id, (vacationDaysMap.get(v.employee_id) ?? 0) + days);
     });
-    // Tratativas do ponto aprovadas/resolvidas (falta justificada, atestado lançado
-    // como tratativa, atraso justificado, esquecimento de batida com entry criada).
-    // Qualquer tratativa aprovada para o dia tira a falta da folha.
+    // Tratativas do ponto aprovadas/resolvidas.
+    // Só tiram a falta da folha as tratativas que representam um motivo LEGAL de
+    // ausência OU uma correção de batida. Tipos 'absence' (falta simples), 'other'
+    // (motivos diversos) e 'early_leave' (saída antecipada) NÃO justificam a falta
+    // para efeito de folha — o colaborador segue com desconto e perde produtividade.
+    const JUSTIFY_TYPES_FOR_PAYROLL = new Set(["forgotten_punch", "medical", "vacation", "late_arrival"]);
     (justRes.data ?? []).forEach((j: any) => {
-      if (j.reference_date) addJustified(j.employee_id, j.reference_date, j.reference_date);
+      if (!j.reference_date) return;
+      if (!JUSTIFY_TYPES_FOR_PAYROLL.has(String(j.justification_type))) return;
+      addJustified(j.employee_id, j.reference_date, j.reference_date);
     });
 
     // Afastamentos NÃO remunerados (employee_leaves.is_paid=false): os dias
