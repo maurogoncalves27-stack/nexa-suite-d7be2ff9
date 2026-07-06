@@ -368,8 +368,13 @@ Deno.serve(async (req) => {
           dependents,
           daily_base: r2(dailyBase),
           tax_base: taxBase,
+          avg_variables: avgVariables,
+          variables_months: variablesMonths,
+          composed_monthly: composedMonthly,
+          variables_history: variablesHistory,
           tables_version: "2026-01",
         },
+
         calculated_at: new Date().toISOString(),
       }, { onConflict: "vacation_schedule_id" })
       .select("id, accounts_payable_id, payment_status")
