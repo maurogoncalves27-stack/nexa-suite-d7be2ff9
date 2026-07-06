@@ -95,6 +95,9 @@ async function buildVacationPdf(opts: {
   schedule: any;
   calc: {
     monthlySalary: number;
+    avgVariables: number;
+    variablesMonths: number;
+    composedMonthly: number;
     dailyBase: number;
     vacationDays: number;
     sellDays: number;
@@ -111,6 +114,7 @@ async function buildVacationPdf(opts: {
     netTotal: number;
   };
 }): Promise<Uint8Array> {
+
 
   const { employee, store, schedule, calc } = opts;
   const pdf = await PDFDocument.create();
@@ -221,8 +225,15 @@ async function buildVacationPdf(opts: {
     page.drawText(value, { x: left + 300, y, size: 8, font: helv, color: black });
     y -= 11;
   };
-  memo("Salário mensal base", fmtBRL(calc.monthlySalary));
-  memo("Diária (salário ÷ 30)", `${fmtBRL(calc.dailyBase)}/dia`);
+  memo("Salário contratual", fmtBRL(calc.monthlySalary));
+  if (calc.variablesMonths > 0) {
+    memo(`Média variáveis ${calc.variablesMonths}m (prod.+HE+not.+fer.)`, fmtBRL(calc.avgVariables));
+    memo("Salário composto (contratual + média)", fmtBRL(calc.composedMonthly));
+  } else {
+    memo("Sem holerites nos últimos 12m", "média variáveis = R$ 0,00");
+  }
+  memo("Diária (composto ÷ 30)", `${fmtBRL(calc.dailyBase)}/dia`);
+
   memo(`Férias: ${fmtBRL(calc.dailyBase)} × ${calc.vacationDays} dias`, fmtBRL(calc.vacationBase));
   memo(`1/3 constitucional: ${fmtBRL(calc.vacationBase)} ÷ 3`, fmtBRL(calc.oneThird));
   if (calc.sellDays > 0) {
@@ -287,21 +298,47 @@ Deno.serve(async (req) => {
       .eq("employee_id", schedule.employee_id);
     const dependents = depCount ?? 0;
 
-    // Base
+    // Base contratual
     const isHourly = String(employee.salary_type ?? "").toLowerCase() === "horario";
     const monthlyHours = Number(employee.monthly_hours ?? 220) || 220;
     const monthlySalary = isHourly
       ? r2(Number(employee.salary ?? 0) * monthlyHours)
       : Number(employee.salary ?? 0);
 
+    // Média das verbas variáveis dos últimos 12 holerites (Súmula 45 TST, CLT art. 142 §§5-6)
+    // Produtividade CCT (5%), horas extras, adicional noturno e feriado trabalhado integram a base.
+    const { data: payHistory } = await admin
+      .from("payroll_calculated")
+      .select("reference_year, reference_month, productivity, overtime_amount, calculation_details")
+      .eq("employee_id", schedule.employee_id)
+      .order("reference_year", { ascending: false })
+      .order("reference_month", { ascending: false })
+      .limit(12);
+    const variablesHistory: Array<{ y: number; m: number; productivity: number; overtime: number; night: number; holiday: number; total: number }> = [];
+    let sumVariables = 0;
+    for (const p of payHistory ?? []) {
+      const cd = (p.calculation_details ?? {}) as any;
+      const productivity = Number(p.productivity ?? 0);
+      const overtime = Number(p.overtime_amount ?? 0);
+      const night = Number(cd.night_addition ?? 0);
+      const holiday = Number(cd.holiday_pay ?? 0);
+      const total = productivity + overtime + night + holiday;
+      variablesHistory.push({ y: p.reference_year, m: p.reference_month, productivity, overtime, night, holiday, total });
+      sumVariables += total;
+    }
+    const variablesMonths = variablesHistory.length;
+    const avgVariables = variablesMonths > 0 ? r2(sumVariables / variablesMonths) : 0;
+    const composedMonthly = r2(monthlySalary + avgVariables);
+
     const vacationDays = Number(schedule.days_count ?? 0);
     const sellDays = Number(schedule.sell_days ?? 0);
-    const dailyBase = monthlySalary / 30;
+    const dailyBase = composedMonthly / 30;
 
     const vacationBase = r2(dailyBase * vacationDays);
     const oneThird = r2(vacationBase / 3);
     const sellAmount = r2(dailyBase * sellDays);
     const sellOneThird = r2(sellAmount / 3);
+
 
     // Base tributável = férias + 1/3 (abono é isento de INSS/IRRF até 20 dias)
     const taxBase = r2(vacationBase + oneThird);
@@ -342,8 +379,13 @@ Deno.serve(async (req) => {
           dependents,
           daily_base: r2(dailyBase),
           tax_base: taxBase,
+          avg_variables: avgVariables,
+          variables_months: variablesMonths,
+          composed_monthly: composedMonthly,
+          variables_history: variablesHistory,
           tables_version: "2026-01",
         },
+
         calculated_at: new Date().toISOString(),
       }, { onConflict: "vacation_schedule_id" })
       .select("id, accounts_payable_id, payment_status")
@@ -355,11 +397,13 @@ Deno.serve(async (req) => {
     const pdfBytes = await buildVacationPdf({
       employee, store, schedule,
       calc: {
-        monthlySalary, dailyBase: r2(dailyBase), vacationDays, sellDays,
+        monthlySalary, avgVariables, variablesMonths, composedMonthly,
+        dailyBase: r2(dailyBase), vacationDays, sellDays,
         vacationBase, oneThird, sellAmount, sellOneThird,
         grossTotal, taxBase, dependents, inss, irrf, fgts, netTotal,
       },
     });
+
 
     const fileName = `recibo-ferias-${refYear}-${String(refMonth).padStart(2, "0")}-${(employee.full_name || "").replace(/[^A-Za-z0-9]+/g, "_")}.pdf`;
     const path = `${schedule.employee_id}/${Date.now()}-${Math.random().toString(36).slice(2)}.pdf`;
