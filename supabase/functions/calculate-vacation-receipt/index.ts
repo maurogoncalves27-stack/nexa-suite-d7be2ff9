@@ -244,8 +244,8 @@ async function buildVacationPdf(opts: {
   y -= 4;
   memo("Base tributável (férias + 1/3)", `${fmtBRL(calc.taxBase)} — abono é isento`);
   memo(`INSS s/ ${fmtBRL(calc.taxBase)} (tabela progressiva 2026)`, fmtBRL(calc.inss));
-  memo(`IRRF (base − INSS − ${calc.dependents} dep.) — desc. simplif.`, fmtBRL(calc.irrf));
-  memo("Líquido = bruto − INSS − IRRF", fmtBRL(calc.netTotal));
+  memo(`IRRF (base - INSS - ${calc.dependents} dep.) - desc. simplif.`, fmtBRL(calc.irrf));
+  memo("Liquido = bruto - INSS - IRRF", fmtBRL(calc.netTotal));
   y -= 10;
 
   page.drawLine({ start: { x: left, y }, end: { x: right, y }, thickness: 0.5, color: line });
