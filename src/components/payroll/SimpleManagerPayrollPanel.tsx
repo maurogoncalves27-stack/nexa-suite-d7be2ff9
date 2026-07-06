@@ -552,6 +552,34 @@ export default function SimpleManagerPayrollPanel() {
           synth[r.id] = rubs;
         });
         setRubricsByRow(synth);
+
+        // Rubricas manuais lançadas via /folha (payroll_advances) para o mês
+        const empIds = list.map((r) => r.employee_id).filter(Boolean) as string[];
+        if (empIds.length > 0) {
+          const { data: adv } = await (supabase as any)
+            .from("payroll_advances")
+            .select("id, employee_id, type, description, total_amount, installments_count, start_year, start_month")
+            .in("employee_id", empIds);
+          const map: Record<string, ManualRubric[]> = {};
+          ((adv ?? []) as any[]).forEach((a) => {
+            // Considera manual do mês qualquer advance cuja janela [start..start+installments-1] cubra refYear/refMonth
+            const startIdx = a.start_year * 12 + (a.start_month - 1);
+            const endIdx = startIdx + Math.max(1, Number(a.installments_count ?? 1)) - 1;
+            const cur = refYear * 12 + (refMonth - 1);
+            if (cur < startIdx || cur > endIdx) return;
+            (map[a.employee_id] ??= []).push({
+              id: a.id,
+              employee_id: a.employee_id,
+              type: a.type,
+              description: a.description ?? null,
+              total_amount: Number(a.total_amount ?? 0),
+              installments_count: Number(a.installments_count ?? 1),
+            });
+          });
+          setManualByEmp(map);
+        } else {
+          setManualByEmp({});
+        }
         return;
       }
       setMeta(imp as ImportMeta);
