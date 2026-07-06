@@ -1,84 +1,81 @@
-## Objetivo
-Fluxo CLT completo de férias: gerar recibo próprio (proporcional + 1/3 + abono, com INSS/IRRF), lançar conta a pagar com vencimento 2 dias antes do início, e descontar corretamente os dias gozados na folha mensal — sem pagar em duplicidade.
+## Causa raiz da divergência da folha (Isael e outros)
 
-**⚠️ Restrição fixa:** `src/lib/c6Export.ts` e o botão de export C6 da `/folha` NÃO serão alterados. Pagamento de férias vai por caminho paralelo (contas a pagar + lote C6 separado dedicado a férias, novo arquivo).
+A edge function `calculate-payroll` carrega `time_clock_entries` do mês inteiro em uma única query sem paginação:
 
-## 1) Banco: nova tabela `vacation_receipts`
-Um recibo por programação de férias (`vacation_schedule_id` único).
+```ts
+supabase.from("time_clock_entries")
+  .select("employee_id, entry_at, entry_type, reference_date")
+  .in("employee_id", empIds)
+  .gte("reference_date", periodStart)
+  .lte("reference_date", periodEnd)
+```
 
-Campos principais:
-- `vacation_schedule_id` (FK única), `employee_id`, `reference_year`, `reference_month` (do mês de início)
-- Base: `monthly_salary`, `vacation_days`, `sell_days`
-- Cálculo: `vacation_base`, `one_third`, `sell_amount`, `sell_one_third`
-- `gross_total`, `inss`, `irrf`, `fgts` (informativo), `net_total`
-- Pagamento: `payment_due_date` (start_date − 2 dias úteis), `payment_status` ('pending'|'paid'|'cancelled'), `paid_at`, `accounts_payable_id` (FK)
-- `pdf_url`, `pdf_generated_at`, `calculation_details` jsonb
+O PostgREST corta em **1000 linhas** por padrão. Junho/2026 tem **1477 batidas** → ~477 batidas silenciosamente descartadas → colaboradores aparecem como "faltosos" em dias que trabalharam normalmente.
 
-GRANTs + RLS: admin/RH gerenciam; colaborador vê os próprios (mesmo padrão de `payroll_receipts`).
+Confirmado no Isael:
+- `timesheet_closures.summary.absences = 3` ✓ (bate com contabilidade)
+- `payroll_calculated.absent_days = 7` ✗ (motor perdeu batidas de 03, 05, 08, 10/06)
+- Diferença de líquido: R$ 509,47 (nosso R$ 773,33 vs contab R$ 1.282,80)
 
-## 2) Edge function `calculate-vacation-receipt`
-Entrada: `vacation_schedule_id`.
+Provavelmente afeta também Cláudio, Mayke e outros colaboradores da mesma loja.
 
-Passos:
-1. Lê schedule + employee (salário, dependentes, hire_date).
-2. `vacation_base = salary / 30 × days_count`
-3. `one_third = vacation_base / 3`
-4. `sell_amount = (salary / 30) × sell_days`; `sell_one_third = sell_amount / 3` (abono isento de INSS/IRRF)
-5. Base tributável = `vacation_base + one_third`
-6. `inss = calcINSS(base)` / `irrf = calcIRRF(base, inss, dependents)` — cálculo separado da folha, tabela mensal cheia (reutiliza tabelas de `calculate-payroll` extraindo pra `_shared/taxTables.ts`).
-7. `fgts = base × 0.08` (informativo)
-8. `net_total = vacation_base + one_third + sell_amount + sell_one_third − inss − irrf`
-9. Grava/atualiza `vacation_receipts`, gera PDF (`src/lib/vacationReceiptPdf.ts` no estilo de `employeePdf.ts`), sobe pra storage e arquiva em `employee_documents` (pasta imutável).
+## Correção
 
-## 3) Automação na aprovação
-Trigger AFTER UPDATE em `vacation_schedules` (status → `approved`):
-- Chama `calculate-vacation-receipt` via `pg_net` (gera recibo + PDF).
-- Cria `accounts_payable` com `due_date = start_date − 2` (ajustado pro dia útil anterior), categoria "Férias", vinculado ao colaborador e à loja.
+### Etapa 1 — Paginar a query de batidas em `calculate-payroll`
 
-## 4) Pagamento via C6 — caminho paralelo (NÃO mexe no export da folha)
-- Nova página `/pagamentos/ferias` com botão **"Gerar lote C6 PIX de férias"**.
-- Novo módulo `src/lib/c6ExportFerias.ts` (arquivo separado, NÃO edita `c6Export.ts`). Pode importar tipos/utilitários puros de `c6Export.ts` só como leitura, mas o export da folha continua idêntico.
-- Cria `c6_payment_batches` do tipo "vacation" com linhas dos recibos pendentes.
+Substituir a query única por um loop com `.range(from, to)` de 1000 em 1000 até esgotar:
 
-## 5) Integração com `calculate-payroll`
-No mês em que houver férias:
-- Já existe leitura de `vacation_schedules`. Passar a computar `vacationDaysInMonth` por colaborador (interseção com o mês).
-- **Descontar** do `proportional_salary`: `salary_daily × vacationDaysInMonth` (esses dias serão pagos pelo recibo).
-- Novos campos em `payroll_calculated` (migration): `vacation_days_in_month`, `vacation_deduction`.
-- **NÃO** aplicar INSS/IRRF adicional sobre esses valores na folha (já tributados no recibo).
-- Adicionar linha no holerite: "Férias gozadas — pagas em recibo próprio".
-- Produtividade/DSR/adicional noturno seguem calculando só sobre dias efetivamente trabalhados.
+```ts
+async function fetchAllPunches(empIds: string[], periodStart: string, periodEnd: string) {
+  const pageSize = 1000;
+  const all: PunchEntry[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase.from("time_clock_entries")
+      .select("employee_id, entry_at, entry_type, reference_date")
+      .in("employee_id", empIds)
+      .gte("reference_date", periodStart)
+      .lte("reference_date", periodEnd)
+      .order("entry_at", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    all.push(...(data as PunchEntry[]));
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+```
 
-**Importante:** o valor líquido da folha muda naturalmente (fica menor porque desconta férias), mas o **arquivo C6 exportado pela folha continua sendo gerado pelo mesmo `c6Export.ts` sem alteração de lógica** — ele só vai receber o novo net_pay já com a dedução.
+Chamar `fetchAllPunches` no lugar da promise atual dentro do `Promise.all`.
 
-## 6) UI
-### `/ferias` — página existente
-- Linha `approved`/`completed` ganha ações: **Ver recibo (PDF)**, **Baixar**, **Marcar como paga**, **Reprocessar recibo** (admin).
-- Coluna nova "Recibo": badge de status + valor bruto.
+### Etapa 2 — Auditoria de outras queries no mesmo arquivo
 
-### `/pagamentos/ferias` (nova)
-- Dashboard: recibos pendentes (venc. ≤ 7 dias), pagos no mês, totais.
-- Botão "Gerar lote C6 PIX de férias" (usa `c6ExportFerias.ts` novo).
-- Link no sidebar em "Financeiro".
+Revisar todas as outras queries `.in("employee_id", empIds)` de `calculate-payroll` que possam estourar 1000 linhas em meses movimentados:
 
-### `/folha` — página existente
-- Detalhe do holerite: linha "Férias gozadas (dias / R$ deduzido)".
-- Aviso ao consolidar: se colaborador tem férias no mês e recibo ainda `pending`, alerta ("Emitir recibo antes de fechar a folha").
-- **Botão de export C6 e `c6Export.ts` permanecem intocados.**
+- `work_schedules` (~escala do mês × colaboradores)
+- `payroll_advance_installments`
+- `medical_certificates`, `vacation_schedules`, `employee_leaves`
+- `payroll_holiday_worked`
 
-## 7) Ordem de execução
-1. Migration: `vacation_receipts` + colunas em `payroll_calculated` + trigger de auto-geração via pg_net.
-2. Extrair tabelas INSS/IRRF para `supabase/functions/_shared/taxTables.ts` (sem alterar comportamento).
-3. Edge function `calculate-vacation-receipt`.
-4. Helper `src/lib/vacationReceiptPdf.ts`.
-5. Ajuste em `calculate-payroll` (dedução dos dias).
-6. UI em `/ferias`.
-7. Nova página `/pagamentos/ferias` + `c6ExportFerias.ts` + link no sidebar + PAGE_TITLES.
-8. Regressão: recalcular folha do mês corrente e validar Cláudio/Francisca.
+Aplicar a mesma paginação onde a contagem esperada possa exceder 1000.
 
-## Fora de escopo
-- Alterar `c6Export.ts` ou o botão de export C6 da `/folha`.
-- Férias vencidas em dobro (apenas alerta visual já existente).
-- Rescisão de férias proporcionais (já existe em `rescissionCalc`).
-- e-Social S-2230/S-2299.
-- Alteração dos módulos "em produção" listados na memória sem pedido explícito.
+### Etapa 3 — Recalcular jun/2026 e conferir
+
+Após o deploy da correção:
+
+1. Rodar `calculate-payroll` novamente para jun/2026.
+2. Reconferir Isael: esperado `absent_days = 3`, líquido ≈ R$ 1.282,80.
+3. Comparar Cláudio, Mayke e demais colaboradores do PDF com os líquidos da contabilidade — divergências residuais aí sim serão específicas (adiantamento de férias, plano de saúde etc.), tratadas caso a caso.
+
+### Etapa 4 (opcional) — Regra defensiva
+
+Adicionar `.order()` explícito e um `console.warn` quando qualquer página retornar exatamente `pageSize` linhas seguidas de dados adicionais, para detectar cedo se o limite voltar a estourar.
+
+## Fora do escopo
+
+- Não alterar `c6Export.ts` nem botão de export C6.
+- Não alterar iFood, PDV, TEF.
+- Não mexer em `timesheet_closures` (já está correto).
+- Não criar tabela de override manual de faltas — o dado está certo em `time_clock_entries`, o bug é só de leitura.
