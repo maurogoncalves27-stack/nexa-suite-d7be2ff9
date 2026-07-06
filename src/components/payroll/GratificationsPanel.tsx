@@ -52,7 +52,7 @@ export default function GratificationsPanel() {
 
   const init = async () => {
     const [{ data: emp }, { data: sto }] = await Promise.all([
-      supabase.from("employees").select("id, full_name, store_id, allocated_store_id").eq("status", "active").order("full_name"),
+      supabase.from("employees").select("id, full_name, store_id, allocated_store_id").eq("status", "active").eq("exclude_from_payroll", false).order("full_name"),
       supabase.from("stores").select("id, name, store_type").eq("is_active", true).eq("is_virtual", false).order("name"),
     ]);
     setEmployees(emp ?? []);

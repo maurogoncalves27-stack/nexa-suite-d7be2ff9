@@ -187,8 +187,9 @@ Deno.serve(async (req: Request) => {
 
     let empQ = supabase
       .from("employees")
-      .select("id, full_name, salary, salary_type, monthly_hours, admission_date, hire_date, termination_date, status, night_shift_eligible, store_id, allocated_store_id, health_plan_copay, position, contract_type, esocial_category, time_clock_payroll, work_schedule")
-      .not("status", "in", "(terminated,in_training)");
+      .select("id, full_name, salary, salary_type, monthly_hours, admission_date, hire_date, termination_date, status, night_shift_eligible, store_id, allocated_store_id, health_plan_copay, position, contract_type, esocial_category, time_clock_payroll, work_schedule, exclude_from_payroll")
+      .not("status", "in", "(terminated,in_training)")
+      .eq("exclude_from_payroll", false);
     if (onlyEmployeeId) empQ = empQ.eq("id", onlyEmployeeId);
     const { data: employeesRaw, error: empErr } = await empQ;
     if (empErr) throw empErr;

@@ -366,9 +366,16 @@ export default function EmployeesList() {
             >
               <div className="flex items-start justify-between gap-2 mb-1">
                 <div className="font-medium text-sm leading-tight">{e.full_name}</div>
-                <Badge variant={statusVariant(e.status)} className="shrink-0 text-[10px]">
-                  {statusLabel[e.status] ?? e.status}
-                </Badge>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <Badge variant={statusVariant(e.status)} className="text-[10px]">
+                    {statusLabel[e.status] ?? e.status}
+                  </Badge>
+                  {e.exclude_from_payroll && (
+                    <Badge variant="outline" className="text-[10px] border-warning/50 text-warning">
+                      Fora da folha
+                    </Badge>
+                  )}
+                </div>
               </div>
               <div className="text-xs text-muted-foreground mb-1">
                 {e.position ?? "—"} {e.contract_type ? `· ${e.contract_type}` : ""}
@@ -436,7 +443,12 @@ export default function EmployeesList() {
                     {renderPendencyBadge(e)}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={statusVariant(e.status)}>{statusLabel[e.status] ?? e.status}</Badge>
+                    <div className="flex flex-col gap-1">
+                      <Badge variant={statusVariant(e.status)}>{statusLabel[e.status] ?? e.status}</Badge>
+                      {e.exclude_from_payroll && (
+                        <Badge variant="outline" className="text-[10px] border-warning/50 text-warning w-fit">Fora da folha</Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell onClick={(ev) => ev.stopPropagation()}>
                     {!isInternship(e.contract_type) && (
