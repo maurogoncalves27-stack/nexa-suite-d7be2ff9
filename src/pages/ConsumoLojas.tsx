@@ -435,7 +435,7 @@ export default function ConsumoLojas() {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">% do faturamento por insumo</CardTitle>
+          <CardTitle className="text-base">Consumo por loja (R$)</CardTitle>
         </CardHeader>
         <CardContent>
           {loading || chartData.length === 0 ? (
@@ -451,7 +451,7 @@ export default function ConsumoLojas() {
                   <YAxis
                     yAxisId="left"
                     tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                    tickFormatter={(v) => `${v}%`}
+                    tickFormatter={(v) => brlCompact(Number(v))}
                   />
                   <YAxis
                     yAxisId="right"
@@ -461,7 +461,7 @@ export default function ConsumoLojas() {
                   />
                   <Tooltip
                     formatter={(v: number, name: string) =>
-                      name === "Trocas de óleo" ? [v, name] : [`${v}%`, name]
+                      name === "Trocas de óleo" ? [v, name] : [brl(Number(v)), name]
                     }
                     contentStyle={{
                       background: "hsl(var(--card))",
@@ -470,14 +470,15 @@ export default function ConsumoLojas() {
                     }}
                   />
                   <Legend />
-                  <Bar yAxisId="left" dataKey="Água %" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  <Bar yAxisId="left" dataKey="Luz %" fill="hsl(var(--warning))" radius={[4, 4, 0, 0]} />
-                  <Bar yAxisId="left" dataKey="Gás %" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+                  <Bar yAxisId="left" dataKey="Água" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar yAxisId="left" dataKey="Luz" fill="hsl(var(--warning))" radius={[4, 4, 0, 0]} />
+                  <Bar yAxisId="left" dataKey="Gás" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
                   <Bar yAxisId="right" dataKey="Trocas de óleo" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           )}
+
           <p className="text-xs text-muted-foreground mt-3">
             Dados de Água e Luz vêm do Financeiro (contas a pagar). Gás usa o Controle de Vale Gás quando disponível e cai para o lançamento financeiro. Trocas de óleo vêm do NutriControle.
           </p>
