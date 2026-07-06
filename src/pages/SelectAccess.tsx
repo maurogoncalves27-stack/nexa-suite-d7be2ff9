@@ -17,6 +17,8 @@ interface Option {
 const SelectAccess = () => {
   const { loading, user, roles, isAdmin, isManager, isPartner, isSupplier, isSuperUser, hasRole, signOut } = useAuth();
   const isNutritionist = hasRole("nutritionist");
+  const isContabilidade = hasRole("contabilidade");
+
   const navigate = useNavigate();
 
   const options = useMemo<Option[]>(() => {
