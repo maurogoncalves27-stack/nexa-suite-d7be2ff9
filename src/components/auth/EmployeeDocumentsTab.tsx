@@ -244,6 +244,28 @@ export default function EmployeeDocumentsTab({
     }
   };
 
+  const MONTHS_PT = [
+    "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+    "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro",
+  ];
+
+  const handleDownloadPayslip = async (p: any) => {
+    setDownloading(`pay:${p.id}`);
+    try {
+      const fileName = `Holerite ${String(p.reference_month).padStart(2, "0")}-${p.reference_year}.pdf`;
+      const { data, error } = await supabase.storage
+        .from("payroll-receipts")
+        .createSignedUrl(p.signed_file_path, 60 * 5, { download: fileName });
+      if (error || !data?.signedUrl) throw error ?? new Error("URL não gerada");
+      window.location.href = data.signedUrl;
+    } catch (e: any) {
+      toast({ title: "Erro ao baixar", description: e.message ?? String(e), variant: "destructive" });
+    } finally {
+      setDownloading(null);
+    }
+  };
+
+
   const signedDocs: Array<{
     key: string;
     title: string;
