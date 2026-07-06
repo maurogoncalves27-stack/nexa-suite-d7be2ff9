@@ -225,8 +225,15 @@ async function buildVacationPdf(opts: {
     page.drawText(value, { x: left + 300, y, size: 8, font: helv, color: black });
     y -= 11;
   };
-  memo("Salário mensal base", fmtBRL(calc.monthlySalary));
-  memo("Diária (salário ÷ 30)", `${fmtBRL(calc.dailyBase)}/dia`);
+  memo("Salário contratual", fmtBRL(calc.monthlySalary));
+  if (calc.variablesMonths > 0) {
+    memo(`Média variáveis ${calc.variablesMonths}m (prod.+HE+not.+fer.)`, fmtBRL(calc.avgVariables));
+    memo("Salário composto (contratual + média)", fmtBRL(calc.composedMonthly));
+  } else {
+    memo("Sem holerites nos últimos 12m", "média variáveis = R$ 0,00");
+  }
+  memo("Diária (composto ÷ 30)", `${fmtBRL(calc.dailyBase)}/dia`);
+
   memo(`Férias: ${fmtBRL(calc.dailyBase)} × ${calc.vacationDays} dias`, fmtBRL(calc.vacationBase));
   memo(`1/3 constitucional: ${fmtBRL(calc.vacationBase)} ÷ 3`, fmtBRL(calc.oneThird));
   if (calc.sellDays > 0) {
