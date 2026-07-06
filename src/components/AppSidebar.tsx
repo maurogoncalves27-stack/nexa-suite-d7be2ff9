@@ -205,6 +205,7 @@ const pagamentosSections: Section[] = [
     { title: "Bonificações", url: "/bonificacoes", icon: BadgePercent, staffOnly: true },
     { title: "Bônus por cargo", url: "/bonus-cargo", icon: Coins, staffOnly: true },
     { title: "Recibos de treinamento", url: "/recibos-treinamento", icon: BadgeCheck, staffOnly: true },
+    { title: "Pagamento de férias", url: "/pagamentos/ferias", icon: Plane, staffOnly: true },
     { title: "Bolsa Estágio", url: "/estagio/pagamentos", icon: HandCoins, staffOnly: true },
     { title: "Diárias de freelancers", url: "/diarias-freelancers", icon: Banknote, staffOnly: true },
   ]},
