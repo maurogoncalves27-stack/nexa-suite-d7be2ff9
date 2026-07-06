@@ -81,6 +81,12 @@ function buildEarningsAndDiscounts(p: any): {
     });
   if (Number(p.other_earnings) > 0)
     earnings.push({ label: "Outros Proventos", amount: Number(p.other_earnings) });
+  if (Number(p.vacation_days_in_month) > 0)
+    earnings.push({
+      label: "Férias gozadas (recibo próprio)",
+      ref: `${p.vacation_days_in_month} dias`,
+      amount: 0,
+    });
 
   if (Number(p.inss) > 0)
     discounts.push({ label: "INSS", amount: Number(p.inss) });

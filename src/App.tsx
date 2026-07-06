@@ -43,6 +43,7 @@ const NightAddition = lazy(() => import("./pages/NightAddition.tsx"));
 const Trainings = lazy(() => import("./pages/Trainings.tsx"));
 const Climate = lazy(() => import("./pages/Climate.tsx"));
 const Vacations = lazy(() => import("./pages/Vacations.tsx"));
+const VacationPayments = lazy(() => import("./pages/VacationPayments.tsx"));
 const Uniforms = lazy(() => import("./pages/Uniforms.tsx"));
 const EmployeeArea = lazy(() => import("./pages/EmployeeArea.tsx"));
 const ManagerArea = lazy(() => import("./pages/ManagerArea.tsx"));
@@ -391,6 +392,7 @@ const App = () => (
               <Route path="/treinamentos" element={<Guarded staff><Trainings /></Guarded>} />
               <Route path="/clima" element={<Guarded staff><Climate /></Guarded>} />
               <Route path="/ferias" element={<Guarded staff><Vacations /></Guarded>} />
+              <Route path="/pagamentos/ferias" element={<Guarded staff><VacationPayments /></Guarded>} />
               <Route path="/uniformes" element={<Guarded staff><Uniforms /></Guarded>} />
               <Route path="/escalas" element={<Guarded staff><Schedules /></Guarded>} />
               

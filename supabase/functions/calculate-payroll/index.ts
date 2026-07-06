@@ -421,8 +421,19 @@ Deno.serve(async (req: Request) => {
     (certRes.data ?? []).forEach((c: any) => {
       if (c.leave_start_date && c.leave_end_date) addJustified(c.employee_id, c.leave_start_date, c.leave_end_date);
     });
+    // Férias: marca como justificado E acumula dias no mês por colaborador
+    const vacationDaysMap = new Map<string, number>();
+    const countDaysInPeriod = (startIso: string, endIso: string): number => {
+      const s = new Date(`${Math.max(startIso, periodStart) === startIso ? startIso : periodStart}T00:00:00`);
+      const e = new Date(`${Math.min(endIso, periodEnd) === endIso ? endIso : periodEnd}T00:00:00`);
+      if (e < s) return 0;
+      return Math.floor((e.getTime() - s.getTime()) / 86400000) + 1;
+    };
     (vacRes.data ?? []).forEach((v: any) => {
-      if (v.start_date && v.end_date) addJustified(v.employee_id, v.start_date, v.end_date);
+      if (!v.start_date || !v.end_date) return;
+      addJustified(v.employee_id, v.start_date, v.end_date);
+      const days = countDaysInPeriod(v.start_date, v.end_date);
+      vacationDaysMap.set(v.employee_id, (vacationDaysMap.get(v.employee_id) ?? 0) + days);
     });
     // Tratativas do ponto aprovadas/resolvidas (falta justificada, atestado lançado
     // como tratativa, atraso justificado, esquecimento de batida com entry criada).
@@ -540,15 +551,18 @@ Deno.serve(async (req: Request) => {
       const inssEmployerDays = (inssEmployerDaysMap.get(emp.id)?.size ?? 0);
       const inssSuspensionDays = (inssSuspensionDaysMap.get(emp.id)?.size ?? 0);
       const inssTotalDays = inssEmployerDays + inssSuspensionDays;
-      // Dias pagos como salário normal: descontamos os dias de afastamento previdenciário
-      // (tanto os 15 do empregador quanto os de suspensão) — os primeiros viram rubrica
-      // própria, os outros não geram pagamento algum.
-      const salaryWorkedDays = Math.max(0, workedDays - inssTotalDays);
+      // ===== Férias gozadas no mês (pagas em recibo próprio) =====
+      // Dias descontados do salário proporcional; valor bruto vai no recibo,
+      // NÃO reincide INSS/IRRF na folha (já tributado no recibo).
+      const vacationDaysInMonth = Math.min(vacationDaysMap.get(emp.id) ?? 0, workedDays);
+      // Dias pagos como salário normal na folha: descontamos afastamento INSS + férias.
+      const salaryWorkedDays = Math.max(0, workedDays - inssTotalDays - vacationDaysInMonth);
       const dailyBase = baseSalary / lastDay;
-      const proportionalSalary = (hasPartialMonth || inssTotalDays > 0)
+      const proportionalSalary = (hasPartialMonth || inssTotalDays > 0 || vacationDaysInMonth > 0)
         ? r2(dailyBase * salaryWorkedDays)
         : baseSalary;
       const inssLeavePay = r2(dailyBase * inssEmployerDays);
+      const vacationDeduction = r2(dailyBase * vacationDaysInMonth);
 
 
       // VT calculado mais abaixo (após apurar faltas/afastamentos),
@@ -799,6 +813,8 @@ Deno.serve(async (req: Request) => {
         inss_leave_days: inssEmployerDays,
         inss_leave_pay: inssLeavePay,
         inss_suspension_days: inssSuspensionDays,
+        vacation_days_in_month: vacationDaysInMonth,
+        vacation_deduction: vacationDeduction,
         inss,
         irrf,
         fgts,
@@ -831,7 +847,9 @@ Deno.serve(async (req: Request) => {
           inss_leave_days: inssEmployerDays,
           inss_leave_pay: inssLeavePay,
           inss_suspension_days: inssSuspensionDays,
-          tables_version: "2026-04",
+          vacation_days_in_month: vacationDaysInMonth,
+          vacation_deduction: vacationDeduction,
+          tables_version: "2026-07",
         },
         calculated_at: new Date().toISOString(),
       });

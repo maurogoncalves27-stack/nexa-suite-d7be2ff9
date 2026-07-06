@@ -10205,6 +10205,8 @@ export type Database = {
           transport_discount: number
           transport_voucher: number
           updated_at: string
+          vacation_days_in_month: number
+          vacation_deduction: number
           worked_days: number
         }
         Insert: {
@@ -10244,6 +10246,8 @@ export type Database = {
           transport_discount?: number
           transport_voucher?: number
           updated_at?: string
+          vacation_days_in_month?: number
+          vacation_deduction?: number
           worked_days?: number
         }
         Update: {
@@ -10283,6 +10287,8 @@ export type Database = {
           transport_discount?: number
           transport_voucher?: number
           updated_at?: string
+          vacation_days_in_month?: number
+          vacation_deduction?: number
           worked_days?: number
         }
         Relationships: [
@@ -16166,6 +16172,128 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      vacation_receipts: {
+        Row: {
+          accounts_payable_id: string | null
+          calculated_at: string
+          calculated_by: string | null
+          calculation_details: Json
+          created_at: string
+          employee_id: string
+          fgts: number
+          gross_total: number
+          id: string
+          inss: number
+          irrf: number
+          monthly_salary: number
+          net_total: number
+          one_third: number
+          paid_at: string | null
+          payment_due_date: string | null
+          payment_status: string
+          pdf_generated_at: string | null
+          pdf_url: string | null
+          reference_month: number
+          reference_year: number
+          sell_amount: number
+          sell_days: number
+          sell_one_third: number
+          updated_at: string
+          vacation_base: number
+          vacation_days: number
+          vacation_schedule_id: string
+        }
+        Insert: {
+          accounts_payable_id?: string | null
+          calculated_at?: string
+          calculated_by?: string | null
+          calculation_details?: Json
+          created_at?: string
+          employee_id: string
+          fgts?: number
+          gross_total?: number
+          id?: string
+          inss?: number
+          irrf?: number
+          monthly_salary?: number
+          net_total?: number
+          one_third?: number
+          paid_at?: string | null
+          payment_due_date?: string | null
+          payment_status?: string
+          pdf_generated_at?: string | null
+          pdf_url?: string | null
+          reference_month: number
+          reference_year: number
+          sell_amount?: number
+          sell_days?: number
+          sell_one_third?: number
+          updated_at?: string
+          vacation_base?: number
+          vacation_days?: number
+          vacation_schedule_id: string
+        }
+        Update: {
+          accounts_payable_id?: string | null
+          calculated_at?: string
+          calculated_by?: string | null
+          calculation_details?: Json
+          created_at?: string
+          employee_id?: string
+          fgts?: number
+          gross_total?: number
+          id?: string
+          inss?: number
+          irrf?: number
+          monthly_salary?: number
+          net_total?: number
+          one_third?: number
+          paid_at?: string | null
+          payment_due_date?: string | null
+          payment_status?: string
+          pdf_generated_at?: string | null
+          pdf_url?: string | null
+          reference_month?: number
+          reference_year?: number
+          sell_amount?: number
+          sell_days?: number
+          sell_one_third?: number
+          updated_at?: string
+          vacation_base?: number
+          vacation_days?: number
+          vacation_schedule_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vacation_receipts_accounts_payable_id_fkey"
+            columns: ["accounts_payable_id"]
+            isOneToOne: false
+            referencedRelation: "accounts_payable"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vacation_receipts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vacation_receipts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vacation_receipts_vacation_schedule_id_fkey"
+            columns: ["vacation_schedule_id"]
+            isOneToOne: true
+            referencedRelation: "vacation_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vacation_schedules: {
         Row: {
