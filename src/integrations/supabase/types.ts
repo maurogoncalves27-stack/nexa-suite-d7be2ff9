@@ -14131,6 +14131,107 @@ export type Database = {
         }
         Relationships: []
       }
+      sst_document_versions: {
+        Row: {
+          created_at: string
+          document_id: string
+          emitted_at: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          superseded_at: string | null
+          uploaded_by: string | null
+          valid_from: string
+          valid_until: string | null
+          version_number: number
+        }
+        Insert: {
+          created_at?: string
+          document_id: string
+          emitted_at: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          superseded_at?: string | null
+          uploaded_by?: string | null
+          valid_from: string
+          valid_until?: string | null
+          version_number: number
+        }
+        Update: {
+          created_at?: string
+          document_id?: string
+          emitted_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          superseded_at?: string | null
+          uploaded_by?: string | null
+          valid_from?: string
+          valid_until?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sst_document_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "sst_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sst_documents: {
+        Row: {
+          cnpj: string
+          company_name: string
+          created_at: string
+          created_by: string | null
+          current_version: number
+          doc_type: Database["public"]["Enums"]["sst_doc_type"]
+          emitted_at: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          updated_at: string
+          valid_from: string
+          valid_until: string | null
+        }
+        Insert: {
+          cnpj: string
+          company_name: string
+          created_at?: string
+          created_by?: string | null
+          current_version?: number
+          doc_type: Database["public"]["Enums"]["sst_doc_type"]
+          emitted_at: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          updated_at?: string
+          valid_from: string
+          valid_until?: string | null
+        }
+        Update: {
+          cnpj?: string
+          company_name?: string
+          created_at?: string
+          created_by?: string | null
+          current_version?: number
+          doc_type?: Database["public"]["Enums"]["sst_doc_type"]
+          emitted_at?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          updated_at?: string
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
       storage_group_rules: {
         Row: {
           created_at: string
@@ -17824,6 +17925,14 @@ export type Database = {
         | "estornada"
       shift_swap_status: "pending" | "accepted" | "rejected" | "approved"
       shift_swap_type: "reciprocal" | "coverage"
+      sst_doc_type:
+        | "pcmso"
+        | "pgr"
+        | "ltcat"
+        | "ltip"
+        | "psicossocial_nr1"
+        | "relatorio_psicossocial"
+        | "outros"
       store_type: "loja" | "fabrica" | "central"
       supplier_offer_type: "launch" | "promo" | "surplus"
       task_assignment_scope: "employee" | "store"
@@ -18064,6 +18173,15 @@ export const Constants = {
       ],
       shift_swap_status: ["pending", "accepted", "rejected", "approved"],
       shift_swap_type: ["reciprocal", "coverage"],
+      sst_doc_type: [
+        "pcmso",
+        "pgr",
+        "ltcat",
+        "ltip",
+        "psicossocial_nr1",
+        "relatorio_psicossocial",
+        "outros",
+      ],
       store_type: ["loja", "fabrica", "central"],
       supplier_offer_type: ["launch", "promo", "surplus"],
       task_assignment_scope: ["employee", "store"],

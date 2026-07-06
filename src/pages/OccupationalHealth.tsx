@@ -6,8 +6,9 @@ import { useAuth } from "@/hooks/useAuth";
 import MedicalCertificates from "./MedicalCertificates";
 import Pcmso from "./Pcmso";
 import MentalHealth from "./MentalHealth";
+import SstDocumentsPanel from "@/components/sst/SstDocumentsPanel";
 
-type TabKey = "atestados" | "pcmso" | "saude-mental";
+type TabKey = "atestados" | "pcmso" | "saude-mental" | "documentos-sst";
 
 export default function OccupationalHealth() {
   const [params, setParams] = useSearchParams();
@@ -16,14 +17,16 @@ export default function OccupationalHealth() {
   const canAtestados = isAdmin || isManager || roles.includes("hr") || isContabilidade;
   const canPcmso = isAdmin || isManager || roles.includes("hr") || roles.includes("mental_health");
   const canMental = isAdmin || roles.includes("hr") || roles.includes("mental_health");
+  const canSstDocs = isAdmin || isManager || roles.includes("hr") || isContabilidade;
 
   const availableTabs = useMemo(() => {
     const tabs: { key: TabKey; label: string }[] = [];
     if (canAtestados) tabs.push({ key: "atestados", label: "Atestados" });
-    if (canPcmso) tabs.push({ key: "pcmso", label: "PCMSO" });
+    if (canPcmso) tabs.push({ key: "pcmso", label: "PCMSO (colaborador)" });
+    if (canSstDocs) tabs.push({ key: "documentos-sst", label: "Documentos SST" });
     if (canMental) tabs.push({ key: "saude-mental", label: "Saúde Mental" });
     return tabs;
-  }, [canAtestados, canPcmso, canMental]);
+  }, [canAtestados, canPcmso, canMental, canSstDocs]);
 
   if (availableTabs.length === 0) {
     return <Navigate to="/" replace />;
@@ -73,6 +76,11 @@ export default function OccupationalHealth() {
               <Pcmso embedded />
             </TabsContent>
           )}
+          {canSstDocs && (
+            <TabsContent value="documentos-sst" className="mt-4">
+              <SstDocumentsPanel />
+            </TabsContent>
+          )}
           {canMental && (
             <TabsContent value="saude-mental" className="mt-4">
               <MentalHealth embedded />
@@ -87,5 +95,6 @@ export default function OccupationalHealth() {
 function SingleTab({ tab }: { tab: TabKey }) {
   if (tab === "atestados") return <MedicalCertificates embedded />;
   if (tab === "pcmso") return <Pcmso embedded />;
+  if (tab === "documentos-sst") return <SstDocumentsPanel />;
   return <MentalHealth embedded />;
 }
