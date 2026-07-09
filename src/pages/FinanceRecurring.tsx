@@ -87,7 +87,7 @@ export default function FinanceRecurring() {
       setRows((tRes.data ?? []) as Template[]);
       setStores((sRes.data ?? []) as Lookup[]);
       setCategories((cRes.data ?? []) as Lookup[]);
-      setSuppliers((supRes.data ?? []) as Lookup[]);
+      setSuppliers((supRes.data ?? []).map((s: { id: string; legal_name: string; trade_name: string | null }) => ({ id: s.id, name: s.trade_name || s.legal_name })));
       setAccounts((aRes.data ?? []) as Lookup[]);
     } catch (err) {
       console.error(err);
