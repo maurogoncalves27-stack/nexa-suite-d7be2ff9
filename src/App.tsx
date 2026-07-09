@@ -122,6 +122,7 @@ const FinancePricing = lazy(() => import("./pages/FinancePricing.tsx"));
 const FinanceGasVouchers = lazy(() => import("./pages/FinanceGasVouchers.tsx"));
 const FinanceGasVouchersDashboard = lazy(() => import("./pages/FinanceGasVouchersDashboard.tsx"));
 const FinanceAccountStatement = lazy(() => import("./pages/FinanceAccountStatement.tsx"));
+const FinanceRecurring = lazy(() => import("./pages/FinanceRecurring.tsx"));
 const SupplierAuth = lazy(() => import("./pages/SupplierAuth.tsx"));
 const SupplierRegister = lazy(() => import("./pages/SupplierRegister.tsx"));
 const SupplierPending = lazy(() => import("./pages/SupplierPending.tsx"));
