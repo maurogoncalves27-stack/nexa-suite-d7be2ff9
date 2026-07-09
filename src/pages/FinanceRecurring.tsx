@@ -80,7 +80,7 @@ export default function FinanceRecurring() {
         supabase.from("recurring_payables").select("*").order("description"),
         supabase.from("stores").select("id,name").eq("is_virtual", false).order("name"),
         supabase.from("finance_categories").select("id,name").order("name"),
-        supabase.from("suppliers").select("id,name").order("name"),
+        supabase.from("suppliers").select("id,legal_name,trade_name").order("legal_name"),
         supabase.from("bank_accounts").select("id,name").order("name"),
       ]);
       if (tRes.error) throw tRes.error;
