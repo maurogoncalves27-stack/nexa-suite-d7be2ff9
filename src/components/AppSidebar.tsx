@@ -137,6 +137,7 @@ const financeiroSections: Section[] = [
   { label: "Caixa & Contas", items: [
     { title: "Caixinha da loja", url: "/caixinha", icon: PiggyBank, staffOnly: false },
     { title: "Incluir NF/boleto", url: "/recebimento#boletos", icon: ReceiptText, staffOnly: true },
+    { title: "Contas recorrentes", url: "/financeiro/recorrentes", icon: RefreshCw, staffOnly: true },
     { title: "Contas bancárias", url: "/financeiro/contas", icon: Building2, staffOnly: true },
     { title: "Conciliação", url: "/conciliacao", icon: Receipt, staffOnly: true },
   ]},
