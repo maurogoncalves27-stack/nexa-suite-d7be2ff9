@@ -44,12 +44,14 @@ export type Database = {
       accounts_payable: {
         Row: {
           amount: number
+          awaiting_amount: boolean
           bank_account_id: string | null
           bank_transaction_id: string | null
           barcode: string | null
           beneficiary: string | null
           category_id: string | null
           competence_date: string | null
+          competence_month: string | null
           created_at: string
           created_by: string
           description: string | null
@@ -63,6 +65,7 @@ export type Database = {
           paid_by: string | null
           payment_notes: string | null
           recurrence_group_id: string | null
+          recurring_template_id: string | null
           status: string
           store_id: string
           supplier_name: string | null
@@ -70,12 +73,14 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          awaiting_amount?: boolean
           bank_account_id?: string | null
           bank_transaction_id?: string | null
           barcode?: string | null
           beneficiary?: string | null
           category_id?: string | null
           competence_date?: string | null
+          competence_month?: string | null
           created_at?: string
           created_by: string
           description?: string | null
@@ -89,6 +94,7 @@ export type Database = {
           paid_by?: string | null
           payment_notes?: string | null
           recurrence_group_id?: string | null
+          recurring_template_id?: string | null
           status?: string
           store_id: string
           supplier_name?: string | null
@@ -96,12 +102,14 @@ export type Database = {
         }
         Update: {
           amount?: number
+          awaiting_amount?: boolean
           bank_account_id?: string | null
           bank_transaction_id?: string | null
           barcode?: string | null
           beneficiary?: string | null
           category_id?: string | null
           competence_date?: string | null
+          competence_month?: string | null
           created_at?: string
           created_by?: string
           description?: string | null
@@ -115,6 +123,7 @@ export type Database = {
           paid_by?: string | null
           payment_notes?: string | null
           recurrence_group_id?: string | null
+          recurring_template_id?: string | null
           status?: string
           store_id?: string
           supplier_name?: string | null
@@ -147,6 +156,13 @@ export type Database = {
             columns: ["invoice_id"]
             isOneToOne: false
             referencedRelation: "inventory_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accounts_payable_recurring_template_id_fkey"
+            columns: ["recurring_template_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_payables"
             referencedColumns: ["id"]
           },
           {
@@ -13871,6 +13887,95 @@ export type Database = {
             columns: ["output_product_id"]
             isOneToOne: false
             referencedRelation: "inventory_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recurring_payables: {
+        Row: {
+          active: boolean
+          bank_account_id: string | null
+          category_id: string | null
+          created_at: string
+          created_by: string | null
+          default_amount: number | null
+          description: string
+          due_day: number
+          end_month: string | null
+          id: string
+          kind: string
+          notes: string | null
+          payment_method: string | null
+          start_month: string
+          store_id: string | null
+          supplier_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          bank_account_id?: string | null
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_amount?: number | null
+          description: string
+          due_day: number
+          end_month?: string | null
+          id?: string
+          kind?: string
+          notes?: string | null
+          payment_method?: string | null
+          start_month?: string
+          store_id?: string | null
+          supplier_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          bank_account_id?: string | null
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_amount?: number | null
+          description?: string
+          due_day?: number
+          end_month?: string | null
+          id?: string
+          kind?: string
+          notes?: string | null
+          payment_method?: string | null
+          start_month?: string
+          store_id?: string | null
+          supplier_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_payables_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_payables_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "finance_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_payables_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_payables_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]

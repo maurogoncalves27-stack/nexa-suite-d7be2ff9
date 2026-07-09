@@ -122,6 +122,7 @@ const FinancePricing = lazy(() => import("./pages/FinancePricing.tsx"));
 const FinanceGasVouchers = lazy(() => import("./pages/FinanceGasVouchers.tsx"));
 const FinanceGasVouchersDashboard = lazy(() => import("./pages/FinanceGasVouchersDashboard.tsx"));
 const FinanceAccountStatement = lazy(() => import("./pages/FinanceAccountStatement.tsx"));
+const FinanceRecurring = lazy(() => import("./pages/FinanceRecurring.tsx"));
 const SupplierAuth = lazy(() => import("./pages/SupplierAuth.tsx"));
 const SupplierRegister = lazy(() => import("./pages/SupplierRegister.tsx"));
 const SupplierPending = lazy(() => import("./pages/SupplierPending.tsx"));
@@ -456,6 +457,7 @@ const App = () => (
               <Route path="/financeiro/contas" element={<Guarded staff partner><FinanceAccounts /></Guarded>} />
               <Route path="/financeiro/extrato-conta" element={<Guarded staff partner><FinanceAccountStatement /></Guarded>} />
               <Route path="/financeiro/categorias" element={<Guarded staff partner><FinanceCategories /></Guarded>} />
+              <Route path="/financeiro/recorrentes" element={<Guarded staff partner><FinanceRecurring /></Guarded>} />
               <Route path="/financeiro/cmv" element={<Guarded staff partner><FinanceCmv /></Guarded>} />
               <Route path="/financeiro/precificacao" element={<Guarded staff partner><FinancePricing /></Guarded>} />
               <Route path="/financeiro/vale-gas" element={<Guarded><FinanceGasVouchers /></Guarded>} />

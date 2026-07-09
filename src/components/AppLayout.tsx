@@ -170,6 +170,7 @@ const PAGE_TITLES: PageMeta[] = [
   { match: (p) => p.startsWith("/financeiro/contas"), title: "Contas bancárias", group: "Financeiro" },
   { match: (p) => p.startsWith("/financeiro/extrato-conta"), title: "Extrato da conta", group: "Financeiro" },
   { match: (p) => p.startsWith("/financeiro/categorias"), title: "Categorias", group: "Financeiro" },
+  { match: (p) => p.startsWith("/financeiro/recorrentes"), title: "Contas recorrentes", group: "Financeiro" },
   { match: (p) => p.startsWith("/financeiro/vale-gas/dashboard"), title: "Dashboard Vale Gás", group: "Financeiro" },
   { match: (p) => p.startsWith("/financeiro/vale-gas"), title: "Vale Gás", group: "Financeiro" },
   { match: (p) => p.startsWith("/financeiro"), title: "Extrato / +pagtos", group: "Financeiro" },
