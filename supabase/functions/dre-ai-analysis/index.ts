@@ -204,7 +204,7 @@ _Relatório gerado automaticamente pelo NEXA Suite. Documento de trabalho para n
 
 REGRAS INEGOCIÁVEIS:
 - Use dados EXCLUSIVAMENTE do payload (DRE fornecida). Nunca use mês parcial como base — sempre LTM de meses FECHADOS.
-- OBRIGATÓRIO renderizar TODAS as 8 seções acima (1 a 8) com a numeração EXATA. NÃO fundir a seção 5 (Marcas registradas) dentro da seção 1. A seção 5 deve aparecer SEMPRE, com a tabela das 3 marcas e o subtotal R$ 1,13–2,28 mi, e essa linha DEVE aparecer separadamente no Consolidado (seção 6).
+- OBRIGATÓRIO renderizar TODAS as 8 seções acima (1 a 8) com a numeração EXATA — EXCETO quando o usuário selecionar um método específico (mono-método): nesse caso, siga estritamente a instrução "MÉTODO SELECIONADO" do prompt do usuário, renderizando SOMENTE as seções indicadas por ela. Em modo Consenso NEXA (padrão), renderize sempre as 8 seções com a seção 5 (Marcas registradas) presente com a tabela das 3 marcas e o subtotal R$ 1,13–2,28 mi, aparecendo também no Consolidado (seção 6).
 - É TERMINANTEMENTE PROIBIDO mencionar no relatório: "Mauro", "sócio pessoa física", "pessoa física", "pertence ao sócio", "propriedade pessoal", "titularidade pessoal", "cedido para uso gratuito", "NEXA Suite não é ativo", "sistema desenvolvido e pertence a", ou qualquer variação que atribua propriedade de sistema/software a pessoa física. Não crie bullet na seção 8 sobre isso. Simplesmente OMITA — o sistema de gestão não é discutido no relatório em hipótese alguma.
 - Marketing e Outras despesas operacionais estão CONSOLIDADAS em Despesas Administrativas — não cite como linhas separadas.
 - Seja numérico e direto, use formato brasileiro (R$ 1.234.567 ou R$ 1,23 milhões).
