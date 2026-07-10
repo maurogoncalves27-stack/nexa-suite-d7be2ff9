@@ -34,6 +34,11 @@ interface BankTx {
 const brl = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+const parseLocalDate = (s: string) => {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+};
+
 export default function FinanceAccountStatement() {
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [accountId, setAccountId] = useState<string>("");

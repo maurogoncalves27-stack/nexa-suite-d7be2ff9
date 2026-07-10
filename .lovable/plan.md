@@ -1,51 +1,38 @@
-# Contas recorrentes (fixas + variáveis)
+## Problema
 
-## Objetivo
-Parar de duplicar lançamentos mensais como SAIPOS, VIVO, Condomínio, CAESB, Neo Energia e Internet. Cadastrar cada conta recorrente **uma única vez** e deixar o sistema gerar automaticamente o lançamento em `accounts_payable` a cada mês.
+Na página **Extrato da conta** (`/financeiro/extrato`), com filtro 01/06/2026 → 30/06/2026 aparecem linhas rotuladas como **31/05/2026**.
 
-## Como vai funcionar (visão do usuário)
+Não é bug de filtro — é bug de exibição por timezone.
 
-1. Nova página **Financeiro → Contas recorrentes** (`/financeiro/recorrentes`).
-2. Cada template guarda: descrição, fornecedor, loja, categoria, conta bancária, dia de vencimento, forma de pagamento, tipo (**Fixo** ou **Variável**) e valor padrão (opcional para variáveis).
-3. Todo dia 1º do mês (cron) o sistema gera automaticamente as contas do mês:
-   - **Fixo** (SAIPOS, VIVO, Condomínio, Internet): entra já com o valor cadastrado, status `pending`.
-   - **Variável** (Água, Luz): entra com valor 0 e status `pending_amount` — aparece com badge "Aguardando valor" no extrato para o usuário editar quando chegar a fatura.
-4. Botão **"Gerar agora"** na página para rodar manualmente no mês corrente (útil na primeira ativação).
-5. Idempotência: cada `accounts_payable` gerado carrega `recurring_template_id` + `competence_month`. Se já existe para aquele mês, não recria.
+Confirmado no banco: as linhas `-76,33`, `-33,00 (VT Jennifer)`, `-1.398,00`, `-55,10`, `-211,00`, `+100 (Coleta óleo)`, `-2.204,61 (Boleto)`, `-23,20 (VT Treinamento)`, etc. têm `posted_at = 2026-06-01` no banco. Elas entram corretamente no filtro de junho, mas são renderizadas como 31/05.
 
-## Limpeza dos duplicados atuais
-Antes de ativar, remover as duplicatas já mapeadas (SAIPOS 10 pares, VIVO 2, Condomínio, CAESB/Neo/Internet) mantendo o lançamento mais antigo de cada par. Rodo isso em migração de dados separada, com preview antes.
+## Causa
 
-## Detalhes técnicos
+`posted_at` é `date` (ex.: `"2026-06-01"`). O código faz:
 
-### Nova tabela `recurring_payables`
-Campos principais: `description`, `supplier_id`, `store_id`, `category_id`, `bank_account_id`, `payment_method`, `due_day` (1-31), `default_amount`, `kind` ('fixed' | 'variable'), `active`, `start_month`, `end_month` (opcional), `notes`.
+```ts
+format(new Date(r.posted_at), "dd/MM/yyyy")
+```
 
-RLS igual a `accounts_payable` (gestores/financeiro leem e editam). GRANTs para authenticated + service_role.
+`new Date("2026-06-01")` interpreta a string como **UTC meia-noite**. Em BRT (UTC-3) isso vira `2026-05-31 21:00`, e o `format` mostra **31/05/2026**. Todas as datas do extrato aparecem "um dia antes" do real.
 
-### Alterações em `accounts_payable`
-Adicionar colunas: `recurring_template_id uuid` (FK) e `competence_month date` (primeiro dia do mês de competência). Índice único parcial `(recurring_template_id, competence_month) WHERE recurring_template_id IS NOT NULL` garante idempotência.
+## Correção
 
-Novo status opcional `pending_amount` (ou flag `awaiting_amount boolean`) para variáveis sem valor.
+Em `src/pages/FinanceAccountStatement.tsx`, substituir `new Date(r.posted_at)` por um parser que trata a string `YYYY-MM-DD` como data local (sem UTC).
 
-### Edge function `generate-recurring-payables`
-- Roda para um mês/ano informado (default: mês corrente).
-- Para cada template ativo com `start_month <= mês <= end_month`, tenta inserir em `accounts_payable`. Conflito no índice único = ignora.
-- Retorna resumo (`created`, `skipped`).
+Padrão a aplicar nos 3 pontos (tabela desktop, lista mobile, export CSV):
 
-### Cron
-`pg_cron` no dia 1 de cada mês às 06:00 chama a edge function via `pg_net`.
+```ts
+const parseLocalDate = (s: string) => {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, m - 1, d);
+};
+```
 
-### UI
-- Página `/financeiro/recorrentes`: tabela com filtros (loja/categoria/ativo), CRUD em dialog, botão "Gerar mês atual".
-- No extrato/contas a pagar: badge "🔁 Recorrente" quando `recurring_template_id` estiver preenchido, e badge "Aguardando valor" para `awaiting_amount`.
-- Link rápido no card de Financeiro / Contabilidade.
+E usar `format(parseLocalDate(r.posted_at), "dd/MM/yyyy", { locale: ptBR })`.
 
-## Ordem de execução
-1. Migração: tabela + colunas + índice + GRANTs + RLS.
-2. Edge function + cron.
-3. Página + integração no extrato.
-4. Migração de dados: dedup dos lançamentos duplicados atuais.
-5. Sugerir cadastro inicial dos recorrentes conhecidos (SAIPOS, VIVO, Condomínio, Internet, CAESB, Neo Energia).
+Escopo estritamente visual: nenhuma alteração em filtros, cálculos de saldo ou consultas.
 
-Confirma e sigo com o passo 1 (migração)?
+## Verificação
+
+Após o ajuste, recarregar `/financeiro/extrato` com filtro 01/06 → 30/06 e conferir que a primeira linha passa a mostrar **01/06/2026** (não 31/05).
