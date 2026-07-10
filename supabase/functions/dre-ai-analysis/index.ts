@@ -204,9 +204,12 @@ _Relatório gerado automaticamente pelo NEXA Suite. Documento de trabalho para n
 
 REGRAS INEGOCIÁVEIS:
 - Use dados EXCLUSIVAMENTE do payload (DRE fornecida). Nunca use mês parcial como base — sempre LTM de meses FECHADOS.
-- NÃO capitalize nenhum sistema de gestão/tecnologia no equity value — trate como eficiência operacional já refletida na margem. É PROIBIDO mencionar titularidade, propriedade, dono, sócio pessoa física, "pertence a", "Mauro", ou qualquer relação de propriedade de sistema/software. Não escreva ressalvas sobre isso — simplesmente omita do relatório.
+- OBRIGATÓRIO renderizar TODAS as 8 seções acima (1 a 8) com a numeração EXATA. NÃO fundir a seção 5 (Marcas registradas) dentro da seção 1. A seção 5 deve aparecer SEMPRE, com a tabela das 3 marcas e o subtotal R$ 1,13–2,28 mi, e essa linha DEVE aparecer separadamente no Consolidado (seção 6).
+- É TERMINANTEMENTE PROIBIDO mencionar no relatório: "Mauro", "sócio pessoa física", "pessoa física", "pertence ao sócio", "propriedade pessoal", "titularidade pessoal", "cedido para uso gratuito", "NEXA Suite não é ativo", "sistema desenvolvido e pertence a", ou qualquer variação que atribua propriedade de sistema/software a pessoa física. Não crie bullet na seção 8 sobre isso. Simplesmente OMITA — o sistema de gestão não é discutido no relatório em hipótese alguma.
+- Marketing e Outras despesas operacionais estão CONSOLIDADAS em Despesas Administrativas — não cite como linhas separadas.
 - Seja numérico e direto, use formato brasileiro (R$ 1.234.567 ou R$ 1,23 milhões).
 - Todas as tabelas em Markdown GFM (com | e cabeçalho + separador ---).`;
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -282,12 +285,18 @@ Deno.serve(async (req) => {
 
     const data = await resp.json();
     let analysis = sanitizePartialMonthAnalysis(data?.choices?.[0]?.message?.content ?? "Sem resposta do modelo.", partialRow);
-    // Remove qualquer linha que vaze titularidade pessoal do sistema/tecnologia
-    const ownershipRegex = /(mauro|pertence a|propriedade\s+(pessoal|do\s+s[óo]cio)|titularidade\s+(pessoal|do\s+s[óo]cio)|s[óo]cio\s+pessoa\s+f[íi]sica|nexa\s+(suite|é|nao|não|pertence|pertenc|é\s+de))/i;
-    analysis = analysis
-      .split("\n")
-      .filter((line) => !ownershipRegex.test(line))
-      .join("\n");
+    // Sanitizador anti-vazamento: remove QUALQUER trecho que cite titularidade pessoal do sistema.
+    // Opera em 3 camadas: (1) linhas soltas, (2) bullets iniciados por • ou -, (3) sentenças dentro de parágrafos.
+    const ownershipRegex = /(mauro|pessoa\s+f[íi]sica|s[óo]cio\s*\(?\s*pessoa|pertence\s+ao\s+s[óo]cio|pertence\s+a\s+mauro|desenvolvido\s+e\s+pertence|propriedade\s+(pessoal|do\s+s[óo]cio)|titularidade\s+(pessoal|do\s+s[óo]cio)|cedido\s+para\s+uso\s+gratuito|nexa\s+suite\s+n[ãa]o\s+[eé]|nexa\s+n[ãa]o\s+[eé]\s+ativo)/i;
+    // 1) filtro por linha
+    analysis = analysis.split("\n").filter((line) => !ownershipRegex.test(line)).join("\n");
+    // 2) filtro por bullet (linhas que começam com •/- e contêm termos proibidos, mesmo quebradas)
+    analysis = analysis.replace(/([•\-]\s+[^\n•]*?(mauro|nexa\s+suite\s+n[ãa]o|pertence\s+ao\s+s[óo]cio|pessoa\s+f[íi]sica|cedido\s+para\s+uso\s+gratuito)[^\n•]*)/gi, "");
+    // 3) remove sentenças inteiras dentro de parágrafos
+    analysis = analysis.replace(/[^.!?\n]*\b(mauro|nexa\s+suite\s+n[ãa]o\s+[eé]|pertence\s+ao\s+s[óo]cio|propriedade\s+do\s+s[óo]cio|titularidade\s+do\s+s[óo]cio|cedido\s+para\s+uso\s+gratuito|desenvolvido\s+e\s+pertence)\b[^.!?\n]*[.!?]/gi, "");
+    // Limpa linhas vazias em excesso deixadas pelos filtros
+    analysis = analysis.replace(/\n{3,}/g, "\n\n").trim();
+
 
     return new Response(JSON.stringify({ analysis, mode }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
