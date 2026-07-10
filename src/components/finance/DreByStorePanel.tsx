@@ -414,8 +414,6 @@ const ROWS: RowDef[] = [
   { label: "= Lucro bruto", field: "gross_profit", variant: "subtotal", refField: "revenue_net" },
   { label: DRE_GROUP_LABELS.expense_personnel, field: "expense_personnel", variant: "deduction", indent: true },
   { label: DRE_GROUP_LABELS.expense_admin, field: "expense_admin", variant: "deduction", indent: true },
-  { label: DRE_GROUP_LABELS.expense_marketing, field: "expense_marketing", variant: "deduction", indent: true },
-  { label: DRE_GROUP_LABELS.expense_other, field: "expense_other", variant: "deduction", indent: true },
   { label: "(−) Despesas operacionais", field: "operational_total", variant: "subtotal" },
   { label: "= EBITDA", field: "ebitda", variant: "subtotal", refField: "revenue_net" },
   { label: "(−) Despesas financeiras", field: "expense_financial", variant: "deduction", indent: true },
