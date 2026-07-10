@@ -207,7 +207,7 @@ export default function DreComparativoPanel() {
   }, [snapshot, monthKeys, sales, payables, receivables, catMap, ifoodByMonth]);
 
   const chartData = useMemo(() => perMonth.map((c) => {
-    const p = partialInfo(c.month);
+    const p = partialInfo(c.key);
     const label = p ? `${c.label} (parcial d.${p.day})` : c.label;
     if (!p) {
       return {
@@ -237,7 +237,7 @@ export default function DreComparativoPanel() {
   }), [perMonth]);
 
   const expenseChartData = useMemo(() => perMonth.map((c) => {
-    const p = partialInfo(c.month);
+    const p = partialInfo(c.key);
     const label = p ? `${c.label} (parcial)` : c.label;
     return {
       mes: label,
@@ -252,8 +252,8 @@ export default function DreComparativoPanel() {
   }), [perMonth]);
 
   // Totais: EXCLUI o mês corrente parcial para não distorcer médias/somatórios
-  const closedMonths = useMemo(() => perMonth.filter((c) => !partialInfo(c.month)), [perMonth]);
-  const partialMonth = useMemo(() => perMonth.find((c) => partialInfo(c.month)) ?? null, [perMonth]);
+  const closedMonths = useMemo(() => perMonth.filter((c) => !partialInfo(c.key)), [perMonth]);
+  const partialMonth = useMemo(() => perMonth.find((c) => partialInfo(c.key)) ?? null, [perMonth]);
   const partialMeta = useMemo(() => (partialMonth ? partialInfo(partialMonth.month) : null), [partialMonth]);
 
   const totals = useMemo(() => {
