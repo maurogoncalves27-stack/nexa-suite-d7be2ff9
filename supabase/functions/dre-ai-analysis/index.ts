@@ -71,6 +71,29 @@ Evolução, meses de prejuízo, drivers do resultado.
 Lista numerada de 4-6 ações concretas, com números que embasem cada ação.
 Não invente dados fora dos fornecidos. Use fmt "R$ X" para valores. REGRA INEGOCIÁVEL: se o usuário informar um mês em andamento (parcial), NUNCA trate esse mês como queda/colapso/retração e NUNCA use ele como fim de tendência — os dados são parciais por natureza. Só cite o mês parcial via projeção linear, deixando explícito que é projeção.`;
 
+const SYSTEM_VALUATION = `Você é um analista de M&A/valuation avaliando a Aquela Parmê (rede de restaurantes brasileira, gestão via sistema próprio NEXA Suite). Calcule o valuation com base na DRE fornecida (últimos 12 meses fechados) e nas premissas de patrimônio/expansão/eficiência. Responda em PORTUGUÊS BR usando MARKDOWN nesta estrutura:
+## Resumo executivo
+Valor central em R$ e faixa (mínimo–máximo), em 2-3 linhas.
+## Base operacional (LTM)
+Receita líquida LTM, EBITDA LTM, margem EBITDA, resultado líquido LTM — tudo dos últimos 12 meses FECHADOS fornecidos.
+## Metodologias
+Aplique e mostre número para cada uma:
+- **EV/EBITDA** (múltiplo 4x-6x para foodservice BR).
+- **EV/Revenue** (0,5x-0,8x).
+- **DCF simplificado** (5 anos, g=4%, WACC=15%, valor terminal Gordon).
+Explique cada cálculo em 1-2 linhas e traga o número.
+## Ajustes patrimoniais e caixa
+Some patrimônio das lojas ativas, fábrica, escritório, caixa disponível.
+## Upside — Nova loja Asa Norte
+A nova loja deve faturar ~70% da Asa Norte atual, com CAPEX bancado pelo iFood (custo zero para a empresa). Estime valor incremental.
+## Upside — Sistema NEXA próprio
+Economia estrutural de ~R$ ${"{"}nexa_saving${"}"}/mês em aluguéis de totens e headcount (capitalize por 6x-8x EBITDA anual gerado).
+## Equity Value final
+Faixa consolidada (mínimo, central, máximo) em R$ milhões, com breakdown do que compõe cada faixa.
+## Ressalvas
+3-5 pontos sobre premissas, riscos e limites do cálculo.
+Use dados EXCLUSIVAMENTE do payload. Nunca use o mês parcial como base — sempre LTM de meses FECHADOS. Seja numérico e direto.`;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (!LOVABLE_API_KEY) {
