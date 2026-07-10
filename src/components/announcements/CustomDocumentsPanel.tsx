@@ -311,7 +311,9 @@ export default function CustomDocumentsPanel() {
                       )}
                       {v && (
                         <p className="text-xs text-muted-foreground mt-1">
-                          Cargos: {v.target_positions.join(", ") || "—"}
+                          {v.target_employee_ids?.length > 0
+                            ? `Colaboradores: ${v.target_employee_ids.length} selecionado(s)`
+                            : `Cargos: ${v.target_positions.join(", ") || "—"}`}
                         </p>
                       )}
                     </div>
