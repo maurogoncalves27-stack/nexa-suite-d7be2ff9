@@ -610,8 +610,8 @@ export default function DreComparativoPanel() {
               <p className="text-xs text-muted-foreground max-w-lg mx-auto">
                 Clique em <strong className="text-foreground">Sintética</strong> para um resumo executivo,
                 <strong className="text-foreground"> Analítica</strong> para uma análise detalhada linha a linha,
-                ou <strong className="text-foreground">Valuation</strong> para o laudo de valor da empresa
-                (com exportação em PDF).
+                ou um dos métodos de <strong className="text-foreground">Valuation</strong> acima
+                (sugerido: <strong className="text-foreground">Consenso NEXA</strong>, com exportação em PDF).
               </p>
             </div>
           )}
