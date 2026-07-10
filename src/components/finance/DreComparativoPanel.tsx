@@ -46,6 +46,21 @@ const PERIOD_LABELS: Record<PeriodOption, string> = {
 
 const monthKey = (iso: string) => iso.slice(0, 7);
 
+const currentMonthKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
+
+// Info do mês corrente parcial (dia atual, dias totais, fator de projeção linear)
+const partialInfo = (mk: string): { day: number; total: number; factor: number } | null => {
+  if (mk !== currentMonthKey()) return null;
+  const now = new Date();
+  const day = now.getDate();
+  const total = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const factor = day > 0 ? total / day : 1;
+  return { day, total, factor };
+};
+
 const buildMonthKeys = (opt: PeriodOption): string[] => {
   const now = new Date();
   now.setDate(1);
