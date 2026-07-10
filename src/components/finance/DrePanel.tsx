@@ -23,6 +23,47 @@ import {
 import DreAllocatedPanel from "./DreAllocatedPanel";
 import DreByStorePanel from "./DreByStorePanel";
 
+// A partir de maio/2026 a DRE usa 100% os dados do sistema.
+// De abril/2026 para trás usamos o snapshot histórico importado das planilhas
+// (public.dre_historical_snapshot, store_key='consolidated').
+const HIST_CUTOFF = "2026-04"; // último mês fechado como histórico
+const isHistoricalMonth = (key: string) => key <= HIST_CUTOFF;
+
+type SnapshotByMonth = Record<string, Record<string, number>>;
+
+const SNAPSHOT_FIELD_MAP: Record<string, keyof DreColumn> = {
+  revenue_gross: "revenue_gross",
+  revenue_deduction: "revenue_deduction",
+  cmv: "cmv",
+  expense_personnel: "expense_personnel",
+  expense_admin: "expense_admin",
+  expense_marketing: "expense_marketing",
+  expense_financial: "expense_financial",
+  expense_tax: "expense_tax",
+  expense_other: "expense_other",
+  non_operational: "non_operational",
+};
+
+const applySnapshotToColumn = (col: DreColumn, values: Record<string, number> | undefined) => {
+  if (!values) return;
+  for (const [line, amount] of Object.entries(values)) {
+    const field = SNAPSHOT_FIELD_MAP[line];
+    if (!field) continue;
+    (col as any)[field] += Number(amount) || 0;
+  }
+};
+
+const snapshotColumn = (
+  key: string,
+  label: string,
+  monthKeys: string[],
+  snap: SnapshotByMonth,
+): DreColumn => {
+  const col = emptyDreColumn(key, label);
+  for (const m of monthKeys) applySnapshotToColumn(col, snap[m]);
+  return finalizeDreColumn(col);
+};
+
 type CategoryInfo = { dre_group: DreGroup | null; kind: string; name: string };
 type CategoryMap = Record<string, CategoryInfo>;
 
@@ -200,6 +241,7 @@ export default function DrePanel() {
   const [receivables, setReceivables] = useState<ReceivableRow[]>([]);
   const [catMap, setCatMap] = useState<CategoryMap>({});
   const [deductionsByMonth, setDeductionsByMonth] = useState<Record<string, number>>({});
+  const [snapshot, setSnapshot] = useState<SnapshotByMonth>({});
 
   const periodStart = useMemo(() => {
     if (tab === "monthly") return monthsAgoISO(monthsBack - 1);
@@ -210,7 +252,7 @@ export default function DrePanel() {
   const load = async () => {
     setLoading(true);
     try {
-      const [salesRes, payRes, recRes, catRes, dedRes] = await Promise.all([
+      const [salesRes, payRes, recRes, catRes, dedRes, snapRes] = await Promise.all([
         fetchAllPaged((from, to) =>
           supabase
             .from("monthly_revenue")
@@ -238,6 +280,13 @@ export default function DrePanel() {
         ),
         supabase.from("finance_categories").select("id,name,dre_group,kind"),
         supabase.functions.invoke("dre-ifood-deductions"),
+        fetchAllPaged((from, to) =>
+          supabase
+            .from("dre_historical_snapshot" as any)
+            .select("year,month,line_key,amount")
+            .eq("store_key", "consolidated")
+            .range(from, to),
+        ),
       ]);
 
       if (salesRes.error) throw salesRes.error;
@@ -273,6 +322,13 @@ export default function DrePanel() {
       } else if (dedRes.error) {
         console.warn("Falha ao carregar deduções iFood:", dedRes.error);
       }
+
+      const snap: SnapshotByMonth = {};
+      for (const row of ((snapRes.data ?? []) as any[])) {
+        const key = `${row.year}-${String(row.month).padStart(2, "0")}`;
+        (snap[key] ??= {})[row.line_key] = Number(row.amount) || 0;
+      }
+      setSnapshot(snap);
     } catch (e: any) {
       toast({ title: "Erro ao carregar DRE", description: e.message, variant: "destructive" });
     } finally {
@@ -294,7 +350,9 @@ export default function DrePanel() {
         cols.push({ key, label: monthLabel(key) });
         colMonths[key] = [key];
       }
-      return computeDre({
+      const liveCols = cols.filter((c) => !isHistoricalMonth(c.key));
+      const liveMonthKeys = new Set(liveCols.map((c) => c.key));
+      const liveResult = computeDre({
         sales,
         payables,
         receivables,
@@ -302,31 +360,59 @@ export default function DrePanel() {
         deductionsByMonth,
         columnFor: (date) => {
           const k = monthKey(date);
-          return cols.find((c) => c.key === k)?.key ?? null;
+          return liveMonthKeys.has(k) ? k : null;
         },
-        columnMonths: colMonths,
-        columns: cols,
+        columnMonths: Object.fromEntries(liveCols.map((c) => [c.key, [c.key]])),
+        columns: liveCols,
       });
+      const liveByKey = new Map(liveResult.map((c) => [c.key, c]));
+      return cols.map((c) =>
+        isHistoricalMonth(c.key)
+          ? snapshotColumn(c.key, c.label, [c.key], snapshot)
+          : liveByKey.get(c.key)!,
+      );
     }
-    const cols = [{ key: "period", label: "Período selecionado" }];
-    const colMonths = { period: monthsInRange(periodStart, periodEnd) };
-    return computeDre({
-      sales,
-      payables,
-      receivables,
-      catMap,
-      deductionsByMonth,
-      columnFor: () => "period",
-      columnMonths: colMonths,
-      columns: cols,
-    });
-  }, [tab, monthsBack, sales, payables, receivables, catMap, deductionsByMonth, periodStart, periodEnd]);
+    // Aba "Período": soma snapshot dos meses <= HIST_CUTOFF + cálculo ao vivo dos meses > HIST_CUTOFF
+    const monthKeys = monthsInRange(periodStart, periodEnd);
+    const histMonths = monthKeys.filter(isHistoricalMonth);
+    const liveMonths = monthKeys.filter((m) => !isHistoricalMonth(m));
+
+    const combined = emptyDreColumn("period", "Período selecionado");
+
+    // Parte histórica
+    for (const m of histMonths) applySnapshotToColumn(combined, snapshot[m]);
+
+    // Parte ao vivo — só se houver mês pós-cutoff no período
+    if (liveMonths.length > 0) {
+      const liveMonthSet = new Set(liveMonths);
+      const [liveCol] = computeDre({
+        sales,
+        payables,
+        receivables,
+        catMap,
+        deductionsByMonth,
+        columnFor: (date) => (liveMonthSet.has(monthKey(date)) ? "period" : null),
+        columnMonths: { period: liveMonths },
+        columns: [{ key: "period", label: "Período selecionado" }],
+      });
+      const fields: (keyof DreColumn)[] = [
+        "revenue_gross","revenue_deduction","cmv","expense_personnel","expense_admin",
+        "expense_marketing","expense_financial","expense_tax","expense_other","non_operational",
+      ];
+      for (const f of fields) (combined as any)[f] += (liveCol as any)[f];
+      // Preserva o breakdown do ao vivo (histórico não tem drill-down por categoria)
+      combined.breakdown = liveCol.breakdown;
+    }
+
+    return [finalizeDreColumn(combined)];
+  }, [tab, monthsBack, sales, payables, receivables, catMap, deductionsByMonth, snapshot, periodStart, periodEnd]);
 
   return (
     <Card>
       <CardContent className="pt-4 sm:pt-6 space-y-4">
         <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-          Receita bruta vem do faturamento manual diário. Despesas vêm do Extrato/+Pagtos pela data de competência (inclui lançamentos ainda não pagos). Custos iFood (planilha) é a única dedução externa. Clique nas linhas de despesa para ver as categorias.
+          A partir de <strong>mai/2026</strong>: receita bruta do faturamento diário e despesas do Extrato/+Pagtos por competência (Custos iFood entra como dedução). Clique nas linhas para ver as categorias.
+          <br />Meses até <strong>abr/2026</strong> vêm do snapshot histórico importado das planilhas (consolidado, sem drill-down).
         </p>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>

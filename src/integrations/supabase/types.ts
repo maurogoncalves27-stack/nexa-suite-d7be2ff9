@@ -2781,6 +2781,39 @@ export type Database = {
           },
         ]
       }
+      dre_historical_snapshot: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          line_key: string
+          month: number
+          store_key: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          line_key: string
+          month: number
+          store_key: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          line_key?: string
+          month?: number
+          store_key?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
       ecommerce_cart_items: {
         Row: {
           brand_code: string | null
