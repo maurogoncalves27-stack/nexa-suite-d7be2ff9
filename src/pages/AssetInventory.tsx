@@ -83,6 +83,8 @@ export default function AssetInventory() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Asset | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [pendingSuggestions, setPendingSuggestions] = useState<number>(0);
+  const [tab, setTab] = useState<"inventory" | "suggestions">("inventory");
 
   async function load() {
     setLoading(true);
