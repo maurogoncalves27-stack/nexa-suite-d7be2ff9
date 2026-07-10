@@ -489,20 +489,23 @@ export default function DreComparativoPanel() {
                 {aiLoading === "sintetica" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                 <span className="ml-1">Sintética</span>
               </Button>
-              <Button size="sm" variant="outline" disabled={!!aiLoading || loading} onClick={() => runAi("valuation")}>
-                {aiLoading === "valuation" ? <Loader2 className="h-4 w-4 animate-spin" /> : <TrendingUp className="h-4 w-4" />}
-                <span className="ml-1">Valuation</span>
-              </Button>
-              <Button size="sm" disabled={!!aiLoading || loading} onClick={() => runAi("analitica")}>
+              <Button size="sm" variant="outline" disabled={!!aiLoading || loading} onClick={() => runAi("analitica")}>
                 {aiLoading === "analitica" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                 <span className="ml-1">Analítica</span>
+              </Button>
+              <Button size="sm" disabled={!!aiLoading || loading} onClick={() => runAi("valuation")}>
+                {aiLoading === "valuation" ? <Loader2 className="h-4 w-4 animate-spin" /> : <TrendingUp className="h-4 w-4" />}
+                <span className="ml-1">Valuation</span>
               </Button>
             </div>
           </div>
           {aiOutput ? (
             aiMode === "valuation" ? (
               <div className="space-y-2">
-                <div className="flex items-center justify-end gap-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {aiTitle}
+                  </div>
                   <Button size="sm" variant="outline" onClick={exportValuationPdf} disabled={exportingPdf}>
                     {exportingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                     <span className="ml-1">Exportar PDF</span>
@@ -510,7 +513,7 @@ export default function DreComparativoPanel() {
                 </div>
                 <div
                   ref={valuationRef}
-                  className="rounded-md border bg-white text-slate-900 p-8 shadow-sm valuation-report"
+                  className="rounded-lg border bg-white text-slate-900 p-6 sm:p-10 shadow-md valuation-report"
                   style={{ fontFamily: '"Inter", "Helvetica Neue", Arial, sans-serif' }}
                 >
                   <div className="prose prose-sm max-w-none
@@ -532,20 +535,44 @@ export default function DreComparativoPanel() {
                 </div>
               </div>
             ) : (
-              <div className="rounded-md border bg-muted/20 p-3 text-sm">
-                <div className="text-xs font-semibold text-muted-foreground mb-2">{aiTitle}</div>
-                <div className="prose prose-sm max-w-none dark:prose-invert">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiOutput}</ReactMarkdown>
+              <div className="rounded-lg border bg-gradient-to-br from-muted/40 to-background shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-2 border-b bg-muted/50">
+                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {aiTitle}
+                  </span>
+                </div>
+                <div className="p-5 sm:p-6">
+                  <div className="prose prose-sm max-w-none dark:prose-invert
+                    prose-headings:font-semibold prose-headings:text-foreground
+                    prose-h1:text-xl prose-h1:mb-3 prose-h1:pb-2 prose-h1:border-b
+                    prose-h2:text-base prose-h2:mt-5 prose-h2:mb-2 prose-h2:text-primary
+                    prose-h3:text-sm prose-h3:mt-4 prose-h3:mb-1 prose-h3:text-foreground
+                    prose-p:leading-relaxed prose-p:text-foreground/90 prose-p:my-2
+                    prose-strong:text-foreground prose-strong:font-semibold
+                    prose-ul:my-2 prose-li:my-0.5 prose-li:text-foreground/90
+                    prose-table:text-xs prose-table:border prose-table:border-border
+                    prose-th:bg-muted prose-th:px-3 prose-th:py-2 prose-th:border prose-th:border-border prose-th:text-left
+                    prose-td:px-3 prose-td:py-2 prose-td:border prose-td:border-border
+                    prose-hr:my-4
+                  ">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiOutput}</ReactMarkdown>
+                  </div>
                 </div>
               </div>
             )
           ) : (
-            <p className="text-xs text-muted-foreground">
-              Clique em <strong>Sintética</strong> para um resumo executivo, <strong>Valuation</strong> para o laudo
-              de valor da empresa (com exportação em PDF) ou <strong>Analítica</strong> para uma análise detalhada
-              linha a linha.
-            </p>
+            <div className="rounded-lg border border-dashed bg-muted/20 p-4 text-center">
+              <Sparkles className="h-5 w-5 text-primary/60 mx-auto mb-2" />
+              <p className="text-xs text-muted-foreground max-w-lg mx-auto">
+                Clique em <strong className="text-foreground">Sintética</strong> para um resumo executivo,
+                <strong className="text-foreground"> Analítica</strong> para uma análise detalhada linha a linha,
+                ou <strong className="text-foreground">Valuation</strong> para o laudo de valor da empresa
+                (com exportação em PDF).
+              </p>
+            </div>
           )}
+
         </CardContent>
       </Card>
     </div>
