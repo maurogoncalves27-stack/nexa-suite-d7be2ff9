@@ -79,6 +79,8 @@ export default function DreByStorePanel() {
 
 
 
+  const [snapshot, setSnapshot] = useState<SnapshotByStoreMonth | null>(null);
+
   const load = async () => {
     setLoading(true);
     try {
