@@ -209,6 +209,16 @@ export default function FinanceCategoriesPanel({ onChanged }: Props) {
                 onChange={(e) => setEditing({ ...editing, is_active: e.target.checked })} />
               Ativa
             </label>
+            <label className="flex items-start gap-2 text-sm border-t pt-3">
+              <input type="checkbox" className="mt-1" checked={editing?.is_capex ?? false}
+                onChange={(e) => setEditing({ ...editing, is_capex: e.target.checked })} />
+              <span>
+                <span className="font-medium">Imobilizado (CapEx)</span>
+                <span className="block text-xs text-muted-foreground">
+                  Lançamentos nesta categoria geram sugestão automática de patrimônio.
+                </span>
+              </span>
+            </label>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setEditing(null)} disabled={submitting}>Cancelar</Button>
