@@ -130,6 +130,7 @@ const financeiroSections: Section[] = [
     { title: "Extrato / +pagtos", url: "/financeiro", icon: DollarSign, staffOnly: true },
     { title: "Extrato da conta", url: "/financeiro/extrato-conta", icon: Landmark, staffOnly: true },
     { title: "DRE", url: "/financeiro/dre", icon: FileBarChart, staffOnly: true },
+    { title: "Fluxo de caixa", url: "/financeiro/fluxo-caixa", icon: Waves, staffOnly: true },
     { title: "Faturamento bruto", url: "/faturamento", icon: TrendingUp, staffOnly: true },
     { title: "CMV", url: "/financeiro/cmv", icon: Percent, staffOnly: true },
     { title: "Precificação", url: "/financeiro/precificacao", icon: Calculator, staffOnly: true },
