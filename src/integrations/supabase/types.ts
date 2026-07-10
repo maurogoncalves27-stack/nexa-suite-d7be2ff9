@@ -371,6 +371,30 @@ export type Database = {
           },
         ]
       }
+      asset_capex_ncm_prefixes: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          prefix: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          prefix: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          prefix?: string
+        }
+        Relationships: []
+      }
       asset_inventory: {
         Row: {
           acquired_at: string | null
@@ -382,6 +406,7 @@ export type Database = {
           name: string
           notes: string | null
           quantity: number
+          source_suggestion_id: string | null
           store_id: string
           unit_value: number
           updated_at: string
@@ -396,6 +421,7 @@ export type Database = {
           name: string
           notes?: string | null
           quantity?: number
+          source_suggestion_id?: string | null
           store_id: string
           unit_value?: number
           updated_at?: string
@@ -410,13 +436,120 @@ export type Database = {
           name?: string
           notes?: string | null
           quantity?: number
+          source_suggestion_id?: string | null
           store_id?: string
           unit_value?: number
           updated_at?: string
         }
         Relationships: [
           {
+            foreignKeyName: "asset_inventory_source_suggestion_id_fkey"
+            columns: ["source_suggestion_id"]
+            isOneToOne: false
+            referencedRelation: "asset_suggestions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "asset_inventory_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      asset_suggestion_settings: {
+        Row: {
+          id: boolean
+          min_equipment_value: number
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          min_equipment_value?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          min_equipment_value?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      asset_suggestions: {
+        Row: {
+          asset_id: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          description: string
+          id: string
+          ncm: string | null
+          notes: string | null
+          quantity: number
+          source_id: string
+          source_item_id: string | null
+          source_type: string
+          status: string
+          store_id: string | null
+          suggested_category: string
+          supplier_name: string | null
+          total_value: number
+          unit_value: number
+          updated_at: string
+        }
+        Insert: {
+          asset_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          description: string
+          id?: string
+          ncm?: string | null
+          notes?: string | null
+          quantity?: number
+          source_id: string
+          source_item_id?: string | null
+          source_type: string
+          status?: string
+          store_id?: string | null
+          suggested_category?: string
+          supplier_name?: string | null
+          total_value?: number
+          unit_value?: number
+          updated_at?: string
+        }
+        Update: {
+          asset_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          description?: string
+          id?: string
+          ncm?: string | null
+          notes?: string | null
+          quantity?: number
+          source_id?: string
+          source_item_id?: string | null
+          source_type?: string
+          status?: string
+          store_id?: string | null
+          suggested_category?: string
+          supplier_name?: string | null
+          total_value?: number
+          unit_value?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_suggestions_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "asset_inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_suggestions_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
@@ -4735,6 +4868,7 @@ export type Database = {
           dre_group: string | null
           id: string
           is_active: boolean
+          is_capex: boolean
           kind: string
           name: string
           sort_order: number
@@ -4747,6 +4881,7 @@ export type Database = {
           dre_group?: string | null
           id?: string
           is_active?: boolean
+          is_capex?: boolean
           kind: string
           name: string
           sort_order?: number
@@ -4759,6 +4894,7 @@ export type Database = {
           dre_group?: string | null
           id?: string
           is_active?: boolean
+          is_capex?: boolean
           kind?: string
           name?: string
           sort_order?: number
@@ -17847,6 +17983,7 @@ export type Database = {
         }
         Returns: number
       }
+      ncm_is_capex: { Args: { _ncm: string }; Returns: boolean }
       normalize_pos_name: { Args: { _name: string }; Returns: string }
       nutri_get_user_store_id: { Args: { _user_id: string }; Returns: string }
       open_inventory_count: {
