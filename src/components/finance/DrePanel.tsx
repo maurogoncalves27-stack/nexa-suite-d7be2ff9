@@ -1,4 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { usePersistentState } from "@/hooks/usePersistentState";
+import { useScrollRestoration } from "@/hooks/useScrollRestoration";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPaged } from "./_fetchAll";
 import { Card, CardContent } from "@/components/ui/card";
@@ -187,10 +189,11 @@ const monthsInRange = (start: string, end: string): string[] => {
 
 export default function DrePanel() {
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState<"monthly" | "custom" | "allocated" | "by_store">("monthly");
-  const [monthsBack, setMonthsBack] = useState(6);
-  const [customStart, setCustomStart] = useState(monthsAgoISO(0));
-  const [customEnd, setCustomEnd] = useState(todayISO());
+  const [tab, setTab] = usePersistentState<"monthly" | "custom" | "allocated" | "by_store">("finance:dre:tab", "monthly");
+  const [monthsBack, setMonthsBack] = usePersistentState<number>("finance:dre:monthsBack", 6);
+  const [customStart, setCustomStart] = usePersistentState<string>("finance:dre:customStart", monthsAgoISO(0));
+  const [customEnd, setCustomEnd] = usePersistentState<string>("finance:dre:customEnd", todayISO());
+  useScrollRestoration("finance:dre", !loading);
 
   const [sales, setSales] = useState<SaleRow[]>([]);
   const [payables, setPayables] = useState<PayableRow[]>([]);
