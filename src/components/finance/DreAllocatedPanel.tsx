@@ -82,7 +82,7 @@ export default function DreAllocatedPanel() {
   const load = async () => {
     setLoading(true);
     try {
-      const [storesRes, salesRes, payRes, recRes, catRes] = await Promise.all([
+      const [storesRes, salesRes, payRes, recRes, catRes, snap] = await Promise.all([
         supabase.from("stores").select("id,name,is_virtual"),
         fetchAllPaged((from, to) =>
           supabase
