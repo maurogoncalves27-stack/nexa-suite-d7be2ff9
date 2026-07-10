@@ -115,7 +115,9 @@ export default function CustomDocumentsCards({ employeeId, employeePosition }: C
         (x) => x.document_id === d.id && x.version_number === d.current_version,
       );
       if (!v) continue;
-      if (!v.target_positions?.includes(employeePosition)) continue;
+      const matchesPosition = !!employeePosition && v.target_positions?.includes(employeePosition);
+      const matchesEmployee = !!employeeId && (v.target_employee_ids ?? []).includes(employeeId);
+      if (!matchesPosition && !matchesEmployee) continue;
       if (signedKey.has(`${d.id}::${d.current_version}`)) continue;
       pendingResult.push({
         id: d.id,
