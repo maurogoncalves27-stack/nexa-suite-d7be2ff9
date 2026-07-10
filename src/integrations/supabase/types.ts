@@ -2026,6 +2026,7 @@ export type Database = {
           created_by: string | null
           document_id: string
           id: string
+          target_employee_ids: string[]
           target_positions: string[]
           version_number: number
         }
@@ -2035,6 +2036,7 @@ export type Database = {
           created_by?: string | null
           document_id: string
           id?: string
+          target_employee_ids?: string[]
           target_positions?: string[]
           version_number: number
         }
@@ -2044,6 +2046,7 @@ export type Database = {
           created_by?: string | null
           document_id?: string
           id?: string
+          target_employee_ids?: string[]
           target_positions?: string[]
           version_number?: number
         }
