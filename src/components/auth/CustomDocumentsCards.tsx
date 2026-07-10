@@ -71,7 +71,7 @@ export default function CustomDocumentsCards({ employeeId, employeePosition }: C
   }, [openDoc, signatureDataUrl, loadingSig]);
 
   const load = async () => {
-    if (!user || !employeePosition) {
+    if (!user || (!employeePosition && !employeeId)) {
       setPending([]);
       setSigned([]);
       setLoading(false);
