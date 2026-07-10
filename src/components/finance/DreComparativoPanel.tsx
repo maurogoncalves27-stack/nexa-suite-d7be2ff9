@@ -37,6 +37,15 @@ import {
 import ReactMarkdown from "react-markdown";
 
 type PeriodOption = "3m" | "6m" | "12m" | "24m" | "36m" | "ytd";
+type ValuationMethod = "multiplos_ebitda" | "ev_receita" | "dcf" | "ativos_marcas" | "consenso";
+
+const VALUATION_METHOD_LABELS: Record<ValuationMethod, string> = {
+  multiplos_ebitda: "Múltiplos EV/EBITDA",
+  ev_receita: "EV / Receita",
+  dcf: "DCF (fluxo descontado)",
+  ativos_marcas: "Ativos + Marcas",
+  consenso: "Consenso NEXA",
+};
 
 const PERIOD_LABELS: Record<PeriodOption, string> = {
   "3m": "Últimos 3 meses",
@@ -96,6 +105,7 @@ export default function DreComparativoPanel() {
   const [aiTitle, setAiTitle] = useState<string>("");
   const [aiMode, setAiMode] = useState<"sintetica" | "analitica" | "valuation" | null>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [valuationMethod, setValuationMethod] = useState<ValuationMethod>("consenso");
   const valuationRef = useRef<HTMLDivElement | null>(null);
 
   const [snapshot, setSnapshot] = useState<SnapshotByStoreMonth | null>(null);
@@ -270,18 +280,20 @@ export default function DreComparativoPanel() {
   }, [closedMonths]);
 
 
-  const runAi = async (mode: "sintetica" | "analitica" | "valuation") => {
+  const runAi = async (mode: "sintetica" | "analitica" | "valuation", method?: ValuationMethod) => {
     setAiLoading(mode);
     setAiOutput("");
     setAiMode(mode);
+    const chosenMethod = method ?? valuationMethod;
     setAiTitle(
       mode === "sintetica" ? "Análise sintética"
       : mode === "analitica" ? "Análise analítica"
-      : "Valuation da empresa"
+      : `Valuation — ${VALUATION_METHOD_LABELS[chosenMethod]}`
     );
     try {
       const payload = {
         mode,
+        valuation_method: mode === "valuation" ? chosenMethod : undefined,
         period: PERIOD_LABELS[period],
         months: perMonth.map((c) => {
           const p = partialInfo(c.key);
@@ -489,12 +501,47 @@ export default function DreComparativoPanel() {
                 {aiLoading === "analitica" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                 <span className="ml-1">Analítica</span>
               </Button>
-              <Button size="sm" disabled={!!aiLoading || loading} onClick={() => runAi("valuation")}>
-                {aiLoading === "valuation" ? <Loader2 className="h-4 w-4 animate-spin" /> : <TrendingUp className="h-4 w-4" />}
-                <span className="ml-1">Valuation</span>
-              </Button>
             </div>
           </div>
+
+          <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium">Valuation da empresa</span>
+              <span className="text-xs text-muted-foreground">— escolha o método</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(["multiplos_ebitda","ev_receita","dcf","ativos_marcas"] as ValuationMethod[]).map((m) => (
+                <Button
+                  key={m}
+                  size="sm"
+                  variant="outline"
+                  disabled={!!aiLoading || loading}
+                  onClick={() => { setValuationMethod(m); runAi("valuation", m); }}
+                >
+                  {aiLoading === "valuation" && valuationMethod === m
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <TrendingUp className="h-4 w-4" />}
+                  <span className="ml-1">{VALUATION_METHOD_LABELS[m]}</span>
+                </Button>
+              ))}
+              <Button
+                size="sm"
+                disabled={!!aiLoading || loading}
+                onClick={() => { setValuationMethod("consenso"); runAi("valuation", "consenso"); }}
+              >
+                {aiLoading === "valuation" && valuationMethod === "consenso"
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : <Sparkles className="h-4 w-4" />}
+                <span className="ml-1">Consenso NEXA (sugerido)</span>
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              <strong>Consenso NEXA</strong> combina os quatro métodos (média ponderada) e entrega o laudo completo em 8 seções.
+              Os demais botões geram um laudo focado só no método escolhido.
+            </p>
+          </div>
+
           {aiOutput ? (
             aiMode === "valuation" ? (
               <div className="space-y-2">
@@ -563,8 +610,8 @@ export default function DreComparativoPanel() {
               <p className="text-xs text-muted-foreground max-w-lg mx-auto">
                 Clique em <strong className="text-foreground">Sintética</strong> para um resumo executivo,
                 <strong className="text-foreground"> Analítica</strong> para uma análise detalhada linha a linha,
-                ou <strong className="text-foreground">Valuation</strong> para o laudo de valor da empresa
-                (com exportação em PDF).
+                ou um dos métodos de <strong className="text-foreground">Valuation</strong> acima
+                (sugerido: <strong className="text-foreground">Consenso NEXA</strong>, com exportação em PDF).
               </p>
             </div>
           )}
