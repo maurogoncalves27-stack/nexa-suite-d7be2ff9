@@ -252,7 +252,7 @@ export default function DrePanel() {
   const load = async () => {
     setLoading(true);
     try {
-      const [salesRes, payRes, recRes, catRes, dedRes] = await Promise.all([
+      const [salesRes, payRes, recRes, catRes, dedRes, snapRes] = await Promise.all([
         fetchAllPaged((from, to) =>
           supabase
             .from("monthly_revenue")
@@ -280,6 +280,13 @@ export default function DrePanel() {
         ),
         supabase.from("finance_categories").select("id,name,dre_group,kind"),
         supabase.functions.invoke("dre-ifood-deductions"),
+        fetchAllPaged((from, to) =>
+          supabase
+            .from("dre_historical_snapshot" as any)
+            .select("year,month,line_key,amount")
+            .eq("store_key", "consolidated")
+            .range(from, to),
+        ),
       ]);
 
       if (salesRes.error) throw salesRes.error;
