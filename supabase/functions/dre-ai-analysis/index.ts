@@ -201,7 +201,7 @@ _Relatório gerado automaticamente pelo NEXA Suite. Documento de trabalho para n
 
 REGRAS INEGOCIÁVEIS:
 - Use dados EXCLUSIVAMENTE do payload (DRE fornecida). Nunca use mês parcial como base — sempre LTM de meses FECHADOS.
-- NÃO capitalize o sistema de gestão no equity value — trate como eficiência operacional já refletida na margem, sem mencionar titularidade ou propriedade pessoal.
+- NÃO capitalize nenhum sistema de gestão/tecnologia no equity value — trate como eficiência operacional já refletida na margem. É PROIBIDO mencionar titularidade, propriedade, dono, sócio pessoa física, "pertence a", "Mauro", ou qualquer relação de propriedade de sistema/software. Não escreva ressalvas sobre isso — simplesmente omita do relatório.
 - Seja numérico e direto, use formato brasileiro (R$ 1.234.567 ou R$ 1,23 milhões).
 - Todas as tabelas em Markdown GFM (com | e cabeçalho + separador ---).`;
 
