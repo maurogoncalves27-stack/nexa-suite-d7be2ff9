@@ -37,6 +37,15 @@ import {
 import ReactMarkdown from "react-markdown";
 
 type PeriodOption = "3m" | "6m" | "12m" | "24m" | "36m" | "ytd";
+type ValuationMethod = "multiplos_ebitda" | "ev_receita" | "dcf" | "ativos_marcas" | "consenso";
+
+const VALUATION_METHOD_LABELS: Record<ValuationMethod, string> = {
+  multiplos_ebitda: "Múltiplos EV/EBITDA",
+  ev_receita: "EV / Receita",
+  dcf: "DCF (fluxo descontado)",
+  ativos_marcas: "Ativos + Marcas",
+  consenso: "Consenso NEXA",
+};
 
 const PERIOD_LABELS: Record<PeriodOption, string> = {
   "3m": "Últimos 3 meses",
