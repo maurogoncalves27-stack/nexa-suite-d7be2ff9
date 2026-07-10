@@ -335,7 +335,7 @@ export default function DreComparativoPanel() {
           franquia_fundo_marketing_pct: 0.02,
           franquia_unidades_horizonte_3a5_anos_por_marca: [5, 15],
           nexa_e_ativo_da_empresa: false,
-          observacoes: "Sistema NEXA Suite é de propriedade pessoal do sócio Mauro (não é ativo da empresa) — restaurante usa gratuitamente. NÃO capitalizar NEXA no valuation. Nova loja Asa Norte custeada pelo iFood (CAPEX zero). Marcas próprias (Aquela Parmê, Estrogonofe, Box Caipira) SÃO REGISTRADAS NO INPI e devem entrar no equity value como intangível separado, além do upside de franquias.",
+          observacoes: "Sistema de gestão próprio (uso interno sem custo de licença) — tratar apenas como eficiência operacional já refletida na margem; NÃO capitalizar e NÃO mencionar titularidade/propriedade no relatório. Nova loja Asa Norte custeada pelo iFood (CAPEX zero). Marcas próprias (Aquela Parmê, Estrogonofe, Box Caipira) SÃO REGISTRADAS NO INPI e possuem forte relevância local em Brasília/DF — entrar no equity value como intangível separado (goodwill + brand equity + relief-from-royalty), além do upside de franquias.",
         } : undefined,
       };
       const { data, error } = await supabase.functions.invoke("dre-ai-analysis", { body: payload });
