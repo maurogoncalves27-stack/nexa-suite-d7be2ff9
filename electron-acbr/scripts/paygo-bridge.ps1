@@ -1,6 +1,6 @@
 param(
   [Parameter(Mandatory = $true)]
-  [ValidateSet("sale", "confirm", "undo", "cleanup", "commtest", "install", "admin", "host")]
+  [ValidateSet("sale", "confirm", "undo", "cleanup", "commtest", "install", "admin", "host", "pending")]
   [string] $Action,
 
   [string] $DllPath = "C:\Program Files (x86)\PayGo\PGWebLib\x64\PGWebLib.dll",
@@ -46,6 +46,8 @@ public static class PayGoBridge
     private const short PWRET_PPNOTFOUND = -2489;
     private const short PWRET_FALLBACK = -2486;
     private const short BRIDGE_AUTHORIZED_AFTER_REMOVE_TIMEOUT = 1;
+    private const short BRIDGE_ADMIN_OPERATION_SELECTED = 2;
+    private const short BRIDGE_ADMIN_OPERATION_FINISHED = 3;
 
     private const byte PWOPER_SALE = 0x21;
     private const byte PWOPER_INSTALL = 0x01;
@@ -61,6 +63,10 @@ public static class PayGoBridge
     private const ushort PWINFO_MERCHCNPJCPF = 0x1C;
     private const ushort PWINFO_AUTCAP = 0x24;
     private const ushort PWINFO_TOTAMNT = 0x25;
+    private const ushort PWINFO_TRNDATE = 0x57;
+    private const ushort PWINFO_TRNORIGAMNT = 0x60;
+    private const ushort PWINFO_TRNTIME = 0x73;
+    private const ushort PWINFO_TRNORIGLOCREF = 0x78;
     private const ushort PWINFO_CURRENCY = 0x26;
     private const ushort PWINFO_CURREXP = 0x27;
     private const ushort PWINFO_FISCALREF = 0x28;
@@ -93,7 +99,9 @@ public static class PayGoBridge
     private const ushort PWINFO_PNDAUTEXTREF = 0x7F09;
 
     private const uint PWCNF_CNF_AUTO = 0x00000121;
+    private const uint PWCNF_CNF_MANU_AUT = 0x00003221;
     private const uint PWCNF_REV_MANU_AUT = 0x00003231;
+    private const uint PWCNF_REV_DISP_AUT = 0x00023131;
 
     private const byte PWDAT_CARDINF = 3;
     private const byte PWDAT_MENU = 1;
@@ -123,6 +131,8 @@ public static class PayGoBridge
     private static string _eventId = "";
     private static string _lastQrEmitted = "";
     private static bool _interactive = false;
+    private static byte _currentOperation = 0;
+    private static byte _selectedAdminOperation = 0;
     private static int _captureSeq = 0;
     private static Dictionary<string, string> _captureValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -227,7 +237,7 @@ public static class PayGoBridge
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
 
-    public static string Sale(string dllPath, string workingDir, string saleId, int amountInCents, string method, int installments, string paygoMenuChoice, string captureValuesBase64, string qrDisplayPreference, string usePinpad, string pinpadPort)
+    public static string Sale(string dllPath, string workingDir, string saleId, int amountInCents, string method, int installments, string paygoMenuChoice, string captureValuesBase64, string qrDisplayPreference)
     {
         try
         {
@@ -235,12 +245,12 @@ public static class PayGoBridge
             _captureValues = ParseCaptureValues(captureValuesBase64);
             _qrDisplayPreference = qrDisplayPreference ?? "";
             _lastQrEmitted = "";
-            _usePinpad = String.IsNullOrWhiteSpace(usePinpad) ? "1" : usePinpad;
-            _pinpadPort = NormalizePinpadPort(pinpadPort);
-            EmitEvent("INFO", "Iniciando venda PayGo TEF saleId=" + saleId + " valorCentavos=" + amountInCents + " metodo=" + method + " usePinpad=" + _usePinpad + " pinpadPort=" + _pinpadPort);
+            _interactive = true;
+            _captureSeq = 0;
+            _currentOperation = PWOPER_SALE;
+            EmitEvent("INFO", "Iniciando venda PayGo TEF saleId=" + saleId + " valorCentavos=" + amountInCents + " metodo=" + method);
 
             Load(dllPath);
-            AbortPinpad();
             short ret = Init(workingDir);
             if (ret != PWRET_OK) return Error("PW_iInit", ret);
 
@@ -250,11 +260,8 @@ public static class PayGoBridge
             Add(PWINFO_AUTNAME, "PDV");
             Add(PWINFO_AUTVER, "1.0.0");
             Add(PWINFO_AUTDEV, "PayGo");
-            // 4 (valor fixo, sempre incluir — obrigatorio pela doc) + 128 (DSP_CHECKOUT) + 256 (DSP_QRCODE) = 388
-            Add(PWINFO_AUTCAP, "388");
+            Add(PWINFO_AUTCAP, "452"); // Alinhado com referencia (display/vias/remocao de cartao)
             Add(PWINFO_DSPQRPREF, QrDisplayPreference());
-            // usePinpad/pinpadPort NAO vao em PW_iAddParam na venda (demo oficial Setis).
-            // Ficam em _usePinpad/_pinpadPort para responder PWDAT_TYPED se a DLL pedir.
             EmitEvent("INFO", "Preferencia QR PayGo=" + QrDisplayPreference() + " (1=pinpad, 2=checkout/PC)");
             Add(PWINFO_TOTAMNT, amountInCents.ToString());
             Add(PWINFO_CURRENCY, "986");
@@ -288,11 +295,6 @@ public static class PayGoBridge
             if (ret == BRIDGE_AUTHORIZED_AFTER_REMOVE_TIMEOUT)
             {
                 EmitEvent("APPROVED", "Transacao autorizada. Finalizando fluxo do pinpad.");
-                if (RequiresConfirmation())
-                {
-                    short cnfRet = ConfirmCurrent(PWCNF_CNF_AUTO);
-                    if (cnfRet != PWRET_OK) return Error("PW_iConfirmation", cnfRet);
-                }
                 return Json("approved", true, First(Result(PWINFO_RESULTMSG), "Transacao autorizada"), PWRET_OK, ResultsJson(true));
             }
 
@@ -309,33 +311,33 @@ public static class PayGoBridge
                     EmitEvent("ERROR", "Queda de conexao com o host PayGo. Transacao sem autorizacao.");
                 }
 
+                if (ShouldReturnPending(ret, resultMessage))
+                {
+                    EmitEvent("INFO", "PayGo indicou transacao pendente apos falha de comunicacao");
+                    return Json("pendingConfirmation", false, First(resultMessage, "Existe transacao pendente de confirmacao no PayGo"), ret, PendingResultsJson());
+                }
+
                 if (ret == PWRET_TIMEOUT && IsAuthorizedMessage(resultMessage))
                 {
                     AbortPinpad();
                     EmitEvent("APPROVED", "Transacao autorizada. Timeout apenas na finalizacao do pinpad.");
-                    if (RequiresConfirmation())
-                    {
-                        short cnfRet = ConfirmCurrent(PWCNF_CNF_AUTO);
-                        if (cnfRet != PWRET_OK) return Error("PW_iConfirmation", cnfRet);
-                    }
                     return Json("approved", true, resultMessage, ret, ResultsJson(true));
                 }
 
                 EmitEvent("DENIED", First(resultMessage, "Transacao nao aprovada pelo PayGo"));
-                return Json("denied", false, resultMessage, ret, ResultsJson(false));
+                return Json("denied", false, resultMessage, ret, ResultsJson(true));
             }
 
             EmitEvent("APPROVED", "Transacao autorizada pelo PayGo");
-            if (RequiresConfirmation())
-            {
-                ret = ConfirmCurrent(PWCNF_CNF_AUTO);
-                if (ret != PWRET_OK) return Error("PW_iConfirmation", ret);
-            }
             return Json("approved", true, Result(PWINFO_RESULTMSG), ret, ResultsJson(true));
         }
         catch (Exception ex)
         {
             return "{\"ok\":false,\"status\":\"error\",\"message\":\"" + Esc(ex.Message) + "\"}";
+        }
+        finally
+        {
+            _interactive = false;
         }
     }
 
@@ -351,28 +353,29 @@ public static class PayGoBridge
             _usePinpad = String.IsNullOrWhiteSpace(usePinpad) ? "" : usePinpad;
             _pinpadPort = NormalizePinpadPort(pinpadPort);
             _interactive = interactive;
+            _currentOperation = operation;
+            _selectedAdminOperation = 0;
             _captureSeq = 0;
 
             Load(dllPath);
             short ret = Init(workingDir);
             if (ret != PWRET_OK) return Error("PW_iInit", ret);
 
-            ret = Fn<PW_iNewTransac_>("PW_iNewTransac")(operation);
-            if (ret != PWRET_OK) return Error("PW_iNewTransac", ret);
+            ret = ExecuteOperation(operation);
+            if (ret == BRIDGE_ADMIN_OPERATION_SELECTED)
+            {
+                byte selectedOperation = _selectedAdminOperation;
+                EmitEvent("INFO", "Executando operacao selecionada no menu administrativo: " + OperationName(selectedOperation));
+                ret = ExecuteOperation(selectedOperation);
+            }
 
-            // Espelha demo oficial Setis (MainWindow.NewTransacExecute): para ADMIN/SALE
-            // apenas estes 5 params sao adicionados. CPFCNPJ/PontoDeCaptura/Ambiente
-            // sao lidos pela DLL via env vars setadas durante a instalacao do PdC.
-            Add(PWINFO_AUTNAME, "PDV");
-            Add(PWINFO_AUTVER, "1.0.0");
-            Add(PWINFO_AUTDEV, "PayGo");
-            Add(PWINFO_AUTCAP, "384");
-            Add(PWINFO_DSPQRPREF, "2");
+            if (ret == BRIDGE_ADMIN_OPERATION_FINISHED)
+            {
+                EmitEvent("INFO", "Operacao administrativa finalizada pela PayGo");
+                _interactive = false;
+                return Json("ok", true, "Operacao PayGo concluida", PWRET_OK, ResultsJson(true));
+            }
 
-            // Modo nao-interativo (install legado): mantem behavior antigo com params extras.
-            if (!_interactive) AddActivationParams();
-
-            ret = ExecLoop();
             if (ret != PWRET_OK) return Error("PW_iExecTransac", ret);
 
             // Pendencia: espelha Fluxos.FluxoConfirmacaoPendencia da demo oficial.
@@ -388,13 +391,34 @@ public static class PayGoBridge
             }
 
             _interactive = false;
-            return "{\"ok\":true,\"status\":\"ok\",\"message\":\"Operacao PayGo concluida\"}";
+            return Json("ok", true, "Operacao PayGo concluida", ret, ResultsJson(true));
         }
         catch (Exception ex)
         {
             _interactive = false;
             return "{\"ok\":false,\"status\":\"error\",\"message\":\"" + Esc(ex.Message) + "\"}";
         }
+    }
+
+    private static short ExecuteOperation(byte operation)
+    {
+        _currentOperation = operation;
+        short ret = Fn<PW_iNewTransac_>("PW_iNewTransac")(operation);
+        if (ret != PWRET_OK) return ret;
+
+        // Espelha demo oficial Setis (MainWindow.NewTransacExecute): para ADMIN/SALE
+        // apenas estes 5 params sao adicionados. CPFCNPJ/PontoDeCaptura/Ambiente
+        // sao lidos pela DLL via env vars setadas durante a instalacao do PdC.
+        Add(PWINFO_AUTNAME, "PDV");
+        Add(PWINFO_AUTVER, "1.0.0");
+        Add(PWINFO_AUTDEV, "PayGo");
+        Add(PWINFO_AUTCAP, "452");
+        Add(PWINFO_DSPQRPREF, "2");
+
+        // Modo nao-interativo (install legado): mantem behavior antigo com params extras.
+        if (!_interactive) AddActivationParams();
+
+        return ExecLoop();
     }
 
     private static void TryConfirmPendency()
@@ -436,14 +460,39 @@ public static class PayGoBridge
         }
     }
 
-    public static string Confirm(string dllPath, string workingDir, string reqNum, string locRef, string extRef, string virtMerch, string authSyst)
+    public static string ProbePending(string dllPath, string workingDir)
     {
-        return Confirmation(dllPath, workingDir, PWCNF_CNF_AUTO, reqNum, locRef, extRef, virtMerch, authSyst);
+        try
+        {
+            Load(dllPath);
+            short ret = Init(workingDir);
+            if (ret != PWRET_OK && !ShouldReturnPending(ret, Result(PWINFO_RESULTMSG)))
+                return Error("PW_iInit", ret);
+
+            if (HasPendingTransaction() || HasConfirmationTuple())
+            {
+                return Json("pendingConfirmation", false, First(Result(PWINFO_RESULTMSG), "Existe transacao pendente de confirmacao no PayGo"), ret, PendingResultsJson());
+            }
+
+            return "{\"ok\":true,\"status\":\"noPending\",\"message\":\"Sem pendencia PayGo\"}";
+        }
+        catch (Exception ex)
+        {
+            return "{\"ok\":false,\"status\":\"error\",\"message\":\"" + Esc(ex.Message) + "\"}";
+        }
     }
 
-    public static string Undo(string dllPath, string workingDir, string reqNum, string locRef, string extRef, string virtMerch, string authSyst)
+    public static string Confirm(string dllPath, string workingDir, string reqNum, string locRef, string extRef, string virtMerch, string authSyst)
     {
-        return Confirmation(dllPath, workingDir, PWCNF_REV_MANU_AUT, reqNum, locRef, extRef, virtMerch, authSyst);
+        return Confirmation(dllPath, workingDir, PWCNF_CNF_MANU_AUT, reqNum, locRef, extRef, virtMerch, authSyst);
+    }
+
+    public static string Undo(string dllPath, string workingDir, string reqNum, string locRef, string extRef, string virtMerch, string authSyst, string undoReason)
+    {
+        uint confirmation = String.Equals(undoReason, "dispensingFailure", StringComparison.OrdinalIgnoreCase)
+            ? PWCNF_REV_DISP_AUT
+            : PWCNF_REV_MANU_AUT;
+        return Confirmation(dllPath, workingDir, confirmation, reqNum, locRef, extRef, virtMerch, authSyst);
     }
 
     // Cleanup: força desfazimento de QUALQUER pendência presa na PGWebLib
@@ -459,32 +508,14 @@ public static class PayGoBridge
             short ret = Init(workingDir);
             if (ret != PWRET_OK) return Error("PW_iInit", ret);
 
-            AbortPinpad();
-
-            string pndReq = Result(PWINFO_PNDREQNUM);
-            string pndLoc = Result(PWINFO_PNDAUTLOCREF);
-            string pndExt = Result(PWINFO_PNDAUTEXTREF);
-            string pndVirt = Result(PWINFO_PNDVIRTMERCH);
-            string pndAuth = Result(PWINFO_PNDAUTHSYST);
-
-            if (!String.IsNullOrWhiteSpace(pndReq))
-            {
-                EmitEvent("INFO", "Cleanup: desfazendo pendencia reqNum=" + pndReq);
-                short cnfRet = Fn<PW_iConfirmation_>("PW_iConfirmation")(PWCNF_REV_MANU_AUT, pndReq, pndLoc ?? "", pndExt ?? "", pndVirt ?? "", pndAuth ?? "");
-                if (cnfRet == PWRET_OK)
-                {
-                    EmitEvent("CONFIRMED", "Cleanup: pendencia anterior desfeita (com token)");
-                    return "{\"ok\":true,\"status\":\"cleanup\",\"message\":\"Pendencia anterior desfeita\",\"ret\":0}";
-                }
-                EmitEvent("INFO", "Cleanup: desfazimento com token ret=" + cnfRet + " — tentando vazio");
-            }
-
             EmitEvent("INFO", "Cleanup: forcando PW_iConfirmation(PWCNF_REV_MANU_AUT) com params vazios");
-            short cnfRetEmpty = Fn<PW_iConfirmation_>("PW_iConfirmation")(PWCNF_REV_MANU_AUT, "", "", "", "", "");
-            if (cnfRetEmpty != PWRET_OK)
+            short cnfRet = Fn<PW_iConfirmation_>("PW_iConfirmation")(PWCNF_REV_MANU_AUT, "", "", "", "", "");
+            if (cnfRet != PWRET_OK)
             {
-                EmitEvent("INFO", "Cleanup: PW_iConfirmation ret=" + cnfRetEmpty + " (nenhuma pendencia ou ja limpa)");
-                return "{\"ok\":true,\"status\":\"cleanup\",\"message\":\"Sem pendencia a limpar (ret=" + cnfRetEmpty + ")\",\"ret\":" + cnfRetEmpty + "}";
+                EmitEvent("INFO", "Cleanup: PW_iConfirmation ret=" + cnfRet + " (nenhuma pendencia ou ja limpa)");
+                // Não tratamos como erro fatal — se não havia pendência, a DLL
+                // retorna algo != 0 e tudo bem, a próxima venda funciona.
+                return "{\"ok\":true,\"status\":\"cleanup\",\"message\":\"Sem pendencia a limpar (ret=" + cnfRet + ")\",\"ret\":" + cnfRet + "}";
             }
 
             EmitEvent("CONFIRMED", "Cleanup: pendencia anterior desfeita com sucesso");
@@ -506,7 +537,7 @@ public static class PayGoBridge
 
             ret = Fn<PW_iConfirmation_>("PW_iConfirmation")(confirmation, reqNum ?? "", locRef ?? "", extRef ?? "", virtMerch ?? "", authSyst ?? "");
             if (ret != PWRET_OK) return Error("PW_iConfirmation", ret);
-            EmitEvent("CONFIRMED", confirmation == PWCNF_CNF_AUTO ? "Confirmacao enviada ao PayGo" : "Desfazimento enviado ao PayGo");
+            EmitEvent("CONFIRMED", IsUndoConfirmation(confirmation) ? "Desfazimento enviado ao PayGo" : "Confirmacao enviada ao PayGo");
             return "{\"ok\":true,\"status\":\"confirmed\",\"message\":\"PW_iConfirmation OK\"}";
         }
         catch (Exception ex)
@@ -594,7 +625,9 @@ public static class PayGoBridge
                 return -2499;
             case PWDAT_DSPCHECKOUT:
                 EmitEvent("INFO", First(data.szValorInicial, "PayGo solicitou exibicao no checkout"));
-                return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, data.szValorInicial ?? "");
+                // Conforme guia PayGo: sinalizar tratamento do display no checkout
+                // com string vazia, sem reenviar o conteúdo.
+                return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, "");
             case PWDAT_DSPQRCODE:
                 {
                     // Alinhado a demo oficial C# (Fluxos.FluxoDspQRCode):
@@ -628,10 +661,23 @@ public static class PayGoBridge
                 ret = Fn<PW_iPPConfirmData_>("PW_iPPConfirmData")(index);
                 return ret == PWRET_OK ? PinpadLoop("confirmData") : ret;
             case PWDAT_PPREMCRD:
-                EmitEvent("PINPAD", "Remova o cartao do pinpad");
+                EmitEvent("PINPAD", IsNoCardAdministrativeOperation(_currentOperation) ? "Finalizando operacao administrativa no pinpad" : "Remova o cartao do pinpad");
                 ret = Fn<PW_iPPRemoveCard_>("PW_iPPRemoveCard")();
                 if (ret != PWRET_OK) return ret;
+
+                if (IsNoCardAdministrativeOperation(_currentOperation))
+                {
+                    EmitEvent("INFO", "PayGo solicitou remocao/finalizacao de pinpad em operacao sem cartao; encerrando fluxo administrativo");
+                    return BRIDGE_ADMIN_OPERATION_FINISHED;
+                }
+
                 ret = PinpadLoop("removeCard");
+                if (ret == PWRET_TIMEOUT && _currentOperation != PWOPER_SALE)
+                {
+                    AbortPinpad();
+                    EmitEvent("INFO", "Timeout apenas na finalizacao do pinpad; encerrando operacao administrativa");
+                    return BRIDGE_ADMIN_OPERATION_FINISHED;
+                }
                 if (ret == PWRET_TIMEOUT && IsAuthorizedMessage(Result(PWINFO_RESULTMSG)))
                 {
                     AbortPinpad();
@@ -682,6 +728,7 @@ public static class PayGoBridge
             // operador pode mandar o valor literal OU o numero do item (1..n) OU o texto.
             string normalized = NormalizeChoice(answer);
             string value = null;
+            string matchedText = "";
             for (int i = 0; i < data.bNumOpcoesMenu; i++)
             {
                 string text = data.vszTextoMenu != null && i < data.vszTextoMenu.Length ? data.vszTextoMenu[i].szTextoMenu : "";
@@ -689,16 +736,69 @@ public static class PayGoBridge
                 if (NormalizeChoice(opt) == normalized || NormalizeChoice(text) == normalized || (i + 1).ToString() == normalized)
                 {
                     value = String.IsNullOrWhiteSpace(opt) ? text : opt;
+                    matchedText = text;
                     break;
                 }
             }
             if (value == null) value = answer; // confia no que o front mandou
             EmitEvent("INFO", "Opcao escolhida pelo operador: " + value);
+
+            // Em ADMIN interativo, espelha a referencia: menu retorna um PWOPER e
+            // o bridge deve iniciar nova PW_iNewTransac com a operacao selecionada.
+            if (_currentOperation == PWOPER_ADMIN)
+            {
+                byte selectedOperation;
+                if (!TryResolveAdminOperation(value, matchedText, out selectedOperation))
+                {
+                    throw new Exception("Opcao administrativa sem codigo PWOPER valido: " + value);
+                }
+
+                _selectedAdminOperation = selectedOperation;
+                EmitEvent("INFO", "Operacao administrativa selecionada: " + OperationName(selectedOperation));
+                return BRIDGE_ADMIN_OPERATION_SELECTED;
+            }
+
+            // Alinhado com a referencia: ao selecionar uma rede PIX no menu da
+            // transacao de venda, ajustar parametros para fluxo PIX (QR no pinpad).
+            string normalizedValue = NormalizeChoice(value);
+            string normalizedText = NormalizeChoice(matchedText);
+            if (normalizedValue.Contains("PIX") || normalizedText.Contains("PIX"))
+            {
+                Add(PWINFO_AUTCAP, "399");
+                Add(PWINFO_DSPQRPREF, "1");
+                Add(PWINFO_PAYMNTTYPE, "8");
+                EmitEvent("INFO", "Fluxo PIX selecionado; QR Code preferencialmente no pinpad");
+            }
+
             return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, value);
         }
 
         if (String.IsNullOrWhiteSpace(_paygoMenuChoice))
         {
+            // Regra PayGo: se houver apenas 1 opcao e item inicial valido, pode
+            // auto-selecionar sem interacao do operador.
+            if (data.bNumOpcoesMenu == 1)
+            {
+                string oneText = data.vszTextoMenu != null && data.vszTextoMenu.Length > 0 ? data.vszTextoMenu[0].szTextoMenu : "";
+                string oneVal = data.vszValorMenu != null && data.vszValorMenu.Length > 0 ? data.vszValorMenu[0].szValorMenu : "";
+                string autoValue = String.IsNullOrWhiteSpace(oneVal) ? oneText : oneVal;
+                EmitEvent("INFO", "Menu com opcao unica, selecionando automaticamente: " + (String.IsNullOrWhiteSpace(oneText) ? autoValue : oneText));
+                return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, autoValue ?? "");
+            }
+
+            if (data.bItemInicial < data.bNumOpcoesMenu)
+            {
+                int idx = data.bItemInicial;
+                string defaultText = data.vszTextoMenu != null && idx < data.vszTextoMenu.Length ? data.vszTextoMenu[idx].szTextoMenu : "";
+                string defaultVal = data.vszValorMenu != null && idx < data.vszValorMenu.Length ? data.vszValorMenu[idx].szValorMenu : "";
+                string autoDefault = String.IsNullOrWhiteSpace(defaultVal) ? defaultText : defaultVal;
+                if (!String.IsNullOrWhiteSpace(autoDefault))
+                {
+                    EmitEvent("INFO", "Menu sem escolha explicita; usando item inicial padrao: " + (String.IsNullOrWhiteSpace(defaultText) ? autoDefault : defaultText));
+                    return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, autoDefault);
+                }
+            }
+
             EmitEvent("INFO", "PayGo solicitou selecao de menu: " + MenuOptions(data));
             throw new Exception("PayGo solicitou menu sem opcao selecionada. Opcoes: " + MenuOptions(data));
         }
@@ -749,6 +849,226 @@ public static class PayGoBridge
         return (value ?? "").Trim().ToUpperInvariant();
     }
 
+    private static bool TryParseOperationCode(string value, out byte operation)
+    {
+        operation = 0;
+        if (String.IsNullOrWhiteSpace(value)) return false;
+
+        string normalized = value.Trim();
+        if (normalized.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+        {
+            return Byte.TryParse(normalized.Substring(2), System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out operation);
+        }
+
+        if (normalized.EndsWith("h", StringComparison.OrdinalIgnoreCase))
+        {
+            return Byte.TryParse(normalized.Substring(0, normalized.Length - 1), System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out operation);
+        }
+
+        return Byte.TryParse(normalized, out operation);
+    }
+
+    private static bool TryResolveAdminOperation(string value, string text, out byte operation)
+    {
+        operation = 0;
+
+        if (TryParseOperationCode(value, out operation) && IsSupportedOperation(operation))
+        {
+            return true;
+        }
+
+        if (TryParseOperationCode(text, out operation) && IsSupportedOperation(operation))
+        {
+            return true;
+        }
+
+        string normalizedValue = NormalizeChoice(value);
+        string normalizedText = NormalizeChoice(text);
+
+        if (TryMapAdminOperationAlias(normalizedValue, out operation)) return true;
+        if (TryMapAdminOperationAlias(normalizedText, out operation)) return true;
+
+        return false;
+    }
+
+    private static bool TryMapAdminOperationAlias(string normalized, out byte operation)
+    {
+        operation = 0;
+        if (String.IsNullOrWhiteSpace(normalized)) return false;
+
+        // Compatibilidade com menus que retornam rótulos textuais em vez de código.
+        if (normalized.Contains("INSTAL")) { operation = 0x01; return true; }       // PWOPER_INSTALL
+        if (normalized.Contains("CONFIG")) { operation = 0xFD; return true; }       // PWOPER_CONFIG
+        if (normalized.Contains("MANUTEN")) { operation = 0xFE; return true; }      // PWOPER_MAINTENANCE
+        if (normalized.Contains("VERSAO")) { operation = 0xFC; return true; }       // PWOPER_VERSION
+        if (normalized.Contains("MOSTRA") && normalized.Contains("PDC")) { operation = 0xFB; return true; }    // PWOPER_SHOWPDC
+        if (normalized.Contains("EXIB") && normalized.Contains("PDC")) { operation = 0xFB; return true; }      // PWOPER_SHOWPDC
+        if (normalized.Contains("TESTE") && normalized.Contains("COM")) { operation = 0x14; return true; }     // PWOPER_COMMTEST
+        if (normalized.Contains("COMUM")) { operation = 0xFA; return true; }       // PWOPER_COMMONDATA
+        if (normalized.Contains("PARAM")) { operation = 0x02; return true; }       // PWOPER_PARAMUPD
+        if (normalized.Contains("LOCAL") && normalized.Contains("MANUT")) { operation = 0x2C; return true; }   // PWOPER_LOCALMAINT
+        if (normalized.Contains("ESTAT")) { operation = 0x40; return true; }       // PWOPER_STATISTICS
+
+        return false;
+    }
+
+    private static bool IsSupportedOperation(byte operation)
+    {
+        switch (operation)
+        {
+            case 0x00:
+            case 0x01:
+            case 0x02:
+            case 0x10:
+            case 0x11:
+            case 0x12:
+            case 0x13:
+            case 0x14:
+            case 0x15:
+            case 0x16:
+            case 0x17:
+            case 0x20:
+            case 0x21:
+            case 0x22:
+            case 0x23:
+            case 0x24:
+            case 0x25:
+            case 0x26:
+            case 0x27:
+            case 0x28:
+            case 0x29:
+            case 0x2A:
+            case 0x2B:
+            case 0x2C:
+            case 0x2D:
+            case 0x2E:
+            case 0x2F:
+            case 0x30:
+            case 0x31:
+            case 0x32:
+            case 0x33:
+            case 0x34:
+            case 0x35:
+            case 0x36:
+            case 0x37:
+            case 0x38:
+            case 0x39:
+            case 0x40:
+            case 0x41:
+            case 0x44:
+            case 0x45:
+            case 0x46:
+            case 0x48:
+            case 0x49:
+            case 0x4A:
+            case 0x4B:
+            case 0x4C:
+            case 0x4E:
+            case 0xF0:
+            case 0xFA:
+            case 0xFB:
+            case 0xFC:
+            case 0xFD:
+            case 0xFE:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static bool IsNoCardAdministrativeOperation(byte operation)
+    {
+        switch (operation)
+        {
+            case 0x00:
+            case 0x02:
+            case 0x10:
+            case 0x11:
+            case 0x12:
+            case 0x13:
+            case 0x14:
+            case 0x15:
+            case 0x16:
+            case 0x17:
+            case 0x20:
+            case 0x40:
+            case 0x49:
+            case 0x4A:
+            case 0x4B:
+            case 0xF1:
+            case 0xFA:
+            case 0xFB:
+            case 0xFC:
+            case 0xFD:
+            case 0xFE:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static string OperationName(byte operation)
+    {
+        switch (operation)
+        {
+            case 0x00: return "PWOPER_NULL (00h)";
+            case 0x01: return "PWOPER_INSTALL (01h)";
+            case 0x02: return "PWOPER_PARAMUPD (02h)";
+            case 0x10: return "PWOPER_REPRINT (10h)";
+            case 0x11: return "PWOPER_RPTTRUNC (11h)";
+            case 0x12: return "PWOPER_RPTDETAIL (12h)";
+            case 0x13: return "PWOPER_REPRNTNTRANSACTION (13h)";
+            case 0x14: return "PWOPER_COMMTEST (14h)";
+            case 0x15: return "PWOPER_RPTSUMMARY (15h)";
+            case 0x16: return "PWOPER_TRANSACINQ (16h)";
+            case 0x17: return "PWOPER_ROUTINGINQ (17h)";
+            case 0x20: return "PWOPER_ADMIN (20h)";
+            case 0x21: return "PWOPER_SALE (21h)";
+            case 0x22: return "PWOPER_SALEVOID (22h)";
+            case 0x23: return "PWOPER_PREPAID (23h)";
+            case 0x24: return "PWOPER_CHECKINQ (24h)";
+            case 0x25: return "PWOPER_RETBALINQ (25h)";
+            case 0x26: return "PWOPER_CRDBALINQ (26h)";
+            case 0x27: return "PWOPER_INITIALIZ (27h)";
+            case 0x28: return "PWOPER_SETTLEMNT (28h)";
+            case 0x29: return "PWOPER_PREAUTH (29h)";
+            case 0x2A: return "PWOPER_PREAUTVOID (2Ah)";
+            case 0x2B: return "PWOPER_CASHWDRWL (2Bh)";
+            case 0x2C: return "PWOPER_LOCALMAINT (2Ch)";
+            case 0x2D: return "PWOPER_FINANCINQ (2Dh)";
+            case 0x2E: return "PWOPER_ADDRVERIF (2Eh)";
+            case 0x2F: return "PWOPER_SALEPRE (2Fh)";
+            case 0x30: return "PWOPER_LOYCREDIT (30h)";
+            case 0x31: return "PWOPER_LOYCREDVOID (31h)";
+            case 0x32: return "PWOPER_LOYDEBIT (32h)";
+            case 0x33: return "PWOPER_LOYDEBVOID (33h)";
+            case 0x34: return "PWOPER_BILLPAYMENT (34h)";
+            case 0x35: return "PWOPER_DOCPAYMENTQ (35h)";
+            case 0x36: return "PWOPER_LOGON (36h)";
+            case 0x37: return "PWOPER_SRCHPREAUTH (37h)";
+            case 0x38: return "PWOPER_ADDPREAUTH (38h)";
+            case 0x39: return "PWOPER_VOID (39h)";
+            case 0x40: return "PWOPER_STATISTICS (40h)";
+            case 0x41: return "PWOPER_CARDPAYMENT (41h)";
+            case 0x44: return "PWOPER_CARDPAYMENTVOID (44h)";
+            case 0x45: return "PWOPER_CASHWDRWLVOID (45h)";
+            case 0x46: return "PWOPER_CARDUNLOCK (46h)";
+            case 0x48: return "PWOPER_UPDATEDCHIP (48h)";
+            case 0x49: return "PWOPER_RPTPROMOTIONAL (49h)";
+            case 0x4A: return "PWOPER_SALESUMMARY (4Ah)";
+            case 0x4B: return "PWOPER_STATISTICSAUTHORIZER (4Bh)";
+            case 0x4C: return "PWOPER_OTHERADMIN (4Ch)";
+            case 0x4E: return "PWOPER_BILLPAYMENTVOID (4Eh)";
+            case 0xF0: return "PWOPER_TSTKEY (F0h)";
+            case 0xFA: return "PWOPER_COMMONDATA (FAh)";
+            case 0xFB: return "PWOPER_SHOWPDC (FBh)";
+            case 0xFC: return "PWOPER_VERSION (FCh)";
+            case 0xFD: return "PWOPER_CONFIG (FDh)";
+            case 0xFE: return "PWOPER_MAINTENANCE (FEh)";
+            default: return "PWOPER_" + operation.ToString("X2") + "h";
+        }
+    }
+
     private static short AddTypedValue(PW_GetData data, string captureAlias)
     {
         if (_interactive)
@@ -761,7 +1081,9 @@ public static class PayGoBridge
                 EmitEvent("INFO", "Captura digitada cancelada pelo operador");
                 return PWRET_CANCEL;
             }
-            return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, answer);
+            string normalizedAnswer = NormalizeInteractiveCaptureValue(data.wIdentificador, answer);
+            EmitEvent("INFO", "Captura informada para " + FormatIdentifier(data.wIdentificador) + " valor=" + normalizedAnswer);
+            return Fn<PW_iAddParam_>("PW_iAddParam")(data.wIdentificador, normalizedAnswer);
         }
 
         string value = ResolveTypedValue(data, captureAlias);
@@ -929,6 +1251,95 @@ public static class PayGoBridge
             break;
         }
         return sb.Length == 0 ? null : sb.ToString();
+    }
+
+    private static string NormalizeInteractiveCaptureValue(ushort identificador, string value)
+    {
+        if (String.IsNullOrWhiteSpace(value)) return value ?? "";
+
+        if (identificador == PWINFO_TOTAMNT || identificador == PWINFO_TRNORIGAMNT)
+        {
+            return NormalizeCurrencyToCents(value);
+        }
+
+        if (identificador == PWINFO_TRNDATE)
+        {
+            return NormalizeDateToPaygo(value);
+        }
+
+        if (identificador == PWINFO_TRNTIME)
+        {
+            return NormalizeTimeToPaygo(value);
+        }
+
+        return value.Trim();
+    }
+
+    private static string NormalizeCurrencyToCents(string value)
+    {
+        string text = (value ?? "").Trim();
+        if (String.IsNullOrWhiteSpace(text)) return "";
+        string compact = text.Replace(" ", "");
+        // PayGo usa centavos inteiros (209 = R$ 2,09). Digitos sem separador = centavos.
+        bool onlyDigits = true;
+        foreach (char c in compact)
+        {
+            if (!Char.IsDigit(c)) { onlyDigits = false; break; }
+        }
+        if (onlyDigits && compact.Length > 0) return compact;
+
+        string normalized = compact.Contains(",")
+            ? compact.Replace(".", "").Replace(",", ".")
+            : compact;
+        decimal amount;
+        if (Decimal.TryParse(normalized, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out amount))
+        {
+            return ((long)Decimal.Round(amount * 100m, 0)).ToString();
+        }
+        var digits = new StringBuilder();
+        foreach (char c in text)
+        {
+            if (Char.IsDigit(c)) digits.Append(c);
+        }
+        return digits.ToString();
+    }
+
+    private static string NormalizeDateToPaygo(string value)
+    {
+        string text = (value ?? "").Trim();
+        if (text.Length == 10 && text[4] == '-' && text[7] == '-')
+        {
+            return text.Substring(8, 2) + text.Substring(5, 2) + text.Substring(2, 2);
+        }
+        if (text.Length == 10 && text[2] == '/' && text[5] == '/')
+        {
+            string year = text.Substring(6);
+            return text.Substring(0, 2) + text.Substring(3, 2) + year.Substring(year.Length - 2);
+        }
+        var digits = new StringBuilder();
+        foreach (char c in text)
+        {
+            if (Char.IsDigit(c)) digits.Append(c);
+        }
+        string onlyDigits = digits.ToString();
+        if (onlyDigits.Length == 8) return onlyDigits.Substring(0, 2) + onlyDigits.Substring(2, 2) + onlyDigits.Substring(6, 2);
+        return onlyDigits;
+    }
+
+    private static string NormalizeTimeToPaygo(string value)
+    {
+        string text = (value ?? "").Trim();
+        if (text.Length >= 5 && text[2] == ':')
+        {
+            string seconds = text.Length >= 8 && text[5] == ':' ? text.Substring(6, 2) : "00";
+            return text.Substring(0, 2) + text.Substring(3, 2) + seconds;
+        }
+        var digits = new StringBuilder();
+        foreach (char c in text)
+        {
+            if (Char.IsDigit(c)) digits.Append(c);
+        }
+        return digits.ToString();
     }
 
     private static string ResolveTypedValue(PW_GetData data, string captureAlias)
@@ -1195,25 +1606,57 @@ public static class PayGoBridge
 
     private static string PendingResultsJson()
     {
+        bool usePending = !String.IsNullOrWhiteSpace(Result(PWINFO_PNDREQNUM));
         var sb = new StringBuilder();
         sb.Append("{");
-        Field(sb, "authCode", "", false);
+        Field(sb, "authCode", Result(PWINFO_AUTHCODE), false);
         Field(sb, "brand", Result(PWINFO_CARDNAME), true);
-        Field(sb, "acquirer", Result(PWINFO_PNDAUTHSYST), true);
-        Field(sb, "customerReceipt", "", true);
-        Field(sb, "merchantReceipt", "", true);
-        Field(sb, "reqNum", Result(PWINFO_PNDREQNUM), true);
-        Field(sb, "locRef", Result(PWINFO_PNDAUTLOCREF), true);
-        Field(sb, "extRef", Result(PWINFO_PNDAUTEXTREF), true);
-        Field(sb, "virtMerch", Result(PWINFO_PNDVIRTMERCH), true);
-        Field(sb, "authSyst", Result(PWINFO_PNDAUTHSYST), true);
+        Field(sb, "acquirer", usePending ? Result(PWINFO_PNDAUTHSYST) : Result(PWINFO_AUTHSYST), true);
+        Field(sb, "customerReceipt", First(Result(PWINFO_RCPTCHOLDER), Result(PWINFO_RCPTFULL)), true);
+        Field(sb, "merchantReceipt", First(Result(PWINFO_RCPTMERCH), Result(PWINFO_RCPTFULL)), true);
+        Field(sb, "reqNum", usePending ? Result(PWINFO_PNDREQNUM) : Result(PWINFO_REQNUM), true);
+        Field(sb, "locRef", usePending ? Result(PWINFO_PNDAUTLOCREF) : Result(PWINFO_AUTLOCREF), true);
+        Field(sb, "extRef", usePending ? Result(PWINFO_PNDAUTEXTREF) : Result(PWINFO_AUTEXTREF), true);
+        Field(sb, "virtMerch", usePending ? Result(PWINFO_PNDVIRTMERCH) : Result(PWINFO_VIRTMERCH), true);
+        Field(sb, "authSyst", usePending ? Result(PWINFO_PNDAUTHSYST) : Result(PWINFO_AUTHSYST), true);
+        Field(sb, "cnfReq", Result(PWINFO_CNFREQ), true);
+        Field(sb, "amountInCents", First(Result(PWINFO_TOTAMNT), Result(PWINFO_TRNORIGAMNT)), true);
         sb.Append("}");
         return sb.ToString();
+    }
+
+    private static bool HasPendingTransaction()
+    {
+        return !String.IsNullOrWhiteSpace(Result(PWINFO_PNDREQNUM));
+    }
+
+    private static bool HasConfirmationTuple()
+    {
+        return !String.IsNullOrWhiteSpace(First(Result(PWINFO_PNDREQNUM), Result(PWINFO_REQNUM)));
+    }
+
+    private static bool IsHostCommunicationError(short ret)
+    {
+        return ret == -2582 || ret == -2583 || ret == -2584 || ret == -2585 || ret == -2586 || ret == -2587;
+    }
+
+    private static bool ShouldReturnPending(short ret, string resultMessage)
+    {
+        if (ret == PWRET_FROMHOSTPENDTRN) return true;
+        if (HasPendingTransaction()) return true;
+        if (IsHostCommunicationError(ret) && HasConfirmationTuple() && (IsAuthorizedMessage(resultMessage) || RequiresConfirmation()))
+            return true;
+        return false;
     }
 
     private static bool RequiresConfirmation()
     {
         return Result(PWINFO_CNFREQ) == "1";
+    }
+
+    private static bool IsUndoConfirmation(uint confirmation)
+    {
+        return confirmation == PWCNF_REV_MANU_AUT || confirmation == PWCNF_REV_DISP_AUT;
     }
 
     private static short ConfirmCurrent(uint confirmation)
@@ -1250,7 +1693,10 @@ public static class PayGoBridge
 
     private static string Error(string fn, short ret)
     {
-        return "{\"ok\":false,\"status\":\"error\",\"function\":\"" + Esc(fn) + "\",\"ret\":" + ret + ",\"message\":\"" + Esc(Result(PWINFO_RESULTMSG)) + "\"}";
+        string resultMessage = Result(PWINFO_RESULTMSG);
+        if (ShouldReturnPending(ret, resultMessage))
+            return Json("pendingConfirmation", false, First(resultMessage, "Existe transacao pendente de confirmacao no PayGo"), ret, PendingResultsJson());
+        return "{\"ok\":false,\"status\":\"error\",\"function\":\"" + Esc(fn) + "\",\"ret\":" + ret + ",\"message\":\"" + Esc(resultMessage) + "\"}";
     }
 
     private static void Load(string dllPath)
@@ -1297,7 +1743,7 @@ function Invoke-PayGoCommand {
 
   try {
     if ($cmdAction -eq "sale") {
-      return [PayGoBridge]::Sale($DllPath, $WorkingDir, [string]$Command.saleId, [int]$Command.amountInCents, [string]$Command.method, [int]$Command.installments, [string]$Command.paygoMenuChoice, [string]$Command.captureValuesBase64, [string]$Command.qrDisplayPreference, [string]$Command.usePinpad, [string]$Command.pinpadPort)
+      return [PayGoBridge]::Sale($DllPath, $WorkingDir, [string]$Command.saleId, [int]$Command.amountInCents, [string]$Command.method, [int]$Command.installments, [string]$Command.paygoMenuChoice, [string]$Command.captureValuesBase64, [string]$Command.qrDisplayPreference)
     }
 
     if ($cmdAction -eq "commtest") {
@@ -1341,6 +1787,10 @@ function Invoke-PayGoCommand {
       return [PayGoBridge]::Cleanup($DllPath, $WorkingDir)
     }
 
+    if ($cmdAction -eq "pending") {
+      return [PayGoBridge]::ProbePending($DllPath, $WorkingDir)
+    }
+
     if ($cmdAction -eq "confirm" -or $cmdAction -eq "undo") {
       if ([string]::IsNullOrWhiteSpace([string]$Command.confirmationJsonBase64)) {
         throw "confirmationJsonBase64 e obrigatorio para $cmdAction"
@@ -1351,7 +1801,7 @@ function Invoke-PayGoCommand {
         return [PayGoBridge]::Confirm($DllPath, $WorkingDir, $confirmation.reqNum, $confirmation.locRef, $confirmation.extRef, $confirmation.virtMerch, $confirmation.authSyst)
       }
 
-      return [PayGoBridge]::Undo($DllPath, $WorkingDir, $confirmation.reqNum, $confirmation.locRef, $confirmation.extRef, $confirmation.virtMerch, $confirmation.authSyst)
+      return [PayGoBridge]::Undo($DllPath, $WorkingDir, $confirmation.reqNum, $confirmation.locRef, $confirmation.extRef, $confirmation.virtMerch, $confirmation.authSyst, [string]$Command.undoReason)
     }
 
     throw "Action invalida no host PayGo: $cmdAction"
@@ -1407,7 +1857,7 @@ if ($Action -eq "host") {
 }
 
 if ($Action -eq "sale") {
-  [PayGoBridge]::Sale($DllPath, $WorkingDir, $SaleId, $AmountInCents, $Method, $Installments, $PaygoMenuChoice, $CaptureValuesBase64, $QrDisplayPreference, $UsePinpad, $PinpadPort)
+  [PayGoBridge]::Sale($DllPath, $WorkingDir, $SaleId, $AmountInCents, $Method, $Installments, $PaygoMenuChoice, $CaptureValuesBase64, $QrDisplayPreference)
   exit
 }
 
@@ -1454,6 +1904,6 @@ if ($Action -eq "confirm") {
 }
 
 if ($Action -eq "undo") {
-  [PayGoBridge]::Undo($DllPath, $WorkingDir, $json.reqNum, $json.locRef, $json.extRef, $json.virtMerch, $json.authSyst)
+  [PayGoBridge]::Undo($DllPath, $WorkingDir, $json.reqNum, $json.locRef, $json.extRef, $json.virtMerch, $json.authSyst, $UndoReason)
   exit
 }

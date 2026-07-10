@@ -41,7 +41,7 @@ export default function TefRecnumExtractor({ storeId }: Props) {
     const n = Math.max(1, Math.min(500, Number(limit) || 60));
     const { data, error } = await supabase
       .from("pdv_tef_transactions")
-      .select("finished_at, amount, status, nsu, authorization_code, acquirer, raw_response")
+      .select("finished_at, amount, status, nsu, authorization_code, acquirer, paygo_reqnum, raw_response")
       .eq("store_id", storeId)
       .order("finished_at", { ascending: false })
       .limit(n);
@@ -53,6 +53,7 @@ export default function TefRecnumExtractor({ storeId }: Props) {
     const parsed: Row[] = (data ?? []).map((r: any) => {
       const raw = r.raw_response ?? {};
       const reqnum =
+        r.paygo_reqnum ??
         raw?.reqnum ?? raw?.REQNUM ?? raw?.recnum ?? raw?.recNum ??
         raw?.parsed?.reqnum ?? raw?.parsed?.REQNUM ?? null;
       return {
@@ -70,6 +71,12 @@ export default function TefRecnumExtractor({ storeId }: Props) {
   };
 
   useEffect(() => { void load(); /* eslint-disable-next-line */ }, [storeId]);
+
+  useEffect(() => {
+    const handler = () => { void load(); };
+    window.addEventListener("tef-audit-updated", handler);
+    return () => window.removeEventListener("tef-audit-updated", handler);
+  }, [storeId, limit]);
 
   const toTsv = () => {
     const lines = [HEADER.join("\t")];
@@ -192,7 +199,14 @@ export default function TefRecnumExtractor({ storeId }: Props) {
                     <td className="px-2 py-1 whitespace-nowrap">{d.toLocaleTimeString("pt-BR")}</td>
                     <td className="px-2 py-1 font-mono whitespace-nowrap">{r.amount.toFixed(2).replace(".", ",")}</td>
                     <td className="px-2 py-1">
-                      <Badge variant={r.status === "approved" ? "default" : "outline"} className="text-[10px]">
+                      <Badge
+                        variant={
+                          r.status === "approved" ? "default"
+                            : r.status === "pending_confirmation" ? "secondary"
+                            : "outline"
+                        }
+                        className="text-[10px]"
+                      >
                         {r.status}
                       </Badge>
                     </td>

@@ -71,7 +71,7 @@ export const createPaygoAdapter = (config: TefConfig): TefAdapter => {
     async processPayment(req: TefPaymentRequest, onStatus?: (s: TefStatus, m?: string) => void) {
       abortController = new AbortController();
 
-      const tipo = req.method ? METHOD_MAP[req.method] : "credito";
+      const tipo = req.method ? METHOD_MAP[req.method] : "auto";
       const parcelas = req.installments && req.installments > 1 ? req.installments : 1;
       const financiamento = parcelas > 1 ? 3 : 1; // 3 = parcelado estabelecimento
 
@@ -358,6 +358,7 @@ export const paygoAdministrativo = async (
 };
 
 export interface PaygoAdmCapture {
+  captureType?: string;
   identificador: number;
   tipo: number; // 1=MENU, 2=TYPED, 3=BARCODE
   prompt: string;
@@ -366,6 +367,7 @@ export interface PaygoAdmCapture {
   tamMax?: number;
   mascara?: string;
   ocultar?: boolean;
+  valorInicial?: string;
   seq?: number;
 }
 

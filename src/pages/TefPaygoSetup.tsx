@@ -22,8 +22,6 @@ import { checkAcbrAgent } from "@/lib/tef/acbrAdapter";
 import TefTestSaleCard from "@/components/tef-paygo/TefTestSaleCard";
 import TefPinpadSetupCard from "@/components/tef-paygo/TefPinpadSetupCard";
 import TefRecnumExtractor from "@/components/tef-paygo/TefRecnumExtractor";
-import SimulatedPrinter from "@/components/tef-paygo/SimulatedPrinter";
-import TefRoteiroTestesCard from "@/components/tef-paygo/TefRoteiroTestesCard";
 
 const DEFAULT_PDC = "111476";
 const DEFAULT_HOST = "pos-transac-sb.tpgweb.io:31735";
@@ -36,6 +34,7 @@ const AGENT_EXE_URL = "https://nexasuite.aquelaparme.com.br/releases/NEXA-ACBr-A
 // 3) entra em electron-acbr, instala deps se necessário
 // 4) sobe o agente em modo dev (sem instalar .exe) — só pra teste
 const AGENT_INSTALL_COMMAND = `taskkill /F /T /IM "NEXA ACBr Agent.exe" 2>$null; taskkill /F /T /IM "nexa-acbr.exe" 2>$null; taskkill /F /T /IM electron.exe 2>$null; cd C:\\Users\\Mauro\\Documents\\GitHub\\nexa-suite-d7be2ff9; git pull; if (!(Test-Path electron-acbr\\node_modules)) { cd electron-acbr; npm install; cd .. }; cd electron-acbr; npx electron . ; cd ..`;
+const STORE_ID_STORAGE_KEY = "tef-paygo:setup:selected-store-id";
 
 
 interface Store { id: string; name: string; }
@@ -74,6 +73,23 @@ const TefPaygoSetup = () => {
   const [editingHost, setEditingHost] = useState(false);
   const [hostDraft, setHostDraft] = useState("");
   const [savingHost, setSavingHost] = useState(false);
+
+  useEffect(() => {
+    try {
+      const savedStoreId = window.localStorage.getItem(STORE_ID_STORAGE_KEY);
+      if (savedStoreId) setStoreId(savedStoreId);
+    } catch {
+      // ignore localStorage read errors
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(STORE_ID_STORAGE_KEY, storeId);
+    } catch {
+      // ignore localStorage write errors
+    }
+  }, [storeId]);
 
   /* checklist inline (ex-TefHomologationChecklist) */
   type CheckState = "ok" | "warn" | "fail" | "pending";
@@ -212,8 +228,7 @@ const TefPaygoSetup = () => {
         </p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_380px] items-start min-h-0">
-        {/* Coluna principal */}
+      <div className="space-y-4 min-h-0">
         <div className="space-y-4 min-h-0">
           <Card className="p-3 space-y-1.5">
             <div className="flex items-center gap-1.5">
@@ -454,18 +469,11 @@ const TefPaygoSetup = () => {
 
           
 
-          <TefTestSaleCard storeId={storeId} cpfCnpj={cnpj} pontoDeCaptura={pdc} sandboxHost={DEFAULT_HOST} />
+          <TefPinpadSetupCard storeId={storeId} />
 
-          <TefRoteiroTestesCard />
+          <TefTestSaleCard storeId={storeId} />
 
           <TefRecnumExtractor storeId={storeId} />
-        </div>
-
-        {/* Coluna lateral — impressora (altura total) */}
-        <div className="h-full">
-          <div className="lg:sticky lg:top-4 h-[calc(100vh-7rem)]">
-            <SimulatedPrinter />
-          </div>
         </div>
       </div>
     </div>
