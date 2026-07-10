@@ -466,8 +466,6 @@ export default function DreComparativoPanel() {
                 <Bar stackId="a" dataKey="CMV" fill="hsl(var(--primary))" />
                 <Bar stackId="a" dataKey="Pessoal" fill="hsl(var(--chart-2, 173 58% 39%))" />
                 <Bar stackId="a" dataKey="Admin" fill="hsl(var(--chart-3, 43 74% 49%))" />
-                <Bar stackId="a" dataKey="Marketing" fill="hsl(var(--chart-4, 27 87% 67%))" />
-                <Bar stackId="a" dataKey="Outras" fill="hsl(var(--chart-5, 340 75% 55%))" />
                 <Bar stackId="a" dataKey="Financeiras" fill="hsl(var(--muted-foreground))" />
                 <Bar stackId="a" dataKey="Impostos" fill="hsl(var(--destructive))" />
               </BarChart>
