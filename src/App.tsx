@@ -455,6 +455,7 @@ const App = () => (
               <Route path="/avaliacoes-clientes" element={<Guarded><CustomerReviews /></Guarded>} />
               <Route path="/financeiro" element={<Guarded staff partner module="financeiro"><Finance /></Guarded>} />
               <Route path="/financeiro/dre" element={<Guarded staff partner><FinanceDre /></Guarded>} />
+              <Route path="/financeiro/fluxo-caixa" element={<Guarded staff partner><FinanceCashFlow /></Guarded>} />
               <Route path="/financeiro/contas" element={<Guarded staff partner><FinanceAccounts /></Guarded>} />
               <Route path="/financeiro/extrato-conta" element={<Guarded staff partner><FinanceAccountStatement /></Guarded>} />
               <Route path="/financeiro/categorias" element={<Guarded staff partner><FinanceCategories /></Guarded>} />
