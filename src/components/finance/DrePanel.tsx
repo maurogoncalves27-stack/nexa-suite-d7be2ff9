@@ -240,6 +240,7 @@ export default function DrePanel() {
   const [payables, setPayables] = useState<PayableRow[]>([]);
   const [receivables, setReceivables] = useState<ReceivableRow[]>([]);
   const [catMap, setCatMap] = useState<CategoryMap>({});
+  const [deductionsByMonth, setDeductionsByMonth] = useState<Record<string, number>>({});
   const [snapshot, setSnapshot] = useState<SnapshotByMonth>({});
 
   const periodStart = useMemo(() => {
