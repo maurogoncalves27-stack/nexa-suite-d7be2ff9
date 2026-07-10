@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
     const projectionNote = buildProjection(rows);
     const totaisMd = `**Totais do período (${period}, EXCLUINDO mês parcial):** Rec. líq ${fmtBRL(totals.receita_liquida ?? 0)} · CMV ${fmtBRL(totals.cmv ?? 0)} · Lucro bruto ${fmtBRL(totals.lucro_bruto ?? 0)} · EBITDA ${fmtBRL(totals.ebitda ?? 0)} · Resultado líquido ${fmtBRL(totals.resultado_liquido ?? 0)}.`;
 
-    const userMsg = `${totaisMd}\n\nDRE mês a mês (${period}):\n\n${table}${projectionNote}`;
+    const userMsg = `${projectionNote ? projectionNote.trim() + "\n\n" : ""}${totaisMd}\n\nDRE mês a mês FECHADOS (${period}) — a tabela abaixo já EXCLUI o mês em andamento:\n\n${table}`;
 
 
     const system = mode === "analitica" ? SYSTEM_ANALITICA : SYSTEM_SINTETICA;
