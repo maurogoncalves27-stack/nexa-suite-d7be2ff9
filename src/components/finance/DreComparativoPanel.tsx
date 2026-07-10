@@ -267,10 +267,14 @@ export default function DreComparativoPanel() {
   }, [closedMonths]);
 
 
-  const runAi = async (mode: "sintetica" | "analitica") => {
+  const runAi = async (mode: "sintetica" | "analitica" | "valuation") => {
     setAiLoading(mode);
     setAiOutput("");
-    setAiTitle(mode === "sintetica" ? "Análise sintética" : "Análise analítica");
+    setAiTitle(
+      mode === "sintetica" ? "Análise sintética"
+      : mode === "analitica" ? "Análise analítica"
+      : "Valuation da empresa"
+    );
     try {
       const payload = {
         mode,
