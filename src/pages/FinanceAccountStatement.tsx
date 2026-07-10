@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { usePersistentState } from "@/hooks/usePersistentState";
+import { useScrollRestoration } from "@/hooks/useScrollRestoration";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -34,14 +36,26 @@ interface BankTx {
 const brl = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+const parseLocalDate = (s: string) => {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+};
+
 export default function FinanceAccountStatement() {
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
-  const [accountId, setAccountId] = useState<string>("");
-  const [from, setFrom] = useState(format(startOfMonth(new Date()), "yyyy-MM-dd"));
-  const [to, setTo] = useState(format(endOfMonth(new Date()), "yyyy-MM-dd"));
+  const [accountId, setAccountId] = usePersistentState<string>("finance:statement:accountId", "");
+  const [from, setFrom] = usePersistentState<string>(
+    "finance:statement:from",
+    format(startOfMonth(new Date()), "yyyy-MM-dd"),
+  );
+  const [to, setTo] = usePersistentState<string>(
+    "finance:statement:to",
+    format(endOfMonth(new Date()), "yyyy-MM-dd"),
+  );
   const [txs, setTxs] = useState<BankTx[]>([]);
   const [loading, setLoading] = useState(false);
   const [openingBalance, setOpeningBalance] = useState<number>(0);
+  useScrollRestoration("finance:statement", !loading);
 
   useEffect(() => {
     (async () => {
@@ -113,7 +127,7 @@ export default function FinanceAccountStatement() {
     const header = ["Data", "Histórico", "Tipo", "Valor", "Saldo", "Conciliado"];
     const lines = rowsWithBalance.map((r) =>
       [
-        format(new Date(r.posted_at), "dd/MM/yyyy"),
+        format(parseLocalDate(r.posted_at), "dd/MM/yyyy"),
         (r.payee || r.memo || "").replace(/;/g, ","),
         r.trn_type ?? "",
         Number(r.amount).toFixed(2).replace(".", ","),
@@ -236,7 +250,7 @@ export default function FinanceAccountStatement() {
                       return (
                         <tr key={r.id} className="border-t border-border">
                           <td className="px-3 py-2 whitespace-nowrap">
-                            {format(new Date(r.posted_at), "dd/MM/yyyy", { locale: ptBR })}
+                            {format(parseLocalDate(r.posted_at), "dd/MM/yyyy", { locale: ptBR })}
                           </td>
                           <td className="px-3 py-2">
                             <div className="flex items-center gap-2">
@@ -281,7 +295,7 @@ export default function FinanceAccountStatement() {
                         </p>
                       </div>
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>{format(new Date(r.posted_at), "dd/MM/yyyy", { locale: ptBR })}</span>
+                        <span>{format(parseLocalDate(r.posted_at), "dd/MM/yyyy", { locale: ptBR })}</span>
                         <span className="tabular-nums">Saldo: {brl(r.runningBalance)}</span>
                       </div>
                       {r.reconciled_at && (

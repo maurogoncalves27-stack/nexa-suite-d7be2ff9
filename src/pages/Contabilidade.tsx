@@ -10,8 +10,9 @@ import {
 } from "@/components/ui/dialog";
 import {
   Calculator, Download, Check, ArrowLeft, FileText, Loader2, AlertTriangle, History, FileDown,
-  Users, FolderOpen, Stethoscope, ShieldAlert,
+  Users, FolderOpen, Stethoscope, ShieldAlert, Plane, LogOut, Bus, Wallet, Award, Receipt,
 } from "lucide-react";
+
 import { toast } from "@/hooks/use-toast";
 import { Link, Navigate } from "react-router-dom";
 import { buildS1200Xml, downloadS1200Xml } from "@/lib/esocialS1200Export";
@@ -295,11 +296,17 @@ export default function Contabilidade() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {[
               { to: "/folha", icon: FileText, label: "Folha de pagamento" },
-              { to: "/colaboradores", icon: Users, label: "Colaboradores" },
-              { to: "/pasta-colaborador", icon: FolderOpen, label: "Pasta do colaborador" },
+              { to: "/rescisoes", icon: LogOut, label: "Rescisões" },
+              { to: "/ferias", icon: Plane, label: "Férias" },
+              { to: "/adiantamentos", icon: Wallet, label: "Adiantamentos" },
+              { to: "/vale-transporte", icon: Bus, label: "Vale-transporte" },
+              { to: "/bonificacoes", icon: Award, label: "Bonificações" },
               { to: "/atestados", icon: Stethoscope, label: "Atestados" },
               { to: "/infracoes", icon: ShieldAlert, label: "Advertências" },
+              { to: "/colaboradores", icon: Users, label: "Colaboradores" },
+              { to: "/pasta-colaborador", icon: FolderOpen, label: "Pasta do colaborador" },
             ].map(({ to, icon: Icon, label }) => (
+
               <Button
                 key={to}
                 asChild

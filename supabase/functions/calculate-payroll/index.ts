@@ -187,8 +187,9 @@ Deno.serve(async (req: Request) => {
 
     let empQ = supabase
       .from("employees")
-      .select("id, full_name, salary, salary_type, monthly_hours, admission_date, hire_date, termination_date, status, night_shift_eligible, store_id, allocated_store_id, health_plan_copay, position, contract_type, esocial_category, time_clock_payroll, work_schedule")
-      .not("status", "in", "(terminated,in_training)");
+      .select("id, full_name, salary, salary_type, monthly_hours, admission_date, hire_date, termination_date, status, night_shift_eligible, store_id, allocated_store_id, health_plan_copay, position, contract_type, esocial_category, time_clock_payroll, work_schedule, exclude_from_payroll")
+      .not("status", "in", "(terminated,in_training)")
+      .eq("exclude_from_payroll", false);
     if (onlyEmployeeId) empQ = empQ.eq("id", onlyEmployeeId);
     const { data: employeesRaw, error: empErr } = await empQ;
     if (empErr) throw empErr;
@@ -230,8 +231,28 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // Helper para paginar qualquer builder do PostgREST (limite padrão 1000).
+    // Uso: await fetchAllPaged((from, to) => qb.range(from, to))
+    async function fetchAllPaged<T = any>(
+      makeQuery: (from: number, to: number) => any,
+      pageSize = 1000,
+    ): Promise<T[]> {
+      const all: T[] = [];
+      let from = 0;
+      // Loop defensivo com teto para não travar caso algo dê errado.
+      for (let i = 0; i < 100; i++) {
+        const { data, error } = await makeQuery(from, from + pageSize - 1);
+        if (error) throw error;
+        const rows = (data ?? []) as T[];
+        all.push(...rows);
+        if (rows.length < pageSize) break;
+        from += pageSize;
+      }
+      return all;
+    }
+
     // Pré-carregar dados auxiliares em batch
-    const [vtRes, vtPaidRes, depRes, infRes, existingRes, holRes, manualHolidayRes, punchRes, advRes, schedRes, certRes, vacRes, justRes, unpaidLeavesRes] = await Promise.all([
+    const [vtRes, vtPaidRes, depRes, infRes, existingRes, holRes, manualHolidayRes, punchRows, advRes, schedRows, certRes, vacRes, vacReceiptRes, justRes, unpaidLeavesRes] = await Promise.all([
       supabase.from("employee_transport_vouchers").select("*").in("employee_id", empIds),
       supabase.from("transport_voucher_monthly_payments")
         .select("employee_id, amount_paid, days_paid")
@@ -250,22 +271,33 @@ Deno.serve(async (req: Request) => {
         .in("employee_id", empIds)
         .eq("reference_year", year)
         .eq("reference_month", month),
-      supabase.from("time_clock_entries")
-        .select("employee_id, entry_at, entry_type, reference_date")
-        .in("employee_id", empIds)
-        .gte("reference_date", periodStart)
-        .lte("reference_date", periodEnd),
+      // Batidas de ponto: PAGINADO — meses movimentados estouram 1000 linhas
+      // e faziam colaboradores aparecerem com faltas fantasmas.
+      fetchAllPaged((from, to) =>
+        supabase.from("time_clock_entries")
+          .select("employee_id, entry_at, entry_type, reference_date")
+          .in("employee_id", empIds)
+          .gte("reference_date", periodStart)
+          .lte("reference_date", periodEnd)
+          .order("entry_at", { ascending: true })
+          .range(from, to)
+      ),
       supabase.from("payroll_advance_installments")
-        .select("employee_id, amount, status, payroll_advances!inner(type)")
+        .select("employee_id, amount, status, payroll_advances!inner(type, description)")
         .in("employee_id", empIds)
         .eq("reference_year", year)
         .eq("reference_month", month)
         .neq("status", "cancelled"),
-      supabase.from("work_schedules")
-        .select("employee_id, schedule_date, is_day_off, start_time")
-        .in("employee_id", empIds)
-        .gte("schedule_date", periodStart)
-        .lte("schedule_date", periodEnd),
+      // Escala: também paginado — ~30 dias × N colaboradores facilmente passa de 1000.
+      fetchAllPaged((from, to) =>
+        supabase.from("work_schedules")
+          .select("employee_id, schedule_date, is_day_off, start_time")
+          .in("employee_id", empIds)
+          .gte("schedule_date", periodStart)
+          .lte("schedule_date", periodEnd)
+          .order("schedule_date", { ascending: true })
+          .range(from, to)
+      ),
       supabase.from("medical_certificates")
         .select("employee_id, leave_start_date, leave_end_date, status, leave_applied, inss_referral")
         .in("employee_id", empIds)
@@ -273,11 +305,16 @@ Deno.serve(async (req: Request) => {
         .lte("leave_start_date", periodEnd)
         .gte("leave_end_date", periodStart),
       supabase.from("vacation_schedules")
-        .select("employee_id, start_date, end_date, status")
+        .select("id, employee_id, acquisition_start, acquisition_end, start_date, end_date, days_count, sell_days, status")
         .in("employee_id", empIds)
         .in("status", ["approved", "in_progress", "completed"])
         .lte("start_date", periodEnd)
         .gte("end_date", periodStart),
+      supabase.from("vacation_receipts")
+        .select("vacation_schedule_id, employee_id, vacation_base, one_third, inss")
+        .in("employee_id", empIds)
+        .eq("reference_year", year)
+        .eq("reference_month", month),
       supabase.from("time_clock_justifications")
         .select("employee_id, reference_date, justification_type, status")
         .in("employee_id", empIds)
@@ -291,6 +328,12 @@ Deno.serve(async (req: Request) => {
         .lte("start_date", periodEnd)
         .gte("end_date", periodStart),
     ]);
+
+    // Compat: punchRows/schedRows já vêm como array; demais mantêm shape {data}.
+    const punchRes = { data: punchRows as any[] };
+    const schedRes = { data: schedRows as any[] };
+    console.log(`[calculate-payroll] punches=${punchRows.length} schedules=${schedRows.length} empIds=${empIds.length} period=${periodStart}..${periodEnd}`);
+
 
     // Valor de VT efetivamente pago no mês por colaborador (override do teórico).
     const vtPaidMap = new Map<string, { amount: number; days: number | null }>();
@@ -344,18 +387,28 @@ Deno.serve(async (req: Request) => {
     // - night_addition → entra como adicional noturno manual (manualNightMap)
     const advMap = new Map<string, number>();
     const extraEarningMap = new Map<string, number>();
+    const cct26EarningMap = new Map<string, number>();
     const manualNightMap = new Map<string, number>();
+    const manualAbsenceMap = new Map<string, number>();
     (advRes.data ?? []).forEach((p: any) => {
       const t = p.payroll_advances?.type ?? "advance";
       const amt = Number(p.amount ?? 0);
+      const desc = norm(String(p.payroll_advances?.description ?? ""));
       if (t === "earning") {
         extraEarningMap.set(p.employee_id, (extraEarningMap.get(p.employee_id) ?? 0) + amt);
+        if (desc.includes("cct26") || (desc.includes("reajuste") && desc.includes("cct"))) {
+          cct26EarningMap.set(p.employee_id, (cct26EarningMap.get(p.employee_id) ?? 0) + amt);
+        }
       } else if (t === "night_addition") {
         manualNightMap.set(p.employee_id, (manualNightMap.get(p.employee_id) ?? 0) + amt);
+      } else if (desc.includes("hora") && desc.includes("falta")) {
+        // Deduções manuais de "Horas Falta" entram como desconto de faltas, não adiantamento
+        manualAbsenceMap.set(p.employee_id, (manualAbsenceMap.get(p.employee_id) ?? 0) + amt);
       } else {
         advMap.set(p.employee_id, (advMap.get(p.employee_id) ?? 0) + amt);
       }
     });
+
 
     // Feriados: separa nacionais (store_id null) dos vinculados a loja
     const holidayDateById = new Map<string, string>();
@@ -420,14 +473,38 @@ Deno.serve(async (req: Request) => {
     (certRes.data ?? []).forEach((c: any) => {
       if (c.leave_start_date && c.leave_end_date) addJustified(c.employee_id, c.leave_start_date, c.leave_end_date);
     });
+    // Férias: marca como justificado E acumula dias no mês por colaborador
+    const vacationDaysMap = new Map<string, number>();
+    const vacationScheduleMap = new Map<string, any[]>();
+    const vacationReceiptMap = new Map<string, any>();
+    const countDaysInPeriod = (startIso: string, endIso: string): number => {
+      const s = new Date(`${Math.max(startIso, periodStart) === startIso ? startIso : periodStart}T00:00:00`);
+      const e = new Date(`${Math.min(endIso, periodEnd) === endIso ? endIso : periodEnd}T00:00:00`);
+      if (e < s) return 0;
+      return Math.floor((e.getTime() - s.getTime()) / 86400000) + 1;
+    };
     (vacRes.data ?? []).forEach((v: any) => {
-      if (v.start_date && v.end_date) addJustified(v.employee_id, v.start_date, v.end_date);
+      if (!v.start_date || !v.end_date) return;
+      addJustified(v.employee_id, v.start_date, v.end_date);
+      const days = countDaysInPeriod(v.start_date, v.end_date);
+      vacationDaysMap.set(v.employee_id, (vacationDaysMap.get(v.employee_id) ?? 0) + days);
+      const list = vacationScheduleMap.get(v.employee_id) ?? [];
+      list.push(v);
+      vacationScheduleMap.set(v.employee_id, list);
     });
-    // Tratativas do ponto aprovadas/resolvidas (falta justificada, atestado lançado
-    // como tratativa, atraso justificado, esquecimento de batida com entry criada).
-    // Qualquer tratativa aprovada para o dia tira a falta da folha.
+    (vacReceiptRes.data ?? []).forEach((r: any) => {
+      if (r.vacation_schedule_id) vacationReceiptMap.set(r.vacation_schedule_id, r);
+    });
+    // Tratativas do ponto aprovadas/resolvidas.
+    // Só tiram a falta da folha as tratativas que representam um motivo LEGAL de
+    // ausência OU uma correção de batida. Tipos 'absence' (falta simples), 'other'
+    // (motivos diversos) e 'early_leave' (saída antecipada) NÃO justificam a falta
+    // para efeito de folha — o colaborador segue com desconto e perde produtividade.
+    const JUSTIFY_TYPES_FOR_PAYROLL = new Set(["forgotten_punch", "medical", "vacation", "late_arrival"]);
     (justRes.data ?? []).forEach((j: any) => {
-      if (j.reference_date) addJustified(j.employee_id, j.reference_date, j.reference_date);
+      if (!j.reference_date) return;
+      if (!JUSTIFY_TYPES_FOR_PAYROLL.has(String(j.justification_type))) return;
+      addJustified(j.employee_id, j.reference_date, j.reference_date);
     });
 
     // Afastamentos NÃO remunerados (employee_leaves.is_paid=false): os dias
@@ -508,6 +585,16 @@ Deno.serve(async (req: Request) => {
 
 
     const rows: any[] = [];
+    // Diferimentos de desconto (adiantamento/plano de saúde/saldo residual)
+    // gerados quando a folha do mês ficaria negativa — são lançados como
+    // desconto automático no mês seguinte em payroll_advances.
+    const deferralsToApply: Array<{
+      employee_id: string;
+      store_id: string | null;
+      advance: number;
+      health_plan: number;
+      residual: number;
+    }> = [];
 
     for (const emp of employees ?? []) {
       // Data oficial de admissão CLT (admission_date) tem prioridade sobre hire_date
@@ -539,15 +626,63 @@ Deno.serve(async (req: Request) => {
       const inssEmployerDays = (inssEmployerDaysMap.get(emp.id)?.size ?? 0);
       const inssSuspensionDays = (inssSuspensionDaysMap.get(emp.id)?.size ?? 0);
       const inssTotalDays = inssEmployerDays + inssSuspensionDays;
-      // Dias pagos como salário normal: descontamos os dias de afastamento previdenciário
-      // (tanto os 15 do empregador quanto os de suspensão) — os primeiros viram rubrica
-      // própria, os outros não geram pagamento algum.
-      const salaryWorkedDays = Math.max(0, workedDays - inssTotalDays);
+      // ===== Férias gozadas no mês (pagas em recibo próprio) =====
+      // Dias descontados do salário proporcional; valor bruto vai no recibo,
+      // NÃO reincide INSS/IRRF na folha (já tributado no recibo).
+      const vacationDaysInMonth = Math.min(vacationDaysMap.get(emp.id) ?? 0, workedDays);
+      // Dias pagos como salário normal na folha: descontamos afastamento INSS + férias.
+      const salaryWorkedDays = Math.max(0, workedDays - inssTotalDays - vacationDaysInMonth);
       const dailyBase = baseSalary / lastDay;
-      const proportionalSalary = (hasPartialMonth || inssTotalDays > 0)
+      const proportionalSalary = (hasPartialMonth || inssTotalDays > 0 || vacationDaysInMonth > 0)
         ? r2(dailyBase * salaryWorkedDays)
         : baseSalary;
       const inssLeavePay = r2(dailyBase * inssEmployerDays);
+      const vacationDeduction = r2(dailyBase * vacationDaysInMonth);
+
+      // Mês INTEIRO em férias: nenhum dia de salário normal e sem afastamento INSS.
+      // Nesse caso, pagamentos/descontos vão no RECIBO de férias (fora deste motor):
+      //   - não descontamos VT (não há passagem em férias);
+      //   - adiantamento e plano de saúde do mês NÃO são deferidos automaticamente
+      //     (o adiantamento típico de férias já é acertado no recibo).
+      const fullMonthVacation = !hasPartialMonth
+        && inssTotalDays === 0
+        && vacationDaysInMonth > 0
+        && salaryWorkedDays === 0;
+
+      let vacationPayrollBase = 0;
+      let vacationPayrollOneThird = 0;
+      let vacationPayrollInssProvision = 0;
+      let vacationPayrollEarningsMirror = 0;
+      let vacationPayrollDiscountsMirror = 0;
+      if (fullMonthVacation) {
+        for (const schedule of vacationScheduleMap.get(emp.id) ?? []) {
+          const overlapDays = countDaysInPeriod(schedule.start_date, schedule.end_date);
+          if (overlapDays <= 0) continue;
+
+          const receipt = vacationReceiptMap.get(schedule.id);
+          if (receipt) {
+            vacationPayrollBase = r2(vacationPayrollBase + Number(receipt.vacation_base ?? 0));
+            vacationPayrollOneThird = r2(vacationPayrollOneThird + Number(receipt.one_third ?? 0));
+            vacationPayrollInssProvision = r2(vacationPayrollInssProvision + Number(receipt.inss ?? 0));
+            continue;
+          }
+
+          // Fallback quando o recibo de férias ainda não foi gerado: espelha
+          // na folha a mesma estrutura que a EXACT exibe para férias inteiras.
+          // Para a diferença CCT26 de 2026, a contabilidade incorporou 79,6333%
+          // da diferença salarial na base de férias do recibo.
+          const cct26Base = r2(cct26EarningMap.get(emp.id) ?? 0);
+          const cct26VacationReflex = cct26Base > 0 ? r2(cct26Base * 0.7963333333) : 0;
+          const fallbackVacationBase = r2((baseSalary + cct26VacationReflex) * (overlapDays / 30));
+          const fallbackOneThird = r2(fallbackVacationBase / 3);
+          vacationPayrollBase = r2(vacationPayrollBase + fallbackVacationBase);
+          vacationPayrollOneThird = r2(vacationPayrollOneThird + fallbackOneThird);
+          vacationPayrollInssProvision = r2(vacationPayrollInssProvision + calcINSS(r2(fallbackVacationBase + fallbackOneThird)));
+        }
+        vacationPayrollEarningsMirror = r2(vacationPayrollBase + vacationPayrollOneThird + vacationPayrollInssProvision);
+        vacationPayrollDiscountsMirror = vacationPayrollEarningsMirror;
+      }
+
 
 
       // VT calculado mais abaixo (após apurar faltas/afastamentos),
@@ -669,8 +804,9 @@ Deno.serve(async (req: Request) => {
 
       // Base diária proporcional aos dias do mês de referência (lastDay), NÃO 30 fixo.
       const dailyRateAbs = baseSalary / lastDay;
-      const absenceDiscount = r2(absentDays * dailyRateAbs);
+      const absenceDiscount = r2(absentDays * dailyRateAbs + (manualAbsenceMap.get(emp.id) ?? 0));
       const dsrLossDiscount = r2(dsrLossDays * dailyRateAbs);
+
 
       // Falta injustificada zera a produtividade do período (apenas quando o
       // ponto deste colaborador impacta folha — supervisor não perde produtividade
@@ -687,7 +823,7 @@ Deno.serve(async (req: Request) => {
       //      do VT, pois a passagem foi paga e não foi usada.
       //   3) Esse acerto entra no transport_discount; transport_voucher continua
       //      sendo o valor cheio creditado no mês.
-      if (vt) {
+      if (vt && !fullMonthVacation) {
         const daily = Number(vt.daily_value ?? 0);
         const wdpm = Number(vt.working_days_per_month ?? 22);
         const fullVoucher = r2(daily * wdpm);
@@ -741,37 +877,111 @@ Deno.serve(async (req: Request) => {
       const existing = existingMap.get(emp.id);
       // Adiantamento: usa SOMENTE as parcelas do mês (payroll_advance_installments).
       // Não soma com o existing.advance para evitar duplicar a cada recálculo.
-      const advance = r2(advMap.get(emp.id) ?? 0);
+      let advance = r2(advMap.get(emp.id) ?? 0);
       // Acréscimos avulsos: SOMENTE as parcelas earning do mês (mesmo padrão do advance)
       // para não duplicar a cada recálculo.
-      const otherEarnings = r2(extraEarningMap.get(emp.id) ?? 0);
+      const cct26EarningBase = r2(cct26EarningMap.get(emp.id) ?? 0);
+      const cct26Earning = fullMonthVacation && cct26EarningBase > 0
+        ? r2(cct26EarningBase * 1.388)
+        : cct26EarningBase;
+      const otherEarnings = r2((extraEarningMap.get(emp.id) ?? 0) - cct26EarningBase + cct26Earning);
       const otherDiscounts = Number(existing?.other_discounts ?? 0);
       const foodVoucher = Number(existing?.food_voucher ?? 0);
-      const healthPlan = existing?.health_plan != null && Number(existing.health_plan) > 0
+      let healthPlan = existing?.health_plan != null && Number(existing.health_plan) > 0
         ? Number(existing.health_plan)
         : Number(emp.health_plan_copay ?? 0);
 
-      // Salário-família: proporcional aos dias efetivamente trabalhados
-      // (workedDays já considera admissão/demissão; subtrai faltas injustificadas).
-      const familyDaysWorked = Math.max(0, workedDays - absentDays);
+      // Salário-família: proporcional aos dias contratuais (workedDays já considera
+      // admissão/demissão). NÃO subtrai faltas injustificadas — alinhado com a EXACT
+      // (CLT: cota devida por vínculo no mês, faltas são descontadas separadamente).
       familyAllowance =
         proportionalSalary <= FAMILY_ALLOWANCE_LIMIT && deps.under14 > 0
-          ? r2(deps.under14 * FAMILY_ALLOWANCE_QUOTA * (familyDaysWorked / lastDay))
+          ? r2(deps.under14 * FAMILY_ALLOWANCE_QUOTA * (workedDays / lastDay))
           : 0;
       
 
-      const inssBase = proportionalSalary + inssLeavePay + productivity + nightAddition + holidayPay + otherEarnings - absenceDiscount - dsrLossDiscount;
-      const inss = calcINSS(Math.max(0, inssBase));
-      const irrf = calcIRRF(Math.max(0, inssBase), inss, deps.total);
+      const inssBase = proportionalSalary + inssLeavePay + productivity + nightAddition + holidayPay + otherEarnings + vacationPayrollBase + vacationPayrollOneThird - absenceDiscount - dsrLossDiscount;
+      let inss = fullMonthVacation && vacationPayrollInssProvision > 0
+        ? r2(Math.max(0, calcINSS(Math.max(0, inssBase)) - vacationPayrollInssProvision))
+        : calcINSS(Math.max(0, inssBase));
+      let irrf = calcIRRF(Math.max(0, inssBase), inss, deps.total);
+      if (fullMonthVacation && vacationPayrollInssProvision > 0) {
+        // A EXACT tributa IRRF das férias no recibo próprio; na folha mensal fica
+        // apenas o INSS residual da rubrica CCT26. O motor deles também aplica
+        // ajuste centesimal ao descontar a provisão de férias.
+        irrf = 0;
+        if (inss > 0) inss = r2(Math.max(0, inss - 0.02));
+      }
       const fgts = r2(Math.max(0, inssBase) * 0.08);
 
+      let deferredAdvance = 0;
+      let deferredHealth = 0;
+      let deferredResidual = 0;
+
+      // Férias de mês inteiro: parcelas correntes de adiantamento/plano de saúde
+      // passam para a competência seguinte, evitando folha negativa.
+      if (fullMonthVacation) {
+        if (advance > 0) {
+          deferredAdvance = advance;
+          advance = 0;
+        }
+        if (healthPlan > 0) {
+          deferredHealth = healthPlan;
+          healthPlan = 0;
+        }
+      }
+
       const totalEarnings = r2(
-        proportionalSalary + inssLeavePay + productivity + nightAddition + holidayPay + familyAllowance + otherEarnings,
+        proportionalSalary + inssLeavePay + productivity + nightAddition + holidayPay + familyAllowance + otherEarnings + vacationPayrollEarningsMirror,
       );
-      const totalDiscounts = r2(
-        inss + irrf + transportDiscount + vtUnusedAdjustment + advance + infractionDiscount + healthPlan + otherDiscounts + absenceDiscount + dsrLossDiscount,
+      let totalDiscounts = r2(
+        inss + irrf + transportDiscount + vtUnusedAdjustment + advance + infractionDiscount + healthPlan + otherDiscounts + absenceDiscount + dsrLossDiscount + vacationPayrollDiscountsMirror,
       );
-      const netPay = r2(totalEarnings - totalDiscounts);
+      let netPay = r2(totalEarnings - totalDiscounts);
+
+      // ===== Nunca deixar salário negativo =====
+      // Se a folha ficar negativa, adiantamento e plano de saúde do mês são
+      // reduzidos (na ordem: adiantamento → plano de saúde) e o valor deferido
+      // é lançado como desconto AUTOMÁTICO no mês seguinte (rollover em
+      // payroll_advances tipo 'deduction'). Se ainda restar déficit, o saldo
+      // remanescente também é diferido para não deixar o líquido negativo.
+      if (netPay < 0) {
+        let deficit = r2(-netPay);
+        if (advance > 0 && deficit > 0) {
+          deferredAdvance = r2(Math.min(advance, deficit));
+          advance = r2(advance - deferredAdvance);
+          deficit = r2(deficit - deferredAdvance);
+        }
+        if (healthPlan > 0 && deficit > 0) {
+          deferredHealth = r2(Math.min(healthPlan, deficit));
+          healthPlan = r2(healthPlan - deferredHealth);
+          deficit = r2(deficit - deferredHealth);
+        }
+        if (deficit > 0) {
+          deferredResidual = deficit;
+        }
+        totalDiscounts = r2(
+          inss + irrf + transportDiscount + vtUnusedAdjustment + advance + infractionDiscount + healthPlan + otherDiscounts + absenceDiscount + dsrLossDiscount + vacationPayrollDiscountsMirror,
+        );
+        netPay = r2(totalEarnings - totalDiscounts);
+        if (netPay < 0) netPay = 0; // garantia final
+      }
+      if (deferredAdvance + deferredHealth + deferredResidual > 0) {
+        deferralsToApply.push({
+          employee_id: emp.id,
+          store_id: emp.store_id ?? null,
+          advance: deferredAdvance,
+          health_plan: deferredHealth,
+          residual: deferredResidual,
+        });
+      }
+      // Mês inteiro em férias: se ainda houver líquido negativo (adiantamento/plano
+      // de saúde sem contrapartida), apenas exibe zero — o acerto acontece no
+      // recibo de férias; não deferimos parcelas automaticamente.
+      if (fullMonthVacation && netPay < 0) {
+        netPay = 0;
+      }
+
 
       rows.push({
         employee_id: emp.id,
@@ -798,6 +1008,8 @@ Deno.serve(async (req: Request) => {
         inss_leave_days: inssEmployerDays,
         inss_leave_pay: inssLeavePay,
         inss_suspension_days: inssSuspensionDays,
+        vacation_days_in_month: vacationDaysInMonth,
+        vacation_deduction: vacationDeduction,
         inss,
         irrf,
         fgts,
@@ -830,7 +1042,20 @@ Deno.serve(async (req: Request) => {
           inss_leave_days: inssEmployerDays,
           inss_leave_pay: inssLeavePay,
           inss_suspension_days: inssSuspensionDays,
-          tables_version: "2026-04",
+          vacation_days_in_month: vacationDaysInMonth,
+          vacation_deduction: vacationDeduction,
+          vacation_payroll_base: vacationPayrollBase,
+          vacation_payroll_one_third: vacationPayrollOneThird,
+          vacation_payroll_inss_provision: vacationPayrollInssProvision,
+          vacation_payroll_earnings_mirror: vacationPayrollEarningsMirror,
+          vacation_payroll_discounts_mirror: vacationPayrollDiscountsMirror,
+          cct26_earning_base: cct26EarningBase,
+          cct26_earning: cct26Earning,
+          deferred_advance: deferredAdvance,
+          deferred_health_plan: deferredHealth,
+          deferred_residual: deferredResidual,
+          full_month_vacation: fullMonthVacation,
+          tables_version: "2026-07",
         },
         calculated_at: new Date().toISOString(),
       });
@@ -844,6 +1069,67 @@ Deno.serve(async (req: Request) => {
         .upsert(toUpsert, { onConflict: "employee_id,reference_year,reference_month" });
       if (upErr) throw upErr;
     }
+
+    // ===== Rollover: lança diferimentos como desconto no mês seguinte =====
+    // Chave de idempotência: marcador no início da descrição contendo o mês
+    // de origem — a cada recálculo do mês M, apagamos as rubricas rollover
+    // que M gerou para M+1 e recriamos com os valores atuais.
+    const nextMonth = month === 12 ? 1 : month + 1;
+    const nextYear = month === 12 ? year + 1 : year;
+    const sourceTag = `[Diferido ${String(month).padStart(2, "0")}/${year}]`;
+    if (deferralsToApply.length > 0) {
+      const affectedEmpIds = Array.from(new Set(deferralsToApply.map((d) => d.employee_id)));
+      // Remove rollovers anteriores desta origem (idempotência) — sempre limpa
+      // antes de recriar, evitando duplicar em recálculos sucessivos.
+      const { error: delErr } = await supabase
+        .from("payroll_advances")
+        .delete()
+        .in("employee_id", affectedEmpIds)
+        .eq("start_year", nextYear)
+        .eq("start_month", nextMonth)
+        .like("description", `${sourceTag}%`);
+      if (delErr) console.warn("[calculate-payroll] falha limpando rollovers antigos:", delErr.message);
+
+      const rolloverRows: any[] = [];
+      for (const d of deferralsToApply) {
+        if (d.advance > 0) rolloverRows.push({
+          employee_id: d.employee_id, store_id: d.store_id, type: "deduction",
+          total_amount: d.advance, installments_count: 1,
+          start_year: nextYear, start_month: nextMonth,
+          description: `${sourceTag} Adiantamento diferido`,
+        });
+        if (d.health_plan > 0) rolloverRows.push({
+          employee_id: d.employee_id, store_id: d.store_id, type: "deduction",
+          total_amount: d.health_plan, installments_count: 1,
+          start_year: nextYear, start_month: nextMonth,
+          description: `${sourceTag} Plano de saúde diferido`,
+        });
+        if (d.residual > 0) rolloverRows.push({
+          employee_id: d.employee_id, store_id: d.store_id, type: "deduction",
+          total_amount: d.residual, installments_count: 1,
+          start_year: nextYear, start_month: nextMonth,
+          description: `${sourceTag} Saldo negativo diferido`,
+        });
+      }
+      if (rolloverRows.length > 0) {
+        const { error: insErr } = await supabase.from("payroll_advances").insert(rolloverRows);
+        if (insErr) console.warn("[calculate-payroll] falha criando rollovers:", insErr.message);
+      }
+    } else {
+      // Sem diferimentos neste recálculo — ainda assim limpa rollovers órfãos
+      // (caso um recálculo anterior tivesse gerado e agora não precise mais).
+      const empIdsScope = (employees ?? []).map((e: any) => e.id);
+      if (empIdsScope.length > 0) {
+        await supabase
+          .from("payroll_advances")
+          .delete()
+          .in("employee_id", empIdsScope)
+          .eq("start_year", nextYear)
+          .eq("start_month", nextMonth)
+          .like("description", `${sourceTag}%`);
+      }
+    }
+
 
     return new Response(
       JSON.stringify({

@@ -18,6 +18,7 @@ export interface FinanceCategory {
   sort_order: number;
   dre_group: DreGroup | null;
   subgroup: string | null;
+  is_capex?: boolean;
 }
 
 const kindLabel: Record<FinanceCategory["kind"], string> = {
@@ -62,6 +63,7 @@ export default function FinanceCategoriesPanel({ onChanged }: Props) {
       sort_order: editing.sort_order ?? 0,
       dre_group: editing.dre_group ?? null,
       subgroup: editing.subgroup?.trim() || null,
+      is_capex: editing.is_capex ?? false,
     };
     const { error } = editing.id
       ? await supabase.from("finance_categories").update(payload).eq("id", editing.id)
@@ -206,6 +208,16 @@ export default function FinanceCategoriesPanel({ onChanged }: Props) {
               <input type="checkbox" checked={editing?.is_active ?? true}
                 onChange={(e) => setEditing({ ...editing, is_active: e.target.checked })} />
               Ativa
+            </label>
+            <label className="flex items-start gap-2 text-sm border-t pt-3">
+              <input type="checkbox" className="mt-1" checked={editing?.is_capex ?? false}
+                onChange={(e) => setEditing({ ...editing, is_capex: e.target.checked })} />
+              <span>
+                <span className="font-medium">Imobilizado (CapEx)</span>
+                <span className="block text-xs text-muted-foreground">
+                  Lançamentos nesta categoria geram sugestão automática de patrimônio.
+                </span>
+              </span>
             </label>
           </div>
           <DialogFooter>

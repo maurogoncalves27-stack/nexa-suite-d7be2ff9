@@ -43,6 +43,7 @@ const NightAddition = lazy(() => import("./pages/NightAddition.tsx"));
 const Trainings = lazy(() => import("./pages/Trainings.tsx"));
 const Climate = lazy(() => import("./pages/Climate.tsx"));
 const Vacations = lazy(() => import("./pages/Vacations.tsx"));
+const VacationPayments = lazy(() => import("./pages/VacationPayments.tsx"));
 const Uniforms = lazy(() => import("./pages/Uniforms.tsx"));
 const EmployeeArea = lazy(() => import("./pages/EmployeeArea.tsx"));
 const ManagerArea = lazy(() => import("./pages/ManagerArea.tsx"));
@@ -65,6 +66,9 @@ const Infractions = lazy(() => import("./pages/Infractions.tsx"));
 const AutomationRules = lazy(() => import("./pages/AutomationRules.tsx"));
 const PositionBonuses = lazy(() => import("./pages/PositionBonuses.tsx"));
 const MedicalCertificates = lazy(() => import("./pages/MedicalCertificates.tsx"));
+const Pcmso = lazy(() => import("./pages/Pcmso.tsx"));
+const MentalHealth = lazy(() => import("./pages/MentalHealth.tsx"));
+const OccupationalHealth = lazy(() => import("./pages/OccupationalHealth.tsx"));
 const NutriReports = lazy(() => import("./pages/NutriReports.tsx"));
 const NutriVisit = lazy(() => import("./pages/NutriVisit.tsx"));
 const NutriVisitHistorico = lazy(() => import("./pages/NutriVisitHistorico.tsx"));
@@ -106,10 +110,12 @@ const ReplenishmentSuggestion = lazy(() => import("./pages/ReplenishmentSuggesti
 const ConversionFactors = lazy(() => import("./pages/ConversionFactors.tsx"));
 const PettyCash = lazy(() => import("./pages/PettyCash.tsx"));
 const Faturamento = lazy(() => import("./pages/Faturamento.tsx"));
+const ConsumoLojas = lazy(() => import("./pages/ConsumoLojas.tsx"));
 const CustomerReviews = lazy(() => import("./pages/CustomerReviews.tsx"));
 const SeparationChecklist = lazy(() => import("./pages/SeparationChecklist.tsx"));
 const Finance = lazy(() => import("./pages/Finance.tsx"));
 const FinanceDre = lazy(() => import("./pages/FinanceDre.tsx"));
+const FinanceCashFlow = lazy(() => import("./pages/FinanceCashFlow.tsx"));
 const FinanceAccounts = lazy(() => import("./pages/FinanceAccounts.tsx"));
 const FinanceCategories = lazy(() => import("./pages/FinanceCategories.tsx"));
 const FinanceCmv = lazy(() => import("./pages/FinanceCmv.tsx"));
@@ -117,6 +123,7 @@ const FinancePricing = lazy(() => import("./pages/FinancePricing.tsx"));
 const FinanceGasVouchers = lazy(() => import("./pages/FinanceGasVouchers.tsx"));
 const FinanceGasVouchersDashboard = lazy(() => import("./pages/FinanceGasVouchersDashboard.tsx"));
 const FinanceAccountStatement = lazy(() => import("./pages/FinanceAccountStatement.tsx"));
+const FinanceRecurring = lazy(() => import("./pages/FinanceRecurring.tsx"));
 const SupplierAuth = lazy(() => import("./pages/SupplierAuth.tsx"));
 const SupplierRegister = lazy(() => import("./pages/SupplierRegister.tsx"));
 const SupplierPending = lazy(() => import("./pages/SupplierPending.tsx"));
@@ -242,6 +249,8 @@ const App = () => (
             <Route path="/parme/reservar" element={<ParmeReservar />} />
             <Route path="/parme/enderecos" element={<ParmeEnderecos />} />
             <Route path="/parme/surpresa" element={<ParmeSurpresa />} />
+            {/* Atalho: /surpresa em qualquer host cai direto no HTML estático */}
+            <Route path="/surpresa" element={<ParmeSurpresa />} />
             <Route path="/parme/vagas" element={<PublicJobs />} />
             <Route path="/parme/vagas/:id" element={<PublicJobDetail />} />
             <Route path="/parme/:slug" element={<ParmeBrand />} />
@@ -350,8 +359,20 @@ const App = () => (
               <Route path="/infracoes" element={<Guarded staff accountant><Infractions /></Guarded>} />
               <Route path="/regras-automaticas" element={<Guarded staff><AutomationRules /></Guarded>} />
               <Route path="/bonus-cargo" element={<Guarded staff><PositionBonuses /></Guarded>} />
-              <Route path="/atestados" element={<Guarded staff accountant><MedicalCertificates /></Guarded>} />
+              <Route path="/saude-ocupacional" element={<Guarded staff accountant><OccupationalHealth /></Guarded>} />
+              <Route path="/atestados" element={<Navigate to="/saude-ocupacional?tab=atestados" replace />} />
+              <Route path="/pcmso" element={<Navigate to="/saude-ocupacional?tab=pcmso" replace />} />
+              <Route path="/rh/saude-mental" element={<Navigate to="/saude-ocupacional?tab=saude-mental" replace />} />
+              {/* Rotas legadas diretas mantidas para uso interno/deep-links históricos */}
+              <Route path="/atestados-legado" element={<Guarded staff accountant><MedicalCertificates /></Guarded>} />
+              <Route path="/pcmso-legado" element={
+                <ProtectedRoute requireRoles={["admin", "manager", "hr", "mental_health"]}><Pcmso /></ProtectedRoute>
+              } />
+              <Route path="/rh/saude-mental-legado" element={
+                <ProtectedRoute requireRoles={["admin", "hr", "mental_health"]}><MentalHealth /></ProtectedRoute>
+              } />
               <Route path="/nutri-relatorios" element={<Guarded module="nutri_relatorios"><NutriReports /></Guarded>} />
+              <Route path="/consumo-lojas" element={<Guarded staff><ConsumoLojas /></Guarded>} />
               <Route path="/nutri-visita" element={<Guarded module="nutri_visita"><NutriVisit /></Guarded>} />
               <Route path="/nutri-visita/historico" element={<Guarded module="nutri_visita"><NutriVisitHistorico /></Guarded>} />
               <Route path="/colaboradores" element={<Guarded staff accountant><Employees /></Guarded>} />
@@ -373,6 +394,7 @@ const App = () => (
               <Route path="/treinamentos" element={<Guarded staff><Trainings /></Guarded>} />
               <Route path="/clima" element={<Guarded staff><Climate /></Guarded>} />
               <Route path="/ferias" element={<Guarded staff><Vacations /></Guarded>} />
+              <Route path="/pagamentos/ferias" element={<Guarded staff><VacationPayments /></Guarded>} />
               <Route path="/uniformes" element={<Guarded staff><Uniforms /></Guarded>} />
               <Route path="/escalas" element={<Guarded staff><Schedules /></Guarded>} />
               
@@ -433,9 +455,11 @@ const App = () => (
               <Route path="/avaliacoes-clientes" element={<Guarded><CustomerReviews /></Guarded>} />
               <Route path="/financeiro" element={<Guarded staff partner module="financeiro"><Finance /></Guarded>} />
               <Route path="/financeiro/dre" element={<Guarded staff partner><FinanceDre /></Guarded>} />
+              <Route path="/financeiro/fluxo-caixa" element={<Guarded staff partner><FinanceCashFlow /></Guarded>} />
               <Route path="/financeiro/contas" element={<Guarded staff partner><FinanceAccounts /></Guarded>} />
               <Route path="/financeiro/extrato-conta" element={<Guarded staff partner><FinanceAccountStatement /></Guarded>} />
               <Route path="/financeiro/categorias" element={<Guarded staff partner><FinanceCategories /></Guarded>} />
+              <Route path="/financeiro/recorrentes" element={<Guarded staff partner><FinanceRecurring /></Guarded>} />
               <Route path="/financeiro/cmv" element={<Guarded staff partner><FinanceCmv /></Guarded>} />
               <Route path="/financeiro/precificacao" element={<Guarded staff partner><FinancePricing /></Guarded>} />
               <Route path="/financeiro/vale-gas" element={<Guarded><FinanceGasVouchers /></Guarded>} />

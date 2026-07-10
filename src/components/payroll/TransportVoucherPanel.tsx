@@ -230,6 +230,7 @@ export default function TransportVoucherPanel() {
         .from("employees")
         .select("id, full_name, position, salary, salary_type, monthly_hours, work_schedule, pix_key, pix_key_type, bank_name, store_id, contracting_store:stores!employees_store_id_fkey(name)")
         .eq("status", "active")
+        .eq("exclude_from_payroll", false)
         .order("full_name"),
       supabase.from("employee_transport_vouchers").select("*"),
       (supabase as any).from("transport_voucher_settings").select("*").maybeSingle(),

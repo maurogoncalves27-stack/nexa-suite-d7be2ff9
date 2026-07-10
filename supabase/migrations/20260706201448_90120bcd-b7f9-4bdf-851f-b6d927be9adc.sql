@@ -1,0 +1,3 @@
+CREATE POLICY installments_insert ON public.payroll_advance_installments FOR INSERT TO authenticated WITH CHECK (is_super_user(auth.uid()) OR has_role(auth.uid(), 'admin'::app_role) OR has_role(auth.uid(), 'hr'::app_role));
+
+CREATE POLICY installments_delete ON public.payroll_advance_installments FOR DELETE TO authenticated USING (is_super_user(auth.uid()) OR has_role(auth.uid(), 'admin'::app_role) OR has_role(auth.uid(), 'hr'::app_role));

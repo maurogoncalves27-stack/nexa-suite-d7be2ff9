@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import PdvNovo from "./PdvNovo";
 
+
 const Nutricontrol = lazy(() => import("./Nutricontrol"));
 const InventoryCounts = lazy(() => import("./InventoryCounts"));
 const Occurrences = lazy(() => import("./Occurrences"));

@@ -1,81 +1,48 @@
-## Monitoramento WAN Mikrotik das 4 lojas
+## Objetivo
+Fazer com que itens de equipamento que entram por notas/lançamentos sejam **sugeridos automaticamente** para o Patrimônio (`asset_inventory`), sempre com confirmação humana antes de virar bem.
 
-Objetivo: saber em tempo real quando a WAN principal cair (troca pro 4G) e quando voltar, com alerta no sino do Nexa e no WhatsApp dos responsáveis.
+## Como vai funcionar (visão do usuário)
 
-### Como vai funcionar
+1. Em toda entrada nova — NFe (DFe), recebimento de estoque ou lançamento manual de contas a pagar — o sistema olha o NCM (ou a categoria financeira, no caso manual) e marca os itens candidatos a patrimônio.
+2. Um **sino de "Patrimônio pendente"** aparece na página `/patrimonio` com contador (ex.: "3 itens sugeridos").
+3. Ao clicar, abre uma fila de sugestões. Para cada item o usuário vê: nota de origem, fornecedor, descrição, NCM, quantidade, valor unitário, loja sugerida — e pode:
+   - **Confirmar** (abre modal já preenchido para revisar categoria/nome/nº série/localização e salva no patrimônio),
+   - **Ignorar** (marca como "não é patrimônio", nunca mais volta),
+   - **Adiar** (fica na fila).
+4. Nada entra no patrimônio sem clique. Zero risco de duplicar bem por reprocessamento de nota.
 
-```text
-┌─────────────────────────┐        ┌──────────────────────────┐
-│ Mikrotik (loja)         │        │ Nexa (Lovable Cloud)     │
-│                         │        │                          │
-│ Netwatch monitora 8.8.8 │  POST  │ edge: mikrotik-wan-alert │
-│ pela WAN principal      │──────▶ │  (valida token da loja,  │
-│                         │        │   grava evento, dispara  │
-│ on-down/on-up executam  │        │   sino + WhatsApp)       │
-│ /tool fetch → webhook   │        │                          │
-│                         │        │ cron 5min: heartbeat-    │
-│ Scheduler a cada 2min   │  POST  │  check (silêncio > 6min  │
-│ manda "heartbeat"       │──────▶ │  = Mikrotik/link total   │
-│                         │        │  offline → alerta)       │
-└─────────────────────────┘        └──────────────────────────┘
-```
+## Regras de sugestão automática
 
-Netwatch já é nativo do RouterOS e não custa nada. O Mikrotik só precisa da saída de internet liberada (o que já acontece hoje). Nenhuma porta precisa ser aberta.
+- **NFe / Recebimento**: item vira sugestão se o NCM começar com um dos capítulos de bens de capital — 84 (máquinas), 85 (elétricos/eletrônicos), 90 (instrumentos), 9403 (móveis). Lista editável em Configurações → Patrimônio.
+- **Contas a pagar manual**: vira sugestão se a categoria financeira estiver marcada como "Imobilizado". Adicionamos um toggle `is_capex` em `finance_categories`.
+- **Valor mínimo**: itens abaixo de R$ 500 são classificados como *utensílio* e entram na fila com categoria pré-selecionada "utensilio"; acima disso, "equipamento". Ajustável.
 
-### Entregas
+## Ponto de atenção que precisa da sua decisão durante o uso
+Quando uma nota traz "2 fornos" (quantidade 2), o modal pergunta: criar **1 bem com quantidade 2** ou **2 bens individuais** (para números de série diferentes). Padrão sugerido: 1 bem por linha da nota, editável.
 
-**1. Banco (Lovable Cloud)**
-- `network_devices`: 1 linha por Mikrotik (store_id, nome, `webhook_token` único, WAN principal/secundária esperada, último heartbeat, status atual, IP público visto).
-- `network_wan_events`: histórico (device_id, tipo `wan_down`/`wan_up`/`failover`/`recovery`/`heartbeat_lost`/`heartbeat_ok`, wan_ativa, duração da queda, payload cru).
-- `network_alert_recipients`: quem recebe WhatsApp por loja (nome, telefone E.164, ativo).
-- RLS: leitura/escrita só para admin/gestor; edge functions usam service role.
+## O que muda no banco
 
-**2. Edge functions**
-- `mikrotik-wan-alert` (público, valida `webhook_token`): recebe POST do Netwatch, grava evento, atualiza status do device, dispara notificação no sino (função existente) e WhatsApp (canal existente) se for `wan_down` ou `wan_up`. Faz debounce (ignora flap < 60s).
-- `mikrotik-heartbeat-check` (cron a cada 5min via pg_cron): marca device como `offline` se último heartbeat > 6min e dispara alerta "Mikrotik ou links totalmente fora".
+- Nova tabela `asset_suggestions` (uma linha por item candidato):
+  - origem (`nfe` | `inventory_invoice` | `payable`), id da origem, id do item de origem
+  - fornecedor, descrição, NCM, quantidade, valor unitário, loja sugerida, categoria sugerida
+  - status (`pending` | `confirmed` | `ignored`), quem confirmou/ignorou, quando
+  - `asset_id` (preenchido quando vira bem no `asset_inventory`)
+  - UNIQUE(origem, id do item de origem) — impede duplicar se a nota for reprocessada
+- Nova coluna `is_capex boolean` em `finance_categories`
+- Nova coluna `source_suggestion_id uuid` em `asset_inventory` (rastreabilidade da nota)
+- Nova tabela `asset_capex_ncm_prefixes` com os prefixos NCM elegíveis (seedada com 84, 85, 90, 9403)
+- Triggers que, após INSERT em `dfe_inbound_items`, `inventory_invoice_items` e `accounts_payable` (quando categoria for capex), criam a linha `pending` em `asset_suggestions`. Idempotentes.
+- Backfill inicial: rodar sugestões para notas dos últimos 12 meses, todas em `pending` para você revisar.
 
-**3. Página /configuracoes/rede-lojas** (admin)
-- Card por loja: status atual (WAN1 OK / usando 4G / offline), última troca, uptime da WAN principal nos últimos 7/30 dias, IP público atual.
-- Timeline dos últimos eventos por loja.
-- Botão "Copiar script Mikrotik" que gera o RouterOS script já preenchido com URL do webhook + token da loja (netwatch on-up/on-down + scheduler de heartbeat). Instruções passo a passo pra colar no Winbox/WebFig.
-- Aba "Destinatários de alerta" para cadastrar telefones que recebem WhatsApp.
+## O que muda no frontend
 
-**4. Sidebar / breadcrumbs**
-- Novo item em Configurações → "Rede das lojas" com ícone `Router`. Atualizar `PAGE_TITLES` em `AppLayout.tsx`.
+- Página `/patrimonio`: nova aba **"Sugestões da nota"** com badge de pendências, lista com filtro por loja/origem, e ações Confirmar/Ignorar/Adiar em lote.
+- Modal de confirmação = o formulário atual de cadastro de bem, já pré-preenchido; ao salvar, cria o `asset_inventory` e marca a sugestão como `confirmed` com `asset_id`.
+- Configurações → Patrimônio: gerenciar prefixos NCM elegíveis e valor mínimo de corte.
+- Em `finance_categories` (Configurações → Financeiro), toggle **"É imobilizado (gera patrimônio)"**.
+- Detalhe de nota (`InvoiceDetailDialog`, `DfeNoteDialog`) ganha selo "→ Patrimônio (pendente/confirmado)" por item, com link direto para a fila.
 
-### Script Mikrotik que a página vai gerar (referência)
-
-```text
-/tool netwatch
-add host=8.8.8.8 interval=15s timeout=2s \
-  up-script=":do {/tool fetch url=\"https://<edge>/mikrotik-wan-alert\" \
-     http-method=post http-header-field=\"Content-Type:application/json\" \
-     http-data=\"{\\\"token\\\":\\\"<TOKEN_LOJA>\\\",\\\"event\\\":\\\"wan_up\\\"}\" \
-     keep-result=no} on-error={}" \
-  down-script=":do {/tool fetch url=\"https://<edge>/mikrotik-wan-alert\" \
-     http-method=post http-header-field=\"Content-Type:application/json\" \
-     http-data=\"{\\\"token\\\":\\\"<TOKEN_LOJA>\\\",\\\"event\\\":\\\"wan_down\\\"}\" \
-     keep-result=no} on-error={}"
-
-/system scheduler
-add name=nexa-heartbeat interval=2m on-event=":do {/tool fetch \
-   url=\"https://<edge>/mikrotik-wan-alert\" http-method=post \
-   http-header-field=\"Content-Type:application/json\" \
-   http-data=\"{\\\"token\\\":\\\"<TOKEN>\\\",\\\"event\\\":\\\"heartbeat\\\"}\" \
-   keep-result=no} on-error={}"
-```
-
-Se você quiser depois, dá pra evoluir: rodar netwatch também no link 4G (avisa se o backup também caiu), enviar o IP público atual no payload pra detectar a troca automática, e criar SLA de disponibilidade por loja.
-
-### Detalhes técnicos
-
-- Debounce de 60s no `mikrotik-wan-alert` pra evitar spam em flap.
-- Heartbeat de 2min + tolerância de 6min = 3 tentativas perdidas antes de considerar offline.
-- Token por device é UUID gerado no cadastro; regenerável na UI (invalida script antigo).
-- WhatsApp usa o canal Z-API já configurado (mesma infra dos alertas de RH).
-- Nenhuma alteração em RH/Financeiro/PDV/iFood.
-
-### Fora do escopo (posso fazer depois se quiser)
-- SNMP / gráficos de tráfego por interface.
-- Auto-configuração remota do Mikrotik (exigiria API/VPN).
-- Monitorar a saúde do próprio link 4G com netwatch separado.
+## O que fica de fora deste plano
+- Depreciação automática mensal.
+- Baixa de bem quando o item é devolvido/perdido.
+- Vínculo com `equipment_warranties` (fica para uma próxima).

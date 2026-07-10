@@ -20,8 +20,13 @@ const SITE_ALIASES: Record<string, string> = {
   "/sobre": "/parme/sobre",
   "/reservar": "/parme/reservar",
   "/enderecos": "/parme/enderecos",
-  "/surpresa": "/parme/surpresa",
   "/vagas": "/parme/vagas",
+};
+
+// Rotas que devem ir DIRETO para um arquivo estático em public/ — sem passar
+// pelo React Router (evita flash de 404 e garante que o HTML real seja servido).
+const STATIC_HTML_ROUTES: Record<string, string> = {
+  "/surpresa": "/surpresa.html",
 };
 
 // Prefixos que também devem ser reescritos para /parme/* (rotas dinâmicas).
@@ -60,6 +65,13 @@ export function HostnameGuard() {
         const target = loc.pathname === "/" ? "/pedir" : "/pedir" + loc.pathname;
         nav(target + loc.search + loc.hash, { replace: true });
       }
+      return;
+    }
+
+    // Rotas para arquivos estáticos em public/ — pular o SPA em qualquer host.
+    const staticTarget = STATIC_HTML_ROUTES[loc.pathname];
+    if (staticTarget) {
+      window.location.replace(staticTarget + loc.search + loc.hash);
       return;
     }
 

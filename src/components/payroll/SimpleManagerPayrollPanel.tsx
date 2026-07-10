@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, ChevronLeft, ChevronRight, Loader2, ChevronRight as ChevronRightIcon, Check, Trash2, CheckCheck, Lock, Hourglass, CheckCircle2 } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Loader2, ChevronRight as ChevronRightIcon, Check, Trash2, CheckCheck, Lock, Hourglass, CheckCircle2, Plus, X } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
 import { useToast } from "@/hooks/use-toast";
@@ -41,6 +42,14 @@ interface RubricRow {
   description: string | null;
   kind: "earning" | "deduction" | "informative";
   value: number;
+}
+interface ManualRubric {
+  id: string; // payroll_advances.id
+  employee_id: string;
+  type: "earning" | "deduction";
+  description: string | null;
+  total_amount: number;
+  installments_count: number;
 }
 
 const money = (v: number) =>
@@ -97,6 +106,152 @@ export default function SimpleManagerPayrollPanel() {
   const [editingRubricId, setEditingRubricId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
   const [savingRubricId, setSavingRubricId] = useState<string | null>(null);
+
+  // ----- Adição de rubrica manual (provento/desconto pontual do mês) -----
+  const [addingForRowId, setAddingForRowId] = useState<string | null>(null);
+  const [addKind, setAddKind] = useState<"earning" | "deduction">("earning");
+  const [addDesc, setAddDesc] = useState<string>("");
+  const [addValue, setAddValue] = useState<string>("");
+  const [savingAdd, setSavingAdd] = useState(false);
+
+  // ----- Rubricas manuais já lançadas no mês (payroll_advances) -----
+  const [manualByEmp, setManualByEmp] = useState<Record<string, ManualRubric[]>>({});
+  const [editingManualId, setEditingManualId] = useState<string | null>(null);
+  const [editingManualDesc, setEditingManualDesc] = useState<string>("");
+  const [editingManualValue, setEditingManualValue] = useState<string>("");
+  const [savingManualId, setSavingManualId] = useState<string | null>(null);
+  const [removingManualId, setRemovingManualId] = useState<string | null>(null);
+
+  const openAddRubric = (rowId: string) => {
+    setAddingForRowId(rowId);
+    setAddKind("earning");
+    setAddDesc("");
+    setAddValue("");
+  };
+  const cancelAddRubric = () => {
+    setAddingForRowId(null);
+    setAddDesc("");
+    setAddValue("");
+  };
+  const saveNewRubric = async (row: ImportRow) => {
+    if (isLocked) { toast.error("Folha consolidada/aprovada — somente leitura"); return; }
+    if (!isFromCalc) { toast.error("Rubrica manual disponível apenas em folhas calculadas"); return; }
+    if (!row.employee_id) { toast.error("Colaborador sem vínculo válido"); return; }
+    const desc = addDesc.trim();
+    if (!desc) { toast.error("Informe uma descrição"); return; }
+    const amt = parseMoneyInput(addValue);
+    if (!(amt > 0)) { toast.error("Informe um valor válido"); return; }
+    setSavingAdd(true);
+    try {
+      const { data: emp } = await (supabase as any)
+        .from("employees").select("store_id").eq("id", row.employee_id).maybeSingle();
+      const { data: authData } = await supabase.auth.getUser();
+      const { error } = await (supabase as any).from("payroll_advances").insert({
+        employee_id: row.employee_id,
+        store_id: emp?.store_id ?? null,
+        type: addKind, // 'earning' | 'deduction'
+        total_amount: amt,
+        installments_count: 1,
+        start_year: refYear,
+        start_month: refMonth,
+        description: desc,
+        created_by: authData?.user?.id ?? null,
+      });
+      if (error) throw error;
+      // Recalcula folha do colaborador para refletir a nova rubrica
+      const { error: fnErr } = await supabase.functions.invoke("calculate-payroll", {
+        body: { year: refYear, month: refMonth, employee_id: row.employee_id },
+      });
+      if (fnErr) throw fnErr;
+      toast.success(addKind === "earning" ? "Provento incluído" : "Desconto incluído");
+      cancelAddRubric();
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao incluir rubrica");
+    } finally {
+      setSavingAdd(false);
+    }
+  };
+
+  const startEditManual = (m: ManualRubric) => {
+    if (isLocked) { toast.error("Folha consolidada/aprovada — somente leitura"); return; }
+    setEditingManualId(m.id);
+    setEditingManualDesc(m.description ?? "");
+    setEditingManualValue(String(m.total_amount).replace(".", ","));
+  };
+  const cancelEditManual = () => {
+    setEditingManualId(null);
+    setEditingManualDesc("");
+    setEditingManualValue("");
+  };
+  const saveEditManual = async (m: ManualRubric, employeeId: string) => {
+    if (isLocked) { toast.error("Folha consolidada/aprovada — somente leitura"); return; }
+    const desc = editingManualDesc.trim();
+    const newVal = parseMoneyInput(editingManualValue);
+    if (!desc) { toast.error("Informe uma descrição"); return; }
+    if (!(newVal > 0)) { toast.error("Informe um valor válido"); return; }
+    setSavingManualId(m.id);
+    try {
+      const { error } = await (supabase as any)
+        .from("payroll_advances")
+        .update({ description: desc, total_amount: newVal })
+        .eq("id", m.id);
+      if (error) throw error;
+      // Atualiza também a parcela do mês para refletir no cálculo
+      const { error: instErr } = await (supabase as any)
+        .from("payroll_advance_installments")
+        .update({ amount: newVal })
+        .eq("advance_id", m.id)
+        .eq("reference_year", refYear)
+        .eq("reference_month", refMonth);
+      if (instErr) throw instErr;
+      const { error: fnErr } = await supabase.functions.invoke("calculate-payroll", {
+        body: { year: refYear, month: refMonth, employee_id: employeeId },
+      });
+      if (fnErr) throw fnErr;
+      toast.success("Rubrica atualizada");
+      cancelEditManual();
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao atualizar rubrica");
+    } finally {
+      setSavingManualId(null);
+    }
+  };
+  const removeManual = async (m: ManualRubric, employeeId: string) => {
+    if (isLocked) { toast.error("Folha consolidada/aprovada — somente leitura"); return; }
+    const label = m.description ?? (m.type === "earning" ? "Provento" : "Desconto");
+    const warn = m.installments_count > 1
+      ? `Remover "${label}"? Isso apagará TODAS as ${m.installments_count} parcelas (inclusive de meses futuros).`
+      : `Remover "${label}" desta folha?`;
+    if (!confirm(warn)) return;
+    setRemovingManualId(m.id);
+    try {
+      const { error: instErr } = await (supabase as any)
+        .from("payroll_advance_installments")
+        .delete()
+        .eq("advance_id", m.id);
+      if (instErr) throw instErr;
+      const { error } = await (supabase as any)
+        .from("payroll_advances")
+        .delete()
+        .eq("id", m.id);
+      if (error) throw error;
+      const { error: fnErr } = await supabase.functions.invoke("calculate-payroll", {
+        body: { year: refYear, month: refMonth, employee_id: employeeId },
+      });
+      if (fnErr) throw fnErr;
+      toast.success("Rubrica removida");
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao remover rubrica");
+    } finally {
+      setRemovingManualId(null);
+    }
+  };
+
+
+
 
   // Mapeamento "Descrição da rubrica sintética" -> coluna em payroll_calculated.
   // Itens em calculation_details ficam em JSON e são tratados à parte.
@@ -376,27 +531,68 @@ export default function SimpleManagerPayrollPanel() {
           const rubs: RubricRow[] = [];
           const push = (description: string, kind: "earning" | "deduction", value: number) => {
             if (Number(value) === 0) return;
-            rubs.push({ id: `${r.id}-${description}`, row_id: r.id, code: null, description, kind, value: Number(value) });
+            rubs.push({ id: `${r.id}-${kind}-${description}`, row_id: r.id, code: null, description, kind, value: Number(value) });
           };
+          const details = r.calculation_details ?? {};
+          const cct26Earning = Number(details.cct26_earning ?? 0);
+          const otherEarningsResidual = Math.max(0, Number(r.other_earnings ?? 0) - cct26Earning);
+          const vacationPayrollBase = Number(details.vacation_payroll_base ?? 0);
+          const vacationPayrollOneThird = Number(details.vacation_payroll_one_third ?? 0);
+          const vacationPayrollInssProvision = Number(details.vacation_payroll_inss_provision ?? 0);
           push("Salário proporcional", "earning", Number(r.proportional_salary ?? r.base_salary ?? 0));
           push("Produtividade 5%", "earning", Number(r.productivity ?? 0));
-          push("Adicional Noturno", "earning", Number(r.calculation_details?.night_addition ?? 0));
-          push("Feriados Trabalhados", "earning", Number(r.calculation_details?.holiday_pay ?? 0));
+          push("Adicional Noturno", "earning", Number(details.night_addition ?? 0));
+          push("Feriados Trabalhados", "earning", Number(details.holiday_pay ?? 0));
           push("Salário Família", "earning", Number(r.family_allowance ?? 0));
-          push("Outros proventos", "earning", Number(r.other_earnings ?? 0));
+          push("Diferença reajuste CCT26", "earning", cct26Earning);
+          push("Outros proventos", "earning", otherEarningsResidual);
+          push("Férias", "earning", vacationPayrollBase);
+          push("1/3 de Férias", "earning", vacationPayrollOneThird);
+          push("INSS - Provisão de Férias", "earning", vacationPayrollInssProvision);
           push("Adiantamentos", "deduction", Number(r.advance ?? 0));
           push("Vale-transporte", "deduction", Number(r.transport_discount ?? 0));
-          push("VT Não Utilizado", "deduction", Number(r.calculation_details?.vt_unused_adjustment ?? 0));
+          push("VT Não Utilizado", "deduction", Number(details.vt_unused_adjustment ?? 0));
           push("Plano de saúde", "deduction", Number(r.health_plan ?? 0));
+          push("Adiantamento de Férias", "deduction", vacationPayrollBase);
+          push("Adiantamento de 1/3 de Férias", "deduction", vacationPayrollOneThird);
+          push("INSS - Provisão de Férias", "deduction", vacationPayrollInssProvision);
           push("INSS", "deduction", Number(r.inss ?? 0));
           push("IRRF", "deduction", Number(r.irrf ?? 0));
           push("Infrações", "deduction", Number(r.infraction_discount ?? 0));
-          push("Faltas", "deduction", Number(r.absence_discount ?? r.calculation_details?.absence_discount ?? 0));
-          push("DSR Falta", "deduction", Number(r.dsr_loss_discount ?? r.calculation_details?.dsr_loss_discount ?? 0));
+          push("Faltas", "deduction", Number(r.absence_discount ?? details.absence_discount ?? 0));
+          push("DSR Falta", "deduction", Number(r.dsr_loss_discount ?? details.dsr_loss_discount ?? 0));
           push("Outros descontos", "deduction", Number(r.other_discounts ?? 0));
           synth[r.id] = rubs;
         });
         setRubricsByRow(synth);
+
+        // Rubricas manuais lançadas via /folha (payroll_advances) para o mês
+        const empIds = list.map((r) => r.employee_id).filter(Boolean) as string[];
+        if (empIds.length > 0) {
+          const { data: adv } = await (supabase as any)
+            .from("payroll_advances")
+            .select("id, employee_id, type, description, total_amount, installments_count, start_year, start_month")
+            .in("employee_id", empIds);
+          const map: Record<string, ManualRubric[]> = {};
+          ((adv ?? []) as any[]).forEach((a) => {
+            // Considera manual do mês qualquer advance cuja janela [start..start+installments-1] cubra refYear/refMonth
+            const startIdx = a.start_year * 12 + (a.start_month - 1);
+            const endIdx = startIdx + Math.max(1, Number(a.installments_count ?? 1)) - 1;
+            const cur = refYear * 12 + (refMonth - 1);
+            if (cur < startIdx || cur > endIdx) return;
+            (map[a.employee_id] ??= []).push({
+              id: a.id,
+              employee_id: a.employee_id,
+              type: a.type,
+              description: a.description ?? null,
+              total_amount: Number(a.total_amount ?? 0),
+              installments_count: Number(a.installments_count ?? 1),
+            });
+          });
+          setManualByEmp(map);
+        } else {
+          setManualByEmp({});
+        }
         return;
       }
       setMeta(imp as ImportMeta);
@@ -628,6 +824,163 @@ export default function SimpleManagerPayrollPanel() {
                                     ))}
                                   </TableBody>
                                 </Table>
+                                {isFromCalc && r.employee_id && (manualByEmp[r.employee_id]?.length ?? 0) > 0 && (
+                                  <div className="border-t px-2 py-2 space-y-1">
+                                    <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                                      Rubricas manuais deste mês
+                                    </div>
+                                    {(manualByEmp[r.employee_id!] ?? []).map((m) => (
+                                      <div key={m.id} className="flex items-center gap-2 rounded border bg-background px-2 py-1.5">
+                                        {editingManualId === m.id ? (
+                                          <>
+                                            <Badge variant={m.type === "deduction" ? "destructive" : "default"} className="text-[10px] shrink-0">
+                                              {m.type === "earning" ? "Provento" : "Desconto"}
+                                            </Badge>
+                                            <Input
+                                              value={editingManualDesc}
+                                              onChange={(e) => setEditingManualDesc(e.target.value)}
+                                              placeholder="Descrição"
+                                              className="h-7 text-xs flex-1 min-w-[120px]"
+                                            />
+                                            <Input
+                                              value={editingManualValue}
+                                              onChange={(e) => setEditingManualValue(e.target.value)}
+                                              placeholder="0,00"
+                                              inputMode="decimal"
+                                              className="h-7 text-xs w-24 text-right"
+                                            />
+                                            <Button
+                                              size="sm"
+                                              onClick={() => saveEditManual(m, r.employee_id!)}
+                                              disabled={savingManualId === m.id || isLocked}
+                                              className="h-7 px-2"
+                                              aria-label="Salvar"
+                                            >
+                                              {savingManualId === m.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              variant="ghost"
+                                              onClick={cancelEditManual}
+                                              disabled={savingManualId === m.id}
+                                              className="h-7 px-2"
+                                              aria-label="Cancelar"
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </Button>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Badge variant={m.type === "deduction" ? "destructive" : "default"} className="text-[10px] shrink-0">
+                                              {m.type === "earning" ? "Provento" : "Desconto"}
+                                            </Badge>
+                                            <span className="text-xs flex-1 truncate">
+                                              {m.description ?? "—"}
+                                              {m.installments_count > 1 && (
+                                                <span className="text-muted-foreground ml-1">
+                                                  (parcelado {m.installments_count}x)
+                                                </span>
+                                              )}
+                                            </span>
+                                            <span className="text-xs font-mono w-24 text-right">
+                                              {money(m.total_amount)}
+                                            </span>
+                                            <Button
+                                              size="sm"
+                                              variant="ghost"
+                                              onClick={() => startEditManual(m)}
+                                              disabled={isLocked}
+                                              className="h-7 px-2"
+                                              title={isLocked ? "Folha bloqueada" : "Editar"}
+                                              aria-label="Editar"
+                                            >
+                                              Editar
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              variant="ghost"
+                                              onClick={() => removeManual(m, r.employee_id!)}
+                                              disabled={removingManualId === m.id || isLocked}
+                                              className="h-7 px-2 text-destructive hover:text-destructive"
+                                              title={isLocked ? "Folha bloqueada" : "Remover"}
+                                              aria-label="Remover"
+                                            >
+                                              {removingManualId === m.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                                            </Button>
+                                          </>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                {isFromCalc && !isLocked && (
+                                  <div className="border-t p-2">
+                                    {addingForRowId === r.id ? (
+                                      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:flex-wrap">
+                                        <div className="flex-1 min-w-[140px]">
+                                          <Label className="text-[11px] text-muted-foreground">Tipo</Label>
+                                          <Select value={addKind} onValueChange={(v) => setAddKind(v as any)}>
+                                            <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="earning">Provento (+)</SelectItem>
+                                              <SelectItem value="deduction">Desconto (−)</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                        <div className="flex-[2] min-w-[180px]">
+                                          <Label className="text-[11px] text-muted-foreground">Descrição</Label>
+                                          <Input
+                                            autoFocus
+                                            value={addDesc}
+                                            onChange={(e) => setAddDesc(e.target.value)}
+                                            placeholder="Ex.: Bônus de campanha"
+                                            className="h-8"
+                                          />
+                                        </div>
+                                        <div className="w-32">
+                                          <Label className="text-[11px] text-muted-foreground">Valor (R$)</Label>
+                                          <Input
+                                            value={addValue}
+                                            onChange={(e) => setAddValue(e.target.value)}
+                                            placeholder="0,00"
+                                            inputMode="decimal"
+                                            className="h-8 text-right"
+                                          />
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          <Button
+                                            size="sm"
+                                            onClick={() => saveNewRubric(r)}
+                                            disabled={savingAdd}
+                                            className="h-8"
+                                          >
+                                            {savingAdd ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1" />}
+                                            Salvar
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={cancelAddRubric}
+                                            disabled={savingAdd}
+                                            className="h-8"
+                                            aria-label="Cancelar"
+                                          >
+                                            <X className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => openAddRubric(r.id)}
+                                        className="h-8 gap-1"
+                                      >
+                                        <Plus className="h-3.5 w-3.5" /> Rubrica manual
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
                                 <div className="flex items-center justify-end gap-2 p-2 border-t flex-wrap">
                                   {isOk ? (
                                     <Button

@@ -12,10 +12,20 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Plane, Plus, AlertTriangle, Loader2, Trash2, CheckCircle2 } from "lucide-react";
+import { Plane, Plus, AlertTriangle, Loader2, Trash2, CheckCircle2, FileText, RefreshCw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { RISK_LABEL, RISK_BADGE, STATUS_LABEL, formatDate, type VacationRisk, type VacationStatus } from "@/lib/vacation";
+
+interface VacationReceipt {
+  id: string;
+  vacation_schedule_id: string;
+  gross_total: number;
+  net_total: number;
+  payment_status: string;
+  payment_due_date: string | null;
+  pdf_url: string | null;
+}
 
 interface EmployeeRow {
   id: string;
@@ -70,6 +80,7 @@ export default function Vacations() {
   const { isAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Row[]>([]);
+  const [receiptMap, setReceiptMap] = useState<Record<string, VacationReceipt>>({});
   const [filter, setFilter] = useState<"all" | VacationRisk>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
@@ -83,6 +94,7 @@ export default function Vacations() {
     notes: "",
   });
   const [saving, setSaving] = useState(false);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -114,6 +126,19 @@ export default function Vacations() {
       schedules: allSchedules.filter((s) => s.employee_id === e.id),
     }));
     setRows(newRows);
+
+    const scheduleIds = allSchedules.map((s) => s.id);
+    if (scheduleIds.length > 0) {
+      const { data: recData } = await supabase
+        .from("vacation_receipts" as any)
+        .select("id, vacation_schedule_id, gross_total, net_total, payment_status, payment_due_date, pdf_url")
+        .in("vacation_schedule_id", scheduleIds);
+      const map: Record<string, VacationReceipt> = {};
+      ((recData ?? []) as any[]).forEach((r) => { map[r.vacation_schedule_id] = r as VacationReceipt; });
+      setReceiptMap(map);
+    } else {
+      setReceiptMap({});
+    }
     setLoading(false);
   };
 
@@ -188,17 +213,60 @@ export default function Vacations() {
   };
 
   const handleApprove = async (id: string) => {
+    setProcessingId(id);
     const { error } = await supabase
       .from("vacation_schedules" as any)
       .update({ status: "approved", approved_at: new Date().toISOString() } as any)
       .eq("id", id);
     if (error) {
+      setProcessingId(null);
       toast({ title: "Erro", description: error.message, variant: "destructive" });
       return;
     }
-    toast({ title: "Programação aprovada" });
+    // Trigger no banco chama as edge functions via pg_net, mas também chamamos aqui
+    // de forma síncrona pra garantir recibo + aviso antes do reload da UI.
+    const [{ error: fnErr }] = await Promise.all([
+      supabase.functions.invoke("calculate-vacation-receipt", { body: { vacation_schedule_id: id } }),
+      supabase.functions.invoke("generate-vacation-notice", { body: { vacation_schedule_id: id } }),
+    ]);
+    setProcessingId(null);
+    if (fnErr) {
+      toast({ title: "Aprovada — recibo em processamento", description: "O recibo será gerado em instantes." });
+    } else {
+      toast({ title: "Programação aprovada", description: "Recibo e aviso prévio gerados." });
+    }
     load();
   };
+
+  const handleGenerateReceipt = async (id: string) => {
+    setProcessingId(id);
+    const { error } = await supabase.functions.invoke("calculate-vacation-receipt", {
+      body: { vacation_schedule_id: id },
+    });
+    setProcessingId(null);
+    if (error) {
+      toast({ title: "Erro ao gerar recibo", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Recibo (re)gerado" });
+    load();
+  };
+
+  const handleOpenReceipt = async (receipt: VacationReceipt) => {
+    if (!receipt.pdf_url) {
+      toast({ title: "PDF ainda não disponível", variant: "destructive" });
+      return;
+    }
+    const { data, error } = await supabase.storage
+      .from("employee-documents")
+      .createSignedUrl(receipt.pdf_url, 300);
+    if (error || !data?.signedUrl) {
+      toast({ title: "Erro ao abrir PDF", description: error?.message, variant: "destructive" });
+      return;
+    }
+    window.open(data.signedUrl, "_blank");
+  };
+
 
   const handleCancel = async (id: string) => {
     if (!confirm("Cancelar esta programação?")) return;
@@ -471,7 +539,11 @@ export default function Vacations() {
                 {rows
                   .flatMap((r) => r.schedules.map((s) => ({ ...s, name: r.employee.full_name })))
                   .sort((a, b) => a.start_date.localeCompare(b.start_date))
-                  .map((s) => (
+                  .map((s) => {
+                    const rec = receiptMap[s.id];
+                    const canReceipt = s.status === "approved" || s.status === "in_progress" || s.status === "completed";
+                    const busy = processingId === s.id;
+                    return (
                     <div key={s.id} className="rounded-lg border bg-card p-3 space-y-2">
                       <div className="flex items-start justify-between gap-2">
                         <div className="font-medium text-sm min-w-0 flex-1">{s.name}</div>
@@ -485,23 +557,40 @@ export default function Vacations() {
                           <span><span className="text-muted-foreground">Dias:</span> <strong>{s.days_count}</strong></span>
                           <span><span className="text-muted-foreground">Abono:</span> <strong>{s.sell_days > 0 ? `${s.sell_days} d` : "—"}</strong></span>
                         </div>
+                        {rec && (
+                          <div className="flex items-center gap-2 pt-1">
+                            <Badge variant={rec.payment_status === "paid" ? "default" : "outline"} className="text-[10px]">
+                              Recibo: {rec.payment_status === "paid" ? "Pago" : "A pagar"}
+                            </Badge>
+                            <span className="text-muted-foreground">R$ {rec.net_total.toFixed(2)}</span>
+                            {rec.payment_due_date && <span className="text-muted-foreground">venc. {formatDate(rec.payment_due_date)}</span>}
+                          </div>
+                        )}
                       </div>
-                      {(s.status === "pending" || (s.status !== "cancelled" && s.status !== "completed")) && (
-                        <div className="flex gap-2 pt-1">
-                          {s.status === "pending" && (
-                            <Button size="sm" variant="outline" onClick={() => handleApprove(s.id)} className="flex-1 gap-1">
-                              <CheckCircle2 className="h-3 w-3" /> Aprovar
-                            </Button>
-                          )}
-                          {s.status !== "cancelled" && s.status !== "completed" && (
-                            <Button size="sm" variant="ghost" onClick={() => handleCancel(s.id)} className="flex-1 gap-1 text-destructive">
-                              <Trash2 className="h-3 w-3" /> Cancelar
-                            </Button>
-                          )}
-                        </div>
-                      )}
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {s.status === "pending" && (
+                          <Button size="sm" variant="outline" disabled={busy} onClick={() => handleApprove(s.id)} className="gap-1">
+                            {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />} Aprovar
+                          </Button>
+                        )}
+                        {canReceipt && rec?.pdf_url && (
+                          <Button size="sm" variant="outline" onClick={() => handleOpenReceipt(rec)} className="gap-1">
+                            <FileText className="h-3 w-3" /> Recibo
+                          </Button>
+                        )}
+                        {canReceipt && isAdmin && (
+                          <Button size="sm" variant="ghost" disabled={busy} onClick={() => handleGenerateReceipt(s.id)} className="gap-1">
+                            {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />} {rec ? "Reprocessar" : "Gerar recibo"}
+                          </Button>
+                        )}
+                        {s.status !== "cancelled" && s.status !== "completed" && (
+                          <Button size="sm" variant="ghost" onClick={() => handleCancel(s.id)} className="gap-1 text-destructive">
+                            <Trash2 className="h-3 w-3" /> Cancelar
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  ))}
+                  );})}
               </div>
 
               {/* Desktop: table */}
@@ -514,6 +603,7 @@ export default function Vacations() {
                       <TableHead>Dias</TableHead>
                       <TableHead>Abono</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Recibo</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -521,7 +611,11 @@ export default function Vacations() {
                     {rows
                       .flatMap((r) => r.schedules.map((s) => ({ ...s, name: r.employee.full_name })))
                       .sort((a, b) => a.start_date.localeCompare(b.start_date))
-                      .map((s) => (
+                      .map((s) => {
+                        const rec = receiptMap[s.id];
+                        const canReceipt = s.status === "approved" || s.status === "in_progress" || s.status === "completed";
+                        const busy = processingId === s.id;
+                        return (
                         <TableRow key={s.id}>
                           <TableCell className="font-medium">{s.name}</TableCell>
                           <TableCell>{formatDate(s.start_date)} → {formatDate(s.end_date)}</TableCell>
@@ -532,10 +626,33 @@ export default function Vacations() {
                               {STATUS_LABEL[s.status] ?? s.status}
                             </Badge>
                           </TableCell>
+                          <TableCell className="text-xs">
+                            {rec ? (
+                              <div className="flex flex-col gap-0.5">
+                                <Badge variant={rec.payment_status === "paid" ? "default" : "outline"} className="w-fit text-[10px]">
+                                  {rec.payment_status === "paid" ? "Pago" : "A pagar"}
+                                </Badge>
+                                <span className="font-mono">R$ {Number(rec.net_total).toFixed(2)}</span>
+                                {rec.payment_due_date && <span className="text-muted-foreground">venc. {formatDate(rec.payment_due_date)}</span>}
+                              </div>
+                            ) : canReceipt ? (
+                              <span className="text-muted-foreground">—</span>
+                            ) : null}
+                          </TableCell>
                           <TableCell className="text-right space-x-2">
                             {s.status === "pending" && (
-                              <Button size="sm" variant="outline" onClick={() => handleApprove(s.id)} className="gap-1">
-                                <CheckCircle2 className="h-3 w-3" /> Aprovar
+                              <Button size="sm" variant="outline" disabled={busy} onClick={() => handleApprove(s.id)} className="gap-1">
+                                {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />} Aprovar
+                              </Button>
+                            )}
+                            {canReceipt && rec?.pdf_url && (
+                              <Button size="sm" variant="outline" onClick={() => handleOpenReceipt(rec)} className="gap-1">
+                                <FileText className="h-3 w-3" /> Recibo
+                              </Button>
+                            )}
+                            {canReceipt && isAdmin && (
+                              <Button size="sm" variant="ghost" disabled={busy} onClick={() => handleGenerateReceipt(s.id)} className="gap-1">
+                                {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />} {rec ? "Reprocessar" : "Gerar"}
                               </Button>
                             )}
                             {s.status !== "cancelled" && s.status !== "completed" && (
@@ -545,7 +662,7 @@ export default function Vacations() {
                             )}
                           </TableCell>
                         </TableRow>
-                      ))}
+                      );})}
                   </TableBody>
                 </Table>
               </div>

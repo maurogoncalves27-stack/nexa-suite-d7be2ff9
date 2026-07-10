@@ -44,12 +44,14 @@ export type Database = {
       accounts_payable: {
         Row: {
           amount: number
+          awaiting_amount: boolean
           bank_account_id: string | null
           bank_transaction_id: string | null
           barcode: string | null
           beneficiary: string | null
           category_id: string | null
           competence_date: string | null
+          competence_month: string | null
           created_at: string
           created_by: string
           description: string | null
@@ -63,6 +65,7 @@ export type Database = {
           paid_by: string | null
           payment_notes: string | null
           recurrence_group_id: string | null
+          recurring_template_id: string | null
           status: string
           store_id: string
           supplier_name: string | null
@@ -70,12 +73,14 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          awaiting_amount?: boolean
           bank_account_id?: string | null
           bank_transaction_id?: string | null
           barcode?: string | null
           beneficiary?: string | null
           category_id?: string | null
           competence_date?: string | null
+          competence_month?: string | null
           created_at?: string
           created_by: string
           description?: string | null
@@ -89,6 +94,7 @@ export type Database = {
           paid_by?: string | null
           payment_notes?: string | null
           recurrence_group_id?: string | null
+          recurring_template_id?: string | null
           status?: string
           store_id: string
           supplier_name?: string | null
@@ -96,12 +102,14 @@ export type Database = {
         }
         Update: {
           amount?: number
+          awaiting_amount?: boolean
           bank_account_id?: string | null
           bank_transaction_id?: string | null
           barcode?: string | null
           beneficiary?: string | null
           category_id?: string | null
           competence_date?: string | null
+          competence_month?: string | null
           created_at?: string
           created_by?: string
           description?: string | null
@@ -115,6 +123,7 @@ export type Database = {
           paid_by?: string | null
           payment_notes?: string | null
           recurrence_group_id?: string | null
+          recurring_template_id?: string | null
           status?: string
           store_id?: string
           supplier_name?: string | null
@@ -147,6 +156,13 @@ export type Database = {
             columns: ["invoice_id"]
             isOneToOne: false
             referencedRelation: "inventory_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accounts_payable_recurring_template_id_fkey"
+            columns: ["recurring_template_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_payables"
             referencedColumns: ["id"]
           },
           {
@@ -355,6 +371,30 @@ export type Database = {
           },
         ]
       }
+      asset_capex_ncm_prefixes: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          prefix: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          prefix: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          prefix?: string
+        }
+        Relationships: []
+      }
       asset_inventory: {
         Row: {
           acquired_at: string | null
@@ -366,6 +406,7 @@ export type Database = {
           name: string
           notes: string | null
           quantity: number
+          source_suggestion_id: string | null
           store_id: string
           unit_value: number
           updated_at: string
@@ -380,6 +421,7 @@ export type Database = {
           name: string
           notes?: string | null
           quantity?: number
+          source_suggestion_id?: string | null
           store_id: string
           unit_value?: number
           updated_at?: string
@@ -394,13 +436,120 @@ export type Database = {
           name?: string
           notes?: string | null
           quantity?: number
+          source_suggestion_id?: string | null
           store_id?: string
           unit_value?: number
           updated_at?: string
         }
         Relationships: [
           {
+            foreignKeyName: "asset_inventory_source_suggestion_id_fkey"
+            columns: ["source_suggestion_id"]
+            isOneToOne: false
+            referencedRelation: "asset_suggestions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "asset_inventory_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      asset_suggestion_settings: {
+        Row: {
+          id: boolean
+          min_equipment_value: number
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          min_equipment_value?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          min_equipment_value?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      asset_suggestions: {
+        Row: {
+          asset_id: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          description: string
+          id: string
+          ncm: string | null
+          notes: string | null
+          quantity: number
+          source_id: string
+          source_item_id: string | null
+          source_type: string
+          status: string
+          store_id: string | null
+          suggested_category: string
+          supplier_name: string | null
+          total_value: number
+          unit_value: number
+          updated_at: string
+        }
+        Insert: {
+          asset_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          description: string
+          id?: string
+          ncm?: string | null
+          notes?: string | null
+          quantity?: number
+          source_id: string
+          source_item_id?: string | null
+          source_type: string
+          status?: string
+          store_id?: string | null
+          suggested_category?: string
+          supplier_name?: string | null
+          total_value?: number
+          unit_value?: number
+          updated_at?: string
+        }
+        Update: {
+          asset_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          description?: string
+          id?: string
+          ncm?: string | null
+          notes?: string | null
+          quantity?: number
+          source_id?: string
+          source_item_id?: string | null
+          source_type?: string
+          status?: string
+          store_id?: string | null
+          suggested_category?: string
+          supplier_name?: string | null
+          total_value?: number
+          unit_value?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_suggestions_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "asset_inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_suggestions_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
@@ -2010,6 +2159,7 @@ export type Database = {
           created_by: string | null
           document_id: string
           id: string
+          target_employee_ids: string[]
           target_positions: string[]
           version_number: number
         }
@@ -2019,6 +2169,7 @@ export type Database = {
           created_by?: string | null
           document_id: string
           id?: string
+          target_employee_ids?: string[]
           target_positions?: string[]
           version_number: number
         }
@@ -2028,6 +2179,7 @@ export type Database = {
           created_by?: string | null
           document_id?: string
           id?: string
+          target_employee_ids?: string[]
           target_positions?: string[]
           version_number?: number
         }
@@ -2761,6 +2913,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      dre_historical_snapshot: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          line_key: string
+          month: number
+          store_key: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          line_key: string
+          month: number
+          store_key: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          line_key?: string
+          month?: number
+          store_key?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
       }
       ecommerce_cart_items: {
         Row: {
@@ -3844,6 +4029,7 @@ export type Database = {
           email: string | null
           esocial_category: string | null
           ethnicity: string | null
+          exclude_from_payroll: boolean
           exempt_from_timeclock: boolean
           experience_contract_days: number | null
           experience_extension_days: number | null
@@ -3941,6 +4127,7 @@ export type Database = {
           email?: string | null
           esocial_category?: string | null
           ethnicity?: string | null
+          exclude_from_payroll?: boolean
           exempt_from_timeclock?: boolean
           experience_contract_days?: number | null
           experience_extension_days?: number | null
@@ -4038,6 +4225,7 @@ export type Database = {
           email?: string | null
           esocial_category?: string | null
           ethnicity?: string | null
+          exclude_from_payroll?: boolean
           exempt_from_timeclock?: boolean
           experience_contract_days?: number | null
           experience_extension_days?: number | null
@@ -4680,6 +4868,7 @@ export type Database = {
           dre_group: string | null
           id: string
           is_active: boolean
+          is_capex: boolean
           kind: string
           name: string
           sort_order: number
@@ -4692,6 +4881,7 @@ export type Database = {
           dre_group?: string | null
           id?: string
           is_active?: boolean
+          is_capex?: boolean
           kind: string
           name: string
           sort_order?: number
@@ -4704,6 +4894,7 @@ export type Database = {
           dre_group?: string | null
           id?: string
           is_active?: boolean
+          is_capex?: boolean
           kind?: string
           name?: string
           sort_order?: number
@@ -7733,6 +7924,7 @@ export type Database = {
           days_off: number
           doctor_crm: string | null
           doctor_name: string | null
+          document_type: string
           employee_id: string
           file_name: string | null
           file_path: string | null
@@ -7741,6 +7933,7 @@ export type Database = {
           inss_benefit_number: string | null
           inss_benefit_type: string | null
           inss_referral: boolean
+          is_pcmso: boolean
           leave_applied: boolean
           leave_end_date: string | null
           leave_start_date: string | null
@@ -7752,6 +7945,7 @@ export type Database = {
           size_bytes: number | null
           status: string
           updated_at: string
+          valid_until: string | null
         }
         Insert: {
           certificate_date: string
@@ -7762,6 +7956,7 @@ export type Database = {
           days_off?: number
           doctor_crm?: string | null
           doctor_name?: string | null
+          document_type?: string
           employee_id: string
           file_name?: string | null
           file_path?: string | null
@@ -7770,6 +7965,7 @@ export type Database = {
           inss_benefit_number?: string | null
           inss_benefit_type?: string | null
           inss_referral?: boolean
+          is_pcmso?: boolean
           leave_applied?: boolean
           leave_end_date?: string | null
           leave_start_date?: string | null
@@ -7781,6 +7977,7 @@ export type Database = {
           size_bytes?: number | null
           status?: string
           updated_at?: string
+          valid_until?: string | null
         }
         Update: {
           certificate_date?: string
@@ -7791,6 +7988,7 @@ export type Database = {
           days_off?: number
           doctor_crm?: string | null
           doctor_name?: string | null
+          document_type?: string
           employee_id?: string
           file_name?: string | null
           file_path?: string | null
@@ -7799,6 +7997,7 @@ export type Database = {
           inss_benefit_number?: string | null
           inss_benefit_type?: string | null
           inss_referral?: boolean
+          is_pcmso?: boolean
           leave_applied?: boolean
           leave_end_date?: string | null
           leave_start_date?: string | null
@@ -7810,6 +8009,7 @@ export type Database = {
           size_bytes?: number | null
           status?: string
           updated_at?: string
+          valid_until?: string | null
         }
         Relationships: [
           {
@@ -7817,6 +8017,125 @@ export type Database = {
             columns: ["infraction_id"]
             isOneToOne: false
             referencedRelation: "employee_infractions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mental_health_alerts: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          employee_id: string
+          id: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          rule: string
+          status: string
+          triggered_at: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          employee_id: string
+          id?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          rule: string
+          status?: string
+          triggered_at?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          employee_id?: string
+          id?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          rule?: string
+          status?: string
+          triggered_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mental_health_alerts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mental_health_alerts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mental_health_followups: {
+        Row: {
+          alert_id: string | null
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          followup_date: string
+          id: string
+          notes: string | null
+          pcmso_document_id: string | null
+          type: string
+        }
+        Insert: {
+          alert_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          followup_date?: string
+          id?: string
+          notes?: string | null
+          pcmso_document_id?: string | null
+          type: string
+        }
+        Update: {
+          alert_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          followup_date?: string
+          id?: string
+          notes?: string | null
+          pcmso_document_id?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mental_health_followups_alert_id_fkey"
+            columns: ["alert_id"]
+            isOneToOne: false
+            referencedRelation: "mental_health_alerts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mental_health_followups_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mental_health_followups_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mental_health_followups_pcmso_document_id_fkey"
+            columns: ["pcmso_document_id"]
+            isOneToOne: false
+            referencedRelation: "medical_certificates"
             referencedColumns: ["id"]
           },
         ]
@@ -8247,6 +8566,57 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mood_checkins: {
+        Row: {
+          comment: string | null
+          created_at: string
+          employee_id: string
+          id: string
+          mood_score: number | null
+          needs_support: boolean
+          skipped: boolean
+          user_id: string
+          week_start: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          employee_id: string
+          id?: string
+          mood_score?: number | null
+          needs_support?: boolean
+          skipped?: boolean
+          user_id: string
+          week_start: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          employee_id?: string
+          id?: string
+          mood_score?: number | null
+          needs_support?: boolean
+          skipped?: boolean
+          user_id?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mood_checkins_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mood_checkins_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -10023,6 +10393,8 @@ export type Database = {
           transport_discount: number
           transport_voucher: number
           updated_at: string
+          vacation_days_in_month: number
+          vacation_deduction: number
           worked_days: number
         }
         Insert: {
@@ -10062,6 +10434,8 @@ export type Database = {
           transport_discount?: number
           transport_voucher?: number
           updated_at?: string
+          vacation_days_in_month?: number
+          vacation_deduction?: number
           worked_days?: number
         }
         Update: {
@@ -10101,6 +10475,8 @@ export type Database = {
           transport_discount?: number
           transport_voucher?: number
           updated_at?: string
+          vacation_days_in_month?: number
+          vacation_deduction?: number
           worked_days?: number
         }
         Relationships: [
@@ -12490,6 +12866,8 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          pcmso_periodicity_months: number
+          pcmso_requires_psychosocial: boolean
           sort_order: number
           time_clock_payroll: boolean
           time_clock_required: boolean
@@ -12502,6 +12880,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          pcmso_periodicity_months?: number
+          pcmso_requires_psychosocial?: boolean
           sort_order?: number
           time_clock_payroll?: boolean
           time_clock_required?: boolean
@@ -12514,6 +12894,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          pcmso_periodicity_months?: number
+          pcmso_requires_psychosocial?: boolean
           sort_order?: number
           time_clock_payroll?: boolean
           time_clock_required?: boolean
@@ -13681,6 +14063,95 @@ export type Database = {
           },
         ]
       }
+      recurring_payables: {
+        Row: {
+          active: boolean
+          bank_account_id: string | null
+          category_id: string | null
+          created_at: string
+          created_by: string | null
+          default_amount: number | null
+          description: string
+          due_day: number
+          end_month: string | null
+          id: string
+          kind: string
+          notes: string | null
+          payment_method: string | null
+          start_month: string
+          store_id: string | null
+          supplier_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          bank_account_id?: string | null
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_amount?: number | null
+          description: string
+          due_day: number
+          end_month?: string | null
+          id?: string
+          kind?: string
+          notes?: string | null
+          payment_method?: string | null
+          start_month?: string
+          store_id?: string | null
+          supplier_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          bank_account_id?: string | null
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_amount?: number | null
+          description?: string
+          due_day?: number
+          end_month?: string | null
+          id?: string
+          kind?: string
+          notes?: string | null
+          payment_method?: string | null
+          start_month?: string
+          store_id?: string | null
+          supplier_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_payables_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_payables_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "finance_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_payables_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_payables_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       remote_access_audit: {
         Row: {
           action: string
@@ -13940,6 +14411,107 @@ export type Database = {
           secondary_color?: string
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      sst_document_versions: {
+        Row: {
+          created_at: string
+          document_id: string
+          emitted_at: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          superseded_at: string | null
+          uploaded_by: string | null
+          valid_from: string
+          valid_until: string | null
+          version_number: number
+        }
+        Insert: {
+          created_at?: string
+          document_id: string
+          emitted_at: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          superseded_at?: string | null
+          uploaded_by?: string | null
+          valid_from: string
+          valid_until?: string | null
+          version_number: number
+        }
+        Update: {
+          created_at?: string
+          document_id?: string
+          emitted_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          superseded_at?: string | null
+          uploaded_by?: string | null
+          valid_from?: string
+          valid_until?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sst_document_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "sst_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sst_documents: {
+        Row: {
+          cnpj: string
+          company_name: string
+          created_at: string
+          created_by: string | null
+          current_version: number
+          doc_type: Database["public"]["Enums"]["sst_doc_type"]
+          emitted_at: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          updated_at: string
+          valid_from: string
+          valid_until: string | null
+        }
+        Insert: {
+          cnpj: string
+          company_name: string
+          created_at?: string
+          created_by?: string | null
+          current_version?: number
+          doc_type: Database["public"]["Enums"]["sst_doc_type"]
+          emitted_at: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          updated_at?: string
+          valid_from: string
+          valid_until?: string | null
+        }
+        Update: {
+          cnpj?: string
+          company_name?: string
+          created_at?: string
+          created_by?: string | null
+          current_version?: number
+          doc_type?: Database["public"]["Enums"]["sst_doc_type"]
+          emitted_at?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          updated_at?: string
+          valid_from?: string
+          valid_until?: string | null
         }
         Relationships: []
       }
@@ -15878,6 +16450,128 @@ export type Database = {
         }
         Relationships: []
       }
+      vacation_receipts: {
+        Row: {
+          accounts_payable_id: string | null
+          calculated_at: string
+          calculated_by: string | null
+          calculation_details: Json
+          created_at: string
+          employee_id: string
+          fgts: number
+          gross_total: number
+          id: string
+          inss: number
+          irrf: number
+          monthly_salary: number
+          net_total: number
+          one_third: number
+          paid_at: string | null
+          payment_due_date: string | null
+          payment_status: string
+          pdf_generated_at: string | null
+          pdf_url: string | null
+          reference_month: number
+          reference_year: number
+          sell_amount: number
+          sell_days: number
+          sell_one_third: number
+          updated_at: string
+          vacation_base: number
+          vacation_days: number
+          vacation_schedule_id: string
+        }
+        Insert: {
+          accounts_payable_id?: string | null
+          calculated_at?: string
+          calculated_by?: string | null
+          calculation_details?: Json
+          created_at?: string
+          employee_id: string
+          fgts?: number
+          gross_total?: number
+          id?: string
+          inss?: number
+          irrf?: number
+          monthly_salary?: number
+          net_total?: number
+          one_third?: number
+          paid_at?: string | null
+          payment_due_date?: string | null
+          payment_status?: string
+          pdf_generated_at?: string | null
+          pdf_url?: string | null
+          reference_month: number
+          reference_year: number
+          sell_amount?: number
+          sell_days?: number
+          sell_one_third?: number
+          updated_at?: string
+          vacation_base?: number
+          vacation_days?: number
+          vacation_schedule_id: string
+        }
+        Update: {
+          accounts_payable_id?: string | null
+          calculated_at?: string
+          calculated_by?: string | null
+          calculation_details?: Json
+          created_at?: string
+          employee_id?: string
+          fgts?: number
+          gross_total?: number
+          id?: string
+          inss?: number
+          irrf?: number
+          monthly_salary?: number
+          net_total?: number
+          one_third?: number
+          paid_at?: string | null
+          payment_due_date?: string | null
+          payment_status?: string
+          pdf_generated_at?: string | null
+          pdf_url?: string | null
+          reference_month?: number
+          reference_year?: number
+          sell_amount?: number
+          sell_days?: number
+          sell_one_third?: number
+          updated_at?: string
+          vacation_base?: number
+          vacation_days?: number
+          vacation_schedule_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vacation_receipts_accounts_payable_id_fkey"
+            columns: ["accounts_payable_id"]
+            isOneToOne: false
+            referencedRelation: "accounts_payable"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vacation_receipts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vacation_receipts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vacation_receipts_vacation_schedule_id_fkey"
+            columns: ["vacation_schedule_id"]
+            isOneToOne: true
+            referencedRelation: "vacation_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vacation_schedules: {
         Row: {
           acquisition_end: string
@@ -15892,6 +16586,10 @@ export type Database = {
           id: string
           installment_number: number
           notes: string | null
+          notice_acknowledged_at: string | null
+          notice_acknowledged_ip: string | null
+          notice_generated_at: string | null
+          notice_pdf_url: string | null
           sell_days: number
           start_date: string
           status: string
@@ -15910,6 +16608,10 @@ export type Database = {
           id?: string
           installment_number?: number
           notes?: string | null
+          notice_acknowledged_at?: string | null
+          notice_acknowledged_ip?: string | null
+          notice_generated_at?: string | null
+          notice_pdf_url?: string | null
           sell_days?: number
           start_date: string
           status?: string
@@ -15928,6 +16630,10 @@ export type Database = {
           id?: string
           installment_number?: number
           notes?: string | null
+          notice_acknowledged_at?: string | null
+          notice_acknowledged_ip?: string | null
+          notice_generated_at?: string | null
+          notice_pdf_url?: string | null
           sell_days?: number
           start_date?: string
           status?: string
@@ -16728,6 +17434,26 @@ export type Database = {
         }
         Relationships: []
       }
+      v_mood_weekly_store_agg: {
+        Row: {
+          avg_mood: number | null
+          low_count: number | null
+          respondents: number | null
+          skipped_count: number | null
+          store_id: string | null
+          store_name: string | null
+          week_start: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       _migration_list_tables: { Args: never; Returns: Json }
@@ -16753,6 +17479,10 @@ export type Database = {
         Returns: {
           path: string
         }[]
+      }
+      acknowledge_vacation_notice: {
+        Args: { _ip?: string; _schedule_id: string }
+        Returns: undefined
       }
       active_maintenance_for_employee: {
         Args: { _user_id: string }
@@ -16791,6 +17521,7 @@ export type Database = {
       }
       apply_shift_swap: { Args: { _swap_id: string }; Returns: undefined }
       approve_inventory_count: { Args: { _count_id: string }; Returns: Json }
+      auto_complete_past_vacations: { Args: never; Returns: number }
       bulk_create_recipes_from_pos_names: {
         Args: { _names: string[] }
         Returns: Json
@@ -17252,6 +17983,7 @@ export type Database = {
         }
         Returns: number
       }
+      ncm_is_capex: { Args: { _ncm: string }; Returns: boolean }
       normalize_pos_name: { Args: { _name: string }; Returns: string }
       nutri_get_user_store_id: { Args: { _user_id: string }; Returns: string }
       open_inventory_count: {
@@ -17549,6 +18281,7 @@ export type Database = {
         | "contabilidade"
         | "partner"
         | "waiter"
+        | "mental_health"
       automation_trigger_type:
         | "late_arrival"
         | "wrong_punch"
@@ -17615,6 +18348,14 @@ export type Database = {
         | "estornada"
       shift_swap_status: "pending" | "accepted" | "rejected" | "approved"
       shift_swap_type: "reciprocal" | "coverage"
+      sst_doc_type:
+        | "pcmso"
+        | "pgr"
+        | "ltcat"
+        | "ltip"
+        | "psicossocial_nr1"
+        | "relatorio_psicossocial"
+        | "outros"
       store_type: "loja" | "fabrica" | "central"
       supplier_offer_type: "launch" | "promo" | "surplus"
       task_assignment_scope: "employee" | "store"
@@ -17778,6 +18519,7 @@ export const Constants = {
         "contabilidade",
         "partner",
         "waiter",
+        "mental_health",
       ],
       automation_trigger_type: [
         "late_arrival",
@@ -17854,6 +18596,15 @@ export const Constants = {
       ],
       shift_swap_status: ["pending", "accepted", "rejected", "approved"],
       shift_swap_type: ["reciprocal", "coverage"],
+      sst_doc_type: [
+        "pcmso",
+        "pgr",
+        "ltcat",
+        "ltip",
+        "psicossocial_nr1",
+        "relatorio_psicossocial",
+        "outros",
+      ],
       store_type: ["loja", "fabrica", "central"],
       supplier_offer_type: ["launch", "promo", "surplus"],
       task_assignment_scope: ["employee", "store"],

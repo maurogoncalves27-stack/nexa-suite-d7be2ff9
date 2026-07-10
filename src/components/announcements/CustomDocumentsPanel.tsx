@@ -30,7 +30,14 @@ interface VersionRow {
   version_number: number;
   content: string;
   target_positions: string[];
+  target_employee_ids: string[];
   created_at: string;
+}
+
+interface EmployeeOpt {
+  id: string;
+  full_name: string;
+  position: string | null;
 }
 
 interface SignatureCount {
@@ -52,6 +59,7 @@ const QUILL_MODULES = {
 export default function CustomDocumentsPanel() {
   const { user } = useAuth();
   const [employeePositions, setEmployeePositions] = useState<string[]>([]);
+  const [employees, setEmployees] = useState<EmployeeOpt[]>([]);
   const [docs, setDocs] = useState<DocumentRow[]>([]);
   const [versions, setVersions] = useState<Record<string, VersionRow>>({});
   const [signCounts, setSignCounts] = useState<Record<string, number>>({});
@@ -64,6 +72,9 @@ export default function CustomDocumentsPanel() {
   const [description, setDescription] = useState("");
   const [content, setContent] = useState("");
   const [targetPositions, setTargetPositions] = useState<string[]>([]);
+  const [targetEmployeeIds, setTargetEmployeeIds] = useState<string[]>([]);
+  const [audienceMode, setAudienceMode] = useState<"positions" | "employees">("positions");
+  const [employeeSearch, setEmployeeSearch] = useState("");
 
   const reset = () => {
     setEditingId(null);
@@ -71,6 +82,9 @@ export default function CustomDocumentsPanel() {
     setDescription("");
     setContent("");
     setTargetPositions([]);
+    setTargetEmployeeIds([]);
+    setAudienceMode("positions");
+    setEmployeeSearch("");
   };
 
   const load = async () => {
@@ -120,15 +134,18 @@ export default function CustomDocumentsPanel() {
 
   useEffect(() => { load(); }, []);
 
-  // Carrega cargos distintos efetivamente atribuídos aos colaboradores (ficha de cadastro)
+  // Carrega colaboradores ativos (para cargos distintos + seleção individual)
   useEffect(() => {
     (async () => {
       const { data } = await supabase
         .from("employees")
-        .select("position")
-        .not("position", "is", null);
+        .select("id, full_name, position, status")
+        .neq("status", "terminated")
+        .order("full_name");
+      const rows = (data ?? []) as Array<{ id: string; full_name: string; position: string | null; status: string }>;
+      setEmployees(rows.map((r) => ({ id: r.id, full_name: r.full_name, position: r.position })));
       const set = new Set<string>();
-      (data ?? []).forEach((r: { position: string | null }) => {
+      rows.forEach((r) => {
         const p = (r.position ?? "").trim();
         if (p) set.add(p);
       });
@@ -145,12 +162,20 @@ export default function CustomDocumentsPanel() {
     setDescription(doc.description ?? "");
     setContent(v?.content ?? "");
     setTargetPositions(v?.target_positions ?? []);
+    setTargetEmployeeIds(v?.target_employee_ids ?? []);
+    setAudienceMode(((v?.target_employee_ids?.length ?? 0) > 0 && (v?.target_positions?.length ?? 0) === 0) ? "employees" : "positions");
     setOpen(true);
   };
 
   const togglePosition = (name: string) => {
     setTargetPositions((prev) =>
       prev.includes(name) ? prev.filter((p) => p !== name) : [...prev, name],
+    );
+  };
+
+  const toggleEmployee = (id: string) => {
+    setTargetEmployeeIds((prev) =>
+      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
     );
   };
 
@@ -163,8 +188,10 @@ export default function CustomDocumentsPanel() {
       toast({ title: "Informe o conteúdo do documento", variant: "destructive" });
       return;
     }
-    if (targetPositions.length === 0) {
-      toast({ title: "Selecione ao menos um cargo", variant: "destructive" });
+    const positionsPayload = audienceMode === "positions" ? targetPositions : [];
+    const employeesPayload = audienceMode === "employees" ? targetEmployeeIds : [];
+    if (positionsPayload.length === 0 && employeesPayload.length === 0) {
+      toast({ title: audienceMode === "positions" ? "Selecione ao menos um cargo" : "Selecione ao menos um colaborador", variant: "destructive" });
       return;
     }
     setSaving(true);
@@ -177,7 +204,8 @@ export default function CustomDocumentsPanel() {
           document_id: editingId,
           version_number: newVersionNumber,
           content,
-          target_positions: targetPositions,
+          target_positions: positionsPayload,
+          target_employee_ids: employeesPayload,
           created_by: user?.id ?? null,
         });
         if (vErr) throw vErr;
@@ -203,7 +231,8 @@ export default function CustomDocumentsPanel() {
           document_id: newDoc.id,
           version_number: 1,
           content,
-          target_positions: targetPositions,
+          target_positions: positionsPayload,
+          target_employee_ids: employeesPayload,
           created_by: user?.id ?? null,
         });
         if (vErr) throw vErr;
@@ -282,7 +311,9 @@ export default function CustomDocumentsPanel() {
                       )}
                       {v && (
                         <p className="text-xs text-muted-foreground mt-1">
-                          Cargos: {v.target_positions.join(", ") || "—"}
+                          {v.target_employee_ids?.length > 0
+                            ? `Colaboradores: ${v.target_employee_ids.length} selecionado(s)`
+                            : `Cargos: ${v.target_positions.join(", ") || "—"}`}
                         </p>
                       )}
                     </div>
@@ -330,18 +361,69 @@ export default function CustomDocumentsPanel() {
               </div>
             </div>
             <div>
-              <Label className="mb-2 block">Cargos que devem assinar *</Label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-60 overflow-y-auto border rounded-md p-3">
-                {positionsList.map((p) => (
-                  <label key={p} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <Checkbox
-                      checked={targetPositions.includes(p)}
-                      onCheckedChange={() => togglePosition(p)}
-                    />
-                    <span>{p}</span>
-                  </label>
-                ))}
+              <Label className="mb-2 block">Quem deve assinar? *</Label>
+              <div className="inline-flex rounded-md border p-0.5 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setAudienceMode("positions")}
+                  className={`px-3 py-1 text-xs rounded ${audienceMode === "positions" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                >
+                  Por cargo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAudienceMode("employees")}
+                  className={`px-3 py-1 text-xs rounded ${audienceMode === "employees" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                >
+                  Colaboradores específicos
+                </button>
               </div>
+              {audienceMode === "positions" ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-60 overflow-y-auto border rounded-md p-3">
+                  {positionsList.map((p) => (
+                    <label key={p} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={targetPositions.includes(p)}
+                        onCheckedChange={() => togglePosition(p)}
+                      />
+                      <span>{p}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Input
+                    placeholder="Buscar colaborador…"
+                    value={employeeSearch}
+                    onChange={(e) => setEmployeeSearch(e.target.value)}
+                  />
+                  <div className="text-xs text-muted-foreground">
+                    {targetEmployeeIds.length} selecionado(s)
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto border rounded-md p-3">
+                    {employees
+                      .filter((e) =>
+                        !employeeSearch.trim() ||
+                        e.full_name.toLowerCase().includes(employeeSearch.toLowerCase()) ||
+                        (e.position ?? "").toLowerCase().includes(employeeSearch.toLowerCase())
+                      )
+                      .map((e) => (
+                        <label key={e.id} className="flex items-start gap-2 text-sm cursor-pointer">
+                          <Checkbox
+                            checked={targetEmployeeIds.includes(e.id)}
+                            onCheckedChange={() => toggleEmployee(e.id)}
+                          />
+                          <span className="min-w-0">
+                            <span className="block truncate">{e.full_name}</span>
+                            {e.position && (
+                              <span className="block text-xs text-muted-foreground truncate">{e.position}</span>
+                            )}
+                          </span>
+                        </label>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
             {editingId && (
               <p className="text-xs text-warning">

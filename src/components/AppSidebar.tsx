@@ -2,7 +2,7 @@ import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Users, GraduationCap, Award, Wallet, BookOpen, Briefcase, LogOut, CalendarClock, UserCircle, HeartHandshake, Plane, Shirt, Clock, FolderOpen, Fingerprint, UserSearch, Settings, ChevronRight, Megaphone, ShieldAlert, FileText, Stethoscope, ClipboardCheck, Gift, ReceiptText, Bus, ListChecks, FileSignature, Wrench, RefreshCw, Package, ShoppingCart, DollarSign, Truck, ShoppingBag, TrendingUp, FileBarChart, Landmark, Lock, ChefHat, ScanText, Layers, Send, UsersRound, AlertTriangle, Monitor, ShieldCheck, Factory, Search, Siren, Boxes, PackageCheck, CalendarDays, ClipboardList, Tags, ScrollText, BadgePercent, Coins, Building2, Scale, BookMarked, Archive, FolderLock, ArrowLeftRight, Calculator, Flame, Hourglass, Trophy, Star, Percent, HandCoins, UserX, Sparkles, Activity , BarChart2 , History , CalendarRange , Receipt , Building , FileSpreadsheet , PiggyBank , BadgeCheck , Banknote , XCircle, MessageCircle, Smartphone, Bike, CreditCard, Headset, Link2, FlaskConical, Utensils, Ruler, Thermometer } from "lucide-react";
+import { LayoutDashboard, Users, GraduationCap, Award, Wallet, BookOpen, Briefcase, LogOut, CalendarClock, UserCircle, HeartHandshake, HeartPulse, Plane, Shirt, Clock, FolderOpen, Fingerprint, UserSearch, Settings, ChevronRight, Megaphone, ShieldAlert, FileText, Stethoscope, ClipboardCheck, Gift, ReceiptText, Bus, ListChecks, FileSignature, Wrench, RefreshCw, Package, ShoppingCart, DollarSign, Truck, ShoppingBag, TrendingUp, FileBarChart, Landmark, Lock, ChefHat, ScanText, Layers, Send, UsersRound, AlertTriangle, Monitor, ShieldCheck, Factory, Search, Siren, Boxes, PackageCheck, CalendarDays, ClipboardList, Tags, ScrollText, BadgePercent, Coins, Building2, Scale, BookMarked, Archive, FolderLock, ArrowLeftRight, Calculator, Flame, Hourglass, Trophy, Star, Percent, HandCoins, UserX, Sparkles, Activity , BarChart2 , History , CalendarRange , Receipt , Building , FileSpreadsheet , PiggyBank , BadgeCheck , Banknote , XCircle, MessageCircle, Smartphone, Bike, CreditCard, Headset, Link2, FlaskConical, Utensils, Ruler, Thermometer, Gauge, Waves } from "lucide-react";
 import { openCommandPalette } from "@/components/CommandPalette";
 import { toast } from "@/hooks/use-toast";
 
@@ -58,7 +58,7 @@ const rhGroups: Group[] = [
       { title: "Ponto", url: "/ponto", icon: Clock, staffOnly: true },
       { title: "Escalas", url: "/escalas", icon: CalendarClock, staffOnly: true },
       { title: "Férias", url: "/ferias", icon: Plane, staffOnly: true },
-      { title: "Atestados Médicos", url: "/atestados", icon: Stethoscope, staffOnly: true },
+      { title: "Saúde Ocupacional", url: "/saude-ocupacional", icon: HeartPulse, staffOnly: true },
       { title: "Uniformes", url: "/uniformes", icon: Shirt, staffOnly: true },
     ],
   },
@@ -130,6 +130,7 @@ const financeiroSections: Section[] = [
     { title: "Extrato / +pagtos", url: "/financeiro", icon: DollarSign, staffOnly: true },
     { title: "Extrato da conta", url: "/financeiro/extrato-conta", icon: Landmark, staffOnly: true },
     { title: "DRE", url: "/financeiro/dre", icon: FileBarChart, staffOnly: true },
+    { title: "Fluxo de caixa", url: "/financeiro/fluxo-caixa", icon: Waves, staffOnly: true },
     { title: "Faturamento bruto", url: "/faturamento", icon: TrendingUp, staffOnly: true },
     { title: "CMV", url: "/financeiro/cmv", icon: Percent, staffOnly: true },
     { title: "Precificação", url: "/financeiro/precificacao", icon: Calculator, staffOnly: true },
@@ -137,6 +138,7 @@ const financeiroSections: Section[] = [
   { label: "Caixa & Contas", items: [
     { title: "Caixinha da loja", url: "/caixinha", icon: PiggyBank, staffOnly: false },
     { title: "Incluir NF/boleto", url: "/recebimento#boletos", icon: ReceiptText, staffOnly: true },
+    { title: "Contas recorrentes", url: "/financeiro/recorrentes", icon: RefreshCw, staffOnly: true },
     { title: "Contas bancárias", url: "/financeiro/contas", icon: Building2, staffOnly: true },
     { title: "Conciliação", url: "/conciliacao", icon: Receipt, staffOnly: true },
   ]},
@@ -151,6 +153,7 @@ const operacaoSections: Section[] = [
   { label: "Rotina diária", items: [
     { title: "Check-lists", url: "/checklists-gerenciar", icon: ClipboardCheck, staffOnly: true },
     { title: "Tarefas", url: "/tarefas", icon: ListChecks, staffOnly: true },
+    { title: "Consumo x Faturamento", url: "/consumo-lojas", icon: Gauge, staffOnly: true },
   ]},
   { label: "NutriControle", items: [
     { title: "NutriControle", url: "/nutricontrol", icon: LabCoatIcon, staffOnly: true },
@@ -204,6 +207,7 @@ const pagamentosSections: Section[] = [
     { title: "Bonificações", url: "/bonificacoes", icon: BadgePercent, staffOnly: true },
     { title: "Bônus por cargo", url: "/bonus-cargo", icon: Coins, staffOnly: true },
     { title: "Recibos de treinamento", url: "/recibos-treinamento", icon: BadgeCheck, staffOnly: true },
+    { title: "Pagamento de férias", url: "/pagamentos/ferias", icon: Plane, staffOnly: true },
     { title: "Bolsa Estágio", url: "/estagio/pagamentos", icon: HandCoins, staffOnly: true },
     { title: "Diárias de freelancers", url: "/diarias-freelancers", icon: Banknote, staffOnly: true },
   ]},
@@ -279,7 +283,7 @@ export function AppSidebar() {
   const logoUrl = typeof window !== "undefined" ? localStorage.getItem("app.theme.logo") : null;
   const isStaff = isAdmin || isManager;
   // Itens que o contador pode ver mesmo não sendo staff
-  const ACCOUNTANT_URLS = new Set<string>(["/folha", "/pasta-colaborador", "/contabilidade", "/colaboradores", "/atestados", "/infracoes"]);
+  const ACCOUNTANT_URLS = new Set<string>(["/folha", "/pasta-colaborador", "/contabilidade", "/colaboradores", "/atestados", "/saude-ocupacional", "/infracoes"]);
   const canSeeItem = (item: Item) => {
     if (!item.staffOnly) return true;
     if (isStaff) return true;

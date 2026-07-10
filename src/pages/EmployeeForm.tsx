@@ -125,6 +125,8 @@ const employeeSchema = z.object({
   foreigner_rnm: optStr(30),
   foreigner_visa_type: optStr(30),
   foreigner_arrival_date: optStr(),
+  // Flag de teste/desenvolvimento
+  exclude_from_payroll: z.boolean().optional().default(false),
 });
 
 const EMPTY_EMPLOYEE = {
@@ -206,7 +208,9 @@ const EMPTY_EMPLOYEE = {
   foreigner_rnm: "",
   foreigner_visa_type: "",
   foreigner_arrival_date: "",
+  exclude_from_payroll: false,
 };
+
 
 export default function EmployeeForm() {
   const { id } = useParams();
@@ -642,6 +646,7 @@ export default function EmployeeForm() {
       foreigner_rnm: safeData.foreigner_rnm || null,
       foreigner_visa_type: safeData.foreigner_visa_type || null,
       foreigner_arrival_date: safeData.foreigner_arrival_date || null,
+      exclude_from_payroll: !!safeData.exclude_from_payroll,
     };
 
     let savedId = id as string | undefined;

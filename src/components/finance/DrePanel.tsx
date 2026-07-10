@@ -1,4 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { usePersistentState } from "@/hooks/usePersistentState";
+import { useScrollRestoration } from "@/hooks/useScrollRestoration";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPaged } from "./_fetchAll";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,6 +22,15 @@ import {
 } from "@/lib/dre";
 import DreAllocatedPanel from "./DreAllocatedPanel";
 import DreByStorePanel from "./DreByStorePanel";
+import DreComparativoPanel from "./DreComparativoPanel";
+import {
+  HIST_CUTOFF,
+  isHistoricalMonth,
+  applySnapshotToColumn,
+  snapshotColumn,
+  monthKey as snapMonthKey,
+  type SnapshotByMonth,
+} from "@/lib/dreSnapshot";
 
 type CategoryInfo = { dre_group: DreGroup | null; kind: string; name: string };
 type CategoryMap = Record<string, CategoryInfo>;
@@ -120,14 +131,13 @@ const computeDre = ({
       addBreakdown(col, "cmv", p.category_id, catName, debit);
       continue;
     }
+    // Visualização DRE: marketing e "outras" são absorvidos em despesas administrativas
     const target: DreGroup =
       group === "expense_personnel" ||
-      group === "expense_admin" ||
-      group === "expense_marketing" ||
       group === "expense_financial" ||
       group === "expense_tax"
         ? group
-        : "expense_other";
+        : "expense_admin";
     (col as any)[target] += debit;
     addBreakdown(col, target, p.category_id, catName, debit);
   }
@@ -187,16 +197,18 @@ const monthsInRange = (start: string, end: string): string[] => {
 
 export default function DrePanel() {
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState<"monthly" | "custom" | "allocated" | "by_store">("monthly");
-  const [monthsBack, setMonthsBack] = useState(6);
-  const [customStart, setCustomStart] = useState(monthsAgoISO(0));
-  const [customEnd, setCustomEnd] = useState(todayISO());
+  const [tab, setTab] = usePersistentState<"monthly" | "custom" | "allocated" | "by_store" | "comparativo">("finance:dre:tab", "monthly");
+  const [monthsBack, setMonthsBack] = usePersistentState<number>("finance:dre:monthsBack", 6);
+  const [customStart, setCustomStart] = usePersistentState<string>("finance:dre:customStart", monthsAgoISO(0));
+  const [customEnd, setCustomEnd] = usePersistentState<string>("finance:dre:customEnd", todayISO());
+  useScrollRestoration("finance:dre", !loading);
 
   const [sales, setSales] = useState<SaleRow[]>([]);
   const [payables, setPayables] = useState<PayableRow[]>([]);
   const [receivables, setReceivables] = useState<ReceivableRow[]>([]);
   const [catMap, setCatMap] = useState<CategoryMap>({});
   const [deductionsByMonth, setDeductionsByMonth] = useState<Record<string, number>>({});
+  const [snapshot, setSnapshot] = useState<SnapshotByMonth>({});
 
   const periodStart = useMemo(() => {
     if (tab === "monthly") return monthsAgoISO(monthsBack - 1);
@@ -207,7 +219,7 @@ export default function DrePanel() {
   const load = async () => {
     setLoading(true);
     try {
-      const [salesRes, payRes, recRes, catRes, dedRes] = await Promise.all([
+      const [salesRes, payRes, recRes, catRes, dedRes, snapRes] = await Promise.all([
         fetchAllPaged((from, to) =>
           supabase
             .from("monthly_revenue")
@@ -235,6 +247,13 @@ export default function DrePanel() {
         ),
         supabase.from("finance_categories").select("id,name,dre_group,kind"),
         supabase.functions.invoke("dre-ifood-deductions"),
+        fetchAllPaged((from, to) =>
+          supabase
+            .from("dre_historical_snapshot" as any)
+            .select("year,month,line_key,amount")
+            .eq("store_key", "consolidated")
+            .range(from, to),
+        ),
       ]);
 
       if (salesRes.error) throw salesRes.error;
@@ -270,6 +289,13 @@ export default function DrePanel() {
       } else if (dedRes.error) {
         console.warn("Falha ao carregar deduções iFood:", dedRes.error);
       }
+
+      const snap: SnapshotByMonth = {};
+      for (const row of ((snapRes.data ?? []) as any[])) {
+        const key = `${row.year}-${String(row.month).padStart(2, "0")}`;
+        (snap[key] ??= {})[row.line_key] = Number(row.amount) || 0;
+      }
+      setSnapshot(snap);
     } catch (e: any) {
       toast({ title: "Erro ao carregar DRE", description: e.message, variant: "destructive" });
     } finally {
@@ -291,7 +317,9 @@ export default function DrePanel() {
         cols.push({ key, label: monthLabel(key) });
         colMonths[key] = [key];
       }
-      return computeDre({
+      const liveCols = cols.filter((c) => !isHistoricalMonth(c.key));
+      const liveMonthKeys = new Set(liveCols.map((c) => c.key));
+      const liveResult = computeDre({
         sales,
         payables,
         receivables,
@@ -299,31 +327,59 @@ export default function DrePanel() {
         deductionsByMonth,
         columnFor: (date) => {
           const k = monthKey(date);
-          return cols.find((c) => c.key === k)?.key ?? null;
+          return liveMonthKeys.has(k) ? k : null;
         },
-        columnMonths: colMonths,
-        columns: cols,
+        columnMonths: Object.fromEntries(liveCols.map((c) => [c.key, [c.key]])),
+        columns: liveCols,
       });
+      const liveByKey = new Map(liveResult.map((c) => [c.key, c]));
+      return cols.map((c) =>
+        isHistoricalMonth(c.key)
+          ? snapshotColumn(c.key, c.label, [c.key], snapshot)
+          : liveByKey.get(c.key)!,
+      );
     }
-    const cols = [{ key: "period", label: "Período selecionado" }];
-    const colMonths = { period: monthsInRange(periodStart, periodEnd) };
-    return computeDre({
-      sales,
-      payables,
-      receivables,
-      catMap,
-      deductionsByMonth,
-      columnFor: () => "period",
-      columnMonths: colMonths,
-      columns: cols,
-    });
-  }, [tab, monthsBack, sales, payables, receivables, catMap, deductionsByMonth, periodStart, periodEnd]);
+    // Aba "Período": soma snapshot dos meses <= HIST_CUTOFF + cálculo ao vivo dos meses > HIST_CUTOFF
+    const monthKeys = monthsInRange(periodStart, periodEnd);
+    const histMonths = monthKeys.filter(isHistoricalMonth);
+    const liveMonths = monthKeys.filter((m) => !isHistoricalMonth(m));
+
+    const combined = emptyDreColumn("period", "Período selecionado");
+
+    // Parte histórica
+    for (const m of histMonths) applySnapshotToColumn(combined, snapshot[m]);
+
+    // Parte ao vivo — só se houver mês pós-cutoff no período
+    if (liveMonths.length > 0) {
+      const liveMonthSet = new Set(liveMonths);
+      const [liveCol] = computeDre({
+        sales,
+        payables,
+        receivables,
+        catMap,
+        deductionsByMonth,
+        columnFor: (date) => (liveMonthSet.has(monthKey(date)) ? "period" : null),
+        columnMonths: { period: liveMonths },
+        columns: [{ key: "period", label: "Período selecionado" }],
+      });
+      const fields: (keyof DreColumn)[] = [
+        "revenue_gross","revenue_deduction","cmv","expense_personnel","expense_admin",
+        "expense_marketing","expense_financial","expense_tax","expense_other","non_operational",
+      ];
+      for (const f of fields) (combined as any)[f] += (liveCol as any)[f];
+      // Preserva o breakdown do ao vivo (histórico não tem drill-down por categoria)
+      combined.breakdown = liveCol.breakdown;
+    }
+
+    return [finalizeDreColumn(combined)];
+  }, [tab, monthsBack, sales, payables, receivables, catMap, deductionsByMonth, snapshot, periodStart, periodEnd]);
 
   return (
     <Card>
       <CardContent className="pt-4 sm:pt-6 space-y-4">
         <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-          Receita bruta vem do faturamento manual diário. Despesas vêm do Extrato/+Pagtos pela data de competência (inclui lançamentos ainda não pagos). Custos iFood (planilha) é a única dedução externa. Clique nas linhas de despesa para ver as categorias.
+          A partir de <strong>mai/2026</strong>: receita bruta do faturamento diário e despesas do Extrato/+Pagtos por competência (Custos iFood entra como dedução). Clique nas linhas para ver as categorias.
+          <br />Meses até <strong>abr/2026</strong> vêm do snapshot histórico importado das planilhas (consolidado, sem drill-down).
         </p>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
@@ -332,6 +388,7 @@ export default function DrePanel() {
             <TabsTrigger value="custom" className="text-xs sm:text-sm">Período</TabsTrigger>
             <TabsTrigger value="by_store" className="text-xs sm:text-sm">Por loja</TabsTrigger>
             <TabsTrigger value="allocated" className="text-xs sm:text-sm">Rateado</TabsTrigger>
+            <TabsTrigger value="comparativo" className="text-xs sm:text-sm">Comparativo + IA</TabsTrigger>
           </TabsList>
 
           <TabsContent value="monthly" className="space-y-3">
@@ -379,6 +436,10 @@ export default function DrePanel() {
           <TabsContent value="allocated" className="space-y-3">
             <DreAllocatedPanel />
           </TabsContent>
+
+          <TabsContent value="comparativo" className="space-y-3">
+            <DreComparativoPanel />
+          </TabsContent>
         </Tabs>
       </CardContent>
     </Card>
@@ -402,8 +463,6 @@ const ROWS: RowDef[] = [
   { label: "= Lucro bruto", field: "gross_profit", variant: "subtotal", refField: "revenue_net" },
   { label: DRE_GROUP_LABELS.expense_personnel, field: "expense_personnel", variant: "deduction", indent: true, group: "expense_personnel" },
   { label: DRE_GROUP_LABELS.expense_admin, field: "expense_admin", variant: "deduction", indent: true, group: "expense_admin" },
-  { label: DRE_GROUP_LABELS.expense_marketing, field: "expense_marketing", variant: "deduction", indent: true, group: "expense_marketing" },
-  { label: DRE_GROUP_LABELS.expense_other, field: "expense_other", variant: "deduction", indent: true, group: "expense_other" },
   { label: "(−) Despesas operacionais", field: "operational_total", variant: "subtotal" },
   { label: "= EBITDA", field: "ebitda", variant: "subtotal", refField: "revenue_net" },
   { label: "(−) Despesas financeiras", field: "expense_financial", variant: "deduction", indent: true, group: "expense_financial" },
@@ -412,7 +471,7 @@ const ROWS: RowDef[] = [
   { label: "= Resultado líquido", field: "net_result", variant: "total", refField: "revenue_net" },
 ];
 
-function DreTable({ columns, loading }: { columns: DreColumn[]; loading: boolean }) {
+export function DreTable({ columns, loading }: { columns: DreColumn[]; loading: boolean }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   if (loading) {

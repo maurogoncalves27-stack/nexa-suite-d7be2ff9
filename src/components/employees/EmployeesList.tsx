@@ -128,7 +128,7 @@ export default function EmployeesList() {
           termAccMap.get(a.user_id)!.add(`${a.term_key}::${a.term_version}`);
         });
 
-        let versByDoc: Record<string, { version_number: number; target_positions: string[] | null }> = {};
+        let versByDoc: Record<string, { version_number: number; target_positions: string[] | null; target_employee_ids: string[] | null }> = {};
         let customSigSet = new Set<string>();
         const customList = customDocs ?? [];
         if (customList.length > 0) {
@@ -136,7 +136,7 @@ export default function EmployeesList() {
           const [{ data: vers }, { data: csigs }] = await Promise.all([
             supabase
               .from("custom_document_versions")
-              .select("document_id, version_number, target_positions")
+              .select("document_id, version_number, target_positions, target_employee_ids")
               .in("document_id", docIds),
             supabase
               .from("custom_document_signatures")
@@ -147,7 +147,7 @@ export default function EmployeesList() {
           (vers ?? []).forEach((v: any) => {
             const d = customList.find((x: any) => x.id === v.document_id);
             if (d && v.version_number === d.current_version) {
-              versByDoc[v.document_id] = { version_number: v.version_number, target_positions: v.target_positions };
+              versByDoc[v.document_id] = { version_number: v.version_number, target_positions: v.target_positions, target_employee_ids: v.target_employee_ids };
             }
           });
           customSigSet = new Set((csigs ?? []).map((s: any) => `${s.user_id}::${s.document_id}::${s.version_number}`));
@@ -165,8 +165,9 @@ export default function EmployeesList() {
             if (!accepted.has(`${t.key}::${t.version}`)) items.push(t.title);
           }
           for (const [docId, v] of Object.entries(versByDoc)) {
-            if (!e.position) continue;
-            if (!v.target_positions?.includes(e.position)) continue;
+            const matchesPos = !!e.position && v.target_positions?.includes(e.position);
+            const matchesEmp = (v.target_employee_ids ?? []).includes(e.id);
+            if (!matchesPos && !matchesEmp) continue;
             if (customSigSet.has(`${e.user_id}::${docId}::${v.version_number}`)) continue;
             items.push("Documento personalizado");
           }
@@ -366,9 +367,16 @@ export default function EmployeesList() {
             >
               <div className="flex items-start justify-between gap-2 mb-1">
                 <div className="font-medium text-sm leading-tight">{e.full_name}</div>
-                <Badge variant={statusVariant(e.status)} className="shrink-0 text-[10px]">
-                  {statusLabel[e.status] ?? e.status}
-                </Badge>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <Badge variant={statusVariant(e.status)} className="text-[10px]">
+                    {statusLabel[e.status] ?? e.status}
+                  </Badge>
+                  {e.exclude_from_payroll && (
+                    <Badge variant="outline" className="text-[10px] border-warning/50 text-warning">
+                      Fora da folha
+                    </Badge>
+                  )}
+                </div>
               </div>
               <div className="text-xs text-muted-foreground mb-1">
                 {e.position ?? "—"} {e.contract_type ? `· ${e.contract_type}` : ""}
@@ -436,7 +444,12 @@ export default function EmployeesList() {
                     {renderPendencyBadge(e)}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={statusVariant(e.status)}>{statusLabel[e.status] ?? e.status}</Badge>
+                    <div className="flex flex-col gap-1">
+                      <Badge variant={statusVariant(e.status)}>{statusLabel[e.status] ?? e.status}</Badge>
+                      {e.exclude_from_payroll && (
+                        <Badge variant="outline" className="text-[10px] border-warning/50 text-warning w-fit">Fora da folha</Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell onClick={(ev) => ev.stopPropagation()}>
                     {!isInternship(e.contract_type) && (

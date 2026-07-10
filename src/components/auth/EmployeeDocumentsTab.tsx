@@ -79,6 +79,7 @@ export default function EmployeeDocumentsTab({
   const [lgpd, setLgpd] = useState<LgpdConsent | null>(null);
   const [customSignatures, setCustomSignatures] = useState<CustomDocSignature[]>([]);
   const [signedReceipts, setSignedReceipts] = useState<any[]>([]);
+  const [signedPayslips, setSignedPayslips] = useState<any[]>([]);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [contractStatus, setContractStatus] = useState<{
     pending: boolean;
@@ -93,7 +94,7 @@ export default function EmployeeDocumentsTab({
     if (!user) return;
     (async () => {
       setLoading(true);
-      const [{ data: regData }, { data: termsData }, { data: lgpdData }, { data: customSigs }, { data: recs }] =
+      const [{ data: regData }, { data: termsData }, { data: lgpdData }, { data: customSigs }, { data: recs }, { data: pays }] =
         await Promise.all([
           supabase
             .from("internal_regulation_acceptances")
@@ -125,6 +126,14 @@ export default function EmployeeDocumentsTab({
             .eq("employee_id", employeeId)
             .not("signed_at", "is", null)
             .order("signed_at", { ascending: false }),
+          (supabase as any)
+            .from("payroll_receipts")
+            .select("id, reference_year, reference_month, signed_file_path, signed_at, status")
+            .eq("employee_id", employeeId)
+            .eq("status", "signed")
+            .not("signed_file_path", "is", null)
+            .order("reference_year", { ascending: false })
+            .order("reference_month", { ascending: false }),
         ]);
       setRegulation(regData ?? null);
       setTermAcceptances(termsData ?? []);
@@ -139,6 +148,7 @@ export default function EmployeeDocumentsTab({
         })),
       );
       setSignedReceipts((recs ?? []) as any[]);
+      setSignedPayslips((pays ?? []) as any[]);
       setLoading(false);
     })();
   }, [user, employeeId, employeePosition]);
@@ -234,6 +244,28 @@ export default function EmployeeDocumentsTab({
     }
   };
 
+  const MONTHS_PT = [
+    "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+    "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro",
+  ];
+
+  const handleDownloadPayslip = async (p: any) => {
+    setDownloading(`pay:${p.id}`);
+    try {
+      const fileName = `Holerite ${String(p.reference_month).padStart(2, "0")}-${p.reference_year}.pdf`;
+      const { data, error } = await supabase.storage
+        .from("payroll-receipts")
+        .createSignedUrl(p.signed_file_path, 60 * 5, { download: fileName });
+      if (error || !data?.signedUrl) throw error ?? new Error("URL não gerada");
+      window.location.href = data.signedUrl;
+    } catch (e: any) {
+      toast({ title: "Erro ao baixar", description: e.message ?? String(e), variant: "destructive" });
+    } finally {
+      setDownloading(null);
+    }
+  };
+
+
   const signedDocs: Array<{
     key: string;
     title: string;
@@ -296,6 +328,17 @@ export default function EmployeeDocumentsTab({
       title: `Recibo de treinamento (${new Date(r.training_start).toLocaleDateString("pt-BR")} a ${new Date(r.training_end).toLocaleDateString("pt-BR")})`,
       subtitle: `Assinado em ${new Date(r.signed_at).toLocaleString("pt-BR")}`,
       onDownload: () => handleDownloadReceipt(r),
+    });
+  });
+  signedPayslips.forEach((p) => {
+    const monthLabel = MONTHS_PT[p.reference_month - 1];
+    signedDocs.push({
+      key: `pay:${p.id}`,
+      title: `Holerite ${monthLabel}/${p.reference_year}`,
+      subtitle: p.signed_at
+        ? `Assinado em ${new Date(p.signed_at).toLocaleString("pt-BR")}`
+        : "Assinado",
+      onDownload: () => handleDownloadPayslip(p),
     });
   });
 

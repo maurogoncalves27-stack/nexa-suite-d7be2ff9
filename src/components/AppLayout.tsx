@@ -8,6 +8,7 @@ import { EmployeeSidebar } from "@/components/EmployeeSidebar";
 import { NutritionistSidebar } from "@/components/NutritionistSidebar";
 import WarningSignatureDialog from "@/components/warnings/WarningSignatureDialog";
 import EnsureUserSignature from "@/components/auth/EnsureUserSignature";
+import WeeklyMoodCheckin from "@/components/mental-health/WeeklyMoodCheckin";
 import NotificationsBell from "@/components/notifications/NotificationsBell";
 import { Button } from "@/components/ui/button";
 import { PanelLeft, Search, UserSearch, ArrowLeft, Home, LogOut } from "lucide-react";
@@ -49,6 +50,7 @@ const PAGE_TITLES: PageMeta[] = [
   { match: (p) => p.startsWith("/colaboradores"), title: "Cadastros", group: "Pessoas" },
   { match: (p) => p.startsWith("/recrutamento"), title: "Recrutamento", group: "Pessoas" },
   { match: (p) => p.startsWith("/estagio/pagamentos"), title: "Bolsa Estágio", group: "Pagamentos" },
+  { match: (p) => p.startsWith("/pagamentos/ferias"), title: "Pagamento de férias", group: "Pagamentos" },
   { match: (p) => p.startsWith("/estagio"), title: "Estágio", group: "Pessoas" },
   
   { match: (p) => p.startsWith("/atribuicoes"), title: "Atribuições por cargo", group: "Pessoas" },
@@ -59,7 +61,10 @@ const PAGE_TITLES: PageMeta[] = [
   { match: (p) => p.startsWith("/ponto"), title: "Ponto", group: "Jornada" },
   { match: (p) => p.startsWith("/escalas"), title: "Escalas", group: "Jornada" },
   { match: (p) => p.startsWith("/ferias"), title: "Férias", group: "Jornada" },
+  { match: (p) => p.startsWith("/saude-ocupacional"), title: "Saúde Ocupacional", group: "Jornada" },
   { match: (p) => p.startsWith("/atestados"), title: "Atestados Médicos", group: "Jornada" },
+  { match: (p) => p.startsWith("/pcmso"), title: "PCMSO", group: "Jornada" },
+  { match: (p) => p.startsWith("/rh/saude-mental"), title: "Saúde Mental (NR-1)", group: "Jornada" },
   { match: (p) => p.startsWith("/uniformes"), title: "Uniformes", group: "Jornada" },
   { match: (p) => p.startsWith("/tarefas"), title: "Tarefas", group: "Jornada" },
 
@@ -74,6 +79,7 @@ const PAGE_TITLES: PageMeta[] = [
   { match: (p) => p.startsWith("/checklists-gerenciar"), title: "Check-lists operacionais", group: "Operação" },
   { match: (p) => p.startsWith("/checklists"), title: "Check-lists", group: "Operação" },
   { match: (p) => p.startsWith("/nutri-relatorios"), title: "Relatórios NutriControle", group: "Operação" },
+  { match: (p) => p.startsWith("/consumo-lojas"), title: "Consumo x Faturamento", group: "Operação" },
   { match: (p) => p.startsWith("/nutricionista/painel"), title: "Painel da Nutricionista", group: "Operação" },
   { match: (p) => p.startsWith("/consultor/painel"), title: "Painel do Consultor Financeiro", group: "Financeiro" },
   { match: (p) => p.startsWith("/nutri-visita/historico"), title: "Histórico de visitas técnicas", group: "Operação" },
@@ -159,11 +165,13 @@ const PAGE_TITLES: PageMeta[] = [
   // Financeiro (mais específicas primeiro)
   { match: (p) => p.startsWith("/faturamento"), title: "Faturamento bruto", group: "Financeiro" },
   { match: (p) => p.startsWith("/financeiro/dre"), title: "DRE", group: "Financeiro" },
+  { match: (p) => p.startsWith("/financeiro/fluxo-caixa"), title: "Fluxo de caixa", group: "Financeiro" },
   { match: (p) => p.startsWith("/financeiro/cmv"), title: "CMV", group: "Financeiro" },
   { match: (p) => p.startsWith("/financeiro/precificacao"), title: "Precificação", group: "Financeiro" },
   { match: (p) => p.startsWith("/financeiro/contas"), title: "Contas bancárias", group: "Financeiro" },
   { match: (p) => p.startsWith("/financeiro/extrato-conta"), title: "Extrato da conta", group: "Financeiro" },
   { match: (p) => p.startsWith("/financeiro/categorias"), title: "Categorias", group: "Financeiro" },
+  { match: (p) => p.startsWith("/financeiro/recorrentes"), title: "Contas recorrentes", group: "Financeiro" },
   { match: (p) => p.startsWith("/financeiro/vale-gas/dashboard"), title: "Dashboard Vale Gás", group: "Financeiro" },
   { match: (p) => p.startsWith("/financeiro/vale-gas"), title: "Vale Gás", group: "Financeiro" },
   { match: (p) => p.startsWith("/financeiro"), title: "Extrato / +pagtos", group: "Financeiro" },
@@ -499,6 +507,7 @@ export const AppLayout = ({ children }: { children?: ReactNode }) => {
               </div>
             )}
             <EnsureUserSignature />
+            <WeeklyMoodCheckin />
             <WarningSignatureDialog />
             {children ?? <Outlet />}
           </main>
