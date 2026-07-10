@@ -316,7 +316,17 @@ export default function DreComparativoPanel() {
           ebitda: Math.round(totals.ebitda),
           resultado_liquido: Math.round(totals.net_result),
         },
-
+        valuation_premises: mode === "valuation" ? {
+          patrimonio_por_loja: 70000,
+          lojas_ativas: 4,
+          fabrica: 70000,
+          escritorio: 10000,
+          caixa: 50000,
+          nova_loja_asa_norte_pct_da_atual: 0.7,
+          nova_loja_capex_por_ifood: true,
+          nexa_economia_mensal_estimada: 17000,
+          observacoes: "Sistema NEXA próprio substitui totens/headcount; nova loja Asa Norte custeada pelo iFood (CAPEX zero para a empresa).",
+        } : undefined,
       };
       const { data, error } = await supabase.functions.invoke("dre-ai-analysis", { body: payload });
       if (error) throw error;
