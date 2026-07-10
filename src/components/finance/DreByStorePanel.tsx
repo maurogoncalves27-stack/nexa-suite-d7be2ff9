@@ -15,6 +15,15 @@ import {
   type DreColumn,
   type DreGroup,
 } from "@/lib/dre";
+import {
+  applySnapshotToColumn,
+  fetchSnapshotAll,
+  isHistoricalMonth,
+  monthKey as snapMonthKey,
+  monthsInRange,
+  snapshotKeyForStoreName,
+  type SnapshotByStoreMonth,
+} from "@/lib/dreSnapshot";
 
 type CategoryMap = Record<string, { dre_group: DreGroup | null; kind: string }>;
 
