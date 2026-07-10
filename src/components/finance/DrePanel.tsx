@@ -437,6 +437,10 @@ export default function DrePanel() {
           <TabsContent value="allocated" className="space-y-3">
             <DreAllocatedPanel />
           </TabsContent>
+
+          <TabsContent value="comparativo" className="space-y-3">
+            <DreComparativoPanel />
+          </TabsContent>
         </Tabs>
       </CardContent>
     </Card>
