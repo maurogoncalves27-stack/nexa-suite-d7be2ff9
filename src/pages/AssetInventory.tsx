@@ -88,14 +88,16 @@ export default function AssetInventory() {
 
   async function load() {
     setLoading(true);
-    const [storesRes, assetsRes] = await Promise.all([
+    const [storesRes, assetsRes, pendRes] = await Promise.all([
       supabase.from("stores").select("id, name").eq("is_virtual", false).order("name"),
       supabase.from("asset_inventory").select("*").order("created_at", { ascending: false }),
+      supabase.from("asset_suggestions").select("id", { count: "exact", head: true }).eq("status", "pending"),
     ]);
     if (storesRes.error) toast({ title: "Erro ao carregar lojas", description: storesRes.error.message, variant: "destructive" });
     if (assetsRes.error) toast({ title: "Erro ao carregar patrimônio", description: assetsRes.error.message, variant: "destructive" });
     setStores(storesRes.data ?? []);
     setAssets((assetsRes.data ?? []) as Asset[]);
+    setPendingSuggestions(pendRes.count ?? 0);
     setLoading(false);
   }
 
