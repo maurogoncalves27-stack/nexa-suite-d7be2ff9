@@ -34,6 +34,44 @@ interface MonthRow {
   resultado_liquido: number;
 }
 
+const getPartialRow = (rows: MonthRow[]) => rows.find((r) => r.parcial && r.projecao_mes_inteiro) ?? null;
+
+const getMonthAliases = (mes: string): string[] => {
+  const lower = mes.toLowerCase();
+  const aliases = new Set([lower]);
+  const monthMap: Record<string, string[]> = {
+    jan: ["janeiro"], fev: ["fevereiro"], mar: ["março", "marco"], abr: ["abril"],
+    mai: ["maio"], jun: ["junho"], jul: ["julho"], ago: ["agosto"],
+    set: ["setembro"], out: ["outubro"], nov: ["novembro"], dez: ["dezembro"],
+  };
+  const prefix = lower.slice(0, 3);
+  for (const alias of monthMap[prefix] ?? []) aliases.add(alias);
+  return [...aliases];
+};
+
+const sanitizePartialMonthAnalysis = (analysis: string, partial: MonthRow | null): string => {
+  if (!partial) return analysis;
+  const aliases = getMonthAliases(partial.mes);
+  const forbidden = ["colapso", "queda", "retra", "despenc", "abrupt", "crític", "critic", "interrup", "subfatur"];
+  const lower = analysis.toLowerCase();
+  const hasBadPartialMention = aliases.some((a) => lower.includes(a)) && forbidden.some((term) => lower.includes(term));
+  if (!hasBadPartialMention) return analysis;
+
+  const cleaned = analysis
+    .split("\n")
+    .filter((line) => {
+      const l = line.toLowerCase();
+      const mentionsPartial = aliases.some((a) => l.includes(a));
+      const hasForbiddenTerm = forbidden.some((term) => l.includes(term));
+      return !(mentionsPartial && hasForbiddenTerm);
+    })
+    .join("\n")
+    .trim();
+
+  const safeNote = `**Mês parcial:** ${partial.mes} está em andamento e foi excluído das comparações de tendência. Use apenas a projeção linear como referência, sem interpretar o realizado parcial como desempenho final.`;
+  return `${safeNote}${cleaned ? `\n\n${cleaned}` : ""}`;
+};
+
 const buildTable = (rows: MonthRow[]): string => {
   const header = "| Mês | Rec. Líq | CMV | Lucro Bruto | Pessoal | Admin | Marketing | Financ. | Impostos | EBITDA | Res. Líq |";
   const sep = "|---|---|---|---|---|---|---|---|---|---|---|";
@@ -45,14 +83,14 @@ const buildTable = (rows: MonthRow[]): string => {
 };
 
 const buildProjection = (rows: MonthRow[]): string => {
-  const partial = rows.find((r) => r.parcial && r.projecao_mes_inteiro);
+  const partial = getPartialRow(rows);
   if (!partial || !partial.projecao_mes_inteiro) return "";
   const p = partial.projecao_mes_inteiro;
-  return `\n\n⚠️ **REGRA CRÍTICA — LEIA ANTES DE ANALISAR:** O mês **${partial.mes}** está EM ANDAMENTO (hoje é dia ${partial.dia_atual} de ${partial.dias_no_mes} do mês). Por isso ele foi PROPOSITALMENTE EXCLUÍDO da tabela acima — os valores realizados são parciais e comparar com meses fechados daria falsa impressão de queda/colapso. É **PROIBIDO** afirmar que houve queda, colapso, retração ou ruptura em ${partial.mes}, e é PROIBIDO usar esse mês como fim de tendência. Se precisar mencionar ${partial.mes}, use APENAS a projeção linear para o mês inteiro (rateio pelos dias decorridos): Rec. líq ${fmtBRL(p.receita_liquida)} · Lucro bruto ${fmtBRL(p.lucro_bruto)} · EBITDA ${fmtBRL(p.ebitda)} · Resultado líquido ${fmtBRL(p.resultado_liquido)} — e sempre deixe explícito que é projeção.`;
+  return `\n\n**Mês em andamento:** ${partial.mes} ainda não fechou (dia ${partial.dia_atual} de ${partial.dias_no_mes}). Ele não entra na tabela de meses fechados nem nas comparações de tendência. Se citado, use somente como projeção linear: Rec. líq ${fmtBRL(p.receita_liquida)} · Lucro bruto ${fmtBRL(p.lucro_bruto)} · EBITDA ${fmtBRL(p.ebitda)} · Resultado líquido ${fmtBRL(p.resultado_liquido)}.`;
 };
 
 
-const SYSTEM_SINTETICA = `Você é um controller/CFO analisando a DRE de uma rede de restaurantes brasileira (Aquela Parmê). Responda em PORTUGUÊS BR, tom executivo e direto, MÁXIMO 8 bullets. Nada de introduções ou fechamentos genéricos. Foque em: (1) tendência de receita líquida, (2) margem bruta e evolução do CMV, (3) principais linhas de despesa e alterações relevantes, (4) resultado líquido — sinalizando meses de prejuízo, (5) 2-3 sugestões acionáveis. Use valores em BRL onde apoiar a conclusão. Formato markdown. REGRA INEGOCIÁVEL: se o usuário informar um mês em andamento (parcial), NUNCA trate esse mês como queda/colapso/retração e NUNCA use ele como final de tendência — os dados são parciais por natureza. Só cite o mês parcial via projeção linear, deixando explícito que é projeção.`;
+const SYSTEM_SINTETICA = `Você é um controller/CFO analisando a DRE de uma rede de restaurantes brasileira (Aquela Parmê). Responda em PORTUGUÊS BR, tom executivo e direto, MÁXIMO 8 bullets. Nada de introduções ou fechamentos genéricos. Foque em: (1) tendência de receita líquida, (2) margem bruta e evolução do CMV, (3) principais linhas de despesa e alterações relevantes, (4) resultado líquido — sinalizando meses de prejuízo, (5) 2-3 sugestões acionáveis. Use valores em BRL onde apoiar a conclusão. Formato markdown. REGRA INEGOCIÁVEL: se houver mês em andamento, use SOMENTE os meses fechados para tendência, variação, ranking e alertas. O mês em andamento só pode aparecer como projeção linear, explicitamente marcada como projeção.`;
 
 const SYSTEM_ANALITICA = `Você é um controller/CFO sênior fazendo análise APROFUNDADA da DRE de uma rede de restaurantes brasileira (Aquela Parmê). Responda em PORTUGUÊS BR usando MARKDOWN com seções. Estrutura obrigatória:
 ## Panorama do período
@@ -69,7 +107,7 @@ Comente carga tributária efetiva e custo financeiro.
 Evolução, meses de prejuízo, drivers do resultado.
 ## Recomendações acionáveis
 Lista numerada de 4-6 ações concretas, com números que embasem cada ação.
-Não invente dados fora dos fornecidos. Use fmt "R$ X" para valores. REGRA INEGOCIÁVEL: se o usuário informar um mês em andamento (parcial), NUNCA trate esse mês como queda/colapso/retração e NUNCA use ele como fim de tendência — os dados são parciais por natureza. Só cite o mês parcial via projeção linear, deixando explícito que é projeção.`;
+Não invente dados fora dos fornecidos. Use fmt "R$ X" para valores. REGRA INEGOCIÁVEL: se houver mês em andamento, use SOMENTE os meses fechados para tendência, variação, ranking e alertas. O mês em andamento só pode aparecer como projeção linear, explicitamente marcada como projeção.`;
 
 const SYSTEM_VALUATION = `Você é um analista de M&A/valuation avaliando a Aquela Parmê (rede de restaurantes brasileira). Produza um RELATÓRIO FORMAL DE VALUATION em PORTUGUÊS BR, usando MARKDOWN com TABELAS GFM (com | e ---). Siga EXATAMENTE esta estrutura e formato — sem introduções extras, sem seções fora da lista:
 
@@ -178,6 +216,9 @@ Deno.serve(async (req) => {
       });
     }
 
+    const partialRow = getPartialRow(rows);
+    const closedRows = rows.filter((r) => !r.parcial);
+    const lastClosed = closedRows[closedRows.length - 1]?.mes ?? "último mês fechado";
     const table = buildTable(rows);
     const projectionNote = buildProjection(rows);
     const totaisMd = `**Totais do período (${period}, EXCLUINDO mês parcial):** Rec. líq ${fmtBRL(totals.receita_liquida ?? 0)} · CMV ${fmtBRL(totals.cmv ?? 0)} · Lucro bruto ${fmtBRL(totals.lucro_bruto ?? 0)} · EBITDA ${fmtBRL(totals.ebitda ?? 0)} · Resultado líquido ${fmtBRL(totals.resultado_liquido ?? 0)}.`;
@@ -186,7 +227,7 @@ Deno.serve(async (req) => {
       ? `\n\n**Premissas de valuation:**\n- Patrimônio por loja: ${fmtBRL(premises.patrimonio_por_loja ?? 0)} × ${premises.lojas_ativas ?? 0} lojas\n- Fábrica: ${fmtBRL(premises.fabrica ?? 0)} · Escritório: ${fmtBRL(premises.escritorio ?? 0)} · Caixa: ${fmtBRL(premises.caixa ?? 0)}\n- Nova loja Asa Norte: ${((premises.nova_loja_asa_norte_pct_da_atual ?? 0.7) * 100).toFixed(0)}% do faturamento da Asa Norte atual · CAPEX bancado pelo iFood: ${premises.nova_loja_capex_por_ifood ? "SIM" : "não"}\n- Marcas para franquear: ${(premises.marcas_para_franquear ?? []).join(", ")}\n- Taxa inicial de franquia: ${fmtBRL((premises.franquia_taxa_inicial_faixa ?? [0,0])[0])}–${fmtBRL((premises.franquia_taxa_inicial_faixa ?? [0,0])[1])} por unidade\n- Royalties: ${(((premises.franquia_royalties_pct_faixa ?? [0,0])[0])*100).toFixed(0)}%–${(((premises.franquia_royalties_pct_faixa ?? [0,0])[1])*100).toFixed(0)}% do faturamento · Fundo de marketing: ${(((premises.franquia_fundo_marketing_pct ?? 0))*100).toFixed(0)}%\n- Unidades franqueadas plausíveis em 3-5 anos por marca: ${(premises.franquia_unidades_horizonte_3a5_anos_por_marca ?? [0,0]).join("–")}\n- Sistema NEXA é ativo da empresa? ${premises.nexa_e_ativo_da_empresa ? "SIM" : "NÃO — é do sócio Mauro (PF), cedido em uso gratuito; NÃO capitalizar no valuation"}\n- ${premises.observacoes ?? ""}`
       : "";
 
-    const userMsg = `${projectionNote ? projectionNote.trim() + "\n\n" : ""}${totaisMd}${premisesMd}\n\nDRE mês a mês FECHADOS (${period}) — a tabela abaixo já EXCLUI o mês em andamento:\n\n${table}`;
+    const userMsg = `Use como base analítica apenas a tabela de meses FECHADOS abaixo. Para tendência e comparação mensal, encerre a leitura em ${lastClosed}.\n\n${totaisMd}${premisesMd}\n\nDRE mês a mês FECHADOS (${period}) — a tabela abaixo já EXCLUI o mês em andamento:\n\n${table}${projectionNote}`;
 
 
     const system =
@@ -202,6 +243,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         model: MODEL,
+        temperature: 0,
         messages: [
           { role: "system", content: system },
           { role: "user", content: userMsg },
@@ -221,7 +263,7 @@ Deno.serve(async (req) => {
     }
 
     const data = await resp.json();
-    const analysis = data?.choices?.[0]?.message?.content ?? "Sem resposta do modelo.";
+    const analysis = sanitizePartialMonthAnalysis(data?.choices?.[0]?.message?.content ?? "Sem resposta do modelo.", partialRow);
     return new Response(JSON.stringify({ analysis, mode }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
