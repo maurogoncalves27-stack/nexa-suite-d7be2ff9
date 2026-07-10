@@ -4,7 +4,11 @@ import { fetchAllPaged } from "./_fetchAll";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Loader2, RefreshCw, Sparkles, BarChart3, TrendingUp } from "lucide-react";
+import { Loader2, RefreshCw, Sparkles, BarChart3, TrendingUp, Download } from "lucide-react";
+import { useRef } from "react";
+import remarkGfm from "remark-gfm";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import { toast } from "@/hooks/use-toast";
 import {
   ResponsiveContainer,
