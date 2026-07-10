@@ -249,8 +249,6 @@ export default function DreComparativoPanel() {
       CMV: Math.round(c.cmv),
       Pessoal: Math.round(c.expense_personnel),
       Admin: Math.round(c.expense_admin),
-      Marketing: Math.round(c.expense_marketing),
-      Outras: Math.round(c.expense_other),
       Financeiras: Math.round(c.expense_financial),
       Impostos: Math.round(c.expense_tax),
     };
