@@ -280,18 +280,20 @@ export default function DreComparativoPanel() {
   }, [closedMonths]);
 
 
-  const runAi = async (mode: "sintetica" | "analitica" | "valuation") => {
+  const runAi = async (mode: "sintetica" | "analitica" | "valuation", method?: ValuationMethod) => {
     setAiLoading(mode);
     setAiOutput("");
     setAiMode(mode);
+    const chosenMethod = method ?? valuationMethod;
     setAiTitle(
       mode === "sintetica" ? "Análise sintética"
       : mode === "analitica" ? "Análise analítica"
-      : "Valuation da empresa"
+      : `Valuation — ${VALUATION_METHOD_LABELS[chosenMethod]}`
     );
     try {
       const payload = {
         mode,
+        valuation_method: mode === "valuation" ? chosenMethod : undefined,
         period: PERIOD_LABELS[period],
         months: perMonth.map((c) => {
           const p = partialInfo(c.key);
