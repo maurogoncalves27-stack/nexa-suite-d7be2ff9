@@ -15,6 +15,15 @@ import {
   type DreColumn,
   type DreGroup,
 } from "@/lib/dre";
+import {
+  applySnapshotToColumn,
+  fetchSnapshotAll,
+  isHistoricalMonth,
+  monthKey as snapMonthKey,
+  monthsInRange,
+  snapshotKeyForStoreName,
+  type SnapshotByStoreMonth,
+} from "@/lib/dreSnapshot";
 
 type CategoryMap = Record<string, { dre_group: DreGroup | null; kind: string }>;
 
@@ -70,10 +79,12 @@ export default function DreByStorePanel() {
 
 
 
+  const [snapshot, setSnapshot] = useState<SnapshotByStoreMonth | null>(null);
+
   const load = async () => {
     setLoading(true);
     try {
-      const [storesRes, salesRes, payRes, recRes, catRes, dedRes] = await Promise.all([
+      const [storesRes, salesRes, payRes, recRes, catRes, dedRes, snap] = await Promise.all([
         supabase.from("stores").select("id,name,is_virtual"),
         fetchAllPaged((from, to) =>
           supabase
@@ -102,7 +113,9 @@ export default function DreByStorePanel() {
         ),
         supabase.from("finance_categories").select("id,dre_group,kind"),
         supabase.functions.invoke("dre-ifood-deductions"),
+        fetchSnapshotAll(),
       ]);
+      setSnapshot(snap);
 
 
 
@@ -205,9 +218,22 @@ export default function DreByStorePanel() {
     const selectedName = stores.find((s) => s.id === selectedStoreId)?.name ?? "Loja";
     const col = emptyDreColumn(selectedStoreId, selectedName);
 
-    // Vendas da loja selecionada (mapeando virtuais para físicas pelo nome)
+    const allMonths = monthsInRange(start, end);
+    const liveMonthSet = new Set(allMonths.filter((m) => !isHistoricalMonth(m)));
+    const histMonths = allMonths.filter((m) => isHistoricalMonth(m));
+
+    // HISTÓRICO (snapshot contábil por loja)
+    if (snapshot && histMonths.length) {
+      const snapKey = snapshotKeyForStoreName(selectedName);
+      if (snapKey) {
+        for (const mk of histMonths) applySnapshotToColumn(col, snapshot[snapKey][mk]);
+      }
+    }
+
+    // AO VIVO — só meses não históricos
     for (const s of sales) {
       if (s.dre_excluded) continue;
+      if (!liveMonthSet.has(snapMonthKey(s.sold_at))) continue;
       const tid = resolveStoreId(s.store_id);
       if (tid !== selectedStoreId) continue;
       const amt = Number(s.total_amount) || 0;
@@ -215,9 +241,9 @@ export default function DreByStorePanel() {
       else col.revenue_gross += amt;
     }
 
-    // Receitas extras
     for (const r of receivables) {
       if (r.status !== "received" || !r.received_at) continue;
+      if (!liveMonthSet.has(snapMonthKey(r.received_at))) continue;
       const tid = resolveStoreId(r.store_id);
       if (tid !== selectedStoreId) continue;
       const credit = Number(r.amount) || 0;
@@ -225,10 +251,11 @@ export default function DreByStorePanel() {
       applyReceivable(col, group, credit);
     }
 
-    // Despesas diretas da loja — pela competência, paga ou não
     for (const p of payables) {
       if (p.status === "cancelled") continue;
-      if (!(p.competence_date ?? p.due_date)) continue;
+      const comp = p.competence_date ?? p.due_date;
+      if (!comp) continue;
+      if (!liveMonthSet.has(snapMonthKey(comp))) continue;
       const tid = resolveStoreId(p.store_id);
       if (tid !== selectedStoreId) continue;
       const debit = Number(p.amount) || 0;
@@ -236,30 +263,23 @@ export default function DreByStorePanel() {
       applyExpense(col, group, debit);
     }
 
-    // Deduções iFood (planilha) para a loja selecionada, somando meses no período
+    // Deduções iFood (planilha) — apenas meses ao vivo (histórico já está no snapshot)
     const selectedNorm = (stores.find((s) => s.id === selectedStoreId)?.name ?? "")
       .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
     if (selectedNorm) {
-      const sY = Number(start.slice(0, 4)); const sM = Number(start.slice(5, 7));
-      const eY = Number(end.slice(0, 4)); const eM = Number(end.slice(5, 7));
-      for (let y = sY; y <= eY; y++) {
-        const mStart = y === sY ? sM : 1;
-        const mEnd = y === eY ? eM : 12;
-        for (let m = mStart; m <= mEnd; m++) {
-          const k = `${selectedNorm}|${y}-${String(m).padStart(2, "0")}`;
-          const v = ifoodByStoreMonth[k] ?? 0;
-          if (v) col.revenue_deduction += v;
-        }
+      for (const mk of allMonths) {
+        if (!liveMonthSet.has(mk)) continue;
+        const k = `${selectedNorm}|${mk}`;
+        const v = ifoodByStoreMonth[k] ?? 0;
+        if (v) col.revenue_deduction += v;
       }
     }
 
-
-    // Calcular rateio da fábrica (opcional, só se loja não é fábrica)
+    // Rateio da fábrica — só meses ao vivo
     let factoryShare = 0;
     let allocPctValue = 0;
     let factoryTotal = 0;
-    if (includeFactoryShare && !selectedIsFactory) {
-      // Receita bruta de cada loja física (não fábrica) para calcular o %
+    if (includeFactoryShare && !selectedIsFactory && liveMonthSet.size > 0) {
       const grossByStore = new Map<string, number>();
       for (const s of stores) {
         if (FACTORY_NAMES.includes(s.name.toUpperCase())) continue;
@@ -267,6 +287,7 @@ export default function DreByStorePanel() {
       }
       for (const s of sales) {
         if (s.dre_excluded) continue;
+        if (!liveMonthSet.has(snapMonthKey(s.sold_at))) continue;
         const tid = resolveStoreId(s.store_id);
         if (!tid || !grossByStore.has(tid)) continue;
         const amt = Number(s.total_amount) || 0;
@@ -277,16 +298,16 @@ export default function DreByStorePanel() {
       const myGross = grossByStore.get(selectedStoreId) ?? 0;
       allocPctValue = totalGross > 0 ? myGross / totalGross : 0;
 
-      // Acumula despesas da fábrica
       const factoryCol = emptyDreColumn("__f__", "Fábrica");
       for (const p of payables) {
         if (p.status === "cancelled") continue;
-        if (!(p.competence_date ?? p.due_date)) continue;
+        const comp = p.competence_date ?? p.due_date;
+        if (!comp) continue;
+        if (!liveMonthSet.has(snapMonthKey(comp))) continue;
         const isFactory = p.store_id && factoryStoreIds.has(p.store_id);
         const tid = resolveStoreId(p.store_id);
         const isAssignedToPhysical = tid && grossByStore.has(tid);
         if (!isFactory && isAssignedToPhysical) continue;
-        // Fábrica ou sem destinação direta: rateia
         const debit = Number(p.amount) || 0;
         const group = p.category_id ? catMap[p.category_id]?.dre_group ?? null : null;
         applyExpense(factoryCol, group, debit);
@@ -312,8 +333,10 @@ export default function DreByStorePanel() {
       allocPct: allocPctValue,
       factoryShare,
       factoryTotal,
+      hasHistorical: histMonths.length > 0,
     };
-  }, [selectedStoreId, sales, payables, receivables, catMap, stores, includeFactoryShare, selectedIsFactory, ifoodByStoreMonth, start, end]);
+  }, [selectedStoreId, sales, payables, receivables, catMap, stores, includeFactoryShare, selectedIsFactory, ifoodByStoreMonth, start, end, snapshot]);
+
 
   return (
     <div className="space-y-3">
@@ -356,6 +379,13 @@ export default function DreByStorePanel() {
         <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
           Esta loja representa <strong>{(data.allocPct * 100).toFixed(1)}%</strong> do faturamento bruto das lojas físicas no período.
           Despesas rateadas da fábrica: <strong className="text-foreground">{fmtBRL(data.factoryShare)}</strong>.
+        </div>
+      )}
+
+      {data?.hasHistorical && (
+        <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          Meses ≤ abr/2026 usam o <strong>snapshot histórico da contabilidade</strong> por loja (rateio já incluído).
+          A partir de mai/2026 os valores vêm do sistema.
         </div>
       )}
 

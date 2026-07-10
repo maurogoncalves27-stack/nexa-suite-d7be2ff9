@@ -15,6 +15,15 @@ import {
   type DreColumn,
   type DreGroup,
 } from "@/lib/dre";
+import {
+  applySnapshotToColumn,
+  fetchSnapshotAll,
+  isHistoricalMonth,
+  monthKey as snapMonthKey,
+  monthsInRange,
+  snapshotKeyForStoreName,
+  type SnapshotByStoreMonth,
+} from "@/lib/dreSnapshot";
 
 type CategoryMap = Record<string, { dre_group: DreGroup | null; kind: string }>;
 
@@ -67,11 +76,13 @@ export default function DreAllocatedPanel() {
   const [payables, setPayables] = useState<PayableRow[]>([]);
   const [receivables, setReceivables] = useState<ReceivableRow[]>([]);
   const [catMap, setCatMap] = useState<CategoryMap>({});
+  const [snapshot, setSnapshot] = useState<SnapshotByStoreMonth | null>(null);
+
 
   const load = async () => {
     setLoading(true);
     try {
-      const [storesRes, salesRes, payRes, recRes, catRes] = await Promise.all([
+      const [storesRes, salesRes, payRes, recRes, catRes, snap] = await Promise.all([
         supabase.from("stores").select("id,name,is_virtual"),
         fetchAllPaged((from, to) =>
           supabase
@@ -99,7 +110,9 @@ export default function DreAllocatedPanel() {
             .range(from, to),
         ),
         supabase.from("finance_categories").select("id,dre_group,kind"),
+        fetchSnapshotAll(),
       ]);
+      setSnapshot(snap);
 
       if (storesRes.error) throw storesRes.error;
       if (salesRes.error) throw salesRes.error;
@@ -185,7 +198,6 @@ export default function DreAllocatedPanel() {
     return physicalIdByName.get(name) ?? null;
   };
 
-  // Calcula colunas: uma por loja-alvo + coluna fábrica (informativa) + total
   const data = useMemo(() => {
     const cols = new Map<string, DreColumn>();
     for (const [id, name] of allocationStoreIds.entries()) {
@@ -194,9 +206,25 @@ export default function DreAllocatedPanel() {
     const FACTORY_KEY = "__factory__";
     cols.set(FACTORY_KEY, emptyDreColumn(FACTORY_KEY, "FÁBRICA (rateado)"));
 
-    // 1) Receita por loja (vendas)
+    const allMonths = monthsInRange(start, end);
+    const liveMonthSet = new Set(allMonths.filter((m) => !isHistoricalMonth(m)));
+    const histMonths = allMonths.filter((m) => isHistoricalMonth(m));
+    const hasHistorical = histMonths.length > 0;
+
+    // === HISTÓRICO (snapshot por loja — rateio JÁ embutido) ===
+    if (snapshot && hasHistorical) {
+      for (const [id, name] of allocationStoreIds.entries()) {
+        const snapKey = snapshotKeyForStoreName(name);
+        if (!snapKey) continue;
+        const col = cols.get(id)!;
+        for (const mk of histMonths) applySnapshotToColumn(col, snapshot[snapKey][mk]);
+      }
+    }
+
+    // === AO VIVO ===
     for (const s of sales) {
       if (s.dre_excluded) continue;
+      if (!liveMonthSet.has(snapMonthKey(s.sold_at))) continue;
       const targetId = resolveAllocationStoreId(s.store_id);
       if (!targetId) continue;
       const col = cols.get(targetId)!;
@@ -205,9 +233,9 @@ export default function DreAllocatedPanel() {
       else col.revenue_gross += amt;
     }
 
-    // 2) Receitas extras (a receber) por loja
     for (const r of receivables) {
       if (r.status !== "received" || !r.received_at) continue;
+      if (!liveMonthSet.has(snapMonthKey(r.received_at))) continue;
       const targetId = resolveAllocationStoreId(r.store_id);
       if (!targetId) continue;
       const col = cols.get(targetId)!;
@@ -216,42 +244,47 @@ export default function DreAllocatedPanel() {
       applyReceivable(col, group, credit);
     }
 
-    // 3) Calcular % de rateio com base na receita BRUTA das 4 lojas
-    const totalGross = Array.from(allocationStoreIds.keys())
-      .reduce((sum, id) => sum + (cols.get(id)?.revenue_gross ?? 0), 0);
+    // % de rateio apenas com receita ao vivo (para despesas ao vivo).
+    // Se todo o período for histórico, allocPct fica igual entre as lojas.
+    const liveGrossByStore = new Map<string, number>();
+    for (const id of allocationStoreIds.keys()) liveGrossByStore.set(id, 0);
+    for (const s of sales) {
+      if (s.dre_excluded) continue;
+      if (!liveMonthSet.has(snapMonthKey(s.sold_at))) continue;
+      const tid = resolveAllocationStoreId(s.store_id);
+      if (!tid || !liveGrossByStore.has(tid)) continue;
+      const amt = Number(s.total_amount) || 0;
+      if (s.status === "cancelled" || s.status === "refunded") continue;
+      liveGrossByStore.set(tid, (liveGrossByStore.get(tid) ?? 0) + amt);
+    }
+    const totalLiveGross = Array.from(liveGrossByStore.values()).reduce((a, b) => a + b, 0);
     const allocPct = new Map<string, number>();
     for (const id of allocationStoreIds.keys()) {
-      const g = cols.get(id)!.revenue_gross;
-      allocPct.set(id, totalGross > 0 ? g / totalGross : 1 / allocationStoreIds.size);
+      const g = liveGrossByStore.get(id) ?? 0;
+      allocPct.set(id, totalLiveGross > 0 ? g / totalLiveGross : 1 / allocationStoreIds.size);
     }
 
-    // 4) Despesas: separar fábrica (vai ser rateada) das próprias lojas (vão direto)
     const factoryCol = cols.get(FACTORY_KEY)!;
-
     for (const p of payables) {
       if (p.status === "cancelled") continue;
-      if (!(p.competence_date ?? p.due_date)) continue;
+      const comp = p.competence_date ?? p.due_date;
+      if (!comp) continue;
+      if (!liveMonthSet.has(snapMonthKey(comp))) continue;
       const debit = Number(p.amount) || 0;
       const group = p.category_id ? catMap[p.category_id]?.dre_group ?? null : null;
 
-      // Despesa da fábrica → acumula em factoryCol e depois rateia
       if (p.store_id && factoryStoreIds.has(p.store_id)) {
         applyExpense(factoryCol, group, debit);
         continue;
       }
-
-      // Despesa de loja-alvo → vai direto para a coluna da loja
       const targetId = resolveAllocationStoreId(p.store_id);
       if (targetId && cols.has(targetId)) {
         applyExpense(cols.get(targetId)!, group, debit);
         continue;
       }
-      // Despesas sem store_id ou de outras lojas (ex: Estoque Central): rateia
-      // junto com a fábrica (segue mesma regra de overhead).
       applyExpense(factoryCol, group, debit);
     }
 
-    // 5) Distribuir factoryCol pelas lojas conforme allocPct
     const expenseFields: (keyof DreColumn)[] = [
       "revenue_deduction","cmv","expense_personnel","expense_admin",
       "expense_marketing","expense_financial","expense_tax","expense_other","non_operational",
@@ -264,7 +297,6 @@ export default function DreAllocatedPanel() {
       }
     }
 
-    // 6) Coluna de total consolidado
     const totalCol = emptyDreColumn("__total__", "TOTAL CONSOLIDADO");
     for (const id of allocationStoreIds.keys()) {
       const c = cols.get(id)!;
@@ -272,13 +304,13 @@ export default function DreAllocatedPanel() {
       totalCol.revenue_gross += c.revenue_gross;
     }
 
-    // Finaliza todas
     const storeColumns = Array.from(allocationStoreIds.keys()).map((id) => finalizeDreColumn(cols.get(id)!));
     const factoryFinal = finalizeDreColumn(factoryCol);
     const totalFinal = finalizeDreColumn(totalCol);
 
-    return { storeColumns, factoryCol: factoryFinal, totalCol: totalFinal, allocPct };
-  }, [sales, payables, receivables, catMap, allocationStoreIds, factoryStoreIds, storeNameById, physicalIdByName]);
+    return { storeColumns, factoryCol: factoryFinal, totalCol: totalFinal, allocPct, hasHistorical };
+  }, [sales, payables, receivables, catMap, allocationStoreIds, factoryStoreIds, storeNameById, physicalIdByName, snapshot, start, end]);
+
 
   const allColumns = useMemo<DreColumn[]>(
     () => [...data.storeColumns, data.totalCol],
@@ -307,6 +339,13 @@ export default function DreAllocatedPanel() {
         as 4 lojas físicas conforme o <strong>% de faturamento bruto</strong> do período. Despesas com
         store_id de uma das 4 lojas vão direto para a coluna dela.
       </div>
+
+      {data.hasHistorical && (
+        <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          Meses ≤ abr/2026 vêm do <strong>snapshot histórico da contabilidade</strong> por loja (rateio já incluído).
+          Rateio ao vivo aplica-se apenas a partir de mai/2026.
+        </div>
+      )}
 
       <AllocationSummary
         allocPct={data.allocPct}
