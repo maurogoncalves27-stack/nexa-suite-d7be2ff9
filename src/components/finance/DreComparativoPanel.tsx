@@ -94,6 +94,9 @@ export default function DreComparativoPanel() {
   const [aiLoading, setAiLoading] = useState<"sintetica" | "analitica" | "valuation" | null>(null);
   const [aiOutput, setAiOutput] = useState<string>("");
   const [aiTitle, setAiTitle] = useState<string>("");
+  const [aiMode, setAiMode] = useState<"sintetica" | "analitica" | "valuation" | null>(null);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const valuationRef = useRef<HTMLDivElement | null>(null);
 
   const [snapshot, setSnapshot] = useState<SnapshotByStoreMonth | null>(null);
   const [sales, setSales] = useState<SaleRow[]>([]);
