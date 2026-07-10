@@ -30,7 +30,14 @@ interface VersionRow {
   version_number: number;
   content: string;
   target_positions: string[];
+  target_employee_ids: string[];
   created_at: string;
+}
+
+interface EmployeeOpt {
+  id: string;
+  full_name: string;
+  position: string | null;
 }
 
 interface SignatureCount {
