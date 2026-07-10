@@ -82,6 +82,9 @@ export default function CustomDocumentsPanel() {
     setDescription("");
     setContent("");
     setTargetPositions([]);
+    setTargetEmployeeIds([]);
+    setAudienceMode("positions");
+    setEmployeeSearch("");
   };
 
   const load = async () => {
