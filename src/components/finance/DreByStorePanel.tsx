@@ -382,6 +382,13 @@ export default function DreByStorePanel() {
         </div>
       )}
 
+      {data?.hasHistorical && (
+        <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          Meses ≤ abr/2026 usam o <strong>snapshot histórico da contabilidade</strong> por loja (rateio já incluído).
+          A partir de mai/2026 os valores vêm do sistema.
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
       ) : !data ? (
