@@ -361,18 +361,69 @@ export default function CustomDocumentsPanel() {
               </div>
             </div>
             <div>
-              <Label className="mb-2 block">Cargos que devem assinar *</Label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-60 overflow-y-auto border rounded-md p-3">
-                {positionsList.map((p) => (
-                  <label key={p} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <Checkbox
-                      checked={targetPositions.includes(p)}
-                      onCheckedChange={() => togglePosition(p)}
-                    />
-                    <span>{p}</span>
-                  </label>
-                ))}
+              <Label className="mb-2 block">Quem deve assinar? *</Label>
+              <div className="inline-flex rounded-md border p-0.5 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setAudienceMode("positions")}
+                  className={`px-3 py-1 text-xs rounded ${audienceMode === "positions" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                >
+                  Por cargo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAudienceMode("employees")}
+                  className={`px-3 py-1 text-xs rounded ${audienceMode === "employees" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                >
+                  Colaboradores específicos
+                </button>
               </div>
+              {audienceMode === "positions" ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-60 overflow-y-auto border rounded-md p-3">
+                  {positionsList.map((p) => (
+                    <label key={p} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={targetPositions.includes(p)}
+                        onCheckedChange={() => togglePosition(p)}
+                      />
+                      <span>{p}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Input
+                    placeholder="Buscar colaborador…"
+                    value={employeeSearch}
+                    onChange={(e) => setEmployeeSearch(e.target.value)}
+                  />
+                  <div className="text-xs text-muted-foreground">
+                    {targetEmployeeIds.length} selecionado(s)
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto border rounded-md p-3">
+                    {employees
+                      .filter((e) =>
+                        !employeeSearch.trim() ||
+                        e.full_name.toLowerCase().includes(employeeSearch.toLowerCase()) ||
+                        (e.position ?? "").toLowerCase().includes(employeeSearch.toLowerCase())
+                      )
+                      .map((e) => (
+                        <label key={e.id} className="flex items-start gap-2 text-sm cursor-pointer">
+                          <Checkbox
+                            checked={targetEmployeeIds.includes(e.id)}
+                            onCheckedChange={() => toggleEmployee(e.id)}
+                          />
+                          <span className="min-w-0">
+                            <span className="block truncate">{e.full_name}</span>
+                            {e.position && (
+                              <span className="block text-xs text-muted-foreground truncate">{e.position}</span>
+                            )}
+                          </span>
+                        </label>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
             {editingId && (
               <p className="text-xs text-warning">
