@@ -165,6 +165,7 @@ const PAGE_TITLES: PageMeta[] = [
   // Financeiro (mais específicas primeiro)
   { match: (p) => p.startsWith("/faturamento"), title: "Faturamento bruto", group: "Financeiro" },
   { match: (p) => p.startsWith("/financeiro/dre"), title: "DRE", group: "Financeiro" },
+  { match: (p) => p.startsWith("/financeiro/fluxo-caixa"), title: "Fluxo de caixa", group: "Financeiro" },
   { match: (p) => p.startsWith("/financeiro/cmv"), title: "CMV", group: "Financeiro" },
   { match: (p) => p.startsWith("/financeiro/precificacao"), title: "Precificação", group: "Financeiro" },
   { match: (p) => p.startsWith("/financeiro/contas"), title: "Contas bancárias", group: "Financeiro" },

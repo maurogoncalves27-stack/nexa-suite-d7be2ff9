@@ -115,6 +115,7 @@ const CustomerReviews = lazy(() => import("./pages/CustomerReviews.tsx"));
 const SeparationChecklist = lazy(() => import("./pages/SeparationChecklist.tsx"));
 const Finance = lazy(() => import("./pages/Finance.tsx"));
 const FinanceDre = lazy(() => import("./pages/FinanceDre.tsx"));
+const FinanceCashFlow = lazy(() => import("./pages/FinanceCashFlow.tsx"));
 const FinanceAccounts = lazy(() => import("./pages/FinanceAccounts.tsx"));
 const FinanceCategories = lazy(() => import("./pages/FinanceCategories.tsx"));
 const FinanceCmv = lazy(() => import("./pages/FinanceCmv.tsx"));
@@ -454,6 +455,7 @@ const App = () => (
               <Route path="/avaliacoes-clientes" element={<Guarded><CustomerReviews /></Guarded>} />
               <Route path="/financeiro" element={<Guarded staff partner module="financeiro"><Finance /></Guarded>} />
               <Route path="/financeiro/dre" element={<Guarded staff partner><FinanceDre /></Guarded>} />
+              <Route path="/financeiro/fluxo-caixa" element={<Guarded staff partner><FinanceCashFlow /></Guarded>} />
               <Route path="/financeiro/contas" element={<Guarded staff partner><FinanceAccounts /></Guarded>} />
               <Route path="/financeiro/extrato-conta" element={<Guarded staff partner><FinanceAccountStatement /></Guarded>} />
               <Route path="/financeiro/categorias" element={<Guarded staff partner><FinanceCategories /></Guarded>} />
