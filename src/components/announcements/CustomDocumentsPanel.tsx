@@ -188,8 +188,10 @@ export default function CustomDocumentsPanel() {
       toast({ title: "Informe o conteúdo do documento", variant: "destructive" });
       return;
     }
-    if (targetPositions.length === 0) {
-      toast({ title: "Selecione ao menos um cargo", variant: "destructive" });
+    const positionsPayload = audienceMode === "positions" ? targetPositions : [];
+    const employeesPayload = audienceMode === "employees" ? targetEmployeeIds : [];
+    if (positionsPayload.length === 0 && employeesPayload.length === 0) {
+      toast({ title: audienceMode === "positions" ? "Selecione ao menos um cargo" : "Selecione ao menos um colaborador", variant: "destructive" });
       return;
     }
     setSaving(true);
@@ -202,7 +204,8 @@ export default function CustomDocumentsPanel() {
           document_id: editingId,
           version_number: newVersionNumber,
           content,
-          target_positions: targetPositions,
+          target_positions: positionsPayload,
+          target_employee_ids: employeesPayload,
           created_by: user?.id ?? null,
         });
         if (vErr) throw vErr;
@@ -228,7 +231,8 @@ export default function CustomDocumentsPanel() {
           document_id: newDoc.id,
           version_number: 1,
           content,
-          target_positions: targetPositions,
+          target_positions: positionsPayload,
+          target_employee_ids: employeesPayload,
           created_by: user?.id ?? null,
         });
         if (vErr) throw vErr;
