@@ -131,14 +131,13 @@ const computeDre = ({
       addBreakdown(col, "cmv", p.category_id, catName, debit);
       continue;
     }
+    // Visualização DRE: marketing e "outras" são absorvidos em despesas administrativas
     const target: DreGroup =
       group === "expense_personnel" ||
-      group === "expense_admin" ||
-      group === "expense_marketing" ||
       group === "expense_financial" ||
       group === "expense_tax"
         ? group
-        : "expense_other";
+        : "expense_admin";
     (col as any)[target] += debit;
     addBreakdown(col, target, p.category_id, catName, debit);
   }
