@@ -110,7 +110,9 @@ export default function DreAllocatedPanel() {
             .range(from, to),
         ),
         supabase.from("finance_categories").select("id,dre_group,kind"),
+        fetchSnapshotAll(),
       ]);
+      setSnapshot(snap);
 
       if (storesRes.error) throw storesRes.error;
       if (salesRes.error) throw salesRes.error;
