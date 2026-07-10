@@ -324,8 +324,13 @@ export default function DreComparativoPanel() {
           caixa: 50000,
           nova_loja_asa_norte_pct_da_atual: 0.7,
           nova_loja_capex_por_ifood: true,
-          nexa_economia_mensal_estimada: 17000,
-          observacoes: "Sistema NEXA próprio substitui totens/headcount; nova loja Asa Norte custeada pelo iFood (CAPEX zero para a empresa).",
+          marcas_para_franquear: ["Aquela Parmê", "Estrogonofe", "Box Caipira"],
+          franquia_taxa_inicial_faixa: [40000, 80000],
+          franquia_royalties_pct_faixa: [0.05, 0.08],
+          franquia_fundo_marketing_pct: 0.02,
+          franquia_unidades_horizonte_3a5_anos_por_marca: [5, 15],
+          nexa_e_ativo_da_empresa: false,
+          observacoes: "Sistema NEXA Suite é de propriedade pessoal do sócio Mauro (não é ativo da empresa) — restaurante usa gratuitamente. NÃO capitalizar NEXA no valuation. Nova loja Asa Norte custeada pelo iFood (CAPEX zero). Marcas próprias com potencial de expansão via franquias/licenciamento.",
         } : undefined,
       };
       const { data, error } = await supabase.functions.invoke("dre-ai-analysis", { body: payload });

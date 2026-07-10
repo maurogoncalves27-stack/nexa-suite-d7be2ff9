@@ -71,7 +71,7 @@ Evolução, meses de prejuízo, drivers do resultado.
 Lista numerada de 4-6 ações concretas, com números que embasem cada ação.
 Não invente dados fora dos fornecidos. Use fmt "R$ X" para valores. REGRA INEGOCIÁVEL: se o usuário informar um mês em andamento (parcial), NUNCA trate esse mês como queda/colapso/retração e NUNCA use ele como fim de tendência — os dados são parciais por natureza. Só cite o mês parcial via projeção linear, deixando explícito que é projeção.`;
 
-const SYSTEM_VALUATION = `Você é um analista de M&A/valuation avaliando a Aquela Parmê (rede de restaurantes brasileira, gestão via sistema próprio NEXA Suite). Calcule o valuation com base na DRE fornecida (últimos 12 meses fechados) e nas premissas de patrimônio/expansão/eficiência. Responda em PORTUGUÊS BR usando MARKDOWN nesta estrutura:
+const SYSTEM_VALUATION = `Você é um analista de M&A/valuation avaliando a Aquela Parmê (rede de restaurantes brasileira). Calcule o valuation com base na DRE fornecida (últimos 12 meses fechados) e nas premissas de patrimônio/expansão/franchising. Responda em PORTUGUÊS BR usando MARKDOWN nesta estrutura:
 ## Resumo executivo
 Valor central em R$ e faixa (mínimo–máximo), em 2-3 linhas.
 ## Base operacional (LTM)
@@ -86,12 +86,18 @@ Explique cada cálculo em 1-2 linhas e traga o número.
 Some patrimônio das lojas ativas, fábrica, escritório, caixa disponível.
 ## Upside — Nova loja Asa Norte
 A nova loja deve faturar ~70% da Asa Norte atual, com CAPEX bancado pelo iFood (custo zero para a empresa). Estime valor incremental.
-## Upside — Sistema NEXA próprio
-Economia estrutural de ~R$ ${"{"}nexa_saving${"}"}/mês em aluguéis de totens e headcount (capitalize por 6x-8x EBITDA anual gerado).
+## Upside — Expansão por franquias / licenciamento das marcas
+Considere o potencial de escalar as marcas (Aquela Parmê, Estrogonofe, Box Caipira) via franquias e/ou licenciamento. Estime:
+- Taxa de franquia inicial típica (R$ 40k–R$ 80k por unidade).
+- Royalties recorrentes (5%-8% do faturamento da unidade franqueada).
+- Fundo de marketing (~2%).
+- Número plausível de unidades em 3-5 anos por marca (seja conservador, ex.: 5-15 franquias/marca no horizonte).
+Traga o valor incremental capitalizado (múltiplo 5x-7x sobre o EBITDA anual de royalties líquido dos custos de suporte à rede).
 ## Equity Value final
 Faixa consolidada (mínimo, central, máximo) em R$ milhões, com breakdown do que compõe cada faixa.
 ## Ressalvas
-3-5 pontos sobre premissas, riscos e limites do cálculo.
+3-5 pontos sobre premissas, riscos e limites do cálculo. Sempre destaque que o sistema NEXA Suite NÃO é ativo da empresa (é de propriedade pessoal do sócio Mauro, cedido em uso gratuito) — portanto NÃO entra como ativo no valuation, apenas como fator qualitativo de eficiência operacional já refletido na margem atual.
+REGRA CRÍTICA sobre o NEXA: o sistema NEXA Suite pertence ao sócio Mauro (pessoa física), NÃO ao restaurante. O restaurante usa gratuitamente. Portanto NÃO capitalize o NEXA como ativo intangível da empresa, NÃO some valor de software, NÃO some economia estrutural do NEXA no equity value — apenas mencione qualitativamente na seção de ressalvas que a eficiência do NEXA já está refletida na margem operacional atual.
 Use dados EXCLUSIVAMENTE do payload. Nunca use o mês parcial como base — sempre LTM de meses FECHADOS. Seja numérico e direto.`;
 
 Deno.serve(async (req) => {
@@ -125,7 +131,7 @@ Deno.serve(async (req) => {
     const totaisMd = `**Totais do período (${period}, EXCLUINDO mês parcial):** Rec. líq ${fmtBRL(totals.receita_liquida ?? 0)} · CMV ${fmtBRL(totals.cmv ?? 0)} · Lucro bruto ${fmtBRL(totals.lucro_bruto ?? 0)} · EBITDA ${fmtBRL(totals.ebitda ?? 0)} · Resultado líquido ${fmtBRL(totals.resultado_liquido ?? 0)}.`;
 
     const premisesMd = mode === "valuation" && premises
-      ? `\n\n**Premissas de valuation:**\n- Patrimônio por loja: ${fmtBRL(premises.patrimonio_por_loja ?? 0)} × ${premises.lojas_ativas ?? 0} lojas\n- Fábrica: ${fmtBRL(premises.fabrica ?? 0)} · Escritório: ${fmtBRL(premises.escritorio ?? 0)} · Caixa: ${fmtBRL(premises.caixa ?? 0)}\n- Nova loja Asa Norte: ${((premises.nova_loja_asa_norte_pct_da_atual ?? 0.7) * 100).toFixed(0)}% do faturamento da Asa Norte atual · CAPEX bancado pelo iFood: ${premises.nova_loja_capex_por_ifood ? "SIM" : "não"}\n- Economia mensal NEXA (totens + headcount): ${fmtBRL(premises.nexa_economia_mensal_estimada ?? 0)}\n- ${premises.observacoes ?? ""}`
+      ? `\n\n**Premissas de valuation:**\n- Patrimônio por loja: ${fmtBRL(premises.patrimonio_por_loja ?? 0)} × ${premises.lojas_ativas ?? 0} lojas\n- Fábrica: ${fmtBRL(premises.fabrica ?? 0)} · Escritório: ${fmtBRL(premises.escritorio ?? 0)} · Caixa: ${fmtBRL(premises.caixa ?? 0)}\n- Nova loja Asa Norte: ${((premises.nova_loja_asa_norte_pct_da_atual ?? 0.7) * 100).toFixed(0)}% do faturamento da Asa Norte atual · CAPEX bancado pelo iFood: ${premises.nova_loja_capex_por_ifood ? "SIM" : "não"}\n- Marcas para franquear: ${(premises.marcas_para_franquear ?? []).join(", ")}\n- Taxa inicial de franquia: ${fmtBRL((premises.franquia_taxa_inicial_faixa ?? [0,0])[0])}–${fmtBRL((premises.franquia_taxa_inicial_faixa ?? [0,0])[1])} por unidade\n- Royalties: ${(((premises.franquia_royalties_pct_faixa ?? [0,0])[0])*100).toFixed(0)}%–${(((premises.franquia_royalties_pct_faixa ?? [0,0])[1])*100).toFixed(0)}% do faturamento · Fundo de marketing: ${(((premises.franquia_fundo_marketing_pct ?? 0))*100).toFixed(0)}%\n- Unidades franqueadas plausíveis em 3-5 anos por marca: ${(premises.franquia_unidades_horizonte_3a5_anos_por_marca ?? [0,0]).join("–")}\n- Sistema NEXA é ativo da empresa? ${premises.nexa_e_ativo_da_empresa ? "SIM" : "NÃO — é do sócio Mauro (PF), cedido em uso gratuito; NÃO capitalizar no valuation"}\n- ${premises.observacoes ?? ""}`
       : "";
 
     const userMsg = `${projectionNote ? projectionNote.trim() + "\n\n" : ""}${totaisMd}${premisesMd}\n\nDRE mês a mês FECHADOS (${period}) — a tabela abaixo já EXCLUI o mês em andamento:\n\n${table}`;
