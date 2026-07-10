@@ -340,6 +340,13 @@ export default function DreAllocatedPanel() {
         store_id de uma das 4 lojas vão direto para a coluna dela.
       </div>
 
+      {data.hasHistorical && (
+        <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          Meses ≤ abr/2026 vêm do <strong>snapshot histórico da contabilidade</strong> por loja (rateio já incluído).
+          Rateio ao vivo aplica-se apenas a partir de mai/2026.
+        </div>
+      )}
+
       <AllocationSummary
         allocPct={data.allocPct}
         storeNames={Array.from(data.allocPct.keys()).map((id) => ({
