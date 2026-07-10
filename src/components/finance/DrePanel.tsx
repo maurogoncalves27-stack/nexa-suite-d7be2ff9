@@ -350,7 +350,9 @@ export default function DrePanel() {
         cols.push({ key, label: monthLabel(key) });
         colMonths[key] = [key];
       }
-      return computeDre({
+      const liveCols = cols.filter((c) => !isHistoricalMonth(c.key));
+      const liveMonthKeys = new Set(liveCols.map((c) => c.key));
+      const liveResult = computeDre({
         sales,
         payables,
         receivables,
@@ -358,25 +360,52 @@ export default function DrePanel() {
         deductionsByMonth,
         columnFor: (date) => {
           const k = monthKey(date);
-          return cols.find((c) => c.key === k)?.key ?? null;
+          return liveMonthKeys.has(k) ? k : null;
         },
-        columnMonths: colMonths,
-        columns: cols,
+        columnMonths: Object.fromEntries(liveCols.map((c) => [c.key, [c.key]])),
+        columns: liveCols,
       });
+      const liveByKey = new Map(liveResult.map((c) => [c.key, c]));
+      return cols.map((c) =>
+        isHistoricalMonth(c.key)
+          ? snapshotColumn(c.key, c.label, [c.key], snapshot)
+          : liveByKey.get(c.key)!,
+      );
     }
-    const cols = [{ key: "period", label: "Período selecionado" }];
-    const colMonths = { period: monthsInRange(periodStart, periodEnd) };
-    return computeDre({
-      sales,
-      payables,
-      receivables,
-      catMap,
-      deductionsByMonth,
-      columnFor: () => "period",
-      columnMonths: colMonths,
-      columns: cols,
-    });
-  }, [tab, monthsBack, sales, payables, receivables, catMap, deductionsByMonth, periodStart, periodEnd]);
+    // Aba "Período": soma snapshot dos meses <= HIST_CUTOFF + cálculo ao vivo dos meses > HIST_CUTOFF
+    const monthKeys = monthsInRange(periodStart, periodEnd);
+    const histMonths = monthKeys.filter(isHistoricalMonth);
+    const liveMonths = monthKeys.filter((m) => !isHistoricalMonth(m));
+
+    const combined = emptyDreColumn("period", "Período selecionado");
+
+    // Parte histórica
+    for (const m of histMonths) applySnapshotToColumn(combined, snapshot[m]);
+
+    // Parte ao vivo — só se houver mês pós-cutoff no período
+    if (liveMonths.length > 0) {
+      const liveMonthSet = new Set(liveMonths);
+      const [liveCol] = computeDre({
+        sales,
+        payables,
+        receivables,
+        catMap,
+        deductionsByMonth,
+        columnFor: (date) => (liveMonthSet.has(monthKey(date)) ? "period" : null),
+        columnMonths: { period: liveMonths },
+        columns: [{ key: "period", label: "Período selecionado" }],
+      });
+      const fields: (keyof DreColumn)[] = [
+        "revenue_gross","revenue_deduction","cmv","expense_personnel","expense_admin",
+        "expense_marketing","expense_financial","expense_tax","expense_other","non_operational",
+      ];
+      for (const f of fields) (combined as any)[f] += (liveCol as any)[f];
+      // Preserva o breakdown do ao vivo (histórico não tem drill-down por categoria)
+      combined.breakdown = liveCol.breakdown;
+    }
+
+    return [finalizeDreColumn(combined)];
+  }, [tab, monthsBack, sales, payables, receivables, catMap, deductionsByMonth, snapshot, periodStart, periodEnd]);
 
   return (
     <Card>
