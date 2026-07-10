@@ -411,7 +411,8 @@ export default function DrePanel() {
     <Card>
       <CardContent className="pt-4 sm:pt-6 space-y-4">
         <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-          Receita bruta vem do faturamento manual diário. Despesas vêm do Extrato/+Pagtos pela data de competência (inclui lançamentos ainda não pagos). Custos iFood (planilha) é a única dedução externa. Clique nas linhas de despesa para ver as categorias.
+          A partir de <strong>mai/2026</strong>: receita bruta do faturamento diário e despesas do Extrato/+Pagtos por competência (Custos iFood entra como dedução). Clique nas linhas para ver as categorias.
+          <br />Meses até <strong>abr/2026</strong> vêm do snapshot histórico importado das planilhas (consolidado, sem drill-down).
         </p>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
