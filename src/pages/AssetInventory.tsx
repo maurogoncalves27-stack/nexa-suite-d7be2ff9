@@ -494,6 +494,8 @@ export default function AssetInventory() {
           })}
         </div>
       )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
