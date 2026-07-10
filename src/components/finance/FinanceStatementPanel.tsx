@@ -158,15 +158,17 @@ export default function FinanceStatementPanel({
 }: Props) {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<StatementRow[]>([]);
-  const [viewTab, setViewTab] = useState<ViewTab>("lancamentos");
-  const [kindFilter, setKindFilter] = useState<"all" | Kind>("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | "open" | "settled" | "overdue">("all");
-  const [search, setSearch] = useState("");
-  const [dateField, setDateField] = useState<DateField>("due");
+  const [viewTab, setViewTab] = usePersistentState<ViewTab>("finance:statementPanel:viewTab", "lancamentos");
+  const [kindFilter, setKindFilter] = usePersistentState<"all" | Kind>("finance:statementPanel:kindFilter", "all");
+  const [statusFilter, setStatusFilter] = usePersistentState<"all" | "open" | "settled" | "overdue">("finance:statementPanel:statusFilter", "all");
+  const [search, setSearch] = usePersistentState<string>("finance:statementPanel:search", "");
+  const [dateField, setDateField] = usePersistentState<DateField>("finance:statementPanel:dateField", "due");
   const todayIso = new Date().toISOString().slice(0, 7);
-  const [monthCursor, setMonthCursor] = useState<string>(todayIso); // YYYY-MM
+  const [monthCursor, setMonthCursor] = usePersistentState<string>("finance:statementPanel:monthCursor", todayIso);
   const [monthOpen, setMonthOpen] = useState(false);
   const [editing, setEditing] = useState<{ kind: EditableKind; raw: any } | null>(null);
+  useScrollRestoration("finance:statementPanel", !loading);
+
 
   const monthRange = useMemo(() => {
     const [y, m] = monthCursor.split("-").map(Number);
