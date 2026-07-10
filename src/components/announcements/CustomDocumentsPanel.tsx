@@ -134,15 +134,18 @@ export default function CustomDocumentsPanel() {
 
   useEffect(() => { load(); }, []);
 
-  // Carrega cargos distintos efetivamente atribuídos aos colaboradores (ficha de cadastro)
+  // Carrega colaboradores ativos (para cargos distintos + seleção individual)
   useEffect(() => {
     (async () => {
       const { data } = await supabase
         .from("employees")
-        .select("position")
-        .not("position", "is", null);
+        .select("id, full_name, position, status")
+        .neq("status", "terminated")
+        .order("full_name");
+      const rows = (data ?? []) as Array<{ id: string; full_name: string; position: string | null; status: string }>;
+      setEmployees(rows.map((r) => ({ id: r.id, full_name: r.full_name, position: r.position })));
       const set = new Set<string>();
-      (data ?? []).forEach((r: { position: string | null }) => {
+      rows.forEach((r) => {
         const p = (r.position ?? "").trim();
         if (p) set.add(p);
       });
@@ -159,12 +162,20 @@ export default function CustomDocumentsPanel() {
     setDescription(doc.description ?? "");
     setContent(v?.content ?? "");
     setTargetPositions(v?.target_positions ?? []);
+    setTargetEmployeeIds(v?.target_employee_ids ?? []);
+    setAudienceMode(((v?.target_employee_ids?.length ?? 0) > 0 && (v?.target_positions?.length ?? 0) === 0) ? "employees" : "positions");
     setOpen(true);
   };
 
   const togglePosition = (name: string) => {
     setTargetPositions((prev) =>
       prev.includes(name) ? prev.filter((p) => p !== name) : [...prev, name],
+    );
+  };
+
+  const toggleEmployee = (id: string) => {
+    setTargetEmployeeIds((prev) =>
+      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
     );
   };
 
