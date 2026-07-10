@@ -436,10 +436,14 @@ export default function DreComparativoPanel() {
             <Sparkles className="h-4 w-4 text-primary" />
             <span className="text-sm font-medium">Análise por IA</span>
             <span className="text-xs text-muted-foreground">— sobre {PERIOD_LABELS[period].toLowerCase()}</span>
-            <div className="ml-auto flex gap-2">
+            <div className="ml-auto flex gap-2 flex-wrap">
               <Button size="sm" variant="outline" disabled={!!aiLoading || loading} onClick={() => runAi("sintetica")}>
                 {aiLoading === "sintetica" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                 <span className="ml-1">Sintética</span>
+              </Button>
+              <Button size="sm" variant="outline" disabled={!!aiLoading || loading} onClick={() => runAi("valuation")}>
+                {aiLoading === "valuation" ? <Loader2 className="h-4 w-4 animate-spin" /> : <TrendingUp className="h-4 w-4" />}
+                <span className="ml-1">Valuation</span>
               </Button>
               <Button size="sm" disabled={!!aiLoading || loading} onClick={() => runAi("analitica")}>
                 {aiLoading === "analitica" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
