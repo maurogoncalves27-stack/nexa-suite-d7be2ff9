@@ -115,6 +115,7 @@ const CustomerReviews = lazy(() => import("./pages/CustomerReviews.tsx"));
 const SeparationChecklist = lazy(() => import("./pages/SeparationChecklist.tsx"));
 const Finance = lazy(() => import("./pages/Finance.tsx"));
 const FinanceDre = lazy(() => import("./pages/FinanceDre.tsx"));
+const FinanceCashFlow = lazy(() => import("./pages/FinanceCashFlow.tsx"));
 const FinanceAccounts = lazy(() => import("./pages/FinanceAccounts.tsx"));
 const FinanceCategories = lazy(() => import("./pages/FinanceCategories.tsx"));
 const FinanceCmv = lazy(() => import("./pages/FinanceCmv.tsx"));
