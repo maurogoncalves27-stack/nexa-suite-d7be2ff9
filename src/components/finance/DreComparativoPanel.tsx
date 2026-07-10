@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPaged } from "./_fetchAll";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Loader2, RefreshCw, Sparkles, BarChart3, TrendingUp } from "lucide-react";
+import { Loader2, RefreshCw, Sparkles, BarChart3, TrendingUp, Download } from "lucide-react";
+import remarkGfm from "remark-gfm";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import { toast } from "@/hooks/use-toast";
 import {
   ResponsiveContainer,
@@ -91,6 +94,9 @@ export default function DreComparativoPanel() {
   const [aiLoading, setAiLoading] = useState<"sintetica" | "analitica" | "valuation" | null>(null);
   const [aiOutput, setAiOutput] = useState<string>("");
   const [aiTitle, setAiTitle] = useState<string>("");
+  const [aiMode, setAiMode] = useState<"sintetica" | "analitica" | "valuation" | null>(null);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const valuationRef = useRef<HTMLDivElement | null>(null);
 
   const [snapshot, setSnapshot] = useState<SnapshotByStoreMonth | null>(null);
   const [sales, setSales] = useState<SaleRow[]>([]);
@@ -270,6 +276,7 @@ export default function DreComparativoPanel() {
   const runAi = async (mode: "sintetica" | "analitica" | "valuation") => {
     setAiLoading(mode);
     setAiOutput("");
+    setAiMode(mode);
     setAiTitle(
       mode === "sintetica" ? "Análise sintética"
       : mode === "analitica" ? "Análise analítica"
@@ -340,6 +347,42 @@ export default function DreComparativoPanel() {
       toast({ title: "Erro na análise IA", description: e.message, variant: "destructive" });
     } finally {
       setAiLoading(null);
+    }
+  };
+
+  const exportValuationPdf = async () => {
+    const node = valuationRef.current;
+    if (!node) return;
+    setExportingPdf(true);
+    try {
+      const canvas = await html2canvas(node, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgW = pageW - 20; // 10mm margin cada lado
+      const imgH = (canvas.height * imgW) / canvas.width;
+
+      let heightLeft = imgH;
+      let position = 10;
+      pdf.addImage(imgData, "PNG", 10, position, imgW, imgH);
+      heightLeft -= pageH - 20;
+      while (heightLeft > 0) {
+        pdf.addPage();
+        position = 10 - (imgH - heightLeft);
+        pdf.addImage(imgData, "PNG", 10, position, imgW, imgH);
+        heightLeft -= pageH - 20;
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      pdf.save(`Valuation_AquelaParme_${today}.pdf`);
+    } catch (e: any) {
+      toast({ title: "Erro ao exportar PDF", description: e.message, variant: "destructive" });
+    } finally {
+      setExportingPdf(false);
     }
   };
 
@@ -457,16 +500,50 @@ export default function DreComparativoPanel() {
             </div>
           </div>
           {aiOutput ? (
-            <div className="rounded-md border bg-muted/20 p-3 text-sm">
-              <div className="text-xs font-semibold text-muted-foreground mb-2">{aiTitle}</div>
-              <div className="prose prose-sm max-w-none dark:prose-invert">
-                <ReactMarkdown>{aiOutput}</ReactMarkdown>
+            aiMode === "valuation" ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-end gap-2">
+                  <Button size="sm" variant="outline" onClick={exportValuationPdf} disabled={exportingPdf}>
+                    {exportingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                    <span className="ml-1">Exportar PDF</span>
+                  </Button>
+                </div>
+                <div
+                  ref={valuationRef}
+                  className="rounded-md border bg-white text-slate-900 p-8 shadow-sm valuation-report"
+                  style={{ fontFamily: '"Inter", "Helvetica Neue", Arial, sans-serif' }}
+                >
+                  <div className="prose prose-sm max-w-none
+                    prose-headings:text-slate-900 prose-headings:font-semibold
+                    prose-h1:text-2xl prose-h1:mb-1 prose-h1:border-b prose-h1:border-slate-300 prose-h1:pb-2
+                    prose-h2:text-lg prose-h2:mt-6 prose-h2:mb-2 prose-h2:text-primary
+                    prose-p:text-slate-700 prose-p:leading-relaxed
+                    prose-strong:text-slate-900
+                    prose-table:text-xs prose-table:border prose-table:border-slate-300
+                    prose-th:bg-slate-100 prose-th:text-slate-900 prose-th:px-3 prose-th:py-2 prose-th:border prose-th:border-slate-300 prose-th:text-left
+                    prose-td:px-3 prose-td:py-2 prose-td:border prose-td:border-slate-200
+                    prose-ul:text-slate-700 prose-li:my-1
+                  ">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiOutput}</ReactMarkdown>
+                  </div>
+                  <div className="mt-6 pt-3 border-t border-slate-200 text-[10px] text-slate-500 italic">
+                    Gerado pelo NEXA Suite em {new Date().toLocaleDateString("pt-BR")} — documento de trabalho, não substitui laudo formal.
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="rounded-md border bg-muted/20 p-3 text-sm">
+                <div className="text-xs font-semibold text-muted-foreground mb-2">{aiTitle}</div>
+                <div className="prose prose-sm max-w-none dark:prose-invert">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiOutput}</ReactMarkdown>
+                </div>
+              </div>
+            )
           ) : (
             <p className="text-xs text-muted-foreground">
-              Clique em <strong>Sintética</strong> para um resumo executivo ou <strong>Analítica</strong> para uma análise
-              detalhada linha a linha, com tendências, alertas e sugestões de ação.
+              Clique em <strong>Sintética</strong> para um resumo executivo, <strong>Valuation</strong> para o laudo
+              de valor da empresa (com exportação em PDF) ou <strong>Analítica</strong> para uma análise detalhada
+              linha a linha.
             </p>
           )}
         </CardContent>
