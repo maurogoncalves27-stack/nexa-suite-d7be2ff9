@@ -191,11 +191,10 @@ export default function DreComparativoPanel() {
         if (g === "revenue_deduction") { col.revenue_deduction += debit; continue; }
         if (g === "cmv") { col.cmv += debit; continue; }
         if (g === "expense_personnel") col.expense_personnel += debit;
-        else if (g === "expense_admin") col.expense_admin += debit;
-        else if (g === "expense_marketing") col.expense_marketing += debit;
         else if (g === "expense_financial") col.expense_financial += debit;
         else if (g === "expense_tax") col.expense_tax += debit;
-        else col.expense_other += debit;
+        else col.expense_admin += debit; // marketing/outras absorvidos em admin
+
       }
       for (const r of receivables) {
         if (r.status !== "received" || !r.received_at) continue;
