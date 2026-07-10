@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const mode = body.mode === "analitica" ? "analitica" : "sintetica";
     const rows: MonthRow[] = Array.isArray(body.months) ? body.months : [];
-    const totals = body.totals ?? {};
+    const totals = body.totals_excluding_partial ?? body.totals ?? {};
     const period = body.period ?? "período informado";
 
     if (rows.length === 0) {
@@ -93,9 +93,11 @@ Deno.serve(async (req) => {
     }
 
     const table = buildTable(rows);
-    const totaisMd = `**Totais do período (${period}):** Rec. líq ${fmtBRL(totals.receita_liquida ?? 0)} · CMV ${fmtBRL(totals.cmv ?? 0)} · Lucro bruto ${fmtBRL(totals.lucro_bruto ?? 0)} · EBITDA ${fmtBRL(totals.ebitda ?? 0)} · Resultado líquido ${fmtBRL(totals.resultado_liquido ?? 0)}.`;
+    const projectionNote = buildProjection(rows);
+    const totaisMd = `**Totais do período (${period}, EXCLUINDO mês parcial):** Rec. líq ${fmtBRL(totals.receita_liquida ?? 0)} · CMV ${fmtBRL(totals.cmv ?? 0)} · Lucro bruto ${fmtBRL(totals.lucro_bruto ?? 0)} · EBITDA ${fmtBRL(totals.ebitda ?? 0)} · Resultado líquido ${fmtBRL(totals.resultado_liquido ?? 0)}.`;
 
-    const userMsg = `${totaisMd}\n\nDRE mês a mês (${period}):\n\n${table}`;
+    const userMsg = `${totaisMd}\n\nDRE mês a mês (${period}):\n\n${table}${projectionNote}`;
+
 
     const system = mode === "analitica" ? SYSTEM_ANALITICA : SYSTEM_SINTETICA;
 
