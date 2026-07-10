@@ -143,7 +143,7 @@ export default function CustomDocumentsCards({ employeeId, employeePosition }: C
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, [user, employeePosition]);
+  useEffect(() => { load(); }, [user, employeePosition, employeeId]);
 
   const handleDownload = async (signatureId: string) => {
     setDownloadingId(signatureId);
