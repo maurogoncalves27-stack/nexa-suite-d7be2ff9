@@ -155,16 +155,16 @@ Parágrafo curto: marcas Aquela Parmê, Estrogonofe e Box Caipira podem escalar 
 | Valor incremental capitalizado | R$ ... |
 
 ## 5. Valor das marcas registradas (intangível)
-Parágrafo curto: **Aquela Parmê, Estrogonofe e Box Caipira** são marcas registradas no INPI, com identidade visual, operação validada e clientela recorrente. Reconhecer valor de intangível separado da operação (relief-from-royalty + prêmio por marca registrada).
+Parágrafo curto: **Aquela Parmê, Estrogonofe e Box Caipira** são marcas registradas no INPI, com identidade visual consolidada, operação validada, clientela recorrente e **forte relevância na praça de Brasília/DF** (reconhecimento local, presença multi-loja e associação positiva à categoria). Valor de intangível combina três camadas: (i) relief-from-royalty sobre receita projetada, (ii) prêmio por registro INPI ativo e (iii) **prêmio de goodwill/brand equity local** (share of mind em Brasília, potencial de expansão regional Centro-Oeste).
 
 | Marca | Estágio | Faixa de valor intangível |
 |---|---|---|
-| Aquela Parmê | Consolidada (marca-mãe, 4 lojas) | R$ 300k–600k |
-| Estrogonofe | Em operação (multi-loja) | R$ 100k–250k |
-| Box Caipira | Em operação (multi-loja) | R$ 80k–200k |
-| **Subtotal marcas (intangível)** | | **R$ 480k–1,05 mi** |
+| Aquela Parmê | Consolidada (marca-mãe, 4 lojas, alta relevância DF) | R$ 700k–1,4 mi |
+| Estrogonofe | Em operação (multi-loja, nicho reconhecido) | R$ 250k–500k |
+| Box Caipira | Em operação (multi-loja, conceito diferenciado) | R$ 180k–380k |
+| **Subtotal marcas (intangível)** | | **R$ 1,13–2,28 mi** |
 
-Metodologia: relief-from-royalty (5% s/ receita projetada × 5 anos × múltiplo 1x) + prêmio por registro INPI ativo. Este valor é **adicional** ao upside de franquias (seção 4) porque representa a titularidade da marca em si — mesmo sem franquear, a marca tem valor de venda/licenciamento.
+Metodologia: relief-from-royalty (5%–7% s/ receita projetada × 5 anos × múltiplo 1x–1,5x) + prêmio por registro INPI ativo + **prêmio de brand equity local** (relevância em Brasília/DF comprovada por operação multi-loja e reputação de mercado). Adicional ao upside de franquias (seção 4) — representa a titularidade e o goodwill da marca em si, realizável em venda, licenciamento ou franquia.
 
 ## 6. Consolidado — Equity Value
 Tabela final:
