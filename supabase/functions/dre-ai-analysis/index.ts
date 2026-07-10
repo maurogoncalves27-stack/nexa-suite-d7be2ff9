@@ -278,7 +278,14 @@ Deno.serve(async (req) => {
     }
 
     const data = await resp.json();
-    const analysis = sanitizePartialMonthAnalysis(data?.choices?.[0]?.message?.content ?? "Sem resposta do modelo.", partialRow);
+    let analysis = sanitizePartialMonthAnalysis(data?.choices?.[0]?.message?.content ?? "Sem resposta do modelo.", partialRow);
+    // Remove qualquer linha que vaze titularidade pessoal do sistema/tecnologia
+    const ownershipRegex = /(mauro|pertence a|propriedade\s+(pessoal|do\s+s[óo]cio)|titularidade\s+(pessoal|do\s+s[óo]cio)|s[óo]cio\s+pessoa\s+f[íi]sica|nexa\s+(suite|é|nao|não|pertence|pertenc|é\s+de))/i;
+    analysis = analysis
+      .split("\n")
+      .filter((line) => !ownershipRegex.test(line))
+      .join("\n");
+
     return new Response(JSON.stringify({ analysis, mode }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
