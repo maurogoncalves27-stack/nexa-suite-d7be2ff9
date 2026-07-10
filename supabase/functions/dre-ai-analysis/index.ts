@@ -69,7 +69,7 @@ Comente carga tributária efetiva e custo financeiro.
 Evolução, meses de prejuízo, drivers do resultado.
 ## Recomendações acionáveis
 Lista numerada de 4-6 ações concretas, com números que embasem cada ação.
-Não invente dados fora dos fornecidos. Use fmt "R$ X" para valores.`;
+Não invente dados fora dos fornecidos. Use fmt "R$ X" para valores. REGRA INEGOCIÁVEL: se o usuário informar um mês em andamento (parcial), NUNCA trate esse mês como queda/colapso/retração e NUNCA use ele como fim de tendência — os dados são parciais por natureza. Só cite o mês parcial via projeção linear, deixando explícito que é projeção.`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
