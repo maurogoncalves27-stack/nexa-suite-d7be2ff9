@@ -206,24 +206,55 @@ export default function DreComparativoPanel() {
     });
   }, [snapshot, monthKeys, sales, payables, receivables, catMap, ifoodByMonth]);
 
-  const chartData = useMemo(() => perMonth.map((c) => ({
-    mes: c.label,
-    "Receita líquida": Math.round(c.revenue_net),
-    "Lucro bruto": Math.round(c.gross_profit),
-    EBITDA: Math.round(c.ebitda),
-    "Resultado líquido": Math.round(c.net_result),
-  })), [perMonth]);
+  const chartData = useMemo(() => perMonth.map((c) => {
+    const p = partialInfo(c.month);
+    const label = p ? `${c.label} (parcial d.${p.day})` : c.label;
+    if (!p) {
+      return {
+        mes: label,
+        "Receita líquida": Math.round(c.revenue_net),
+        "Lucro bruto": Math.round(c.gross_profit),
+        EBITDA: Math.round(c.ebitda),
+        "Resultado líquido": Math.round(c.net_result),
+        "Receita líquida (proj.)": null as number | null,
+        "Lucro bruto (proj.)": null as number | null,
+        "EBITDA (proj.)": null as number | null,
+        "Resultado líquido (proj.)": null as number | null,
+      };
+    }
+    // Mês parcial: mostra realizado e projeção linear (dia atual → mês inteiro)
+    return {
+      mes: label,
+      "Receita líquida": Math.round(c.revenue_net),
+      "Lucro bruto": Math.round(c.gross_profit),
+      EBITDA: Math.round(c.ebitda),
+      "Resultado líquido": Math.round(c.net_result),
+      "Receita líquida (proj.)": Math.round(c.revenue_net * p.factor),
+      "Lucro bruto (proj.)": Math.round(c.gross_profit * p.factor),
+      "EBITDA (proj.)": Math.round(c.ebitda * p.factor),
+      "Resultado líquido (proj.)": Math.round(c.net_result * p.factor),
+    };
+  }), [perMonth]);
 
-  const expenseChartData = useMemo(() => perMonth.map((c) => ({
-    mes: c.label,
-    CMV: Math.round(c.cmv),
-    Pessoal: Math.round(c.expense_personnel),
-    Admin: Math.round(c.expense_admin),
-    Marketing: Math.round(c.expense_marketing),
-    Outras: Math.round(c.expense_other),
-    Financeiras: Math.round(c.expense_financial),
-    Impostos: Math.round(c.expense_tax),
-  })), [perMonth]);
+  const expenseChartData = useMemo(() => perMonth.map((c) => {
+    const p = partialInfo(c.month);
+    const label = p ? `${c.label} (parcial)` : c.label;
+    return {
+      mes: label,
+      CMV: Math.round(c.cmv),
+      Pessoal: Math.round(c.expense_personnel),
+      Admin: Math.round(c.expense_admin),
+      Marketing: Math.round(c.expense_marketing),
+      Outras: Math.round(c.expense_other),
+      Financeiras: Math.round(c.expense_financial),
+      Impostos: Math.round(c.expense_tax),
+    };
+  }), [perMonth]);
+
+  // Totais: EXCLUI o mês corrente parcial para não distorcer médias/somatórios
+  const closedMonths = useMemo(() => perMonth.filter((c) => !partialInfo(c.month)), [perMonth]);
+  const partialMonth = useMemo(() => perMonth.find((c) => partialInfo(c.month)) ?? null, [perMonth]);
+  const partialMeta = useMemo(() => (partialMonth ? partialInfo(partialMonth.month) : null), [partialMonth]);
 
   const totals = useMemo(() => {
     const t = emptyDreColumn("total", "Período");
@@ -231,9 +262,10 @@ export default function DreComparativoPanel() {
       "revenue_gross","revenue_deduction","cmv","expense_personnel","expense_admin",
       "expense_marketing","expense_financial","expense_tax","expense_other","non_operational",
     ];
-    for (const c of perMonth) for (const f of fields) (t as any)[f] += (c as any)[f];
+    for (const c of closedMonths) for (const f of fields) (t as any)[f] += (c as any)[f];
     return finalizeDreColumn(t);
-  }, [perMonth]);
+  }, [closedMonths]);
+
 
   const runAi = async (mode: "sintetica" | "analitica") => {
     setAiLoading(mode);
