@@ -282,12 +282,18 @@ Deno.serve(async (req) => {
 
     const data = await resp.json();
     let analysis = sanitizePartialMonthAnalysis(data?.choices?.[0]?.message?.content ?? "Sem resposta do modelo.", partialRow);
-    // Remove qualquer linha que vaze titularidade pessoal do sistema/tecnologia
-    const ownershipRegex = /(mauro|pertence a|propriedade\s+(pessoal|do\s+s[óo]cio)|titularidade\s+(pessoal|do\s+s[óo]cio)|s[óo]cio\s+pessoa\s+f[íi]sica|nexa\s+(suite|é|nao|não|pertence|pertenc|é\s+de))/i;
-    analysis = analysis
-      .split("\n")
-      .filter((line) => !ownershipRegex.test(line))
-      .join("\n");
+    // Sanitizador anti-vazamento: remove QUALQUER trecho que cite titularidade pessoal do sistema.
+    // Opera em 3 camadas: (1) linhas soltas, (2) bullets iniciados por • ou -, (3) sentenças dentro de parágrafos.
+    const ownershipRegex = /(mauro|pessoa\s+f[íi]sica|s[óo]cio\s*\(?\s*pessoa|pertence\s+ao\s+s[óo]cio|pertence\s+a\s+mauro|desenvolvido\s+e\s+pertence|propriedade\s+(pessoal|do\s+s[óo]cio)|titularidade\s+(pessoal|do\s+s[óo]cio)|cedido\s+para\s+uso\s+gratuito|nexa\s+suite\s+n[ãa]o\s+[eé]|nexa\s+n[ãa]o\s+[eé]\s+ativo)/i;
+    // 1) filtro por linha
+    analysis = analysis.split("\n").filter((line) => !ownershipRegex.test(line)).join("\n");
+    // 2) filtro por bullet (linhas que começam com •/- e contêm termos proibidos, mesmo quebradas)
+    analysis = analysis.replace(/([•\-]\s+[^\n•]*?(mauro|nexa\s+suite\s+n[ãa]o|pertence\s+ao\s+s[óo]cio|pessoa\s+f[íi]sica|cedido\s+para\s+uso\s+gratuito)[^\n•]*)/gi, "");
+    // 3) remove sentenças inteiras dentro de parágrafos
+    analysis = analysis.replace(/[^.!?\n]*\b(mauro|nexa\s+suite\s+n[ãa]o\s+[eé]|pertence\s+ao\s+s[óo]cio|propriedade\s+do\s+s[óo]cio|titularidade\s+do\s+s[óo]cio|cedido\s+para\s+uso\s+gratuito|desenvolvido\s+e\s+pertence)\b[^.!?\n]*[.!?]/gi, "");
+    // Limpa linhas vazias em excesso deixadas pelos filtros
+    analysis = analysis.replace(/\n{3,}/g, "\n\n").trim();
+
 
     return new Response(JSON.stringify({ analysis, mode }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
