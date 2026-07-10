@@ -103,14 +103,14 @@ Evolução mês a mês, sazonalidade, meses fora da curva.
 ## Margem bruta e CMV
 Percentuais, tendência, alertas.
 ## Despesas operacionais
-Analise cada bloco (pessoal, admin, marketing, outras) em % da receita líquida e variação. Identifique anomalias.
+Analise os blocos **Pessoal** e **Administrativas (que já inclui Marketing e Outras op.)** em % da receita líquida e variação. Identifique anomalias. NÃO trate Marketing como linha separada — está DENTRO de Admin. NUNCA sugira provisionar marketing "ausente" ou "zerado".
 ## Despesas financeiras e impostos
 Comente carga tributária efetiva e custo financeiro.
 ## EBITDA e resultado líquido
 Evolução, meses de prejuízo, drivers do resultado.
 ## Recomendações acionáveis
 Lista numerada de 4-6 ações concretas, com números que embasem cada ação.
-Não invente dados fora dos fornecidos. Use fmt "R$ X" para valores. REGRA INEGOCIÁVEL: se houver mês em andamento, use SOMENTE os meses fechados para tendência, variação, ranking e alertas. O mês em andamento só pode aparecer como projeção linear, explicitamente marcada como projeção.`;
+Não invente dados fora dos fornecidos. Use fmt "R$ X" para valores. REGRA INEGOCIÁVEL: se houver mês em andamento, use SOMENTE os meses fechados para tendência, variação, ranking e alertas. O mês em andamento só pode aparecer como projeção linear, explicitamente marcada como projeção. Marketing e Outras despesas operacionais foram consolidadas em Admin — nunca cite ausência de marketing.`;
 
 const SYSTEM_VALUATION = `Você é um analista de M&A/valuation avaliando a Aquela Parmê (rede de restaurantes brasileira). Produza um RELATÓRIO FORMAL DE VALUATION em PORTUGUÊS BR, usando MARKDOWN com TABELAS GFM (com | e ---). Siga EXATAMENTE esta estrutura e formato — sem introduções extras, sem seções fora da lista:
 
