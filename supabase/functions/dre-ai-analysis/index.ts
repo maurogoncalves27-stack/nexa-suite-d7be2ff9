@@ -154,7 +154,19 @@ Parágrafo curto: marcas Aquela Parmê, Estrogonofe e Box Caipira podem escalar 
 | Múltiplo aplicado (5x-7x) | ...x |
 | Valor incremental capitalizado | R$ ... |
 
-## 5. Consolidado — Equity Value
+## 5. Valor das marcas registradas (intangível)
+Parágrafo curto: **Aquela Parmê, Estrogonofe e Box Caipira** são marcas registradas no INPI, com identidade visual, operação validada e clientela recorrente. Reconhecer valor de intangível separado da operação (relief-from-royalty + prêmio por marca registrada).
+
+| Marca | Estágio | Faixa de valor intangível |
+|---|---|---|
+| Aquela Parmê | Consolidada (marca-mãe, 4 lojas) | R$ 300k–600k |
+| Estrogonofe | Em operação (multi-loja) | R$ 100k–250k |
+| Box Caipira | Em operação (multi-loja) | R$ 80k–200k |
+| **Subtotal marcas (intangível)** | | **R$ 480k–1,05 mi** |
+
+Metodologia: relief-from-royalty (5% s/ receita projetada × 5 anos × múltiplo 1x) + prêmio por registro INPI ativo. Este valor é **adicional** ao upside de franquias (seção 4) porque representa a titularidade da marca em si — mesmo sem franquear, a marca tem valor de venda/licenciamento.
+
+## 6. Consolidado — Equity Value
 Tabela final:
 
 | Componente | Valor |
@@ -162,27 +174,30 @@ Tabela final:
 | Operação atual (múltiplos + DCF, midpoint) | R$ ... |
 | Ativos tangíveis + caixa | R$ ... |
 | Nova loja Asa Norte (70%, CAPEX zero) | R$ ... |
-| Franquias / licenciamento | R$ ... |
+| Franquias / licenciamento (upside) | R$ ... |
+| Marcas registradas (intangível INPI) | R$ ... |
 | **Equity Value central** | **R$ ...** |
 
-## 6. Faixa recomendada para negociação
+## 7. Faixa recomendada para negociação
 | Cenário | Faixa |
 |---|---|
 | Piso | R$ X milhões |
 | Central | R$ Y milhões |
 | Teto | R$ Z milhões |
 
-## 7. Ressalvas e riscos
+## 8. Ressalvas e riscos
 Lista com bullets (•):
 • Dívida não informada — assumimos zero.
 • Conversão EBITDA→lucro líquido (comentar).
 • Mês em andamento foi excluído.
 • Sazonalidade e meses faltantes.
 • Nova loja pode superar 70% (upside adicional).
+• Valor de marca é intangível — realizável apenas em cenário de venda, licenciamento ou franquia efetiva.
 • **NEXA Suite NÃO é ativo da empresa** — pertence ao sócio Mauro (PF), cedido em uso gratuito. Não entra no equity value; apenas fator qualitativo de eficiência já refletido na margem atual.
 
 Rodapé:
 _Relatório gerado automaticamente pelo NEXA Suite. Documento de trabalho para negociação — não substitui laudo formal assinado._
+
 
 REGRAS INEGOCIÁVEIS:
 - Use dados EXCLUSIVAMENTE do payload (DRE fornecida). Nunca use mês parcial como base — sempre LTM de meses FECHADOS.
