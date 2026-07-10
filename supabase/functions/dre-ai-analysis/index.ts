@@ -249,7 +249,22 @@ Deno.serve(async (req) => {
       ? `\n\n**Premissas de valuation:**\n- Patrimônio por loja: ${fmtBRL(premises.patrimonio_por_loja ?? 0)} × ${premises.lojas_ativas ?? 0} lojas\n- Fábrica: ${fmtBRL(premises.fabrica ?? 0)} · Escritório: ${fmtBRL(premises.escritorio ?? 0)} · Caixa: ${fmtBRL(premises.caixa ?? 0)}\n- Nova loja Asa Norte: ${((premises.nova_loja_asa_norte_pct_da_atual ?? 0.7) * 100).toFixed(0)}% do faturamento da Asa Norte atual · CAPEX bancado pelo iFood: ${premises.nova_loja_capex_por_ifood ? "SIM" : "não"}\n- Marcas para franquear: ${(premises.marcas_para_franquear ?? []).join(", ")}\n- Taxa inicial de franquia: ${fmtBRL((premises.franquia_taxa_inicial_faixa ?? [0,0])[0])}–${fmtBRL((premises.franquia_taxa_inicial_faixa ?? [0,0])[1])} por unidade\n- Royalties: ${(((premises.franquia_royalties_pct_faixa ?? [0,0])[0])*100).toFixed(0)}%–${(((premises.franquia_royalties_pct_faixa ?? [0,0])[1])*100).toFixed(0)}% do faturamento · Fundo de marketing: ${(((premises.franquia_fundo_marketing_pct ?? 0))*100).toFixed(0)}%\n- Unidades franqueadas plausíveis em 3-5 anos por marca: ${(premises.franquia_unidades_horizonte_3a5_anos_por_marca ?? [0,0]).join("–")}\n- Sistema de gestão próprio (uso interno, sem custo de licença) — tratar apenas como eficiência operacional já refletida na margem; NÃO capitalizar no equity value e NÃO mencionar titularidade no relatório.\n- ${premises.observacoes ?? ""}`
       : "";
 
-    const userMsg = `Use como base analítica apenas a tabela de meses FECHADOS abaixo. Para tendência e comparação mensal, encerre a leitura em ${lastClosed}.\n\n${totaisMd}${premisesMd}\n\nDRE mês a mês FECHADOS (${period}) — a tabela abaixo já EXCLUI o mês em andamento:\n\n${table}${projectionNote}`;
+    const methodDirective = mode === "valuation" ? (() => {
+      switch (valuationMethod) {
+        case "multiplos_ebitda":
+          return `\n\n**MÉTODO SELECIONADO: Múltiplos EV/EBITDA (foco único).** Produza APENAS as seções 1 (Base operacional LTM), 6 (Consolidado — usando SOMENTE valor por múltiplos EV/EBITDA 4x–6x, sem DCF, sem franquias, sem marcas), 7 (Faixa) e 8 (Ressalvas). No título use "# Valuation Aquela Parmê — Múltiplos EV/EBITDA". Não inclua as seções 2, 3, 4, 5. Deixe claro que este laudo é MONO-MÉTODO.`;
+        case "ev_receita":
+          return `\n\n**MÉTODO SELECIONADO: EV / Receita (foco único).** Produza APENAS as seções 1 (Base operacional LTM, aplicando EV/Revenue 0,5x–0,8x sobre a receita líquida LTM), 6 (Consolidado — SOMENTE valor por EV/Receita), 7 e 8. Título: "# Valuation Aquela Parmê — EV/Receita". Não inclua seções 2, 3, 4, 5. Laudo MONO-MÉTODO.`;
+        case "dcf":
+          return `\n\n**MÉTODO SELECIONADO: DCF — Fluxo de Caixa Descontado (foco único).** Produza APENAS as seções 1 (com projeção 5 anos, WACC 15%–18%, g 4%–10%, valor terminal por Gordon), 6 (Consolidado — SOMENTE valor DCF), 7 e 8. Título: "# Valuation Aquela Parmê — DCF". Não inclua seções 2, 3, 4, 5. Laudo MONO-MÉTODO.`;
+        case "ativos_marcas":
+          return `\n\n**MÉTODO SELECIONADO: Ativos + Marcas (patrimonial/intangível).** Produza APENAS as seções 2 (Ativos tangíveis e caixa), 5 (Marcas registradas — obrigatória, com a tabela das 3 marcas e subtotal R$ 1,13–2,28 mi), 6 (Consolidado — SOMENTE ativos + marcas, sem operação/franquias), 7 e 8. Título: "# Valuation Aquela Parmê — Ativos + Marcas". Não inclua seções 1, 3, 4. Laudo MONO-MÉTODO.`;
+        default:
+          return `\n\n**MÉTODO SELECIONADO: Consenso NEXA (média ponderada / laudo completo).** Renderize TODAS as 8 seções conforme o gabarito. Ao final da seção 6, adicione a nota: "_Consenso NEXA = média ponderada entre Múltiplos EV/EBITDA (30%), EV/Receita (15%), DCF (25%), Ativos+Marcas (30%)._"`;
+      }
+    })() : "";
+
+    const userMsg = `Use como base analítica apenas a tabela de meses FECHADOS abaixo. Para tendência e comparação mensal, encerre a leitura em ${lastClosed}.\n\n${totaisMd}${premisesMd}${methodDirective}\n\nDRE mês a mês FECHADOS (${period}) — a tabela abaixo já EXCLUI o mês em andamento:\n\n${table}${projectionNote}`;
 
 
     const system =
