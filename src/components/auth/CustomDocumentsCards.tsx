@@ -95,7 +95,7 @@ export default function CustomDocumentsCards({ employeeId, employeePosition }: C
     const [{ data: vers }, { data: sigs }] = await Promise.all([
       supabase
         .from("custom_document_versions")
-        .select("id, document_id, version_number, content, target_positions")
+        .select("id, document_id, version_number, content, target_positions, target_employee_ids")
         .in("document_id", docIds),
       supabase
         .from("custom_document_signatures")
