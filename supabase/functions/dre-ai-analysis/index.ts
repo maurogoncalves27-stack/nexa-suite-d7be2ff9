@@ -201,7 +201,7 @@ _Relatório gerado automaticamente pelo NEXA Suite. Documento de trabalho para n
 
 REGRAS INEGOCIÁVEIS:
 - Use dados EXCLUSIVAMENTE do payload (DRE fornecida). Nunca use mês parcial como base — sempre LTM de meses FECHADOS.
-- NÃO capitalize o NEXA como ativo — é pessoal do sócio Mauro.
+- NÃO capitalize o sistema de gestão no equity value — trate como eficiência operacional já refletida na margem, sem mencionar titularidade ou propriedade pessoal.
 - Seja numérico e direto, use formato brasileiro (R$ 1.234.567 ou R$ 1,23 milhões).
 - Todas as tabelas em Markdown GFM (com | e cabeçalho + separador ---).`;
 
