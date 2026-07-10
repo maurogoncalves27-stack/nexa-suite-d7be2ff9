@@ -750,7 +750,7 @@ export default function BankReconciliationPanel() {
         accounts={accounts}
         open={importOpen}
         onOpenChange={setImportOpen}
-        onImported={loadData}
+        onImported={() => reloadKeepingScroll(loadData)}
       />
 
       {/* Match manual com ranking de compatibilidade — suporta lote */}
@@ -906,7 +906,7 @@ export default function BankReconciliationPanel() {
       <CreateFinanceFromTxDialog
         tx={createTarget}
         onOpenChange={(o) => !o && setCreateTarget(null)}
-        onCreated={loadData}
+        onCreated={() => reloadKeepingScroll(loadData)}
       />
 
       <PickC6BatchDialog
