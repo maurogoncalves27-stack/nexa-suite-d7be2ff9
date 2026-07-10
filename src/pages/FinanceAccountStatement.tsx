@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { usePersistentState } from "@/hooks/usePersistentState";
+import { useScrollRestoration } from "@/hooks/useScrollRestoration";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -41,12 +43,19 @@ const parseLocalDate = (s: string) => {
 
 export default function FinanceAccountStatement() {
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
-  const [accountId, setAccountId] = useState<string>("");
-  const [from, setFrom] = useState(format(startOfMonth(new Date()), "yyyy-MM-dd"));
-  const [to, setTo] = useState(format(endOfMonth(new Date()), "yyyy-MM-dd"));
+  const [accountId, setAccountId] = usePersistentState<string>("finance:statement:accountId", "");
+  const [from, setFrom] = usePersistentState<string>(
+    "finance:statement:from",
+    format(startOfMonth(new Date()), "yyyy-MM-dd"),
+  );
+  const [to, setTo] = usePersistentState<string>(
+    "finance:statement:to",
+    format(endOfMonth(new Date()), "yyyy-MM-dd"),
+  );
   const [txs, setTxs] = useState<BankTx[]>([]);
   const [loading, setLoading] = useState(false);
   const [openingBalance, setOpeningBalance] = useState<number>(0);
+  useScrollRestoration("finance:statement", !loading);
 
   useEffect(() => {
     (async () => {
