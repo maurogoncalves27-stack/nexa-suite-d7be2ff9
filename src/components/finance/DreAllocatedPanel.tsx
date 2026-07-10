@@ -75,7 +75,7 @@ export default function DreAllocatedPanel() {
   const [sales, setSales] = useState<SaleRow[]>([]);
   const [payables, setPayables] = useState<PayableRow[]>([]);
   const [receivables, setReceivables] = useState<ReceivableRow[]>([]);
-  const [catMap, setCatMap] = useState<CategoryMap>({});
+  const [snapshot, setSnapshot] = useState<SnapshotByStoreMonth | null>(null);
 
   const load = async () => {
     setLoading(true);
