@@ -88,7 +88,7 @@ type Cat = { dre_group: string | null };
 export default function DreComparativoPanel() {
   const [period, setPeriod] = useState<PeriodOption>("12m");
   const [loading, setLoading] = useState(false);
-  const [aiLoading, setAiLoading] = useState<"sintetica" | "analitica" | null>(null);
+  const [aiLoading, setAiLoading] = useState<"sintetica" | "analitica" | "valuation" | null>(null);
   const [aiOutput, setAiOutput] = useState<string>("");
   const [aiTitle, setAiTitle] = useState<string>("");
 
