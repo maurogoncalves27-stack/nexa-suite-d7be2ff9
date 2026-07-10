@@ -11,7 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Loader2, Download, Building } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Download, Building, Sparkles } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import AssetSuggestionsPanel from "@/components/assets/AssetSuggestionsPanel";
 
 type Category = "mobiliario" | "equipamento" | "utensilio";
 
@@ -81,17 +83,21 @@ export default function AssetInventory() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Asset | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [pendingSuggestions, setPendingSuggestions] = useState<number>(0);
+  const [tab, setTab] = useState<"inventory" | "suggestions">("inventory");
 
   async function load() {
     setLoading(true);
-    const [storesRes, assetsRes] = await Promise.all([
+    const [storesRes, assetsRes, pendRes] = await Promise.all([
       supabase.from("stores").select("id, name").eq("is_virtual", false).order("name"),
       supabase.from("asset_inventory").select("*").order("created_at", { ascending: false }),
+      supabase.from("asset_suggestions").select("id", { count: "exact", head: true }).eq("status", "pending"),
     ]);
     if (storesRes.error) toast({ title: "Erro ao carregar lojas", description: storesRes.error.message, variant: "destructive" });
     if (assetsRes.error) toast({ title: "Erro ao carregar patrimônio", description: assetsRes.error.message, variant: "destructive" });
     setStores(storesRes.data ?? []);
     setAssets((assetsRes.data ?? []) as Asset[]);
+    setPendingSuggestions(pendRes.count ?? 0);
     setLoading(false);
   }
 
@@ -316,6 +322,22 @@ export default function AssetInventory() {
         </div>
       </div>
 
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+        <TabsList>
+          <TabsTrigger value="inventory">Inventário</TabsTrigger>
+          <TabsTrigger value="suggestions" className="gap-1">
+            <Sparkles className="h-3.5 w-3.5" /> Sugestões
+            {pendingSuggestions > 0 && (
+              <Badge variant="secondary" className="ml-1 h-4 px-1 text-[10px]">{pendingSuggestions}</Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="suggestions" className="mt-4">
+          <AssetSuggestionsPanel onConfirmed={load} />
+        </TabsContent>
+
+        <TabsContent value="inventory" className="mt-4 space-y-6">
       <div className="grid gap-3 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2"><CardDescription>Valor bruto</CardDescription></CardHeader>
@@ -472,6 +494,8 @@ export default function AssetInventory() {
           })}
         </div>
       )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
