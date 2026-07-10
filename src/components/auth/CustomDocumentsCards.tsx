@@ -71,7 +71,7 @@ export default function CustomDocumentsCards({ employeeId, employeePosition }: C
   }, [openDoc, signatureDataUrl, loadingSig]);
 
   const load = async () => {
-    if (!user || !employeePosition) {
+    if (!user || (!employeePosition && !employeeId)) {
       setPending([]);
       setSigned([]);
       setLoading(false);
@@ -95,7 +95,7 @@ export default function CustomDocumentsCards({ employeeId, employeePosition }: C
     const [{ data: vers }, { data: sigs }] = await Promise.all([
       supabase
         .from("custom_document_versions")
-        .select("id, document_id, version_number, content, target_positions")
+        .select("id, document_id, version_number, content, target_positions, target_employee_ids")
         .in("document_id", docIds),
       supabase
         .from("custom_document_signatures")
@@ -115,7 +115,9 @@ export default function CustomDocumentsCards({ employeeId, employeePosition }: C
         (x) => x.document_id === d.id && x.version_number === d.current_version,
       );
       if (!v) continue;
-      if (!v.target_positions?.includes(employeePosition)) continue;
+      const matchesPosition = !!employeePosition && v.target_positions?.includes(employeePosition);
+      const matchesEmployee = !!employeeId && (v.target_employee_ids ?? []).includes(employeeId);
+      if (!matchesPosition && !matchesEmployee) continue;
       if (signedKey.has(`${d.id}::${d.current_version}`)) continue;
       pendingResult.push({
         id: d.id,
@@ -141,7 +143,7 @@ export default function CustomDocumentsCards({ employeeId, employeePosition }: C
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, [user, employeePosition]);
+  useEffect(() => { load(); }, [user, employeePosition, employeeId]);
 
   const handleDownload = async (signatureId: string) => {
     setDownloadingId(signatureId);
