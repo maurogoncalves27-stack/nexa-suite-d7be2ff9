@@ -322,6 +322,13 @@ export default function DrePanel() {
       } else if (dedRes.error) {
         console.warn("Falha ao carregar deduções iFood:", dedRes.error);
       }
+
+      const snap: SnapshotByMonth = {};
+      for (const row of ((snapRes.data ?? []) as any[])) {
+        const key = `${row.year}-${String(row.month).padStart(2, "0")}`;
+        (snap[key] ??= {})[row.line_key] = Number(row.amount) || 0;
+      }
+      setSnapshot(snap);
     } catch (e: any) {
       toast({ title: "Erro ao carregar DRE", description: e.message, variant: "destructive" });
     } finally {
