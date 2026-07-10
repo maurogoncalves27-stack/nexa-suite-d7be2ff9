@@ -73,13 +73,16 @@ const sanitizePartialMonthAnalysis = (analysis: string, partial: MonthRow | null
 };
 
 const buildTable = (rows: MonthRow[]): string => {
-  const header = "| Mês | Rec. Líq | CMV | Lucro Bruto | Pessoal | Admin | Marketing | Financ. | Impostos | EBITDA | Res. Líq |";
-  const sep = "|---|---|---|---|---|---|---|---|---|---|---|";
+  const header = "| Mês | Rec. Líq | CMV | Lucro Bruto | Pessoal | Admin (inclui Mkt+Outras) | Financ. | Impostos | EBITDA | Res. Líq |";
+  const sep = "|---|---|---|---|---|---|---|---|---|---|";
   // Só meses FECHADOS entram na tabela — mês em andamento vai só na nota de projeção.
+  // Admin já consolida Marketing e Outras despesas operacionais (mudança de DRE — não são mais linhas separadas).
   const body = rows.filter((r) => !r.parcial).map((r) => {
-    return `| ${r.mes} | ${fmtBRL(r.receita_liquida)} | ${fmtBRL(r.cmv)} | ${fmtBRL(r.lucro_bruto)} | ${fmtBRL(r.pessoal)} | ${fmtBRL(r.admin)} | ${fmtBRL(r.marketing)} | ${fmtBRL(r.financeiras)} | ${fmtBRL(r.impostos)} | ${fmtBRL(r.ebitda)} | ${fmtBRL(r.resultado_liquido)} |`;
+    const adminConsolidado = (r.admin ?? 0) + (r.marketing ?? 0) + (r.outras ?? 0);
+    return `| ${r.mes} | ${fmtBRL(r.receita_liquida)} | ${fmtBRL(r.cmv)} | ${fmtBRL(r.lucro_bruto)} | ${fmtBRL(r.pessoal)} | ${fmtBRL(adminConsolidado)} | ${fmtBRL(r.financeiras)} | ${fmtBRL(r.impostos)} | ${fmtBRL(r.ebitda)} | ${fmtBRL(r.resultado_liquido)} |`;
   }).join("\n");
-  return `${header}\n${sep}\n${body}`;
+  const nota = "\n\n**Nota estrutural:** Marketing e Outras despesas operacionais foram consolidadas dentro de **Despesas Administrativas** (mudança de apresentação do DRE). Não existe mais linha separada de Marketing — NÃO cite \"marketing zerado\", \"ausência de marketing\" nem sugira provisionar marketing ausente; ele está DENTRO de Admin.";
+  return `${header}\n${sep}\n${body}${nota}`;
 };
 
 const buildProjection = (rows: MonthRow[]): string => {
