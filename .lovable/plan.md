@@ -1,38 +1,55 @@
+
 ## Problema
 
-Na página **Extrato da conta** (`/financeiro/extrato`), com filtro 01/06/2026 → 30/06/2026 aparecem linhas rotuladas como **31/05/2026**.
+Hoje, ao sair das abas **Conciliação bancária**, **Extrato** e **DRE** e voltar, tudo é reiniciado:
+- Conta selecionada, período (de/até), status volta ao padrão (mês atual)
+- A rolagem volta pro topo
+- Ao salvar uma conciliação no meio da lista, a página recarrega os dados e joga o usuário de volta pro topo
 
-Não é bug de filtro — é bug de exibição por timezone.
+Isso acontece porque cada página guarda os filtros em `useState` local. Quando o React desmonta a página (troca de rota), o estado é perdido. E, após salvar, a lista é recarregada sem manter a posição de scroll.
 
-Confirmado no banco: as linhas `-76,33`, `-33,00 (VT Jennifer)`, `-1.398,00`, `-55,10`, `-211,00`, `+100 (Coleta óleo)`, `-2.204,61 (Boleto)`, `-23,20 (VT Treinamento)`, etc. têm `posted_at = 2026-06-01` no banco. Elas entram corretamente no filtro de junho, mas são renderizadas como 31/05.
+## Objetivo
 
-## Causa
+1. Manter os filtros escolhidos (conta, data inicial, data final, status, busca) mesmo saindo e voltando da aba.
+2. Manter a posição de rolagem ao voltar pra aba.
+3. Ao salvar/atualizar uma linha na Conciliação, a lista continua no mesmo lugar (sem "pular pro topo").
 
-`posted_at` é `date` (ex.: `"2026-06-01"`). O código faz:
+## Escopo (só essas três telas)
 
-```ts
-format(new Date(r.posted_at), "dd/MM/yyyy")
-```
+- `src/pages/BankReconciliation.tsx` (Conciliação)
+- `src/pages/FinanceAccountStatement.tsx` (Extrato)
+- `src/pages/FinanceDre.tsx` (DRE)
 
-`new Date("2026-06-01")` interpreta a string como **UTC meia-noite**. Em BRT (UTC-3) isso vira `2026-05-31 21:00`, e o `format` mostra **31/05/2026**. Todas as datas do extrato aparecem "um dia antes" do real.
+Nenhuma outra tela, regra de negócio ou cálculo é alterado.
 
-## Correção
+## Como vai funcionar
 
-Em `src/pages/FinanceAccountStatement.tsx`, substituir `new Date(r.posted_at)` por um parser que trata a string `YYYY-MM-DD` como data local (sem UTC).
+**1. Filtros persistentes por aba**
+Criar um hook utilitário `usePersistentState(key, initialValue)` que usa `sessionStorage` (limpa ao fechar o navegador, mas sobrevive à navegação entre abas). Trocar os `useState` dos filtros dessas três páginas por esse hook, com chaves separadas:
+- `finance:reconciliation:filters`
+- `finance:statement:filters`
+- `finance:dre:filters`
 
-Padrão a aplicar nos 3 pontos (tabela desktop, lista mobile, export CSV):
+Assim, quando o usuário volta pra aba, os campos já vêm preenchidos com o que ele tinha filtrado, sem precisar filtrar de novo.
 
-```ts
-const parseLocalDate = (s: string) => {
-  const [y, m, d] = s.split("-").map(Number);
-  return new Date(y, m - 1, d);
-};
-```
+**2. Rolagem preservada ao voltar pra aba**
+Mesmo hook aplicado à posição de scroll da página. Ao desmontar, salva o `scrollY`; ao montar de novo, restaura depois que os dados carregam.
 
-E usar `format(parseLocalDate(r.posted_at), "dd/MM/yyyy", { locale: ptBR })`.
+**3. Salvar na Conciliação sem "pular pro topo"**
+Hoje, após salvar uma linha, a lista inteira é recarregada e a página perde a posição. Vamos:
+- Guardar `window.scrollY` antes de recarregar
+- Após a lista renderizar novamente, restaurar a mesma posição
+- Onde possível, atualizar só a linha alterada em vez de recarregar tudo (otimização adicional só se for simples; senão fica o "guardar e restaurar scroll")
 
-Escopo estritamente visual: nenhuma alteração em filtros, cálculos de saldo ou consultas.
+## Detalhes técnicos
 
-## Verificação
+- Novo arquivo `src/hooks/usePersistentState.ts` — wrapper de `useState` que lê/grava em `sessionStorage` (JSON.stringify/parse, com try/catch).
+- Novo hook `src/hooks/useScrollRestoration.ts` — salva `scrollY` no `sessionStorage` sob uma chave por rota, restaura após montar (usa `requestAnimationFrame` pra esperar o layout).
+- Nas três páginas: trocar os `useState` de filtros pelos hooks acima e chamar `useScrollRestoration("finance:<tela>")` no topo.
+- Em `BankReconciliation`, envolver o `refetch` após salvar com `preserveScroll(async () => { await refetch(); })` (helper que memoriza e restaura o scroll).
+- Não mexer em `ScrollToTop` global (se existir), porque ele deve continuar valendo para navegação normal — apenas essas três rotas restauram a última posição salva quando há uma.
 
-Após o ajuste, recarregar `/financeiro/extrato` com filtro 01/06 → 30/06 e conferir que a primeira linha passa a mostrar **01/06/2026** (não 31/05).
+## Fora do escopo
+
+- Não vamos persistir filtros em URL (querystring) agora — sessionStorage já resolve. Se quiser links compartilháveis depois, dá pra migrar.
+- Não vamos alterar lógica de cálculo, RLS ou edge functions.

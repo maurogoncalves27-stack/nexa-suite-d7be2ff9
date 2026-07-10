@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { usePersistentState } from "@/hooks/usePersistentState";
+import { useScrollRestoration } from "@/hooks/useScrollRestoration";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -102,7 +104,7 @@ const scoreCandidate = (tx: BankTx, c: Candidate): number => {
 
 export default function BankReconciliationPanel() {
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
-  const [selectedAccount, setSelectedAccount] = useState<string>("");
+  const [selectedAccount, setSelectedAccount] = usePersistentState<string>("finance:reconciliation:accountId", "");
   const [transactions, setTransactions] = useState<BankTx[]>([]);
   const [payables, setPayables] = useState<Payable[]>([]);
   const [receivables, setReceivables] = useState<Receivable[]>([]);
@@ -113,9 +115,9 @@ export default function BankReconciliationPanel() {
   const [batchMode, setBatchMode] = useState(false);
   const [batchSelected, setBatchSelected] = useState<Set<string>>(new Set());
   const [createTarget, setCreateTarget] = useState<BankTx | null>(null);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = usePersistentState<string>("finance:reconciliation:search", "");
   const [submitting, setSubmitting] = useState(false);
-  const [showReconciled, setShowReconciled] = useState(false);
+  const [showReconciled, setShowReconciled] = usePersistentState<boolean>("finance:reconciliation:showReconciled", false);
   const [pageSize, setPageSize] = useState(50);
   const [hasMore, setHasMore] = useState(false);
   // Filtro de período (auditoria por mês). "all" = sem filtro de data.
@@ -123,9 +125,10 @@ export default function BankReconciliationPanel() {
   const monthStartIso = (() => { const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10); })();
   const prevMonthStartIso = (() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 10); })();
   const prevMonthEndIso = (() => { const d = new Date(); d.setDate(0); return d.toISOString().slice(0, 10); })();
-  const [periodPreset, setPeriodPreset] = useState<"all" | "current" | "previous" | "custom">("all");
-  const [periodFrom, setPeriodFrom] = useState<string>("");
-  const [periodTo, setPeriodTo] = useState<string>("");
+  const [periodPreset, setPeriodPreset] = usePersistentState<"all" | "current" | "previous" | "custom">("finance:reconciliation:periodPreset", "all");
+  const [periodFrom, setPeriodFrom] = usePersistentState<string>("finance:reconciliation:periodFrom", "");
+  const [periodTo, setPeriodTo] = usePersistentState<string>("finance:reconciliation:periodTo", "");
+  useScrollRestoration("finance:reconciliation", !loading);
   // Preserva a posição de scroll ao recarregar a lista após um save
   // (evita "voltar pro topo" / sensação de reload).
   const reloadKeepingScroll = useCallback(async (fn: () => Promise<void>) => {
@@ -747,7 +750,7 @@ export default function BankReconciliationPanel() {
         accounts={accounts}
         open={importOpen}
         onOpenChange={setImportOpen}
-        onImported={loadData}
+        onImported={() => reloadKeepingScroll(loadData)}
       />
 
       {/* Match manual com ranking de compatibilidade — suporta lote */}
@@ -903,7 +906,7 @@ export default function BankReconciliationPanel() {
       <CreateFinanceFromTxDialog
         tx={createTarget}
         onOpenChange={(o) => !o && setCreateTarget(null)}
-        onCreated={loadData}
+        onCreated={() => reloadKeepingScroll(loadData)}
       />
 
       <PickC6BatchDialog
