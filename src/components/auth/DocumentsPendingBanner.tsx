@@ -65,36 +65,46 @@ export default function DocumentsPendingBanner({ employeePosition, employeeContr
 
       // Documentos personalizados pendentes
       let customDocsPending = 0;
-      if (employeePosition) {
-        const { data: docs } = await supabase
-          .from("custom_documents")
-          .select("id, current_version")
-          .eq("is_active", true);
-        const docList = docs ?? [];
-        if (docList.length > 0) {
-          const docIds = docList.map((d) => d.id);
-          const [{ data: vers }, { data: sigs }] = await Promise.all([
-            supabase
-              .from("custom_document_versions")
-              .select("document_id, version_number, target_positions")
-              .in("document_id", docIds),
-            supabase
-              .from("custom_document_signatures")
-              .select("document_id, version_number")
-              .eq("user_id", user.id)
-              .in("document_id", docIds),
-          ]);
-          const signed = new Set(
-            ((sigs ?? []) as any[]).map((s) => `${s.document_id}::${s.version_number}`),
-          );
-          for (const d of docList) {
-            const v = ((vers ?? []) as any[]).find(
-              (x) => x.document_id === d.id && x.version_number === d.current_version,
+      {
+        const { data: empRow } = await supabase
+          .from("employees")
+          .select("id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        const employeeId: string | null = (empRow as any)?.id ?? null;
+        if (employeePosition || employeeId) {
+          const { data: docs } = await supabase
+            .from("custom_documents")
+            .select("id, current_version")
+            .eq("is_active", true);
+          const docList = docs ?? [];
+          if (docList.length > 0) {
+            const docIds = docList.map((d) => d.id);
+            const [{ data: vers }, { data: sigs }] = await Promise.all([
+              supabase
+                .from("custom_document_versions")
+                .select("document_id, version_number, target_positions, target_employee_ids")
+                .in("document_id", docIds),
+              supabase
+                .from("custom_document_signatures")
+                .select("document_id, version_number")
+                .eq("user_id", user.id)
+                .in("document_id", docIds),
+            ]);
+            const signed = new Set(
+              ((sigs ?? []) as any[]).map((s) => `${s.document_id}::${s.version_number}`),
             );
-            if (!v) continue;
-            if (!v.target_positions?.includes(employeePosition)) continue;
-            if (signed.has(`${d.id}::${d.current_version}`)) continue;
-            customDocsPending++;
+            for (const d of docList) {
+              const v = ((vers ?? []) as any[]).find(
+                (x) => x.document_id === d.id && x.version_number === d.current_version,
+              );
+              if (!v) continue;
+              const matchesPos = !!employeePosition && v.target_positions?.includes(employeePosition);
+              const matchesEmp = !!employeeId && (v.target_employee_ids ?? []).includes(employeeId);
+              if (!matchesPos && !matchesEmp) continue;
+              if (signed.has(`${d.id}::${d.current_version}`)) continue;
+              customDocsPending++;
+            }
           }
         }
       }
