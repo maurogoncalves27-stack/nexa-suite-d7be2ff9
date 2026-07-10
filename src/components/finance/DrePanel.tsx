@@ -22,47 +22,15 @@ import {
 } from "@/lib/dre";
 import DreAllocatedPanel from "./DreAllocatedPanel";
 import DreByStorePanel from "./DreByStorePanel";
-
-// A partir de maio/2026 a DRE usa 100% os dados do sistema.
-// De abril/2026 para trás usamos o snapshot histórico importado das planilhas
-// (public.dre_historical_snapshot, store_key='consolidated').
-const HIST_CUTOFF = "2026-04"; // último mês fechado como histórico
-const isHistoricalMonth = (key: string) => key <= HIST_CUTOFF;
-
-type SnapshotByMonth = Record<string, Record<string, number>>;
-
-const SNAPSHOT_FIELD_MAP: Record<string, keyof DreColumn> = {
-  revenue_gross: "revenue_gross",
-  revenue_deduction: "revenue_deduction",
-  cmv: "cmv",
-  expense_personnel: "expense_personnel",
-  expense_admin: "expense_admin",
-  expense_marketing: "expense_marketing",
-  expense_financial: "expense_financial",
-  expense_tax: "expense_tax",
-  expense_other: "expense_other",
-  non_operational: "non_operational",
-};
-
-const applySnapshotToColumn = (col: DreColumn, values: Record<string, number> | undefined) => {
-  if (!values) return;
-  for (const [line, amount] of Object.entries(values)) {
-    const field = SNAPSHOT_FIELD_MAP[line];
-    if (!field) continue;
-    (col as any)[field] += Number(amount) || 0;
-  }
-};
-
-const snapshotColumn = (
-  key: string,
-  label: string,
-  monthKeys: string[],
-  snap: SnapshotByMonth,
-): DreColumn => {
-  const col = emptyDreColumn(key, label);
-  for (const m of monthKeys) applySnapshotToColumn(col, snap[m]);
-  return finalizeDreColumn(col);
-};
+import DreComparativoPanel from "./DreComparativoPanel";
+import {
+  HIST_CUTOFF,
+  isHistoricalMonth,
+  applySnapshotToColumn,
+  snapshotColumn,
+  monthKey as snapMonthKey,
+  type SnapshotByMonth,
+} from "@/lib/dreSnapshot";
 
 type CategoryInfo = { dre_group: DreGroup | null; kind: string; name: string };
 type CategoryMap = Record<string, CategoryInfo>;
