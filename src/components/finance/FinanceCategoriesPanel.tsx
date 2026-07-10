@@ -18,6 +18,7 @@ export interface FinanceCategory {
   sort_order: number;
   dre_group: DreGroup | null;
   subgroup: string | null;
+  is_capex?: boolean;
 }
 
 const kindLabel: Record<FinanceCategory["kind"], string> = {
