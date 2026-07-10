@@ -389,6 +389,7 @@ export default function DrePanel() {
             <TabsTrigger value="custom" className="text-xs sm:text-sm">Período</TabsTrigger>
             <TabsTrigger value="by_store" className="text-xs sm:text-sm">Por loja</TabsTrigger>
             <TabsTrigger value="allocated" className="text-xs sm:text-sm">Rateado</TabsTrigger>
+            <TabsTrigger value="comparativo" className="text-xs sm:text-sm">Comparativo + IA</TabsTrigger>
           </TabsList>
 
           <TabsContent value="monthly" className="space-y-3">
