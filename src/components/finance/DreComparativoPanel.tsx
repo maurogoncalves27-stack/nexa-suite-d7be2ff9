@@ -350,6 +350,42 @@ export default function DreComparativoPanel() {
     }
   };
 
+  const exportValuationPdf = async () => {
+    const node = valuationRef.current;
+    if (!node) return;
+    setExportingPdf(true);
+    try {
+      const canvas = await html2canvas(node, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgW = pageW - 20; // 10mm margin cada lado
+      const imgH = (canvas.height * imgW) / canvas.width;
+
+      let heightLeft = imgH;
+      let position = 10;
+      pdf.addImage(imgData, "PNG", 10, position, imgW, imgH);
+      heightLeft -= pageH - 20;
+      while (heightLeft > 0) {
+        pdf.addPage();
+        position = 10 - (imgH - heightLeft);
+        pdf.addImage(imgData, "PNG", 10, position, imgW, imgH);
+        heightLeft -= pageH - 20;
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      pdf.save(`Valuation_AquelaParme_${today}.pdf`);
+    } catch (e: any) {
+      toast({ title: "Erro ao exportar PDF", description: e.message, variant: "destructive" });
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-end gap-3 flex-wrap">
