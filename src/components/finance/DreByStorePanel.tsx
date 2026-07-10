@@ -84,7 +84,7 @@ export default function DreByStorePanel() {
   const load = async () => {
     setLoading(true);
     try {
-      const [storesRes, salesRes, payRes, recRes, catRes, dedRes] = await Promise.all([
+      const [storesRes, salesRes, payRes, recRes, catRes, dedRes, snap] = await Promise.all([
         supabase.from("stores").select("id,name,is_virtual"),
         fetchAllPaged((from, to) =>
           supabase
