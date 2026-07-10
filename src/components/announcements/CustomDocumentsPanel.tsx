@@ -59,6 +59,7 @@ const QUILL_MODULES = {
 export default function CustomDocumentsPanel() {
   const { user } = useAuth();
   const [employeePositions, setEmployeePositions] = useState<string[]>([]);
+  const [employees, setEmployees] = useState<EmployeeOpt[]>([]);
   const [docs, setDocs] = useState<DocumentRow[]>([]);
   const [versions, setVersions] = useState<Record<string, VersionRow>>({});
   const [signCounts, setSignCounts] = useState<Record<string, number>>({});
@@ -71,6 +72,9 @@ export default function CustomDocumentsPanel() {
   const [description, setDescription] = useState("");
   const [content, setContent] = useState("");
   const [targetPositions, setTargetPositions] = useState<string[]>([]);
+  const [targetEmployeeIds, setTargetEmployeeIds] = useState<string[]>([]);
+  const [audienceMode, setAudienceMode] = useState<"positions" | "employees">("positions");
+  const [employeeSearch, setEmployeeSearch] = useState("");
 
   const reset = () => {
     setEditingId(null);
