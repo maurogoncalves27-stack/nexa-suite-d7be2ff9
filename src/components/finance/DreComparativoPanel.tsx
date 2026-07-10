@@ -275,24 +275,36 @@ export default function DreComparativoPanel() {
       const payload = {
         mode,
         period: PERIOD_LABELS[period],
-        months: perMonth.map((c) => ({
-          mes: c.label,
-          receita_bruta: Math.round(c.revenue_gross),
-          deducoes: Math.round(c.revenue_deduction),
-          receita_liquida: Math.round(c.revenue_net),
-          cmv: Math.round(c.cmv),
-          lucro_bruto: Math.round(c.gross_profit),
-          pessoal: Math.round(c.expense_personnel),
-          admin: Math.round(c.expense_admin),
-          marketing: Math.round(c.expense_marketing),
-          outras: Math.round(c.expense_other),
-          financeiras: Math.round(c.expense_financial),
-          impostos: Math.round(c.expense_tax),
-          nao_operacional: Math.round(c.non_operational),
-          ebitda: Math.round(c.ebitda),
-          resultado_liquido: Math.round(c.net_result),
-        })),
-        totals: {
+        months: perMonth.map((c) => {
+          const p = partialInfo(c.key);
+          return {
+            mes: c.label,
+            parcial: !!p,
+            dia_atual: p?.day ?? null,
+            dias_no_mes: p?.total ?? null,
+            receita_bruta: Math.round(c.revenue_gross),
+            deducoes: Math.round(c.revenue_deduction),
+            receita_liquida: Math.round(c.revenue_net),
+            cmv: Math.round(c.cmv),
+            lucro_bruto: Math.round(c.gross_profit),
+            pessoal: Math.round(c.expense_personnel),
+            admin: Math.round(c.expense_admin),
+            marketing: Math.round(c.expense_marketing),
+            outras: Math.round(c.expense_other),
+            financeiras: Math.round(c.expense_financial),
+            impostos: Math.round(c.expense_tax),
+            nao_operacional: Math.round(c.non_operational),
+            ebitda: Math.round(c.ebitda),
+            resultado_liquido: Math.round(c.net_result),
+            projecao_mes_inteiro: p ? {
+              receita_liquida: Math.round(c.revenue_net * p.factor),
+              lucro_bruto: Math.round(c.gross_profit * p.factor),
+              ebitda: Math.round(c.ebitda * p.factor),
+              resultado_liquido: Math.round(c.net_result * p.factor),
+            } : null,
+          };
+        }),
+        totals_excluding_partial: {
           receita_bruta: Math.round(totals.revenue_gross),
           receita_liquida: Math.round(totals.revenue_net),
           cmv: Math.round(totals.cmv),
@@ -300,6 +312,7 @@ export default function DreComparativoPanel() {
           ebitda: Math.round(totals.ebitda),
           resultado_liquido: Math.round(totals.net_result),
         },
+
       };
       const { data, error } = await supabase.functions.invoke("dre-ai-analysis", { body: payload });
       if (error) throw error;
