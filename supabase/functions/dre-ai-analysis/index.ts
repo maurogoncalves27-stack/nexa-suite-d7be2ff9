@@ -104,10 +104,15 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const mode = body.mode === "analitica" ? "analitica" : "sintetica";
+    const rawMode = body.mode;
+    const mode: "sintetica" | "analitica" | "valuation" =
+      rawMode === "analitica" ? "analitica"
+      : rawMode === "valuation" ? "valuation"
+      : "sintetica";
     const rows: MonthRow[] = Array.isArray(body.months) ? body.months : [];
     const totals = body.totals_excluding_partial ?? body.totals ?? {};
     const period = body.period ?? "período informado";
+    const premises = body.valuation_premises ?? null;
 
     if (rows.length === 0) {
       return new Response(JSON.stringify({ analysis: "Sem dados no período." }), {
@@ -119,10 +124,17 @@ Deno.serve(async (req) => {
     const projectionNote = buildProjection(rows);
     const totaisMd = `**Totais do período (${period}, EXCLUINDO mês parcial):** Rec. líq ${fmtBRL(totals.receita_liquida ?? 0)} · CMV ${fmtBRL(totals.cmv ?? 0)} · Lucro bruto ${fmtBRL(totals.lucro_bruto ?? 0)} · EBITDA ${fmtBRL(totals.ebitda ?? 0)} · Resultado líquido ${fmtBRL(totals.resultado_liquido ?? 0)}.`;
 
-    const userMsg = `${projectionNote ? projectionNote.trim() + "\n\n" : ""}${totaisMd}\n\nDRE mês a mês FECHADOS (${period}) — a tabela abaixo já EXCLUI o mês em andamento:\n\n${table}`;
+    const premisesMd = mode === "valuation" && premises
+      ? `\n\n**Premissas de valuation:**\n- Patrimônio por loja: ${fmtBRL(premises.patrimonio_por_loja ?? 0)} × ${premises.lojas_ativas ?? 0} lojas\n- Fábrica: ${fmtBRL(premises.fabrica ?? 0)} · Escritório: ${fmtBRL(premises.escritorio ?? 0)} · Caixa: ${fmtBRL(premises.caixa ?? 0)}\n- Nova loja Asa Norte: ${((premises.nova_loja_asa_norte_pct_da_atual ?? 0.7) * 100).toFixed(0)}% do faturamento da Asa Norte atual · CAPEX bancado pelo iFood: ${premises.nova_loja_capex_por_ifood ? "SIM" : "não"}\n- Economia mensal NEXA (totens + headcount): ${fmtBRL(premises.nexa_economia_mensal_estimada ?? 0)}\n- ${premises.observacoes ?? ""}`
+      : "";
+
+    const userMsg = `${projectionNote ? projectionNote.trim() + "\n\n" : ""}${totaisMd}${premisesMd}\n\nDRE mês a mês FECHADOS (${period}) — a tabela abaixo já EXCLUI o mês em andamento:\n\n${table}`;
 
 
-    const system = mode === "analitica" ? SYSTEM_ANALITICA : SYSTEM_SINTETICA;
+    const system =
+      mode === "analitica" ? SYSTEM_ANALITICA
+      : mode === "valuation" ? SYSTEM_VALUATION
+      : SYSTEM_SINTETICA;
 
     const resp = await fetch(GATEWAY, {
       method: "POST",
