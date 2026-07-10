@@ -471,7 +471,7 @@ const ROWS: RowDef[] = [
   { label: "= Resultado líquido", field: "net_result", variant: "total", refField: "revenue_net" },
 ];
 
-function DreTable({ columns, loading }: { columns: DreColumn[]; loading: boolean }) {
+export function DreTable({ columns, loading }: { columns: DreColumn[]; loading: boolean }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   if (loading) {
