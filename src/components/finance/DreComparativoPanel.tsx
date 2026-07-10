@@ -4,7 +4,7 @@ import { fetchAllPaged } from "./_fetchAll";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Loader2, RefreshCw, Sparkles, BarChart3 } from "lucide-react";
+import { Loader2, RefreshCw, Sparkles, BarChart3, TrendingUp } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
   ResponsiveContainer,
