@@ -322,6 +322,22 @@ export default function AssetInventory() {
         </div>
       </div>
 
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+        <TabsList>
+          <TabsTrigger value="inventory">Inventário</TabsTrigger>
+          <TabsTrigger value="suggestions" className="gap-1">
+            <Sparkles className="h-3.5 w-3.5" /> Sugestões
+            {pendingSuggestions > 0 && (
+              <Badge variant="secondary" className="ml-1 h-4 px-1 text-[10px]">{pendingSuggestions}</Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="suggestions" className="mt-4">
+          <AssetSuggestionsPanel onConfirmed={load} />
+        </TabsContent>
+
+        <TabsContent value="inventory" className="mt-4 space-y-6">
       <div className="grid gap-3 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2"><CardDescription>Valor bruto</CardDescription></CardHeader>
