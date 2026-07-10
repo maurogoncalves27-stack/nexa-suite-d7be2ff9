@@ -113,7 +113,9 @@ export default function DreByStorePanel() {
         ),
         supabase.from("finance_categories").select("id,dre_group,kind"),
         supabase.functions.invoke("dre-ifood-deductions"),
+        fetchSnapshotAll(),
       ]);
+      setSnapshot(snap);
 
 
 
