@@ -193,7 +193,7 @@ Lista com bullets (•):
 • Sazonalidade e meses faltantes.
 • Nova loja pode superar 70% (upside adicional).
 • Valor de marca é intangível — realizável apenas em cenário de venda, licenciamento ou franquia efetiva.
-• **NEXA Suite NÃO é ativo da empresa** — pertence ao sócio Mauro (PF), cedido em uso gratuito. Não entra no equity value; apenas fator qualitativo de eficiência já refletido na margem atual.
+
 
 Rodapé:
 _Relatório gerado automaticamente pelo NEXA Suite. Documento de trabalho para negociação — não substitui laudo formal assinado._
