@@ -191,11 +191,10 @@ export default function DreComparativoPanel() {
         if (g === "revenue_deduction") { col.revenue_deduction += debit; continue; }
         if (g === "cmv") { col.cmv += debit; continue; }
         if (g === "expense_personnel") col.expense_personnel += debit;
-        else if (g === "expense_admin") col.expense_admin += debit;
-        else if (g === "expense_marketing") col.expense_marketing += debit;
         else if (g === "expense_financial") col.expense_financial += debit;
         else if (g === "expense_tax") col.expense_tax += debit;
-        else col.expense_other += debit;
+        else col.expense_admin += debit; // marketing/outras absorvidos em admin
+
       }
       for (const r of receivables) {
         if (r.status !== "received" || !r.received_at) continue;
@@ -250,8 +249,6 @@ export default function DreComparativoPanel() {
       CMV: Math.round(c.cmv),
       Pessoal: Math.round(c.expense_personnel),
       Admin: Math.round(c.expense_admin),
-      Marketing: Math.round(c.expense_marketing),
-      Outras: Math.round(c.expense_other),
       Financeiras: Math.round(c.expense_financial),
       Impostos: Math.round(c.expense_tax),
     };
@@ -469,8 +466,6 @@ export default function DreComparativoPanel() {
                 <Bar stackId="a" dataKey="CMV" fill="hsl(var(--primary))" />
                 <Bar stackId="a" dataKey="Pessoal" fill="hsl(var(--chart-2, 173 58% 39%))" />
                 <Bar stackId="a" dataKey="Admin" fill="hsl(var(--chart-3, 43 74% 49%))" />
-                <Bar stackId="a" dataKey="Marketing" fill="hsl(var(--chart-4, 27 87% 67%))" />
-                <Bar stackId="a" dataKey="Outras" fill="hsl(var(--chart-5, 340 75% 55%))" />
                 <Bar stackId="a" dataKey="Financeiras" fill="hsl(var(--muted-foreground))" />
                 <Bar stackId="a" dataKey="Impostos" fill="hsl(var(--destructive))" />
               </BarChart>

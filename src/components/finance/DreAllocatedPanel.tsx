@@ -51,11 +51,9 @@ const applyExpense = (col: DreColumn, group: DreGroup | null, debit: number) => 
   if (group === "revenue_deduction") { col.revenue_deduction += debit; return; }
   if (group === "cmv") { col.cmv += debit; return; }
   if (group === "expense_personnel") col.expense_personnel += debit;
-  else if (group === "expense_admin") col.expense_admin += debit;
-  else if (group === "expense_marketing") col.expense_marketing += debit;
   else if (group === "expense_financial") col.expense_financial += debit;
   else if (group === "expense_tax") col.expense_tax += debit;
-  else col.expense_other += debit;
+  else col.expense_admin += debit; // marketing/outras absorvidos em admin (visualização)
 };
 
 const applyReceivable = (col: DreColumn, group: DreGroup | null, credit: number) => {
@@ -415,8 +413,6 @@ const ROWS: RowDef[] = [
   { label: "= Lucro bruto", field: "gross_profit", variant: "subtotal", refField: "revenue_net" },
   { label: DRE_GROUP_LABELS.expense_personnel, field: "expense_personnel", variant: "deduction", indent: true },
   { label: DRE_GROUP_LABELS.expense_admin, field: "expense_admin", variant: "deduction", indent: true },
-  { label: DRE_GROUP_LABELS.expense_marketing, field: "expense_marketing", variant: "deduction", indent: true },
-  { label: DRE_GROUP_LABELS.expense_other, field: "expense_other", variant: "deduction", indent: true },
   { label: "(−) Despesas operacionais", field: "operational_total", variant: "subtotal" },
   { label: "= EBITDA", field: "ebitda", variant: "subtotal", refField: "revenue_net" },
   { label: "(−) Despesas financeiras", field: "expense_financial", variant: "deduction", indent: true },
