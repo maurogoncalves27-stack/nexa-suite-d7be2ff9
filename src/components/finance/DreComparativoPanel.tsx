@@ -464,16 +464,50 @@ export default function DreComparativoPanel() {
             </div>
           </div>
           {aiOutput ? (
-            <div className="rounded-md border bg-muted/20 p-3 text-sm">
-              <div className="text-xs font-semibold text-muted-foreground mb-2">{aiTitle}</div>
-              <div className="prose prose-sm max-w-none dark:prose-invert">
-                <ReactMarkdown>{aiOutput}</ReactMarkdown>
+            aiMode === "valuation" ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-end gap-2">
+                  <Button size="sm" variant="outline" onClick={exportValuationPdf} disabled={exportingPdf}>
+                    {exportingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                    <span className="ml-1">Exportar PDF</span>
+                  </Button>
+                </div>
+                <div
+                  ref={valuationRef}
+                  className="rounded-md border bg-white text-slate-900 p-8 shadow-sm valuation-report"
+                  style={{ fontFamily: '"Inter", "Helvetica Neue", Arial, sans-serif' }}
+                >
+                  <div className="prose prose-sm max-w-none
+                    prose-headings:text-slate-900 prose-headings:font-semibold
+                    prose-h1:text-2xl prose-h1:mb-1 prose-h1:border-b prose-h1:border-slate-300 prose-h1:pb-2
+                    prose-h2:text-lg prose-h2:mt-6 prose-h2:mb-2 prose-h2:text-primary
+                    prose-p:text-slate-700 prose-p:leading-relaxed
+                    prose-strong:text-slate-900
+                    prose-table:text-xs prose-table:border prose-table:border-slate-300
+                    prose-th:bg-slate-100 prose-th:text-slate-900 prose-th:px-3 prose-th:py-2 prose-th:border prose-th:border-slate-300 prose-th:text-left
+                    prose-td:px-3 prose-td:py-2 prose-td:border prose-td:border-slate-200
+                    prose-ul:text-slate-700 prose-li:my-1
+                  ">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiOutput}</ReactMarkdown>
+                  </div>
+                  <div className="mt-6 pt-3 border-t border-slate-200 text-[10px] text-slate-500 italic">
+                    Gerado pelo NEXA Suite em {new Date().toLocaleDateString("pt-BR")} — documento de trabalho, não substitui laudo formal.
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="rounded-md border bg-muted/20 p-3 text-sm">
+                <div className="text-xs font-semibold text-muted-foreground mb-2">{aiTitle}</div>
+                <div className="prose prose-sm max-w-none dark:prose-invert">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiOutput}</ReactMarkdown>
+                </div>
+              </div>
+            )
           ) : (
             <p className="text-xs text-muted-foreground">
-              Clique em <strong>Sintética</strong> para um resumo executivo ou <strong>Analítica</strong> para uma análise
-              detalhada linha a linha, com tendências, alertas e sugestões de ação.
+              Clique em <strong>Sintética</strong> para um resumo executivo, <strong>Valuation</strong> para o laudo
+              de valor da empresa (com exportação em PDF) ou <strong>Analítica</strong> para uma análise detalhada
+              linha a linha.
             </p>
           )}
         </CardContent>
