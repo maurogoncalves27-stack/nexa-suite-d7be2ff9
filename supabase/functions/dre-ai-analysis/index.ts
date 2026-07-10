@@ -155,16 +155,16 @@ Parágrafo curto: marcas Aquela Parmê, Estrogonofe e Box Caipira podem escalar 
 | Valor incremental capitalizado | R$ ... |
 
 ## 5. Valor das marcas registradas (intangível)
-Parágrafo curto: **Aquela Parmê, Estrogonofe e Box Caipira** são marcas registradas no INPI, com identidade visual, operação validada e clientela recorrente. Reconhecer valor de intangível separado da operação (relief-from-royalty + prêmio por marca registrada).
+Parágrafo curto: **Aquela Parmê, Estrogonofe e Box Caipira** são marcas registradas no INPI, com identidade visual consolidada, operação validada, clientela recorrente e **forte relevância na praça de Brasília/DF** (reconhecimento local, presença multi-loja e associação positiva à categoria). Valor de intangível combina três camadas: (i) relief-from-royalty sobre receita projetada, (ii) prêmio por registro INPI ativo e (iii) **prêmio de goodwill/brand equity local** (share of mind em Brasília, potencial de expansão regional Centro-Oeste).
 
 | Marca | Estágio | Faixa de valor intangível |
 |---|---|---|
-| Aquela Parmê | Consolidada (marca-mãe, 4 lojas) | R$ 300k–600k |
-| Estrogonofe | Em operação (multi-loja) | R$ 100k–250k |
-| Box Caipira | Em operação (multi-loja) | R$ 80k–200k |
-| **Subtotal marcas (intangível)** | | **R$ 480k–1,05 mi** |
+| Aquela Parmê | Consolidada (marca-mãe, 4 lojas, alta relevância DF) | R$ 700k–1,4 mi |
+| Estrogonofe | Em operação (multi-loja, nicho reconhecido) | R$ 250k–500k |
+| Box Caipira | Em operação (multi-loja, conceito diferenciado) | R$ 180k–380k |
+| **Subtotal marcas (intangível)** | | **R$ 1,13–2,28 mi** |
 
-Metodologia: relief-from-royalty (5% s/ receita projetada × 5 anos × múltiplo 1x) + prêmio por registro INPI ativo. Este valor é **adicional** ao upside de franquias (seção 4) porque representa a titularidade da marca em si — mesmo sem franquear, a marca tem valor de venda/licenciamento.
+Metodologia: relief-from-royalty (5%–7% s/ receita projetada × 5 anos × múltiplo 1x–1,5x) + prêmio por registro INPI ativo + **prêmio de brand equity local** (relevância em Brasília/DF comprovada por operação multi-loja e reputação de mercado). Adicional ao upside de franquias (seção 4) — representa a titularidade e o goodwill da marca em si, realizável em venda, licenciamento ou franquia.
 
 ## 6. Consolidado — Equity Value
 Tabela final:
@@ -201,7 +201,7 @@ _Relatório gerado automaticamente pelo NEXA Suite. Documento de trabalho para n
 
 REGRAS INEGOCIÁVEIS:
 - Use dados EXCLUSIVAMENTE do payload (DRE fornecida). Nunca use mês parcial como base — sempre LTM de meses FECHADOS.
-- NÃO capitalize o sistema de gestão no equity value — trate como eficiência operacional já refletida na margem, sem mencionar titularidade ou propriedade pessoal.
+- NÃO capitalize nenhum sistema de gestão/tecnologia no equity value — trate como eficiência operacional já refletida na margem. É PROIBIDO mencionar titularidade, propriedade, dono, sócio pessoa física, "pertence a", "Mauro", ou qualquer relação de propriedade de sistema/software. Não escreva ressalvas sobre isso — simplesmente omita do relatório.
 - Seja numérico e direto, use formato brasileiro (R$ 1.234.567 ou R$ 1,23 milhões).
 - Todas as tabelas em Markdown GFM (com | e cabeçalho + separador ---).`;
 
@@ -278,7 +278,14 @@ Deno.serve(async (req) => {
     }
 
     const data = await resp.json();
-    const analysis = sanitizePartialMonthAnalysis(data?.choices?.[0]?.message?.content ?? "Sem resposta do modelo.", partialRow);
+    let analysis = sanitizePartialMonthAnalysis(data?.choices?.[0]?.message?.content ?? "Sem resposta do modelo.", partialRow);
+    // Remove qualquer linha que vaze titularidade pessoal do sistema/tecnologia
+    const ownershipRegex = /(mauro|pertence a|propriedade\s+(pessoal|do\s+s[óo]cio)|titularidade\s+(pessoal|do\s+s[óo]cio)|s[óo]cio\s+pessoa\s+f[íi]sica|nexa\s+(suite|é|nao|não|pertence|pertenc|é\s+de))/i;
+    analysis = analysis
+      .split("\n")
+      .filter((line) => !ownershipRegex.test(line))
+      .join("\n");
+
     return new Response(JSON.stringify({ analysis, mode }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
