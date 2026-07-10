@@ -276,6 +276,7 @@ export default function DreComparativoPanel() {
   const runAi = async (mode: "sintetica" | "analitica" | "valuation") => {
     setAiLoading(mode);
     setAiOutput("");
+    setAiMode(mode);
     setAiTitle(
       mode === "sintetica" ? "Análise sintética"
       : mode === "analitica" ? "Análise analítica"
