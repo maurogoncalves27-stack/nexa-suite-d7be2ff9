@@ -230,6 +230,7 @@ Deno.serve(async (req) => {
     const totals = body.totals_excluding_partial ?? body.totals ?? {};
     const period = body.period ?? "período informado";
     const premises = body.valuation_premises ?? null;
+    const valuationMethod: string = body.valuation_method ?? "consenso";
 
     if (rows.length === 0) {
       return new Response(JSON.stringify({ analysis: "Sem dados no período." }), {
