@@ -254,7 +254,7 @@ export default function DreComparativoPanel() {
   // Totais: EXCLUI o mês corrente parcial para não distorcer médias/somatórios
   const closedMonths = useMemo(() => perMonth.filter((c) => !partialInfo(c.key)), [perMonth]);
   const partialMonth = useMemo(() => perMonth.find((c) => partialInfo(c.key)) ?? null, [perMonth]);
-  const partialMeta = useMemo(() => (partialMonth ? partialInfo(partialMonth.month) : null), [partialMonth]);
+  const partialMeta = useMemo(() => (partialMonth ? partialInfo(partialMonth.key) : null), [partialMonth]);
 
   const totals = useMemo(() => {
     const t = emptyDreColumn("total", "Período");
