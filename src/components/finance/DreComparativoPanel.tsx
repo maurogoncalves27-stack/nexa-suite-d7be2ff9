@@ -339,6 +339,14 @@ export default function DreComparativoPanel() {
         <MiniCard label="Resultado líquido" value={totals.net_result} />
       </div>
 
+      {partialMeta && partialMonth && (
+        <div className="rounded-md border border-dashed bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          <strong className="text-foreground">{partialMonth.label}</strong> ainda não fechou (dia {partialMeta.day} de {partialMeta.total}).
+          Os totais acima excluem este mês para não distorcer a comparação.
+          No gráfico, o realizado parcial aparece na linha cheia e a <em>projeção linear</em> para o mês inteiro na linha tracejada.
+        </div>
+      )}
+
       <Card>
         <CardContent className="pt-4">
           <div className="text-sm font-medium mb-2 flex items-center gap-2">
@@ -356,8 +364,17 @@ export default function DreComparativoPanel() {
                 <Line type="monotone" dataKey="Lucro bruto" stroke="hsl(var(--chart-2, 173 58% 39%))" strokeWidth={2} dot={false} />
                 <Line type="monotone" dataKey="EBITDA" stroke="hsl(var(--chart-3, 43 74% 49%))" strokeWidth={2} dot={false} />
                 <Line type="monotone" dataKey="Resultado líquido" stroke="hsl(var(--destructive))" strokeWidth={2} dot={false} />
+                {partialMeta && (
+                  <>
+                    <Line type="monotone" dataKey="Receita líquida (proj.)" stroke="hsl(var(--primary))" strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3 }} connectNulls />
+                    <Line type="monotone" dataKey="Lucro bruto (proj.)" stroke="hsl(var(--chart-2, 173 58% 39%))" strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3 }} connectNulls />
+                    <Line type="monotone" dataKey="EBITDA (proj.)" stroke="hsl(var(--chart-3, 43 74% 49%))" strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3 }} connectNulls />
+                    <Line type="monotone" dataKey="Resultado líquido (proj.)" stroke="hsl(var(--destructive))" strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3 }} connectNulls />
+                  </>
+                )}
               </LineChart>
             </ResponsiveContainer>
+
           </div>
         </CardContent>
       </Card>
