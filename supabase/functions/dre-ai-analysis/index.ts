@@ -71,6 +71,29 @@ Evolução, meses de prejuízo, drivers do resultado.
 Lista numerada de 4-6 ações concretas, com números que embasem cada ação.
 Não invente dados fora dos fornecidos. Use fmt "R$ X" para valores. REGRA INEGOCIÁVEL: se o usuário informar um mês em andamento (parcial), NUNCA trate esse mês como queda/colapso/retração e NUNCA use ele como fim de tendência — os dados são parciais por natureza. Só cite o mês parcial via projeção linear, deixando explícito que é projeção.`;
 
+const SYSTEM_VALUATION = `Você é um analista de M&A/valuation avaliando a Aquela Parmê (rede de restaurantes brasileira, gestão via sistema próprio NEXA Suite). Calcule o valuation com base na DRE fornecida (últimos 12 meses fechados) e nas premissas de patrimônio/expansão/eficiência. Responda em PORTUGUÊS BR usando MARKDOWN nesta estrutura:
+## Resumo executivo
+Valor central em R$ e faixa (mínimo–máximo), em 2-3 linhas.
+## Base operacional (LTM)
+Receita líquida LTM, EBITDA LTM, margem EBITDA, resultado líquido LTM — tudo dos últimos 12 meses FECHADOS fornecidos.
+## Metodologias
+Aplique e mostre número para cada uma:
+- **EV/EBITDA** (múltiplo 4x-6x para foodservice BR).
+- **EV/Revenue** (0,5x-0,8x).
+- **DCF simplificado** (5 anos, g=4%, WACC=15%, valor terminal Gordon).
+Explique cada cálculo em 1-2 linhas e traga o número.
+## Ajustes patrimoniais e caixa
+Some patrimônio das lojas ativas, fábrica, escritório, caixa disponível.
+## Upside — Nova loja Asa Norte
+A nova loja deve faturar ~70% da Asa Norte atual, com CAPEX bancado pelo iFood (custo zero para a empresa). Estime valor incremental.
+## Upside — Sistema NEXA próprio
+Economia estrutural de ~R$ ${"{"}nexa_saving${"}"}/mês em aluguéis de totens e headcount (capitalize por 6x-8x EBITDA anual gerado).
+## Equity Value final
+Faixa consolidada (mínimo, central, máximo) em R$ milhões, com breakdown do que compõe cada faixa.
+## Ressalvas
+3-5 pontos sobre premissas, riscos e limites do cálculo.
+Use dados EXCLUSIVAMENTE do payload. Nunca use o mês parcial como base — sempre LTM de meses FECHADOS. Seja numérico e direto.`;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (!LOVABLE_API_KEY) {
@@ -81,10 +104,15 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const mode = body.mode === "analitica" ? "analitica" : "sintetica";
+    const rawMode = body.mode;
+    const mode: "sintetica" | "analitica" | "valuation" =
+      rawMode === "analitica" ? "analitica"
+      : rawMode === "valuation" ? "valuation"
+      : "sintetica";
     const rows: MonthRow[] = Array.isArray(body.months) ? body.months : [];
     const totals = body.totals_excluding_partial ?? body.totals ?? {};
     const period = body.period ?? "período informado";
+    const premises = body.valuation_premises ?? null;
 
     if (rows.length === 0) {
       return new Response(JSON.stringify({ analysis: "Sem dados no período." }), {
@@ -96,10 +124,17 @@ Deno.serve(async (req) => {
     const projectionNote = buildProjection(rows);
     const totaisMd = `**Totais do período (${period}, EXCLUINDO mês parcial):** Rec. líq ${fmtBRL(totals.receita_liquida ?? 0)} · CMV ${fmtBRL(totals.cmv ?? 0)} · Lucro bruto ${fmtBRL(totals.lucro_bruto ?? 0)} · EBITDA ${fmtBRL(totals.ebitda ?? 0)} · Resultado líquido ${fmtBRL(totals.resultado_liquido ?? 0)}.`;
 
-    const userMsg = `${projectionNote ? projectionNote.trim() + "\n\n" : ""}${totaisMd}\n\nDRE mês a mês FECHADOS (${period}) — a tabela abaixo já EXCLUI o mês em andamento:\n\n${table}`;
+    const premisesMd = mode === "valuation" && premises
+      ? `\n\n**Premissas de valuation:**\n- Patrimônio por loja: ${fmtBRL(premises.patrimonio_por_loja ?? 0)} × ${premises.lojas_ativas ?? 0} lojas\n- Fábrica: ${fmtBRL(premises.fabrica ?? 0)} · Escritório: ${fmtBRL(premises.escritorio ?? 0)} · Caixa: ${fmtBRL(premises.caixa ?? 0)}\n- Nova loja Asa Norte: ${((premises.nova_loja_asa_norte_pct_da_atual ?? 0.7) * 100).toFixed(0)}% do faturamento da Asa Norte atual · CAPEX bancado pelo iFood: ${premises.nova_loja_capex_por_ifood ? "SIM" : "não"}\n- Economia mensal NEXA (totens + headcount): ${fmtBRL(premises.nexa_economia_mensal_estimada ?? 0)}\n- ${premises.observacoes ?? ""}`
+      : "";
+
+    const userMsg = `${projectionNote ? projectionNote.trim() + "\n\n" : ""}${totaisMd}${premisesMd}\n\nDRE mês a mês FECHADOS (${period}) — a tabela abaixo já EXCLUI o mês em andamento:\n\n${table}`;
 
 
-    const system = mode === "analitica" ? SYSTEM_ANALITICA : SYSTEM_SINTETICA;
+    const system =
+      mode === "analitica" ? SYSTEM_ANALITICA
+      : mode === "valuation" ? SYSTEM_VALUATION
+      : SYSTEM_SINTETICA;
 
     const resp = await fetch(GATEWAY, {
       method: "POST",

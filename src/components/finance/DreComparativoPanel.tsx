@@ -4,7 +4,7 @@ import { fetchAllPaged } from "./_fetchAll";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Loader2, RefreshCw, Sparkles, BarChart3 } from "lucide-react";
+import { Loader2, RefreshCw, Sparkles, BarChart3, TrendingUp } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
   ResponsiveContainer,
@@ -88,7 +88,7 @@ type Cat = { dre_group: string | null };
 export default function DreComparativoPanel() {
   const [period, setPeriod] = useState<PeriodOption>("12m");
   const [loading, setLoading] = useState(false);
-  const [aiLoading, setAiLoading] = useState<"sintetica" | "analitica" | null>(null);
+  const [aiLoading, setAiLoading] = useState<"sintetica" | "analitica" | "valuation" | null>(null);
   const [aiOutput, setAiOutput] = useState<string>("");
   const [aiTitle, setAiTitle] = useState<string>("");
 
@@ -267,10 +267,14 @@ export default function DreComparativoPanel() {
   }, [closedMonths]);
 
 
-  const runAi = async (mode: "sintetica" | "analitica") => {
+  const runAi = async (mode: "sintetica" | "analitica" | "valuation") => {
     setAiLoading(mode);
     setAiOutput("");
-    setAiTitle(mode === "sintetica" ? "Análise sintética" : "Análise analítica");
+    setAiTitle(
+      mode === "sintetica" ? "Análise sintética"
+      : mode === "analitica" ? "Análise analítica"
+      : "Valuation da empresa"
+    );
     try {
       const payload = {
         mode,
@@ -312,7 +316,17 @@ export default function DreComparativoPanel() {
           ebitda: Math.round(totals.ebitda),
           resultado_liquido: Math.round(totals.net_result),
         },
-
+        valuation_premises: mode === "valuation" ? {
+          patrimonio_por_loja: 70000,
+          lojas_ativas: 4,
+          fabrica: 70000,
+          escritorio: 10000,
+          caixa: 50000,
+          nova_loja_asa_norte_pct_da_atual: 0.7,
+          nova_loja_capex_por_ifood: true,
+          nexa_economia_mensal_estimada: 17000,
+          observacoes: "Sistema NEXA próprio substitui totens/headcount; nova loja Asa Norte custeada pelo iFood (CAPEX zero para a empresa).",
+        } : undefined,
       };
       const { data, error } = await supabase.functions.invoke("dre-ai-analysis", { body: payload });
       if (error) throw error;
@@ -422,10 +436,14 @@ export default function DreComparativoPanel() {
             <Sparkles className="h-4 w-4 text-primary" />
             <span className="text-sm font-medium">Análise por IA</span>
             <span className="text-xs text-muted-foreground">— sobre {PERIOD_LABELS[period].toLowerCase()}</span>
-            <div className="ml-auto flex gap-2">
+            <div className="ml-auto flex gap-2 flex-wrap">
               <Button size="sm" variant="outline" disabled={!!aiLoading || loading} onClick={() => runAi("sintetica")}>
                 {aiLoading === "sintetica" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                 <span className="ml-1">Sintética</span>
+              </Button>
+              <Button size="sm" variant="outline" disabled={!!aiLoading || loading} onClick={() => runAi("valuation")}>
+                {aiLoading === "valuation" ? <Loader2 className="h-4 w-4 animate-spin" /> : <TrendingUp className="h-4 w-4" />}
+                <span className="ml-1">Valuation</span>
               </Button>
               <Button size="sm" disabled={!!aiLoading || loading} onClick={() => runAi("analitica")}>
                 {aiLoading === "analitica" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
