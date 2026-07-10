@@ -63,6 +63,7 @@ export default function FinanceCategoriesPanel({ onChanged }: Props) {
       sort_order: editing.sort_order ?? 0,
       dre_group: editing.dre_group ?? null,
       subgroup: editing.subgroup?.trim() || null,
+      is_capex: editing.is_capex ?? false,
     };
     const { error } = editing.id
       ? await supabase.from("finance_categories").update(payload).eq("id", editing.id)
