@@ -357,6 +357,12 @@ async function getPendingDetails() {
     console.warn("[TEF] getPendingDetails probe:", e.message);
   }
 
+  if (stored?.reqNum && probePayload?.status === "noPending") {
+    console.log("[TEF] Pendência local stale removida; PayGo respondeu sem pendência.");
+    clearPendingConfirmation();
+    return buildPendingDetailsFromStored(null, probePayload, probeData);
+  }
+
   return buildPendingDetailsFromStored(stored, probePayload, probeData);
 }
 
