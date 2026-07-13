@@ -1641,11 +1641,6 @@ public static class PayGoBridge
         return !String.IsNullOrWhiteSpace(Result(PWINFO_PNDREQNUM));
     }
 
-    private static bool HasConfirmationTuple()
-    {
-        return !String.IsNullOrWhiteSpace(First(Result(PWINFO_PNDREQNUM), Result(PWINFO_REQNUM)));
-    }
-
     private static bool IsHostCommunicationError(short ret)
     {
         return ret == -2582 || ret == -2583 || ret == -2584 || ret == -2585 || ret == -2586 || ret == -2587;
@@ -1655,7 +1650,10 @@ public static class PayGoBridge
     {
         if (ret == PWRET_FROMHOSTPENDTRN) return true;
         if (HasPendingTransaction()) return true;
-        if (IsHostCommunicationError(ret) && HasConfirmationTuple() && (IsAuthorizedMessage(resultMessage) || RequiresConfirmation()))
+        // PWINFO_REQNUM fica preenchido com a última transação mesmo depois de
+        // confirmada/desfeita. Só existe pendência real quando a PayGo informa
+        // PNDREQNUM; usar REQNUM aqui fazia a venda seguinte reabrir modal stale.
+        if (IsHostCommunicationError(ret) && HasPendingTransaction() && (IsAuthorizedMessage(resultMessage) || RequiresConfirmation()))
             return true;
         return false;
     }
