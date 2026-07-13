@@ -1344,8 +1344,13 @@ export default function TefTestSaleCard({ storeId }: Props) {
         const resolvedReqNum = data?.paygo?.reqNum || data?.nsu || pending?.reqNum;
         clearStoredAuditTxId(effectiveStoreId, resolvedReqNum);
         auditTxIdRef.current = null;
-        agentPendingRef.current = null;
+        clearPendingUiState();
         setActivePaymentId("");
+        // Re-sincroniza com o agente: se o host PayGo confirma que não há mais
+        // pendência real (PWINFO_PNDREQNUM vazio), o /api/tef/pending já limpa
+        // o arquivo local via getPendingDetails (stale-file protection), então
+        // a próxima runSale não fica bloqueada por resíduo local.
+        try { await fetchAgentPendingConfirmation(cfg.agentUrl); } catch { /* ignore */ }
         toast({
           title: action === "confirm" ? "Venda efetivada" : "Desfazimento manual",
           description: data?.message ?? (action === "confirm"
