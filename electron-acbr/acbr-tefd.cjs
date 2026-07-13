@@ -381,11 +381,12 @@ function isPayGoPendingPayload(payload) {
   if (!payload || typeof payload !== "object") return false;
   if (payload.status === "pendingConfirmation") return true;
   if (Number(payload.ret) === PAYGO_PENDING_RET) return true;
+  // CNFREQ=1 em uma transação aprovada significa apenas "precisa confirmar".
+  // Não é pendência real: quando a confirmação manual está desmarcada, o server
+  // deve seguir e chamar confirmarVenda automaticamente. Só tratamos como
+  // pendente quando há erro de comunicação/retorno explícito de pendência.
   return hasPayGoConfirmationTuple(payload.data)
-    && (
-      PAYGO_HOST_COMM_ERRORS.has(Number(payload.ret))
-      || String(payload.data?.cnfReq || "") === "1"
-    );
+    && PAYGO_HOST_COMM_ERRORS.has(Number(payload.ret));
 }
 
 function finishPendingSale(paymentId, payload, reason, saleMeta) {
