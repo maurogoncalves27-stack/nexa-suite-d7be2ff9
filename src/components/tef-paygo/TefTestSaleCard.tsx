@@ -183,6 +183,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
   const [saleId, setSaleId] = useState(DEFAULT_SALE_ID);
   const [manualConfirmation, setManualConfirmation] = useState(false);
   const [confirmSaleModalOpen, setConfirmSaleModalOpen] = useState(false);
+  const [paymentOptionsOpen, setPaymentOptionsOpen] = useState(false);
   const [pendingTxAmountCents, setPendingTxAmountCents] = useState(0);
   const [pendingTxSaleId, setPendingTxSaleId] = useState("");
   const [pendingTxRecNum, setPendingTxRecNum] = useState("");
