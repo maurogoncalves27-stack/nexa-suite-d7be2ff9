@@ -304,6 +304,23 @@ export default function TefTestSaleCard({ storeId }: Props) {
     }
   }, [formStorageKey, amount, saleId, manualConfirmation, customerReceiptPref, merchantReceiptPref]);
 
+  // Recalcula os textos exibidos de comprovante conforme preferência do usuário
+  useEffect(() => {
+    const v = receiptVariants;
+    const hasAny = !!(v.customerShort || v.customerHolder || v.customerFull || v.merchantMerch || v.merchantFull);
+    if (!hasAny) return;
+    let cust = "";
+    if (customerReceiptPref === "short") cust = v.customerShort || v.customerHolder || v.customerFull || "";
+    else if (customerReceiptPref === "holder") cust = v.customerHolder || v.customerFull || v.customerShort || "";
+    else if (customerReceiptPref === "full") cust = v.customerFull || v.customerHolder || v.customerShort || "";
+    let merch = "";
+    if (merchantReceiptPref === "merch") merch = v.merchantMerch || v.merchantFull || "";
+    else if (merchantReceiptPref === "full") merch = v.merchantFull || v.merchantMerch || "";
+    setCustomerReceiptText(cust);
+    setMerchantReceiptText(merch);
+  }, [receiptVariants, customerReceiptPref, merchantReceiptPref]);
+
+
   useEffect(() => {
     uiHydratedRef.current = false;
     try {
