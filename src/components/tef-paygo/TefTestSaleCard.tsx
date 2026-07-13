@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CreditCard, Loader2, FlaskConical, CheckCircle2, XCircle, QrCode, RotateCcw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { loadTefConfig, createTefAdapter, upsertTefTransactionAudit, findPendingTefTransactionByReqnum, findTefTransactionByReqnum, buildPaygoAuditRaw, buildTefAuditSaleId } from "@/lib/tef";
