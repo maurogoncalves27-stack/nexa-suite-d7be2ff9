@@ -187,6 +187,8 @@ export default function TefTestSaleCard({ storeId }: Props) {
   const [amount, setAmount] = useState("");
   const [saleId, setSaleId] = useState(DEFAULT_SALE_ID);
   const [manualConfirmation, setManualConfirmation] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"AUTO" | "CREDITO" | "DEBITO" | "PIX">("AUTO");
+  const [pixNetwork, setPixNetwork] = useState<string>("PIX C6 BANK");
   const [customerReceiptPref, setCustomerReceiptPref] = useState<"short" | "holder" | "full" | "none">("short");
   const [merchantReceiptPref, setMerchantReceiptPref] = useState<"merch" | "full" | "none">("merch");
   const [receiptVariants, setReceiptVariants] = useState<{
@@ -269,12 +271,16 @@ export default function TefTestSaleCard({ storeId }: Props) {
         amount?: string;
         saleId?: string;
         manualConfirmation?: boolean;
+        paymentMethod?: "AUTO" | "CREDITO" | "DEBITO" | "PIX";
+        pixNetwork?: string;
         customerReceiptPref?: "short" | "holder" | "full" | "none";
         merchantReceiptPref?: "merch" | "full" | "none";
       };
       setAmount(typeof parsed.amount === "string" ? parsed.amount : "");
       setSaleId(typeof parsed.saleId === "string" && parsed.saleId.trim() ? parsed.saleId : DEFAULT_SALE_ID);
       setManualConfirmation(!!parsed.manualConfirmation);
+      if (parsed.paymentMethod) setPaymentMethod(parsed.paymentMethod);
+      if (typeof parsed.pixNetwork === "string") setPixNetwork(parsed.pixNetwork);
       if (parsed.customerReceiptPref) setCustomerReceiptPref(parsed.customerReceiptPref);
       if (parsed.merchantReceiptPref) setMerchantReceiptPref(parsed.merchantReceiptPref);
     } catch {
@@ -295,6 +301,8 @@ export default function TefTestSaleCard({ storeId }: Props) {
           amount,
           saleId,
           manualConfirmation,
+          paymentMethod,
+          pixNetwork,
           customerReceiptPref,
           merchantReceiptPref,
         }),
@@ -302,7 +310,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
     } catch {
       // ignore localStorage write errors
     }
-  }, [formStorageKey, amount, saleId, manualConfirmation, customerReceiptPref, merchantReceiptPref]);
+  }, [formStorageKey, amount, saleId, manualConfirmation, paymentMethod, pixNetwork, customerReceiptPref, merchantReceiptPref]);
 
   // Recalcula os textos exibidos de comprovante conforme preferência do usuário
   useEffect(() => {
@@ -1132,6 +1140,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
       auditTxIdRef.current = null;
       lastCaptureSeqRef.current = "";
 
+      const resolvedMenuChoice = paymentMethod === "PIX" ? (pixNetwork || "PIX C6 BANK") : "";
       const resp = await fetch(joinAgentUrl(cfg.agentUrl, "/api/payments"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1139,6 +1148,8 @@ export default function TefTestSaleCard({ storeId }: Props) {
           saleId: saleId.trim() || DEFAULT_SALE_ID,
           amountInCents: Math.round(value * 100),
           manualConfirmation,
+          method: paymentMethod === "AUTO" ? undefined : paymentMethod,
+          paygoMenuChoice: resolvedMenuChoice || undefined,
         }),
       });
       const payment = (await resp.json().catch(() => ({}))) as ApiPayment;
@@ -1603,6 +1614,36 @@ export default function TefTestSaleCard({ storeId }: Props) {
             <div className="mb-2 flex flex-wrap items-center gap-2">
               <Badge variant="outline">Fluxo de venda</Badge>
               <span className="text-xs text-muted-foreground">igual à demo PayGo</span>
+            </div>
+            <div className="mb-3 grid gap-3 md:grid-cols-2">
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold text-muted-foreground">Forma de pagamento</Label>
+                <Select
+                  value={paymentMethod}
+                  onValueChange={(v) => setPaymentMethod(v as "AUTO" | "CREDITO" | "DEBITO" | "PIX")}
+                  disabled={busy}
+                >
+                  <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AUTO">Automático (escolher no pinpad)</SelectItem>
+                    <SelectItem value="CREDITO">Crédito</SelectItem>
+                    <SelectItem value="DEBITO">Débito</SelectItem>
+                    <SelectItem value="PIX">Pix</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {paymentMethod === "PIX" && (
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-muted-foreground">Rede Pix</Label>
+                  <Select value={pixNetwork} onValueChange={setPixNetwork} disabled={busy}>
+                    <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PIX C6 BANK">PIX C6 BANK</SelectItem>
+                      <SelectItem value="PIX CIELO">PIX CIELO</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
             <p className="mb-3 text-xs text-muted-foreground">
               A verificação de pendência PayGo ocorre somente ao clicar em &quot;Efetuar Pagamento&quot;.
