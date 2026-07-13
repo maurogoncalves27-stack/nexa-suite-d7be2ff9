@@ -296,7 +296,10 @@ function paygoTupleFromRecord(data) {
 
 function isPayGoHostBusy() {
   const st = String(saleStatus?.status || "");
-  if (st === "running" || st === "waiting_input" || st === "waiting_confirmation") return true;
+  // `waiting_confirmation` não é uma transação em andamento na DLL; é apenas
+  // estado local aguardando decisão do operador. Se tratarmos isso como busy,
+  // o probe de pendência nunca roda e um arquivo local antigo bloqueia vendas novas.
+  if (st === "running" || st === "waiting_input") return true;
   if (currentSalePaymentId || currentSaleRequestId) return true;
   if (admStatus.status === "running" || admStatus.status === "waiting_input") return true;
   return false;
@@ -996,7 +999,20 @@ async function cancelarVenda(opts = {}) {
     confirmationJsonBase64,
     undoReason: opts.undoReason || "",
   });
-  if (r?.ok) clearPendingConfirmation();
+  if (r?.ok) {
+    clearPendingConfirmation();
+    return r;
+  }
+  const details = await getPendingDetails().catch(() => null);
+  if (!details?.hasPending) {
+    clearPendingConfirmation();
+    return {
+      ok: true,
+      status: "resolvedNoPending",
+      message: "PayGo não possui pendência ativa; pendência local antiga removida.",
+      retorno: r,
+    };
+  }
   return r;
 }
 
@@ -1010,6 +1026,16 @@ async function confirmarVenda(opts = {}) {
     confirmationJsonBase64,
   });
   if (!r?.ok) {
+    const details = await getPendingDetails().catch(() => null);
+    if (!details?.hasPending) {
+      clearPendingConfirmation();
+      return {
+        ok: true,
+        status: "resolvedNoPending",
+        message: "PayGo não possui pendência ativa; pendência local antiga removida.",
+        retorno: r,
+      };
+    }
     throw new Error(r?.message || "Falha ao confirmar venda no PayGo");
   }
   clearPendingConfirmation();
