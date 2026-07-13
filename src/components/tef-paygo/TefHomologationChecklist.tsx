@@ -135,9 +135,9 @@ export default function TefHomologationChecklist({ storeId }: Props) {
             size="sm"
             asChild
             className="h-7 text-[11px] gap-1"
-            title="Baixar agente ACBr (v1.5.5)"
+            title="Baixar agente ACBr (v1.5.13)"
           >
-            <a href="/releases/NEXA-ACBr-Agent-Setup-1.5.5.exe" download>
+            <a href="/releases/NEXA-ACBr-Agent-Setup-1.5.13.exe" download>
               <Download className="h-3.5 w-3.5" />
               Baixar agente
             </a>
