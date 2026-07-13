@@ -426,6 +426,20 @@ export default function TefTestSaleCard({ storeId }: Props) {
     };
   }, [effectiveStoreId]);
 
+  // Verificação inicial: ao montar (após agentUrl carregar), consulta o agente
+  // e abre o modal de pendência se a PayGo já tiver uma pendência viva.
+  const initialPendingCheckRef = useRef<string>("");
+  useEffect(() => {
+    if (!agentUrl) return;
+    const key = `${effectiveStoreId}::${agentUrl}`;
+    if (initialPendingCheckRef.current === key) return;
+    initialPendingCheckRef.current = key;
+    if (busyRef.current) return;
+    if (status !== "idle") return;
+    void handleAgentPendingBeforeSale(agentUrl).catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentUrl, effectiveStoreId]);
+
   useEffect(() => {
     if (!agentUrl) return;
     const streamUrl = joinAgentUrl(agentUrl, "/api/events/stream");
