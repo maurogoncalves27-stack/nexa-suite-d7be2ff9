@@ -269,16 +269,12 @@ export default function TefTestSaleCard({ storeId }: Props) {
         amount?: string;
         saleId?: string;
         manualConfirmation?: boolean;
-        paymentMethod?: "AUTO" | "CREDITO" | "DEBITO" | "PIX";
-        pixNetwork?: string;
         customerReceiptPref?: "short" | "holder" | "full" | "none";
         merchantReceiptPref?: "merch" | "full" | "none";
       };
       setAmount(typeof parsed.amount === "string" ? parsed.amount : "");
       setSaleId(typeof parsed.saleId === "string" && parsed.saleId.trim() ? parsed.saleId : DEFAULT_SALE_ID);
       setManualConfirmation(!!parsed.manualConfirmation);
-      if (parsed.paymentMethod) setPaymentMethod(parsed.paymentMethod);
-      if (typeof parsed.pixNetwork === "string") setPixNetwork(parsed.pixNetwork);
       if (parsed.customerReceiptPref) setCustomerReceiptPref(parsed.customerReceiptPref);
       if (parsed.merchantReceiptPref) setMerchantReceiptPref(parsed.merchantReceiptPref);
     } catch {
