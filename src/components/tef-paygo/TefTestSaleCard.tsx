@@ -295,8 +295,6 @@ export default function TefTestSaleCard({ storeId }: Props) {
           amount,
           saleId,
           manualConfirmation,
-          paymentMethod,
-          pixNetwork,
           customerReceiptPref,
           merchantReceiptPref,
         }),
@@ -304,7 +302,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
     } catch {
       // ignore localStorage write errors
     }
-  }, [formStorageKey, amount, saleId, manualConfirmation, paymentMethod, pixNetwork, customerReceiptPref, merchantReceiptPref]);
+  }, [formStorageKey, amount, saleId, manualConfirmation, customerReceiptPref, merchantReceiptPref]);
 
   // Recalcula os textos exibidos de comprovante conforme preferência do usuário
   useEffect(() => {
