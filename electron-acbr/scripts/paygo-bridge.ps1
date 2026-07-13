@@ -79,6 +79,7 @@ public static class PayGoBridge
     private const ushort PWINFO_RCPTFULL = 0x52;
     private const ushort PWINFO_RCPTMERCH = 0x53;
     private const ushort PWINFO_RCPTCHOLDER = 0x54;
+    private const ushort PWINFO_RCPTCHSHORT = 0x55;
     private const ushort PWINFO_CARDNAME = 0x4B;
     private const ushort PWINFO_AUTHSYST = 0x35;
     private const ushort PWINFO_VIRTMERCH = 0x36;
@@ -1603,7 +1604,7 @@ public static class PayGoBridge
         Field(sb, "authCode", Result(PWINFO_AUTHCODE), false);
         Field(sb, "brand", Result(PWINFO_CARDNAME), true);
         Field(sb, "acquirer", Result(PWINFO_AUTHSYST), true);
-        Field(sb, "customerReceipt", First(Result(PWINFO_RCPTCHOLDER), Result(PWINFO_RCPTFULL)), true);
+        Field(sb, "customerReceipt", First(Result(PWINFO_RCPTCHSHORT), First(Result(PWINFO_RCPTCHOLDER), Result(PWINFO_RCPTFULL))), true);
         Field(sb, "merchantReceipt", First(Result(PWINFO_RCPTMERCH), Result(PWINFO_RCPTFULL)), true);
         Field(sb, "reqNum", includeConfirmation ? Result(PWINFO_REQNUM) : "", true);
         Field(sb, "locRef", includeConfirmation ? Result(PWINFO_AUTLOCREF) : "", true);
@@ -1623,7 +1624,7 @@ public static class PayGoBridge
         Field(sb, "authCode", Result(PWINFO_AUTHCODE), false);
         Field(sb, "brand", Result(PWINFO_CARDNAME), true);
         Field(sb, "acquirer", usePending ? Result(PWINFO_PNDAUTHSYST) : Result(PWINFO_AUTHSYST), true);
-        Field(sb, "customerReceipt", First(Result(PWINFO_RCPTCHOLDER), Result(PWINFO_RCPTFULL)), true);
+        Field(sb, "customerReceipt", First(Result(PWINFO_RCPTCHSHORT), First(Result(PWINFO_RCPTCHOLDER), Result(PWINFO_RCPTFULL))), true);
         Field(sb, "merchantReceipt", First(Result(PWINFO_RCPTMERCH), Result(PWINFO_RCPTFULL)), true);
         Field(sb, "reqNum", usePending ? Result(PWINFO_PNDREQNUM) : Result(PWINFO_REQNUM), true);
         Field(sb, "locRef", usePending ? Result(PWINFO_PNDAUTLOCREF) : Result(PWINFO_AUTLOCREF), true);
