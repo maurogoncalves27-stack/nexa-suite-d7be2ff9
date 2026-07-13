@@ -91,6 +91,11 @@ function applyPendingConfirmation(paymentId, retorno) {
     acquirer: data?.acquirer || data?.authSyst || null,
     customerReceipt: data?.customerReceipt || null,
     merchantReceipt: data?.merchantReceipt || null,
+    customerReceiptShort: data?.customerReceiptShort || null,
+    customerReceiptHolder: data?.customerReceiptHolder || null,
+    customerReceiptFull: data?.customerReceiptFull || null,
+    merchantReceiptMerch: data?.merchantReceiptMerch || null,
+    merchantReceiptFull: data?.merchantReceiptFull || null,
     paygo: paygoTuple,
   });
   publishTefEvent({
@@ -156,6 +161,11 @@ function createPaymentRecord(body) {
     acquirer: null,
     customerReceipt: null,
     merchantReceipt: null,
+    customerReceiptShort: null,
+    customerReceiptHolder: null,
+    customerReceiptFull: null,
+    merchantReceiptMerch: null,
+    merchantReceiptFull: null,
     paygo: null,
     interaction: null,
     createdAt: now,
@@ -509,6 +519,11 @@ async function handle(req, res) {
             acquirer: data?.acquirer || data?.authSyst || null,
             customerReceipt: data?.customerReceipt || null,
             merchantReceipt: data?.merchantReceipt || null,
+            customerReceiptShort: data?.customerReceiptShort || null,
+            customerReceiptHolder: data?.customerReceiptHolder || null,
+            customerReceiptFull: data?.customerReceiptFull || null,
+            merchantReceiptMerch: data?.merchantReceiptMerch || null,
+            merchantReceiptFull: data?.merchantReceiptFull || null,
             paygo: paygoTuple,
           });
           publishTefEvent({ paymentId: payment.id, type: "APPROVED", message: "Aprovada. Salvando venda antes de confirmar." });

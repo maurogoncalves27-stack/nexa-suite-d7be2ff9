@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CreditCard, Loader2, FlaskConical, CheckCircle2, XCircle, QrCode, RotateCcw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { loadTefConfig, createTefAdapter, upsertTefTransactionAudit, findPendingTefTransactionByReqnum, findTefTransactionByReqnum, buildPaygoAuditRaw, buildTefAuditSaleId } from "@/lib/tef";
@@ -60,6 +61,11 @@ interface ApiPayment {
   acquirer?: string | null;
   customerReceipt?: string | null;
   merchantReceipt?: string | null;
+  customerReceiptShort?: string | null;
+  customerReceiptHolder?: string | null;
+  customerReceiptFull?: string | null;
+  merchantReceiptMerch?: string | null;
+  merchantReceiptFull?: string | null;
   paygo?: {
     reqNum?: string;
     locRef?: string;
@@ -181,6 +187,15 @@ export default function TefTestSaleCard({ storeId }: Props) {
   const [amount, setAmount] = useState("");
   const [saleId, setSaleId] = useState(DEFAULT_SALE_ID);
   const [manualConfirmation, setManualConfirmation] = useState(false);
+  const [customerReceiptPref, setCustomerReceiptPref] = useState<"short" | "holder" | "full" | "none">("short");
+  const [merchantReceiptPref, setMerchantReceiptPref] = useState<"merch" | "full" | "none">("merch");
+  const [receiptVariants, setReceiptVariants] = useState<{
+    customerShort?: string | null;
+    customerHolder?: string | null;
+    customerFull?: string | null;
+    merchantMerch?: string | null;
+    merchantFull?: string | null;
+  }>({});
   const [confirmSaleModalOpen, setConfirmSaleModalOpen] = useState(false);
   const [pendingTxAmountCents, setPendingTxAmountCents] = useState(0);
   const [pendingTxSaleId, setPendingTxSaleId] = useState("");
@@ -254,10 +269,14 @@ export default function TefTestSaleCard({ storeId }: Props) {
         amount?: string;
         saleId?: string;
         manualConfirmation?: boolean;
+        customerReceiptPref?: "short" | "holder" | "full" | "none";
+        merchantReceiptPref?: "merch" | "full" | "none";
       };
       setAmount(typeof parsed.amount === "string" ? parsed.amount : "");
       setSaleId(typeof parsed.saleId === "string" && parsed.saleId.trim() ? parsed.saleId : DEFAULT_SALE_ID);
       setManualConfirmation(!!parsed.manualConfirmation);
+      if (parsed.customerReceiptPref) setCustomerReceiptPref(parsed.customerReceiptPref);
+      if (parsed.merchantReceiptPref) setMerchantReceiptPref(parsed.merchantReceiptPref);
     } catch {
       setAmount("");
       setSaleId(DEFAULT_SALE_ID);
@@ -276,12 +295,31 @@ export default function TefTestSaleCard({ storeId }: Props) {
           amount,
           saleId,
           manualConfirmation,
+          customerReceiptPref,
+          merchantReceiptPref,
         }),
       );
     } catch {
       // ignore localStorage write errors
     }
-  }, [formStorageKey, amount, saleId, manualConfirmation]);
+  }, [formStorageKey, amount, saleId, manualConfirmation, customerReceiptPref, merchantReceiptPref]);
+
+  // Recalcula os textos exibidos de comprovante conforme preferência do usuário
+  useEffect(() => {
+    const v = receiptVariants;
+    const hasAny = !!(v.customerShort || v.customerHolder || v.customerFull || v.merchantMerch || v.merchantFull);
+    if (!hasAny) return;
+    let cust = "";
+    if (customerReceiptPref === "short") cust = v.customerShort || v.customerHolder || v.customerFull || "";
+    else if (customerReceiptPref === "holder") cust = v.customerHolder || v.customerFull || v.customerShort || "";
+    else if (customerReceiptPref === "full") cust = v.customerFull || v.customerHolder || v.customerShort || "";
+    let merch = "";
+    if (merchantReceiptPref === "merch") merch = v.merchantMerch || v.merchantFull || "";
+    else if (merchantReceiptPref === "full") merch = v.merchantFull || v.merchantMerch || "";
+    setCustomerReceiptText(cust);
+    setMerchantReceiptText(merch);
+  }, [receiptVariants, customerReceiptPref, merchantReceiptPref]);
+
 
   useEffect(() => {
     uiHydratedRef.current = false;
@@ -1159,6 +1197,13 @@ export default function TefTestSaleCard({ storeId }: Props) {
         throw new Error((payment as any)?.error || payment?.message || `HTTP ${resp.status}`);
       }
       if (payment?.id) setActivePaymentId(payment.id);
+      setReceiptVariants({
+        customerShort: payment.customerReceiptShort ?? null,
+        customerHolder: payment.customerReceiptHolder ?? null,
+        customerFull: payment.customerReceiptFull ?? null,
+        merchantMerch: payment.merchantReceiptMerch ?? null,
+        merchantFull: payment.merchantReceiptFull ?? null,
+      });
       setMerchantReceiptText(payment.merchantReceipt || "");
       setCustomerReceiptText(payment.customerReceipt || "");
 
@@ -1513,6 +1558,46 @@ export default function TefTestSaleCard({ storeId }: Props) {
                 Desmarcado: confirma automaticamente no PayGo após aprovação no pinpad.
               </p>
             </div>
+          </div>
+          <div className="grid gap-3 rounded-lg border border-slate-200 p-3 md:grid-cols-2">
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold text-muted-foreground">Comprovante do cliente</Label>
+              <Select
+                value={customerReceiptPref}
+                onValueChange={(v) => setCustomerReceiptPref(v as "short" | "holder" | "full" | "none")}
+                disabled={busy}
+              >
+                <SelectTrigger className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="short">Reduzido (via curta)</SelectItem>
+                  <SelectItem value="holder">Portador (via cliente)</SelectItem>
+                  <SelectItem value="full">Completo (via integral)</SelectItem>
+                  <SelectItem value="none">Não emitir</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold text-muted-foreground">Comprovante do estabelecimento</Label>
+              <Select
+                value={merchantReceiptPref}
+                onValueChange={(v) => setMerchantReceiptPref(v as "merch" | "full" | "none")}
+                disabled={busy}
+              >
+                <SelectTrigger className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="merch">Estabelecimento (padrão)</SelectItem>
+                  <SelectItem value="full">Completo (via integral)</SelectItem>
+                  <SelectItem value="none">Não emitir</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="md:col-span-2 text-[11px] text-muted-foreground">
+              Escolhe qual via da PayGo é exibida/impressa. Se a rede não devolver a via preferida, cai automaticamente para a próxima disponível.
+            </p>
           </div>
           <div className="rounded-lg border border-slate-200 p-3">
             <div className="mb-2 flex flex-wrap items-center gap-2">
