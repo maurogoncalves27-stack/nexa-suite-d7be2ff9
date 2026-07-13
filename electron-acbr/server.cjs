@@ -113,6 +113,30 @@ function storedPendingConfirmationRetorno() {
   };
 }
 
+async function pendingConfirmationRetorno() {
+  if (typeof tef.getPendingDetails === "function") {
+    const details = await tef.getPendingDetails();
+    const tuple = details?.tuple || details?.pending || null;
+    if (details?.hasPending && tuple?.reqNum) {
+      return {
+        status: "pendingConfirmation",
+        ok: false,
+        message: "Existe transação pendente de confirmação no PayGo. Confirme ou desfaça antes de iniciar nova venda.",
+        data: {
+          ...details?.pending,
+          ...tuple,
+          amountInCents: details?.amountCentavos || details?.pending?.amountCentavos || undefined,
+          amountCentavos: details?.amountCentavos || details?.pending?.amountCentavos || undefined,
+          merchantReceipt: details?.merchantReceipt || details?.pending?.merchantReceipt || undefined,
+          customerReceipt: details?.customerReceipt || details?.pending?.customerReceipt || undefined,
+        },
+      };
+    }
+    return null;
+  }
+  return storedPendingConfirmationRetorno();
+}
+
 function createPaymentRecord(body) {
   const now = new Date().toISOString();
   const id = `${Date.now()}-${++paymentCounter}`;
@@ -426,7 +450,7 @@ async function handle(req, res) {
       const payment = savePayment(createPaymentRecord(body));
       publishTefEvent({ paymentId: payment.id, type: "INFO", message: "Pagamento criado" });
 
-      const blockedPending = storedPendingConfirmationRetorno();
+      const blockedPending = await pendingConfirmationRetorno();
       if (blockedPending) {
         const finalized = applyPendingConfirmation(payment.id, blockedPending);
         return send(res, 409, finalized);
@@ -529,7 +553,7 @@ async function handle(req, res) {
         });
         return send(res, 201, finalized);
       } catch (e) {
-        const blockedPending = storedPendingConfirmationRetorno();
+        const blockedPending = await pendingConfirmationRetorno();
         if (blockedPending) {
           const finalized = applyPendingConfirmation(payment.id, blockedPending);
           return send(res, 409, finalized);
