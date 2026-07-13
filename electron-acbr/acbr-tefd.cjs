@@ -197,6 +197,34 @@ function clearPendingConfirmation() {
   } catch { /* ignore */ }
 }
 
+// Rastreia reqNums recentemente confirmados/desfeitos pelo operador. Após
+// PW_iConfirmation retornar OK, a PGWebLib às vezes ainda expõe PWINFO_PND*
+// preenchido no próximo PW_iInit (residual em memória/arquivo local antes do
+// host processar a baixa). Sem esse dedup, o probe da próxima venda enxerga o
+// MESMO reqNum já resolvido e re-abre o modal de pendência indefinidamente.
+const RECENTLY_RESOLVED_TTL_MS = 5 * 60 * 1000;
+const recentlyResolvedPending = new Map(); // reqNum -> { at, action }
+
+function markPendingResolved(reqNum, action) {
+  if (!reqNum) return;
+  const now = Date.now();
+  recentlyResolvedPending.set(String(reqNum), { at: now, action });
+  for (const [key, val] of recentlyResolvedPending) {
+    if (now - val.at > RECENTLY_RESOLVED_TTL_MS) recentlyResolvedPending.delete(key);
+  }
+}
+
+function wasRecentlyResolved(reqNum) {
+  if (!reqNum) return false;
+  const entry = recentlyResolvedPending.get(String(reqNum));
+  if (!entry) return false;
+  if (Date.now() - entry.at > RECENTLY_RESOLVED_TTL_MS) {
+    recentlyResolvedPending.delete(String(reqNum));
+    return false;
+  }
+  return true;
+}
+
 function encodeConfirmationJson(data) {
   return Buffer.from(JSON.stringify({
     reqNum: data.reqNum,
