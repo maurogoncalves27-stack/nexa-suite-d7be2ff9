@@ -24,7 +24,6 @@ import {
 import type { TefStatus } from "@/lib/tef";
 import { joinAgentUrl } from "@/lib/tef/agentUrl";
 import { pushTefReceipt } from "@/hooks/useTefReceipts";
-import { PaymentOptionsDialog, type PaymentOptionsResult } from "./PaymentOptionsDialog";
 
 const ASA_SUL_ID = "fcf435c2-c382-444c-b499-4d95f07b2633";
 const DEFAULT_SALE_ID = "VENDA-1001";
@@ -183,7 +182,6 @@ export default function TefTestSaleCard({ storeId }: Props) {
   const [saleId, setSaleId] = useState(DEFAULT_SALE_ID);
   const [manualConfirmation, setManualConfirmation] = useState(false);
   const [confirmSaleModalOpen, setConfirmSaleModalOpen] = useState(false);
-  const [paymentOptionsOpen, setPaymentOptionsOpen] = useState(false);
   const [pendingTxAmountCents, setPendingTxAmountCents] = useState(0);
   const [pendingTxSaleId, setPendingTxSaleId] = useState("");
   const [pendingTxRecNum, setPendingTxRecNum] = useState("");
@@ -1049,7 +1047,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
     await upsertSaleAudit(payment, "error");
   };
 
-  const runSale = async (options?: PaymentOptionsResult) => {
+  const runSale = async () => {
     const value = Number(amount.replace(",", "."));
     if (!value || value <= 0) {
       toast({ title: "Valor invalido", variant: "destructive" });
@@ -1103,15 +1101,6 @@ export default function TefTestSaleCard({ storeId }: Props) {
           saleId: saleId.trim() || DEFAULT_SALE_ID,
           amountInCents: Math.round(value * 100),
           manualConfirmation,
-          ...(options
-            ? {
-                method: options.method,
-                installments: options.installments,
-                paygoMenuChoice: options.paygoMenuChoice,
-                acquirer: options.acquirerLabel,
-                installmentMode: options.installmentMode,
-              }
-            : {}),
         }),
       });
       const payment = (await resp.json().catch(() => ({}))) as ApiPayment;
@@ -1533,34 +1522,12 @@ export default function TefTestSaleCard({ storeId }: Props) {
                 <RotateCcw className="h-4 w-4" />
                 Nova Venda
               </Button>
-              <Button
-                onClick={() => {
-                  const value = Number(amount.replace(",", "."));
-                  if (!value || value <= 0) {
-                    toast({ title: "Valor invalido", variant: "destructive" });
-                    return;
-                  }
-                  setPaymentOptionsOpen(true);
-                }}
-                disabled={busy}
-                className="h-11 w-full gap-2 text-sm"
-              >
+              <Button onClick={() => void runSale()} disabled={busy} className="h-11 w-full gap-2 text-sm">
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
                 Efetuar Pagamento
               </Button>
             </div>
           </div>
-
-          <PaymentOptionsDialog
-            open={paymentOptionsOpen}
-            onOpenChange={setPaymentOptionsOpen}
-            amount={Number(amount.replace(",", ".")) || 0}
-            busy={busy}
-            onConfirm={(opts) => {
-              setPaymentOptionsOpen(false);
-              void runSale(opts);
-            }}
-          />
 
           {(merchantReceiptText || customerReceiptText) && (
             <div className="grid gap-2 md:grid-cols-2">
