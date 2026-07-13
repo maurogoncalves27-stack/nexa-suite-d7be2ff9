@@ -1102,6 +1102,15 @@ export default function TefTestSaleCard({ storeId }: Props) {
           saleId: saleId.trim() || DEFAULT_SALE_ID,
           amountInCents: Math.round(value * 100),
           manualConfirmation,
+          ...(options
+            ? {
+                method: options.method,
+                installments: options.installments,
+                paygoMenuChoice: options.paygoMenuChoice,
+                acquirer: options.acquirerLabel,
+                installmentMode: options.installmentMode,
+              }
+            : {}),
         }),
       });
       const payment = (await resp.json().catch(() => ({}))) as ApiPayment;
