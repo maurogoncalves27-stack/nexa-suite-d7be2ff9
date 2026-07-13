@@ -69,7 +69,7 @@ export async function emitNfceAcbr(orderId: string, closureId?: string): Promise
 
   let iniContent: string;
   try {
-    iniContent = buildOrderNfceIni(store as StoreNfceCfg, items, payRows, {
+    iniContent = buildOrderNfceIni(store as unknown as StoreNfceCfg, items, payRows, {
       numeroNF: prep.numero,
       serie: prep.serie,
       customerDocument: (order as any).customer_document,

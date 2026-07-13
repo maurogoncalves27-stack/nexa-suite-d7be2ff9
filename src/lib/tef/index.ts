@@ -202,7 +202,7 @@ const updateTefTransactionByStoreAndSale = async (
 
   const { data, error } = await supabase
     .from("pdv_tef_transactions")
-    .update(patch)
+    .update(patch as any)
     .eq("store_id", storeId)
     .eq("sale_id", saleId)
     .select("id")
@@ -248,7 +248,7 @@ export const updateTefTransaction = async (
   if (params.status === "approved") patch.confirmed_at = now;
   if (params.status === "cancelled") patch.cancelled_at = now;
 
-  const { error } = await supabase.from("pdv_tef_transactions").update(patch).eq("id", id);
+  const { error } = await supabase.from("pdv_tef_transactions").update(patch as any).eq("id", id);
   if (error) console.warn("[TEF] updateTefTransaction:", error.message);
 };
 
