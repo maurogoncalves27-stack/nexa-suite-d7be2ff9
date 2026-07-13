@@ -1592,9 +1592,15 @@ public static class PayGoBridge
 
     private static string Result(ushort info)
     {
-        var sb = new StringBuilder(4096);
-        short ret = Fn<PW_iGetResult_>("PW_iGetResult")((short)info, sb, 4096);
-        return ret == PWRET_OK ? sb.ToString() : "";
+        // Comeca em 16 KB para caber RCPTFULL/RCPTCHOLDER (comprovantes
+        // completos costumam passar de 4 KB). Se a DLL sinalizar buffer
+        // pequeno (qualquer ret != OK), tenta novamente com 64 KB.
+        var sb = new StringBuilder(16384);
+        short ret = Fn<PW_iGetResult_>("PW_iGetResult")((short)info, sb, 16384);
+        if (ret == PWRET_OK) return sb.ToString();
+        var sb2 = new StringBuilder(65536);
+        short ret2 = Fn<PW_iGetResult_>("PW_iGetResult")((short)info, sb2, 65536);
+        return ret2 == PWRET_OK ? sb2.ToString() : "";
     }
 
     private static string ResultsJson(bool includeConfirmation)
