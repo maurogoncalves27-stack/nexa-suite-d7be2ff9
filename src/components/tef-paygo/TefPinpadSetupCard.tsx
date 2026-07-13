@@ -147,8 +147,8 @@ const defaultCaptureInputs = (pending: PaygoAdmCapture[]): Record<number, string
   return next;
 };
 
-const isStartedResponse = (resp: { started?: unknown } | PaygoAgentResponse): boolean =>
-  typeof (resp as any).started === "boolean" && (resp as any).started;
+const isStartedResponse = (resp: any): boolean =>
+  typeof resp?.started === "boolean" && resp.started;
 
 const readString = (obj: Record<string, unknown>, key: string): string => {
   const value = obj[key];
