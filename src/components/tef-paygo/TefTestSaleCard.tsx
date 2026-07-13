@@ -24,6 +24,7 @@ import {
 import type { TefStatus } from "@/lib/tef";
 import { joinAgentUrl } from "@/lib/tef/agentUrl";
 import { pushTefReceipt } from "@/hooks/useTefReceipts";
+import { PaymentOptionsDialog, type PaymentOptionsResult } from "./PaymentOptionsDialog";
 
 const ASA_SUL_ID = "fcf435c2-c382-444c-b499-4d95f07b2633";
 const DEFAULT_SALE_ID = "VENDA-1001";
