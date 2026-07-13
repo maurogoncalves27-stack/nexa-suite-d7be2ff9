@@ -1559,6 +1559,46 @@ export default function TefTestSaleCard({ storeId }: Props) {
               </p>
             </div>
           </div>
+          <div className="grid gap-3 rounded-lg border border-slate-200 p-3 md:grid-cols-2">
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold text-muted-foreground">Comprovante do cliente</Label>
+              <Select
+                value={customerReceiptPref}
+                onValueChange={(v) => setCustomerReceiptPref(v as "short" | "holder" | "full" | "none")}
+                disabled={busy}
+              >
+                <SelectTrigger className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="short">Reduzido (via curta)</SelectItem>
+                  <SelectItem value="holder">Portador (via cliente)</SelectItem>
+                  <SelectItem value="full">Completo (via integral)</SelectItem>
+                  <SelectItem value="none">Não emitir</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold text-muted-foreground">Comprovante do estabelecimento</Label>
+              <Select
+                value={merchantReceiptPref}
+                onValueChange={(v) => setMerchantReceiptPref(v as "merch" | "full" | "none")}
+                disabled={busy}
+              >
+                <SelectTrigger className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="merch">Estabelecimento (padrão)</SelectItem>
+                  <SelectItem value="full">Completo (via integral)</SelectItem>
+                  <SelectItem value="none">Não emitir</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="md:col-span-2 text-[11px] text-muted-foreground">
+              Escolhe qual via da PayGo é exibida/impressa. Se a rede não devolver a via preferida, cai automaticamente para a próxima disponível.
+            </p>
+          </div>
           <div className="rounded-lg border border-slate-200 p-3">
             <div className="mb-2 flex flex-wrap items-center gap-2">
               <Badge variant="outline">Fluxo de venda</Badge>
