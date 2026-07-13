@@ -1047,7 +1047,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
     await upsertSaleAudit(payment, "error");
   };
 
-  const runSale = async (options?: PaymentOptionsResult) => {
+  const runSale = async () => {
     const value = Number(amount.replace(",", "."));
     if (!value || value <= 0) {
       toast({ title: "Valor invalido", variant: "destructive" });
