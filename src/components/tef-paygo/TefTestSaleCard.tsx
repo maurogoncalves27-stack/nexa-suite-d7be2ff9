@@ -269,10 +269,14 @@ export default function TefTestSaleCard({ storeId }: Props) {
         amount?: string;
         saleId?: string;
         manualConfirmation?: boolean;
+        customerReceiptPref?: "short" | "holder" | "full" | "none";
+        merchantReceiptPref?: "merch" | "full" | "none";
       };
       setAmount(typeof parsed.amount === "string" ? parsed.amount : "");
       setSaleId(typeof parsed.saleId === "string" && parsed.saleId.trim() ? parsed.saleId : DEFAULT_SALE_ID);
       setManualConfirmation(!!parsed.manualConfirmation);
+      if (parsed.customerReceiptPref) setCustomerReceiptPref(parsed.customerReceiptPref);
+      if (parsed.merchantReceiptPref) setMerchantReceiptPref(parsed.merchantReceiptPref);
     } catch {
       setAmount("");
       setSaleId(DEFAULT_SALE_ID);
@@ -291,12 +295,14 @@ export default function TefTestSaleCard({ storeId }: Props) {
           amount,
           saleId,
           manualConfirmation,
+          customerReceiptPref,
+          merchantReceiptPref,
         }),
       );
     } catch {
       // ignore localStorage write errors
     }
-  }, [formStorageKey, amount, saleId, manualConfirmation]);
+  }, [formStorageKey, amount, saleId, manualConfirmation, customerReceiptPref, merchantReceiptPref]);
 
   useEffect(() => {
     uiHydratedRef.current = false;
