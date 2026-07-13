@@ -1533,34 +1533,12 @@ export default function TefTestSaleCard({ storeId }: Props) {
                 <RotateCcw className="h-4 w-4" />
                 Nova Venda
               </Button>
-              <Button
-                onClick={() => {
-                  const value = Number(amount.replace(",", "."));
-                  if (!value || value <= 0) {
-                    toast({ title: "Valor invalido", variant: "destructive" });
-                    return;
-                  }
-                  setPaymentOptionsOpen(true);
-                }}
-                disabled={busy}
-                className="h-11 w-full gap-2 text-sm"
-              >
+              <Button onClick={() => void runSale()} disabled={busy} className="h-11 w-full gap-2 text-sm">
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
                 Efetuar Pagamento
               </Button>
             </div>
           </div>
-
-          <PaymentOptionsDialog
-            open={paymentOptionsOpen}
-            onOpenChange={setPaymentOptionsOpen}
-            amount={Number(amount.replace(",", ".")) || 0}
-            busy={busy}
-            onConfirm={(opts) => {
-              setPaymentOptionsOpen(false);
-              void runSale(opts);
-            }}
-          />
 
           {(merchantReceiptText || customerReceiptText) && (
             <div className="grid gap-2 md:grid-cols-2">
