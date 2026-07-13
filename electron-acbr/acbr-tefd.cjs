@@ -197,6 +197,34 @@ function clearPendingConfirmation() {
   } catch { /* ignore */ }
 }
 
+// Rastreia reqNums recentemente confirmados/desfeitos pelo operador. Após
+// PW_iConfirmation retornar OK, a PGWebLib às vezes ainda expõe PWINFO_PND*
+// preenchido no próximo PW_iInit (residual em memória/arquivo local antes do
+// host processar a baixa). Sem esse dedup, o probe da próxima venda enxerga o
+// MESMO reqNum já resolvido e re-abre o modal de pendência indefinidamente.
+const RECENTLY_RESOLVED_TTL_MS = 5 * 60 * 1000;
+const recentlyResolvedPending = new Map(); // reqNum -> { at, action }
+
+function markPendingResolved(reqNum, action) {
+  if (!reqNum) return;
+  const now = Date.now();
+  recentlyResolvedPending.set(String(reqNum), { at: now, action });
+  for (const [key, val] of recentlyResolvedPending) {
+    if (now - val.at > RECENTLY_RESOLVED_TTL_MS) recentlyResolvedPending.delete(key);
+  }
+}
+
+function wasRecentlyResolved(reqNum) {
+  if (!reqNum) return false;
+  const entry = recentlyResolvedPending.get(String(reqNum));
+  if (!entry) return false;
+  if (Date.now() - entry.at > RECENTLY_RESOLVED_TTL_MS) {
+    recentlyResolvedPending.delete(String(reqNum));
+    return false;
+  }
+  return true;
+}
+
 function encodeConfirmationJson(data) {
   return Buffer.from(JSON.stringify({
     reqNum: data.reqNum,
@@ -364,6 +392,21 @@ async function getPendingDetails() {
     console.log("[TEF] Pendência local stale removida; PayGo respondeu sem pendência.");
     clearPendingConfirmation();
     return buildPendingDetailsFromStored(null, probePayload, probeData);
+  }
+
+  // Se o probe traz um reqNum que o operador acabou de confirmar/desfazer nesta
+  // sessão, tratamos como resíduo da PGWebLib e ignoramos — do contrário, a
+  // próxima venda re-abre indefinidamente o modal da pendência já resolvida.
+  const probeReqNum = probeData?.reqNum;
+  if (probeReqNum && wasRecentlyResolved(probeReqNum) && !stored?.reqNum) {
+    console.log(`[TEF] Pendência ${probeReqNum} já resolvida nesta sessão; ignorando probe residual.`);
+    // Best-effort: força cleanup na DLL para sumir com o resíduo interno.
+    try {
+      await runBridge({ action: "cleanup" }, { timeoutMs: 8000, stopHostOnTimeout: false });
+    } catch (e) {
+      console.warn("[TEF] cleanup pós-resolução falhou:", e.message);
+    }
+    return buildPendingDetailsFromStored(null, { status: "noPending" }, {});
   }
 
   return buildPendingDetailsFromStored(stored, probePayload, probeData);
@@ -995,17 +1038,20 @@ async function cancelarVenda(opts = {}) {
   if (!confirmationJsonBase64) {
     throw new Error("confirmationJsonBase64 obrigatório (token PGWEB:)");
   }
+  const decodedTuple = decodeConfirmationJsonBase64(confirmationJsonBase64) || {};
   const r = await runBridge({
     action: "undo",
     confirmationJsonBase64,
     undoReason: opts.undoReason || "",
   });
   if (r?.ok) {
+    markPendingResolved(decodedTuple.reqNum, "undo");
     clearPendingConfirmation();
     return r;
   }
   const details = await getPendingDetails().catch(() => null);
   if (!details?.hasPending) {
+    markPendingResolved(decodedTuple.reqNum, "undo");
     clearPendingConfirmation();
     return {
       ok: true,
@@ -1022,6 +1068,7 @@ async function confirmarVenda(opts = {}) {
   if (!confirmationJsonBase64) {
     throw new Error("confirmationJsonBase64 obrigatório (token PGWEB:)");
   }
+  const decodedTuple = decodeConfirmationJsonBase64(confirmationJsonBase64) || {};
   const r = await runBridge({
     action: "confirm",
     confirmationJsonBase64,
@@ -1029,6 +1076,7 @@ async function confirmarVenda(opts = {}) {
   if (!r?.ok) {
     const details = await getPendingDetails().catch(() => null);
     if (!details?.hasPending) {
+      markPendingResolved(decodedTuple.reqNum, "confirm");
       clearPendingConfirmation();
       return {
         ok: true,
@@ -1039,6 +1087,7 @@ async function confirmarVenda(opts = {}) {
     }
     throw new Error(r?.message || "Falha ao confirmar venda no PayGo");
   }
+  markPendingResolved(decodedTuple.reqNum, "confirm");
   clearPendingConfirmation();
   return r;
 }
