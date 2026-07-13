@@ -1631,6 +1631,11 @@ public static class PayGoBridge
         Field(sb, "acquirer", usePending ? Result(PWINFO_PNDAUTHSYST) : Result(PWINFO_AUTHSYST), true);
         Field(sb, "customerReceipt", First(Result(PWINFO_RCPTCHSHORT), First(Result(PWINFO_RCPTCHOLDER), Result(PWINFO_RCPTFULL))), true);
         Field(sb, "merchantReceipt", First(Result(PWINFO_RCPTMERCH), Result(PWINFO_RCPTFULL)), true);
+        Field(sb, "customerReceiptShort", Result(PWINFO_RCPTCHSHORT), true);
+        Field(sb, "customerReceiptHolder", Result(PWINFO_RCPTCHOLDER), true);
+        Field(sb, "customerReceiptFull", Result(PWINFO_RCPTFULL), true);
+        Field(sb, "merchantReceiptMerch", Result(PWINFO_RCPTMERCH), true);
+        Field(sb, "merchantReceiptFull", Result(PWINFO_RCPTFULL), true);
         Field(sb, "reqNum", usePending ? Result(PWINFO_PNDREQNUM) : Result(PWINFO_REQNUM), true);
         Field(sb, "locRef", usePending ? Result(PWINFO_PNDAUTLOCREF) : Result(PWINFO_AUTLOCREF), true);
         Field(sb, "extRef", usePending ? Result(PWINFO_PNDAUTEXTREF) : Result(PWINFO_AUTEXTREF), true);
