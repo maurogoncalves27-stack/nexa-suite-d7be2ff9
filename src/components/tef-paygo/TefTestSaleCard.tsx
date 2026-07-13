@@ -1615,36 +1615,6 @@ export default function TefTestSaleCard({ storeId }: Props) {
               <Badge variant="outline">Fluxo de venda</Badge>
               <span className="text-xs text-muted-foreground">igual à demo PayGo</span>
             </div>
-            <div className="mb-3 grid gap-3 md:grid-cols-2">
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold text-muted-foreground">Forma de pagamento</Label>
-                <Select
-                  value={paymentMethod}
-                  onValueChange={(v) => setPaymentMethod(v as "AUTO" | "CREDITO" | "DEBITO" | "PIX")}
-                  disabled={busy}
-                >
-                  <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="AUTO">Automático (escolher no pinpad)</SelectItem>
-                    <SelectItem value="CREDITO">Crédito</SelectItem>
-                    <SelectItem value="DEBITO">Débito</SelectItem>
-                    <SelectItem value="PIX">Pix</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {paymentMethod === "PIX" && (
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-muted-foreground">Rede Pix</Label>
-                  <Select value={pixNetwork} onValueChange={setPixNetwork} disabled={busy}>
-                    <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PIX C6 BANK">PIX C6 BANK</SelectItem>
-                      <SelectItem value="PIX CIELO">PIX CIELO</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
             <p className="mb-3 text-xs text-muted-foreground">
               A verificação de pendência PayGo ocorre somente ao clicar em &quot;Efetuar Pagamento&quot;.
             </p>
