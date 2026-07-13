@@ -1140,6 +1140,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
       auditTxIdRef.current = null;
       lastCaptureSeqRef.current = "";
 
+      const resolvedMenuChoice = paymentMethod === "PIX" ? (pixNetwork || "PIX C6 BANK") : "";
       const resp = await fetch(joinAgentUrl(cfg.agentUrl, "/api/payments"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1147,6 +1148,8 @@ export default function TefTestSaleCard({ storeId }: Props) {
           saleId: saleId.trim() || DEFAULT_SALE_ID,
           amountInCents: Math.round(value * 100),
           manualConfirmation,
+          method: paymentMethod === "AUTO" ? undefined : paymentMethod,
+          paygoMenuChoice: resolvedMenuChoice || undefined,
         }),
       });
       const payment = (await resp.json().catch(() => ({}))) as ApiPayment;
