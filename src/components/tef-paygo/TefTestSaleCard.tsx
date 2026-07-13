@@ -61,6 +61,11 @@ interface ApiPayment {
   acquirer?: string | null;
   customerReceipt?: string | null;
   merchantReceipt?: string | null;
+  customerReceiptShort?: string | null;
+  customerReceiptHolder?: string | null;
+  customerReceiptFull?: string | null;
+  merchantReceiptMerch?: string | null;
+  merchantReceiptFull?: string | null;
   paygo?: {
     reqNum?: string;
     locRef?: string;
