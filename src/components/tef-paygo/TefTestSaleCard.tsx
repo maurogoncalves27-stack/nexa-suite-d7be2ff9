@@ -428,15 +428,27 @@ export default function TefTestSaleCard({ storeId }: Props) {
 
   // Verificação inicial: ao montar (após agentUrl carregar), consulta o agente
   // e abre o modal de pendência se a PayGo já tiver uma pendência viva.
+  // Roda uma vez por (loja, agentUrl) e só marca como concluída APÓS executar,
+  // pra não perder a checagem caso status/busy estejam transitoriamente ocupados.
   const initialPendingCheckRef = useRef<string>("");
   useEffect(() => {
     if (!agentUrl) return;
     const key = `${effectiveStoreId}::${agentUrl}`;
     if (initialPendingCheckRef.current === key) return;
-    initialPendingCheckRef.current = key;
-    if (busyRef.current) return;
-    if (status !== "idle") return;
-    void handleAgentPendingBeforeSale(agentUrl).catch(() => undefined);
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      if (cancelled) return;
+      try {
+        await handleAgentPendingBeforeSale(agentUrl);
+        initialPendingCheckRef.current = key;
+      } catch {
+        // não marca como concluída — próxima renderização tenta de novo
+      }
+    }, 300);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agentUrl, effectiveStoreId]);
 
