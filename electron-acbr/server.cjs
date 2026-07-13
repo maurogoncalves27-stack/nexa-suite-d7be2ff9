@@ -91,6 +91,11 @@ function applyPendingConfirmation(paymentId, retorno) {
     acquirer: data?.acquirer || data?.authSyst || null,
     customerReceipt: data?.customerReceipt || null,
     merchantReceipt: data?.merchantReceipt || null,
+    customerReceiptShort: data?.customerReceiptShort || null,
+    customerReceiptHolder: data?.customerReceiptHolder || null,
+    customerReceiptFull: data?.customerReceiptFull || null,
+    merchantReceiptMerch: data?.merchantReceiptMerch || null,
+    merchantReceiptFull: data?.merchantReceiptFull || null,
     paygo: paygoTuple,
   });
   publishTefEvent({
