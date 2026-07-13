@@ -1180,6 +1180,13 @@ export default function TefTestSaleCard({ storeId }: Props) {
         throw new Error((payment as any)?.error || payment?.message || `HTTP ${resp.status}`);
       }
       if (payment?.id) setActivePaymentId(payment.id);
+      setReceiptVariants({
+        customerShort: payment.customerReceiptShort ?? null,
+        customerHolder: payment.customerReceiptHolder ?? null,
+        customerFull: payment.customerReceiptFull ?? null,
+        merchantMerch: payment.merchantReceiptMerch ?? null,
+        merchantFull: payment.merchantReceiptFull ?? null,
+      });
       setMerchantReceiptText(payment.merchantReceipt || "");
       setCustomerReceiptText(payment.customerReceipt || "");
 
