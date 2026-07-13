@@ -394,6 +394,21 @@ async function getPendingDetails() {
     return buildPendingDetailsFromStored(null, probePayload, probeData);
   }
 
+  // Se o probe traz um reqNum que o operador acabou de confirmar/desfazer nesta
+  // sessão, tratamos como resíduo da PGWebLib e ignoramos — do contrário, a
+  // próxima venda re-abre indefinidamente o modal da pendência já resolvida.
+  const probeReqNum = probeData?.reqNum;
+  if (probeReqNum && wasRecentlyResolved(probeReqNum) && !stored?.reqNum) {
+    console.log(`[TEF] Pendência ${probeReqNum} já resolvida nesta sessão; ignorando probe residual.`);
+    // Best-effort: força cleanup na DLL para sumir com o resíduo interno.
+    try {
+      await runBridge({ action: "cleanup" }, { timeoutMs: 8000, stopHostOnTimeout: false });
+    } catch (e) {
+      console.warn("[TEF] cleanup pós-resolução falhou:", e.message);
+    }
+    return buildPendingDetailsFromStored(null, { status: "noPending" }, {});
+  }
+
   return buildPendingDetailsFromStored(stored, probePayload, probeData);
 }
 
