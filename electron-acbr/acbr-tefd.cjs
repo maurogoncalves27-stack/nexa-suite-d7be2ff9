@@ -207,6 +207,31 @@ function encodeConfirmationJson(data) {
   }), "utf8").toString("base64");
 }
 
+function decodeConfirmationJsonBase64(confirmationJsonBase64) {
+  if (!confirmationJsonBase64) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(String(confirmationJsonBase64), "base64").toString("utf8"));
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveConfirmationJsonBase64(opts = {}) {
+  const pending = loadPendingConfirmation();
+  const explicit = decodeConfirmationJsonBase64(opts.confirmationJsonBase64);
+  const tuple = explicit
+    ? {
+        reqNum: explicit.reqNum || pending?.reqNum || "",
+        locRef: explicit.locRef || pending?.locRef || "",
+        extRef: explicit.extRef || pending?.extRef || "",
+        virtMerch: explicit.virtMerch || pending?.virtMerch || "",
+        authSyst: explicit.authSyst || pending?.authSyst || "",
+      }
+    : pending;
+  return tuple?.reqNum ? encodeConfirmationJson(tuple) : "";
+}
+
 function maybePersistPendingFromPayload(payload, reason, saleMeta) {
   const d = payload?.data;
   if (!d || typeof d !== "object") return false;
@@ -330,6 +355,12 @@ async function getPendingDetails() {
       : {};
   } catch (e) {
     console.warn("[TEF] getPendingDetails probe:", e.message);
+  }
+
+  if (stored?.reqNum && probePayload?.status === "noPending") {
+    console.log("[TEF] Pendência local stale removida; PayGo respondeu sem pendência.");
+    clearPendingConfirmation();
+    return buildPendingDetailsFromStored(null, probePayload, probeData);
   }
 
   return buildPendingDetailsFromStored(stored, probePayload, probeData);
@@ -956,10 +987,7 @@ async function limparPendencia() {
 }
 
 async function cancelarVenda(opts = {}) {
-  const pending = loadPendingConfirmation();
-  const confirmationJsonBase64 =
-    opts.confirmationJsonBase64 ||
-    (pending ? encodeConfirmationJson(pending) : "");
+  const confirmationJsonBase64 = resolveConfirmationJsonBase64(opts);
   if (!confirmationJsonBase64) {
     throw new Error("confirmationJsonBase64 obrigatório (token PGWEB:)");
   }
@@ -973,10 +1001,7 @@ async function cancelarVenda(opts = {}) {
 }
 
 async function confirmarVenda(opts = {}) {
-  const pending = loadPendingConfirmation();
-  const confirmationJsonBase64 =
-    opts.confirmationJsonBase64 ||
-    (pending ? encodeConfirmationJson(pending) : "");
+  const confirmationJsonBase64 = resolveConfirmationJsonBase64(opts);
   if (!confirmationJsonBase64) {
     throw new Error("confirmationJsonBase64 obrigatório (token PGWEB:)");
   }

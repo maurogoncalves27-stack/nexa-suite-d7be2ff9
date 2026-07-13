@@ -469,7 +469,12 @@ public static class PayGoBridge
             if (ret != PWRET_OK && !ShouldReturnPending(ret, Result(PWINFO_RESULTMSG)))
                 return Error("PW_iInit", ret);
 
-            if (HasPendingTransaction() || HasConfirmationTuple())
+            // Probe de pendência deve considerar SOMENTE os campos PND* da
+            // PGWebLib. PWINFO_REQNUM representa a última transação executada
+            // e permanece preenchido após confirmação/desfazimento; se ele for
+            // tratado como pendência, a próxima venda fica presa no modal de
+            // "confirmar/desfazer" usando o REQNUM anterior.
+            if (HasPendingTransaction())
             {
                 return Json("pendingConfirmation", false, First(Result(PWINFO_RESULTMSG), "Existe transacao pendente de confirmacao no PayGo"), ret, PendingResultsJson());
             }
@@ -535,7 +540,13 @@ public static class PayGoBridge
             short ret = Init(workingDir);
             if (ret != PWRET_OK) return Error("PW_iInit", ret);
 
-            ret = Fn<PW_iConfirmation_>("PW_iConfirmation")(confirmation, reqNum ?? "", locRef ?? "", extRef ?? "", virtMerch ?? "", authSyst ?? "");
+            string resolvedReqNum = First(reqNum, Result(PWINFO_PNDREQNUM));
+            string resolvedLocRef = First(locRef, Result(PWINFO_PNDAUTLOCREF));
+            string resolvedExtRef = First(extRef, Result(PWINFO_PNDAUTEXTREF));
+            string resolvedVirtMerch = First(virtMerch, Result(PWINFO_PNDVIRTMERCH));
+            string resolvedAuthSyst = First(authSyst, Result(PWINFO_PNDAUTHSYST));
+
+            ret = Fn<PW_iConfirmation_>("PW_iConfirmation")(confirmation, resolvedReqNum ?? "", resolvedLocRef ?? "", resolvedExtRef ?? "", resolvedVirtMerch ?? "", resolvedAuthSyst ?? "");
             if (ret != PWRET_OK) return Error("PW_iConfirmation", ret);
             EmitEvent("CONFIRMED", IsUndoConfirmation(confirmation) ? "Desfazimento enviado ao PayGo" : "Confirmacao enviada ao PayGo");
             return "{\"ok\":true,\"status\":\"confirmed\",\"message\":\"PW_iConfirmation OK\"}";
