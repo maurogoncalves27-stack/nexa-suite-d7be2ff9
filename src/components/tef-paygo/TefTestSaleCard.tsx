@@ -187,6 +187,15 @@ export default function TefTestSaleCard({ storeId }: Props) {
   const [amount, setAmount] = useState("");
   const [saleId, setSaleId] = useState(DEFAULT_SALE_ID);
   const [manualConfirmation, setManualConfirmation] = useState(false);
+  const [customerReceiptPref, setCustomerReceiptPref] = useState<"short" | "holder" | "full" | "none">("short");
+  const [merchantReceiptPref, setMerchantReceiptPref] = useState<"merch" | "full" | "none">("merch");
+  const [receiptVariants, setReceiptVariants] = useState<{
+    customerShort?: string | null;
+    customerHolder?: string | null;
+    customerFull?: string | null;
+    merchantMerch?: string | null;
+    merchantFull?: string | null;
+  }>({});
   const [confirmSaleModalOpen, setConfirmSaleModalOpen] = useState(false);
   const [pendingTxAmountCents, setPendingTxAmountCents] = useState(0);
   const [pendingTxSaleId, setPendingTxSaleId] = useState("");
