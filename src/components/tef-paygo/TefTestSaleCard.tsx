@@ -187,8 +187,6 @@ export default function TefTestSaleCard({ storeId }: Props) {
   const [amount, setAmount] = useState("");
   const [saleId, setSaleId] = useState(DEFAULT_SALE_ID);
   const [manualConfirmation, setManualConfirmation] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"AUTO" | "CREDITO" | "DEBITO" | "PIX">("AUTO");
-  const [pixNetwork, setPixNetwork] = useState<string>("PIX C6 BANK");
   const [customerReceiptPref, setCustomerReceiptPref] = useState<"short" | "holder" | "full" | "none">("short");
   const [merchantReceiptPref, setMerchantReceiptPref] = useState<"merch" | "full" | "none">("merch");
   const [receiptVariants, setReceiptVariants] = useState<{
