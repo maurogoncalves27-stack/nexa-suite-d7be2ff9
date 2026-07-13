@@ -1038,17 +1038,20 @@ async function cancelarVenda(opts = {}) {
   if (!confirmationJsonBase64) {
     throw new Error("confirmationJsonBase64 obrigatório (token PGWEB:)");
   }
+  const decodedTuple = decodeConfirmationJsonBase64(confirmationJsonBase64) || {};
   const r = await runBridge({
     action: "undo",
     confirmationJsonBase64,
     undoReason: opts.undoReason || "",
   });
   if (r?.ok) {
+    markPendingResolved(decodedTuple.reqNum, "undo");
     clearPendingConfirmation();
     return r;
   }
   const details = await getPendingDetails().catch(() => null);
   if (!details?.hasPending) {
+    markPendingResolved(decodedTuple.reqNum, "undo");
     clearPendingConfirmation();
     return {
       ok: true,
