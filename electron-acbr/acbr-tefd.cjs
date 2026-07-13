@@ -1068,6 +1068,7 @@ async function confirmarVenda(opts = {}) {
   if (!confirmationJsonBase64) {
     throw new Error("confirmationJsonBase64 obrigatório (token PGWEB:)");
   }
+  const decodedTuple = decodeConfirmationJsonBase64(confirmationJsonBase64) || {};
   const r = await runBridge({
     action: "confirm",
     confirmationJsonBase64,
@@ -1075,6 +1076,7 @@ async function confirmarVenda(opts = {}) {
   if (!r?.ok) {
     const details = await getPendingDetails().catch(() => null);
     if (!details?.hasPending) {
+      markPendingResolved(decodedTuple.reqNum, "confirm");
       clearPendingConfirmation();
       return {
         ok: true,
@@ -1085,6 +1087,7 @@ async function confirmarVenda(opts = {}) {
     }
     throw new Error(r?.message || "Falha ao confirmar venda no PayGo");
   }
+  markPendingResolved(decodedTuple.reqNum, "confirm");
   clearPendingConfirmation();
   return r;
 }
