@@ -466,19 +466,50 @@ export default function TefTestSaleCard({ storeId }: Props) {
 
   // Simulação de queda de energia: aborta o fluxo no front após aprovação da PayGo,
   // sem confirmar nem desfazer — deixa a transação PENDENTE no host PayGo.
-  const abortForPowerFailureSim = (reason: string) => {
+  // Só deve ser chamada quando a venda foi de fato aprovada (approvedSeenRef=true
+  // ou sync com status APROVADA_NAO_CONFIRMADA). Após o abort, valida na DLL se
+  // realmente há pendência (`/api/tef/pending`) e corrige o toast caso não haja.
+  const abortForPowerFailureSim = (reason: string, opts?: { verifyAgentUrl?: string }) => {
     try { saleEventSourceRef.current?.close(); } catch { /* ignore */ }
     saleEventSourceRef.current = null;
     busyRef.current = false;
+    approvedSeenRef.current = false;
     setBusy(false);
     setStatus("idle");
-    setStatusMsg("Simulação de queda de energia — pendência mantida no PayGo");
+    setStatusMsg("Simulação de queda de energia — verificando pendência na PayGo…");
     setConfirmSaleModalOpen(false);
     setActivePaymentId("");
-    toast({
+    const toastId = toast({
       title: "Simulação de queda de energia",
-      description: reason + " Reabra a página para tratar a pendência no próximo acesso.",
+      description: reason + " Verificando se a pendência ficou registrada na PayGo…",
     });
+    const baseUrl = opts?.verifyAgentUrl || agentUrl;
+    if (baseUrl) {
+      void (async () => {
+        try {
+          const { pending } = await fetchAgentPendingConfirmation(baseUrl);
+          if (pending?.reqNum) {
+            setStatusMsg("Pendência registrada na PayGo — trate no próximo acesso.");
+            toastId?.update?.({
+              id: toastId.id,
+              title: "Pendência criada na PayGo",
+              description: `NSU/ReqNum ${pending.reqNum}. Recarregue a página para tratar.`,
+            });
+          } else {
+            setStatusMsg("Fluxo abandonado antes da aprovação — nenhuma pendência criada.");
+            toastId?.update?.({
+              id: toastId.id,
+              variant: "destructive",
+              title: "Nenhuma pendência foi criada",
+              description:
+                "A venda não chegou a ser autorizada pela PayGo (cartão não inserido, cancelada ou erro antes da aprovação). Nada ficou pendente no host.",
+            });
+          }
+        } catch {
+          /* ignore */
+        }
+      })();
+    }
   };
 
 
