@@ -1,48 +1,45 @@
 ## Objetivo
-Fazer com que itens de equipamento que entram por notas/lançamentos sejam **sugeridos automaticamente** para o Patrimônio (`asset_inventory`), sempre com confirmação humana antes de virar bem.
+Deixar uma transação **aprovada pela PayGo mas não confirmada** (estado `PWINFO_PNDREQNUM` preenchido na DLL) — simulando uma queda de energia entre a aprovação e o `PW_iConfirmation`.
 
-## Como vai funcionar (visão do usuário)
+## Contexto
+Hoje o fluxo, com "Confirmação manual" desmarcada, chama `PW_iConfirmation(CNF_AUTO)` logo após a aprovação. Com "Confirmação manual" marcada, a confirmação só acontece quando o operador clica no modal. Para simular queda, precisamos **matar o processo entre esses dois momentos**, sem chamar `confirm` nem `undo`.
 
-1. Em toda entrada nova — NFe (DFe), recebimento de estoque ou lançamento manual de contas a pagar — o sistema olha o NCM (ou a categoria financeira, no caso manual) e marca os itens candidatos a patrimônio.
-2. Um **sino de "Patrimônio pendente"** aparece na página `/patrimonio` com contador (ex.: "3 itens sugeridos").
-3. Ao clicar, abre uma fila de sugestões. Para cada item o usuário vê: nota de origem, fornecedor, descrição, NCM, quantidade, valor unitário, loja sugerida — e pode:
-   - **Confirmar** (abre modal já preenchido para revisar categoria/nome/nº série/localização e salva no patrimônio),
-   - **Ignorar** (marca como "não é patrimônio", nunca mais volta),
-   - **Adiar** (fica na fila).
-4. Nada entra no patrimônio sem clique. Zero risco de duplicar bem por reprocessamento de nota.
+## Opções recomendadas (da mais realista para a mais rápida)
 
-## Regras de sugestão automática
+### Opção A — Kill do agente durante venda com confirmação manual (mais fiel)
+1. Em `/configuracoes/tef-paygo`, marcar **"Confirmação manual de venda"**.
+2. Iniciar uma venda pequena (R$ 1,00, débito ou Pix DEMO).
+3. Aguardar a PayGo retornar aprovado — o modal de confirmação manual aparece na UI.
+4. **Antes de clicar em Confirmar/Desfazer**, no PC do agente:
+   - Task Manager → finalizar `NEXA ACBr Agent.exe` (End task, não Close), **ou**
+   - PowerShell: `Stop-Process -Name "NEXA ACBr Agent" -Force` (ou `taskkill /F /IM "NEXA ACBr Agent.exe"`), **ou**
+   - Se quiser simular queda de luz "de verdade": desligar o PC pelo botão físico (hold 5s) ou tirar da tomada.
+5. Reabrir o agente → a DLL da PayGo mantém `PWINFO_PNDREQNUM` preenchido no arquivo de estado local dela.
+6. Recarregar `/configuracoes/tef-paygo` → o `useEffect` inicial vai chamar `/api/tef/pending` e abrir o modal.
 
-- **NFe / Recebimento**: item vira sugestão se o NCM começar com um dos capítulos de bens de capital — 84 (máquinas), 85 (elétricos/eletrônicos), 90 (instrumentos), 9403 (móveis). Lista editável em Configurações → Patrimônio.
-- **Contas a pagar manual**: vira sugestão se a categoria financeira estiver marcada como "Imobilizado". Adicionamos um toggle `is_capex` em `finance_categories`.
-- **Valor mínimo**: itens abaixo de R$ 500 são classificados como *utensílio* e entram na fila com categoria pré-selecionada "utensilio"; acima disso, "equipamento". Ajustável.
+Vantagem: reproduz exatamente o cenário "sem CNF_AUTO nem CNF_REV". É o teste que valida a checagem inicial de pendência.
 
-## Ponto de atenção que precisa da sua decisão durante o uso
-Quando uma nota traz "2 fornos" (quantidade 2), o modal pergunta: criar **1 bem com quantidade 2** ou **2 bens individuais** (para números de série diferentes). Padrão sugerido: 1 bem por linha da nota, editável.
+### Opção B — Adicionar botão oculto "Simular queda" (dev-only)
+Botão no `TefTestSaleCard` (visível só com `?debug=1` na URL ou super-user) que:
+- Envia venda normal com `manualConfirmation=true`.
+- Quando o agente retorna aprovado, o front **não abre o modal** e **não chama** `/tef/confirm` — apenas mostra "Simulação: transação pendente na DLL".
+- Estado idêntico ao da queda real, sem precisar matar processo.
 
-## O que muda no banco
+Vantagem: repetível, sem risco de corromper log. Desvantagem: precisa de código novo (só faz sentido se você for testar isso várias vezes).
 
-- Nova tabela `asset_suggestions` (uma linha por item candidato):
-  - origem (`nfe` | `inventory_invoice` | `payable`), id da origem, id do item de origem
-  - fornecedor, descrição, NCM, quantidade, valor unitário, loja sugerida, categoria sugerida
-  - status (`pending` | `confirmed` | `ignored`), quem confirmou/ignorou, quando
-  - `asset_id` (preenchido quando vira bem no `asset_inventory`)
-  - UNIQUE(origem, id do item de origem) — impede duplicar se a nota for reprocessada
-- Nova coluna `is_capex boolean` em `finance_categories`
-- Nova coluna `source_suggestion_id uuid` em `asset_inventory` (rastreabilidade da nota)
-- Nova tabela `asset_capex_ncm_prefixes` com os prefixos NCM elegíveis (seedada com 84, 85, 90, 9403)
-- Triggers que, após INSERT em `dfe_inbound_items`, `inventory_invoice_items` e `accounts_payable` (quando categoria for capex), criam a linha `pending` em `asset_suggestions`. Idempotentes.
-- Backfill inicial: rodar sugestões para notas dos últimos 12 meses, todas em `pending` para você revisar.
+### Opção C — Endpoint `/tef/simular-pendencia` no agente
+Rota nova em `acbr-tefd.cjs` que roda `PW_iNewTransac(SALE)` + captura interativa até aprovação e **retorna sem chamar `PW_iConfirmation`**, deixando o `PWINFO_PNDREQNUM` vivo na DLL. Reproduz queda sem matar processo e sem depender do front.
 
-## O que muda no frontend
+## Recomendação
+**Comece pela Opção A** — é zero código, usa exatamente o fluxo que você quer validar (checagem inicial + modal), e o `taskkill /F` reproduz fielmente a queda de energia do ponto de vista da PayGo (nem CNF nem REV chegam à DLL). Só passe para B/C se precisar rodar o teste dezenas de vezes.
 
-- Página `/patrimonio`: nova aba **"Sugestões da nota"** com badge de pendências, lista com filtro por loja/origem, e ações Confirmar/Ignorar/Adiar em lote.
-- Modal de confirmação = o formulário atual de cadastro de bem, já pré-preenchido; ao salvar, cria o `asset_inventory` e marca a sugestão como `confirmed` com `asset_id`.
-- Configurações → Patrimônio: gerenciar prefixos NCM elegíveis e valor mínimo de corte.
-- Em `finance_categories` (Configurações → Financeiro), toggle **"É imobilizado (gera patrimônio)"**.
-- Detalhe de nota (`InvoiceDetailDialog`, `DfeNoteDialog`) ganha selo "→ Patrimônio (pendente/confirmado)" por item, com link direto para a fila.
+## Comando pronto pra colar no PC do agente
+```powershell
+taskkill /F /IM "NEXA ACBr Agent.exe"
+```
+Rodar imediatamente após ver o modal de confirmação manual aparecer na tela.
 
-## O que fica de fora deste plano
-- Depreciação automática mensal.
-- Baixa de bem quando o item é devolvido/perdido.
-- Vínculo com `equipment_warranties` (fica para uma próxima).
+## Depois do teste
+Ao reabrir a página, o modal deve abrir automaticamente com o `reqNum` da venda. Aí você valida os dois caminhos:
+- **Confirmar** → `PW_iConfirmation(CNF_AUTO)` → pendência sai.
+- **Desfazer** → `PW_iConfirmation(REV_MANU_AUT)` → pendência sai e venda é estornada.
