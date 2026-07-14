@@ -1780,7 +1780,7 @@ function Invoke-PayGoCommand {
 
   try {
     if ($cmdAction -eq "sale") {
-      return [PayGoBridge]::Sale($DllPath, $WorkingDir, [string]$Command.saleId, [int]$Command.amountInCents, [string]$Command.method, [int]$Command.installments, [string]$Command.paygoMenuChoice, [string]$Command.captureValuesBase64, [string]$Command.qrDisplayPreference)
+      return [PayGoBridge]::Sale($DllPath, $WorkingDir, [string]$Command.saleId, [int]$Command.amountInCents, [string]$Command.method, [int]$Command.installments, [string]$Command.paygoMenuChoice, [string]$Command.captureValuesBase64, [string]$Command.qrDisplayPreference, [string]$Command.manualConfirmation)
     }
 
     if ($cmdAction -eq "commtest") {
