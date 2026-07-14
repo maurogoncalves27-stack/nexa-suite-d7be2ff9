@@ -263,6 +263,9 @@ function resolveConfirmationJsonBase64(opts = {}) {
 function maybePersistPendingFromPayload(payload, reason, saleMeta) {
   const d = payload?.data;
   if (!d || typeof d !== "object") return false;
+  const payloadAmountCentavos = parsePayGoAmountCentavos(d)
+    || parseAmountCentavosFromReceipt(d?.merchantReceipt, d?.customerReceipt);
+  const isExistingPending = payload?.status === "pendingConfirmation" || reason === "pendingConfirmation";
   const tuple = {
     reqNum: d.reqNum,
     locRef: d.locRef,
@@ -271,8 +274,11 @@ function maybePersistPendingFromPayload(payload, reason, saleMeta) {
     authSyst: d.authSyst,
     sourceStatus: payload?.status || "unknown",
     reason: reason || payload?.message || "",
-    amountCentavos: saleMeta?.amountCentavos || parsePayGoAmountCentavos(d),
-    saleId: saleMeta?.saleId,
+    // Quando uma nova venda Y encontra uma pendência antiga X, a DLL retorna
+    // os dados de X. Nunca usar o valor/saleId da tentativa Y para registrar
+    // a pendência, senão o modal mostra a venda nova como se fosse pendente.
+    amountCentavos: payloadAmountCentavos || (isExistingPending ? undefined : saleMeta?.amountCentavos),
+    saleId: d?.saleId || (isExistingPending ? undefined : saleMeta?.saleId),
     merchantReceipt: d?.merchantReceipt || undefined,
     customerReceipt: d?.customerReceipt || undefined,
   };
