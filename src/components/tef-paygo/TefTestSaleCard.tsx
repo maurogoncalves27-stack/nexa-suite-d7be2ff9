@@ -499,6 +499,22 @@ export default function TefTestSaleCard({ storeId }: Props) {
 
       if (data?.message && data?.type !== "APPROVED" && data?.type !== "PENDING") setStatusMsg(String(data.message));
 
+      // Simulação de queda de energia: assim que a PayGo aprovar (ou reportar pendência),
+      // abandona o fluxo sem confirmar/desfazer, mantendo a pendência no host PayGo.
+      if (
+        simulatePowerFailureRef.current
+        && busyRef.current
+        && (data?.type === "APPROVED" || data?.type === "PENDING")
+      ) {
+        abortForPowerFailureSim(
+          data?.type === "APPROVED"
+            ? "Transação foi aprovada na PayGo, mas o front abandonou antes da confirmação (CNF)."
+            : "Pendência detectada no PayGo; front abandonou o fluxo sem tratar.",
+        );
+        return;
+      }
+
+
       const isPendingEvent =
         data?.type === "PENDING"
         || (data?.type === "INFO" && isPendingEventMessage(String(data?.message || "")));
