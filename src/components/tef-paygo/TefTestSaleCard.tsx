@@ -1645,6 +1645,25 @@ export default function TefTestSaleCard({ storeId }: Props) {
               </p>
             </div>
           </div>
+          <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
+            <Checkbox
+              id="simulate-power-failure"
+              checked={simulatePowerFailure}
+              onCheckedChange={(checked) => setSimulatePowerFailure(checked === true)}
+              disabled={busy}
+            />
+            <div className="space-y-1">
+              <Label htmlFor="simulate-power-failure" className="text-sm font-medium leading-none">
+                Simular queda de energia (teste)
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Envia a venda com <code>CNFREQ=1</code> e abandona o fluxo assim que a PayGo aprovar,
+                sem enviar CNF nem desfazimento. A transação fica <strong>pendente no host PayGo</strong>{" "}
+                e deve aparecer no modal de pendência na próxima abertura da página. Marcar automaticamente
+                ativa "Confirmação manual de venda".
+              </p>
+            </div>
+          </div>
           <div className="grid gap-3 rounded-lg border border-slate-200 p-3 md:grid-cols-2">
             <div className="space-y-1">
               <Label className="text-xs font-semibold text-muted-foreground">Comprovante do cliente</Label>
