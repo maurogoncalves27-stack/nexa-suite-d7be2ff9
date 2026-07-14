@@ -270,6 +270,16 @@ public static class PayGoBridge
             Add(PWINFO_CURREXP, "2");
             Add(PWINFO_FISCALREF, saleId);
 
+            // Solicita confirmação manual da venda (PWINFO_CNFREQ=1) quando o
+            // operador marca o checkbox no UI. Sem isso, a DLL pode confirmar
+            // internamente a transação (fluxo offline chip) e nada fica
+            // pendente no PayGo mesmo se o agente cair antes do modal.
+            if (manualConfirmation == "1")
+            {
+                Add(PWINFO_CNFREQ, "1");
+                EmitEvent("INFO", "Confirmacao manual solicitada (PWINFO_CNFREQ=1)");
+            }
+
             if (method == "CREDITO")
             {
                 Add(PWINFO_CARDTYPE, "1");
