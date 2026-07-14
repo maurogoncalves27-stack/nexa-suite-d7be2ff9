@@ -82,7 +82,7 @@ function isPayGoPendingRetorno(retorno) {
 function applyPendingConfirmation(paymentId, retorno) {
   const data = retorno?.data || {};
   const paygoTuple = paygoTupleFromData(data);
-  updatePayment(paymentId, {
+  const patch = {
     status: "PENDENTE_CONFIRMACAO",
     message: retorno?.message || "Pendência PayGo",
     nsu: data?.reqNum || data?.extRef || null,
@@ -97,7 +97,12 @@ function applyPendingConfirmation(paymentId, retorno) {
     merchantReceiptMerch: data?.merchantReceiptMerch || null,
     merchantReceiptFull: data?.merchantReceiptFull || null,
     paygo: paygoTuple,
-  });
+  };
+  if (data?.saleId) patch.saleId = String(data.saleId);
+  if (Number.isFinite(Number(data?.amountInCents || data?.amountCentavos)) && Number(data?.amountInCents || data?.amountCentavos) > 0) {
+    patch.amountInCents = Math.round(Number(data?.amountInCents || data?.amountCentavos));
+  }
+  updatePayment(paymentId, patch);
   publishTefEvent({
     paymentId,
     type: "PENDING",
@@ -457,14 +462,21 @@ async function handle(req, res) {
         return send(res, 400, { ok: false, error: "amountInCents obrigatório (>0)" });
       }
 
-      const payment = savePayment(createPaymentRecord(body));
-      publishTefEvent({ paymentId: payment.id, type: "INFO", message: "Pagamento criado" });
-
       const blockedPending = await pendingConfirmationRetorno();
       if (blockedPending) {
+        const pendingData = blockedPending?.data || {};
+        const payment = savePayment(createPaymentRecord({
+          ...body,
+          saleId: pendingData?.saleId || saleId,
+          amountInCents: pendingData?.amountInCents || pendingData?.amountCentavos || amountInCents,
+        }));
+        publishTefEvent({ paymentId: payment.id, type: "PENDING", message: "Nova venda bloqueada por pendência PayGo anterior" });
         const finalized = applyPendingConfirmation(payment.id, blockedPending);
         return send(res, 409, finalized);
       }
+
+      const payment = savePayment(createPaymentRecord(body));
+      publishTefEvent({ paymentId: payment.id, type: "INFO", message: "Pagamento criado" });
 
       const mapMethod = (method) => {
         const m = String(method || "").toUpperCase();
