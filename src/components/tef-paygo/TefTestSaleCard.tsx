@@ -3,6 +3,7 @@
  * fluxo completo de produtos/menu do PDV.
  */
 import { useState, useEffect, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import QRCode from "qrcode";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -439,7 +440,13 @@ export default function TefTestSaleCard({ storeId }: Props) {
     const timer = window.setTimeout(async () => {
       if (cancelled) return;
       try {
-        await handleAgentPendingBeforeSale(agentUrl);
+        const opened = await handleAgentPendingBeforeSale(agentUrl);
+        if (!opened && !cancelled) {
+          // Fallback: agente não retornou pendência viva (PWINFO_PNDREQNUM vazio
+          // ou dedupe), mas Supabase pode ter uma transação com status
+          // pending_confirmation — abre o modal com os dados do banco.
+          await openPendingModalFromSupabase();
+        }
         initialPendingCheckRef.current = key;
       } catch {
         // não marca como concluída — próxima renderização tenta de novo
@@ -451,6 +458,48 @@ export default function TefTestSaleCard({ storeId }: Props) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agentUrl, effectiveStoreId]);
+
+  const openPendingModalFromSupabase = async (): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase
+        .from("pdv_tef_transactions")
+        .select("id, amount, sale_id, nsu, authorization_code, acquirer, paygo_reqnum, message, raw_response, finished_at")
+        .eq("store_id", effectiveStoreId)
+        .eq("status", "pending_confirmation")
+        .order("finished_at", { ascending: false })
+        .limit(1);
+      if (error || !data || data.length === 0) return false;
+      const row = data[0] as any;
+      const raw = (row.raw_response || {}) as Record<string, any>;
+      const reqNum = row.paygo_reqnum || raw.reqnum || raw.REQNUM || row.nsu || "";
+      if (!reqNum) return false;
+      const pending: AgentPendingConfirmation = {
+        reqNum: String(reqNum),
+        locRef: String(raw.locRef || raw.LOCREF || ""),
+        extRef: String(row.authorization_code || raw.extRef || raw.EXTREF || ""),
+        virtMerch: String(raw.virtMerch || raw.VIRTMERCH || ""),
+        authSyst: String(row.acquirer || raw.authSyst || raw.AUTHSYST || ""),
+        reason: raw.reason || row.message || undefined,
+        amountCentavos: Math.round(Number(row.amount || 0) * 100) || undefined,
+        saleId: row.sale_id || undefined,
+      };
+      const payment = buildPaymentFromAgentPending(pending);
+      auditTxIdRef.current = row.id || null;
+      if (row.id && reqNum) storeAuditTxId(effectiveStoreId, String(reqNum), row.id);
+      applyPendingContext(pending, payment, { fromAgentSync: false, api: null });
+      setActivePaymentId("");
+      setStatus("pending_confirmation");
+      setStatusMsg(formatPendingReason(pending.reason) || "Pendência PayGo aguardando confirmação");
+      setConfirmSaleModalOpen(true);
+      toast({
+        title: "Pendência PayGo (registrada no banco)",
+        description: "Confirme ou desfaça a transação pendente antes de iniciar uma nova venda.",
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   useEffect(() => {
     if (!agentUrl) return;
