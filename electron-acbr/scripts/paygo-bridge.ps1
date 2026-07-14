@@ -239,7 +239,7 @@ public static class PayGoBridge
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
 
-    public static string Sale(string dllPath, string workingDir, string saleId, int amountInCents, string method, int installments, string paygoMenuChoice, string captureValuesBase64, string qrDisplayPreference)
+    public static string Sale(string dllPath, string workingDir, string saleId, int amountInCents, string method, int installments, string paygoMenuChoice, string captureValuesBase64, string qrDisplayPreference, string manualConfirmation)
     {
         try
         {
