@@ -1253,14 +1253,17 @@ export default function TefTestSaleCard({ storeId }: Props) {
       });
       const payment = (await resp.json().catch(() => ({}))) as ApiPayment;
 
-      // Simulação de queda de energia: se a resposta síncrona já indicar aprovação
-      // aguardando confirmação, aborta sem chamar CNF/undo.
+      // Simulação de queda de energia: só dispara se a venda foi REALMENTE aprovada
+      // (APROVADA_NAO_CONFIRMADA na resposta síncrona OU já vimos APPROVED via stream).
+      // PENDENTE_CONFIRMACAO sozinho pode indicar pendência residual pré-existente ou
+      // mapeamento de -2599 em cancelamentos/erros — não caracteriza aprovação nossa.
+      const syncApproved = payment?.status === "APROVADA_NAO_CONFIRMADA";
       if (
         simulatePowerFailureRef.current
-        && (payment?.status === "APROVADA_NAO_CONFIRMADA" || payment?.status === "PENDENTE_CONFIRMACAO")
+        && (syncApproved || approvedSeenRef.current)
       ) {
         abortForPowerFailureSim(
-          "Resposta síncrona veio aprovada aguardando CNF; front abandonou antes de confirmar.",
+          "Transação aprovada aguardando CNF; front abandonou antes de confirmar.",
         );
         return;
       }
