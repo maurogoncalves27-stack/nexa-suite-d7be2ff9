@@ -1240,6 +1240,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
       setSaleCaptureModalOpen(false);
       setActivePaymentId("");
       auditTxIdRef.current = null;
+      approvedSeenRef.current = false;
       lastCaptureSeqRef.current = "";
 
       const resp = await fetch(joinAgentUrl(cfg.agentUrl, "/api/payments"), {
