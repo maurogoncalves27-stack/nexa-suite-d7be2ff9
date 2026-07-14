@@ -11,6 +11,10 @@ function normalizePhone(p: string) {
   return digits.startsWith('55') ? digits : (digits.length >= 10 ? '55' + digits : digits);
 }
 
+function normalizeText(t: string) {
+  return String(t || '').replace(/\s+/g, ' ').trim();
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -43,7 +47,7 @@ Deno.serve(async (req) => {
     if (fromMe) return new Response('ignored:fromMe', { headers: corsHeaders });
 
     const phoneRaw = body?.phone || body?.from || body?.sender?.phone;
-    const text = body?.text?.message || body?.message || body?.body || '';
+    const text = normalizeText(body?.text?.message || body?.message || body?.body || '');
     const senderName = body?.senderName || body?.chatName || null;
     const zapiMessageId = body?.messageId || body?.id || null;
 
@@ -86,12 +90,58 @@ Deno.serve(async (req) => {
         .eq('id', conv.id);
     }
 
-    await supabase.from('whatsapp_customer_messages').insert({
-      conversation_id: conv!.id,
-      role: 'user',
-      content: text,
-      zapi_message_id: zapiMessageId,
-    });
+    if (zapiMessageId) {
+      const { data: existingMsg } = await supabase
+        .from('whatsapp_customer_messages')
+        .select('id')
+        .eq('zapi_message_id', zapiMessageId)
+        .maybeSingle();
+      if (existingMsg) {
+        console.log('[wa-customer-webhook] duplicate zapi message ignored', zapiMessageId);
+        return new Response(JSON.stringify({ ok: true, duplicate: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    const sinceDuplicateWindow = new Date(Date.now() - 20_000).toISOString();
+    const { data: recentSameText } = await supabase
+      .from('whatsapp_customer_messages')
+      .select('id')
+      .eq('conversation_id', conv!.id)
+      .eq('role', 'user')
+      .eq('content', text)
+      .gte('created_at', sinceDuplicateWindow)
+      .limit(1)
+      .maybeSingle();
+    if (recentSameText) {
+      console.log('[wa-customer-webhook] duplicate recent user text ignored', recentSameText.id);
+      return new Response(JSON.stringify({ ok: true, duplicate: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { data: insertedUserMessage, error: insertMsgError } = await supabase
+      .from('whatsapp_customer_messages')
+      .insert({
+        conversation_id: conv!.id,
+        role: 'user',
+        content: text,
+        zapi_message_id: zapiMessageId,
+      })
+      .select('id')
+      .single();
+
+    if (insertMsgError || !insertedUserMessage) {
+      const msg = insertMsgError?.message || '';
+      if (/duplicate key|unique/i.test(msg)) {
+        console.log('[wa-customer-webhook] duplicate insert ignored', msg);
+        return new Response(JSON.stringify({ ok: true, duplicate: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      throw insertMsgError || new Error('failed to insert user message');
+    }
 
     // Se estamos aguardando resposta de feedback, interceptamos e não chamamos a IA
     if (conv!.feedback_requested_at && !conv!.feedback_rating) {
@@ -144,7 +194,7 @@ Deno.serve(async (req) => {
     fetch(`${SUPABASE_URL}/functions/v1/whatsapp-customer-ai-reply`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE}` },
-      body: JSON.stringify({ conversation_id: conv!.id }),
+      body: JSON.stringify({ conversation_id: conv!.id, message_id: insertedUserMessage.id }),
     }).catch((e) => console.error('dispatch ai-reply', e));
 
     return new Response(JSON.stringify({ ok: true, conversation_id: conv!.id }), {
