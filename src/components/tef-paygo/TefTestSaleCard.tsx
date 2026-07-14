@@ -1339,7 +1339,10 @@ export default function TefTestSaleCard({ storeId }: Props) {
       if (payment.status === "CONFIRMADA") {
         clearPendingUiState();
         setStatusMsg(`Confirmada - NSU ${payment.nsu ?? "-"} - Aut. ${payment.authorizationCode ?? "-"}`);
-      } else {
+      } else if (!shouldOpenPendingModal) {
+        // Só fecha o modal se NÃO for pendência bloqueadora nem confirmação manual.
+        // Sem esse guard, o modal aberto acima (1297) era imediatamente fechado
+        // quando o agente respondia 409 com PENDENTE_CONFIRMACAO.
         setConfirmSaleModalOpen(false);
       }
       const nsu = payment.nsu ?? "-";
