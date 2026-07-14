@@ -244,6 +244,14 @@ export default function TefTestSaleCard({ storeId }: Props) {
   }, [manualConfirmation]);
 
   useEffect(() => {
+    simulatePowerFailureRef.current = simulatePowerFailure;
+    if (simulatePowerFailure && !manualConfirmation) {
+      // Precisa de CNFREQ=1 no PayGo para deixar a transação pendente após a aprovação.
+      setManualConfirmation(true);
+    }
+  }, [simulatePowerFailure, manualConfirmation]);
+
+  useEffect(() => {
     busyRef.current = busy;
   }, [busy]);
 
