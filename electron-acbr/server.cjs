@@ -82,9 +82,12 @@ function isPayGoPendingRetorno(retorno) {
 function applyPendingConfirmation(paymentId, retorno) {
   const data = retorno?.data || {};
   const paygoTuple = paygoTupleFromData(data);
+  const pendingAmount = Number(data?.amountInCents || data?.amountCentavos || 0);
   const patch = {
     status: "PENDENTE_CONFIRMACAO",
     message: retorno?.message || "Pendência PayGo",
+    saleId: data?.saleId ? String(data.saleId) : "PENDENCIA-PAYGO",
+    amountInCents: Number.isFinite(pendingAmount) && pendingAmount > 0 ? Math.round(pendingAmount) : 0,
     nsu: data?.reqNum || data?.extRef || null,
     authorizationCode: data?.authCode || null,
     brand: data?.brand || null,
@@ -98,10 +101,6 @@ function applyPendingConfirmation(paymentId, retorno) {
     merchantReceiptFull: data?.merchantReceiptFull || null,
     paygo: paygoTuple,
   };
-  if (data?.saleId) patch.saleId = String(data.saleId);
-  if (Number.isFinite(Number(data?.amountInCents || data?.amountCentavos)) && Number(data?.amountInCents || data?.amountCentavos) > 0) {
-    patch.amountInCents = Math.round(Number(data?.amountInCents || data?.amountCentavos));
-  }
   updatePayment(paymentId, patch);
   publishTefEvent({
     paymentId,
@@ -467,8 +466,8 @@ async function handle(req, res) {
         const pendingData = blockedPending?.data || {};
         const payment = savePayment(createPaymentRecord({
           ...body,
-          saleId: pendingData?.saleId || saleId,
-          amountInCents: pendingData?.amountInCents || pendingData?.amountCentavos || amountInCents,
+          saleId: pendingData?.saleId || "PENDENCIA-PAYGO",
+          amountInCents: pendingData?.amountInCents || pendingData?.amountCentavos || 0,
         }));
         publishTefEvent({ paymentId: payment.id, type: "PENDING", message: "Nova venda bloqueada por pendência PayGo anterior" });
         const finalized = applyPendingConfirmation(payment.id, blockedPending);

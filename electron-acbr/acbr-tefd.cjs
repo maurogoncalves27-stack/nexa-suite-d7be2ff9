@@ -265,7 +265,7 @@ function maybePersistPendingFromPayload(payload, reason, saleMeta) {
   if (!d || typeof d !== "object") return false;
   const payloadAmountCentavos = parsePayGoAmountCentavos(d)
     || parseAmountCentavosFromReceipt(d?.merchantReceipt, d?.customerReceipt);
-  const isExistingPending = payload?.status === "pendingConfirmation" || reason === "pendingConfirmation";
+  const isExistingPending = reason === "pendingConfirmation";
   const tuple = {
     reqNum: d.reqNum,
     locRef: d.locRef,
@@ -277,7 +277,7 @@ function maybePersistPendingFromPayload(payload, reason, saleMeta) {
     // Quando uma nova venda Y encontra uma pendência antiga X, a DLL retorna
     // os dados de X. Nunca usar o valor/saleId da tentativa Y para registrar
     // a pendência, senão o modal mostra a venda nova como se fosse pendente.
-    amountCentavos: payloadAmountCentavos || (isExistingPending ? undefined : saleMeta?.amountCentavos),
+    amountCentavos: isExistingPending ? undefined : (payloadAmountCentavos || saleMeta?.amountCentavos),
     saleId: d?.saleId || (isExistingPending ? undefined : saleMeta?.saleId),
     merchantReceipt: d?.merchantReceipt || undefined,
     customerReceipt: d?.customerReceipt || undefined,
@@ -395,9 +395,11 @@ async function getPendingDetails() {
   }
 
   if (stored?.reqNum && probePayload?.status === "noPending") {
-    console.log("[TEF] Pendência local stale removida; PayGo respondeu sem pendência.");
-    clearPendingConfirmation();
-    return buildPendingDetailsFromStored(null, probePayload, probeData);
+    // A PGWebLib nem sempre popula PWINFO_PND* em probes leves (PW_iInit).
+    // Se temos arquivo local de uma venda aprovada e ainda não resolvida, ele é
+    // a fonte confiável até confirmação/desfazimento explícito pelo operador.
+    console.log("[TEF] Probe leve não expôs PND*, preservando pendência local aguardando resolução manual.");
+    return buildPendingDetailsFromStored(stored, probePayload, probeData);
   }
 
   // Se o probe traz um reqNum que o operador acabou de confirmar/desfazer nesta
@@ -949,7 +951,10 @@ async function efetuarPagamento(opts = {}) {
     }});
 
     if (payload?.status === "pendingConfirmation" || isPayGoPendingPayload(payload)) {
-      return finishPendingSale(paymentId, payload, payload?.status === "pendingConfirmation" ? "pendingConfirmation" : "falha-comunicacao-pendente", saleMeta);
+      const pendingReason = Number(payload?.ret) === PAYGO_PENDING_RET
+        ? "pendingConfirmation"
+        : "falha-comunicacao-pendente";
+      return finishPendingSale(paymentId, payload, pendingReason, saleMeta);
     }
 
     if (payload?.ok === false) {
@@ -961,8 +966,17 @@ async function efetuarPagamento(opts = {}) {
       return payload;
     }
 
-    clearPendingConfirmation();
-    setSaleStatus({ status: "done", message: payload?.message || payload?.status || "Concluído", pendingCaptures: null });
+    if (String(payload?.data?.cnfReq || "") === "1" && hasPayGoConfirmationTuple(payload?.data)) {
+      // Em confirmação manual, a venda aprovada precisa sobreviver a reload ou
+      // queda abrupta do front/agente. Esse arquivo é limpo em confirmar/desfazer.
+      maybePersistPendingFromPayload(payload, "cnfReq=1", saleMeta);
+      setSaleStatus({ status: "waiting_confirmation", message: payload?.message || "Transação aprovada aguardando confirmação manual", pendingCaptures: null });
+    } else {
+      clearPendingConfirmation();
+    }
+    if (String(payload?.data?.cnfReq || "") !== "1") {
+      setSaleStatus({ status: "done", message: payload?.message || payload?.status || "Concluído", pendingCaptures: null });
+    }
     emitSaleEvent({ paymentId, type: "APPROVED", message: payload?.message || "Transação aprovada", payload });
     return payload;
   } catch (err) {
