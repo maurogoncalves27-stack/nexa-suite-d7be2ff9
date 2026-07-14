@@ -3,6 +3,7 @@
  * fluxo completo de produtos/menu do PDV.
  */
 import { useState, useEffect, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import QRCode from "qrcode";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
