@@ -980,7 +980,8 @@ export default function TefTestSaleCard({ storeId }: Props) {
     if (!cents && agentPendingRef.current) {
       cents = await resolvePendingAmountCentavos(agentPendingRef.current, null);
     }
-    if (!cents) {
+    const isAgentRecoveredPending = !!agentPendingRef.current?.reqNum && String(payment.status || "").toUpperCase() === "PENDENTE_CONFIRMACAO";
+    if (!cents && !isAgentRecoveredPending) {
       const formCents = Math.round(Number(amount.replace(",", ".")) * 100);
       if (formCents > 0) cents = formCents;
     }
@@ -1050,7 +1051,27 @@ export default function TefTestSaleCard({ storeId }: Props) {
       return false;
     }
 
-    const mergedPayment: ApiPayment = payment?.paygo?.reqNum && isPaygoPendingApiStatus(payment.status)
+    const mergedPayment: ApiPayment = hasAgentPending
+      ? {
+          id: paymentId,
+          saleId: pendingSource.saleId || payment?.saleId || DEFAULT_SALE_ID,
+          amountInCents: pendingSource.amountCentavos || 0,
+          status: "PENDENTE_CONFIRMACAO",
+          message: formatPendingReason(pendingSource.reason) || payment?.message || "Pendência PayGo",
+          nsu: pendingSource.reqNum,
+          authorizationCode: pendingSource.extRef || null,
+          acquirer: pendingSource.authSyst || null,
+          merchantReceipt: (api?.merchantReceipt as string | undefined) || payment?.merchantReceipt || null,
+          customerReceipt: (api?.customerReceipt as string | undefined) || payment?.customerReceipt || null,
+          paygo: {
+            reqNum: pendingSource.reqNum,
+            locRef: pendingSource.locRef,
+            extRef: pendingSource.extRef,
+            virtMerch: pendingSource.virtMerch,
+            authSyst: pendingSource.authSyst,
+          },
+        }
+      : payment?.paygo?.reqNum && isPaygoPendingApiStatus(payment.status)
       ? { ...payment, status: "PENDENTE_CONFIRMACAO" }
       : {
           id: paymentId,
