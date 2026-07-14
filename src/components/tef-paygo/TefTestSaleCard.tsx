@@ -464,6 +464,24 @@ export default function TefTestSaleCard({ storeId }: Props) {
   }, [agentUrl, effectiveStoreId]);
 
 
+  // Simulação de queda de energia: aborta o fluxo no front após aprovação da PayGo,
+  // sem confirmar nem desfazer — deixa a transação PENDENTE no host PayGo.
+  const abortForPowerFailureSim = (reason: string) => {
+    try { saleEventSourceRef.current?.close(); } catch { /* ignore */ }
+    saleEventSourceRef.current = null;
+    busyRef.current = false;
+    setBusy(false);
+    setStatus("idle");
+    setStatusMsg("Simulação de queda de energia — pendência mantida no PayGo");
+    setConfirmSaleModalOpen(false);
+    setActivePaymentId("");
+    toast({
+      title: "Simulação de queda de energia",
+      description: reason + " Reabra a página para tratar a pendência no próximo acesso.",
+    });
+  };
+
+
 
   useEffect(() => {
     if (!agentUrl) return;
