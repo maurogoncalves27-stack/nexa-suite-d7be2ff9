@@ -1005,6 +1005,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
       openModal?: boolean;
       skipPendingProbe?: boolean;
       forceAgentProbe?: boolean;
+      agentUrlOverride?: string;
     },
   ): Promise<boolean> => {
     const forceProbe = !!opts?.forceAgentProbe || !!opts?.fromAgentSync;
@@ -1018,13 +1019,14 @@ export default function TefTestSaleCard({ storeId }: Props) {
     }
 
     const shouldProbeAgent = forceProbe || (!opts?.skipPendingProbe && !hasKnownTuple);
+    const requestAgentUrl = opts?.agentUrlOverride || agentUrl;
     const [{ pending: agentPending, api }, payment] = await Promise.all([
       shouldProbeAgent
-        ? fetchAgentPendingConfirmation(agentUrl)
+        ? fetchAgentPendingConfirmation(requestAgentUrl)
         : Promise.resolve({ pending: null as AgentPendingConfirmation | null, api: null as Record<string, unknown> | null }),
       opts?.payment !== undefined
         ? Promise.resolve(opts.payment)
-        : fetchPaymentById(agentUrl, paymentId),
+        : fetchPaymentById(requestAgentUrl, paymentId),
     ]);
 
     const pendingSource: AgentPendingConfirmation = agentPending || {
@@ -1115,6 +1117,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
       openModal?: boolean;
       maxAttempts?: number;
       forceAgentProbe?: boolean;
+      agentUrlOverride?: string;
     },
   ): Promise<boolean> => {
     const attempts = opts?.maxAttempts ?? 6;
@@ -1166,6 +1169,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
       payment,
       fromAgentSync: true,
       forceAgentProbe: true,
+      agentUrlOverride: baseUrl,
       openModal: false,
       maxAttempts: 6,
     });
@@ -1309,6 +1313,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
             },
             fromAgentSync: true,
             forceAgentProbe: true,
+            agentUrlOverride: cfg.agentUrl,
             openModal: shouldOpenPendingModal,
             maxAttempts: 8,
           });
