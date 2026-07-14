@@ -18,7 +18,8 @@ param(
   [string] $Ambiente = "",
   [string] $SenhaTecnica = "",
   [string] $UsePinpad = "1",
-  [string] $PinpadPort = ""
+  [string] $PinpadPort = "",
+  [string] $ManualConfirmation = "0"
 )
 
 $ErrorActionPreference = "Stop"
