@@ -18,7 +18,8 @@ param(
   [string] $Ambiente = "",
   [string] $SenhaTecnica = "",
   [string] $UsePinpad = "1",
-  [string] $PinpadPort = ""
+  [string] $PinpadPort = "",
+  [string] $ManualConfirmation = "0"
 )
 
 $ErrorActionPreference = "Stop"
@@ -238,7 +239,7 @@ public static class PayGoBridge
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
 
-    public static string Sale(string dllPath, string workingDir, string saleId, int amountInCents, string method, int installments, string paygoMenuChoice, string captureValuesBase64, string qrDisplayPreference)
+    public static string Sale(string dllPath, string workingDir, string saleId, int amountInCents, string method, int installments, string paygoMenuChoice, string captureValuesBase64, string qrDisplayPreference, string manualConfirmation)
     {
         try
         {
@@ -268,6 +269,16 @@ public static class PayGoBridge
             Add(PWINFO_CURRENCY, "986");
             Add(PWINFO_CURREXP, "2");
             Add(PWINFO_FISCALREF, saleId);
+
+            // Solicita confirmação manual da venda (PWINFO_CNFREQ=1) quando o
+            // operador marca o checkbox no UI. Sem isso, a DLL pode confirmar
+            // internamente a transação (fluxo offline chip) e nada fica
+            // pendente no PayGo mesmo se o agente cair antes do modal.
+            if (manualConfirmation == "1")
+            {
+                Add(PWINFO_CNFREQ, "1");
+                EmitEvent("INFO", "Confirmacao manual solicitada (PWINFO_CNFREQ=1)");
+            }
 
             if (method == "CREDITO")
             {
@@ -1769,7 +1780,7 @@ function Invoke-PayGoCommand {
 
   try {
     if ($cmdAction -eq "sale") {
-      return [PayGoBridge]::Sale($DllPath, $WorkingDir, [string]$Command.saleId, [int]$Command.amountInCents, [string]$Command.method, [int]$Command.installments, [string]$Command.paygoMenuChoice, [string]$Command.captureValuesBase64, [string]$Command.qrDisplayPreference)
+      return [PayGoBridge]::Sale($DllPath, $WorkingDir, [string]$Command.saleId, [int]$Command.amountInCents, [string]$Command.method, [int]$Command.installments, [string]$Command.paygoMenuChoice, [string]$Command.captureValuesBase64, [string]$Command.qrDisplayPreference, [string]$Command.manualConfirmation)
     }
 
     if ($cmdAction -eq "commtest") {
@@ -1883,7 +1894,7 @@ if ($Action -eq "host") {
 }
 
 if ($Action -eq "sale") {
-  [PayGoBridge]::Sale($DllPath, $WorkingDir, $SaleId, $AmountInCents, $Method, $Installments, $PaygoMenuChoice, $CaptureValuesBase64, $QrDisplayPreference)
+  [PayGoBridge]::Sale($DllPath, $WorkingDir, $SaleId, $AmountInCents, $Method, $Installments, $PaygoMenuChoice, $CaptureValuesBase64, $QrDisplayPreference, $ManualConfirmation)
   exit
 }
 

@@ -888,6 +888,7 @@ async function efetuarPagamento(opts = {}) {
       paygoMenuChoice: requestedNetwork,
       captureValuesBase64: opts.captureValuesBase64 || "",
       qrDisplayPreference,
+      manualConfirmation: opts.manualConfirmation ? "1" : "0",
     }, {
       onRequestId: (id) => { currentSaleRequestId = id; },
       onEvent: (ev) => {
