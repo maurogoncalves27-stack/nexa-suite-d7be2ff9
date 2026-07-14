@@ -188,6 +188,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
   const [amount, setAmount] = useState("");
   const [saleId, setSaleId] = useState(DEFAULT_SALE_ID);
   const [manualConfirmation, setManualConfirmation] = useState(false);
+  const [simulatePowerFailure, setSimulatePowerFailure] = useState(false);
   const [customerReceiptPref, setCustomerReceiptPref] = useState<"short" | "holder" | "full" | "none">("short");
   const [merchantReceiptPref, setMerchantReceiptPref] = useState<"merch" | "full" | "none">("merch");
   const [receiptVariants, setReceiptVariants] = useState<{
