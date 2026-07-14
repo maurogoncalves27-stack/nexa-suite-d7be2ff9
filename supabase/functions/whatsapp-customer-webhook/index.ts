@@ -172,8 +172,11 @@ Deno.serve(async (req) => {
           ? 'Obrigada pelo retorno — vou passar pra equipe pra melhorarmos. 🙏'
           : 'Obrigada pelo retorno! 🙏';
       await supabase.from('whatsapp_customer_messages').insert({
-        conversation_id: conv!.id, role: 'assistant', content: thanks,
+        conversation_id: conv!.id, role: 'assistant', content: thanks, reply_to_message_id: insertedUserMessage.id,
       });
+      await supabase.from('whatsapp_customer_messages')
+        .update({ ai_processed_at: new Date().toISOString() })
+        .eq('id', insertedUserMessage.id);
       // reusa a mesma função de envio via Z-API
       const ZAPI_INSTANCE = Deno.env.get('ZAPI_CUSTOMER_INSTANCE_ID') || '';
       const ZAPI_TOKEN = Deno.env.get('ZAPI_CUSTOMER_TOKEN') || '';
