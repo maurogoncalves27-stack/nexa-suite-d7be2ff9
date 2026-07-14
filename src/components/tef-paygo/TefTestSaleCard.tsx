@@ -980,7 +980,8 @@ export default function TefTestSaleCard({ storeId }: Props) {
     if (!cents && agentPendingRef.current) {
       cents = await resolvePendingAmountCentavos(agentPendingRef.current, null);
     }
-    if (!cents) {
+    const isAgentRecoveredPending = !!agentPendingRef.current?.reqNum && String(payment.status || "").toUpperCase() === "PENDENTE_CONFIRMACAO";
+    if (!cents && !isAgentRecoveredPending) {
       const formCents = Math.round(Number(amount.replace(",", ".")) * 100);
       if (formCents > 0) cents = formCents;
     }
@@ -1004,6 +1005,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
       openModal?: boolean;
       skipPendingProbe?: boolean;
       forceAgentProbe?: boolean;
+      agentUrlOverride?: string;
     },
   ): Promise<boolean> => {
     const forceProbe = !!opts?.forceAgentProbe || !!opts?.fromAgentSync;
@@ -1017,13 +1019,14 @@ export default function TefTestSaleCard({ storeId }: Props) {
     }
 
     const shouldProbeAgent = forceProbe || (!opts?.skipPendingProbe && !hasKnownTuple);
+    const requestAgentUrl = opts?.agentUrlOverride || agentUrl;
     const [{ pending: agentPending, api }, payment] = await Promise.all([
       shouldProbeAgent
-        ? fetchAgentPendingConfirmation(agentUrl)
+        ? fetchAgentPendingConfirmation(requestAgentUrl)
         : Promise.resolve({ pending: null as AgentPendingConfirmation | null, api: null as Record<string, unknown> | null }),
       opts?.payment !== undefined
         ? Promise.resolve(opts.payment)
-        : fetchPaymentById(agentUrl, paymentId),
+        : fetchPaymentById(requestAgentUrl, paymentId),
     ]);
 
     const pendingSource: AgentPendingConfirmation = agentPending || {
@@ -1050,7 +1053,27 @@ export default function TefTestSaleCard({ storeId }: Props) {
       return false;
     }
 
-    const mergedPayment: ApiPayment = payment?.paygo?.reqNum && isPaygoPendingApiStatus(payment.status)
+    const mergedPayment: ApiPayment = hasAgentPending
+      ? {
+          id: paymentId,
+          saleId: pendingSource.saleId || payment?.saleId || DEFAULT_SALE_ID,
+          amountInCents: pendingSource.amountCentavos || 0,
+          status: "PENDENTE_CONFIRMACAO",
+          message: formatPendingReason(pendingSource.reason) || payment?.message || "Pendência PayGo",
+          nsu: pendingSource.reqNum,
+          authorizationCode: pendingSource.extRef || null,
+          acquirer: pendingSource.authSyst || null,
+          merchantReceipt: (api?.merchantReceipt as string | undefined) || payment?.merchantReceipt || null,
+          customerReceipt: (api?.customerReceipt as string | undefined) || payment?.customerReceipt || null,
+          paygo: {
+            reqNum: pendingSource.reqNum,
+            locRef: pendingSource.locRef,
+            extRef: pendingSource.extRef,
+            virtMerch: pendingSource.virtMerch,
+            authSyst: pendingSource.authSyst,
+          },
+        }
+      : payment?.paygo?.reqNum && isPaygoPendingApiStatus(payment.status)
       ? { ...payment, status: "PENDENTE_CONFIRMACAO" }
       : {
           id: paymentId,
@@ -1094,6 +1117,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
       openModal?: boolean;
       maxAttempts?: number;
       forceAgentProbe?: boolean;
+      agentUrlOverride?: string;
     },
   ): Promise<boolean> => {
     const attempts = opts?.maxAttempts ?? 6;
@@ -1145,6 +1169,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
       payment,
       fromAgentSync: true,
       forceAgentProbe: true,
+      agentUrlOverride: baseUrl,
       openModal: false,
       maxAttempts: 6,
     });
@@ -1288,6 +1313,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
             },
             fromAgentSync: true,
             forceAgentProbe: true,
+            agentUrlOverride: cfg.agentUrl,
             openModal: shouldOpenPendingModal,
             maxAttempts: 8,
           });
