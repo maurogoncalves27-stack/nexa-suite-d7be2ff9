@@ -17052,10 +17052,13 @@ export type Database = {
       }
       whatsapp_customer_messages: {
         Row: {
+          ai_processed_at: string | null
+          ai_processing_started_at: string | null
           content: string | null
           conversation_id: string
           created_at: string
           id: string
+          reply_to_message_id: string | null
           role: string
           tool_args: Json | null
           tool_name: string | null
@@ -17063,10 +17066,13 @@ export type Database = {
           zapi_message_id: string | null
         }
         Insert: {
+          ai_processed_at?: string | null
+          ai_processing_started_at?: string | null
           content?: string | null
           conversation_id: string
           created_at?: string
           id?: string
+          reply_to_message_id?: string | null
           role: string
           tool_args?: Json | null
           tool_name?: string | null
@@ -17074,10 +17080,13 @@ export type Database = {
           zapi_message_id?: string | null
         }
         Update: {
+          ai_processed_at?: string | null
+          ai_processing_started_at?: string | null
           content?: string | null
           conversation_id?: string
           created_at?: string
           id?: string
+          reply_to_message_id?: string | null
           role?: string
           tool_args?: Json | null
           tool_name?: string | null
@@ -17090,6 +17099,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "whatsapp_customer_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_customer_messages_reply_to_message_id_fkey"
+            columns: ["reply_to_message_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_customer_messages"
             referencedColumns: ["id"]
           },
         ]

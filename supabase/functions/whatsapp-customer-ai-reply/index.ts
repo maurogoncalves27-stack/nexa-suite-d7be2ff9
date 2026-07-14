@@ -13,6 +13,19 @@ const ZAPI_CLIENT_TOKEN = Deno.env.get('ZAPI_CUSTOMER_CLIENT_TOKEN') || '';
 
 const MODEL = 'google/gemini-3-flash-preview';
 const MAX_TOOL_LOOPS = 6;
+const JOBS_URL = 'https://nexasuite.aquelaparme.com.br/vagas';
+
+function isJobQuestion(text: string) {
+  const normalized = String(text || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  return /\b(vaga|vagas|emprego|trabalho|trabalhar|curriculo|curriculum|candidatura|contratando|selecao|recrutamento)\b/.test(normalized);
+}
+
+function jobsReply() {
+  return `Temos uma página com as vagas abertas e o formulário de candidatura:\n${JOBS_URL}`;
+}
 
 async function sendWhatsApp(phone: string, message: string) {
   if (!ZAPI_INSTANCE || !ZAPI_TOKEN) {
@@ -288,6 +301,7 @@ REGRAS CRÍTICAS:
 - IMPORTANTE: ENTREGA está INDISPONÍVEL pelo WhatsApp — só RETIRADA na loja. Se o cliente pedir entrega, explique que ainda não temos entrega por aqui e oriente a pedir pelo iFood, OU seguir com retirada.
 - Antes de checkout, confirme o pedido e tenha set_pickup já executado. Nunca peça endereço.
 - Quando o checkout retornar payment_link, envie o link cru em uma linha, informe o total, o pickup_code e o horário combinado. Diga que o pedido vai pra cozinha assim que o pagamento for confirmado.
+- Vagas/emprego/trabalhe conosco/currículo/candidatura: não colete dados no chat. Responda indicando exclusivamente este link: ${JOBS_URL}
 - Mensagens curtas (no máx 3 linhas). Emojis com moderação.`;
 
 Deno.serve(async (req) => {
@@ -301,12 +315,55 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { conversation_id } = await req.json();
+    const { conversation_id, message_id } = await req.json();
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
     const { data: conversation } = await supabase
       .from('whatsapp_customer_conversations').select('*').eq('id', conversation_id).maybeSingle();
     if (!conversation) return new Response(JSON.stringify({ error: 'conv not found' }), { status: 404, headers: corsHeaders });
+
+    let targetMessage: any = null;
+    if (message_id) {
+      const { data } = await supabase
+        .from('whatsapp_customer_messages')
+        .select('id, content, created_at, ai_processing_started_at, ai_processed_at')
+        .eq('id', message_id)
+        .eq('conversation_id', conversation_id)
+        .eq('role', 'user')
+        .maybeSingle();
+      targetMessage = data;
+    } else {
+      const { data } = await supabase
+        .from('whatsapp_customer_messages')
+        .select('id, content, created_at, ai_processing_started_at, ai_processed_at')
+        .eq('conversation_id', conversation_id)
+        .eq('role', 'user')
+        .is('ai_processed_at', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      targetMessage = data;
+    }
+
+    if (!targetMessage) {
+      return new Response(JSON.stringify({ ok: true, skipped: 'no pending user message' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { data: lockRows, error: lockErr } = await supabase
+      .from('whatsapp_customer_messages')
+      .update({ ai_processing_started_at: new Date().toISOString() })
+      .eq('id', targetMessage.id)
+      .is('ai_processing_started_at', null)
+      .is('ai_processed_at', null)
+      .select('id');
+    if (lockErr) throw lockErr;
+    if (!lockRows?.length) {
+      return new Response(JSON.stringify({ ok: true, skipped: 'already processing or processed' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     let systemPrompt = DEFAULT_SYSTEM_PROMPT;
     let enabled = true;
@@ -327,15 +384,33 @@ Deno.serve(async (req) => {
       const msg = offHoursMsg || 'Olá! No momento o atendimento automático está desativado.';
       await sendWhatsApp(conversation.phone, msg);
       await supabase.from('whatsapp_customer_messages').insert({
-        conversation_id, role: 'assistant', content: msg,
+        conversation_id, role: 'assistant', content: msg, reply_to_message_id: targetMessage.id,
       });
+      await supabase.from('whatsapp_customer_messages')
+        .update({ ai_processed_at: new Date().toISOString() })
+        .eq('id', targetMessage.id);
       return new Response(JSON.stringify({ ok: true, disabled: true }), { headers: corsHeaders });
+    }
+
+    if (isJobQuestion(targetMessage.content || '')) {
+      const msg = jobsReply();
+      await sendWhatsApp(conversation.phone, msg);
+      await supabase.from('whatsapp_customer_messages').insert({
+        conversation_id, role: 'assistant', content: msg, reply_to_message_id: targetMessage.id,
+      });
+      await supabase.from('whatsapp_customer_messages')
+        .update({ ai_processed_at: new Date().toISOString() })
+        .eq('id', targetMessage.id);
+      return new Response(JSON.stringify({ ok: true, jobs: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const { data: history } = await supabase
       .from('whatsapp_customer_messages')
       .select('role, content, tool_name, tool_args, tool_result')
       .eq('conversation_id', conversation_id)
+      .lte('created_at', targetMessage.created_at)
       .order('created_at', { ascending: false })
       .limit(20);
 
@@ -389,8 +464,11 @@ Deno.serve(async (req) => {
 
     await sendWhatsApp(conversation.phone, finalText);
     await supabase.from('whatsapp_customer_messages').insert({
-      conversation_id, role: 'assistant', content: finalText,
+      conversation_id, role: 'assistant', content: finalText, reply_to_message_id: targetMessage.id,
     });
+    await supabase.from('whatsapp_customer_messages')
+      .update({ ai_processed_at: new Date().toISOString() })
+      .eq('id', targetMessage.id);
 
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
