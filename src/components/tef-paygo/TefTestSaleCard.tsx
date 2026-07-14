@@ -1304,13 +1304,19 @@ export default function TefTestSaleCard({ storeId }: Props) {
       if (isTruePending || needsManualConfirm) {
         const pid = payment?.id || activePaymentId;
         if (pid) {
+          const paymentForIngest: ApiPayment = isTruePending
+            ? {
+                ...payment,
+                status: "PENDENTE_CONFIRMACAO",
+              }
+            : {
+                ...payment,
+                status: "PENDENTE_CONFIRMACAO",
+                amountInCents: payment.amountInCents || Math.round(value * 100),
+                saleId: payment.saleId || saleId.trim() || DEFAULT_SALE_ID,
+              };
           const ingested = await waitAndIngestPendingConfirmation(pid, {
-            payment: {
-              ...payment,
-              status: "PENDENTE_CONFIRMACAO",
-              amountInCents: payment.amountInCents || Math.round(value * 100),
-              saleId: payment.saleId || saleId.trim() || DEFAULT_SALE_ID,
-            },
+            payment: paymentForIngest,
             fromAgentSync: true,
             forceAgentProbe: true,
             agentUrlOverride: cfg.agentUrl,
@@ -1329,8 +1335,8 @@ export default function TefTestSaleCard({ storeId }: Props) {
               {
                 ...payment,
                 status: "PENDENTE_CONFIRMACAO",
-                amountInCents: payment.amountInCents || Math.round(value * 100),
-                saleId: payment.saleId || saleId.trim() || DEFAULT_SALE_ID,
+                amountInCents: payment.amountInCents || 0,
+                saleId: payment.saleId || "PENDENCIA-PAYGO",
               },
               "pending_confirmation",
             );

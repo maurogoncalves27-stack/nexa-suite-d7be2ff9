@@ -86,6 +86,7 @@ function applyPendingConfirmation(paymentId, retorno) {
   const patch = {
     status: "PENDENTE_CONFIRMACAO",
     message: retorno?.message || "Pendência PayGo",
+    saleId: data?.saleId ? String(data.saleId) : "PENDENCIA-PAYGO",
     amountInCents: Number.isFinite(pendingAmount) && pendingAmount > 0 ? Math.round(pendingAmount) : 0,
     nsu: data?.reqNum || data?.extRef || null,
     authorizationCode: data?.authCode || null,
@@ -100,7 +101,6 @@ function applyPendingConfirmation(paymentId, retorno) {
     merchantReceiptFull: data?.merchantReceiptFull || null,
     paygo: paygoTuple,
   };
-  if (data?.saleId) patch.saleId = String(data.saleId);
   updatePayment(paymentId, patch);
   publishTefEvent({
     paymentId,
