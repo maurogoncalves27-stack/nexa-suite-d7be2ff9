@@ -207,6 +207,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
   const [pendingTxMessage, setPendingTxMessage] = useState("");
   const [pendingModalKind, setPendingModalKind] = useState<PendingModalKind>("agent_recovery");
   const manualConfirmationRef = useRef(false);
+  const simulatePowerFailureRef = useRef(false);
   const resolvingPendenciaRef = useRef(false);
   const busyRef = useRef(false);
   const auditTxIdRef = useRef<string | null>(null);
