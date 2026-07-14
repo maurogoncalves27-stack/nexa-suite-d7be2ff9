@@ -1215,6 +1215,19 @@ export default function TefTestSaleCard({ storeId }: Props) {
         }),
       });
       const payment = (await resp.json().catch(() => ({}))) as ApiPayment;
+
+      // Simulação de queda de energia: se a resposta síncrona já indicar aprovação
+      // aguardando confirmação, aborta sem chamar CNF/undo.
+      if (
+        simulatePowerFailureRef.current
+        && (payment?.status === "APROVADA_NAO_CONFIRMADA" || payment?.status === "PENDENTE_CONFIRMACAO")
+      ) {
+        abortForPowerFailureSim(
+          "Resposta síncrona veio aprovada aguardando CNF; front abandonou antes de confirmar.",
+        );
+        return;
+      }
+
       const isBlockedPending = resp.status === 409 && payment?.status === "PENDENTE_CONFIRMACAO";
       const isTruePending = isBlockedPending || payment.status === "PENDENTE_CONFIRMACAO";
       const needsManualConfirm =
