@@ -486,6 +486,7 @@ async function handle(req, res) {
             parcelas: Number(body?.installments || 1),
             paygoMenuChoice: body?.paygoMenuChoice || "",
             captureValues: body?.captureValues || {},
+            manualConfirmation: requiresManualConfirmation(body),
             onDisplay: (message) => {
               if (message) publishTefEvent({ paymentId: payment.id, type: "PINPAD", message: String(message) });
             },
