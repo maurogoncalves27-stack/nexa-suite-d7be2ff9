@@ -614,6 +614,10 @@ public static class PayGoBridge
         }
     }
 
+    // PW_iPPAbort NAO faz parte do fluxo operacional de venda (Setis). Ele so
+    // e chamado como excecao (cancelamento manual do operador ou timeout global
+    // fora do SALE). A liberacao do pinpad apos autorizacao acontece via
+    // PW_iConfirmation posterior.
     private static short HandleData(PW_GetData data, ushort index)
     {
         short ret;
