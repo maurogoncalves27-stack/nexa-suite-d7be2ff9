@@ -159,24 +159,31 @@ function loadPendingConfirmation() {
     const raw = fs.readFileSync(PENDING_FILE, "utf8");
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return null;
-    if (!parsed.reqNum || !parsed.locRef || !parsed.extRef || !parsed.virtMerch || !parsed.authSyst) {
-      return null;
-    }
-    return parsed;
+    if (!parsed.reqNum) return null;
+    return {
+      ...parsed,
+      locRef: parsed.locRef || "",
+      extRef: parsed.extRef || "",
+      virtMerch: parsed.virtMerch || "",
+      authSyst: parsed.authSyst || "",
+    };
   } catch {
     return null;
   }
 }
 
 function savePendingConfirmation(data) {
-  if (!data?.reqNum || !data?.locRef || !data?.extRef || !data?.virtMerch || !data?.authSyst) return false;
+  if (!data?.reqNum) return false;
   ensurePendingDir();
   const record = {
     reqNum: String(data.reqNum),
-    locRef: String(data.locRef),
-    extRef: String(data.extRef),
-    virtMerch: String(data.virtMerch),
-    authSyst: String(data.authSyst),
+    // Em algumas quedas de comunicação a PGWebLib mantém somente o NumReq
+    // (locRef/extRef vazios), mas PW_iConfirmation aceita o mesmo formato.
+    // Exigir tuple completo fazia a pendência não sobreviver ao reload.
+    locRef: String(data.locRef || ""),
+    extRef: String(data.extRef || ""),
+    virtMerch: String(data.virtMerch || ""),
+    authSyst: String(data.authSyst || ""),
     sourceStatus: data.sourceStatus || "unknown",
     reason: data.reason || "",
     createdAt: new Date().toISOString(),
@@ -428,6 +435,11 @@ function hasPayGoConfirmationTuple(data) {
   return !!(data.reqNum && data.locRef && data.extRef && data.virtMerch && data.authSyst);
 }
 
+function hasPayGoConfirmationRequest(data) {
+  if (!data || typeof data !== "object") return false;
+  return !!data.reqNum;
+}
+
 function isPayGoPendingPayload(payload) {
   if (!payload || typeof payload !== "object") return false;
   if (payload.status === "pendingConfirmation") return true;
@@ -436,7 +448,10 @@ function isPayGoPendingPayload(payload) {
   // Não é pendência real: quando a confirmação manual está desmarcada, o server
   // deve seguir e chamar confirmarVenda automaticamente. Só tratamos como
   // pendente quando há erro de comunicação/retorno explícito de pendência.
-  return hasPayGoConfirmationTuple(payload.data)
+  // Em falha de comunicação durante o envio da confirmação, a PayGo pode
+  // devolver só o NumReq (locRef/extRef vazios). Isso ainda é confirmável via
+  // PW_iConfirmation e deve abrir modal/persistir pendência, não virar erro.
+  return hasPayGoConfirmationRequest(payload.data)
     && PAYGO_HOST_COMM_ERRORS.has(Number(payload.ret));
 }
 
@@ -854,18 +869,12 @@ async function efetuarPagamento(opts = {}) {
   const saleMeta = { amountCentavos: amountInCents, saleId };
   const qrDisplayPreference = String(opts.qrDisplayPreference || process.env.PAYGO_QR_DISPLAY_PREF || NEXA_DEFAULTS.qrDisplayPreference) === "1" ? "1" : "2";
 
-  // Auto-cleanup pre-flight: se a transação anterior morreu em timeout/error,
-  // a DLL PGWebLib pode ter ficado com estado "transação em andamento" e a
-  // próxima venda devolve `cancelarEmAndamento`. Forçamos um desfazimento
-  // best-effort antes de iniciar a nova venda.
+  // Não fazemos cleanup automático no início da venda: se a falha anterior foi
+  // após autorização, o cleanup com PW_iConfirmation vazio pode desfazer uma
+  // pendência antes da UI exibir o modal ao operador.
   const prevStatus = saleStatus?.status;
   if (prevStatus === "timeout" || prevStatus === "error") {
-    try {
-      console.log("[TEF] Pré-cleanup automático: estado anterior=", prevStatus);
-      await runBridge({ action: "cleanup" }, { timeoutMs: 15000 });
-    } catch (e) {
-      console.warn("[TEF] Pré-cleanup falhou (seguindo mesmo assim):", e.message);
-    }
+    console.log("[TEF] Estado anterior=", prevStatus, "— seguindo sem cleanup automático; pendências devem ser resolvidas via modal.");
   }
 
   setSaleStatus({
@@ -996,21 +1005,9 @@ async function efetuarPagamento(opts = {}) {
     }
     emitSaleEvent({ paymentId, type: "ERROR", message: err.message || "Falha na transação" });
 
-    // Auto-cleanup pós-falha: desfaz pendência presa na DLL para liberar a
-    // próxima venda. Best-effort, não propaga erro.
-    // IMPORTANTE: se já temos QR Pix gerado, NÃO limpar — a venda pode ter
-    // sido paga e o cleanup desfaria uma transação aprovada. Usuário precisa
-    // confirmar manualmente via botão "Limpar pendência" na UI.
-    if (method === "PIX" && saleStatus.qrCode) {
-      console.log("[TEF] Pós-cleanup pulado: Pix com QR gerado, aguardando confirmação manual.");
-    } else {
-      try {
-        console.log("[TEF] Pós-cleanup automático após falha:", err.message);
-        await runBridge({ action: "cleanup" }, { timeoutMs: 15000 });
-      } catch (e) {
-        console.warn("[TEF] Pós-cleanup falhou:", e.message);
-      }
-    }
+    // Não fazer cleanup automático pós-falha. Se houver autorização seguida de
+    // queda na confirmação, a transação deve permanecer pendente para o modal
+    // de confirmar/desfazer tratar antes da próxima venda.
 
     throw err;
   } finally {
