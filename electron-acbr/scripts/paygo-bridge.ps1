@@ -705,7 +705,7 @@ public static class PayGoBridge
                 }
                 if (ret == PWRET_TIMEOUT && IsAuthorizedMessage(Result(PWINFO_RESULTMSG)))
                 {
-                    AbortPinpad();
+                    // Fluxo Setis: sem PW_iPPAbort aqui. PW_iConfirmation posterior libera o pinpad.
                     return BRIDGE_AUTHORIZED_AFTER_REMOVE_TIMEOUT;
                 }
                 return ret;
