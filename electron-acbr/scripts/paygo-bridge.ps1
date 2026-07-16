@@ -331,7 +331,9 @@ public static class PayGoBridge
 
                 if (ret == PWRET_TIMEOUT && IsAuthorizedMessage(resultMessage))
                 {
-                    AbortPinpad();
+                    // Fluxo Setis: nao chamar PW_iPPAbort aqui. A liberacao do
+                    // pinpad ocorre naturalmente na chamada seguinte de
+                    // PW_iConfirmation.
                     EmitEvent("APPROVED", "Transacao autorizada. Timeout apenas na finalizacao do pinpad.");
                     return Json("approved", true, resultMessage, ret, ResultsJson(true));
                 }
@@ -612,6 +614,10 @@ public static class PayGoBridge
         }
     }
 
+    // PW_iPPAbort NAO faz parte do fluxo operacional de venda (Setis). Ele so
+    // e chamado como excecao (cancelamento manual do operador ou timeout global
+    // fora do SALE). A liberacao do pinpad apos autorizacao acontece via
+    // PW_iConfirmation posterior.
     private static short HandleData(PW_GetData data, ushort index)
     {
         short ret;
@@ -703,7 +709,7 @@ public static class PayGoBridge
                 }
                 if (ret == PWRET_TIMEOUT && IsAuthorizedMessage(Result(PWINFO_RESULTMSG)))
                 {
-                    AbortPinpad();
+                    // Fluxo Setis: sem PW_iPPAbort aqui. PW_iConfirmation posterior libera o pinpad.
                     return BRIDGE_AUTHORIZED_AFTER_REMOVE_TIMEOUT;
                 }
                 return ret;
@@ -1500,7 +1506,7 @@ public static class PayGoBridge
     private static short PinpadLoop(string context)
     {
         int timeoutMs = context == "removeCard"
-            ? EnvInt("PAYGO_REMOVE_CARD_TIMEOUT_MS", 30000)
+            ? EnvInt("PAYGO_REMOVE_CARD_TIMEOUT_MS", 60000)
             : EnvInt("PAYGO_PINPAD_TIMEOUT_MS", 270000);
         DateTime deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
         int nothingCount = 0;
