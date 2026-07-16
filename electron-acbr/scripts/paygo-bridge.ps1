@@ -1502,7 +1502,7 @@ public static class PayGoBridge
     private static short PinpadLoop(string context)
     {
         int timeoutMs = context == "removeCard"
-            ? EnvInt("PAYGO_REMOVE_CARD_TIMEOUT_MS", 30000)
+            ? EnvInt("PAYGO_REMOVE_CARD_TIMEOUT_MS", 60000)
             : EnvInt("PAYGO_PINPAD_TIMEOUT_MS", 270000);
         DateTime deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
         int nothingCount = 0;
