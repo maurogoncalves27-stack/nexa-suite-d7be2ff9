@@ -1516,7 +1516,9 @@ public static class PayGoBridge
         {
             if (DateTime.UtcNow > deadline)
             {
-                AbortPinpad();
+                // Fluxo Setis: nao chamar PW_iPPAbort no fluxo normal. Retornamos
+                // apenas o timeout; a chamada posterior de PW_iConfirmation (ou
+                // o proximo PW_iNewTransac) libera o pinpad naturalmente.
                 return PWRET_TIMEOUT;
             }
 
