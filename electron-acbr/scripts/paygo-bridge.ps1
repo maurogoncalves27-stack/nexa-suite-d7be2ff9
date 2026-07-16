@@ -331,7 +331,9 @@ public static class PayGoBridge
 
                 if (ret == PWRET_TIMEOUT && IsAuthorizedMessage(resultMessage))
                 {
-                    AbortPinpad();
+                    // Fluxo Setis: nao chamar PW_iPPAbort aqui. A liberacao do
+                    // pinpad ocorre naturalmente na chamada seguinte de
+                    // PW_iConfirmation.
                     EmitEvent("APPROVED", "Transacao autorizada. Timeout apenas na finalizacao do pinpad.");
                     return Json("approved", true, resultMessage, ret, ResultsJson(true));
                 }
