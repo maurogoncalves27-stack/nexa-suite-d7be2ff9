@@ -355,10 +355,10 @@ export default function AdminDashboardPanel() {
                 <CardContent className="pt-0">
                   <div className="space-y-2">
                     {gs.incomplete.map((sub) => {
-                      const checked = sub.checklist_answers.filter((a) => a.checked).length;
+                      const checked = sub.checklist_answers.filter(isAnswerComplete).length;
                       const total = sub.checklist_answers.length;
                       const uncheckedPriority = sub.checklist_answers.filter(
-                        (a) => !a.checked && a.checklist_items?.is_priority,
+                        (a) => !isAnswerComplete(a) && a.checklist_items?.is_priority,
                       );
                       return (
                         <div key={sub.id}
