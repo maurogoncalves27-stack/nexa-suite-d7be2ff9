@@ -132,7 +132,7 @@ export default function Pcmso({ embedded = false }: { embedded?: boolean } = {})
         status: "approved",
       });
       if (error) throw error;
-      toast({ title: "Documento PCMSO registrado" });
+      toast({ title: "ASO registrado" });
       setOpen(false);
       reset();
       load();
