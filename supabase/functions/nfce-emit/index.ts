@@ -150,13 +150,18 @@ Deno.serve(async (req) => {
     });
 
     // 6. Payload NFC-e
+    // Ajuste SINIEF nº 9/26 (vigência 03/08/2026): operações NÃO PRESENCIAIS
+    // — delivery E takeout (retirada) — exigem identificação do destinatário
+    // e endereço na NFC-e modelo 65.
     const isDelivery = order.order_type === "delivery";
+    const isTakeout = order.order_type === "takeout";
+    const isNonPresencial = isDelivery || isTakeout;
     const customerDoc = order.customer_document ? onlyDigits(order.customer_document) : "";
     const hasCustomerId = customerDoc.length === 11 || customerDoc.length === 14;
 
-    // SEFAZ exige identificação do destinatário em entrega a domicílio (presença=4).
+    // SEFAZ exige identificação do destinatário em operação não presencial (presença=4).
     // Sem CPF/CNPJ do cliente, cai pra presencial (1) pra não ser rejeitada.
-    const presenca = isDelivery && hasCustomerId ? 4 : 1;
+    const presenca = isNonPresencial && hasCustomerId ? 4 : 1;
 
     const payload: any = {
       natureza_operacao: "Venda ao consumidor",
@@ -189,7 +194,7 @@ Deno.serve(async (req) => {
       else payload.cnpj_destinatario = customerDoc;
       if (order.customer_name) payload.nome_destinatario = order.customer_name;
 
-      if (isDelivery) {
+      if (isNonPresencial) {
         const addr = (order as any).delivery_address ?? {};
         payload.logradouro_destinatario = addr.street ?? addr.logradouro ?? "Rua Teste";
         payload.numero_destinatario = addr.number ?? addr.numero ?? "S/N";
@@ -197,6 +202,7 @@ Deno.serve(async (req) => {
         payload.municipio_destinatario = addr.city ?? addr.municipio ?? (store as any).city ?? "Brasília";
         payload.uf_destinatario = addr.state ?? addr.uf ?? (store as any).state ?? "DF";
         payload.cep_destinatario = onlyDigits(addr.zip_code ?? addr.cep ?? "") || "70000000";
+        if (addr.complement) payload.complemento_destinatario = addr.complement;
       }
     }
 
