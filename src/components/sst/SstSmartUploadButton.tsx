@@ -303,6 +303,24 @@ export default function SstSmartUploadButton({ variant = "secondary" }: { varian
                   </>
                 )}
               </div>
+              {smartResult.kind !== "aso" && smartResult.risks && smartResult.risks.length > 0 && (
+                <div className="rounded-lg border p-3 space-y-2">
+                  <div className="text-xs font-semibold">
+                    {smartResult.risks.length} risco(s) identificado(s) — serão criados como sugestão em NR-1 → Riscos psicossociais
+                  </div>
+                  <ul className="text-xs space-y-1 max-h-40 overflow-y-auto">
+                    {smartResult.risks.slice(0, 8).map((r, i) => (
+                      <li key={i} className="flex gap-2">
+                        <Badge variant="outline" className="shrink-0">{r.severity}</Badge>
+                        <span className="line-clamp-2">{r.description}</span>
+                      </li>
+                    ))}
+                    {smartResult.risks.length > 8 && (
+                      <li className="text-muted-foreground">+ {smartResult.risks.length - 8} adicionais…</li>
+                    )}
+                  </ul>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">
                 {smartResult.kind === "aso"
                   ? "O arquivo será arquivado na pasta do colaborador e aparecerá na aba ASO."
