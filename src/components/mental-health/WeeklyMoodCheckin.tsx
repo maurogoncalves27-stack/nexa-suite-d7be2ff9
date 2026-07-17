@@ -100,7 +100,7 @@ export default function WeeklyMoodCheckin() {
           title: "Obrigado por compartilhar 💚",
           description: selected && selected <= 2
             ? "Se precisar de apoio, nosso RH está à disposição."
-            : "Tenha uma ótima semana!",
+            : "Tenha um ótimo dia!",
         });
       }
       setOpen(false);
