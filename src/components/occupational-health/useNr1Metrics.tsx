@@ -75,13 +75,13 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     sst,
     psychoRisks,
   ] = await Promise.all([
-    supabase.from("employees").select("id", { count: "exact", head: true }).eq("status", "active").not("contract_type", "eq", "Estágio"),
+    supabase.from("employees").select("id", { count: "exact" }).eq("status", "active").not("contract_type", "eq", "Estágio"),
     supabase.from("climate_surveys").select("id, name, end_date, start_date").order("end_date", { ascending: false }).limit(1),
     supabase.from("mood_checkins").select("mood_score").gte("created_at", d30ago).eq("skipped", false),
     supabase.from("mood_checkins").select("mood_score").gte("created_at", d60ago).lt("created_at", d30ago).eq("skipped", false),
     supabase.from("mental_health_alerts").select("id", { count: "exact", head: true }).in("status", ["open", "in_progress"]),
     supabase.from("mental_health_alerts").select("id", { count: "exact", head: true }).eq("status", "resolved").gte("resolved_at", d30ago),
-    supabase.from("medical_certificates").select("employee_id, valid_until").eq("is_pcmso", true),
+    supabase.from("medical_certificates").select("employee_id, valid_until, document_type, is_pcmso").or("is_pcmso.eq.true,document_type.eq.aso"),
     supabase.from("medical_certificates").select("days_off, cid_code, employee_id, certificate_date").gte("certificate_date", m3ago),
     supabase.from("medical_certificates").select("days_off, cid_code, employee_id, certificate_date").gte("certificate_date", m12ago),
     supabase.from("medical_certificates").select("days_off, employee:employees(store:stores(name))").gte("certificate_date", monthStart),
@@ -91,6 +91,7 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
 
 
   const activeEmployees = empActive.count ?? 0;
+  const activeIds = new Set(((empActive.data ?? []) as { id: string }[]).map((e) => e.id));
 
   // Climate
   let climateAdherencePct: number | null = null;
@@ -152,7 +153,8 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
 
 
   // PCMSO — pega ASO mais recente por colaborador
-  const pcmsoRows = (pcmsoAll.data ?? []) as { employee_id: string; valid_until: string | null }[];
+  const pcmsoRows = ((pcmsoAll.data ?? []) as { employee_id: string; valid_until: string | null }[])
+    .filter((r) => activeIds.has(r.employee_id)); // ignora ASOs de ex-colaboradores
   const latestByEmp = new Map<string, string | null>();
   pcmsoRows.forEach((r) => {
     const cur = latestByEmp.get(r.employee_id);
@@ -227,10 +229,10 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     if (psychoRisksHigh > 0) { s += Math.max(0, 100 - psychoRisksHigh * 15); n++; }
     return n ? Math.round(s / n) : 0;
   })();
-  const scorePcmso = activeEmployees > 0 ? Math.round((pcmsoValid / activeEmployees) * 100) : 100;
-  const scoreAbsent = absenteeismRate3m != null ? Math.max(0, Math.round(100 - absenteeismRate3m * 10)) : 100;
-  const scoreSst = sstTotal > 0 ? Math.round((sstValid / sstTotal) * 100) : 0;
-  const scoreOverall = Math.round((scorePsycho + scorePcmso + scoreAbsent + scoreSst) / 4);
+  const scorePcmso = activeEmployees > 0 ? Math.min(100, Math.round((pcmsoValid / activeEmployees) * 100)) : 100;
+  const scoreAbsent = absenteeismRate3m != null ? Math.max(0, Math.min(100, Math.round(100 - absenteeismRate3m * 10))) : 100;
+  const scoreSst = sstTotal > 0 ? Math.min(100, Math.round((sstValid / sstTotal) * 100)) : 0;
+  const scoreOverall = Math.min(100, Math.round((scorePsycho + scorePcmso + scoreAbsent + scoreSst) / 4));
 
   return {
     climateAdherencePct,
