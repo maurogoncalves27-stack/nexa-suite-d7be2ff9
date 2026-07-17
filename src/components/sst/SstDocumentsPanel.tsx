@@ -318,24 +318,9 @@ export default function SstDocumentsPanel() {
       </div>
 
       <div className="flex flex-wrap justify-end gap-2">
-        <Button variant="secondary" asChild>
-          <label className="cursor-pointer">
-            <Sparkles className="h-4 w-4 mr-2" />
-            Upload inteligente (IA)
-            <input
-              type="file"
-              accept="application/pdf,.pdf"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) handleSmartUpload(f);
-                e.currentTarget.value = "";
-              }}
-            />
-          </label>
-        </Button>
         <Button onClick={openNew}><Plus className="h-4 w-4 mr-2" /> Novo documento</Button>
       </div>
+
 
       {docs.length === 0 ? (
         <Card><CardContent className="pt-6 text-center text-sm text-muted-foreground">
