@@ -73,6 +73,7 @@ export default function PsychosocialRisksPanel() {
   const [stores, setStores] = useState<{ id: string; name: string }[]>([]);
   const [employees, setEmployees] = useState<{ id: string; full_name: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [suggesting, setSuggesting] = useState(false);
   const [filter, setFilter] = useState<"all" | "open" | "mitigated">("open");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
@@ -132,6 +133,17 @@ export default function PsychosocialRisksPanel() {
             <div className="flex gap-2">
               <Button size="sm" variant="ghost" onClick={load}>
                 <RefreshCw className="h-4 w-4" />
+              </Button>
+              <Button size="sm" variant="outline" disabled={suggesting} onClick={async () => {
+                setSuggesting(true);
+                const { data, error } = await supabase.functions.invoke("suggest-psychosocial-risks");
+                setSuggesting(false);
+                if (error) { toast({ title: "Falha ao sugerir", description: error.message, variant: "destructive" }); return; }
+                toast({ title: `${data?.inserted ?? 0} risco(s) sugerido(s) pela IA`, description: "Baseado em humor, atestados (CID F) e docs SST." });
+                load();
+              }}>
+                {suggesting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
+                Sugerir com IA
               </Button>
               <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) setEditing(null); }}>
                 <DialogTrigger asChild>
