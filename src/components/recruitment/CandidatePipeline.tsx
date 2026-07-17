@@ -96,6 +96,17 @@ export function CandidatePipeline({ jobOpeningId, jobTitle, jobPosition }: Props
     }
   };
 
+  const deleteCandidate = async (candidateId: string, name: string) => {
+    if (!confirm(`Excluir definitivamente o candidato "${name}"? Esta ação não pode ser desfeita.`)) return;
+    const { error } = await supabase.from("job_candidates").delete().eq("id", candidateId);
+    if (error) {
+      toast({ title: "Falha ao excluir", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Candidato excluído" });
+    load();
+  };
+
   // Agrupa candidatos por fase (apenas ativos no pipeline)
   const byPhase = useMemo(() => {
     const map = new Map<string, Candidate[]>();
