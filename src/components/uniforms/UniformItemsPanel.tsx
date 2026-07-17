@@ -20,7 +20,7 @@ interface Props {
 const empty = {
   name: "",
   description: "",
-  category: "vestuario",
+  category: "superior",
   size_type: "letra",
   is_durable: true,
   unit_cost: "",

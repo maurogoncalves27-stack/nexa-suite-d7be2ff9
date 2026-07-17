@@ -1,8 +1,10 @@
 export const UNIFORM_CATEGORIES = [
-  { value: "vestuario", label: "Vestuário" },
+  { value: "superior", label: "Superior" },
+  { value: "inferior", label: "Inferior" },
   { value: "calcado", label: "Calçado" },
   { value: "epi", label: "EPI" },
   { value: "acessorio", label: "Acessório" },
+  { value: "vestuario", label: "Vestuário (legado)" },
 ];
 
 export const SIZE_TYPES = [
