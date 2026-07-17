@@ -64,6 +64,7 @@ export default function Rescissions() {
   const [emps, setEmps] = useState<Emp[]>([]);
   const [pays, setPays] = useState<Pay[]>([]);
   const [depCount, setDepCount] = useState<Record<string, number>>({});
+  const [pendingUniforms, setPendingUniforms] = useState<Record<string, { count: number; value: number }>>({});
   const [generating, setGenerating] = useState<string | null>(null);
   const [savingReason, setSavingReason] = useState<string | null>(null);
   const [fgtsBalances, setFgtsBalances] = useState<Record<string, string>>({});
