@@ -72,46 +72,15 @@ export function UniformDeliveriesPanel({ items, employees }: Props) {
 
   useEffect(() => { loadHistory(); }, []);
 
-  const loadKitForPosition = async (silent = false) => {
-    if (!selectedEmp?.position) {
-      if (!silent) toast({ title: "Colaborador sem cargo", description: "Selecione um cargo no cadastro", variant: "destructive" });
-      return;
-    }
-    const { data } = await supabase
-      .from("uniform_kit_items")
-      .select("*")
-      .eq("position", selectedEmp.position);
-    if (!data || data.length === 0) {
-      if (!silent) toast({
-        title: "Nenhum kit configurado",
-        description: `Cargo "${selectedEmp.position}" não tem kit. Adicione itens manualmente.`,
-      });
-      return;
-    }
-    const newLines: DraftLine[] = data.map((k: any) => {
-      const it = itemMap[k.uniform_item_id];
-      return {
-        uniform_item_id: k.uniform_item_id,
-        size: "",
-        quantity: k.quantity,
-        unit_cost: it ? Number(it.unit_cost) : 0,
-        expected_return: it ? it.is_durable : true,
-        condition_at_delivery: "nova",
-      };
-    });
-    setLines(newLines);
-    if (!silent) toast({ title: `${newLines.length} item(ns) sugeridos do kit`, description: "Edite tamanhos, quantidades e condição antes de registrar." });
-  };
-
-  // Auto-carrega kit ao selecionar colaborador (uma vez por colaborador)
+  // Auto-reset lines quando muda colaborador
   useEffect(() => {
     if (employeeId && employeeId !== autoLoaded) {
       setAutoLoaded(employeeId);
       setLines([]);
-      loadKitForPosition(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employeeId]);
+
 
   const addLine = () => {
     setLines([...lines, { uniform_item_id: "", size: "", quantity: 1, unit_cost: 0, expected_return: true, condition_at_delivery: "nova" }]);
