@@ -71,3 +71,14 @@ export interface UniformPending {
   returned: number;
   pending: number;
 }
+
+// SEDE única do estoque de uniformes = ESTOQUE CENTRAL
+export const UNIFORM_CENTRAL_STORE_ID = "06ae09d6-4589-47a4-8a7e-b5467e94d081";
+
+export const CONDITION_OPTIONS = [
+  { value: "nova", label: "Nova" },
+  { value: "usada", label: "Usada" },
+] as const;
+
+export type UniformCondition = "nova" | "usada";
+
