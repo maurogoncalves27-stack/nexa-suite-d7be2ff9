@@ -1,69 +1,57 @@
-## Objetivo
+## O que está acontecendo
 
-Migrar o controle de uniformes de "kit fechado" para **peça a peça**, com **estoque único centralizado na sede** (com marcação de peça nova vs. usada), e criar mecanismos que **impeçam colaboradores desligados de sumirem com o uniforme**.
+A duplicidade é no **chat do site**, não no WhatsApp.
 
----
+Eu encontrei o padrão no banco: a mesma resposta da Giana aparece duas vezes com IDs diferentes, por exemplo:
 
-## 1. Entrega peça a peça (kit vira sugestão)
+- `assistant_...` gerado pelo backend/IA
+- `a_...` gerado pelo widget do navegador
 
-Na tela de nova entrega:
-- Ao escolher o colaborador, o sistema **sugere automaticamente** as peças do kit do cargo dele (comportamento atual), mas cada peça vira uma linha editável.
-- O gestor pode **adicionar, remover, trocar tamanho e ajustar quantidade** peça a peça antes de confirmar.
-- Cada linha permite escolher **"Peça nova" ou "Peça usada"** (quando houver usada disponível no tamanho).
-- A aba **Kits** continua existindo apenas para definir o "previsto por cargo" (base da sugestão) — sem mudança visual grande.
+Ou seja: não são duas respostas diferentes da IA. É a **mesma resposta sendo salva duas vezes** com identidades diferentes.
 
----
+## Por que isso acontece
 
-## 2. Estoque único na sede, com tag Nova/Usada
+O fluxo atual tem duas fontes tentando representar a resposta da Giana:
 
-Como todas as peças voltam para a sede, o estoque deixa de ser por loja:
-- Estoque passa a ser **por peça + tamanho + condição** (`nova` / `usada`), tudo consolidado em um único local ("Sede").
-- A aba **Estoque** ganha duas colunas: **Novas** e **Usadas**, com total geral.
-- Movimentações registram a condição, então dá pra ver histórico de peças usadas voltando ao estoque.
-- Entregas descontam da condição escolhida; devoluções em bom estado entram como **usadas**; devoluções danificadas viram baixa (não voltam ao estoque).
+1. O **ChatWidget** cria uma mensagem temporária da assistente no navegador para mostrar o streaming em tempo real.
+2. A função `parme-chat` também recebe o resultado final da IA e grava a resposta com outro ID.
+3. Na próxima mensagem do cliente, o navegador reenvia o histórico local, incluindo a resposta temporária anterior.
+4. O backend já tinha a mesma resposta salva com outro ID, então a conversa fica com duas versões da mesma mensagem.
 
----
+A correção anterior tentou deduplicar por conteúdo, mas ficou incompleta porque:
 
-## 3. Devoluções ao desligar — bloqueio + desconto automático
+- algumas conversas já ficaram “contaminadas” com duplicatas antigas;
+- o backend ainda aceita mensagens `assistant` vindas do navegador como se fossem fonte confiável;
+- a gravação acontece em dois momentos: antes do streaming e ao finalizar o streaming.
 
-Quando o colaborador é desligado (`status = terminated`):
-- Sistema calcula automaticamente as **peças em aberto** (entregues com "devolução esperada" e ainda não devolvidas).
-- Aparece um card vermelho **"Uniformes pendentes"** no perfil do colaborador e no painel de uniformes.
-- Na tela de **rescisão / TRCT**:
-  - **Bloqueia a geração** enquanto houver peça pendente sem resolução.
-  - O gestor tem 3 opções por peça: **Devolveu** (entra no estoque de usados) / **Não devolveu — descontar** (custo unitário vai para o TRCT como desconto automático) / **Não devolveu — perdoar** (exige justificativa por escrito).
-- Só depois de todas as peças resolvidas o TRCT é liberado.
+Por isso está difícil: não é só “bloquear clique duplo”. É um problema de **sincronização entre estado local do navegador, streaming da IA e persistência no banco**.
 
----
+## Plano de correção
 
-## 4. Painel "Uniformes a devolver"
+1. **Definir o backend como fonte única das respostas da Giana**
+   - O navegador pode mostrar a resposta temporária, mas o backend não deve salvar essa versão local como uma nova resposta definitiva.
 
-Nova aba no módulo de uniformes:
-- Lista todos os desligados com peças ainda em aberto.
-- Filtro por loja de origem (para o gestor de cada loja cobrar).
-- Mostra dias desde o desligamento, valor total pendente e botão de ação rápida (registrar devolução ou descontar).
-- Serve de pressão visual para os gestores não deixarem peças "jogadas na loja".
+2. **Ajustar `parme-chat` para ignorar duplicatas de assistant vindas do cliente**
+   - Ao receber o histórico do navegador, manter as mensagens do usuário.
+   - Para mensagens da Giana, preferir as que já estão gravadas pelo backend.
+   - Se o conteúdo for igual, manter uma só.
 
----
+3. **Deduplicar sempre antes de salvar**
+   - Aplicar uma normalização final em `chat_conversations.messages` usando `role + conteúdo normalizado`.
+   - Isso deve rodar tanto no salvamento inicial quanto no `onFinish` do streaming.
 
-## Detalhes técnicos
+4. **Limpar conversas antigas já duplicadas**
+   - Rodar uma atualização nos registros existentes para remover mensagens repetidas já gravadas.
 
-**Banco de dados** (`uniform_stock`, `uniform_stock_movements`, `uniform_return_items`, `uniform_delivery_items`):
-- Adicionar coluna `condition text` (`'nova' | 'usada'`) em `uniform_stock` e `uniform_stock_movements`, com a chave única passando a incluir a condição.
-- `uniform_delivery_items` já tem `expected_return` e `returned_quantity` — vamos aproveitar; acrescentar `condition_at_delivery` (peça saiu nova ou usada).
-- `uniform_return_items` já tem `condition` e `back_to_stock`; ajustar trigger para que, quando `back_to_stock = true`, a peça entre no estoque como `usada` (independente da condição de saída).
-- Migração de dados: consolidar todo o estoque atual das lojas em um único registro de "Sede" marcado como `nova`.
-- View `uniform_pending_returns` retornando, por colaborador desligado, as peças em aberto com custo unitário.
-- Função `has_pending_uniforms(_employee_id)` usada pelo bloqueio de rescisão.
+5. **Proteger o widget contra envio duplo rápido**
+   - Adicionar uma trava síncrona com `useRef`, além do `busy`, para impedir dois submits antes do React atualizar o estado.
 
-**Frontend**:
-- `UniformDeliveriesPanel.tsx`: refatorar o dialog de nova entrega para lista de peças editável, com toggle nova/usada por linha.
-- `UniformStockPanel.tsx`: passar a mostrar coluna única "Sede" com sub-colunas Novas/Usadas.
-- `UniformKitsPanel.tsx`: manter, com aviso "usado apenas como sugestão de entrega".
-- Novo `UniformPendingReturnsPanel.tsx` como aba do módulo.
-- Integração no fluxo de rescisão (`src/pages/Rescisoes.tsx` ou equivalente) para bloqueio + desconto automático via `rescissionCalc`.
-- Card de alerta no perfil do colaborador quando `has_pending_uniforms = true`.
+6. **Garantir que o histórico carregado não mostre duplicatas**
+   - Ajustar a função que retorna mensagens da conversa para também devolver a lista deduplicada.
 
-**Fora de escopo** (posso propor depois se você quiser):
-- Impressão de recibo de devolução assinado.
-- App do colaborador confirmando recebimento das peças.
+7. **Publicar as funções afetadas**
+   - Deploy de `parme-chat` e, se necessário, `parme-get-conversation-messages`.
+
+## Resultado esperado
+
+A Giana deve continuar respondendo em streaming normalmente, mas cada resposta aparecerá e ficará salva **uma única vez**, mesmo após nova mensagem, reload ou leitura do histórico.

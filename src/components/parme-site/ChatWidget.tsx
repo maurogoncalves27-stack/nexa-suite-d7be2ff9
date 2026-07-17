@@ -112,6 +112,26 @@ function readStreamEvent(line: string) {
 
 type ChatMsg = { id: string; role: "user" | "assistant"; content: string };
 
+function normalizeMsgContent(content: string) {
+  return content.normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function dedupeChatMessages(items: ChatMsg[]) {
+  const seenAssistant = new Set<string>();
+  const out: ChatMsg[] = [];
+  for (const item of items) {
+    if (item.role !== "assistant") {
+      out.push(item);
+      continue;
+    }
+    const key = normalizeMsgContent(item.content);
+    if (key && seenAssistant.has(key)) continue;
+    if (key) seenAssistant.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
 export function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -119,6 +139,7 @@ export function ChatWidget() {
   const [busy, setBusy] = useState(false);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const sendingRef = useRef(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -146,14 +167,15 @@ export function ChatWidget() {
   };
 
   async function send(text: string) {
-    if (!text.trim() || busy) return;
+    if (!text.trim() || busy || sendingRef.current) return;
+    sendingRef.current = true;
     if (messages.length === 0) resetSessionId();
     const userMsg: ChatMsg = {
       id: `u_${Date.now()}`,
       role: "user",
       content: text.trim(),
     };
-    const next = [...messages, userMsg];
+    const next = dedupeChatMessages([...messages, userMsg]);
     setMessages(next);
     setInput("");
     setBusy(true);
@@ -164,7 +186,7 @@ export function ChatWidget() {
     try {
       const payload = {
         sessionId: getSessionId(),
-        messages: next.map((m) => ({
+        messages: next.filter((m) => m.role === "user").map((m) => ({
           id: m.id,
           role: m.role,
           parts: [{ type: "text", text: m.content }],
@@ -220,7 +242,7 @@ export function ChatWidget() {
     } catch (e) {
       console.error("[ChatWidget] err:", e);
       setMessages((m) =>
-        m.map((x) =>
+        dedupeChatMessages(m.map((x) =>
           x.id === assistantId
             ? {
                 ...x,
@@ -228,9 +250,10 @@ export function ChatWidget() {
                   "Oi! Tive um soluço aqui 😅 tenta de novo daqui a pouquinho?",
               }
             : x
-        )
+        ))
       );
     } finally {
+      sendingRef.current = false;
       setBusy(false);
     }
   }
