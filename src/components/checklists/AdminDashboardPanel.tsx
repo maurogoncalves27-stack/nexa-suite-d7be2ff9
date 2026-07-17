@@ -157,7 +157,7 @@ export default function AdminDashboardPanel() {
         }
       }
       const incomplete = groupSubs.filter(
-        (s) => s.checklist_answers.length > 0 && !s.checklist_answers.every((a) => a.checked),
+        (s) => s.checklist_answers.length > 0 && !s.checklist_answers.every(isAnswerComplete),
       );
       const completionRate = expected > 0 ? Math.round((groupSubs.length / expected) * 100) : 0;
       return {
