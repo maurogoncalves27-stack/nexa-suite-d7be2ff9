@@ -17,6 +17,15 @@ interface Props {
   onChanged: () => void;
 }
 
+const sizeTypeForCategory = (cat: string): string => {
+  if (cat === "calcado") return "numero";
+  if (cat === "superior" || cat === "inferior" || cat === "vestuario") return "letra";
+  return "unico";
+};
+
+const isSizeTypeLocked = (cat: string) =>
+  cat === "calcado" || cat === "superior" || cat === "inferior" || cat === "vestuario";
+
 const empty = {
   name: "",
   description: "",
@@ -148,7 +157,16 @@ export function UniformItemsPanel({ items, onChanged }: Props) {
             </div>
             <div className="space-y-2">
               <Label>Categoria</Label>
-              <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
+              <Select
+                value={form.category}
+                onValueChange={(v) =>
+                  setForm({
+                    ...form,
+                    category: v,
+                    size_type: isSizeTypeLocked(v) ? sizeTypeForCategory(v) : form.size_type,
+                  })
+                }
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {UNIFORM_CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
@@ -156,8 +174,17 @@ export function UniformItemsPanel({ items, onChanged }: Props) {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Tipo de tamanho</Label>
-              <Select value={form.size_type} onValueChange={(v) => setForm({ ...form, size_type: v })}>
+              <Label>
+                Tipo de tamanho
+                {isSizeTypeLocked(form.category) && (
+                  <span className="ml-1 text-xs text-muted-foreground">(obrigatório para {form.category === "calcado" ? "calçado" : "vestuário"})</span>
+                )}
+              </Label>
+              <Select
+                value={form.size_type}
+                onValueChange={(v) => setForm({ ...form, size_type: v })}
+                disabled={isSizeTypeLocked(form.category)}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {SIZE_TYPES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
