@@ -1,44 +1,69 @@
 ## Objetivo
 
-Alinhar o bridge PayGo (`electron-acbr/scripts/paygo-bridge.ps1`) ao fluxo operacional documentado pela Setis, eliminando o `PW_iPPAbort()` do caminho normal de venda. O `PW_iPPAbort` passa a ser tratado apenas como exceção (cancelamento pelo operador durante captura), nunca como etapa de finalização.
+Migrar o controle de uniformes de "kit fechado" para **peça a peça**, com **estoque único centralizado na sede** (com marcação de peça nova vs. usada), e criar mecanismos que **impeçam colaboradores desligados de sumirem com o uniforme**.
 
-## Situação atual
+---
 
-Hoje o bridge chama `AbortPinpad()` (que executa `PW_iPPAbort`) em três pontos:
+## 1. Entrega peça a peça (kit vira sugestão)
 
-1. **Linha 334** — dentro do `ExecTransac` principal, quando retorna `PWRET_TIMEOUT` mas a mensagem contém "AUTORIZ".
-2. **Linhas 700 e 706** — dentro do handler `PWDAT_PPREMCRD` (remoção do cartão), quando o `PinpadLoop` de remoção estoura timeout.
-3. **Linha 1513** — dentro do próprio `PinpadLoop` ao estourar seu deadline interno.
+Na tela de nova entrega:
+- Ao escolher o colaborador, o sistema **sugere automaticamente** as peças do kit do cargo dele (comportamento atual), mas cada peça vira uma linha editável.
+- O gestor pode **adicionar, remover, trocar tamanho e ajustar quantidade** peça a peça antes de confirmar.
+- Cada linha permite escolher **"Peça nova" ou "Peça usada"** (quando houver usada disponível no tamanho).
+- A aba **Kits** continua existindo apenas para definir o "previsto por cargo" (base da sugestão) — sem mudança visual grande.
 
-O caso (2) é o que aparece nos logs (`PW_iPPAbort() <0>` imediatamente antes do `PW_iConfirmation`), porque o ciclo interno de remoção do cartão termina em timeout com a venda já autorizada, e o bridge força o abort para "soltar" o pinpad. Isso não é passo do fluxo documentado — o correto é deixar o `PW_iExecTransac` completar naturalmente e só então chamar `PW_iGetResult` + `PW_iConfirmation`.
+---
 
-## Mudanças
+## 2. Estoque único na sede, com tag Nova/Usada
 
-### 1. `electron-acbr/scripts/paygo-bridge.ps1` — caminho de venda (SALE)
+Como todas as peças voltam para a sede, o estoque deixa de ser por loja:
+- Estoque passa a ser **por peça + tamanho + condição** (`nova` / `usada`), tudo consolidado em um único local ("Sede").
+- A aba **Estoque** ganha duas colunas: **Novas** e **Usadas**, com total geral.
+- Movimentações registram a condição, então dá pra ver histórico de peças usadas voltando ao estoque.
+- Entregas descontam da condição escolhida; devoluções em bom estado entram como **usadas**; devoluções danificadas viram baixa (não voltam ao estoque).
 
-- No handler `PWDAT_PPREMCRD` do `HandleData`:
-  - Remover o `AbortPinpad()` da linha 706 (caso `PWRET_TIMEOUT && IsAuthorizedMessage`). Manter o `return BRIDGE_AUTHORIZED_AFTER_REMOVE_TIMEOUT`, deixando o pinpad ser liberado naturalmente pelo `PW_iConfirmation` posterior.
-  - Manter a linha 700 (`AbortPinpad` para operações administrativas), pois é fluxo de exceção fora da venda.
-- No `ExecTransacLoop` (linha 334): remover o `AbortPinpad()` também, pelo mesmo motivo — a chamada seguinte de `PW_iConfirmation` já libera o pinpad. Manter o retorno `approved`.
-- Ampliar `PAYGO_REMOVE_CARD_TIMEOUT_MS` default de 30 s para 60 s para reduzir a incidência do caminho de timeout na remoção do cartão (mantém override por env var).
+---
 
-### 2. `PinpadLoop` (linha 1513)
+## 3. Devoluções ao desligar — bloqueio + desconto automático
 
-- Manter o `AbortPinpad()` **apenas** quando o loop principal (não-venda) estoura o deadline geral — cenário de exceção real. Não altera fluxo de venda porque, com a mudança acima, o SALE não cai nesse ramo.
+Quando o colaborador é desligado (`status = terminated`):
+- Sistema calcula automaticamente as **peças em aberto** (entregues com "devolução esperada" e ainda não devolvidas).
+- Aparece um card vermelho **"Uniformes pendentes"** no perfil do colaborador e no painel de uniformes.
+- Na tela de **rescisão / TRCT**:
+  - **Bloqueia a geração** enquanto houver peça pendente sem resolução.
+  - O gestor tem 3 opções por peça: **Devolveu** (entra no estoque de usados) / **Não devolveu — descontar** (custo unitário vai para o TRCT como desconto automático) / **Não devolveu — perdoar** (exige justificativa por escrito).
+- Só depois de todas as peças resolvidas o TRCT é liberado.
 
-### 3. Comentário/documentação inline
+---
 
-- Adicionar comentário no topo do `HandleData` explicando: "PW_iPPAbort não é etapa do fluxo operacional de venda. Só é chamado como exceção (cancelamento do operador ou timeout global fora de SALE). A liberação do pinpad após autorização acontece via PW_iConfirmation."
+## 4. Painel "Uniformes a devolver"
 
-## Fora de escopo
+Nova aba no módulo de uniformes:
+- Lista todos os desligados com peças ainda em aberto.
+- Filtro por loja de origem (para o gestor de cada loja cobrar).
+- Mostra dias desde o desligamento, valor total pendente e botão de ação rápida (registrar devolução ou descontar).
+- Serve de pressão visual para os gestores não deixarem peças "jogadas na loja".
 
-- `PW_iPPAbort` continua disponível para o cancelamento manual pelo operador via `/tef/cancelar` (rota já existente) — é o "aborto excepcional" previsto na documentação.
-- Fluxo administrativo (ADMIN) e limpeza de pendência não são alterados.
-- Nenhum arquivo do frontend precisa mudar; o contrato do agente (endpoints, eventos SSE, JSON de retorno) permanece idêntico.
-- Sem bump de versão do agente ainda — faço junto no próximo release quando você confirmar que o log ficou limpo.
+---
 
-## Verificação
+## Detalhes técnicos
 
-1. Rodar uma venda aprovada com confirmação automática e conferir no `comms_*.log` que a sequência final é apenas `PW_iExecTransac … <0>` → `PW_iGetResult(...)` → `PW_iConfirmation(...) <0>`, sem `PW_iPPAbort()` no meio.
-2. Rodar uma venda com confirmação manual e confirmar o mesmo padrão (sem `PW_iPPAbort` antes do `PW_iConfirmation` manual).
-3. Rodar o teste de "queda de energia" (checkbox) e garantir que a pendência continua sendo detectada corretamente na próxima venda.
+**Banco de dados** (`uniform_stock`, `uniform_stock_movements`, `uniform_return_items`, `uniform_delivery_items`):
+- Adicionar coluna `condition text` (`'nova' | 'usada'`) em `uniform_stock` e `uniform_stock_movements`, com a chave única passando a incluir a condição.
+- `uniform_delivery_items` já tem `expected_return` e `returned_quantity` — vamos aproveitar; acrescentar `condition_at_delivery` (peça saiu nova ou usada).
+- `uniform_return_items` já tem `condition` e `back_to_stock`; ajustar trigger para que, quando `back_to_stock = true`, a peça entre no estoque como `usada` (independente da condição de saída).
+- Migração de dados: consolidar todo o estoque atual das lojas em um único registro de "Sede" marcado como `nova`.
+- View `uniform_pending_returns` retornando, por colaborador desligado, as peças em aberto com custo unitário.
+- Função `has_pending_uniforms(_employee_id)` usada pelo bloqueio de rescisão.
+
+**Frontend**:
+- `UniformDeliveriesPanel.tsx`: refatorar o dialog de nova entrega para lista de peças editável, com toggle nova/usada por linha.
+- `UniformStockPanel.tsx`: passar a mostrar coluna única "Sede" com sub-colunas Novas/Usadas.
+- `UniformKitsPanel.tsx`: manter, com aviso "usado apenas como sugestão de entrega".
+- Novo `UniformPendingReturnsPanel.tsx` como aba do módulo.
+- Integração no fluxo de rescisão (`src/pages/Rescisoes.tsx` ou equivalente) para bloqueio + desconto automático via `rescissionCalc`.
+- Card de alerta no perfil do colaborador quando `has_pending_uniforms = true`.
+
+**Fora de escopo** (posso propor depois se você quiser):
+- Impressão de recibo de devolução assinado.
+- App do colaborador confirmando recebimento das peças.
