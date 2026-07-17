@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, Plus, Trash2, Pencil, Save } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { UNIFORM_CATEGORIES, SIZE_TYPES, type UniformItem } from "@/lib/uniforms";
@@ -29,11 +29,16 @@ const empty = {
 };
 
 export function UniformItemsPanel({ items, onChanged }: Props) {
+  const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [form, setForm] = useState<any>(empty);
   const [saving, setSaving] = useState(false);
 
-  const formRef = useRef<HTMLDivElement | null>(null);
+  const openNew = () => {
+    setEditing(null);
+    setForm(empty);
+    setOpen(true);
+  };
 
   const startEdit = (it: UniformItem) => {
     setEditing(it.id);
@@ -47,10 +52,8 @@ export function UniformItemsPanel({ items, onChanged }: Props) {
       replacement_months: String(it.replacement_months),
       is_active: it.is_active,
     });
-    setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    setOpen(true);
   };
-
-  const reset = () => { setEditing(null); setForm(empty); };
 
   const save = async () => {
     if (!form.name.trim()) { toast({ title: "Informe o nome", variant: "destructive" }); return; }
@@ -71,7 +74,9 @@ export function UniformItemsPanel({ items, onChanged }: Props) {
     setSaving(false);
     if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
     toast({ title: editing ? "Item atualizado" : "Item criado" });
-    reset();
+    setOpen(false);
+    setEditing(null);
+    setForm(empty);
     onChanged();
   };
 
@@ -85,63 +90,14 @@ export function UniformItemsPanel({ items, onChanged }: Props) {
 
   return (
     <div className="space-y-4">
-      <Card ref={formRef}>
-        <CardHeader>
-          <CardTitle className="text-base">{editing ? "Editar item" : "Novo item de uniforme"}</CardTitle>
-          <CardDescription>Cadastro do catálogo de uniformes (camisa, calça, sapato, EPI…)</CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="space-y-2 md:col-span-2">
-            <Label>Item*</Label>
-            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          </div>
-          <div className="space-y-2">
-            <Label>Categoria</Label>
-            <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {UNIFORM_CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Tipo de tamanho</Label>
-            <Select value={form.size_type} onValueChange={(v) => setForm({ ...form, size_type: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {SIZE_TYPES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Valor unitário (R$)</Label>
-            <Input type="number" step="0.01" value={form.unit_cost} onChange={(e) => setForm({ ...form, unit_cost: e.target.value })} />
-          </div>
-          <div className="space-y-2">
-            <Label>Troca a cada (meses)</Label>
-            <Input type="number" value={form.replacement_months} onChange={(e) => setForm({ ...form, replacement_months: e.target.value })} />
-          </div>
-          <div className="space-y-2 md:col-span-3">
-            <Label>Descrição</Label>
-            <Textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-          </div>
-          <div className="flex items-center gap-2">
-            <Switch checked={form.is_durable} onCheckedChange={(v) => setForm({ ...form, is_durable: v })} />
-            <Label>Durável (deve ser devolvido no desligamento)</Label>
-          </div>
-          <div className="flex items-center gap-2">
-            <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
-            <Label>Ativo</Label>
-          </div>
-          <div className="flex flex-col-reverse sm:flex-row sm:items-end sm:justify-end gap-2 md:col-span-3">
-            {editing && <Button variant="outline" onClick={reset} className="w-full sm:w-auto">Cancelar</Button>}
-            <Button onClick={save} disabled={saving} className="w-full sm:w-auto gap-2">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {editing ? "Salvar alterações" : "Adicionar item"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-sm text-muted-foreground">
+          {items.length} {items.length === 1 ? "item cadastrado" : "itens cadastrados"}
+        </div>
+        <Button onClick={openNew} className="gap-2">
+          <Plus className="h-4 w-4" /> Novo item
+        </Button>
+      </div>
 
       <div className="space-y-2">
         {items.length === 0 ? (
@@ -167,6 +123,66 @@ export function UniformItemsPanel({ items, onChanged }: Props) {
           </div>
         ))}
       </div>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editing ? "Editar item" : "Novo item de uniforme"}</DialogTitle>
+            <DialogDescription>Cadastro do catálogo de uniformes (camisa, calça, sapato, EPI…)</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="space-y-2 md:col-span-2">
+              <Label>Item*</Label>
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Categoria</Label>
+              <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {UNIFORM_CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo de tamanho</Label>
+              <Select value={form.size_type} onValueChange={(v) => setForm({ ...form, size_type: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {SIZE_TYPES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Valor unitário (R$)</Label>
+              <Input type="number" step="0.01" value={form.unit_cost} onChange={(e) => setForm({ ...form, unit_cost: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Troca a cada (meses)</Label>
+              <Input type="number" value={form.replacement_months} onChange={(e) => setForm({ ...form, replacement_months: e.target.value })} />
+            </div>
+            <div className="space-y-2 md:col-span-3">
+              <Label>Descrição</Label>
+              <Textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={form.is_durable} onCheckedChange={(v) => setForm({ ...form, is_durable: v })} />
+              <Label>Durável (devolver ao desligar)</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
+              <Label>Ativo</Label>
+            </div>
+          </div>
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setOpen(false)} className="w-full sm:w-auto">Cancelar</Button>
+            <Button onClick={save} disabled={saving} className="w-full sm:w-auto gap-2">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {editing ? "Salvar alterações" : "Adicionar item"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
