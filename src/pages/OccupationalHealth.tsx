@@ -101,7 +101,7 @@ export default function OccupationalHealth() {
           )}
           {canClima && (
             <TabsContent value="clima" className="mt-4">
-              <Climate />
+              <Climate embedded />
             </TabsContent>
           )}
         </Tabs>
