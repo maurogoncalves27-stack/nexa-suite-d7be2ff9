@@ -1065,6 +1065,40 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
             if (e.id && e.ts) tsById.set(e.id, e.ts);
           }
           flat = mergeFlatMessages(existingMessages, flattenUIMessages(finalMessages, now, tsById));
+          // Hard-guard: substitui qualquer mensagem da Giana que tenha vazado preço.
+          flat = flat.map((m) =>
+            isAssistantMessage(m) && containsPrice(m.content)
+              ? { ...m, content: PRICE_REPLACEMENT }
+              : m
+          );
+          await supabase.from("chat_conversations").upsert(
+            {
+              session_id: sessionId,
+              messages: flat as unknown as never,
+              message_count: flat.length,
+              last_message_at: now,
+              updated_at: now,
+              client_meta: mergeClientMeta((existing as { client_meta?: unknown } | null)?.client_meta, null, flat) as unknown as never,
+            },
+            { onConflict: "session_id" },
+          );
+        } catch (e) {
+          console.error("[parme-chat] onFinish conversa upsert err:", e);
+        }
+        // 2) Ticket é independente: falhas aqui NÃO afetam a conversa.
+        try {
+          if (flat.length) await ensureComplaintTicket(sb(), flat, sessionId);
+        } catch (e) {
+          console.error("[parme-chat] onFinish ticket err:", e);
+        }
+      },
+    });
+    const guardedBody = response.body ? wrapSseWithPriceGuard(response.body) : null;
+    const finalResponse = guardedBody
+      ? new Response(guardedBody, { status: response.status, headers: response.headers })
+      : response;
+    for (const [key, value] of Object.entries(corsHeaders)) finalResponse.headers.set(key, value);
+    return finalResponse;
           await supabase.from("chat_conversations").upsert(
             {
               session_id: sessionId,
