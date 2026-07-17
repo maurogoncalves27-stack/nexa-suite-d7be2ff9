@@ -133,6 +133,11 @@ export default function SstDocumentsPanel() {
   };
 
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const handler = () => load();
+    window.addEventListener("sst-docs-changed", handler);
+    return () => window.removeEventListener("sst-docs-changed", handler);
+  }, []);
 
   // Auto-preencher validade quando muda tipo/emissão
   useEffect(() => {
