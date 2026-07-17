@@ -49,30 +49,27 @@ export default function Uniforms() {
             <Shirt className="h-6 w-6 md:h-7 md:w-7 text-primary" />
             Controle de Uniformes
           </h1>
-          <p className="text-muted-foreground">Catálogo, kits por cargo, estoque e entregas</p>
+          <p className="text-muted-foreground">Itens e estoque, kits por cargo e entregas</p>
         </div>
       </div>
 
       <Tabs defaultValue="dashboard" className="space-y-4">
         <TabsList className="w-full h-auto flex-wrap justify-start gap-1 sm:w-auto sm:inline-flex sm:flex-nowrap">
           <TabsTrigger value="dashboard" className="flex-1 sm:flex-none text-xs sm:text-sm min-w-[5rem]">Dashboard</TabsTrigger>
-          <TabsTrigger value="catalog" className="flex-1 sm:flex-none text-xs sm:text-sm min-w-[5rem]">Catálogo</TabsTrigger>
+          <TabsTrigger value="stock" className="flex-1 sm:flex-none text-xs sm:text-sm min-w-[5rem]">Itens e estoque</TabsTrigger>
           <TabsTrigger value="kits" className="flex-1 sm:flex-none text-xs sm:text-sm min-w-[5rem]">Kits</TabsTrigger>
-          <TabsTrigger value="stock" className="flex-1 sm:flex-none text-xs sm:text-sm min-w-[5rem]">Estoque</TabsTrigger>
           <TabsTrigger value="deliveries" className="flex-1 sm:flex-none text-xs sm:text-sm min-w-[5rem]">Entregas</TabsTrigger>
           <TabsTrigger value="pending" className="flex-1 sm:flex-none text-xs sm:text-sm min-w-[5rem]">Pendências</TabsTrigger>
         </TabsList>
         <TabsContent value="dashboard">
           <UniformDashboardPanel items={items} stores={stores} />
         </TabsContent>
-        <TabsContent value="catalog">
+        <TabsContent value="stock" className="space-y-6">
           <UniformItemsPanel items={items} onChanged={loadItems} />
+          <UniformStockPanel items={items} stores={stores} />
         </TabsContent>
         <TabsContent value="kits">
           <UniformKitsPanel items={items} />
-        </TabsContent>
-        <TabsContent value="stock">
-          <UniformStockPanel items={items} stores={stores} />
         </TabsContent>
         <TabsContent value="deliveries">
           <UniformDeliveriesPanel items={items} stores={stores} employees={employees} />
