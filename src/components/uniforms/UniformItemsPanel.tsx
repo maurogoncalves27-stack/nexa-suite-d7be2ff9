@@ -33,6 +33,8 @@ export function UniformItemsPanel({ items, onChanged }: Props) {
   const [form, setForm] = useState<any>(empty);
   const [saving, setSaving] = useState(false);
 
+  const formRef = useRef<HTMLDivElement | null>(null);
+
   const startEdit = (it: UniformItem) => {
     setEditing(it.id);
     setForm({
@@ -45,6 +47,7 @@ export function UniformItemsPanel({ items, onChanged }: Props) {
       replacement_months: String(it.replacement_months),
       is_active: it.is_active,
     });
+    setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
 
   const reset = () => { setEditing(null); setForm(empty); };
