@@ -81,19 +81,52 @@ export default function Nr1CompliancePanel({ onNavigate }: { onNavigate: (tab: s
             <div className="flex justify-between"><span className="text-muted-foreground">eNPS</span>
               <strong>{m.climateENps != null ? m.climateENps : "—"}</strong>
             </div>
-            <div className="flex justify-between items-center"><span className="text-muted-foreground">Humor médio (30d)</span>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Humor médio (30d)</span>
               <span className="flex items-center gap-1">
-                <strong>{m.moodAvg30d != null ? m.moodAvg30d.toFixed(2) : "—"}</strong>
-                {m.moodTrend != null && (m.moodTrend >= 0
-                  ? <TrendingUp className="h-3 w-3 text-success" />
-                  : <TrendingDown className="h-3 w-3 text-destructive" />)}
+                {m.moodHiddenByPrivacy ? (
+                  <span className="text-xs text-muted-foreground italic">oculto (N&lt;5, LGPD)</span>
+                ) : (
+                  <>
+                    <strong>{m.moodAvg30d != null ? m.moodAvg30d.toFixed(2) : "—"}</strong>
+                    {m.moodTrend != null && (m.moodTrend >= 0
+                      ? <TrendingUp className="h-3 w-3 text-success" />
+                      : <TrendingDown className="h-3 w-3 text-destructive" />)}
+                  </>
+                )}
               </span>
+            </div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Respondentes (30d)</span>
+              <strong>{m.moodRespondents30d}</strong>
             </div>
             <div className="flex justify-between"><span className="text-muted-foreground">Alertas saúde mental abertos</span>
               <strong className={m.mentalAlertsOpen > 0 ? "text-warning" : ""}>{m.mentalAlertsOpen}</strong>
             </div>
             <div className="flex justify-between"><span className="text-muted-foreground">Resolvidos nos últimos 30d</span>
               <strong>{m.mentalAlertsResolved30d}</strong>
+            </div>
+            <div className="pt-2 border-t space-y-1">
+              <div className="flex justify-between text-xs"><span className="text-muted-foreground">Riscos psicossociais abertos (PGR)</span>
+                <strong className={m.psychoRisksHigh > 0 ? "text-destructive" : ""}>{m.psychoRisksOpen}</strong>
+              </div>
+              {m.psychoRisksHigh > 0 && (
+                <div className="flex justify-between text-xs"><span className="text-muted-foreground">Alta severidade</span>
+                  <strong className="text-destructive">{m.psychoRisksHigh}</strong>
+                </div>
+              )}
+              {m.psychoRisksOverdue > 0 && (
+                <div className="flex justify-between text-xs"><span className="text-muted-foreground">Fora do prazo</span>
+                  <strong className="text-destructive">{m.psychoRisksOverdue}</strong>
+                </div>
+              )}
+              <div className="flex justify-between text-xs"><span className="text-muted-foreground">Afastamentos CID F (12m)</span>
+                <strong className={m.cidfCount12m > 0 ? "text-warning" : ""}>{m.cidfCount12m} · {m.cidfDays12m}d</strong>
+              </div>
+              {m.cidfEmployees90d >= 3 && (
+                <div className="flex items-center gap-1 text-xs text-destructive pt-1">
+                  <AlertTriangle className="h-3 w-3" /> {m.cidfEmployees90d} colaboradores com CID F em 90 dias — cluster detectado
+                </div>
+              )}
             </div>
             {Object.keys(m.climateAvgByDimension).length > 0 && (
               <div className="pt-2 border-t">
