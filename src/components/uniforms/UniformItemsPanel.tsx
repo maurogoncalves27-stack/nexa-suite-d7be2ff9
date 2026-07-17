@@ -224,6 +224,18 @@ export function UniformItemsPanel({ items, onChanged }: Props) {
                 </SelectContent>
               </Select>
             </div>
+            {form.size_type !== "unico" && (
+              <div className="space-y-2 md:col-span-3">
+                <Label className="text-xs text-muted-foreground">
+                  Tamanhos que ficarão disponíveis (escolhidos na entrega/estoque)
+                </Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {sizesFor(form.size_type).map((s) => (
+                    <Badge key={s} variant="outline" className="font-mono">{s}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Valor unitário (R$)</Label>
               <Input type="number" step="0.01" value={form.unit_cost} onChange={(e) => setForm({ ...form, unit_cost: e.target.value })} />
