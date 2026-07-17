@@ -8,12 +8,12 @@ export const UNIFORM_CATEGORIES = [
 
 export const SIZE_TYPES = [
   { value: "letra", label: "Letra (PP a EG)" },
-  { value: "numero", label: "Numérico (33-46)" },
+  { value: "numero", label: "Numérico (33-48)" },
   { value: "unico", label: "Tamanho único" },
 ];
 
 export const LETTER_SIZES = ["PP", "P", "M", "G", "GG", "EG"];
-export const NUMERIC_SIZES = Array.from({ length: 14 }, (_, i) => String(33 + i));
+export const NUMERIC_SIZES = Array.from({ length: 16 }, (_, i) => String(33 + i));
 export const UNIQUE_SIZES = ["ÚNICO"];
 
 export const sizesFor = (sizeType: string) =>
