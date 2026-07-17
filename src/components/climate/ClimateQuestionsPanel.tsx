@@ -88,61 +88,84 @@ export default function ClimateQuestionsPanel({ onChanged }: { onChanged: () => 
         <Button onClick={add} className="sm:col-span-2 lg:col-span-4 w-full"><Plus className="h-4 w-4 mr-1" /> Adicionar</Button>
       </div>
 
-      {/* Mobile: cards */}
-      <div className="md:hidden space-y-2">
-        {list.map((q) => (
-          <div key={q.id} className="rounded-lg border bg-card p-3 space-y-2">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="text-xs text-muted-foreground">{q.dimension} · {TYPES.find((t) => t.value === q.question_type)?.label}</div>
-                <div className="font-medium text-sm">{q.text}</div>
-              </div>
-              <Button size="icon" variant="ghost" onClick={() => remove(q.id)} className="shrink-0">
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-            </div>
-            <div className="flex items-center justify-between gap-2 pt-1 border-t">
-              <span className="text-xs text-muted-foreground">Ativa</span>
-              <Switch checked={q.is_active} onCheckedChange={(v) => toggleActive(q.id, v)} />
-            </div>
-          </div>
-        ))}
-        {list.length === 0 && (
-          <div className="text-center text-muted-foreground py-8 text-sm">Nenhuma pergunta.</div>
-        )}
-      </div>
+      <Accordion type="multiple" defaultValue={DIMENSIONS} className="space-y-2">
+        {DIMENSIONS.map((dim) => {
+          const items = list.filter((q) => q.dimension === dim);
+          const activeCount = items.filter((q) => q.is_active).length;
+          return (
+            <AccordionItem key={dim} value={dim} className="border rounded-lg bg-card px-3">
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex items-center gap-2 flex-1">
+                  <span className="font-semibold">{dim}</span>
+                  <Badge variant="secondary" className="ml-auto mr-2">
+                    {activeCount}/{items.length}
+                  </Badge>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                {items.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-4 text-sm">
+                    Nenhuma pergunta nesta dimensão.
+                  </div>
+                ) : (
+                  <>
+                    {/* Mobile: cards */}
+                    <div className="md:hidden space-y-2">
+                      {items.map((q) => (
+                        <div key={q.id} className="rounded-lg border bg-background p-3 space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs text-muted-foreground">{TYPES.find((t) => t.value === q.question_type)?.label}</div>
+                              <div className="font-medium text-sm">{q.text}</div>
+                            </div>
+                            <Button size="icon" variant="ghost" onClick={() => remove(q.id)} className="shrink-0">
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                          <div className="flex items-center justify-between gap-2 pt-1 border-t">
+                            <span className="text-xs text-muted-foreground">Ativa</span>
+                            <Switch checked={q.is_active} onCheckedChange={(v) => toggleActive(q.id, v)} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
 
-      {/* Desktop: table */}
-      <div className="hidden md:block">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-32">Dimensão</TableHead>
-              <TableHead>Pergunta</TableHead>
-              <TableHead className="w-32">Tipo</TableHead>
-              <TableHead className="w-24">Ativa</TableHead>
-              <TableHead className="w-20 text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {list.map((q) => (
-              <TableRow key={q.id}>
-                <TableCell>{q.dimension}</TableCell>
-                <TableCell className="font-medium">{q.text}</TableCell>
-                <TableCell className="text-xs text-muted-foreground">{TYPES.find((t) => t.value === q.question_type)?.label}</TableCell>
-                <TableCell>
-                  <Switch checked={q.is_active} onCheckedChange={(v) => toggleActive(q.id, v)} />
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button size="icon" variant="ghost" onClick={() => remove(q.id)}>
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+                    {/* Desktop: table */}
+                    <div className="hidden md:block">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Pergunta</TableHead>
+                            <TableHead className="w-32">Tipo</TableHead>
+                            <TableHead className="w-24">Ativa</TableHead>
+                            <TableHead className="w-20 text-right">Ações</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {items.map((q) => (
+                            <TableRow key={q.id}>
+                              <TableCell className="font-medium">{q.text}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground">{TYPES.find((t) => t.value === q.question_type)?.label}</TableCell>
+                              <TableCell>
+                                <Switch checked={q.is_active} onCheckedChange={(v) => toggleActive(q.id, v)} />
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button size="icon" variant="ghost" onClick={() => remove(q.id)}>
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
+      </Accordion>
     </div>
   );
 }
