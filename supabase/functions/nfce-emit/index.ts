@@ -150,13 +150,18 @@ Deno.serve(async (req) => {
     });
 
     // 6. Payload NFC-e
+    // Ajuste SINIEF nº 9/26 (vigência 03/08/2026): operações NÃO PRESENCIAIS
+    // — delivery E takeout (retirada) — exigem identificação do destinatário
+    // e endereço na NFC-e modelo 65.
     const isDelivery = order.order_type === "delivery";
+    const isTakeout = order.order_type === "takeout";
+    const isNonPresencial = isDelivery || isTakeout;
     const customerDoc = order.customer_document ? onlyDigits(order.customer_document) : "";
     const hasCustomerId = customerDoc.length === 11 || customerDoc.length === 14;
 
-    // SEFAZ exige identificação do destinatário em entrega a domicílio (presença=4).
+    // SEFAZ exige identificação do destinatário em operação não presencial (presença=4).
     // Sem CPF/CNPJ do cliente, cai pra presencial (1) pra não ser rejeitada.
-    const presenca = isDelivery && hasCustomerId ? 4 : 1;
+    const presenca = isNonPresencial && hasCustomerId ? 4 : 1;
 
     const payload: any = {
       natureza_operacao: "Venda ao consumidor",
