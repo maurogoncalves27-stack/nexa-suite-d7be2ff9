@@ -13336,6 +13336,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          mood_optout_until: string | null
           store_id: string | null
           updated_at: string
           user_id: string
@@ -13346,6 +13347,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          mood_optout_until?: string | null
           store_id?: string | null
           updated_at?: string
           user_id: string
@@ -13356,6 +13358,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          mood_optout_until?: string | null
           store_id?: string | null
           updated_at?: string
           user_id?: string
@@ -13363,6 +13366,92 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "profiles_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      psychosocial_risks: {
+        Row: {
+          action_plan: string | null
+          auto_generated: boolean
+          category: string
+          created_at: string
+          created_by: string | null
+          deadline: string | null
+          description: string
+          id: string
+          next_review_at: string | null
+          probability: string
+          responsible_employee_id: string | null
+          severity: string
+          source: string
+          status: string
+          store_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          action_plan?: string | null
+          auto_generated?: boolean
+          category: string
+          created_at?: string
+          created_by?: string | null
+          deadline?: string | null
+          description: string
+          id?: string
+          next_review_at?: string | null
+          probability?: string
+          responsible_employee_id?: string | null
+          severity?: string
+          source?: string
+          status?: string
+          store_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          action_plan?: string | null
+          auto_generated?: boolean
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          deadline?: string | null
+          description?: string
+          id?: string
+          next_review_at?: string | null
+          probability?: string
+          responsible_employee_id?: string | null
+          severity?: string
+          source?: string
+          status?: string
+          store_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "psychosocial_risks_responsible_employee_id_fkey"
+            columns: ["responsible_employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "psychosocial_risks_responsible_employee_id_fkey"
+            columns: ["responsible_employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "psychosocial_risks_responsible_employee_id_fkey"
+            columns: ["responsible_employee_id"]
+            isOneToOne: false
+            referencedRelation: "uniform_pending_returns"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "psychosocial_risks_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
