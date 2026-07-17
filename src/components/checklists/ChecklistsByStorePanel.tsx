@@ -19,7 +19,7 @@ interface SubmissionRow {
   id: string;
   template_id: string;
   user_id: string;
-  checklist_answers: { checked: boolean }[];
+  checklist_answers: { checked: boolean; observation: string | null }[];
 }
 interface EmployeeRow {
   user_id: string | null;
@@ -60,7 +60,7 @@ export default function ChecklistsByStorePanel() {
             .eq("is_active", true),
           supabase
             .from("checklist_submissions")
-            .select("id, template_id, user_id, checklist_answers(checked)")
+            .select("id, template_id, user_id, checklist_answers(checked, observation)")
             .eq("shift_date", today),
           supabase
             .from("employees")
@@ -132,7 +132,11 @@ export default function ChecklistsByStorePanel() {
       const sentPct = expectedSubs > 0 ? Math.round((storeSubs.length / expectedSubs) * 100) : 0;
 
       const checkedItems = storeSubs.reduce(
-        (sum, s) => sum + s.checklist_answers.filter((a) => a.checked).length,
+        (sum, s) =>
+          sum +
+          s.checklist_answers.filter(
+            (a) => a.checked || (a.observation && a.observation.trim().length > 0),
+          ).length,
         0,
       );
       const conformityPct =

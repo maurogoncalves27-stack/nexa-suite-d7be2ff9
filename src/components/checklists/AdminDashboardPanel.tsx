@@ -37,6 +37,11 @@ interface Submission {
 }
 interface UserInGroup { user_id: string; full_name: string }
 
+// Um item é considerado completo quando marcado OU quando o colaborador
+// preencheu uma observação justificando o não preenchimento.
+const isAnswerComplete = (a: { checked: boolean; observation: string | null }) =>
+  a.checked || (!!a.observation && a.observation.trim().length > 0);
+
 export default function AdminDashboardPanel() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [templates, setTemplates] = useState<TemplateWithGroups[]>([]);
@@ -152,7 +157,7 @@ export default function AdminDashboardPanel() {
         }
       }
       const incomplete = groupSubs.filter(
-        (s) => s.checklist_answers.length > 0 && !s.checklist_answers.every((a) => a.checked),
+        (s) => s.checklist_answers.length > 0 && !s.checklist_answers.every(isAnswerComplete),
       );
       const completionRate = expected > 0 ? Math.round((groupSubs.length / expected) * 100) : 0;
       return {
@@ -172,7 +177,7 @@ export default function AdminDashboardPanel() {
     return sum + items;
   }, 0);
   const checkedItems = submissions.reduce(
-    (sum, s) => sum + s.checklist_answers.filter((a) => a.checked).length, 0,
+    (sum, s) => sum + s.checklist_answers.filter(isAnswerComplete).length, 0,
   );
   const conformity = totalExpectedItems > 0 ? Math.round((checkedItems / totalExpectedItems) * 100) : 0;
   const totalExpiredMissing = groupStats.reduce((s, g) => s + g.expiredMissing.length, 0);
@@ -350,10 +355,10 @@ export default function AdminDashboardPanel() {
                 <CardContent className="pt-0">
                   <div className="space-y-2">
                     {gs.incomplete.map((sub) => {
-                      const checked = sub.checklist_answers.filter((a) => a.checked).length;
+                      const checked = sub.checklist_answers.filter(isAnswerComplete).length;
                       const total = sub.checklist_answers.length;
                       const uncheckedPriority = sub.checklist_answers.filter(
-                        (a) => !a.checked && a.checklist_items?.is_priority,
+                        (a) => !isAnswerComplete(a) && a.checklist_items?.is_priority,
                       );
                       return (
                         <div key={sub.id}
@@ -378,7 +383,7 @@ export default function AdminDashboardPanel() {
                           </div>
                           {expandedId === sub.id && (
                             <div className="mt-3 space-y-1">
-                              {sub.checklist_answers.filter((a) => !a.checked).map((a, i) => (
+                              {sub.checklist_answers.filter((a) => !isAnswerComplete(a)).map((a, i) => (
                                 <div key={i} className={`text-sm flex items-center gap-2 ${
                                   a.checklist_items?.is_priority ? "text-destructive font-semibold" : "text-muted-foreground"
                                 }`}>
@@ -423,11 +428,11 @@ export default function AdminDashboardPanel() {
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge className={
-                          sub.checklist_answers.every((a) => a.checked)
+                          sub.checklist_answers.every(isAnswerComplete)
                             ? "bg-success text-success-foreground"
                             : "bg-warning text-warning-foreground"
                         }>
-                          {sub.checklist_answers.filter((a) => a.checked).length}/{sub.checklist_answers.length}
+                          {sub.checklist_answers.filter(isAnswerComplete).length}/{sub.checklist_answers.length}
                         </Badge>
                         {expandedId === sub.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </div>
@@ -435,14 +440,16 @@ export default function AdminDashboardPanel() {
                   </CardHeader>
                   {expandedId === sub.id && (
                     <CardContent className="pt-0 space-y-2">
-                      {sub.checklist_answers.map((ans, i) => (
+                      {sub.checklist_answers.map((ans, i) => {
+                        const complete = isAnswerComplete(ans);
+                        return (
                         <div key={i} className="flex items-start gap-2 text-sm">
-                          <span className={ans.checked ? "text-success" : "text-destructive"}>
-                            {ans.checked ? "✓" : "✗"}
+                          <span className={complete ? "text-success" : "text-destructive"}>
+                            {complete ? "✓" : "✗"}
                           </span>
                           <div>
                             <span className={`font-medium ${
-                              ans.checklist_items?.is_priority && !ans.checked ? "text-destructive" : ""
+                              ans.checklist_items?.is_priority && !complete ? "text-destructive" : ""
                             }`}>
                               {ans.checklist_items?.label}
                             </span>
@@ -451,7 +458,8 @@ export default function AdminDashboardPanel() {
                             )}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                       {sub.notes && (
                         <div className="mt-3 p-3 rounded-lg bg-muted text-sm">
                           <strong>Observações:</strong> {sub.notes}
