@@ -28,7 +28,7 @@ export const MOVEMENT_TYPES = [
 ];
 
 export const DELIVERY_TYPES = [
-  { value: "inicial", label: "Kit inicial" },
+  { value: "inicial", label: "Entrega inicial" },
   { value: "troca", label: "Troca periódica" },
   { value: "reposicao", label: "Reposição" },
   { value: "avaria", label: "Reposição por avaria" },
