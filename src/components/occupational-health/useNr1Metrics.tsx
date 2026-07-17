@@ -75,7 +75,7 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     sst,
     psychoRisks,
   ] = await Promise.all([
-    supabase.from("employees").select("id", { count: "exact", head: true }).eq("status", "active").not("contract_type", "eq", "Estágio"),
+    supabase.from("employees").select("id", { count: "exact" }).eq("status", "active").not("contract_type", "eq", "Estágio"),
     supabase.from("climate_surveys").select("id, name, end_date, start_date").order("end_date", { ascending: false }).limit(1),
     supabase.from("mood_checkins").select("mood_score").gte("created_at", d30ago).eq("skipped", false),
     supabase.from("mood_checkins").select("mood_score").gte("created_at", d60ago).lt("created_at", d30ago).eq("skipped", false),
