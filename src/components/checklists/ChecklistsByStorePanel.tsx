@@ -132,7 +132,11 @@ export default function ChecklistsByStorePanel() {
       const sentPct = expectedSubs > 0 ? Math.round((storeSubs.length / expectedSubs) * 100) : 0;
 
       const checkedItems = storeSubs.reduce(
-        (sum, s) => sum + s.checklist_answers.filter((a) => a.checked).length,
+        (sum, s) =>
+          sum +
+          s.checklist_answers.filter(
+            (a) => a.checked || (a.observation && a.observation.trim().length > 0),
+          ).length,
         0,
       );
       const conformityPct =
