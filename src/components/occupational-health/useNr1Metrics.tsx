@@ -169,8 +169,8 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
   pcmsoExpired += empWithoutAso;
 
   // Atestados
-  const rows3m = (certs3m.data ?? []) as { days_off: number | null; cid_code: string | null }[];
-  const rows12m = (certs12m.data ?? []) as { days_off: number | null; cid_code: string | null }[];
+  const rows3m = (certs3m.data ?? []) as any[];
+  const rows12m = (certs12m.data ?? []) as any[];
   const absenteeismDays3m = rows3m.reduce((s, r) => s + Number(r.days_off ?? 0), 0);
   const absenteeismDays12m = rows12m.reduce((s, r) => s + Number(r.days_off ?? 0), 0);
   const workingDays3m = activeEmployees * 90;
