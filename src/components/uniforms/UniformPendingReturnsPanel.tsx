@@ -73,8 +73,9 @@ export function UniformPendingReturnsPanel() {
       // 1) cria uma "devolução"
       const { data: ret, error: rErr } = await supabase.from("uniform_returns").insert({
         employee_id: employeeId,
+        store_id: row.store_id,
         returned_on: new Date().toISOString().slice(0, 10),
-        reason: action === "returned" ? "desligamento" : action === "charge" ? "avaria" : "desligamento",
+        return_reason: action === "returned" ? "desligamento" : action === "charge" ? "avaria" : "desligamento",
         notes: action === "charge" ? "Peça não devolvida — descontada em folha" : action === "forgive" ? "Perdoada pelo gestor" : "Devolvida em bom estado",
         created_by: user?.id,
       } as any).select().single();
