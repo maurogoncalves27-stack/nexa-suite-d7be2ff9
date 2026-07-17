@@ -75,7 +75,7 @@ export default function Climate({ embedded = false }: { embedded?: boolean } = {
             Clima Organizacional
           </h1>
           <p className="text-muted-foreground">
-            Pesquisa <strong>semestral</strong>, totalmente anônima, com 4 dimensões: Liderança, Ambiente, Reconhecimento e Orgulho.
+            Pesquisa <strong>trimestral</strong>, totalmente anônima, com 4 dimensões: Liderança, Ambiente, Reconhecimento e Orgulho.
           </p>
         </div>
       )}
