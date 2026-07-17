@@ -130,19 +130,27 @@ export default function Climate({ embedded = false }: { embedded?: boolean } = {
       ) : (
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="w-full h-auto flex-wrap justify-start gap-1 sm:w-auto sm:inline-flex sm:flex-nowrap">
-            <TabsTrigger value="respond" className="flex-1 sm:flex-none text-xs sm:text-sm">Responder</TabsTrigger>
+            {showRespondTab && <TabsTrigger value="respond" className="flex-1 sm:flex-none text-xs sm:text-sm">Responder</TabsTrigger>}
             {canManage && <TabsTrigger value="results" className="flex-1 sm:flex-none text-xs sm:text-sm">Resultados</TabsTrigger>}
+            {canManage && <TabsTrigger value="comparativo" className="flex-1 sm:flex-none text-xs sm:text-sm">Comparativo</TabsTrigger>}
             {canManage && <TabsTrigger value="campaigns" className="flex-1 sm:flex-none text-xs sm:text-sm">Campanhas</TabsTrigger>}
             {canManage && <TabsTrigger value="questions" className="flex-1 sm:flex-none text-xs sm:text-sm">Perguntas</TabsTrigger>}
           </TabsList>
 
-          <TabsContent value="respond" className="mt-4">
-            <ClimateRespond survey={openSurvey} questions={questions} onSubmitted={load} />
-          </TabsContent>
+          {showRespondTab && (
+            <TabsContent value="respond" className="mt-4">
+              <ClimateRespond survey={openSurvey} questions={questions} onSubmitted={load} />
+            </TabsContent>
+          )}
 
           {canManage && (
             <TabsContent value="results" className="mt-4">
               <ClimateResults questions={questions} />
+            </TabsContent>
+          )}
+          {canManage && (
+            <TabsContent value="comparativo" className="mt-4">
+              <ClimateComparativo questions={questions} />
             </TabsContent>
           )}
           {canManage && (
