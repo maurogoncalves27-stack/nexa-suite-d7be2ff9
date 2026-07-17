@@ -194,7 +194,7 @@ Deno.serve(async (req) => {
       else payload.cnpj_destinatario = customerDoc;
       if (order.customer_name) payload.nome_destinatario = order.customer_name;
 
-      if (isDelivery) {
+      if (isNonPresencial) {
         const addr = (order as any).delivery_address ?? {};
         payload.logradouro_destinatario = addr.street ?? addr.logradouro ?? "Rua Teste";
         payload.numero_destinatario = addr.number ?? addr.numero ?? "S/N";
@@ -202,6 +202,7 @@ Deno.serve(async (req) => {
         payload.municipio_destinatario = addr.city ?? addr.municipio ?? (store as any).city ?? "Brasília";
         payload.uf_destinatario = addr.state ?? addr.uf ?? (store as any).state ?? "DF";
         payload.cep_destinatario = onlyDigits(addr.zip_code ?? addr.cep ?? "") || "70000000";
+        if (addr.complement) payload.complemento_destinatario = addr.complement;
       }
     }
 
