@@ -31,7 +31,7 @@ export interface ClimateQuestion {
   is_active: boolean;
 }
 
-export default function Climate() {
+export default function Climate({ embedded = false }: { embedded?: boolean } = {}) {
   const { isAdmin, isManager } = useAuth();
   const canManage = isAdmin || isManager;
   const climateStatus = useClimateStatus();
