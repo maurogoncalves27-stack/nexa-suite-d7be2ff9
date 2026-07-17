@@ -60,6 +60,7 @@ export default function Uniforms() {
           <TabsTrigger value="kits" className="flex-1 sm:flex-none text-xs sm:text-sm min-w-[5rem]">Kits</TabsTrigger>
           <TabsTrigger value="stock" className="flex-1 sm:flex-none text-xs sm:text-sm min-w-[5rem]">Estoque</TabsTrigger>
           <TabsTrigger value="deliveries" className="flex-1 sm:flex-none text-xs sm:text-sm min-w-[5rem]">Entregas</TabsTrigger>
+          <TabsTrigger value="pending" className="flex-1 sm:flex-none text-xs sm:text-sm min-w-[5rem]">Pendências</TabsTrigger>
         </TabsList>
         <TabsContent value="dashboard">
           <UniformDashboardPanel items={items} stores={stores} />
@@ -75,6 +76,9 @@ export default function Uniforms() {
         </TabsContent>
         <TabsContent value="deliveries">
           <UniformDeliveriesPanel items={items} stores={stores} employees={employees} />
+        </TabsContent>
+        <TabsContent value="pending">
+          <UniformPendingReturnsPanel />
         </TabsContent>
       </Tabs>
     </div>
