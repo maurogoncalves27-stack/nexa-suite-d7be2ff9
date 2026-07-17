@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, FileSignature, FileDown, ChevronLeft, ChevronRight, CalendarDays, FileSpreadsheet, Wallet, Calculator } from "lucide-react";
+import { Loader2, FileSignature, FileDown, ChevronLeft, ChevronRight, CalendarDays, FileSpreadsheet, Wallet, Calculator, Shirt } from "lucide-react";
+import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { generateTrctPdf } from "@/lib/trctPdf";
 import { toast } from "@/hooks/use-toast";
@@ -64,6 +65,7 @@ export default function Rescissions() {
   const [emps, setEmps] = useState<Emp[]>([]);
   const [pays, setPays] = useState<Pay[]>([]);
   const [depCount, setDepCount] = useState<Record<string, number>>({});
+  const [pendingUniforms, setPendingUniforms] = useState<Record<string, { count: number; value: number }>>({});
   const [generating, setGenerating] = useState<string | null>(null);
   const [savingReason, setSavingReason] = useState<string | null>(null);
   const [fgtsBalances, setFgtsBalances] = useState<Record<string, string>>({});
@@ -99,13 +101,22 @@ export default function Rescissions() {
 
     if (empList.length > 0) {
       const ids = empList.map((e) => e.id);
-      const { data: deps } = await (supabase as any)
-        .from("employee_dependents")
-        .select("employee_id")
-        .in("employee_id", ids);
+      const [{ data: deps }, { data: pend }] = await Promise.all([
+        (supabase as any).from("employee_dependents").select("employee_id").in("employee_id", ids),
+        (supabase as any).from("uniform_pending_returns").select("employee_id, pending_qty, pending_value").in("employee_id", ids),
+      ]);
       const counts: Record<string, number> = {};
       (deps ?? []).forEach((d: any) => { counts[d.employee_id] = (counts[d.employee_id] || 0) + 1; });
       setDepCount(counts);
+      const pu: Record<string, { count: number; value: number }> = {};
+      (pend ?? []).forEach((p: any) => {
+        pu[p.employee_id] ||= { count: 0, value: 0 };
+        pu[p.employee_id].count += Number(p.pending_qty ?? 0);
+        pu[p.employee_id].value += Number(p.pending_value ?? 0);
+      });
+      setPendingUniforms(pu);
+    } else {
+      setPendingUniforms({});
     }
     setLoading(false);
   };
@@ -176,6 +187,15 @@ export default function Rescissions() {
   };
 
   const handleTrct = async (e: Emp) => {
+    const pu = pendingUniforms[e.id];
+    if (pu && pu.count > 0) {
+      toast({
+        title: "Uniformes pendentes",
+        description: `${e.full_name} tem ${pu.count} peça(s) de uniforme não devolvida(s) (${money(pu.value)}). Resolva em Uniformes › Pendências antes de gerar o TRCT.`,
+        variant: "destructive",
+      });
+      return;
+    }
     setGenerating(e.id);
     try {
       const pay = payByEmp.get(e.id);
@@ -235,6 +255,15 @@ export default function Rescissions() {
   const launchOne = async (row: { emp: Emp; amount: number }) => {
     if (row.amount <= 0) {
       toast({ title: "Sem valor", description: "Cálculo não disponível.", variant: "destructive" });
+      return;
+    }
+    const pu = pendingUniforms[row.emp.id];
+    if (pu && pu.count > 0) {
+      toast({
+        title: "Uniformes pendentes",
+        description: `Resolva ${pu.count} peça(s) em Uniformes › Pendências antes de lançar a rescisão.`,
+        variant: "destructive",
+      });
       return;
     }
     const storeId = row.emp.allocated_store_id || row.emp.store_id;
@@ -340,8 +369,22 @@ export default function Rescissions() {
                   if (!e.hire_date) missing.push("admissão");
                   if (!e.salary) missing.push("salário");
                 }
+                const pu = pendingUniforms[e.id];
                 return (
                   <div key={e.id} className="rounded border p-3 space-y-2 bg-card">
+                    {pu && pu.count > 0 && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Shirt className="h-4 w-4 text-destructive shrink-0" />
+                          <span>
+                            <b>{pu.count}</b> peça(s) de uniforme pendente(s) · {money(pu.value)} — rescisão bloqueada até resolver.
+                          </span>
+                        </div>
+                        <Button asChild size="sm" variant="outline" className="h-7 text-xs">
+                          <Link to="/uniformes">Resolver em Uniformes</Link>
+                        </Button>
+                      </div>
+                    )}
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="font-medium text-sm">{e.full_name ?? "—"}</div>
@@ -473,7 +516,9 @@ export default function Rescissions() {
 
                     <div className="flex flex-wrap gap-2 pt-1">
                       {clt && (
-                        <Button size="sm" variant="outline" onClick={() => handleTrct(e)} disabled={generating === e.id}>
+                        <Button size="sm" variant="outline" onClick={() => handleTrct(e)}
+                          disabled={generating === e.id || !!(pu && pu.count > 0)}
+                          title={pu && pu.count > 0 ? "Uniformes pendentes — resolva primeiro" : undefined}>
                           {generating === e.id
                             ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
                             : <FileDown className="h-3.5 w-3.5 mr-1" />}
@@ -495,7 +540,8 @@ export default function Rescissions() {
                       <Button
                         size="sm"
                         onClick={() => launchOne({ emp: e, amount: displayAmount })}
-                        disabled={launchingId === e.id || displayAmount <= 0 || (!!pay && !!pay.exported_at)}
+                        disabled={launchingId === e.id || displayAmount <= 0 || (!!pay && !!pay.exported_at) || !!(pu && pu.count > 0)}
+                        title={pu && pu.count > 0 ? "Uniformes pendentes — resolva primeiro" : undefined}
                       >
                         {launchingId === e.id
                           ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
