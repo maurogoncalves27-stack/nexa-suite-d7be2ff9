@@ -156,7 +156,7 @@ export function UniformItemsPanel({ items, onChanged }: Props) {
                 {it.is_durable && <Badge variant="outline" className="border-primary/50 text-primary text-[10px] sm:text-xs">durável</Badge>}
               </div>
               <div className="text-xs text-muted-foreground">
-                {it.size_type === "numero" ? "Numérico" : "PP–EG"} · R$ {Number(it.unit_cost).toFixed(2)} · troca a cada {it.replacement_months} meses
+                {it.size_type === "numero" ? "Numérico" : it.size_type === "unico" ? "Tamanho único" : "PP–EG"} · R$ {Number(it.unit_cost).toFixed(2)} · troca a cada {it.replacement_months} meses
                 {it.description && ` · ${it.description}`}
               </div>
             </div>
