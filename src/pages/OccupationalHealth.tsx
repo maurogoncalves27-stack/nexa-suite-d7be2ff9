@@ -22,18 +22,20 @@ export default function OccupationalHealth() {
   const canMental = isAdmin || roles.includes("hr") || roles.includes("mental_health");
   const canSstDocs = isAdmin || isManager || roles.includes("hr") || isContabilidade;
   const canNr1 = isAdmin || isManager || roles.includes("hr");
+  const canRiscos = isAdmin || roles.includes("hr") || roles.includes("mental_health") || isManager;
   const canClima = !!user;
 
   const availableTabs = useMemo(() => {
     const tabs: { key: TabKey; label: string }[] = [];
     if (canNr1) tabs.push({ key: "nr1", label: "Painel NR-1" });
+    if (canRiscos) tabs.push({ key: "riscos-psicossociais", label: "Riscos Psicossociais" });
     if (canAtestados) tabs.push({ key: "atestados", label: "Atestados" });
     if (canPcmso) tabs.push({ key: "pcmso", label: "PCMSO" });
     if (canSstDocs) tabs.push({ key: "documentos-sst", label: "Documentos SST" });
     if (canMental) tabs.push({ key: "saude-mental", label: "Saúde Mental" });
     if (canClima) tabs.push({ key: "clima", label: "Clima Organizacional" });
     return tabs;
-  }, [canAtestados, canPcmso, canMental, canSstDocs, canNr1, canClima]);
+  }, [canAtestados, canPcmso, canMental, canSstDocs, canNr1, canRiscos, canClima]);
 
   if (availableTabs.length === 0) {
     return <Navigate to="/" replace />;
