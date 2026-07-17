@@ -1,68 +1,68 @@
-
 ## Objetivo
 
-Consolidar **Clima Organizacional** dentro de **Saúde Ocupacional** e adicionar um **Painel NR-1** que demonstre em uma tela só a conformidade da empresa com a NR-1 (GRO + riscos psicossociais).
+Deixar o NEXA **em conformidade demonstrável com a NR-1 (riscos psicossociais) e LGPD** sem sobrecarregar operação nem colaborador. Humor continua existindo, mas como ferramenta **voluntária de escuta**, e ganhamos os artefatos formais que fiscalização/auditoria pedem.
 
-## 1. Reorganização de navegação
+## Escopo (4 entregas em ordem)
 
-- `src/pages/OccupationalHealth.tsx` passa a ter as abas, nesta ordem:
-  1. **Painel NR-1** (novo, default)
-  2. Atestados
-  3. PCMSO
-  4. Documentos SST
-  5. Saúde Mental
-  6. **Clima Organizacional** (movido de `/clima`)
-- `src/components/AppSidebar.tsx`: remover item "Clima Organizacional" do grupo RH; manter apenas "Saúde Ocupacional" (ícone `HeartPulse`, já existente).
-- `src/App.tsx`: rota `/clima` passa a redirecionar para `/saude-ocupacional?tab=clima` (preserva links antigos e o `useClimateStatus` que já é usado pela Dashboard).
-- Permissões continuam as mesmas de cada aba (a aba Clima aparece para qualquer usuário logado; sub-abas de gestão de campanhas/perguntas só para admin/manager, como já é hoje).
-- `PAGE_TITLES` em `AppLayout.tsx` atualizado; título do card do dashboard "Clima" passa a apontar para a nova URL.
+### 1. Humor 100% opcional + trilha LGPD (rápido, resolve risco jurídico)
 
-## 2. Novo componente: Painel NR-1
+**Arquivo:** `src/components/mental-health/WeeklyMoodCheckin.tsx`
 
-Arquivo: `src/components/occupational-health/Nr1CompliancePanel.tsx`, renderizado na primeira aba.
+- Adicionar botão **"Prefiro não responder hoje"** — grava um checkin com `mood = null` e `skipped = true` (novo campo) para não perguntar de novo pelos 3 dias.
+- Adicionar link discreto **"Não me perguntar mais"** → grava `mood_optout` na tabela `profiles` (novo campo `mood_optout_until timestamptz`). Renovável a cada 90 dias.
+- Adicionar aviso curto: *"Resposta anônima em nível de loja. Usada apenas para riscos psicossociais (NR-1). Você pode não responder ou desativar a qualquer momento."*
+- Nos painéis coletivos (Nr1CompliancePanel), **ocultar métrica de humor quando N < 5** respondentes na loja/mês — evita reidentificação.
 
-Layout: header com **score geral de conformidade NR-1 (0-100)** + 4 blocos de cards, cada um com seu mini-status (verde/amarelo/vermelho) e link para a aba correspondente.
+**DB:** adicionar `mood_optout_until` em `profiles` e `skipped boolean default false` em `mood_checkins`.
 
-### Bloco A — Riscos psicossociais (Clima + Humor + Saúde Mental)
-Fontes: `climate_surveys`, `climate_responses`, `climate_response_answers`, `mood_checkins`, `mental_health_alerts`, `mental_health_followups`.
-- Última pesquisa de clima (data, % adesão, eNPS, média por dimensão Liderança/Ambiente/Reconhecimento/Orgulho).
-- % colaboradores em atraso na próxima pesquisa (via lógica já existente do `useClimateStatus`).
-- Média de humor (mood check-ins) últimos 30 dias + tendência.
-- Alertas de saúde mental abertos × tratados (com follow-up) no período.
+### 2. Módulo Riscos Psicossociais no PGR (entregável formal NR-1)
 
-### Bloco B — PCMSO / ASOs
-Fontes: `medical_certificates` + eventual tabela de ASOs do PCMSO (a confirmar em `Pcmso.tsx` — se hoje não existir uma tabela dedicada de ASO, o bloco mostra apenas "PCMSO ativo/vencido por loja" e deixa placeholder para exames).
-- % colaboradores ativos com ASO válido.
-- Vencidos e a vencer em 30/60 dias.
-- Contagem por tipo (admissional, periódico, demissional) quando disponível.
+**Nova aba** em `/saude-ocupacional` → "Riscos Psicossociais (PGR)".
 
-### Bloco C — Atestados e afastamentos
-Fonte: `medical_certificates`.
-- Taxa de absenteísmo dos últimos 3 / 12 meses (dias afastados ÷ dias trabalhados).
-- Top 5 CIDs.
-- Dias perdidos por loja no mês (com paleta fixa de cores das lojas).
+**Nova tabela** `psychosocial_risks`:
+- categoria (carga de trabalho, assédio, jornada, relacionamento, reconhecimento, autonomia, violência externa)
+- descrição, unidade/setor afetado, severidade (baixa/média/alta/crítica), probabilidade
+- fonte da identificação (clima, humor agregado, ouvidoria, ocorrência, atestado, denúncia)
+- plano de ação (texto), responsável (employee_id), prazo, status (aberto/em_andamento/mitigado/aceito)
+- reavaliação: `next_review_at` (default +12 meses)
 
-### Bloco D — Documentos SST vigentes
-Fontes: `sst_documents`, `sst_document_versions`.
-- % documentos com versão vigente (PGR, LTCAT, PPP, PCMSO, etc.).
-- Vencidos e a vencer em 30/60 dias.
-- Pendentes de assinatura.
+**UI:** tabela com filtros por loja/status/severidade + modal criar/editar + timeline de reavaliações. Popular sugestões automáticas a partir de sinais que já temos (queda no ENPS, pico de atestado CID F, ocorrências repetidas).
 
-### Score geral NR-1
-Média ponderada simples dos 4 blocos (25% cada), cada bloco normalizado 0-100 por regras claras (ex.: PCMSO = % ASOs válidos; Docs SST = % vigentes; Psicossocial = média de adesão×eNPS normalizado; Atestados = 100 − absenteísmo × k). Fórmula documentada no topo do arquivo.
+### 3. CID F no painel NR-1 + treinamento de líderes
 
-## 3. Hook de dados
+**a) Quadrante novo no `Nr1CompliancePanel`:**
+- Cruzar `medical_certificates.cid_code` que começa com "F" → contar afastamentos/dias por trimestre por loja.
+- Alerta quando ≥ 3 CATs mentais em 90 dias na mesma loja → cria sugestão em `psychosocial_risks`.
 
-Novo `src/components/occupational-health/useNr1Metrics.tsx` (mesmo padrão de `useDashboardMetrics`/`useSegmentMetrics`): um `useQuery` que roda os counts em paralelo e devolve tudo tipado, com cache de 5 min. Nenhuma migration de banco é necessária — todas as tabelas já existem.
+**b) Trilha obrigatória "NR-1 para Gestores":**
+- Criar `training_schedules` template com módulos: (i) o que mudou na NR-1, (ii) sinais de sofrimento mental, (iii) escuta ativa, (iv) canais de encaminhamento, (v) o que NÃO fazer (assédio disfarçado de cobrança).
+- Aplicar automaticamente a todo colaborador com role `manager` e novos gestores no onboarding.
+- Registro em `training_receipts` fecha a exigência de "capacitação" da NR-1.
 
-## 4. Fora de escopo
+### 4. Relatório NR-1 trimestral em PDF
 
-- Não mexer em `climate_*`, `mental_health_*`, `medical_certificates`, `sst_documents` (schema e RLS ficam intocados).
-- Não alterar lógica de cálculo de folha nem regras de RH em produção.
-- Não criar tabela nova de ASO agora (se faltar, plano futuro separado).
+- Botão **"Gerar relatório NR-1"** em `/saude-ocupacional` → edge function `nr1-report-pdf`.
+- Conteúdo: (a) capa com CNPJ/período, (b) 4 quadrantes do painel, (c) tabela de riscos psicossociais com plano de ação e status, (d) indicadores de absenteísmo e CID F por loja, (e) treinamentos realizados no período, (f) assinatura do responsável SST.
+- Salvo em `sst_document_versions` (auto-arquivado).
 
-## Arquivos afetados
+## Detalhes técnicos
 
-- **Novos:** `src/components/occupational-health/Nr1CompliancePanel.tsx`, `src/components/occupational-health/useNr1Metrics.tsx`.
-- **Editados:** `src/pages/OccupationalHealth.tsx`, `src/components/AppSidebar.tsx`, `src/App.tsx`, `src/components/AppLayout.tsx` (PAGE_TITLES), dashboard card do Clima (se apontar para `/clima`).
-- **Preservados:** `src/pages/Climate.tsx` (continua sendo renderizado, agora dentro da aba), `useClimateStatus`, todas as edge functions e tabelas.
+- **Reidentificação:** todo painel coletivo de humor/clima aplica gate `N ≥ 5`. Implementado no hook `useNr1Metrics`.
+- **Base legal LGPD:** consentimento explícito por check-in + finalidade declarada (art. 11, §2º, "a") + direito de revogação via opt-out.
+- **Anonimato:** humor continua individual no banco (necessário para lógica dos 3 dias), mas nenhum agregado com N<5 é exposto e não há tela "humor do Fulano" para gestor.
+- **Trigger:** ao inserir `medical_certificates` com CID começando em "F", chamar função que checa janela 90d e insere sugestão em `psychosocial_risks` se ≥3.
+
+## O que NÃO vamos fazer
+
+- **Não** tornar humor obrigatório (violaria NR-1 + LGPD).
+- **Não** expor humor individual para gestor (só agregado ≥5).
+- **Não** mexer no fluxo de folha, ponto ou financeiro (fora do escopo NR-1).
+
+## Ordem de implementação
+
+1. Migration (mood_optout, skipped, psychosocial_risks, trigger CID F) + grants + RLS
+2. Ajuste do WeeklyMoodCheckin (opt-out + skip)
+3. Gate N≥5 no useNr1Metrics + quadrante CID F
+4. Aba "Riscos Psicossociais" + CRUD
+5. Trilha de treinamento de líderes (seed do template)
+6. Edge function `nr1-report-pdf` + botão de exportação

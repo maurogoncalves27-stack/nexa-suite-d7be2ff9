@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, ShieldCheck } from "lucide-react";
 
 const MOODS: { score: number; emoji: string; label: string; bg: string }[] = [
   { score: 1, emoji: "😞", label: "Muito mal", bg: "bg-red-100 hover:bg-red-200 border-red-300" },
@@ -15,21 +15,20 @@ const MOODS: { score: number; emoji: string; label: string; bg: string }[] = [
   { score: 5, emoji: "😄", label: "Ótimo", bg: "bg-green-100 hover:bg-green-200 border-green-300" },
 ];
 
-/** Data de hoje em yyyy-mm-dd (local). */
 function todayStr(): string {
   const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${dd}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 const CHECKIN_INTERVAL_DAYS = 3;
+const OPTOUT_DAYS = 90;
 
 /**
- * Exibe o check-in de humor a cada 3 dias, no primeiro acesso após o intervalo.
- * Salva em `mood_checkins` (campo `week_start` é reaproveitado como a data do check-in).
- * Só aparece para colaboradores com registro ativo em `employees`.
+ * Check-in de humor voluntário (NR-1 / LGPD).
+ * - Aparece a cada 3 dias.
+ * - Sempre pode ser pulado ("Prefiro não responder hoje").
+ * - Pode ser desativado por 90 dias ("Não me perguntar mais").
+ * - Base legal: LGPD art. 11 §2º "a" (consentimento) + NR-1 (percepção coletiva anônima).
  */
 export default function WeeklyMoodCheckin() {
   const { user, loading } = useAuth();
@@ -47,6 +46,18 @@ export default function WeeklyMoodCheckin() {
     let cancelled = false;
     (async () => {
       try {
+        // 1) Respeita opt-out do próprio colaborador
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("mood_optout_until")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (cancelled) return;
+        if (prof?.mood_optout_until && new Date(prof.mood_optout_until) > new Date()) {
+          setChecked(true);
+          return;
+        }
+
         const { data: emp } = await supabase
           .from("employees")
           .select("id, status")
@@ -58,7 +69,7 @@ export default function WeeklyMoodCheckin() {
           setChecked(true); return;
         }
         setEmployeeId(emp.id);
-        // Busca o último check-in (respondido ou pulado) e verifica se já se passaram 3 dias
+
         const { data: last } = await supabase
           .from("mood_checkins")
           .select("created_at")
@@ -79,7 +90,6 @@ export default function WeeklyMoodCheckin() {
     })();
     return () => { cancelled = true; };
   }, [user, loading, checked, today]);
-
 
   const save = async (skip = false) => {
     if (!employeeId || !user) return;
@@ -111,15 +121,42 @@ export default function WeeklyMoodCheckin() {
     }
   };
 
+  const optOut = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      const until = new Date();
+      until.setDate(until.getDate() + OPTOUT_DAYS);
+      const { error } = await supabase
+        .from("profiles")
+        .update({ mood_optout_until: until.toISOString() })
+        .eq("user_id", user.id);
+      if (error) throw error;
+      toast({
+        title: "Ok, não perguntaremos mais por 90 dias",
+        description: "Você pode reativar em Configurações → Perfil quando quiser.",
+      });
+      setOpen(false);
+    } catch (err: any) {
+      toast({ title: "Não foi possível desativar", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!saving) setOpen(v); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Como você está se sentindo hoje?</DialogTitle>
-          <p className="text-sm text-muted-foreground pt-1">
-            Sua resposta é confidencial e ajuda a empresa a cuidar do seu bem-estar (NR-1).
-          </p>
         </DialogHeader>
+
+        <div className="rounded-md bg-primary/5 border border-primary/20 p-3 text-xs text-muted-foreground flex gap-2">
+          <ShieldCheck className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+          <div>
+            <strong className="text-foreground">Resposta 100% voluntária.</strong> Usada apenas de forma agregada, no nível da loja, para atender à NR-1 (riscos psicossociais). Você pode pular ou desativar a qualquer momento — nenhuma resposta é vista individualmente por seu gestor.
+          </div>
+        </div>
 
         <div className="grid grid-cols-5 gap-2 py-4">
           {MOODS.map((m) => (
@@ -149,13 +186,18 @@ export default function WeeklyMoodCheckin() {
         />
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
-          <Button variant="ghost" onClick={() => save(true)} disabled={saving}>
-            Pular hoje
+          <Button variant="ghost" size="sm" onClick={optOut} disabled={saving} className="text-xs text-muted-foreground">
+            Não me perguntar mais (90 dias)
           </Button>
-          <Button onClick={() => save(false)} disabled={saving || selected == null}>
-            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Enviar
-          </Button>
+          <div className="flex gap-2 sm:ml-auto">
+            <Button variant="outline" onClick={() => save(true)} disabled={saving}>
+              Prefiro não responder
+            </Button>
+            <Button onClick={() => save(false)} disabled={saving || selected == null}>
+              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Enviar
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

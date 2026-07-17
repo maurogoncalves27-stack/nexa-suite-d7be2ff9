@@ -11,6 +11,8 @@ export interface Nr1Metrics {
   moodAvg30d: number | null;
   moodPrevAvg: number | null;
   moodTrend: number | null;
+  moodRespondents30d: number;
+  moodHiddenByPrivacy: boolean;
   mentalAlertsOpen: number;
   mentalAlertsResolved30d: number;
   // PCMSO
@@ -24,6 +26,15 @@ export interface Nr1Metrics {
   absenteeismDays12m: number;
   topCids: { cid: string; count: number }[];
   daysByStoreMonth: { store: string; days: number }[];
+  // CID F (saúde mental)
+  cidfCount12m: number;
+  cidfDays12m: number;
+  cidfCount90d: number;
+  cidfEmployees90d: number;
+  // Riscos psicossociais (PGR)
+  psychoRisksOpen: number;
+  psychoRisksHigh: number;
+  psychoRisksOverdue: number;
   // SST docs
   sstTotal: number;
   sstValid: number;
@@ -36,6 +47,9 @@ export interface Nr1Metrics {
   scoreSst: number;
   scoreOverall: number;
 }
+
+const MIN_RESPONDENTS_FOR_AGG = 5;
+
 
 async function fetchMetrics(): Promise<Nr1Metrics> {
   const today = new Date();
@@ -59,6 +73,7 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     certs12m,
     certsMonth,
     sst,
+    psychoRisks,
   ] = await Promise.all([
     supabase.from("employees").select("id", { count: "exact", head: true }).eq("status", "active"),
     supabase.from("climate_surveys").select("id, name, end_date, start_date").order("end_date", { ascending: false }).limit(1),
@@ -67,11 +82,13 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     supabase.from("mental_health_alerts").select("id", { count: "exact", head: true }).in("status", ["open", "in_progress"]),
     supabase.from("mental_health_alerts").select("id", { count: "exact", head: true }).eq("status", "resolved").gte("resolved_at", d30ago),
     supabase.from("medical_certificates").select("employee_id, valid_until").eq("is_pcmso", true),
-    supabase.from("medical_certificates").select("days_off, cid_code, employee_id").gte("certificate_date", m3ago),
-    supabase.from("medical_certificates").select("days_off, cid_code").gte("certificate_date", m12ago),
+    supabase.from("medical_certificates").select("days_off, cid_code, employee_id, certificate_date").gte("certificate_date", m3ago),
+    supabase.from("medical_certificates").select("days_off, cid_code, employee_id, certificate_date").gte("certificate_date", m12ago),
     supabase.from("medical_certificates").select("days_off, employee:employees(store:stores(name))").gte("certificate_date", monthStart),
     supabase.from("sst_documents").select("id, valid_until, is_active").eq("is_active", true),
+    supabase.from("psychosocial_risks").select("id, severity, status, deadline"),
   ]);
+
 
   const activeEmployees = empActive.count ?? 0;
 
@@ -119,11 +136,20 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     }
   }
 
+  // Humor com gate de N>=5 (LGPD/NR-1 anti-reidentificação)
   const moodRecentRows = (moodRecent.data ?? []) as { mood_score: number }[];
   const moodPrevRows = (moodPrev.data ?? []) as { mood_score: number }[];
-  const moodAvg30d = moodRecentRows.length ? moodRecentRows.reduce((s, r) => s + r.mood_score, 0) / moodRecentRows.length : null;
-  const moodPrevAvg = moodPrevRows.length ? moodPrevRows.reduce((s, r) => s + r.mood_score, 0) / moodPrevRows.length : null;
+  const moodRespondents30d = moodRecentRows.length;
+  const moodHiddenByPrivacy = moodRespondents30d > 0 && moodRespondents30d < MIN_RESPONDENTS_FOR_AGG;
+  const canShowMood = moodRespondents30d >= MIN_RESPONDENTS_FOR_AGG;
+  const moodAvg30d = canShowMood
+    ? moodRecentRows.reduce((s, r) => s + r.mood_score, 0) / moodRecentRows.length
+    : null;
+  const moodPrevAvg = moodPrevRows.length >= MIN_RESPONDENTS_FOR_AGG
+    ? moodPrevRows.reduce((s, r) => s + r.mood_score, 0) / moodPrevRows.length
+    : null;
   const moodTrend = moodAvg30d != null && moodPrevAvg != null ? moodAvg30d - moodPrevAvg : null;
+
 
   // PCMSO — pega ASO mais recente por colaborador
   const pcmsoRows = (pcmsoAll.data ?? []) as { employee_id: string; valid_until: string | null }[];
@@ -143,8 +169,8 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
   pcmsoExpired += empWithoutAso;
 
   // Atestados
-  const rows3m = (certs3m.data ?? []) as { days_off: number | null; cid_code: string | null }[];
-  const rows12m = (certs12m.data ?? []) as { days_off: number | null; cid_code: string | null }[];
+  const rows3m = (certs3m.data ?? []) as any[];
+  const rows12m = (certs12m.data ?? []) as any[];
   const absenteeismDays3m = rows3m.reduce((s, r) => s + Number(r.days_off ?? 0), 0);
   const absenteeismDays12m = rows12m.reduce((s, r) => s + Number(r.days_off ?? 0), 0);
   const workingDays3m = activeEmployees * 90;
@@ -161,6 +187,22 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     byStore[s] = (byStore[s] ?? 0) + Number(r.days_off ?? 0);
   });
   const daysByStoreMonth = Object.entries(byStore).sort((a, b) => b[1] - a[1]).map(([store, days]) => ({ store, days }));
+
+  // CID F (transtornos mentais)
+  const isF = (c?: string | null) => !!c && c.trim().toUpperCase().startsWith("F");
+  const cidfRows12m = rows12m.filter((r) => isF(r.cid_code));
+  const cidfCount12m = cidfRows12m.length;
+  const cidfDays12m = cidfRows12m.reduce((s, r) => s + Number(r.days_off ?? 0), 0);
+  const cutoff90 = format(subDays(today, 90), "yyyy-MM-dd");
+  const cidfRows90 = cidfRows12m.filter((r: any) => r.certificate_date && r.certificate_date >= cutoff90);
+  const cidfCount90d = cidfRows90.length;
+  const cidfEmployees90d = new Set(cidfRows90.map((r: any) => r.employee_id)).size;
+
+  // Riscos psicossociais
+  const riskRows = (psychoRisks.data ?? []) as { severity: string; status: string; deadline: string | null }[];
+  const psychoRisksOpen = riskRows.filter((r) => ["open", "in_progress"].includes(r.status)).length;
+  const psychoRisksHigh = riskRows.filter((r) => ["open", "in_progress"].includes(r.status) && ["high", "critical"].includes(r.severity)).length;
+  const psychoRisksOverdue = riskRows.filter((r) => ["open", "in_progress"].includes(r.status) && r.deadline && r.deadline < todayStr).length;
 
   // SST
   const sstRows = (sst.data ?? []) as { valid_until: string | null }[];
@@ -181,6 +223,8 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     if (moodAvg30d != null) { s += (moodAvg30d / 5) * 100; n++; }
     const alertsPenalty = alertsOpen.count ? Math.max(0, 100 - (alertsOpen.count ?? 0) * 10) : 100;
     s += alertsPenalty; n++;
+    // Penalidade por riscos psicossociais abertos de alta severidade
+    if (psychoRisksHigh > 0) { s += Math.max(0, 100 - psychoRisksHigh * 15); n++; }
     return n ? Math.round(s / n) : 0;
   })();
   const scorePcmso = activeEmployees > 0 ? Math.round((pcmsoValid / activeEmployees) * 100) : 100;
@@ -196,6 +240,8 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     moodAvg30d,
     moodPrevAvg,
     moodTrend,
+    moodRespondents30d,
+    moodHiddenByPrivacy,
     mentalAlertsOpen: alertsOpen.count ?? 0,
     mentalAlertsResolved30d: alertsResolved.count ?? 0,
     activeEmployees,
@@ -207,6 +253,13 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     absenteeismDays12m,
     topCids,
     daysByStoreMonth,
+    cidfCount12m,
+    cidfDays12m,
+    cidfCount90d,
+    cidfEmployees90d,
+    psychoRisksOpen,
+    psychoRisksHigh,
+    psychoRisksOverdue,
     sstTotal,
     sstValid,
     sstExpiring60,
@@ -218,6 +271,7 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     scoreOverall,
   };
 }
+
 
 export function useNr1Metrics() {
   return useQuery({
