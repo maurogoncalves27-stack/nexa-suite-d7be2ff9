@@ -11,6 +11,7 @@
 // Hoje a flag é apenas mock controlado por UI/SQL manual.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { extractIfoodCustomerAddress, extractIfoodCustomerDocument } from "../_shared/ifoodOrderMap.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
