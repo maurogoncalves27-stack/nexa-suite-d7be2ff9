@@ -36,7 +36,10 @@ export default function Climate({ embedded = false }: { embedded?: boolean } = {
   const { isAdmin, isManager } = useAuth();
   const canManage = isAdmin || isManager;
   const climateStatus = useClimateStatus();
-  const [tab, setTab] = useState<string>("respond");
+  const defaultTab = canManage ? "results" : "respond";
+  const [tab, setTab] = useState<string>(defaultTab);
+  // Só mostra a aba "Responder" para gestores quando eles ainda têm resposta pendente.
+  const showRespondTab = !canManage || climateStatus.pendingResponse;
   const [loading, setLoading] = useState(true);
   const [openSurvey, setOpenSurvey] = useState<ClimateSurvey | null>(null);
   const [questions, setQuestions] = useState<ClimateQuestion[]>([]);
