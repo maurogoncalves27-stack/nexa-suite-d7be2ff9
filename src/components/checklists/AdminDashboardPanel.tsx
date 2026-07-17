@@ -383,7 +383,7 @@ export default function AdminDashboardPanel() {
                           </div>
                           {expandedId === sub.id && (
                             <div className="mt-3 space-y-1">
-                              {sub.checklist_answers.filter((a) => !a.checked).map((a, i) => (
+                              {sub.checklist_answers.filter((a) => !isAnswerComplete(a)).map((a, i) => (
                                 <div key={i} className={`text-sm flex items-center gap-2 ${
                                   a.checklist_items?.is_priority ? "text-destructive font-semibold" : "text-muted-foreground"
                                 }`}>
