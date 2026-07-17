@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, User, Phone, Sparkles, CalendarClock, Clock, Mail, MessageCircle } from "lucide-react";
+import { Loader2, User, Phone, Sparkles, CalendarClock, Clock, Mail, MessageCircle, ChevronDown, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "@/hooks/use-toast";
 import { STAGES, PIPELINE_STAGES, LEGACY_STAGES, type StageValue } from "@/lib/recruitment";
 import { PHASES, getPhaseForStage, subStatusLabel, trainingProgress } from "@/lib/recruitmentPhases";
@@ -60,6 +62,7 @@ export function CandidatePipeline({ jobOpeningId, jobTitle, jobPosition }: Props
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [encerradoOpen, setEncerradoOpen] = useState(false);
   const navigate = useNavigate();
 
   const load = async () => {
@@ -91,6 +94,17 @@ export function CandidatePipeline({ jobOpeningId, jobTitle, jobPosition }: Props
       }
       load();
     }
+  };
+
+  const deleteCandidate = async (candidateId: string, name: string) => {
+    if (!confirm(`Excluir definitivamente o candidato "${name}"? Esta ação não pode ser desfeita.`)) return;
+    const { error } = await supabase.from("job_candidates").delete().eq("id", candidateId);
+    if (error) {
+      toast({ title: "Falha ao excluir", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Candidato excluído" });
+    load();
   };
 
   // Agrupa candidatos por fase (apenas ativos no pipeline)
@@ -125,6 +139,41 @@ export function CandidatePipeline({ jobOpeningId, jobTitle, jobPosition }: Props
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         {PHASES.map((phase) => {
           const list = byPhase.get(phase.key) ?? [];
+          const isEncerrado = phase.key === "encerrado";
+
+          if (isEncerrado) {
+            return (
+              <div key={phase.key} className={`rounded-lg border ${phase.color} p-2 flex flex-col min-h-[80px]`}>
+                <Collapsible open={encerradoOpen} onOpenChange={setEncerradoOpen}>
+                  <CollapsibleTrigger className="w-full flex items-center justify-between gap-2 px-1 pb-2 mb-1 border-b border-current/10 hover:opacity-80">
+                    <div className="text-xs font-bold uppercase tracking-wide truncate flex items-center gap-1">
+                      <ChevronDown className={`h-3 w-3 transition-transform ${encerradoOpen ? "rotate-0" : "-rotate-90"}`} />
+                      {phase.label}
+                    </div>
+                    <Badge variant="outline" className={`h-5 px-1.5 text-[10px] shrink-0 ${phase.badgeColor}`}>{list.length}</Badge>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    {list.length === 0 ? (
+                      <div className="text-[11px] text-muted-foreground text-center py-3 italic">vazio</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {list.map((c) => (
+                          <CandidateMiniCard
+                            key={c.id}
+                            candidate={c}
+                            jobTitle={jobTitle}
+                            onOpen={() => setSelectedId(c.id)}
+                            onDelete={() => deleteCandidate(c.id, c.full_name)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+            );
+          }
+
           return (
             <div key={phase.key} className={`rounded-lg border ${phase.color} p-2 flex flex-col min-h-[160px]`}>
               <div className="flex items-center justify-between gap-2 px-1 pb-2 mb-1 border-b border-current/10">
@@ -188,10 +237,12 @@ function CandidateMiniCard({
   candidate,
   jobTitle,
   onOpen,
+  onDelete,
 }: {
   candidate: Candidate;
   jobTitle: string;
   onOpen: () => void;
+  onDelete?: () => void;
 }) {
   const c = candidate;
   const phase = getPhaseForStage(c.current_stage);
@@ -202,6 +253,7 @@ function CandidateMiniCard({
   const lastChange = c.updated_at ? new Date(c.updated_at).getTime() : new Date(c.applied_at).getTime();
   const daysInStage = Math.floor((Date.now() - lastChange) / (1000 * 60 * 60 * 24));
   const isStale = daysInStage >= STALE_DAYS && phase?.key !== "encerrado";
+  const canDelete = !!onDelete && phase?.key === "encerrado" && daysInStage >= 30;
 
   const recColor =
     c.ai_recommendation === "forte_recomendado" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30" :
@@ -288,6 +340,16 @@ function CandidateMiniCard({
             </a>
           )}
           {c.source && <Badge variant="outline" className="ml-auto text-[9px] py-0 px-1 h-4 truncate max-w-[80px]">{c.source}</Badge>}
+          {canDelete && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onDelete?.(); }}
+              className="h-6 w-6 rounded flex items-center justify-center hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+              title={`Excluir (encerrado há ${daysInStage} dias)`}
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          )}
         </div>
       </CardContent>
     </Card>
