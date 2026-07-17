@@ -73,6 +73,7 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     certs12m,
     certsMonth,
     sst,
+    psychoRisks,
   ] = await Promise.all([
     supabase.from("employees").select("id", { count: "exact", head: true }).eq("status", "active"),
     supabase.from("climate_surveys").select("id, name, end_date, start_date").order("end_date", { ascending: false }).limit(1),
@@ -81,11 +82,13 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     supabase.from("mental_health_alerts").select("id", { count: "exact", head: true }).in("status", ["open", "in_progress"]),
     supabase.from("mental_health_alerts").select("id", { count: "exact", head: true }).eq("status", "resolved").gte("resolved_at", d30ago),
     supabase.from("medical_certificates").select("employee_id, valid_until").eq("is_pcmso", true),
-    supabase.from("medical_certificates").select("days_off, cid_code, employee_id").gte("certificate_date", m3ago),
-    supabase.from("medical_certificates").select("days_off, cid_code").gte("certificate_date", m12ago),
+    supabase.from("medical_certificates").select("days_off, cid_code, employee_id, start_date").gte("certificate_date", m3ago),
+    supabase.from("medical_certificates").select("days_off, cid_code, employee_id, start_date").gte("certificate_date", m12ago),
     supabase.from("medical_certificates").select("days_off, employee:employees(store:stores(name))").gte("certificate_date", monthStart),
     supabase.from("sst_documents").select("id, valid_until, is_active").eq("is_active", true),
+    supabase.from("psychosocial_risks").select("id, severity, status, deadline"),
   ]);
+
 
   const activeEmployees = empActive.count ?? 0;
 
