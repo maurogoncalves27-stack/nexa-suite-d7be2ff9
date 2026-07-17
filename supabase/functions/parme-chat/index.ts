@@ -1099,30 +1099,6 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
       : response;
     for (const [key, value] of Object.entries(corsHeaders)) finalResponse.headers.set(key, value);
     return finalResponse;
-          await supabase.from("chat_conversations").upsert(
-            {
-              session_id: sessionId,
-              messages: flat as unknown as never,
-              message_count: flat.length,
-              last_message_at: now,
-              updated_at: now,
-              client_meta: mergeClientMeta((existing as { client_meta?: unknown } | null)?.client_meta, null, flat) as unknown as never,
-            },
-            { onConflict: "session_id" },
-          );
-        } catch (e) {
-          console.error("[parme-chat] onFinish conversa upsert err:", e);
-        }
-        // 2) Ticket é independente: falhas aqui NÃO afetam a conversa.
-        try {
-          if (flat.length) await ensureComplaintTicket(sb(), flat, sessionId);
-        } catch (e) {
-          console.error("[parme-chat] onFinish ticket err:", e);
-        }
-      },
-    });
-    for (const [key, value] of Object.entries(corsHeaders)) response.headers.set(key, value);
-    return response;
 
   } catch (e) {
     console.error("[parme-chat] fatal:", e);
