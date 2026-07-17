@@ -19,7 +19,7 @@ interface SubmissionRow {
   id: string;
   template_id: string;
   user_id: string;
-  checklist_answers: { checked: boolean }[];
+  checklist_answers: { checked: boolean; observation: string | null }[];
 }
 interface EmployeeRow {
   user_id: string | null;
