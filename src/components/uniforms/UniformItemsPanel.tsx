@@ -42,6 +42,10 @@ export function UniformItemsPanel({ items, onChanged }: Props) {
   const [editing, setEditing] = useState<string | null>(null);
   const [form, setForm] = useState<any>(empty);
   const [saving, setSaving] = useState(false);
+  const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [filterSizeType, setFilterSizeType] = useState<string>("all");
+  const [search, setSearch] = useState("");
+
 
   const openNew = () => {
     setEditing(null);
