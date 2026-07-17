@@ -636,7 +636,7 @@ export default function EmployeeArea({ impersonateUserId, managerView = false }:
                             Aviso ciente
                           </Badge>
                         )}
-                        <Badge variant="outline">{v.status}</Badge>
+                        <Badge variant="outline">{({ pending: "Pendente", approved: "Aprovada", rejected: "Rejeitada", cancelled: "Cancelada", in_progress: "Em andamento", completed: "Concluída" } as Record<string,string>)[v.status] ?? v.status}</Badge>
                       </div>
                     </li>
                   ))}
