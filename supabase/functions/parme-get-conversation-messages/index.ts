@@ -26,6 +26,7 @@ function extractMessages(convo: {
     ? (convo.messages as Array<Record<string, unknown>>)
     : [];
   const out: MsgOut[] = [];
+  const seenAssistant = new Set<string>();
   for (let i = 0; i < raw.length; i++) {
     const m = raw[i] ?? {};
     const roleRaw = String(m.role ?? "").toLowerCase();
@@ -33,6 +34,11 @@ function extractMessages(convo: {
     const content = typeof m.content === "string" ? m.content.trim() : "";
     if (!content) continue;
     const rawId = typeof m.id === "string" && m.id.trim() ? m.id.trim() : "";
+    if (roleRaw === "assistant") {
+      const key = content.normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();
+      if (seenAssistant.has(key)) continue;
+      seenAssistant.add(key);
+    }
     out.push({
       id: rawId || `${convo.id}-${i}`,
       role: roleRaw as "user" | "assistant",
