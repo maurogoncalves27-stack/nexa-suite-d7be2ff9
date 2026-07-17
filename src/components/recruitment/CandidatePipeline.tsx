@@ -62,6 +62,7 @@ export function CandidatePipeline({ jobOpeningId, jobTitle, jobPosition }: Props
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [encerradoOpen, setEncerradoOpen] = useState(false);
   const navigate = useNavigate();
 
   const load = async () => {
