@@ -6,16 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, AlertTriangle } from "lucide-react";
+import { Loader2, Plus, AlertTriangle, Warehouse } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
-import { MOVEMENT_TYPES, sizesFor, type UniformItem } from "@/lib/uniforms";
+import { MOVEMENT_TYPES, CONDITION_OPTIONS, UNIFORM_CENTRAL_STORE_ID, sizesFor, type UniformItem, type UniformCondition } from "@/lib/uniforms";
 
 interface StoreOpt { id: string; name: string }
 interface StockRow {
   id: string; store_id: string; uniform_item_id: string;
-  size: string; quantity: number; min_alert: number;
+  size: string; quantity: number; min_alert: number; condition: UniformCondition;
 }
 
 interface Props {
@@ -23,9 +23,8 @@ interface Props {
   stores: StoreOpt[];
 }
 
-export function UniformStockPanel({ items, stores }: Props) {
+export function UniformStockPanel({ items }: Props) {
   const { user } = useAuth();
-  const [storeId, setStoreId] = useState<string>("");
   const [stock, setStock] = useState<StockRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -36,40 +35,37 @@ export function UniformStockPanel({ items, stores }: Props) {
     movement_type: "entrada",
     quantity: "",
     reason: "",
+    condition: "nova" as UniformCondition,
   });
 
-  useEffect(() => {
-    if (!storeId && stores.length) setStoreId(stores[0].id);
-  }, [stores, storeId]);
-
   const load = async () => {
-    if (!storeId) return;
     setLoading(true);
     const { data } = await supabase
       .from("uniform_stock")
       .select("*")
-      .eq("store_id", storeId);
-    setStock((data ?? []) as StockRow[]);
+      .eq("store_id", UNIFORM_CENTRAL_STORE_ID);
+    setStock(((data ?? []) as any[]).map((r) => ({ ...r, condition: (r.condition ?? "nova") as UniformCondition })));
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, [storeId]);
+  useEffect(() => { load(); }, []);
 
   const submit = async () => {
-    if (!storeId || !form.uniform_item_id || !form.size || !form.quantity) {
+    if (!form.uniform_item_id || !form.size || !form.quantity) {
       toast({ title: "Preencha todos os campos", variant: "destructive" });
       return;
     }
     setSaving(true);
     const { error } = await supabase.from("uniform_stock_movements").insert({
-      store_id: storeId,
+      store_id: UNIFORM_CENTRAL_STORE_ID,
       uniform_item_id: form.uniform_item_id,
       size: form.size,
       movement_type: form.movement_type,
       quantity: Math.max(1, Number(form.quantity) || 1),
       reason: form.reason || null,
       created_by: user?.id,
-    });
+      condition: form.condition,
+    } as any);
     setSaving(false);
     if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Movimentação registrada" });
@@ -87,109 +83,96 @@ export function UniformStockPanel({ items, stores }: Props) {
   const selItem = items.find((i) => i.id === form.uniform_item_id);
   const sizes = selItem ? sizesFor(selItem.size_type) : [];
 
+  // Agrupa: item+size com colunas Nova/Usada
+  const grouped = (() => {
+    const map = new Map<string, { item: UniformItem | undefined; size: string; nova: StockRow | null; usada: StockRow | null }>();
+    for (const r of stock) {
+      const key = `${r.uniform_item_id}-${r.size}`;
+      if (!map.has(key)) map.set(key, { item: itemMap[r.uniform_item_id], size: r.size, nova: null, usada: null });
+      const g = map.get(key)!;
+      if (r.condition === "usada") g.usada = r; else g.nova = r;
+    }
+    return Array.from(map.values()).sort((a, b) => (a.item?.name ?? "").localeCompare(b.item?.name ?? "") || a.size.localeCompare(b.size));
+  })();
+
+  const totalNova = stock.filter((s) => s.condition === "nova").reduce((s, r) => s + r.quantity, 0);
+  const totalUsada = stock.filter((s) => s.condition === "usada").reduce((s, r) => s + r.quantity, 0);
+
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Estoque por loja</CardTitle>
-          <CardDescription>Saldos atuais por item e tamanho. Alerta automático quando saldo &lt; mínimo.</CardDescription>
+          <CardTitle className="text-base flex items-center gap-2"><Warehouse className="h-4 w-4 text-primary" /> Estoque central (sede)</CardTitle>
+          <CardDescription>
+            Todo o estoque de uniformes fica em um único local. Peças <b>Novas</b> vêm de compras; <b>Usadas</b> vêm de devoluções de colaboradores desligados.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2 max-w-sm">
-            <Label>Loja</Label>
-            <Select value={storeId} onValueChange={setStoreId}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {stores.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <Badge variant="outline" className="border-primary/50">Novas: <span className="ml-1 font-bold text-foreground">{totalNova}</span></Badge>
+            <Badge variant="outline" className="border-amber-500/60 text-amber-700 dark:text-amber-300">Usadas: <span className="ml-1 font-bold text-foreground">{totalUsada}</span></Badge>
           </div>
 
           {loading ? (
             <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
-          ) : stock.length === 0 ? (
-            <div className="text-center text-muted-foreground py-8 text-sm">Sem estoque registrado nesta loja.</div>
+          ) : grouped.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8 text-sm">Sem estoque registrado.</div>
           ) : (
-            <>
-              {/* Mobile: cards */}
-              <div className="md:hidden space-y-2">
-                {stock.map((s) => {
-                  const it = itemMap[s.uniform_item_id];
-                  const low = s.quantity < s.min_alert;
-                  return (
-                    <div key={s.id} className="rounded-lg border bg-card p-3 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="font-medium text-sm truncate">{it?.name ?? "—"}</div>
-                          <div className="text-xs text-muted-foreground">Tam. {s.size}</div>
-                        </div>
-                        {low ? (
-                          <Badge variant="outline" className="border-destructive/60 text-destructive shrink-0">
-                            <AlertTriangle className="h-3 w-3 mr-1" /> Reposição
-                          </Badge>
-                        ) : <Badge variant="outline" className="border-emerald-500/60 text-emerald-700 dark:text-emerald-300 shrink-0">Ok</Badge>}
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="rounded bg-muted/50 p-2">
-                          <div className="text-muted-foreground">Saldo</div>
-                          <div className="font-bold text-base">{s.quantity}</div>
-                        </div>
-                        <div className="rounded bg-muted/50 p-2">
-                          <Label className="text-[10px] text-muted-foreground">Mínimo</Label>
-                          <Input type="number" className="h-7 mt-0.5"
-                            value={s.min_alert}
-                            onChange={(e) => updateMinAlert(s, Number(e.target.value) || 0)} />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Desktop: table */}
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="text-left text-muted-foreground border-b">
-                    <tr><th className="py-2">Item</th><th>Tamanho</th><th>Saldo</th><th>Mín.</th><th>Status</th></tr>
-                  </thead>
-                  <tbody>
-                    {stock.map((s) => {
-                      const it = itemMap[s.uniform_item_id];
-                      const low = s.quantity < s.min_alert;
-                      return (
-                        <tr key={s.id} className="border-b hover:bg-muted/30">
-                          <td className="py-2">{it?.name ?? "—"}</td>
-                          <td>{s.size}</td>
-                          <td className="font-medium">{s.quantity}</td>
-                          <td>
-                            <Input type="number" className="h-8 w-20"
-                              value={s.min_alert}
-                              onChange={(e) => updateMinAlert(s, Number(e.target.value) || 0)} />
-                          </td>
-                          <td>
-                            {low ? (
-                              <Badge variant="outline" className="border-destructive/60 text-destructive">
-                                <AlertTriangle className="h-3 w-3 mr-1" /> Reposição
-                              </Badge>
-                            ) : <Badge variant="outline" className="border-emerald-500/60 text-emerald-700 dark:text-emerald-300">Ok</Badge>}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-left text-muted-foreground border-b">
+                  <tr>
+                    <th className="py-2">Peça</th>
+                    <th>Tam.</th>
+                    <th className="text-center">Novas</th>
+                    <th className="text-center">Usadas</th>
+                    <th>Mín.</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {grouped.map((g) => {
+                    const totalQty = (g.nova?.quantity ?? 0) + (g.usada?.quantity ?? 0);
+                    const minAlert = Math.max(g.nova?.min_alert ?? 0, g.usada?.min_alert ?? 0);
+                    const low = minAlert > 0 && totalQty < minAlert;
+                    return (
+                      <tr key={`${g.item?.id}-${g.size}`} className="border-b hover:bg-muted/30">
+                        <td className="py-2">{g.item?.name ?? "—"}</td>
+                        <td>{g.size}</td>
+                        <td className="text-center font-medium">{g.nova?.quantity ?? 0}</td>
+                        <td className="text-center font-medium text-amber-700 dark:text-amber-300">{g.usada?.quantity ?? 0}</td>
+                        <td>
+                          <Input type="number" className="h-8 w-20"
+                            value={g.nova?.min_alert ?? g.usada?.min_alert ?? 0}
+                            onChange={(e) => {
+                              const v = Number(e.target.value) || 0;
+                              const row = g.nova ?? g.usada;
+                              if (row) updateMinAlert(row, v);
+                            }} />
+                        </td>
+                        <td>
+                          {low ? (
+                            <Badge variant="outline" className="border-destructive/60 text-destructive">
+                              <AlertTriangle className="h-3 w-3 mr-1" /> Reposição
+                            </Badge>
+                          ) : <Badge variant="outline" className="border-emerald-500/60 text-emerald-700 dark:text-emerald-300">Ok</Badge>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Registrar movimentação</CardTitle>
-          <CardDescription>Entradas (compras), saídas, ajustes ou perdas</CardDescription>
+          <CardTitle className="text-base">Registrar movimentação (sede)</CardTitle>
+          <CardDescription>Entrada de compra, ajuste ou perda. Devoluções são registradas automaticamente pela aba <b>Pendências</b>.</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+        <CardContent className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
           <div className="space-y-2">
             <Label>Tipo</Label>
             <Select value={form.movement_type} onValueChange={(v) => setForm({ ...form, movement_type: v })}>
@@ -200,7 +183,7 @@ export function UniformStockPanel({ items, stores }: Props) {
             </Select>
           </div>
           <div className="space-y-2 md:col-span-2">
-            <Label>Item</Label>
+            <Label>Peça</Label>
             <Select value={form.uniform_item_id} onValueChange={(v) => setForm({ ...form, uniform_item_id: v, size: "" })}>
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>
@@ -209,11 +192,20 @@ export function UniformStockPanel({ items, stores }: Props) {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Tamanho</Label>
+            <Label>Tam.</Label>
             <Select value={form.size} onValueChange={(v) => setForm({ ...form, size: v })} disabled={!selItem}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
               <SelectContent>
                 {sizes.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Condição</Label>
+            <Select value={form.condition} onValueChange={(v) => setForm({ ...form, condition: v as UniformCondition })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {CONDITION_OPTIONS.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -221,7 +213,7 @@ export function UniformStockPanel({ items, stores }: Props) {
             <Label>Quantidade</Label>
             <Input type="number" min={1} value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
           </div>
-          <div className="space-y-2 md:col-span-4">
+          <div className="space-y-2 md:col-span-5">
             <Label>Observação</Label>
             <Textarea rows={2} value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />
           </div>
