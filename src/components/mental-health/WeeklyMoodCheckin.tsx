@@ -15,22 +15,21 @@ const MOODS: { score: number; emoji: string; label: string; bg: string }[] = [
   { score: 5, emoji: "😄", label: "Ótimo", bg: "bg-green-100 hover:bg-green-200 border-green-300" },
 ];
 
-/** Retorna a segunda-feira da semana atual em formato yyyy-mm-dd. */
-function currentWeekStart(): string {
+/** Data de hoje em yyyy-mm-dd (local). */
+function todayStr(): string {
   const d = new Date();
-  const day = d.getDay(); // 0=dom..6=sab
-  const diff = day === 0 ? -6 : 1 - day; // recuar para segunda
-  d.setDate(d.getDate() + diff);
-  d.setHours(0, 0, 0, 0);
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${dd}`;
 }
 
+const CHECKIN_INTERVAL_DAYS = 3;
+
 /**
- * Exibe o check-in semanal de humor no primeiro acesso da semana.
- * Salva em `mood_checkins`. Só aparece para colaboradores com registro em `employees`.
+ * Exibe o check-in de humor a cada 3 dias, no primeiro acesso após o intervalo.
+ * Salva em `mood_checkins` (campo `week_start` é reaproveitado como a data do check-in).
+ * Só aparece para colaboradores com registro ativo em `employees`.
  */
 export default function WeeklyMoodCheckin() {
   const { user, loading } = useAuth();
@@ -41,7 +40,7 @@ export default function WeeklyMoodCheckin() {
   const [saving, setSaving] = useState(false);
   const [checked, setChecked] = useState(false);
 
-  const weekStart = useMemo(() => currentWeekStart(), []);
+  const today = useMemo(() => todayStr(), []);
 
   useEffect(() => {
     if (loading || !user || checked) return;
@@ -55,19 +54,23 @@ export default function WeeklyMoodCheckin() {
           .maybeSingle();
         if (cancelled) return;
         if (!emp) { setChecked(true); return; }
-        // só ativos
         if (emp.status && !["active", "in_training", "on_leave"].includes(emp.status)) {
           setChecked(true); return;
         }
         setEmployeeId(emp.id);
-        const { data: existing } = await supabase
+        // Busca o último check-in (respondido ou pulado) e verifica se já se passaram 3 dias
+        const { data: last } = await supabase
           .from("mood_checkins")
-          .select("id")
+          .select("created_at")
           .eq("employee_id", emp.id)
-          .eq("week_start", weekStart)
+          .order("created_at", { ascending: false })
+          .limit(1)
           .maybeSingle();
         if (cancelled) return;
-        if (!existing) setOpen(true);
+        const now = Date.now();
+        const shouldOpen = !last
+          || (now - new Date(last.created_at).getTime()) >= CHECKIN_INTERVAL_DAYS * 24 * 60 * 60 * 1000;
+        if (shouldOpen) setOpen(true);
       } catch {
         // silencioso
       } finally {
@@ -75,7 +78,8 @@ export default function WeeklyMoodCheckin() {
       }
     })();
     return () => { cancelled = true; };
-  }, [user, loading, checked, weekStart]);
+  }, [user, loading, checked, today]);
+
 
   const save = async (skip = false) => {
     if (!employeeId || !user) return;
