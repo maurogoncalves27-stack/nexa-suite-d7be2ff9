@@ -257,6 +257,15 @@ export default function Rescissions() {
       toast({ title: "Sem valor", description: "Cálculo não disponível.", variant: "destructive" });
       return;
     }
+    const pu = pendingUniforms[row.emp.id];
+    if (pu && pu.count > 0) {
+      toast({
+        title: "Uniformes pendentes",
+        description: `Resolva ${pu.count} peça(s) em Uniformes › Pendências antes de lançar a rescisão.`,
+        variant: "destructive",
+      });
+      return;
+    }
     const storeId = row.emp.allocated_store_id || row.emp.store_id;
     if (!storeId) {
       toast({ title: "Sem loja", description: "Colaborador sem loja vinculada.", variant: "destructive" });
