@@ -30,7 +30,7 @@ export default function OccupationalHealth() {
     if (canNr1) tabs.push({ key: "nr1", label: "Painel NR-1" });
     if (canRiscos) tabs.push({ key: "riscos-psicossociais", label: "Riscos Psicossociais" });
     if (canAtestados) tabs.push({ key: "atestados", label: "Atestados" });
-    if (canPcmso) tabs.push({ key: "pcmso", label: "PCMSO" });
+    if (canPcmso) tabs.push({ key: "pcmso", label: "ASO" });
     if (canSstDocs) tabs.push({ key: "documentos-sst", label: "Documentos SST" });
     if (canMental) tabs.push({ key: "saude-mental", label: "Saúde Mental" });
     if (canClima) tabs.push({ key: "clima", label: "Clima Organizacional" });

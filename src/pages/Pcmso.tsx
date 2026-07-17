@@ -132,7 +132,7 @@ export default function Pcmso({ embedded = false }: { embedded?: boolean } = {})
         status: "approved",
       });
       if (error) throw error;
-      toast({ title: "Documento PCMSO registrado" });
+      toast({ title: "ASO registrado" });
       setOpen(false);
       reset();
       load();
@@ -144,7 +144,7 @@ export default function Pcmso({ embedded = false }: { embedded?: boolean } = {})
   };
 
   const remove = async (d: Doc) => {
-    if (!confirm("Excluir este documento PCMSO?")) return;
+    if (!confirm("Excluir este ASO?")) return;
     try {
       if (d.file_path) await supabase.storage.from("medical-certificates").remove([d.file_path]);
       await supabase.from("medical_certificates").delete().eq("id", d.id);
@@ -176,9 +176,9 @@ export default function Pcmso({ embedded = false }: { embedded?: boolean } = {})
           <div>
             <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
               <HeartPulse className="h-6 w-6 md:h-7 md:w-7 text-primary" />
-              PCMSO
+              ASO
             </h1>
-            <p className="text-muted-foreground">Programa de Controle Médico de Saúde Ocupacional — ASO, laudos e exames.</p>
+            <p className="text-muted-foreground">Atestados de Saúde Ocupacional — admissional, periódico, demissional, retorno e mudança de função.</p>
           </div>
         )}
         <Button onClick={() => { reset(); setOpen(true); }}>
@@ -207,7 +207,7 @@ export default function Pcmso({ embedded = false }: { embedded?: boolean } = {})
           {loading ? (
             <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
           ) : docs.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">Nenhum documento PCMSO cadastrado ainda.</div>
+            <div className="text-center py-8 text-muted-foreground">Nenhum ASO cadastrado ainda.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -261,7 +261,7 @@ export default function Pcmso({ embedded = false }: { embedded?: boolean } = {})
 
       <Dialog open={open} onOpenChange={(v) => { if (!saving) setOpen(v); }}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Novo documento PCMSO</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Novo ASO</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div>
               <Label>Colaborador</Label>
