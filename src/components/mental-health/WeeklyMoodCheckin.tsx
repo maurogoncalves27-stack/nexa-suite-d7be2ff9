@@ -106,14 +106,14 @@ export default function WeeklyMoodCheckin() {
     if (!skip && selected == null) return;
     setSaving(true);
     try {
-      const { error } = await supabase.from("mood_checkins").insert({
+      const { error } = await supabase.from("mood_checkins").upsert({
         employee_id: employeeId,
         user_id: user.id,
         week_start: weekStartStr(),
         mood_score: skip ? null : selected,
         comment: skip ? null : (comment.trim() || null),
         skipped: skip,
-      });
+      }, { onConflict: "employee_id,week_start" });
       if (error) throw error;
       if (!skip) {
         toast({
