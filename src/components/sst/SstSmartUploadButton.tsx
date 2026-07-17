@@ -199,10 +199,35 @@ export default function SstSmartUploadButton({ variant = "secondary" }: { varian
           .eq("id", existing.id);
       }
 
+      // Extrai riscos psicossociais/ocupacionais para PGR / Psicossocial NR-1 / LTCAT / Relatório
+      const riskKinds: DocType[] = ["pgr", "psicossocial_nr1", "ltcat", "relatorio_psicossocial"];
+      const risks = smartResult.risks ?? [];
+      let riskInserted = 0;
+      if (riskKinds.includes(kind as DocType) && risks.length > 0) {
+        const rows = risks.map((r) => ({
+          category: r.category || "outros",
+          description: r.description,
+          severity: (["low", "medium", "high"].includes(r.severity) ? r.severity : "medium"),
+          probability: (["low", "medium", "high"].includes(r.probability) ? r.probability : "medium"),
+          action_plan: r.action_plan,
+          deadline: r.deadline,
+          source: `documento:${DOC_TYPE_META[kind as DocType].short} v${versionNumber}`,
+          auto_generated: true,
+          status: "open",
+          created_by: user?.id ?? null,
+        }));
+        const { error: rErr, count } = await supabase
+          .from("psychosocial_risks")
+          .insert(rows, { count: "exact" });
+        if (!rErr) riskInserted = count ?? rows.length;
+        else console.warn("[psychosocial_risks insert]", rErr);
+      }
+
       toast({
         title: existing
           ? `Nova versão v${versionNumber} de ${DOC_TYPE_META[kind as DocType].short} enviada`
           : `${DOC_TYPE_META[kind as DocType].short} cadastrado`,
+        description: riskInserted > 0 ? `${riskInserted} risco(s) sugerido(s) em NR-1 → Riscos psicossociais.` : undefined,
       });
       window.dispatchEvent(new CustomEvent("sst-docs-changed"));
       setSmartOpen(false);
@@ -278,6 +303,24 @@ export default function SstSmartUploadButton({ variant = "secondary" }: { varian
                   </>
                 )}
               </div>
+              {smartResult.kind !== "aso" && smartResult.risks && smartResult.risks.length > 0 && (
+                <div className="rounded-lg border p-3 space-y-2">
+                  <div className="text-xs font-semibold">
+                    {smartResult.risks.length} risco(s) identificado(s) — serão criados como sugestão em NR-1 → Riscos psicossociais
+                  </div>
+                  <ul className="text-xs space-y-1 max-h-40 overflow-y-auto">
+                    {smartResult.risks.slice(0, 8).map((r, i) => (
+                      <li key={i} className="flex gap-2">
+                        <Badge variant="outline" className="shrink-0">{r.severity}</Badge>
+                        <span className="line-clamp-2">{r.description}</span>
+                      </li>
+                    ))}
+                    {smartResult.risks.length > 8 && (
+                      <li className="text-muted-foreground">+ {smartResult.risks.length - 8} adicionais…</li>
+                    )}
+                  </ul>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">
                 {smartResult.kind === "aso"
                   ? "O arquivo será arquivado na pasta do colaborador e aparecerá na aba ASO."

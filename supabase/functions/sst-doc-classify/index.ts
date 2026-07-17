@@ -22,12 +22,24 @@ Analise o PDF e devolva APENAS um JSON no formato:
   "emitted_at": "YYYY-MM-DD" | null,
   "valid_from": "YYYY-MM-DD" | null,
   "valid_until": "YYYY-MM-DD" | null,
-  "notes": string | null
+  "notes": string | null,
+  "risks": [
+    {
+      "category": "organizacao_trabalho" | "relacoes_socioprofissionais" | "condicoes_ambiente" | "reconhecimento_crescimento" | "interface_trabalho_vida" | "outros",
+      "description": string,
+      "severity": "low" | "medium" | "high",
+      "probability": "low" | "medium" | "high",
+      "action_plan": string | null,
+      "deadline": "YYYY-MM-DD" | null
+    }
+  ] | null
 }
 Regras:
 - ASO = Atestado de Saúde Ocupacional (individual, com nome de colaborador).
-- PCMSO/PGR/LTCAT/LTIP = programas/laudos da empresa (sem nome de colaborador).
-- Se não conseguir identificar, use "outros" e confidence baixa.
+- PCMSO/PGR/LTCAT/LTIP/Psicossocial NR-1 = programas/laudos da empresa (sem nome de colaborador).
+- Se o documento for PGR / Psicossocial NR-1 / LTCAT / Relatório Psicossocial, extraia em "risks" TODOS os riscos psicossociais/ocupacionais identificados no texto, com a medida de controle sugerida (action_plan) e prazo quando houver. Não invente riscos que não estejam no documento.
+- Para ASO, PCMSO ou "outros", "risks" deve ser null.
+- Se não conseguir identificar o tipo, use "outros" e confidence baixa.
 - Datas em formato ISO. Nunca invente valores; use null quando ausente.
 - Não escreva nada fora do JSON.`;
 

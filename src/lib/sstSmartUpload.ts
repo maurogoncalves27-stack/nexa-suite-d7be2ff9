@@ -1,5 +1,14 @@
 import { supabase } from "@/integrations/supabase/client";
 
+export interface ExtractedRisk {
+  category: string;
+  description: string;
+  severity: "low" | "medium" | "high";
+  probability: "low" | "medium" | "high";
+  action_plan: string | null;
+  deadline: string | null;
+}
+
 export interface SmartClassifyResult {
   kind:
     | "aso"
@@ -23,6 +32,7 @@ export interface SmartClassifyResult {
   valid_from: string | null;
   valid_until: string | null;
   notes: string | null;
+  risks: ExtractedRisk[] | null;
 }
 
 export async function classifySstDocument(file: File): Promise<SmartClassifyResult> {
