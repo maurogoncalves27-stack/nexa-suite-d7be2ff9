@@ -516,7 +516,9 @@ export default function Rescissions() {
 
                     <div className="flex flex-wrap gap-2 pt-1">
                       {clt && (
-                        <Button size="sm" variant="outline" onClick={() => handleTrct(e)} disabled={generating === e.id}>
+                        <Button size="sm" variant="outline" onClick={() => handleTrct(e)}
+                          disabled={generating === e.id || !!(pu && pu.count > 0)}
+                          title={pu && pu.count > 0 ? "Uniformes pendentes — resolva primeiro" : undefined}>
                           {generating === e.id
                             ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
                             : <FileDown className="h-3.5 w-3.5 mr-1" />}
