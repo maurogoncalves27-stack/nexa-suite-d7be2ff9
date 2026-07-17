@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,8 @@ export function UniformItemsPanel({ items, onChanged }: Props) {
   const [form, setForm] = useState<any>(empty);
   const [saving, setSaving] = useState(false);
 
+  const formRef = useRef<HTMLDivElement | null>(null);
+
   const startEdit = (it: UniformItem) => {
     setEditing(it.id);
     setForm({
@@ -45,6 +47,7 @@ export function UniformItemsPanel({ items, onChanged }: Props) {
       replacement_months: String(it.replacement_months),
       is_active: it.is_active,
     });
+    setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
 
   const reset = () => { setEditing(null); setForm(empty); };
@@ -82,7 +85,7 @@ export function UniformItemsPanel({ items, onChanged }: Props) {
 
   return (
     <div className="space-y-4">
-      <Card>
+      <Card ref={formRef}>
         <CardHeader>
           <CardTitle className="text-base">{editing ? "Editar item" : "Novo item de uniforme"}</CardTitle>
           <CardDescription>Cadastro do catálogo de uniformes (camisa, calça, sapato, EPI…)</CardDescription>
@@ -153,7 +156,7 @@ export function UniformItemsPanel({ items, onChanged }: Props) {
                 {it.is_durable && <Badge variant="outline" className="border-primary/50 text-primary text-[10px] sm:text-xs">durável</Badge>}
               </div>
               <div className="text-xs text-muted-foreground">
-                {it.size_type === "numero" ? "Numérico" : "PP–EG"} · R$ {Number(it.unit_cost).toFixed(2)} · troca a cada {it.replacement_months} meses
+                {it.size_type === "numero" ? "Numérico" : it.size_type === "unico" ? "Tamanho único" : "PP–EG"} · R$ {Number(it.unit_cost).toFixed(2)} · troca a cada {it.replacement_months} meses
                 {it.description && ` · ${it.description}`}
               </div>
             </div>
