@@ -17,6 +17,7 @@ import { addDays, format, parseISO, startOfMonth, startOfYear, eachDayOfInterval
 import { applyMedicalCertificateApproval } from "@/lib/medicalCertificateApproval";
 import { compressImage } from "@/lib/imageCompression";
 import { MaintenancePhotoCaptureButton } from "@/components/nutricontrol/MaintenancePhotoCaptureButton";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface Employee {
   id: string;
