@@ -11,7 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { toast } from "@/hooks/use-toast";
-import { Download, FileText, History, Loader2, Plus, ShieldCheck, Trash2, Upload } from "lucide-react";
+import { Download, FileText, History, Loader2, Plus, ShieldCheck, Sparkles, Trash2, Upload } from "lucide-react";
+import { classifySstDocument, matchEmployeeFromClassification, type SmartClassifyResult } from "@/lib/sstSmartUpload";
+import { uploadEmployeePdfBlob } from "@/lib/employeeDocUpload";
 
 type DocType =
   | "pcmso"
