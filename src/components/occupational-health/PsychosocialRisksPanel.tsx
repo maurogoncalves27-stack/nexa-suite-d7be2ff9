@@ -106,13 +106,13 @@ export default function PsychosocialRisksPanel() {
     const clean = { ...payload };
     if (editing) {
       const { error } = await supabase.from("psychosocial_risks").update(clean).eq("id", editing.id);
-      if (error) return toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+      if (error) { toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" }); return; }
     } else {
       const { error } = await supabase.from("psychosocial_risks").insert({
         ...clean,
         created_by: user?.id,
       } as any);
-      if (error) return toast({ title: "Erro ao criar", description: error.message, variant: "destructive" });
+      if (error) { toast({ title: "Erro ao criar", description: error.message, variant: "destructive" }); return; }
     }
     toast({ title: editing ? "Risco atualizado" : "Risco cadastrado" });
     setDialogOpen(false);
