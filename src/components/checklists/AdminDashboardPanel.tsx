@@ -440,14 +440,16 @@ export default function AdminDashboardPanel() {
                   </CardHeader>
                   {expandedId === sub.id && (
                     <CardContent className="pt-0 space-y-2">
-                      {sub.checklist_answers.map((ans, i) => (
+                      {sub.checklist_answers.map((ans, i) => {
+                        const complete = isAnswerComplete(ans);
+                        return (
                         <div key={i} className="flex items-start gap-2 text-sm">
-                          <span className={ans.checked ? "text-success" : "text-destructive"}>
-                            {ans.checked ? "✓" : "✗"}
+                          <span className={complete ? "text-success" : "text-destructive"}>
+                            {complete ? "✓" : "✗"}
                           </span>
                           <div>
                             <span className={`font-medium ${
-                              ans.checklist_items?.is_priority && !ans.checked ? "text-destructive" : ""
+                              ans.checklist_items?.is_priority && !complete ? "text-destructive" : ""
                             }`}>
                               {ans.checklist_items?.label}
                             </span>
@@ -456,7 +458,8 @@ export default function AdminDashboardPanel() {
                             )}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                       {sub.notes && (
                         <div className="mt-3 p-3 rounded-lg bg-muted text-sm">
                           <strong>Observações:</strong> {sub.notes}
