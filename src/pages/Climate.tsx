@@ -11,6 +11,7 @@ import ClimateRespond from "@/components/climate/ClimateRespond";
 import ClimateResults from "@/components/climate/ClimateResults";
 import ClimateCampaigns from "@/components/climate/ClimateCampaigns";
 import ClimateQuestionsPanel from "@/components/climate/ClimateQuestionsPanel";
+import ClimateComparativo from "@/components/climate/ClimateComparativo";
 
 export interface ClimateSurvey {
   id: string;
