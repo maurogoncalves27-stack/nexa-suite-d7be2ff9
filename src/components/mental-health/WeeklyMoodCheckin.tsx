@@ -80,6 +80,10 @@ export default function WeeklyMoodCheckin() {
         }
         setEmployeeId(emp.id);
 
+        // Se o usuário já dispensou/respondeu nesta sessão, não reabrir
+        const dismissedToday = sessionStorage.getItem("mood_checkin_dismissed") === today;
+        if (dismissedToday) { setChecked(true); return; }
+
         const { data: last } = await supabase
           .from("mood_checkins")
           .select("created_at")
@@ -88,10 +92,21 @@ export default function WeeklyMoodCheckin() {
           .limit(1)
           .maybeSingle();
         if (cancelled) return;
-        const now = Date.now();
-        const shouldOpen = !last
-          || (now - new Date(last.created_at).getTime()) >= CHECKIN_INTERVAL_DAYS * 24 * 60 * 60 * 1000;
-        if (shouldOpen) setOpen(true);
+
+        if (last) {
+          const lastDate = new Date(last.created_at);
+          const lastDayStr = `${lastDate.getFullYear()}-${String(lastDate.getMonth() + 1).padStart(2, "0")}-${String(lastDate.getDate()).padStart(2, "0")}`;
+          // Se já respondeu hoje, não pergunta de novo
+          if (lastDayStr === today) {
+            sessionStorage.setItem("mood_checkin_dismissed", today);
+            setChecked(true);
+            return;
+          }
+          // Só reabre depois de 3 dias completos desde a última resposta
+          const daysSince = Math.floor((Date.now() - lastDate.getTime()) / (24 * 60 * 60 * 1000));
+          if (daysSince < CHECKIN_INTERVAL_DAYS) { setChecked(true); return; }
+        }
+        setOpen(true);
       } catch {
         // silencioso
       } finally {
