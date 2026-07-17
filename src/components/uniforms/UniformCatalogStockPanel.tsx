@@ -250,128 +250,140 @@ export function UniformCatalogStockPanel({ items, onChanged }: Props) {
           ) : filteredItems.length === 0 ? (
             <div className="text-center text-muted-foreground py-8 text-sm">Nenhum item encontrado.</div>
           ) : (
-            <div className="space-y-6">
+            <Accordion type="multiple" className="space-y-2">
               {UNIFORM_CATEGORIES.map((cat) => {
                 const catItems = filteredItems.filter((it) => it.category === cat.value);
                 if (catItems.length === 0) return null;
+                const catStock = stock.filter((s) => catItems.some((i) => i.id === s.uniform_item_id));
+                const catNovas = catStock.filter((s) => s.condition === "nova").reduce((a, r) => a + r.quantity, 0);
+                const catUsadas = catStock.filter((s) => s.condition === "usada").reduce((a, r) => a + r.quantity, 0);
                 return (
-                  <div key={cat.value} className="space-y-2">
-                    <div className="flex items-center gap-2 sticky top-0 bg-background/95 backdrop-blur py-1 z-10">
-                      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{cat.label}</h3>
-                      <Badge variant="secondary" className="text-[10px]">{catItems.length}</Badge>
-                    </div>
-                    <div className="overflow-x-auto border rounded-lg">
-                      <table className="w-full text-sm">
-                        <thead className="text-left text-muted-foreground bg-muted/30 border-b text-xs">
-                          <tr>
-                            <th className="py-2 px-3">Peça</th>
-                            <th className="px-2">Tam.</th>
-                            <th className="px-2 text-center">Novas</th>
-                            <th className="px-2 text-center">Usadas</th>
-                            <th className="px-2 text-center">Mín.</th>
-                            <th className="px-2">Status</th>
-                            <th className="px-2 text-right">Ações</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {catItems.map((it) => {
-                            const sizes = sizesFor(it.size_type);
-                            const rows = sizes
-                              .map((s) => {
-                                const nova = stockKey(it.id, s, "nova");
-                                const usada = stockKey(it.id, s, "usada");
-                                return { size: s, nova, usada };
-                              })
-                              .filter((r) => showZero || (r.nova?.quantity ?? 0) + (r.usada?.quantity ?? 0) > 0);
+                  <AccordionItem key={cat.value} value={cat.value} className="border rounded-lg px-3">
+                    <AccordionTrigger className="hover:no-underline py-3">
+                      <div className="flex items-center gap-2 flex-1">
+                        <span className="text-sm font-semibold uppercase tracking-wide">{cat.label}</span>
+                        <Badge variant="secondary" className="text-[10px]">{catItems.length}</Badge>
+                        <div className="ml-auto mr-2 flex gap-1.5">
+                          <Badge variant="outline" className="text-[10px] border-primary/50">N: <span className="ml-1 font-bold">{catNovas}</span></Badge>
+                          <Badge variant="outline" className="text-[10px] border-amber-500/60 text-amber-700 dark:text-amber-300">U: <span className="ml-1 font-bold">{catUsadas}</span></Badge>
+                        </div>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="overflow-x-auto border rounded-lg">
+                        <table className="w-full text-sm">
+                          <thead className="text-left text-muted-foreground bg-muted/30 border-b text-xs">
+                            <tr>
+                              <th className="py-2 px-3">Peça</th>
+                              <th className="px-2">Tam.</th>
+                              <th className="px-2 text-center">Novas</th>
+                              <th className="px-2 text-center">Usadas</th>
+                              <th className="px-2 text-center">Mín.</th>
+                              <th className="px-2">Status</th>
+                              <th className="px-2 text-right">Ações</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {catItems.map((it) => {
+                              const sizes = sizesFor(it.size_type);
+                              const rows = sizes
+                                .map((s) => {
+                                  const nova = stockKey(it.id, s, "nova");
+                                  const usada = stockKey(it.id, s, "usada");
+                                  return { size: s, nova, usada };
+                                })
+                                .filter((r) => showZero || (r.nova?.quantity ?? 0) + (r.usada?.quantity ?? 0) > 0);
 
-                            if (rows.length === 0) {
-                              return (
-                                <tr key={it.id} className="border-b hover:bg-muted/20">
-                                  <td className="py-2 px-3 font-medium">
-                                    {it.name}
-                                    {!it.is_active && <Badge variant="outline" className="ml-2 text-[10px]">inativo</Badge>}
-                                  </td>
-                                  <td colSpan={5} className="px-2 text-xs text-muted-foreground italic">Sem estoque</td>
-                                  <td className="px-2">
-                                    <div className="flex justify-end">
-                                      <Button variant="ghost" size="icon" onClick={() => openMov(it.id)}><Plus className="h-4 w-4" /></Button>
-                                      <Button variant="ghost" size="icon" onClick={() => startEdit(it)}><Pencil className="h-4 w-4" /></Button>
-                                      <Button variant="ghost" size="icon" onClick={() => removeItem(it.id, it.name)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
-                            }
-
-                            return rows.map((r, idx) => {
-                              const totalQty = (r.nova?.quantity ?? 0) + (r.usada?.quantity ?? 0);
-                              const minAlert = Math.max(r.nova?.min_alert ?? 0, r.usada?.min_alert ?? 0);
-                              const low = minAlert > 0 && totalQty < minAlert;
-                              const stockRowId = r.nova?.id ?? r.usada?.id;
-                              return (
-                                <tr key={`${it.id}-${r.size}`} className="border-b hover:bg-muted/20">
-                                  {idx === 0 ? (
-                                    <td className="py-2 px-3 align-top" rowSpan={rows.length}>
-                                      <div className="font-medium flex items-center gap-1.5 flex-wrap">
-                                        <span>{it.name}</span>
-                                        {!it.is_active && <Badge variant="outline" className="text-[10px]">inativo</Badge>}
-                                        {it.is_durable && <Badge variant="outline" className="border-primary/50 text-primary text-[10px]">durável</Badge>}
-                                      </div>
-                                      <div className="text-[11px] text-muted-foreground mt-0.5">
-                                        R$ {Number(it.unit_cost).toFixed(2)} · {it.replacement_months}m
+                              if (rows.length === 0) {
+                                return (
+                                  <tr key={it.id} className="border-b hover:bg-muted/20">
+                                    <td className="py-2 px-3 font-medium">
+                                      {it.name}
+                                      {!it.is_active && <Badge variant="outline" className="ml-2 text-[10px]">inativo</Badge>}
+                                    </td>
+                                    <td colSpan={5} className="px-2 text-xs text-muted-foreground italic">Sem estoque</td>
+                                    <td className="px-2">
+                                      <div className="flex justify-end">
+                                        <Button variant="ghost" size="icon" onClick={() => openMov(it.id)}><Plus className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => startEdit(it)}><Pencil className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => removeItem(it.id, it.name)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                       </div>
                                     </td>
-                                  ) : null}
-                                  <td className="px-2 font-mono text-xs">{r.size}</td>
-                                  <td className="px-2 text-center font-medium">{r.nova?.quantity ?? 0}</td>
-                                  <td className="px-2 text-center font-medium text-amber-700 dark:text-amber-300">{r.usada?.quantity ?? 0}</td>
-                                  <td className="px-2">
-                                    <Input
-                                      type="number"
-                                      className="h-7 w-16 mx-auto text-center"
-                                      value={r.nova?.min_alert ?? r.usada?.min_alert ?? 0}
-                                      onChange={(e) => stockRowId && updateMinAlert(stockRowId, Number(e.target.value) || 0)}
-                                    />
-                                  </td>
-                                  <td className="px-2">
-                                    {low ? (
-                                      <Badge variant="outline" className="border-destructive/60 text-destructive text-[10px]">
-                                        <AlertTriangle className="h-3 w-3 mr-1" /> Repor
-                                      </Badge>
-                                    ) : totalQty === 0 ? (
-                                      <Badge variant="outline" className="text-muted-foreground text-[10px]">Zero</Badge>
-                                    ) : (
-                                      <Badge variant="outline" className="border-emerald-500/60 text-emerald-700 dark:text-emerald-300 text-[10px]">Ok</Badge>
-                                    )}
-                                  </td>
-                                  <td className="px-2">
-                                    <div className="flex justify-end gap-0.5">
-                                      <Button variant="ghost" size="icon" title="Movimentar" onClick={() => openMov(it.id, r.size)}>
-                                        <Plus className="h-4 w-4" />
-                                      </Button>
-                                      {idx === 0 && (
-                                        <>
-                                          <Button variant="ghost" size="icon" title="Editar item" onClick={() => startEdit(it)}>
-                                            <Pencil className="h-4 w-4" />
-                                          </Button>
-                                          <Button variant="ghost" size="icon" title="Excluir item" onClick={() => removeItem(it.id, it.name)}>
-                                            <Trash2 className="h-4 w-4 text-destructive" />
-                                          </Button>
-                                        </>
+                                  </tr>
+                                );
+                              }
+
+                              return rows.map((r, idx) => {
+                                const totalQty = (r.nova?.quantity ?? 0) + (r.usada?.quantity ?? 0);
+                                const minAlert = Math.max(r.nova?.min_alert ?? 0, r.usada?.min_alert ?? 0);
+                                const low = minAlert > 0 && totalQty < minAlert;
+                                const stockRowId = r.nova?.id ?? r.usada?.id;
+                                return (
+                                  <tr key={`${it.id}-${r.size}`} className="border-b hover:bg-muted/20">
+                                    {idx === 0 ? (
+                                      <td className="py-2 px-3 align-top" rowSpan={rows.length}>
+                                        <div className="font-medium flex items-center gap-1.5 flex-wrap">
+                                          <span>{it.name}</span>
+                                          {!it.is_active && <Badge variant="outline" className="text-[10px]">inativo</Badge>}
+                                          {it.is_durable && <Badge variant="outline" className="border-primary/50 text-primary text-[10px]">durável</Badge>}
+                                        </div>
+                                        <div className="text-[11px] text-muted-foreground mt-0.5">
+                                          R$ {Number(it.unit_cost).toFixed(2)} · {it.replacement_months}m
+                                        </div>
+                                      </td>
+                                    ) : null}
+                                    <td className="px-2 font-mono text-xs">{r.size}</td>
+                                    <td className="px-2 text-center font-medium">{r.nova?.quantity ?? 0}</td>
+                                    <td className="px-2 text-center font-medium text-amber-700 dark:text-amber-300">{r.usada?.quantity ?? 0}</td>
+                                    <td className="px-2">
+                                      <Input
+                                        type="number"
+                                        className="h-7 w-16 mx-auto text-center"
+                                        value={r.nova?.min_alert ?? r.usada?.min_alert ?? 0}
+                                        onChange={(e) => stockRowId && updateMinAlert(stockRowId, Number(e.target.value) || 0)}
+                                      />
+                                    </td>
+                                    <td className="px-2">
+                                      {low ? (
+                                        <Badge variant="outline" className="border-destructive/60 text-destructive text-[10px]">
+                                          <AlertTriangle className="h-3 w-3 mr-1" /> Repor
+                                        </Badge>
+                                      ) : totalQty === 0 ? (
+                                        <Badge variant="outline" className="text-muted-foreground text-[10px]">Zero</Badge>
+                                      ) : (
+                                        <Badge variant="outline" className="border-emerald-500/60 text-emerald-700 dark:text-emerald-300 text-[10px]">Ok</Badge>
                                       )}
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
-                            });
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+                                    </td>
+                                    <td className="px-2">
+                                      <div className="flex justify-end gap-0.5">
+                                        <Button variant="ghost" size="icon" title="Movimentar" onClick={() => openMov(it.id, r.size)}>
+                                          <Plus className="h-4 w-4" />
+                                        </Button>
+                                        {idx === 0 && (
+                                          <>
+                                            <Button variant="ghost" size="icon" title="Editar item" onClick={() => startEdit(it)}>
+                                              <Pencil className="h-4 w-4" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" title="Excluir item" onClick={() => removeItem(it.id, it.name)}>
+                                              <Trash2 className="h-4 w-4 text-destructive" />
+                                            </Button>
+                                          </>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              });
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
                 );
               })}
-            </div>
+            </Accordion>
+
           )}
         </CardContent>
       </Card>
