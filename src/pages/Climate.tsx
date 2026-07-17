@@ -11,6 +11,7 @@ import ClimateRespond from "@/components/climate/ClimateRespond";
 import ClimateResults from "@/components/climate/ClimateResults";
 import ClimateCampaigns from "@/components/climate/ClimateCampaigns";
 import ClimateQuestionsPanel from "@/components/climate/ClimateQuestionsPanel";
+import ClimateComparativo from "@/components/climate/ClimateComparativo";
 
 export interface ClimateSurvey {
   id: string;
@@ -35,7 +36,10 @@ export default function Climate({ embedded = false }: { embedded?: boolean } = {
   const { isAdmin, isManager } = useAuth();
   const canManage = isAdmin || isManager;
   const climateStatus = useClimateStatus();
-  const [tab, setTab] = useState<string>("respond");
+  const defaultTab = canManage ? "results" : "respond";
+  const [tab, setTab] = useState<string>(defaultTab);
+  // Só mostra a aba "Responder" para gestores quando eles ainda têm resposta pendente.
+  const showRespondTab = !canManage || climateStatus.pendingResponse;
   const [loading, setLoading] = useState(true);
   const [openSurvey, setOpenSurvey] = useState<ClimateSurvey | null>(null);
   const [questions, setQuestions] = useState<ClimateQuestion[]>([]);
@@ -126,19 +130,27 @@ export default function Climate({ embedded = false }: { embedded?: boolean } = {
       ) : (
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="w-full h-auto flex-wrap justify-start gap-1 sm:w-auto sm:inline-flex sm:flex-nowrap">
-            <TabsTrigger value="respond" className="flex-1 sm:flex-none text-xs sm:text-sm">Responder</TabsTrigger>
+            {showRespondTab && <TabsTrigger value="respond" className="flex-1 sm:flex-none text-xs sm:text-sm">Responder</TabsTrigger>}
             {canManage && <TabsTrigger value="results" className="flex-1 sm:flex-none text-xs sm:text-sm">Resultados</TabsTrigger>}
+            {canManage && <TabsTrigger value="comparativo" className="flex-1 sm:flex-none text-xs sm:text-sm">Comparativo</TabsTrigger>}
             {canManage && <TabsTrigger value="campaigns" className="flex-1 sm:flex-none text-xs sm:text-sm">Campanhas</TabsTrigger>}
             {canManage && <TabsTrigger value="questions" className="flex-1 sm:flex-none text-xs sm:text-sm">Perguntas</TabsTrigger>}
           </TabsList>
 
-          <TabsContent value="respond" className="mt-4">
-            <ClimateRespond survey={openSurvey} questions={questions} onSubmitted={load} />
-          </TabsContent>
+          {showRespondTab && (
+            <TabsContent value="respond" className="mt-4">
+              <ClimateRespond survey={openSurvey} questions={questions} onSubmitted={load} />
+            </TabsContent>
+          )}
 
           {canManage && (
             <TabsContent value="results" className="mt-4">
               <ClimateResults questions={questions} />
+            </TabsContent>
+          )}
+          {canManage && (
+            <TabsContent value="comparativo" className="mt-4">
+              <ClimateComparativo questions={questions} />
             </TabsContent>
           )}
           {canManage && (
