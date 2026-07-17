@@ -369,8 +369,22 @@ export default function Rescissions() {
                   if (!e.hire_date) missing.push("admissão");
                   if (!e.salary) missing.push("salário");
                 }
+                const pu = pendingUniforms[e.id];
                 return (
                   <div key={e.id} className="rounded border p-3 space-y-2 bg-card">
+                    {pu && pu.count > 0 && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Shirt className="h-4 w-4 text-destructive shrink-0" />
+                          <span>
+                            <b>{pu.count}</b> peça(s) de uniforme pendente(s) · {money(pu.value)} — rescisão bloqueada até resolver.
+                          </span>
+                        </div>
+                        <Button asChild size="sm" variant="outline" className="h-7 text-xs">
+                          <Link to="/uniformes">Resolver em Uniformes</Link>
+                        </Button>
+                      </div>
+                    )}
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="font-medium text-sm">{e.full_name ?? "—"}</div>
