@@ -1,0 +1,2 @@
+[functions.backfill-aso-from-employee-docs]
+verify_jwt = false
