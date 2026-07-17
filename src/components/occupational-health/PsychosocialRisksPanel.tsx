@@ -73,6 +73,7 @@ export default function PsychosocialRisksPanel() {
   const [stores, setStores] = useState<{ id: string; name: string }[]>([]);
   const [employees, setEmployees] = useState<{ id: string; full_name: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [suggesting, setSuggesting] = useState(false);
   const [filter, setFilter] = useState<"all" | "open" | "mitigated">("open");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
