@@ -128,8 +128,16 @@ export function UniformDeliveriesPanel({ items, employees }: Props) {
       toast({ title: "Erro", description: error?.message, variant: "destructive" });
       return;
     }
+    const normalizedLines = lines.map((l) => {
+      const catalogCost = Number(itemMap[l.uniform_item_id]?.unit_cost ?? 0);
+      return { ...l, unit_cost: l.unit_cost > 0 ? l.unit_cost : catalogCost };
+    });
+    const recomputedTotal = normalizedLines.reduce((s, l) => s + l.unit_cost * l.quantity, 0);
+    if (recomputedTotal !== totalCost) {
+      await supabase.from("uniform_deliveries").update({ total_cost: recomputedTotal }).eq("id", del.id);
+    }
     const { error: itErr } = await supabase.from("uniform_delivery_items").insert(
-      lines.map((l) => ({
+      normalizedLines.map((l) => ({
         delivery_id: del.id,
         uniform_item_id: l.uniform_item_id,
         size: l.size,
