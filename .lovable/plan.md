@@ -1,57 +1,68 @@
-## O que está acontecendo
 
-A duplicidade é no **chat do site**, não no WhatsApp.
+## Objetivo
 
-Eu encontrei o padrão no banco: a mesma resposta da Giana aparece duas vezes com IDs diferentes, por exemplo:
+Consolidar **Clima Organizacional** dentro de **Saúde Ocupacional** e adicionar um **Painel NR-1** que demonstre em uma tela só a conformidade da empresa com a NR-1 (GRO + riscos psicossociais).
 
-- `assistant_...` gerado pelo backend/IA
-- `a_...` gerado pelo widget do navegador
+## 1. Reorganização de navegação
 
-Ou seja: não são duas respostas diferentes da IA. É a **mesma resposta sendo salva duas vezes** com identidades diferentes.
+- `src/pages/OccupationalHealth.tsx` passa a ter as abas, nesta ordem:
+  1. **Painel NR-1** (novo, default)
+  2. Atestados
+  3. PCMSO
+  4. Documentos SST
+  5. Saúde Mental
+  6. **Clima Organizacional** (movido de `/clima`)
+- `src/components/AppSidebar.tsx`: remover item "Clima Organizacional" do grupo RH; manter apenas "Saúde Ocupacional" (ícone `HeartPulse`, já existente).
+- `src/App.tsx`: rota `/clima` passa a redirecionar para `/saude-ocupacional?tab=clima` (preserva links antigos e o `useClimateStatus` que já é usado pela Dashboard).
+- Permissões continuam as mesmas de cada aba (a aba Clima aparece para qualquer usuário logado; sub-abas de gestão de campanhas/perguntas só para admin/manager, como já é hoje).
+- `PAGE_TITLES` em `AppLayout.tsx` atualizado; título do card do dashboard "Clima" passa a apontar para a nova URL.
 
-## Por que isso acontece
+## 2. Novo componente: Painel NR-1
 
-O fluxo atual tem duas fontes tentando representar a resposta da Giana:
+Arquivo: `src/components/occupational-health/Nr1CompliancePanel.tsx`, renderizado na primeira aba.
 
-1. O **ChatWidget** cria uma mensagem temporária da assistente no navegador para mostrar o streaming em tempo real.
-2. A função `parme-chat` também recebe o resultado final da IA e grava a resposta com outro ID.
-3. Na próxima mensagem do cliente, o navegador reenvia o histórico local, incluindo a resposta temporária anterior.
-4. O backend já tinha a mesma resposta salva com outro ID, então a conversa fica com duas versões da mesma mensagem.
+Layout: header com **score geral de conformidade NR-1 (0-100)** + 4 blocos de cards, cada um com seu mini-status (verde/amarelo/vermelho) e link para a aba correspondente.
 
-A correção anterior tentou deduplicar por conteúdo, mas ficou incompleta porque:
+### Bloco A — Riscos psicossociais (Clima + Humor + Saúde Mental)
+Fontes: `climate_surveys`, `climate_responses`, `climate_response_answers`, `mood_checkins`, `mental_health_alerts`, `mental_health_followups`.
+- Última pesquisa de clima (data, % adesão, eNPS, média por dimensão Liderança/Ambiente/Reconhecimento/Orgulho).
+- % colaboradores em atraso na próxima pesquisa (via lógica já existente do `useClimateStatus`).
+- Média de humor (mood check-ins) últimos 30 dias + tendência.
+- Alertas de saúde mental abertos × tratados (com follow-up) no período.
 
-- algumas conversas já ficaram “contaminadas” com duplicatas antigas;
-- o backend ainda aceita mensagens `assistant` vindas do navegador como se fossem fonte confiável;
-- a gravação acontece em dois momentos: antes do streaming e ao finalizar o streaming.
+### Bloco B — PCMSO / ASOs
+Fontes: `medical_certificates` + eventual tabela de ASOs do PCMSO (a confirmar em `Pcmso.tsx` — se hoje não existir uma tabela dedicada de ASO, o bloco mostra apenas "PCMSO ativo/vencido por loja" e deixa placeholder para exames).
+- % colaboradores ativos com ASO válido.
+- Vencidos e a vencer em 30/60 dias.
+- Contagem por tipo (admissional, periódico, demissional) quando disponível.
 
-Por isso está difícil: não é só “bloquear clique duplo”. É um problema de **sincronização entre estado local do navegador, streaming da IA e persistência no banco**.
+### Bloco C — Atestados e afastamentos
+Fonte: `medical_certificates`.
+- Taxa de absenteísmo dos últimos 3 / 12 meses (dias afastados ÷ dias trabalhados).
+- Top 5 CIDs.
+- Dias perdidos por loja no mês (com paleta fixa de cores das lojas).
 
-## Plano de correção
+### Bloco D — Documentos SST vigentes
+Fontes: `sst_documents`, `sst_document_versions`.
+- % documentos com versão vigente (PGR, LTCAT, PPP, PCMSO, etc.).
+- Vencidos e a vencer em 30/60 dias.
+- Pendentes de assinatura.
 
-1. **Definir o backend como fonte única das respostas da Giana**
-   - O navegador pode mostrar a resposta temporária, mas o backend não deve salvar essa versão local como uma nova resposta definitiva.
+### Score geral NR-1
+Média ponderada simples dos 4 blocos (25% cada), cada bloco normalizado 0-100 por regras claras (ex.: PCMSO = % ASOs válidos; Docs SST = % vigentes; Psicossocial = média de adesão×eNPS normalizado; Atestados = 100 − absenteísmo × k). Fórmula documentada no topo do arquivo.
 
-2. **Ajustar `parme-chat` para ignorar duplicatas de assistant vindas do cliente**
-   - Ao receber o histórico do navegador, manter as mensagens do usuário.
-   - Para mensagens da Giana, preferir as que já estão gravadas pelo backend.
-   - Se o conteúdo for igual, manter uma só.
+## 3. Hook de dados
 
-3. **Deduplicar sempre antes de salvar**
-   - Aplicar uma normalização final em `chat_conversations.messages` usando `role + conteúdo normalizado`.
-   - Isso deve rodar tanto no salvamento inicial quanto no `onFinish` do streaming.
+Novo `src/components/occupational-health/useNr1Metrics.tsx` (mesmo padrão de `useDashboardMetrics`/`useSegmentMetrics`): um `useQuery` que roda os counts em paralelo e devolve tudo tipado, com cache de 5 min. Nenhuma migration de banco é necessária — todas as tabelas já existem.
 
-4. **Limpar conversas antigas já duplicadas**
-   - Rodar uma atualização nos registros existentes para remover mensagens repetidas já gravadas.
+## 4. Fora de escopo
 
-5. **Proteger o widget contra envio duplo rápido**
-   - Adicionar uma trava síncrona com `useRef`, além do `busy`, para impedir dois submits antes do React atualizar o estado.
+- Não mexer em `climate_*`, `mental_health_*`, `medical_certificates`, `sst_documents` (schema e RLS ficam intocados).
+- Não alterar lógica de cálculo de folha nem regras de RH em produção.
+- Não criar tabela nova de ASO agora (se faltar, plano futuro separado).
 
-6. **Garantir que o histórico carregado não mostre duplicatas**
-   - Ajustar a função que retorna mensagens da conversa para também devolver a lista deduplicada.
+## Arquivos afetados
 
-7. **Publicar as funções afetadas**
-   - Deploy de `parme-chat` e, se necessário, `parme-get-conversation-messages`.
-
-## Resultado esperado
-
-A Giana deve continuar respondendo em streaming normalmente, mas cada resposta aparecerá e ficará salva **uma única vez**, mesmo após nova mensagem, reload ou leitura do histórico.
+- **Novos:** `src/components/occupational-health/Nr1CompliancePanel.tsx`, `src/components/occupational-health/useNr1Metrics.tsx`.
+- **Editados:** `src/pages/OccupationalHealth.tsx`, `src/components/AppSidebar.tsx`, `src/App.tsx`, `src/components/AppLayout.tsx` (PAGE_TITLES), dashboard card do Clima (se apontar para `/clima`).
+- **Preservados:** `src/pages/Climate.tsx` (continua sendo renderizado, agora dentro da aba), `useClimateStatus`, todas as edge functions e tabelas.

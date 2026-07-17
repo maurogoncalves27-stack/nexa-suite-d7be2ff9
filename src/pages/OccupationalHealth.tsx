@@ -6,27 +6,33 @@ import { useAuth } from "@/hooks/useAuth";
 import MedicalCertificates from "./MedicalCertificates";
 import Pcmso from "./Pcmso";
 import MentalHealth from "./MentalHealth";
+import Climate from "./Climate";
 import SstDocumentsPanel from "@/components/sst/SstDocumentsPanel";
+import Nr1CompliancePanel from "@/components/occupational-health/Nr1CompliancePanel";
 
-type TabKey = "atestados" | "pcmso" | "saude-mental" | "documentos-sst";
+type TabKey = "nr1" | "atestados" | "pcmso" | "saude-mental" | "documentos-sst" | "clima";
 
 export default function OccupationalHealth() {
   const [params, setParams] = useSearchParams();
-  const { roles, isAdmin, isManager, isContabilidade } = useAuth();
+  const { roles, isAdmin, isManager, isContabilidade, user } = useAuth();
 
   const canAtestados = isAdmin || isManager || roles.includes("hr") || isContabilidade;
   const canPcmso = isAdmin || isManager || roles.includes("hr") || roles.includes("mental_health");
   const canMental = isAdmin || roles.includes("hr") || roles.includes("mental_health");
   const canSstDocs = isAdmin || isManager || roles.includes("hr") || isContabilidade;
+  const canNr1 = isAdmin || isManager || roles.includes("hr");
+  const canClima = !!user;
 
   const availableTabs = useMemo(() => {
     const tabs: { key: TabKey; label: string }[] = [];
+    if (canNr1) tabs.push({ key: "nr1", label: "Painel NR-1" });
     if (canAtestados) tabs.push({ key: "atestados", label: "Atestados" });
-    if (canPcmso) tabs.push({ key: "pcmso", label: "PCMSO (colaborador)" });
+    if (canPcmso) tabs.push({ key: "pcmso", label: "PCMSO" });
     if (canSstDocs) tabs.push({ key: "documentos-sst", label: "Documentos SST" });
     if (canMental) tabs.push({ key: "saude-mental", label: "Saúde Mental" });
+    if (canClima) tabs.push({ key: "clima", label: "Clima Organizacional" });
     return tabs;
-  }, [canAtestados, canPcmso, canMental, canSstDocs]);
+  }, [canAtestados, canPcmso, canMental, canSstDocs, canNr1, canClima]);
 
   if (availableTabs.length === 0) {
     return <Navigate to="/" replace />;
@@ -51,11 +57,13 @@ export default function OccupationalHealth() {
           <HeartPulse className="h-6 w-6 md:h-7 md:w-7 text-primary" />
           Saúde Ocupacional
         </h1>
-        <p className="text-muted-foreground">Atestados, PCMSO e saúde mental (NR-1) em um só lugar.</p>
+        <p className="text-muted-foreground">
+          Atestados, PCMSO, documentos SST, saúde mental e clima — tudo o que a NR-1 exige em um só lugar.
+        </p>
       </div>
 
       {availableTabs.length === 1 ? (
-        <SingleTab tab={availableTabs[0].key} />
+        <SingleTab tab={availableTabs[0].key} onNavigate={setActive} />
       ) : (
         <Tabs value={active} onValueChange={setActive}>
           <TabsList className="w-full sm:w-auto flex-wrap h-auto">
@@ -66,6 +74,11 @@ export default function OccupationalHealth() {
             ))}
           </TabsList>
 
+          {canNr1 && (
+            <TabsContent value="nr1" className="mt-4">
+              <Nr1CompliancePanel onNavigate={setActive} />
+            </TabsContent>
+          )}
           {canAtestados && (
             <TabsContent value="atestados" className="mt-4">
               <MedicalCertificates embedded />
@@ -86,15 +99,22 @@ export default function OccupationalHealth() {
               <MentalHealth embedded />
             </TabsContent>
           )}
+          {canClima && (
+            <TabsContent value="clima" className="mt-4">
+              <Climate embedded />
+            </TabsContent>
+          )}
         </Tabs>
       )}
     </div>
   );
 }
 
-function SingleTab({ tab }: { tab: TabKey }) {
+function SingleTab({ tab, onNavigate }: { tab: TabKey; onNavigate: (k: string) => void }) {
+  if (tab === "nr1") return <Nr1CompliancePanel onNavigate={onNavigate} />;
   if (tab === "atestados") return <MedicalCertificates embedded />;
   if (tab === "pcmso") return <Pcmso embedded />;
   if (tab === "documentos-sst") return <SstDocumentsPanel />;
+  if (tab === "clima") return <Climate />;
   return <MentalHealth embedded />;
 }

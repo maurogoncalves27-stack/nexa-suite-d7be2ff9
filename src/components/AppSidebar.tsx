@@ -69,7 +69,6 @@ const rhGroups: Group[] = [
       { title: "Avaliações", url: "/avaliacoes", icon: Award, staffOnly: true },
       { title: "Infrações e Advertências", url: "/infracoes", icon: ShieldAlert, staffOnly: true },
       { title: "Regras automáticas", url: "/regras-automaticas", icon: Settings, staffOnly: true },
-      { title: "Clima", url: "/clima", icon: HeartHandshake, staffOnly: true },
     ],
   },
 ];

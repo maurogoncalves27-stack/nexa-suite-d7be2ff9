@@ -392,7 +392,7 @@ const App = () => (
               <Route path="/feriados-trabalhados" element={<Guarded staff><HolidaysWorked /></Guarded>} />
               <Route path="/adicional-noturno" element={<Guarded staff><NightAddition /></Guarded>} />
               <Route path="/treinamentos" element={<Guarded staff><Trainings /></Guarded>} />
-              <Route path="/clima" element={<Guarded staff><Climate /></Guarded>} />
+              <Route path="/clima" element={<Navigate to="/saude-ocupacional?tab=clima" replace />} />
               <Route path="/ferias" element={<Guarded staff><Vacations /></Guarded>} />
               <Route path="/pagamentos/ferias" element={<Guarded staff><VacationPayments /></Guarded>} />
               <Route path="/uniformes" element={<Guarded staff><Uniforms /></Guarded>} />
