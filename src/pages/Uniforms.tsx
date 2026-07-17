@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Shirt } from "lucide-react";
 import { UniformCatalogStockPanel } from "@/components/uniforms/UniformCatalogStockPanel";
-import { UniformKitsPanel } from "@/components/uniforms/UniformKitsPanel";
+
 import { UniformDeliveriesPanel } from "@/components/uniforms/UniformDeliveriesPanel";
 import { UniformDashboardPanel } from "@/components/uniforms/UniformDashboardPanel";
 import { UniformPendingReturnsPanel } from "@/components/uniforms/UniformPendingReturnsPanel";
