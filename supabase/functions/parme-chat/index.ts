@@ -119,6 +119,78 @@ function sb() {
   );
 }
 
+// ============ Hard-guard contra alucinação de preço ============
+// A Giana NÃO pode informar preço em R$. Se o modelo tentar, substituímos
+// a resposta por um redirecionamento pro iFood — tanto no stream (o que o
+// cliente vê) quanto no persistido (histórico da conversa).
+const PRICE_REGEX =
+  /R\$\s*\d|(?:\d+\s*[.,]\s*\d{2})\s*(?:reais|R\$)|\b\d+\s*reais\b/i;
+const PRICE_REPLACEMENT =
+  "Os preços atualizadinhos ficam lá no iFood 😊 posso te mandar o link da unidade mais pertinho de você?";
+
+function containsPrice(s: string): boolean {
+  return PRICE_REGEX.test(String(s || ""));
+}
+
+function sanitizePriceText(s: string): string {
+  return containsPrice(s) ? PRICE_REPLACEMENT : s;
+}
+
+function wrapSseWithPriceGuard(
+  body: ReadableStream<Uint8Array>,
+): ReadableStream<Uint8Array> {
+  const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
+  let carry = "";
+  let accum = "";
+  let blocked = false;
+
+  const processLine = (line: string): string => {
+    if (!line.startsWith("data:")) return line;
+    const raw = line.slice(5).trim();
+    if (!raw || raw === "[DONE]") return line;
+    let obj: Record<string, unknown>;
+    try {
+      obj = JSON.parse(raw) as Record<string, unknown>;
+    } catch {
+      return line;
+    }
+    const type = String(obj?.type ?? "");
+    if (type === "text-delta" || type === "text") {
+      const key = "delta" in obj ? "delta" : "text";
+      const delta = String((obj as Record<string, unknown>)[key] ?? "");
+      if (blocked) {
+        (obj as Record<string, unknown>)[key] = "";
+        return "data: " + JSON.stringify(obj);
+      }
+      accum += delta;
+      if (containsPrice(accum)) {
+        blocked = true;
+        (obj as Record<string, unknown>)[key] = PRICE_REPLACEMENT;
+        console.warn("[parme-chat] price-guard triggered", { snippet: accum.slice(-60) });
+        return "data: " + JSON.stringify(obj);
+      }
+    }
+    return line;
+  };
+
+  return body.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        carry += decoder.decode(chunk, { stream: true });
+        const lines = carry.split("\n");
+        carry = lines.pop() ?? "";
+        for (const line of lines) {
+          controller.enqueue(encoder.encode(processLine(line) + "\n"));
+        }
+      },
+      flush(controller) {
+        if (carry) controller.enqueue(encoder.encode(processLine(carry)));
+      },
+    }),
+  );
+}
+
 type FlatChatMessage = {
   id: string;
   role: string;
