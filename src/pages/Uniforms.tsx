@@ -63,9 +63,8 @@ export default function Uniforms() {
         <TabsContent value="dashboard">
           <UniformDashboardPanel items={items} stores={stores} />
         </TabsContent>
-        <TabsContent value="stock" className="space-y-6">
-          <UniformItemsPanel items={items} onChanged={loadItems} />
-          <UniformStockPanel items={items} stores={stores} />
+        <TabsContent value="stock">
+          <UniformCatalogStockPanel items={items} onChanged={loadItems} />
         </TabsContent>
         <TabsContent value="kits">
           <UniformKitsPanel items={items} />
