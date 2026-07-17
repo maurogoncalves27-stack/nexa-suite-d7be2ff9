@@ -8,6 +8,7 @@ import { UniformKitsPanel } from "@/components/uniforms/UniformKitsPanel";
 import { UniformStockPanel } from "@/components/uniforms/UniformStockPanel";
 import { UniformDeliveriesPanel } from "@/components/uniforms/UniformDeliveriesPanel";
 import { UniformDashboardPanel } from "@/components/uniforms/UniformDashboardPanel";
+import { UniformPendingReturnsPanel } from "@/components/uniforms/UniformPendingReturnsPanel";
 import type { UniformItem } from "@/lib/uniforms";
 import { sortStores } from "@/lib/storeSort";
 
