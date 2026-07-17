@@ -8202,6 +8202,27 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "medical_certificates_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medical_certificates_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medical_certificates_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "uniform_pending_returns"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "medical_certificates_infraction_id_fkey"
             columns: ["infraction_id"]
             isOneToOne: false
