@@ -115,7 +115,7 @@ export default function WeeklyMoodCheckin() {
     <Dialog open={open} onOpenChange={(v) => { if (!saving) setOpen(v); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Como você está se sentindo esta semana?</DialogTitle>
+          <DialogTitle>Como você está se sentindo hoje?</DialogTitle>
           <p className="text-sm text-muted-foreground pt-1">
             Sua resposta é confidencial e ajuda a empresa a cuidar do seu bem-estar (NR-1).
           </p>
