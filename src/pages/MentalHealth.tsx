@@ -162,10 +162,10 @@ export default function MentalHealth({ embedded = false }: { embedded?: boolean 
         </Card>
       </div>
 
-      <Tabs defaultValue="alerts">
+      <Tabs defaultValue="heatmap">
         <TabsList>
-          <TabsTrigger value="alerts">Alertas ({openAlerts.length})</TabsTrigger>
           <TabsTrigger value="heatmap">Humor por loja</TabsTrigger>
+          <TabsTrigger value="alerts">Alertas ({openAlerts.length})</TabsTrigger>
           <TabsTrigger value="history">Histórico</TabsTrigger>
         </TabsList>
 
