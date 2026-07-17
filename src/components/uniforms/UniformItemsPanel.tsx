@@ -101,22 +101,51 @@ export function UniformItemsPanel({ items, onChanged }: Props) {
     onChanged();
   };
 
+  const filteredItems = items.filter((it) => {
+    if (filterCategory !== "all" && it.category !== filterCategory) return false;
+    if (filterSizeType !== "all" && it.size_type !== filterSizeType) return false;
+    if (search && !it.name.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="text-sm text-muted-foreground">
-          {items.length} {items.length === 1 ? "item cadastrado" : "itens cadastrados"}
+          {filteredItems.length} de {items.length} {items.length === 1 ? "item" : "itens"}
         </div>
-        <Button onClick={openNew} className="gap-2">
+        <Button onClick={openNew} className="gap-2 w-full sm:w-auto">
           <Plus className="h-4 w-4" /> Novo item
         </Button>
       </div>
 
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <Input
+          placeholder="Buscar por nome..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <Select value={filterCategory} onValueChange={setFilterCategory}>
+          <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as categorias</SelectItem>
+            {UNIFORM_CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterSizeType} onValueChange={setFilterSizeType}>
+          <SelectTrigger><SelectValue placeholder="Tamanho" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os tamanhos</SelectItem>
+            {SIZE_TYPES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="space-y-6">
-        {items.length === 0 ? (
-          <div className="text-center text-muted-foreground py-8 text-sm">Nenhum item cadastrado.</div>
+        {filteredItems.length === 0 ? (
+          <div className="text-center text-muted-foreground py-8 text-sm">Nenhum item encontrado.</div>
         ) : UNIFORM_CATEGORIES.map((cat) => {
-          const catItems = items.filter((it) => it.category === cat.value);
+          const catItems = filteredItems.filter((it) => it.category === cat.value);
           if (catItems.length === 0) return null;
           return (
             <div key={cat.value} className="space-y-2">
