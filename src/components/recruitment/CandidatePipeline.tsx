@@ -237,10 +237,12 @@ function CandidateMiniCard({
   candidate,
   jobTitle,
   onOpen,
+  onDelete,
 }: {
   candidate: Candidate;
   jobTitle: string;
   onOpen: () => void;
+  onDelete?: () => void;
 }) {
   const c = candidate;
   const phase = getPhaseForStage(c.current_stage);
@@ -251,6 +253,7 @@ function CandidateMiniCard({
   const lastChange = c.updated_at ? new Date(c.updated_at).getTime() : new Date(c.applied_at).getTime();
   const daysInStage = Math.floor((Date.now() - lastChange) / (1000 * 60 * 60 * 24));
   const isStale = daysInStage >= STALE_DAYS && phase?.key !== "encerrado";
+  const canDelete = !!onDelete && phase?.key === "encerrado" && daysInStage >= 30;
 
   const recColor =
     c.ai_recommendation === "forte_recomendado" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30" :
