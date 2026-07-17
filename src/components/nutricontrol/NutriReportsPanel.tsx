@@ -291,7 +291,7 @@ function HygieneReport({ from, to, storeId, storeMap }: ReportProps) {
                     <TableCell>{format(new Date(r.date), "dd/MM/yyyy")}</TableCell>
                     <TableCell>{r.nutri_items?.name ?? "—"}</TableCell>
                     <TableCell>
-                      <Badge variant={r.sim_nao ? "default" : "destructive"}>{r.sim_nao ? "Sim" : "Não"}</Badge>
+                      <Badge variant={isConforme(r) ? "default" : "destructive"}>{isConforme(r) ? "Sim" : "Não"}</Badge>
                     </TableCell>
                     <TableCell className="max-w-xs truncate">{r.note}</TableCell>
                   </TableRow>
