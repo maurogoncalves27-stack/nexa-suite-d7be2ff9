@@ -540,7 +540,8 @@ export default function Rescissions() {
                       <Button
                         size="sm"
                         onClick={() => launchOne({ emp: e, amount: displayAmount })}
-                        disabled={launchingId === e.id || displayAmount <= 0 || (!!pay && !!pay.exported_at)}
+                        disabled={launchingId === e.id || displayAmount <= 0 || (!!pay && !!pay.exported_at) || !!(pu && pu.count > 0)}
+                        title={pu && pu.count > 0 ? "Uniformes pendentes — resolva primeiro" : undefined}
                       >
                         {launchingId === e.id
                           ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
