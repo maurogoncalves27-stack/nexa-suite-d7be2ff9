@@ -84,10 +84,10 @@ Deno.serve(async (req) => {
     catch { const m = String(raw).match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); }
 
     const risks = Array.isArray(parsed?.risks) ? parsed.risks : [];
-    const source = `documento:${doc.doc_type} v${ver.version}`;
+    const source = `documento:${doc.doc_type} v${versionNum}`;
 
     if (dry_run) {
-      return new Response(JSON.stringify({ doc_type: doc.doc_type, version: ver.version, risks }), {
+      return new Response(JSON.stringify({ doc_type: doc.doc_type, version: versionNum, risks }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
       inserted = ins?.length ?? 0;
     }
 
-    return new Response(JSON.stringify({ doc_type: doc.doc_type, version: ver.version, extracted: risks.length, inserted, source }), {
+    return new Response(JSON.stringify({ doc_type: doc.doc_type, version: versionNum, extracted: risks.length, inserted, source }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
