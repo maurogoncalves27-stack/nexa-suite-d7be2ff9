@@ -100,13 +100,22 @@ export default function Rescissions() {
 
     if (empList.length > 0) {
       const ids = empList.map((e) => e.id);
-      const { data: deps } = await (supabase as any)
-        .from("employee_dependents")
-        .select("employee_id")
-        .in("employee_id", ids);
+      const [{ data: deps }, { data: pend }] = await Promise.all([
+        (supabase as any).from("employee_dependents").select("employee_id").in("employee_id", ids),
+        (supabase as any).from("uniform_pending_returns").select("employee_id, pending_qty, pending_value").in("employee_id", ids),
+      ]);
       const counts: Record<string, number> = {};
       (deps ?? []).forEach((d: any) => { counts[d.employee_id] = (counts[d.employee_id] || 0) + 1; });
       setDepCount(counts);
+      const pu: Record<string, { count: number; value: number }> = {};
+      (pend ?? []).forEach((p: any) => {
+        pu[p.employee_id] ||= { count: 0, value: 0 };
+        pu[p.employee_id].count += Number(p.pending_qty ?? 0);
+        pu[p.employee_id].value += Number(p.pending_value ?? 0);
+      });
+      setPendingUniforms(pu);
+    } else {
+      setPendingUniforms({});
     }
     setLoading(false);
   };
