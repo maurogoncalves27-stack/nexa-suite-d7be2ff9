@@ -168,17 +168,52 @@ function existingFlatMessages(raw: unknown) {
   });
 }
 
+function normalizeMessageContent(content: string) {
+  return String(content || "")
+    .normalize("NFKC")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function isAssistantMessage(m: FlatChatMessage) {
+  return String(m.role || "").toLowerCase() === "assistant";
+}
+
+function isBackendAssistantId(id: string) {
+  return /^assistant_/i.test(id || "");
+}
+
+function mergeDuplicateFlatMessage(current: FlatChatMessage, incoming: FlatChatMessage) {
+  if (!isAssistantMessage(current) || !isAssistantMessage(incoming)) {
+    return { ...current, ...incoming, ts: current.ts || incoming.ts };
+  }
+
+  const currentIsBackend = isBackendAssistantId(current.id);
+  const incomingIsBackend = isBackendAssistantId(incoming.id);
+  const preferred = currentIsBackend && !incomingIsBackend ? current : incoming;
+  const other = preferred === current ? incoming : current;
+  return {
+    ...other,
+    ...preferred,
+    tools: preferred.tools?.length ? preferred.tools : other.tools,
+    ts: current.ts || incoming.ts,
+  };
+}
+
 function mergeFlatMessages(existing: FlatChatMessage[], incoming: FlatChatMessage[]) {
   const merged: FlatChatMessage[] = [];
   const indexById = new Map<string, number>();
   const indexByContent = new Map<string, number>();
-  // Dedupe por id E por (role + conteúdo normalizado), porque o cliente e o
-  // onFinish geram ids diferentes para a mesma resposta da Giana (ex.:
-  // `assistant_N_<prefix>` vs `a_<ts>`), o que duplicava cada mensagem.
+  // Dedupe por id em todos os papéis e por conteúdo APENAS nas mensagens da
+  // Giana. O widget cria ids temporários `a_<ts>` enquanto o backend persiste
+  // `assistant_<...>`; sem essa regra a mesma resposta volta duplicada quando
+  // o navegador reenvia o histórico local no próximo turno.
   const contentKey = (m: FlatChatMessage) => {
-    const c = String(m.content || "").trim().toLowerCase();
+    if (!isAssistantMessage(m)) return "";
+    const c = normalizeMessageContent(m.content);
     if (!c) return "";
-    return `${String(m.role || "user").toLowerCase()}::${c}`;
+    return `assistant::${c}`;
   };
   for (const msg of [...existing, ...incoming]) {
     const idKey = msg.id || "";
@@ -192,7 +227,7 @@ function mergeFlatMessages(existing: FlatChatMessage[], incoming: FlatChatMessag
       if (idKey) indexById.set(idKey, pos);
       if (cKey) indexByContent.set(cKey, pos);
     } else {
-      merged[found] = { ...merged[found], ...msg, ts: merged[found].ts || msg.ts };
+      merged[found] = mergeDuplicateFlatMessage(merged[found], msg);
       if (idKey && !indexById.has(idKey)) indexById.set(idKey, found);
       if (cKey && !indexByContent.has(cKey)) indexByContent.set(cKey, found);
     }
@@ -519,7 +554,7 @@ Deno.serve(async (req) => {
           if (id && ts) tsById.set(id, ts);
         }
         const flatNow = mergeFlatMessages(existingMessages, flattenUIMessages(messages, now, tsById));
-        if (flatNow.length > messages.length) messages = flatToUIMessages(flatNow);
+        messages = flatToUIMessages(flatNow);
         const finalClientMeta = mergeClientMeta(
           (existing as { client_meta?: unknown } | null)?.client_meta,
           body?.clientMeta,
