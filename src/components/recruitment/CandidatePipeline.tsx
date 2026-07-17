@@ -139,6 +139,41 @@ export function CandidatePipeline({ jobOpeningId, jobTitle, jobPosition }: Props
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         {PHASES.map((phase) => {
           const list = byPhase.get(phase.key) ?? [];
+          const isEncerrado = phase.key === "encerrado";
+
+          if (isEncerrado) {
+            return (
+              <div key={phase.key} className={`rounded-lg border ${phase.color} p-2 flex flex-col min-h-[80px]`}>
+                <Collapsible open={encerradoOpen} onOpenChange={setEncerradoOpen}>
+                  <CollapsibleTrigger className="w-full flex items-center justify-between gap-2 px-1 pb-2 mb-1 border-b border-current/10 hover:opacity-80">
+                    <div className="text-xs font-bold uppercase tracking-wide truncate flex items-center gap-1">
+                      <ChevronDown className={`h-3 w-3 transition-transform ${encerradoOpen ? "rotate-0" : "-rotate-90"}`} />
+                      {phase.label}
+                    </div>
+                    <Badge variant="outline" className={`h-5 px-1.5 text-[10px] shrink-0 ${phase.badgeColor}`}>{list.length}</Badge>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    {list.length === 0 ? (
+                      <div className="text-[11px] text-muted-foreground text-center py-3 italic">vazio</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {list.map((c) => (
+                          <CandidateMiniCard
+                            key={c.id}
+                            candidate={c}
+                            jobTitle={jobTitle}
+                            onOpen={() => setSelectedId(c.id)}
+                            onDelete={() => deleteCandidate(c.id, c.full_name)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+            );
+          }
+
           return (
             <div key={phase.key} className={`rounded-lg border ${phase.color} p-2 flex flex-col min-h-[160px]`}>
               <div className="flex items-center justify-between gap-2 px-1 pb-2 mb-1 border-b border-current/10">
