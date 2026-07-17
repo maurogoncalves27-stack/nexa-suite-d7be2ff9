@@ -120,6 +120,7 @@ export default function OccupationalHealth() {
 
 function SingleTab({ tab, onNavigate }: { tab: TabKey; onNavigate: (k: string) => void }) {
   if (tab === "nr1") return <Nr1CompliancePanel onNavigate={onNavigate} />;
+  if (tab === "riscos-psicossociais") return <PsychosocialRisksPanel />;
   if (tab === "atestados") return <MedicalCertificates embedded />;
   if (tab === "pcmso") return <Pcmso embedded />;
   if (tab === "documentos-sst") return <SstDocumentsPanel />;
