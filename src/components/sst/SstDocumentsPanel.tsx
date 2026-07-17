@@ -679,6 +679,72 @@ export default function SstDocumentsPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={smartOpen} onOpenChange={(v) => { if (!smartConfirming) setSmartOpen(v); }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" /> Análise automática do PDF
+            </DialogTitle>
+          </DialogHeader>
+          {smartLoading || !smartResult ? (
+            <div className="flex flex-col items-center gap-2 py-8 text-sm text-muted-foreground">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              A IA está lendo o documento…
+            </div>
+          ) : (
+            <div className="space-y-3 text-sm">
+              <div className="rounded-lg border p-3 space-y-1">
+                <div className="flex items-center gap-2">
+                  <Badge>{smartResult.kind === "aso" ? "ASO (ficha do colaborador)" : DOC_TYPE_META[smartResult.kind as DocType]?.short ?? smartResult.kind}</Badge>
+                  <span className="text-xs text-muted-foreground">confiança {(smartResult.confidence * 100).toFixed(0)}%</span>
+                </div>
+                {smartResult.kind === "aso" ? (
+                  <>
+                    <div><b>Colaborador identificado:</b>{" "}
+                      {smartEmployee ? (
+                        <span className="text-success">{smartEmployee.full_name}</span>
+                      ) : (
+                        <span className="text-destructive">
+                          {smartResult.employee_name ?? "(não detectado)"} — sem correspondência no cadastro
+                        </span>
+                      )}
+                    </div>
+                    {smartResult.aso_type && <div><b>Tipo:</b> {smartResult.aso_type}</div>}
+                    {smartResult.aso_result && <div><b>Resultado:</b> {smartResult.aso_result}</div>}
+                    {smartResult.doctor_name && <div><b>Médico:</b> {smartResult.doctor_name}{smartResult.doctor_crm ? ` (${smartResult.doctor_crm})` : ""}</div>}
+                    {smartResult.emitted_at && <div><b>Emitido:</b> {new Date(smartResult.emitted_at).toLocaleDateString("pt-BR")}</div>}
+                    {smartResult.valid_until && <div><b>Validade:</b> {new Date(smartResult.valid_until).toLocaleDateString("pt-BR")}</div>}
+                  </>
+                ) : (
+                  <>
+                    {smartResult.company_name && <div><b>Empresa:</b> {smartResult.company_name}</div>}
+                    {smartResult.cnpj && <div><b>CNPJ:</b> {smartResult.cnpj}</div>}
+                    {smartResult.emitted_at && <div><b>Emitido:</b> {new Date(smartResult.emitted_at).toLocaleDateString("pt-BR")}</div>}
+                    {smartResult.valid_from && <div><b>Vigência:</b> {new Date(smartResult.valid_from).toLocaleDateString("pt-BR")}{smartResult.valid_until ? ` → ${new Date(smartResult.valid_until).toLocaleDateString("pt-BR")}` : ""}</div>}
+                    {smartResult.notes && <div className="text-muted-foreground text-xs">{smartResult.notes}</div>}
+                  </>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {smartResult.kind === "aso"
+                  ? "O arquivo será arquivado na pasta do colaborador e registrado como ASO/PCMSO na aba Atestados."
+                  : `O documento será cadastrado em SST como ${DOC_TYPE_META[(smartResult.kind as DocType) ?? "outros"]?.short ?? "SST"}. Se já existir um do mesmo tipo/CNPJ, entra como nova versão.`}
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSmartOpen(false)} disabled={smartConfirming}>Cancelar</Button>
+            <Button
+              onClick={confirmSmart}
+              disabled={smartConfirming || smartLoading || !smartResult || (smartResult?.kind === "aso" && !smartEmployee)}
+            >
+              {smartConfirming && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Confirmar e arquivar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
