@@ -177,7 +177,7 @@ export default function AdminDashboardPanel() {
     return sum + items;
   }, 0);
   const checkedItems = submissions.reduce(
-    (sum, s) => sum + s.checklist_answers.filter((a) => a.checked).length, 0,
+    (sum, s) => sum + s.checklist_answers.filter(isAnswerComplete).length, 0,
   );
   const conformity = totalExpectedItems > 0 ? Math.round((checkedItems / totalExpectedItems) * 100) : 0;
   const totalExpiredMissing = groupStats.reduce((s, g) => s + g.expiredMissing.length, 0);
