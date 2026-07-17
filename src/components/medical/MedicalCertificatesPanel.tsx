@@ -635,83 +635,104 @@ export default function MedicalCertificatesPanel() {
             <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
           ) : filtered.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">Nenhum atestado registrado.</p>
-          ) : (
-            <ul className="divide-y">
-              {filtered.map((c) => {
-                const statusBadge =
-                  c.status === "approved" ? (
-                    <Badge variant="default" className="text-[10px]"><CheckCircle2 className="h-3 w-3 mr-1" />Aprovado</Badge>
-                  ) : c.status === "rejected" ? (
-                    <Badge variant="destructive" className="text-[10px]"><XCircle className="h-3 w-3 mr-1" />Rejeitado</Badge>
-                  ) : (
-                    <Badge variant="secondary" className="text-[10px]"><Clock className="h-3 w-3 mr-1" />Pendente</Badge>
-                  );
-                return (
-                  <li key={c.id} className="py-3 flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3">
-                    <button
-                      type="button"
-                      onClick={() => openEdit(c)}
-                      className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0 text-left hover:bg-muted/40 rounded-md p-1 -m-1 transition-colors"
-                      title="Clique para editar"
-                    >
-                      <Stethoscope className="h-5 w-5 mt-0.5 shrink-0 text-primary" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className={cn("font-semibold text-sm sm:text-base", isTerminated(c.employee_id) && "text-muted-foreground line-through")}>
-                            {employeeName(c.employee_id)}
-                          </span>
-                          {isTerminated(c.employee_id) && (
-                            <Badge variant="outline" className="text-[10px] border-muted-foreground/40 text-muted-foreground">Desligado</Badge>
-                          )}
-                          {statusBadge}
-                          {c.cid_code && <Badge variant="secondary" className="text-[10px]">{c.cid_code}</Badge>}
-                          <Badge variant="outline" className="text-[10px]">{c.days_off} {c.days_off === 1 ? "dia" : "dias"}</Badge>
-                          {c.inss_referral && (
-                            <Badge variant="default" className="text-[10px] bg-warning/15 text-warning border-warning/40 hover:bg-warning/20">
-                              INSS{c.inss_benefit_type ? ` · ${c.inss_benefit_type}` : ""}
-                            </Badge>
-                          )}
-                        </div>
-                        {c.cid_description && (
-                          <p className="text-sm text-muted-foreground mt-0.5">{c.cid_description}</p>
+          ) : (() => {
+            const renderItem = (c: typeof filtered[number]) => {
+              const statusBadge =
+                c.status === "approved" ? (
+                  <Badge variant="default" className="text-[10px]"><CheckCircle2 className="h-3 w-3 mr-1" />Aprovado</Badge>
+                ) : c.status === "rejected" ? (
+                  <Badge variant="destructive" className="text-[10px]"><XCircle className="h-3 w-3 mr-1" />Rejeitado</Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-[10px]"><Clock className="h-3 w-3 mr-1" />Pendente</Badge>
+                );
+              return (
+                <li key={c.id} className="py-3 flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3">
+                  <button
+                    type="button"
+                    onClick={() => openEdit(c)}
+                    className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0 text-left hover:bg-muted/40 rounded-md p-1 -m-1 transition-colors"
+                    title="Clique para editar"
+                  >
+                    <Stethoscope className="h-5 w-5 mt-0.5 shrink-0 text-primary" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="font-semibold text-sm sm:text-base">
+                          {employeeName(c.employee_id)}
+                        </span>
+                        {isTerminated(c.employee_id) && (
+                          <Badge variant="outline" className="text-[10px] border-muted-foreground/40 text-muted-foreground">Desligado</Badge>
                         )}
-                        <p className="text-xs text-muted-foreground mt-1 break-words">
-                          Atestado: {format(parseISO(c.certificate_date), "dd/MM/yyyy")}
-                          {c.leave_start_date && c.leave_end_date && ` · Afastamento: ${format(parseISO(c.leave_start_date), "dd/MM")} a ${format(parseISO(c.leave_end_date), "dd/MM/yyyy")}`}
-                          {c.doctor_name && ` · Dr(a). ${c.doctor_name}`}
-                          {c.doctor_crm && ` · CRM ${c.doctor_crm}`}
-                        </p>
-                        {c.notes && <p className="text-xs mt-1">{c.notes}</p>}
-                        {c.review_notes && (
-                          <p className="text-xs mt-1 italic text-muted-foreground">Revisão: {c.review_notes}</p>
+                        {statusBadge}
+                        {c.cid_code && <Badge variant="secondary" className="text-[10px]">{c.cid_code}</Badge>}
+                        <Badge variant="outline" className="text-[10px]">{c.days_off} {c.days_off === 1 ? "dia" : "dias"}</Badge>
+                        {c.inss_referral && (
+                          <Badge variant="default" className="text-[10px] bg-warning/15 text-warning border-warning/40 hover:bg-warning/20">
+                            INSS{c.inss_benefit_type ? ` · ${c.inss_benefit_type}` : ""}
+                          </Badge>
                         )}
                       </div>
-                    </button>
-                    <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
-                      {c.status === "pending" && (
-                        <>
-                          <Button size="sm" variant="default" className="h-8" onClick={() => approve(c)}>
-                            <CheckCircle2 className="h-3.5 w-3.5 mr-1" />Aprovar
-                          </Button>
-                          <Button size="sm" variant="outline" className="h-8" onClick={() => reject(c)}>
-                            <XCircle className="h-3.5 w-3.5 mr-1" />Rejeitar
-                          </Button>
-                        </>
+                      {c.cid_description && (
+                        <p className="text-sm text-muted-foreground mt-0.5">{c.cid_description}</p>
                       )}
-                      {c.file_path && (
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => downloadFile(c)} title="Baixar">
-                          <Download className="h-4 w-4" />
-                        </Button>
+                      <p className="text-xs text-muted-foreground mt-1 break-words">
+                        Atestado: {format(parseISO(c.certificate_date), "dd/MM/yyyy")}
+                        {c.leave_start_date && c.leave_end_date && ` · Afastamento: ${format(parseISO(c.leave_start_date), "dd/MM")} a ${format(parseISO(c.leave_end_date), "dd/MM/yyyy")}`}
+                        {c.doctor_name && ` · Dr(a). ${c.doctor_name}`}
+                        {c.doctor_crm && ` · CRM ${c.doctor_crm}`}
+                      </p>
+                      {c.notes && <p className="text-xs mt-1">{c.notes}</p>}
+                      {c.review_notes && (
+                        <p className="text-xs mt-1 italic text-muted-foreground">Revisão: {c.review_notes}</p>
                       )}
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => remove(c)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
                     </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+                  </button>
+                  <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
+                    {c.status === "pending" && (
+                      <>
+                        <Button size="sm" variant="default" className="h-8" onClick={() => approve(c)}>
+                          <CheckCircle2 className="h-3.5 w-3.5 mr-1" />Aprovar
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-8" onClick={() => reject(c)}>
+                          <XCircle className="h-3.5 w-3.5 mr-1" />Rejeitar
+                        </Button>
+                      </>
+                    )}
+                    {c.file_path && (
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => downloadFile(c)} title="Baixar">
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => remove(c)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </li>
+              );
+            };
+            const activeItems = filtered.filter((c) => !isTerminated(c.employee_id));
+            const terminatedItems = filtered.filter((c) => isTerminated(c.employee_id));
+            return (
+              <>
+                {activeItems.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">Nenhum atestado de colaborador ativo.</p>
+                ) : (
+                  <ul className="divide-y">{activeItems.map(renderItem)}</ul>
+                )}
+                {terminatedItems.length > 0 && (
+                  <Accordion type="single" collapsible className="mt-2">
+                    <AccordionItem value="terminated" className="border-none">
+                      <AccordionTrigger className="text-sm text-muted-foreground hover:no-underline">
+                        Colaboradores desligados ({terminatedItems.length})
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <ul className="divide-y">{terminatedItems.map(renderItem)}</ul>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                )}
+              </>
+            );
+          })()}
         </CardContent>
       </Card>
 
