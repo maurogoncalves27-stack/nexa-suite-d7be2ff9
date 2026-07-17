@@ -64,6 +64,7 @@ export default function Pcmso({ embedded = false }: { embedded?: boolean } = {})
       supabase.from("employees")
         .select("id, full_name, store:stores!employees_store_id_fkey(name)")
         .in("status", ["active", "in_training", "on_leave"])
+        .not("contract_type", "eq", "Estágio")
         .order("full_name"),
       supabase.from("medical_certificates")
         .select("*, employee:employees!medical_certificates_employee_id_fkey(full_name, store:stores!employees_store_id_fkey(name))")
