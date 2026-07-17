@@ -60,7 +60,7 @@ export default function ChecklistsByStorePanel() {
             .eq("is_active", true),
           supabase
             .from("checklist_submissions")
-            .select("id, template_id, user_id, checklist_answers(checked)")
+            .select("id, template_id, user_id, checklist_answers(checked, observation)")
             .eq("shift_date", today),
           supabase
             .from("employees")
