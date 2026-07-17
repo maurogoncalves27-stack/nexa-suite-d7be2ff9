@@ -150,7 +150,7 @@ export default function WeeklyMoodCheckin() {
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
           <Button variant="ghost" onClick={() => save(true)} disabled={saving}>
-            Pular esta semana
+            Pular hoje
           </Button>
           <Button onClick={() => save(false)} disabled={saving || selected == null}>
             {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
