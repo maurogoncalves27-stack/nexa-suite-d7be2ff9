@@ -229,10 +229,10 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     if (psychoRisksHigh > 0) { s += Math.max(0, 100 - psychoRisksHigh * 15); n++; }
     return n ? Math.round(s / n) : 0;
   })();
-  const scorePcmso = activeEmployees > 0 ? Math.round((pcmsoValid / activeEmployees) * 100) : 100;
-  const scoreAbsent = absenteeismRate3m != null ? Math.max(0, Math.round(100 - absenteeismRate3m * 10)) : 100;
-  const scoreSst = sstTotal > 0 ? Math.round((sstValid / sstTotal) * 100) : 0;
-  const scoreOverall = Math.round((scorePsycho + scorePcmso + scoreAbsent + scoreSst) / 4);
+  const scorePcmso = activeEmployees > 0 ? Math.min(100, Math.round((pcmsoValid / activeEmployees) * 100)) : 100;
+  const scoreAbsent = absenteeismRate3m != null ? Math.max(0, Math.min(100, Math.round(100 - absenteeismRate3m * 10))) : 100;
+  const scoreSst = sstTotal > 0 ? Math.min(100, Math.round((sstValid / sstTotal) * 100)) : 0;
+  const scoreOverall = Math.min(100, Math.round((scorePsycho + scorePcmso + scoreAbsent + scoreSst) / 4));
 
   return {
     climateAdherencePct,
