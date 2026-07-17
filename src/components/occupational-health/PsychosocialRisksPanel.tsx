@@ -133,6 +133,17 @@ export default function PsychosocialRisksPanel() {
               <Button size="sm" variant="ghost" onClick={load}>
                 <RefreshCw className="h-4 w-4" />
               </Button>
+              <Button size="sm" variant="outline" disabled={suggesting} onClick={async () => {
+                setSuggesting(true);
+                const { data, error } = await supabase.functions.invoke("suggest-psychosocial-risks");
+                setSuggesting(false);
+                if (error) { toast({ title: "Falha ao sugerir", description: error.message, variant: "destructive" }); return; }
+                toast({ title: `${data?.inserted ?? 0} risco(s) sugerido(s) pela IA`, description: "Baseado em humor, atestados (CID F) e docs SST." });
+                load();
+              }}>
+                {suggesting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
+                Sugerir com IA
+              </Button>
               <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) setEditing(null); }}>
                 <DialogTrigger asChild>
                   <Button size="sm">
