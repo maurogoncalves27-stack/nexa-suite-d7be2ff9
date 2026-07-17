@@ -6,13 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, Trash2, Send, Undo2 } from "lucide-react";
+import { Loader2, Plus, Trash2, Send } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  DELIVERY_TYPES, CHARGE_REASONS, RETURN_REASONS, RETURN_CONDITIONS,
-  sizesFor, type UniformItem,
+  DELIVERY_TYPES, CHARGE_REASONS, CONDITION_OPTIONS, UNIFORM_CENTRAL_STORE_ID,
+  sizesFor, type UniformItem, type UniformCondition,
 } from "@/lib/uniforms";
 
 interface StoreOpt { id: string; name: string }
@@ -24,6 +24,7 @@ interface DraftLine {
   quantity: number;
   unit_cost: number;
   expected_return: boolean;
+  condition_at_delivery: UniformCondition;
 }
 
 interface DeliveryRow {
@@ -40,7 +41,7 @@ interface Props {
   employees: EmployeeOpt[];
 }
 
-export function UniformDeliveriesPanel({ items, stores, employees }: Props) {
+export function UniformDeliveriesPanel({ items, employees }: Props) {
   const { user } = useAuth();
   const [employeeId, setEmployeeId] = useState("");
   const [deliveryType, setDeliveryType] = useState("inicial");
@@ -49,6 +50,7 @@ export function UniformDeliveriesPanel({ items, stores, employees }: Props) {
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [saving, setSaving] = useState(false);
+  const [autoLoaded, setAutoLoaded] = useState<string | null>(null);
 
   const [history, setHistory] = useState<DeliveryRow[]>([]);
   const [loadingHist, setLoadingHist] = useState(true);
@@ -69,21 +71,19 @@ export function UniformDeliveriesPanel({ items, stores, employees }: Props) {
 
   useEffect(() => { loadHistory(); }, []);
 
-  const loadKitForPosition = async () => {
+  const loadKitForPosition = async (silent = false) => {
     if (!selectedEmp?.position) {
-      toast({ title: "Colaborador sem cargo", description: "Selecione um cargo no cadastro", variant: "destructive" });
+      if (!silent) toast({ title: "Colaborador sem cargo", description: "Selecione um cargo no cadastro", variant: "destructive" });
       return;
     }
-    // Cargo e kit vêm da mesma tabela `positions` — match exato.
     const { data } = await supabase
       .from("uniform_kit_items")
       .select("*")
       .eq("position", selectedEmp.position);
     if (!data || data.length === 0) {
-      toast({
-        title: "Nenhum kit configurado para este cargo",
-        description: `Cargo do colaborador: "${selectedEmp.position}". Verifique se existe um kit cadastrado com este mesmo nome em Uniformes › Kits por cargo.`,
-        variant: "destructive",
+      if (!silent) toast({
+        title: "Nenhum kit configurado",
+        description: `Cargo "${selectedEmp.position}" não tem kit. Adicione itens manualmente.`,
       });
       return;
     }
@@ -95,14 +95,25 @@ export function UniformDeliveriesPanel({ items, stores, employees }: Props) {
         quantity: k.quantity,
         unit_cost: it ? Number(it.unit_cost) : 0,
         expected_return: it ? it.is_durable : true,
+        condition_at_delivery: "nova",
       };
     });
     setLines(newLines);
-    toast({ title: `${newLines.length} item(ns) carregados do kit` });
+    if (!silent) toast({ title: `${newLines.length} item(ns) sugeridos do kit`, description: "Edite tamanhos, quantidades e condição antes de registrar." });
   };
 
+  // Auto-carrega kit ao selecionar colaborador (uma vez por colaborador)
+  useEffect(() => {
+    if (employeeId && employeeId !== autoLoaded) {
+      setAutoLoaded(employeeId);
+      setLines([]);
+      loadKitForPosition(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employeeId]);
+
   const addLine = () => {
-    setLines([...lines, { uniform_item_id: "", size: "", quantity: 1, unit_cost: 0, expected_return: true }]);
+    setLines([...lines, { uniform_item_id: "", size: "", quantity: 1, unit_cost: 0, expected_return: true, condition_at_delivery: "nova" }]);
   };
   const removeLine = (idx: number) => setLines(lines.filter((_, i) => i !== idx));
   const updLine = (idx: number, patch: Partial<DraftLine>) => {
@@ -145,17 +156,18 @@ export function UniformDeliveriesPanel({ items, stores, employees }: Props) {
         quantity: l.quantity,
         unit_cost: l.unit_cost,
         expected_return: l.expected_return,
-      })),
+        condition_at_delivery: l.condition_at_delivery,
+      })) as any,
     );
     if (itErr) {
       setSaving(false);
       toast({ title: "Erro nos itens", description: itErr.message, variant: "destructive" });
       return;
     }
-    // Movimentações de saída no estoque
+    // Saída SEMPRE da sede (ESTOQUE CENTRAL), respeitando a condição da peça entregue
     for (const l of lines) {
-      await supabase.from("uniform_stock_movements").insert({
-        store_id: selectedEmp.store_id,
+      const { error: mErr } = await supabase.from("uniform_stock_movements").insert({
+        store_id: UNIFORM_CENTRAL_STORE_ID,
         uniform_item_id: l.uniform_item_id,
         size: l.size,
         movement_type: "saida",
@@ -163,11 +175,17 @@ export function UniformDeliveriesPanel({ items, stores, employees }: Props) {
         reason: `Entrega para ${selectedEmp.full_name}`,
         related_delivery_id: del.id,
         created_by: user?.id,
-      });
+        condition: l.condition_at_delivery,
+      } as any);
+      if (mErr) {
+        toast({ title: "Estoque insuficiente na sede", description: `${itemMap[l.uniform_item_id]?.name} (${l.size}, ${l.condition_at_delivery}): ${mErr.message}`, variant: "destructive" });
+      }
     }
     setSaving(false);
     toast({ title: "Entrega registrada" });
     setLines([]); setNotes(""); setChargeAmount("0"); setChargeReason("nenhum");
+    setAutoLoaded(null);
+    setEmployeeId("");
     loadHistory();
   };
 
@@ -176,7 +194,9 @@ export function UniformDeliveriesPanel({ items, stores, employees }: Props) {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Nova entrega de uniforme</CardTitle>
-          <CardDescription>Selecione o colaborador, carregue o kit do cargo ou adicione itens manualmente</CardDescription>
+          <CardDescription>
+            Ao selecionar o colaborador o kit do cargo aparece como sugestão. Edite peça a peça (tamanho, quantidade e se é <b>Nova</b> ou <b>Usada</b>) antes de registrar. Toda saída é feita da sede (Estoque Central).
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -205,11 +225,11 @@ export function UniformDeliveriesPanel({ items, stores, employees }: Props) {
           </div>
 
           <div className="flex flex-col sm:flex-row flex-wrap gap-2">
-            <Button variant="outline" onClick={loadKitForPosition} disabled={!employeeId} className="gap-2 w-full sm:w-auto">
-              <Send className="h-4 w-4" /> Carregar kit do cargo
+            <Button variant="outline" onClick={() => loadKitForPosition(false)} disabled={!employeeId} className="gap-2 w-full sm:w-auto">
+              <Send className="h-4 w-4" /> Recarregar kit sugerido
             </Button>
             <Button variant="outline" onClick={addLine} className="gap-2 w-full sm:w-auto">
-              <Plus className="h-4 w-4" /> Adicionar item manual
+              <Plus className="h-4 w-4" /> Adicionar peça
             </Button>
           </div>
 
@@ -221,7 +241,7 @@ export function UniformDeliveriesPanel({ items, stores, employees }: Props) {
                 return (
                   <div key={idx} className="grid grid-cols-12 gap-2 items-end p-3 border rounded-lg">
                     <div className="space-y-1 col-span-12 md:col-span-4">
-                      <Label className="text-xs">Item</Label>
+                      <Label className="text-xs">Peça</Label>
                       <Select value={l.uniform_item_id} onValueChange={(v) => {
                         const newIt = items.find((i) => i.id === v);
                         updLine(idx, {
@@ -231,7 +251,7 @@ export function UniformDeliveriesPanel({ items, stores, employees }: Props) {
                           size: "",
                         });
                       }}>
-                        <SelectTrigger><SelectValue placeholder="Item" /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder="Peça" /></SelectTrigger>
                         <SelectContent>
                           {items.filter((i) => i.is_active).map((i) => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}
                         </SelectContent>
@@ -252,9 +272,13 @@ export function UniformDeliveriesPanel({ items, stores, employees }: Props) {
                         onChange={(e) => updLine(idx, { quantity: Math.max(1, Number(e.target.value) || 1) })} />
                     </div>
                     <div className="space-y-1 col-span-4 md:col-span-2">
-                      <Label className="text-xs">R$ Unit.</Label>
-                      <Input type="number" step="0.01" value={l.unit_cost}
-                        onChange={(e) => updLine(idx, { unit_cost: Number(e.target.value) || 0 })} />
+                      <Label className="text-xs">Condição</Label>
+                      <Select value={l.condition_at_delivery} onValueChange={(v) => updLine(idx, { condition_at_delivery: v as UniformCondition })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {CONDITION_OPTIONS.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="col-span-12 md:col-span-2 flex items-center justify-end gap-2">
                       {l.expected_return && <Badge variant="outline" className="border-primary/50 text-primary">durável</Badge>}
