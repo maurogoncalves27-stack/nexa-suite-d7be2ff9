@@ -17,6 +17,15 @@ interface Props {
   onChanged: () => void;
 }
 
+const sizeTypeForCategory = (cat: string): string => {
+  if (cat === "calcado") return "numero";
+  if (cat === "superior" || cat === "inferior" || cat === "vestuario") return "letra";
+  return "unico";
+};
+
+const isSizeTypeLocked = (cat: string) =>
+  cat === "calcado" || cat === "superior" || cat === "inferior" || cat === "vestuario";
+
 const empty = {
   name: "",
   description: "",
