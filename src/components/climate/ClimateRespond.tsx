@@ -136,7 +136,7 @@ export default function ClimateRespond({ survey, questions, onSubmitted }: Props
     return (
       <Card>
         <CardContent className="py-10 text-center text-muted-foreground">
-          Nenhuma pesquisa de clima aberta no momento. Aguarde a próxima campanha semestral.
+          Nenhuma pesquisa de clima aberta no momento. Aguarde a próxima campanha trimestral.
         </CardContent>
       </Card>
     );

@@ -6,7 +6,7 @@ import { useClimateStatus } from "@/hooks/useClimateStatus";
 
 /**
  * Banner persistente que aparece em todas as páginas enquanto o colaborador
- * não tiver respondido a pesquisa de clima semestral aberta.
+ * não tiver respondido a pesquisa de clima trimestral aberta.
  */
 export default function ClimatePendingBanner() {
   const { openSurvey, pendingResponse, loading } = useClimateStatus();
