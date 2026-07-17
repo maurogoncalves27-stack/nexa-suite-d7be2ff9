@@ -89,7 +89,7 @@ export default function WeeklyMoodCheckin() {
       const { error } = await supabase.from("mood_checkins").insert({
         employee_id: employeeId,
         user_id: user.id,
-        week_start: weekStart,
+        week_start: today,
         mood_score: skip ? null : selected,
         comment: skip ? null : (comment.trim() || null),
         skipped: skip,
