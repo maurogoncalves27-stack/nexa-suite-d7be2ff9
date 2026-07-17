@@ -28,12 +28,20 @@ interface DraftLine {
   condition_at_delivery: UniformCondition;
 }
 
+interface DeliveryItemRow {
+  id: string; delivery_id: string; uniform_item_id: string;
+  size: string; quantity: number; unit_cost: number;
+  condition_at_delivery: UniformCondition; expected_return: boolean;
+  return_status?: string | null;
+}
+
 interface DeliveryRow {
   id: string; employee_id: string; store_id: string;
   delivered_on: string; delivery_type: string;
   total_cost: number; charge_to_employee: number; charge_reason: string | null;
   notes: string | null;
-  employees?: { full_name: string };
+  employees?: { full_name: string; status: string };
+  items?: DeliveryItemRow[];
 }
 
 interface Props {
@@ -55,6 +63,7 @@ export function UniformDeliveriesPanel({ items, employees }: Props) {
 
   const [history, setHistory] = useState<DeliveryRow[]>([]);
   const [loadingHist, setLoadingHist] = useState(true);
+  const [hideTerminated, setHideTerminated] = useState(true);
 
   const itemMap = Object.fromEntries(items.map((i) => [i.id, i]));
   const selectedEmp = employees.find((e) => e.id === employeeId);
@@ -63,12 +72,13 @@ export function UniformDeliveriesPanel({ items, employees }: Props) {
     setLoadingHist(true);
     const { data } = await supabase
       .from("uniform_deliveries")
-      .select("*, employees(full_name)")
+      .select("*, employees(full_name, status), items:uniform_delivery_items(*)")
       .order("delivered_on", { ascending: false })
-      .limit(50);
-    setHistory((data ?? []) as DeliveryRow[]);
+      .limit(100);
+    setHistory((data ?? []) as unknown as DeliveryRow[]);
     setLoadingHist(false);
   };
+
 
   useEffect(() => { loadHistory(); }, []);
 
@@ -296,8 +306,19 @@ export function UniformDeliveriesPanel({ items, employees }: Props) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Histórico recente</CardTitle>
-          <CardDescription>Últimas 50 entregas</CardDescription>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+              <CardTitle className="text-base">Histórico recente</CardTitle>
+              <CardDescription>Últimas 100 entregas</CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setHideTerminated((v) => !v)}
+            >
+              {hideTerminated ? "Mostrar desligados" : "Ocultar desligados"}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {loadingHist ? (
@@ -305,41 +326,90 @@ export function UniformDeliveriesPanel({ items, employees }: Props) {
           ) : history.length === 0 ? (
             <div className="text-center text-muted-foreground py-8 text-sm">Nenhuma entrega ainda.</div>
           ) : (() => {
-            const grouped = history.reduce<Record<string, { name: string; rows: DeliveryRow[] }>>((acc, h) => {
+            const visible = hideTerminated
+              ? history.filter((h) => (h.employees?.status ?? "active") === "active")
+              : history;
+            const grouped = visible.reduce<Record<string, { name: string; status: string; rows: DeliveryRow[] }>>((acc, h) => {
               const key = h.employee_id;
-              if (!acc[key]) acc[key] = { name: h.employees?.full_name ?? "—", rows: [] };
+              if (!acc[key]) acc[key] = { name: h.employees?.full_name ?? "—", status: h.employees?.status ?? "active", rows: [] };
               acc[key].rows.push(h);
               return acc;
             }, {});
-            const groups = Object.entries(grouped).sort((a, b) => a[1].name.localeCompare(b[1].name));
+            const groups = Object.entries(grouped).sort((a, b) => {
+              // ativos primeiro, depois alfabético
+              const aTerm = a[1].status !== "active" ? 1 : 0;
+              const bTerm = b[1].status !== "active" ? 1 : 0;
+              if (aTerm !== bTerm) return aTerm - bTerm;
+              return a[1].name.localeCompare(b[1].name);
+            });
+            if (groups.length === 0) {
+              return <div className="text-center text-muted-foreground py-8 text-sm">Nenhuma entrega para os filtros atuais.</div>;
+            }
             return (
               <Accordion type="multiple" className="space-y-2">
                 {groups.map(([empId, g]) => {
                   const total = g.rows.reduce((s, r) => s + Number(r.total_cost || 0), 0);
+                  const terminated = g.status !== "active";
                   return (
-                    <AccordionItem key={empId} value={empId} className="border rounded-lg px-3">
+                    <AccordionItem key={empId} value={empId} className={`border rounded-lg px-3 ${terminated ? "bg-muted/40" : ""}`}>
                       <AccordionTrigger className="hover:no-underline py-3">
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <span className="font-medium truncate text-sm">{g.name}</span>
+                        <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
+                          <span className={`font-medium truncate text-sm ${terminated ? "text-muted-foreground" : ""}`}>{g.name}</span>
+                          {terminated && (
+                            <Badge variant="outline" className="text-[10px] border-destructive/40 text-destructive">
+                              Desligado
+                            </Badge>
+                          )}
                           <Badge variant="secondary" className="text-[10px]">{g.rows.length}</Badge>
                           <Badge variant="outline" className="ml-auto mr-2 text-[10px]">R$ {total.toFixed(2)}</Badge>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent>
                         <ul className="divide-y divide-border">
-                          {g.rows.map((h) => (
-                            <li key={h.id} className="py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
-                              <div className="min-w-0 flex-1">
+                          {g.rows.map((h) => {
+                            const dtLabel = DELIVERY_TYPES.find((t) => t.value === h.delivery_type)?.label ?? h.delivery_type;
+                            return (
+                            <li key={h.id} className="py-2 space-y-1">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3">
                                 <div className="text-xs text-muted-foreground">
-                                  {new Date(h.delivered_on).toLocaleDateString("pt-BR")} · {h.delivery_type}
+                                  {new Date(h.delivered_on).toLocaleDateString("pt-BR")} · {dtLabel}
                                   {h.charge_to_employee > 0 && ` · cobrança R$ ${Number(h.charge_to_employee).toFixed(2)} (${h.charge_reason})`}
                                 </div>
-                                {h.notes && <div className="text-xs text-muted-foreground mt-0.5 italic">{h.notes}</div>}
+                                <Badge variant="outline" className="self-start sm:self-auto shrink-0">R$ {Number(h.total_cost).toFixed(2)}</Badge>
                               </div>
-                              <Badge variant="outline" className="self-start sm:self-auto shrink-0">R$ {Number(h.total_cost).toFixed(2)}</Badge>
+                              {h.items && h.items.length > 0 && (
+                                <ul className="pl-3 border-l-2 border-primary/30 space-y-0.5">
+                                  {h.items.map((it) => {
+                                    const name = itemMap[it.uniform_item_id]?.name ?? "—";
+                                    return (
+                                      <li key={it.id} className="text-xs text-foreground/80 flex flex-wrap items-center gap-1">
+                                        <span className="font-medium">{it.quantity}×</span>
+                                        <span>{name}</span>
+                                        {it.size && <span className="text-muted-foreground">· tam. {it.size}</span>}
+                                        <Badge variant="outline" className="text-[9px] py-0 px-1 h-4">
+                                          {it.condition_at_delivery === "usada" ? "Usada" : "Nova"}
+                                        </Badge>
+                                        {it.expected_return && (
+                                          <Badge variant="outline" className="text-[9px] py-0 px-1 h-4 border-primary/40 text-primary">
+                                            devolver
+                                          </Badge>
+                                        )}
+                                        <span className="ml-auto text-muted-foreground">R$ {(Number(it.unit_cost) * it.quantity).toFixed(2)}</span>
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                              )}
+                              {h.notes && <div className="text-xs text-muted-foreground italic">{h.notes}</div>}
                             </li>
-                          ))}
+                            );
+                          })}
                         </ul>
+                        {terminated && (
+                          <div className="mt-3 rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+                            Colaborador desligado — verifique se as peças duráveis foram devolvidas em <b>Devoluções</b>. A rescisão fica bloqueada enquanto houver pendência.
+                          </div>
+                        )}
                       </AccordionContent>
                     </AccordionItem>
                   );
@@ -347,6 +417,7 @@ export function UniformDeliveriesPanel({ items, employees }: Props) {
               </Accordion>
             );
           })()}
+
 
         </CardContent>
       </Card>
