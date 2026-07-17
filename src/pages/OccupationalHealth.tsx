@@ -82,6 +82,11 @@ export default function OccupationalHealth() {
               <Nr1CompliancePanel onNavigate={setActive} />
             </TabsContent>
           )}
+          {canRiscos && (
+            <TabsContent value="riscos-psicossociais" className="mt-4">
+              <PsychosocialRisksPanel />
+            </TabsContent>
+          )}
           {canAtestados && (
             <TabsContent value="atestados" className="mt-4">
               <MedicalCertificates embedded />
