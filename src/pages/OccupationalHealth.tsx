@@ -9,6 +9,7 @@ import MentalHealth from "./MentalHealth";
 import Climate from "./Climate";
 import SstDocumentsPanel from "@/components/sst/SstDocumentsPanel";
 import Nr1CompliancePanel from "@/components/occupational-health/Nr1CompliancePanel";
+import PsychosocialRisksPanel from "@/components/occupational-health/PsychosocialRisksPanel";
 
 type TabKey = "nr1" | "atestados" | "pcmso" | "saude-mental" | "documentos-sst" | "clima";
 
