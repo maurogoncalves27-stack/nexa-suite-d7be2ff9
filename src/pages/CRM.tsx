@@ -230,6 +230,10 @@ function isRelevantConversation(c: Conversation) {
 
 function fmtDate(d?: string | null) {
   if (!d) return "—";
+  // Datas puras YYYY-MM-DD viriam como UTC midnight e no BRT (UTC-3) voltariam
+  // 1 dia — formata manualmente para preservar o dia local.
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d);
+  if (dateOnly) return `${dateOnly[3]}/${dateOnly[2]}/${dateOnly[1]}`;
   try {
     return format(new Date(d), "dd/MM/yyyy", { locale: ptBR });
   } catch {
