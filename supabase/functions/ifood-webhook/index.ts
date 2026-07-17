@@ -253,6 +253,10 @@ Deno.serve(async (req) => {
         const total = orderDetails?.total?.orderAmount ?? orderDetails?.totalPrice ?? 0;
         const subtotal = orderDetails?.total?.subTotal ?? total;
         const deliveryFee = orderDetails?.total?.deliveryFee ?? 0;
+        // Ajuste SINIEF 9/26: endereço obrigatório na NFC-e para TAKEOUT.
+        // Prioriza customer.billingAddress (novo campo) e cai para delivery.deliveryAddress.
+        const customerAddress = extractIfoodCustomerAddress(orderDetails);
+        const customerDocument = extractIfoodCustomerDocument(orderDetails);
 
         const { data: created, error: insErr } = await sb
           .from("pdv_orders")
@@ -263,9 +267,11 @@ Deno.serve(async (req) => {
             external_display_id: orderDetails?.displayId ?? null,
             customer_name: customer?.name ?? null,
             customer_phone: customer?.phone?.number ?? null,
+            customer_document: customerDocument,
             status: newStatus ?? "placed",
             order_type: orderDetails?.orderType?.toLowerCase() ?? "delivery",
             delivery_by: orderDetails?.delivery?.deliveredBy ?? null,
+            delivery_address: customerAddress,
             subtotal, delivery_fee: deliveryFee, total,
             source_payload: orderDetails,
             last_synced_at: new Date().toISOString(),
