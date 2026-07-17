@@ -28,12 +28,20 @@ interface DraftLine {
   condition_at_delivery: UniformCondition;
 }
 
+interface DeliveryItemRow {
+  id: string; delivery_id: string; uniform_item_id: string;
+  size: string; quantity: number; unit_cost: number;
+  condition_at_delivery: UniformCondition; expected_return: boolean;
+  return_status?: string | null;
+}
+
 interface DeliveryRow {
   id: string; employee_id: string; store_id: string;
   delivered_on: string; delivery_type: string;
   total_cost: number; charge_to_employee: number; charge_reason: string | null;
   notes: string | null;
-  employees?: { full_name: string };
+  employees?: { full_name: string; status: string };
+  items?: DeliveryItemRow[];
 }
 
 interface Props {
@@ -55,6 +63,7 @@ export function UniformDeliveriesPanel({ items, employees }: Props) {
 
   const [history, setHistory] = useState<DeliveryRow[]>([]);
   const [loadingHist, setLoadingHist] = useState(true);
+  const [hideTerminated, setHideTerminated] = useState(true);
 
   const itemMap = Object.fromEntries(items.map((i) => [i.id, i]));
   const selectedEmp = employees.find((e) => e.id === employeeId);
@@ -63,12 +72,13 @@ export function UniformDeliveriesPanel({ items, employees }: Props) {
     setLoadingHist(true);
     const { data } = await supabase
       .from("uniform_deliveries")
-      .select("*, employees(full_name)")
+      .select("*, employees(full_name, status), items:uniform_delivery_items(*)")
       .order("delivered_on", { ascending: false })
-      .limit(50);
-    setHistory((data ?? []) as DeliveryRow[]);
+      .limit(100);
+    setHistory((data ?? []) as unknown as DeliveryRow[]);
     setLoadingHist(false);
   };
+
 
   useEffect(() => { loadHistory(); }, []);
 
