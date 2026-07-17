@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, Plus, Trash2, Pencil, Save } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { UNIFORM_CATEGORIES, SIZE_TYPES, type UniformItem } from "@/lib/uniforms";
+import { UNIFORM_CATEGORIES, SIZE_TYPES, sizesFor, type UniformItem } from "@/lib/uniforms";
 import { Badge } from "@/components/ui/badge";
 
 interface Props {
