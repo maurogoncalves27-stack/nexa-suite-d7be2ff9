@@ -145,6 +145,8 @@ export default function MedicalCertificatesPanel() {
       supabase
         .from("medical_certificates")
         .select("*")
+        .or("is_pcmso.is.null,is_pcmso.eq.false")
+        .neq("document_type", "aso")
         .order("certificate_date", { ascending: false }),
     ]);
     setEmployees((emps ?? []) as any);
