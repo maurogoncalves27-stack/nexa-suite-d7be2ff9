@@ -195,13 +195,11 @@ export function UniformDeliveriesPanel({ items, employees }: Props) {
           </div>
 
           <div className="flex flex-col sm:flex-row flex-wrap gap-2">
-            <Button variant="outline" onClick={() => loadKitForPosition(false)} disabled={!employeeId} className="gap-2 w-full sm:w-auto">
-              <Send className="h-4 w-4" /> Recarregar kit sugerido
-            </Button>
-            <Button variant="outline" onClick={addLine} className="gap-2 w-full sm:w-auto">
+            <Button variant="outline" onClick={addLine} disabled={!employeeId} className="gap-2 w-full sm:w-auto">
               <Plus className="h-4 w-4" /> Adicionar peça
             </Button>
           </div>
+
 
           {lines.length > 0 && (
             <div className="space-y-2">
