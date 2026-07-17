@@ -81,7 +81,7 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     supabase.from("mood_checkins").select("mood_score").gte("created_at", d60ago).lt("created_at", d30ago).eq("skipped", false),
     supabase.from("mental_health_alerts").select("id", { count: "exact", head: true }).in("status", ["open", "in_progress"]),
     supabase.from("mental_health_alerts").select("id", { count: "exact", head: true }).eq("status", "resolved").gte("resolved_at", d30ago),
-    supabase.from("medical_certificates").select("employee_id, valid_until").eq("is_pcmso", true),
+    supabase.from("medical_certificates").select("employee_id, valid_until, document_type, is_pcmso").or("is_pcmso.eq.true,document_type.eq.aso"),
     supabase.from("medical_certificates").select("days_off, cid_code, employee_id, certificate_date").gte("certificate_date", m3ago),
     supabase.from("medical_certificates").select("days_off, cid_code, employee_id, certificate_date").gte("certificate_date", m12ago),
     supabase.from("medical_certificates").select("days_off, employee:employees(store:stores(name))").gte("certificate_date", monthStart),
