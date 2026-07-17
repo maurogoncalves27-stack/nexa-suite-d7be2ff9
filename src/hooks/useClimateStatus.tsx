@@ -17,7 +17,7 @@ export interface ClimateStatus {
   refresh: () => void;
 }
 
-const SIX_MONTHS_MS = 1000 * 60 * 60 * 24 * 182; // ~6 meses
+const QUARTER_MS = 1000 * 60 * 60 * 24 * 91; // ~3 meses (trimestral)
 
 export function useClimateStatus(): ClimateStatus {
   const { user } = useAuth();
