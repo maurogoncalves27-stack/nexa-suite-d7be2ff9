@@ -199,10 +199,35 @@ export default function SstSmartUploadButton({ variant = "secondary" }: { varian
           .eq("id", existing.id);
       }
 
+      // Extrai riscos psicossociais/ocupacionais para PGR / Psicossocial NR-1 / LTCAT / Relatório
+      const riskKinds: DocType[] = ["pgr", "psicossocial_nr1", "ltcat", "relatorio_psicossocial"];
+      const risks = smartResult.risks ?? [];
+      let riskInserted = 0;
+      if (riskKinds.includes(kind as DocType) && risks.length > 0) {
+        const rows = risks.map((r) => ({
+          category: r.category || "outros",
+          description: r.description,
+          severity: (["low", "medium", "high"].includes(r.severity) ? r.severity : "medium"),
+          probability: (["low", "medium", "high"].includes(r.probability) ? r.probability : "medium"),
+          action_plan: r.action_plan,
+          deadline: r.deadline,
+          source: `documento:${DOC_TYPE_META[kind as DocType].short} v${versionNumber}`,
+          auto_generated: true,
+          status: "open",
+          created_by: user?.id ?? null,
+        }));
+        const { error: rErr, count } = await supabase
+          .from("psychosocial_risks")
+          .insert(rows, { count: "exact" });
+        if (!rErr) riskInserted = count ?? rows.length;
+        else console.warn("[psychosocial_risks insert]", rErr);
+      }
+
       toast({
         title: existing
           ? `Nova versão v${versionNumber} de ${DOC_TYPE_META[kind as DocType].short} enviada`
           : `${DOC_TYPE_META[kind as DocType].short} cadastrado`,
+        description: riskInserted > 0 ? `${riskInserted} risco(s) sugerido(s) em NR-1 → Riscos psicossociais.` : undefined,
       });
       window.dispatchEvent(new CustomEvent("sst-docs-changed"));
       setSmartOpen(false);
