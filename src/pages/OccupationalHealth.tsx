@@ -11,7 +11,7 @@ import SstDocumentsPanel from "@/components/sst/SstDocumentsPanel";
 import Nr1CompliancePanel from "@/components/occupational-health/Nr1CompliancePanel";
 import PsychosocialRisksPanel from "@/components/occupational-health/PsychosocialRisksPanel";
 
-type TabKey = "nr1" | "atestados" | "pcmso" | "saude-mental" | "documentos-sst" | "clima";
+type TabKey = "nr1" | "riscos-psicossociais" | "atestados" | "pcmso" | "saude-mental" | "documentos-sst" | "clima";
 
 export default function OccupationalHealth() {
   const [params, setParams] = useSearchParams();
