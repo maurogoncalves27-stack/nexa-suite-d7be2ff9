@@ -8,6 +8,7 @@ import Pcmso from "./Pcmso";
 import MentalHealth from "./MentalHealth";
 import Climate from "./Climate";
 import SstDocumentsPanel from "@/components/sst/SstDocumentsPanel";
+import SstSmartUploadButton from "@/components/sst/SstSmartUploadButton";
 import Nr1CompliancePanel from "@/components/occupational-health/Nr1CompliancePanel";
 import PsychosocialRisksPanel from "@/components/occupational-health/PsychosocialRisksPanel";
 
@@ -55,14 +56,17 @@ export default function OccupationalHealth() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-          <HeartPulse className="h-6 w-6 md:h-7 md:w-7 text-primary" />
-          Saúde Ocupacional
-        </h1>
-        <p className="text-muted-foreground">
-          Atestados, PCMSO, documentos SST, saúde mental e clima — tudo o que a NR-1 exige em um só lugar.
-        </p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+            <HeartPulse className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+            Saúde Ocupacional
+          </h1>
+          <p className="text-muted-foreground">
+            Atestados, ASO, documentos SST, saúde mental e clima — tudo o que a NR-1 exige em um só lugar.
+          </p>
+        </div>
+        {canSstDocs && <SstSmartUploadButton />}
       </div>
 
       {availableTabs.length === 1 ? (
