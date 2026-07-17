@@ -40,13 +40,14 @@ Deno.serve(async (req) => {
 
     const { data: ver, error: vErr } = await admin
       .from("sst_document_versions")
-      .select("id, file_path, version")
+      .select("id, file_path, version_number")
       .eq("document_id", document_id)
       .is("superseded_at", null)
-      .order("version", { ascending: false })
+      .order("version_number", { ascending: false })
       .limit(1)
       .single();
     if (vErr || !ver) throw new Error(vErr?.message || "versão não encontrada");
+    const versionNum = (ver as any).version_number;
 
     const { data: blob, error: bErr } = await admin.storage
       .from("sst-documents")
