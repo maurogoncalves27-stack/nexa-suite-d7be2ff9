@@ -89,6 +89,12 @@ export default function SstDocumentsPanel() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingDoc, setEditingDoc] = useState<DocumentRow | null>(null);
+  const [smartLoading, setSmartLoading] = useState(false);
+  const [smartResult, setSmartResult] = useState<SmartClassifyResult | null>(null);
+  const [smartFile, setSmartFile] = useState<File | null>(null);
+  const [smartEmployee, setSmartEmployee] = useState<{ id: string; full_name: string } | null>(null);
+  const [smartOpen, setSmartOpen] = useState(false);
+  const [smartConfirming, setSmartConfirming] = useState(false);
 
   // Form
   const [docType, setDocType] = useState<DocType>("pcmso");
