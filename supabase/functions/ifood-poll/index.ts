@@ -4,6 +4,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { getIfoodAccessToken, type IfoodEnv } from "../_shared/ifoodAuth.ts";
 import { requireCronOrRole } from "../_shared/requireRole.ts";
+import { extractIfoodCustomerAddress, extractIfoodCustomerDocument } from "../_shared/ifoodOrderMap.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
