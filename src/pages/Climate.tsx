@@ -68,15 +68,17 @@ export default function Climate({ embedded = false }: { embedded?: boolean } = {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-          <HeartHandshake className="h-6 w-6 md:h-7 md:w-7 text-primary" />
-          Clima Organizacional
-        </h1>
-        <p className="text-muted-foreground">
-          Pesquisa <strong>semestral</strong>, totalmente anônima, com 4 dimensões: Liderança, Ambiente, Reconhecimento e Orgulho.
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+            <HeartHandshake className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+            Clima Organizacional
+          </h1>
+          <p className="text-muted-foreground">
+            Pesquisa <strong>semestral</strong>, totalmente anônima, com 4 dimensões: Liderança, Ambiente, Reconhecimento e Orgulho.
+          </p>
+        </div>
+      )}
 
       {!climateStatus.loading && (
         <Card>
