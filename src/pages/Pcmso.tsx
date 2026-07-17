@@ -261,7 +261,7 @@ export default function Pcmso({ embedded = false }: { embedded?: boolean } = {})
 
       <Dialog open={open} onOpenChange={(v) => { if (!saving) setOpen(v); }}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Novo documento PCMSO</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Novo ASO</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div>
               <Label>Colaborador</Label>
