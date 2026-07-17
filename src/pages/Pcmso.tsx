@@ -207,7 +207,7 @@ export default function Pcmso({ embedded = false }: { embedded?: boolean } = {})
           {loading ? (
             <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
           ) : docs.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">Nenhum documento PCMSO cadastrado ainda.</div>
+            <div className="text-center py-8 text-muted-foreground">Nenhum ASO cadastrado ainda.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
