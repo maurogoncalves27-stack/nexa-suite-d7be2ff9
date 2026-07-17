@@ -340,6 +340,16 @@ function CandidateMiniCard({
             </a>
           )}
           {c.source && <Badge variant="outline" className="ml-auto text-[9px] py-0 px-1 h-4 truncate max-w-[80px]">{c.source}</Badge>}
+          {canDelete && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onDelete?.(); }}
+              className="h-6 w-6 rounded flex items-center justify-center hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+              title={`Excluir (encerrado há ${daysInStage} dias)`}
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          )}
         </div>
       </CardContent>
     </Card>
