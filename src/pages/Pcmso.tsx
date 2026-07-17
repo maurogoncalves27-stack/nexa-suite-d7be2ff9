@@ -176,9 +176,9 @@ export default function Pcmso({ embedded = false }: { embedded?: boolean } = {})
           <div>
             <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
               <HeartPulse className="h-6 w-6 md:h-7 md:w-7 text-primary" />
-              PCMSO
+              ASO
             </h1>
-            <p className="text-muted-foreground">Programa de Controle Médico de Saúde Ocupacional — ASO, laudos e exames.</p>
+            <p className="text-muted-foreground">Atestados de Saúde Ocupacional — admissional, periódico, demissional, retorno e mudança de função.</p>
           </div>
         )}
         <Button onClick={() => { reset(); setOpen(true); }}>
