@@ -428,11 +428,11 @@ export default function AdminDashboardPanel() {
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge className={
-                          sub.checklist_answers.every((a) => a.checked)
+                          sub.checklist_answers.every(isAnswerComplete)
                             ? "bg-success text-success-foreground"
                             : "bg-warning text-warning-foreground"
                         }>
-                          {sub.checklist_answers.filter((a) => a.checked).length}/{sub.checklist_answers.length}
+                          {sub.checklist_answers.filter(isAnswerComplete).length}/{sub.checklist_answers.length}
                         </Badge>
                         {expandedId === sub.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </div>
