@@ -144,7 +144,7 @@ export default function Pcmso({ embedded = false }: { embedded?: boolean } = {})
   };
 
   const remove = async (d: Doc) => {
-    if (!confirm("Excluir este documento PCMSO?")) return;
+    if (!confirm("Excluir este ASO?")) return;
     try {
       if (d.file_path) await supabase.storage.from("medical-certificates").remove([d.file_path]);
       await supabase.from("medical_certificates").delete().eq("id", d.id);
