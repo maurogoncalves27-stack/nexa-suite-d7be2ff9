@@ -68,7 +68,7 @@ export function useClimateStatus(): ClimateStatus {
       setLastAnsweredAt(last?.submitted_at ?? null);
 
       if (last?.submitted_at) {
-        const next = new Date(new Date(last.submitted_at).getTime() + SIX_MONTHS_MS);
+        const next = new Date(new Date(last.submitted_at).getTime() + QUARTER_MS);
         const nextStr = next.toISOString().slice(0, 10);
         setNextDueDate(nextStr);
         const diff = Math.ceil((next.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
