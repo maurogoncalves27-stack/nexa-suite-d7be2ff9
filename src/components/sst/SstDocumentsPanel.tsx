@@ -277,6 +277,179 @@ export default function SstDocumentsPanel() {
     load();
   };
 
+  const handleSmartUpload = async (f: File) => {
+    setSmartLoading(true);
+    setSmartFile(f);
+    setSmartResult(null);
+    setSmartEmployee(null);
+    setSmartOpen(true);
+    try {
+      const result = await classifySstDocument(f);
+      setSmartResult(result);
+      if (result.kind === "aso") {
+        const match = await matchEmployeeFromClassification(result);
+        setSmartEmployee(match);
+      }
+    } catch (e: any) {
+      toast({ title: "Falha ao analisar PDF", description: e.message ?? String(e), variant: "destructive" });
+      setSmartOpen(false);
+    } finally {
+      setSmartLoading(false);
+    }
+  };
+
+  const confirmSmart = async () => {
+    if (!smartFile || !smartResult) return;
+    setSmartConfirming(true);
+    try {
+      // ASO → vai para a ficha do colaborador
+      if (smartResult.kind === "aso") {
+        if (!smartEmployee) {
+          toast({
+            title: "Colaborador não identificado",
+            description: "Não foi possível casar o nome/CPF do ASO com um colaborador cadastrado.",
+            variant: "destructive",
+          });
+          setSmartConfirming(false);
+          return;
+        }
+        const cert = smartResult.emitted_at ?? new Date().toISOString().slice(0, 10);
+        const path = `${smartEmployee.id}/aso-${Date.now()}.pdf`;
+        const { error: upErr } = await supabase.storage
+          .from("medical-certificates")
+          .upload(path, smartFile, { contentType: "application/pdf" });
+        if (upErr) throw upErr;
+
+        const { error: insErr } = await supabase.from("medical_certificates").insert({
+          employee_id: smartEmployee.id,
+          certificate_date: cert,
+          days_off: 0,
+          doctor_name: smartResult.doctor_name,
+          doctor_crm: smartResult.doctor_crm,
+          notes: smartResult.notes,
+          file_path: path,
+          file_name: smartFile.name,
+          mime_type: "application/pdf",
+          size_bytes: smartFile.size,
+          created_by: user?.id ?? null,
+          status: "approved",
+          document_type: "aso",
+          valid_until: smartResult.valid_until,
+          is_pcmso: true,
+        });
+        if (insErr) throw insErr;
+
+        // arquiva também na pasta do colaborador
+        await uploadEmployeePdfBlob({
+          employeeId: smartEmployee.id,
+          docType: "aso",
+          fileName: smartFile.name,
+          blob: smartFile,
+          uploadedBy: user?.id ?? null,
+        });
+
+        toast({ title: `ASO arquivado na ficha de ${smartEmployee.full_name}` });
+        setSmartOpen(false);
+        return;
+      }
+
+      // Documento SST → cria/atualiza registro em sst_documents
+      const kind = smartResult.kind === "outros" ? "outros" : smartResult.kind;
+      const cnpjIn = smartResult.cnpj || "44.932.369/0001-08";
+      const cnpjKey = cnpjIn.replace(/\D/g, "");
+      const company = smartResult.company_name || "AQUELA PARMÊ";
+      const today = new Date().toISOString().slice(0, 10);
+      const emitted = smartResult.emitted_at ?? today;
+      const vFrom = smartResult.valid_from ?? emitted;
+      const months = DOC_TYPE_META[kind as DocType].defaultValidityMonths;
+      const vUntil =
+        smartResult.valid_until ?? (months ? addMonths(emitted, months) : null);
+
+      // Documento já existe? (mesmo tipo + cnpj + empresa) → nova versão
+      const { data: existing } = await supabase
+        .from("sst_documents")
+        .select("*")
+        .eq("doc_type", kind)
+        .eq("cnpj", cnpjIn)
+        .maybeSingle();
+
+      let documentId = existing?.id as string | undefined;
+      let versionNumber = 1;
+      if (existing) {
+        versionNumber = (existing.current_version ?? 1) + 1;
+      } else {
+        const { data: newDoc, error: insErr } = await supabase
+          .from("sst_documents")
+          .insert({
+            doc_type: kind,
+            cnpj: cnpjIn,
+            company_name: company,
+            emitted_at: emitted,
+            valid_from: vFrom,
+            valid_until: vUntil,
+            notes: smartResult.notes,
+            current_version: 1,
+            is_active: true,
+            created_by: user?.id ?? null,
+          })
+          .select()
+          .single();
+        if (insErr) throw insErr;
+        documentId = newDoc.id;
+      }
+
+      const path = `${cnpjKey}/${kind}/v${versionNumber}-${Date.now()}.pdf`;
+      const { error: upErr } = await supabase.storage
+        .from("sst-documents")
+        .upload(path, smartFile, { contentType: "application/pdf" });
+      if (upErr) throw upErr;
+
+      const { error: vErr } = await supabase.from("sst_document_versions").insert({
+        document_id: documentId,
+        version_number: versionNumber,
+        file_path: path,
+        file_name: smartFile.name,
+        file_size: smartFile.size,
+        emitted_at: emitted,
+        valid_from: vFrom,
+        valid_until: vUntil,
+        uploaded_by: user?.id ?? null,
+      });
+      if (vErr) throw vErr;
+
+      if (existing) {
+        await supabase
+          .from("sst_document_versions")
+          .update({ superseded_at: new Date().toISOString() })
+          .eq("document_id", existing.id)
+          .lt("version_number", versionNumber)
+          .is("superseded_at", null);
+        await supabase
+          .from("sst_documents")
+          .update({
+            emitted_at: emitted,
+            valid_from: vFrom,
+            valid_until: vUntil,
+            notes: smartResult.notes ?? existing.notes,
+            current_version: versionNumber,
+          })
+          .eq("id", existing.id);
+      }
+
+      toast({
+        title: existing
+          ? `Nova versão v${versionNumber} de ${DOC_TYPE_META[kind as DocType].short} enviada`
+          : `${DOC_TYPE_META[kind as DocType].short} cadastrado`,
+      });
+      setSmartOpen(false);
+      await load();
+    } catch (e: any) {
+      toast({ title: "Erro ao salvar", description: e.message ?? String(e), variant: "destructive" });
+    } finally {
+      setSmartConfirming(false);
+    }
+  };
+
   const kpis = useMemo(() => {
     let vigente = 0, vence60 = 0, vencido = 0;
     docs.forEach((d) => {
