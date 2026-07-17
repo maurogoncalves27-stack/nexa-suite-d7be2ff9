@@ -37,6 +37,11 @@ interface Submission {
 }
 interface UserInGroup { user_id: string; full_name: string }
 
+// Um item é considerado completo quando marcado OU quando o colaborador
+// preencheu uma observação justificando o não preenchimento.
+const isAnswerComplete = (a: { checked: boolean; observation: string | null }) =>
+  a.checked || (!!a.observation && a.observation.trim().length > 0);
+
 export default function AdminDashboardPanel() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [templates, setTemplates] = useState<TemplateWithGroups[]>([]);
