@@ -137,7 +137,7 @@ export default function WeeklyMoodCheckin() {
 
         {selected != null && selected <= 2 && (
           <div className="rounded-md bg-orange-50 border border-orange-200 p-3 text-sm text-orange-900">
-            Sentimos muito que a semana esteja difícil. Se quiser, deixe um recado — o RH pode conversar com você em sigilo.
+            Sentimos muito que o dia esteja difícil. Se quiser, deixe um recado — o RH pode conversar com você em sigilo.
           </div>
         )}
 
