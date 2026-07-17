@@ -20,6 +20,16 @@ function todayStr(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+// Segunda-feira da semana ISO (mantém compatibilidade com a view v_mood_weekly_store_agg,
+// que agrega participantes por week_start).
+function weekStartStr(): string {
+  const d = new Date();
+  const day = d.getDay(); // 0=dom
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 const CHECKIN_INTERVAL_DAYS = 3;
 const OPTOUT_DAYS = 90;
 
