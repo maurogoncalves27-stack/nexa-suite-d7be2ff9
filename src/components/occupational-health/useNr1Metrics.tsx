@@ -153,7 +153,8 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
 
 
   // PCMSO — pega ASO mais recente por colaborador
-  const pcmsoRows = (pcmsoAll.data ?? []) as { employee_id: string; valid_until: string | null }[];
+  const pcmsoRows = ((pcmsoAll.data ?? []) as { employee_id: string; valid_until: string | null }[])
+    .filter((r) => activeIds.has(r.employee_id)); // ignora ASOs de ex-colaboradores
   const latestByEmp = new Map<string, string | null>();
   pcmsoRows.forEach((r) => {
     const cur = latestByEmp.get(r.employee_id);
