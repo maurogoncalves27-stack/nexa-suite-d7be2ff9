@@ -187,6 +187,15 @@ export default function Rescissions() {
   };
 
   const handleTrct = async (e: Emp) => {
+    const pu = pendingUniforms[e.id];
+    if (pu && pu.count > 0) {
+      toast({
+        title: "Uniformes pendentes",
+        description: `${e.full_name} tem ${pu.count} peça(s) de uniforme não devolvida(s) (${money(pu.value)}). Resolva em Uniformes › Pendências antes de gerar o TRCT.`,
+        variant: "destructive",
+      });
+      return;
+    }
     setGenerating(e.id);
     try {
       const pay = payByEmp.get(e.id);
