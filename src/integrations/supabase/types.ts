@@ -17893,6 +17893,10 @@ export type Database = {
       is_freelancer: { Args: { _user_id: string }; Returns: boolean }
       is_partner: { Args: { _user_id: string }; Returns: boolean }
       is_super_user: { Args: { _user_id: string }; Returns: boolean }
+      is_valid_candidate_upload_token: {
+        Args: { _token: string }
+        Returns: boolean
+      }
       link_freelancer_account: { Args: { _cpf: string }; Returns: string }
       link_freelancer_account_by_id: {
         Args: { _freelancer_id: string }
