@@ -85,7 +85,7 @@ export function UniformItemsPanel({ items, onChanged }: Props) {
 
   return (
     <div className="space-y-4">
-      <Card>
+      <Card ref={formRef}>
         <CardHeader>
           <CardTitle className="text-base">{editing ? "Editar item" : "Novo item de uniforme"}</CardTitle>
           <CardDescription>Cadastro do catálogo de uniformes (camisa, calça, sapato, EPI…)</CardDescription>
