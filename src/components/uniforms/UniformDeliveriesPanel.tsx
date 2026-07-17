@@ -72,46 +72,15 @@ export function UniformDeliveriesPanel({ items, employees }: Props) {
 
   useEffect(() => { loadHistory(); }, []);
 
-  const loadKitForPosition = async (silent = false) => {
-    if (!selectedEmp?.position) {
-      if (!silent) toast({ title: "Colaborador sem cargo", description: "Selecione um cargo no cadastro", variant: "destructive" });
-      return;
-    }
-    const { data } = await supabase
-      .from("uniform_kit_items")
-      .select("*")
-      .eq("position", selectedEmp.position);
-    if (!data || data.length === 0) {
-      if (!silent) toast({
-        title: "Nenhum kit configurado",
-        description: `Cargo "${selectedEmp.position}" não tem kit. Adicione itens manualmente.`,
-      });
-      return;
-    }
-    const newLines: DraftLine[] = data.map((k: any) => {
-      const it = itemMap[k.uniform_item_id];
-      return {
-        uniform_item_id: k.uniform_item_id,
-        size: "",
-        quantity: k.quantity,
-        unit_cost: it ? Number(it.unit_cost) : 0,
-        expected_return: it ? it.is_durable : true,
-        condition_at_delivery: "nova",
-      };
-    });
-    setLines(newLines);
-    if (!silent) toast({ title: `${newLines.length} item(ns) sugeridos do kit`, description: "Edite tamanhos, quantidades e condição antes de registrar." });
-  };
-
-  // Auto-carrega kit ao selecionar colaborador (uma vez por colaborador)
+  // Auto-reset lines quando muda colaborador
   useEffect(() => {
     if (employeeId && employeeId !== autoLoaded) {
       setAutoLoaded(employeeId);
       setLines([]);
-      loadKitForPosition(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employeeId]);
+
 
   const addLine = () => {
     setLines([...lines, { uniform_item_id: "", size: "", quantity: 1, unit_cost: 0, expected_return: true, condition_at_delivery: "nova" }]);
@@ -196,7 +165,7 @@ export function UniformDeliveriesPanel({ items, employees }: Props) {
         <CardHeader>
           <CardTitle className="text-base">Nova entrega de uniforme</CardTitle>
           <CardDescription>
-            Ao selecionar o colaborador o kit do cargo aparece como sugestão. Edite peça a peça (tamanho, quantidade e se é <b>Nova</b> ou <b>Usada</b>) antes de registrar. Toda saída é feita da sede (Estoque Central).
+            Adicione as peças entregues (tamanho, quantidade e se é <b>Nova</b> ou <b>Usada</b>). Toda saída é feita da sede (Estoque Central).
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -226,13 +195,11 @@ export function UniformDeliveriesPanel({ items, employees }: Props) {
           </div>
 
           <div className="flex flex-col sm:flex-row flex-wrap gap-2">
-            <Button variant="outline" onClick={() => loadKitForPosition(false)} disabled={!employeeId} className="gap-2 w-full sm:w-auto">
-              <Send className="h-4 w-4" /> Recarregar kit sugerido
-            </Button>
-            <Button variant="outline" onClick={addLine} className="gap-2 w-full sm:w-auto">
+            <Button variant="outline" onClick={addLine} disabled={!employeeId} className="gap-2 w-full sm:w-auto">
               <Plus className="h-4 w-4" /> Adicionar peça
             </Button>
           </div>
+
 
           {lines.length > 0 && (
             <div className="space-y-2">
