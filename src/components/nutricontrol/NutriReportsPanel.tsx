@@ -265,10 +265,13 @@ function HygieneReport({ from, to, storeId, storeMap }: ReportProps) {
     q.then(({ data }) => { setRows(data ?? []); setLoading(false); });
   }, [from, to, storeId]);
 
-  const conformity = rows.length ? Math.round((rows.filter(r => r.sim_nao).length / rows.length) * 100) : 0;
+  // Item é conforme quando marcado "Sim" OU quando o colaborador justificou
+  // o não preenchimento com uma observação.
+  const isConforme = (r: any) => r.sim_nao === true || (r.note && String(r.note).trim().length > 0);
+  const conformity = rows.length ? Math.round((rows.filter(isConforme).length / rows.length) * 100) : 0;
   const buildRows = () => rows.map(r => ({
     data: r.date, loja: storeMap[r.store_id] ?? "—", item: r.nutri_items?.name ?? "—",
-    conforme: r.sim_nao ? "Sim" : "Não", observacao: r.note ?? "",
+    conforme: isConforme(r) ? "Sim" : "Não", observacao: r.note ?? "",
   }));
 
   return (
