@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Shirt } from "lucide-react";
 import { UniformCatalogStockPanel } from "@/components/uniforms/UniformCatalogStockPanel";
-import { UniformKitsPanel } from "@/components/uniforms/UniformKitsPanel";
+
 import { UniformDeliveriesPanel } from "@/components/uniforms/UniformDeliveriesPanel";
 import { UniformDashboardPanel } from "@/components/uniforms/UniformDashboardPanel";
 import { UniformPendingReturnsPanel } from "@/components/uniforms/UniformPendingReturnsPanel";
@@ -48,7 +48,7 @@ export default function Uniforms() {
             <Shirt className="h-6 w-6 md:h-7 md:w-7 text-primary" />
             Controle de Uniformes
           </h1>
-          <p className="text-muted-foreground">Itens e estoque, kits por cargo e entregas</p>
+          <p className="text-muted-foreground">Itens, estoque e entregas de uniformes</p>
         </div>
       </div>
 
@@ -56,7 +56,6 @@ export default function Uniforms() {
         <TabsList className="w-full h-auto flex-wrap justify-start gap-1 sm:w-auto sm:inline-flex sm:flex-nowrap">
           <TabsTrigger value="dashboard" className="flex-1 sm:flex-none text-xs sm:text-sm min-w-[5rem]">Dashboard</TabsTrigger>
           <TabsTrigger value="stock" className="flex-1 sm:flex-none text-xs sm:text-sm min-w-[5rem]">Itens e estoque</TabsTrigger>
-          <TabsTrigger value="kits" className="flex-1 sm:flex-none text-xs sm:text-sm min-w-[5rem]">Kits</TabsTrigger>
           <TabsTrigger value="deliveries" className="flex-1 sm:flex-none text-xs sm:text-sm min-w-[5rem]">Entregas</TabsTrigger>
           <TabsTrigger value="pending" className="flex-1 sm:flex-none text-xs sm:text-sm min-w-[5rem]">Pendências</TabsTrigger>
         </TabsList>
@@ -65,9 +64,6 @@ export default function Uniforms() {
         </TabsContent>
         <TabsContent value="stock">
           <UniformCatalogStockPanel items={items} onChanged={loadItems} />
-        </TabsContent>
-        <TabsContent value="kits">
-          <UniformKitsPanel items={items} />
         </TabsContent>
         <TabsContent value="deliveries">
           <UniformDeliveriesPanel items={items} stores={stores} employees={employees} />
