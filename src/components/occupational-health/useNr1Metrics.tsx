@@ -188,6 +188,22 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
   });
   const daysByStoreMonth = Object.entries(byStore).sort((a, b) => b[1] - a[1]).map(([store, days]) => ({ store, days }));
 
+  // CID F (transtornos mentais)
+  const isF = (c?: string | null) => !!c && c.trim().toUpperCase().startsWith("F");
+  const cidfRows12m = rows12m.filter((r) => isF(r.cid_code));
+  const cidfCount12m = cidfRows12m.length;
+  const cidfDays12m = cidfRows12m.reduce((s, r) => s + Number(r.days_off ?? 0), 0);
+  const cutoff90 = format(subDays(today, 90), "yyyy-MM-dd");
+  const cidfRows90 = cidfRows12m.filter((r: any) => r.certificate_date && r.certificate_date >= cutoff90);
+  const cidfCount90d = cidfRows90.length;
+  const cidfEmployees90d = new Set(cidfRows90.map((r: any) => r.employee_id)).size;
+
+  // Riscos psicossociais
+  const riskRows = (psychoRisks.data ?? []) as { severity: string; status: string; deadline: string | null }[];
+  const psychoRisksOpen = riskRows.filter((r) => ["open", "in_progress"].includes(r.status)).length;
+  const psychoRisksHigh = riskRows.filter((r) => ["open", "in_progress"].includes(r.status) && ["high", "critical"].includes(r.severity)).length;
+  const psychoRisksOverdue = riskRows.filter((r) => ["open", "in_progress"].includes(r.status) && r.deadline && r.deadline < todayStr).length;
+
   // SST
   const sstRows = (sst.data ?? []) as { valid_until: string | null }[];
   const sstTotal = sstRows.length;
@@ -207,6 +223,8 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     if (moodAvg30d != null) { s += (moodAvg30d / 5) * 100; n++; }
     const alertsPenalty = alertsOpen.count ? Math.max(0, 100 - (alertsOpen.count ?? 0) * 10) : 100;
     s += alertsPenalty; n++;
+    // Penalidade por riscos psicossociais abertos de alta severidade
+    if (psychoRisksHigh > 0) { s += Math.max(0, 100 - psychoRisksHigh * 15); n++; }
     return n ? Math.round(s / n) : 0;
   })();
   const scorePcmso = activeEmployees > 0 ? Math.round((pcmsoValid / activeEmployees) * 100) : 100;
@@ -222,6 +240,8 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     moodAvg30d,
     moodPrevAvg,
     moodTrend,
+    moodRespondents30d,
+    moodHiddenByPrivacy,
     mentalAlertsOpen: alertsOpen.count ?? 0,
     mentalAlertsResolved30d: alertsResolved.count ?? 0,
     activeEmployees,
@@ -233,6 +253,13 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     absenteeismDays12m,
     topCids,
     daysByStoreMonth,
+    cidfCount12m,
+    cidfDays12m,
+    cidfCount90d,
+    cidfEmployees90d,
+    psychoRisksOpen,
+    psychoRisksHigh,
+    psychoRisksOverdue,
     sstTotal,
     sstValid,
     sstExpiring60,
@@ -244,6 +271,7 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     scoreOverall,
   };
 }
+
 
 export function useNr1Metrics() {
   return useQuery({
