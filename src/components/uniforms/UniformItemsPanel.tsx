@@ -99,29 +99,40 @@ export function UniformItemsPanel({ items, onChanged }: Props) {
         </Button>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-6">
         {items.length === 0 ? (
           <div className="text-center text-muted-foreground py-8 text-sm">Nenhum item cadastrado.</div>
-        ) : items.map((it) => (
-          <div key={it.id} className="flex items-start sm:items-center gap-2 sm:gap-3 p-3 border rounded-lg hover:bg-muted/30">
-            <div className="flex-1 min-w-0">
-              <div className="font-medium flex items-center gap-1.5 sm:gap-2 flex-wrap text-sm sm:text-base">
-                <span className="truncate">{it.name}</span>
-                <Badge variant="outline" className="capitalize text-[10px] sm:text-xs">{it.category}</Badge>
-                {!it.is_active && <Badge variant="outline" className="text-muted-foreground text-[10px] sm:text-xs">inativo</Badge>}
-                {it.is_durable && <Badge variant="outline" className="border-primary/50 text-primary text-[10px] sm:text-xs">durável</Badge>}
+        ) : UNIFORM_CATEGORIES.map((cat) => {
+          const catItems = items.filter((it) => it.category === cat.value);
+          if (catItems.length === 0) return null;
+          return (
+            <div key={cat.value} className="space-y-2">
+              <div className="flex items-center gap-2 sticky top-0 bg-background/95 backdrop-blur py-1 z-10">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{cat.label}</h3>
+                <Badge variant="secondary" className="text-[10px]">{catItems.length}</Badge>
               </div>
-              <div className="text-xs text-muted-foreground">
-                {it.size_type === "numero" ? "Numérico" : it.size_type === "unico" ? "Tamanho único" : "PP–EG"} · R$ {Number(it.unit_cost).toFixed(2)} · troca a cada {it.replacement_months} meses
-                {it.description && ` · ${it.description}`}
-              </div>
+              {catItems.map((it) => (
+                <div key={it.id} className="flex items-start sm:items-center gap-2 sm:gap-3 p-3 border rounded-lg hover:bg-muted/30">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium flex items-center gap-1.5 sm:gap-2 flex-wrap text-sm sm:text-base">
+                      <span className="truncate">{it.name}</span>
+                      {!it.is_active && <Badge variant="outline" className="text-muted-foreground text-[10px] sm:text-xs">inativo</Badge>}
+                      {it.is_durable && <Badge variant="outline" className="border-primary/50 text-primary text-[10px] sm:text-xs">durável</Badge>}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {it.size_type === "numero" ? "Numérico" : it.size_type === "unico" ? "Tamanho único" : "PP–EG"} · R$ {Number(it.unit_cost).toFixed(2)} · troca a cada {it.replacement_months} meses
+                      {it.description && ` · ${it.description}`}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0">
+                    <Button variant="ghost" size="icon" onClick={() => startEdit(it)}><Pencil className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => remove(it.id, it.name)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="flex shrink-0">
-              <Button variant="ghost" size="icon" onClick={() => startEdit(it)}><Pencil className="h-4 w-4" /></Button>
-              <Button variant="ghost" size="icon" onClick={() => remove(it.id, it.name)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
