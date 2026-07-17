@@ -91,6 +91,7 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
 
 
   const activeEmployees = empActive.count ?? 0;
+  const activeIds = new Set(((empActive.data ?? []) as { id: string }[]).map((e) => e.id));
 
   // Climate
   let climateAdherencePct: number | null = null;
