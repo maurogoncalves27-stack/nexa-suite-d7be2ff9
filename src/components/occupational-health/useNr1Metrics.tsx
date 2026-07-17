@@ -11,6 +11,8 @@ export interface Nr1Metrics {
   moodAvg30d: number | null;
   moodPrevAvg: number | null;
   moodTrend: number | null;
+  moodRespondents30d: number;
+  moodHiddenByPrivacy: boolean;
   mentalAlertsOpen: number;
   mentalAlertsResolved30d: number;
   // PCMSO
@@ -24,6 +26,15 @@ export interface Nr1Metrics {
   absenteeismDays12m: number;
   topCids: { cid: string; count: number }[];
   daysByStoreMonth: { store: string; days: number }[];
+  // CID F (saúde mental)
+  cidfCount12m: number;
+  cidfDays12m: number;
+  cidfCount90d: number;
+  cidfEmployees90d: number;
+  // Riscos psicossociais (PGR)
+  psychoRisksOpen: number;
+  psychoRisksHigh: number;
+  psychoRisksOverdue: number;
   // SST docs
   sstTotal: number;
   sstValid: number;
@@ -36,6 +47,9 @@ export interface Nr1Metrics {
   scoreSst: number;
   scoreOverall: number;
 }
+
+const MIN_RESPONDENTS_FOR_AGG = 5;
+
 
 async function fetchMetrics(): Promise<Nr1Metrics> {
   const today = new Date();
