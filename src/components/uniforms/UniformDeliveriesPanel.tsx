@@ -165,7 +165,7 @@ export function UniformDeliveriesPanel({ items, employees }: Props) {
         <CardHeader>
           <CardTitle className="text-base">Nova entrega de uniforme</CardTitle>
           <CardDescription>
-            Ao selecionar o colaborador o kit do cargo aparece como sugestão. Edite peça a peça (tamanho, quantidade e se é <b>Nova</b> ou <b>Usada</b>) antes de registrar. Toda saída é feita da sede (Estoque Central).
+            Adicione as peças entregues (tamanho, quantidade e se é <b>Nova</b> ou <b>Usada</b>). Toda saída é feita da sede (Estoque Central).
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
