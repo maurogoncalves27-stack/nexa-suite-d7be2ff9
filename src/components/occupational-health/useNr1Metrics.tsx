@@ -136,11 +136,20 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     }
   }
 
+  // Humor com gate de N>=5 (LGPD/NR-1 anti-reidentificação)
   const moodRecentRows = (moodRecent.data ?? []) as { mood_score: number }[];
   const moodPrevRows = (moodPrev.data ?? []) as { mood_score: number }[];
-  const moodAvg30d = moodRecentRows.length ? moodRecentRows.reduce((s, r) => s + r.mood_score, 0) / moodRecentRows.length : null;
-  const moodPrevAvg = moodPrevRows.length ? moodPrevRows.reduce((s, r) => s + r.mood_score, 0) / moodPrevRows.length : null;
+  const moodRespondents30d = moodRecentRows.length;
+  const moodHiddenByPrivacy = moodRespondents30d > 0 && moodRespondents30d < MIN_RESPONDENTS_FOR_AGG;
+  const canShowMood = moodRespondents30d >= MIN_RESPONDENTS_FOR_AGG;
+  const moodAvg30d = canShowMood
+    ? moodRecentRows.reduce((s, r) => s + r.mood_score, 0) / moodRecentRows.length
+    : null;
+  const moodPrevAvg = moodPrevRows.length >= MIN_RESPONDENTS_FOR_AGG
+    ? moodPrevRows.reduce((s, r) => s + r.mood_score, 0) / moodPrevRows.length
+    : null;
   const moodTrend = moodAvg30d != null && moodPrevAvg != null ? moodAvg30d - moodPrevAvg : null;
+
 
   // PCMSO — pega ASO mais recente por colaborador
   const pcmsoRows = (pcmsoAll.data ?? []) as { employee_id: string; valid_until: string | null }[];
