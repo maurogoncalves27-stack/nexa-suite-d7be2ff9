@@ -188,30 +188,34 @@ export default function NotificationSettings() {
         return (
           <Card key={group}>
             <Collapsible defaultOpen>
-              <CollapsibleTrigger className="w-full group">
-                <CardHeader className="flex flex-row items-center justify-between gap-2 p-4 sm:p-6">
-                  <CardTitle className="text-sm sm:text-base flex items-center gap-2 min-w-0">
-                    <span className="truncate">{group}</span>
-                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px] shrink-0">{activeCount}/{rows.length}</Badge>
-                  </CardTitle>
-                  <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-data-[state=closed]:-rotate-90" />
-                </CardHeader>
+              <CollapsibleTrigger asChild>
+                <button type="button" className="group w-full text-left">
+                  <CardHeader className="flex flex-row items-center justify-between gap-2 p-4 sm:p-6 w-full">
+                    <CardTitle className="text-sm sm:text-base flex items-center gap-2 min-w-0 flex-1">
+                      <span className="truncate">{group}</span>
+                      <Badge variant="secondary" className="h-5 px-1.5 text-[10px] shrink-0">{activeCount}/{rows.length}</Badge>
+                    </CardTitle>
+                    <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                  </CardHeader>
+                </button>
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <CardContent className="space-y-2 p-4 sm:p-6 pt-0 sm:pt-0">
                   {rows.map((s) => (
-                    <div key={s.alert_key} className="rounded-md border p-3 space-y-2.5">
+                    <div key={s.alert_key} className="rounded-md border p-3 space-y-2">
                       <div>
-                        <div className="font-medium text-sm">{s.label}</div>
+                        <div className="font-medium text-sm leading-tight">{s.label}</div>
                         {s.description && <p className="text-[11px] leading-snug text-muted-foreground mt-0.5">{s.description}</p>}
                       </div>
-                      <div className="flex items-center justify-between rounded-md bg-muted/40 px-2.5 py-1.5">
-                        <span className="flex items-center gap-2 text-xs sm:text-sm"><Smartphone className="h-4 w-4" /> Push</span>
-                        <Switch checked={s.push_enabled} onCheckedChange={(v) => updateSetting(s.alert_key, { push_enabled: v })} />
-                      </div>
-                      <div className="flex items-center justify-between rounded-md bg-muted/40 px-2.5 py-1.5">
-                        <span className="flex items-center gap-2 text-xs sm:text-sm"><MessageCircle className="h-4 w-4" /> WhatsApp</span>
-                        <Switch checked={s.whatsapp_enabled} onCheckedChange={(v) => updateSetting(s.alert_key, { whatsapp_enabled: v })} />
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-2.5 py-1.5 cursor-pointer">
+                          <span className="flex items-center gap-1.5 text-xs"><Smartphone className="h-3.5 w-3.5" /> Push</span>
+                          <Switch checked={s.push_enabled} onCheckedChange={(v) => updateSetting(s.alert_key, { push_enabled: v })} />
+                        </label>
+                        <label className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-2.5 py-1.5 cursor-pointer">
+                          <span className="flex items-center gap-1.5 text-xs"><MessageCircle className="h-3.5 w-3.5" /> Zap</span>
+                          <Switch checked={s.whatsapp_enabled} onCheckedChange={(v) => updateSetting(s.alert_key, { whatsapp_enabled: v })} />
+                        </label>
                       </div>
                       {s.whatsapp_enabled && (
                         <Select
