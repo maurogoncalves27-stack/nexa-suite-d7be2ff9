@@ -164,8 +164,94 @@ Deno.serve(async (req) => {
       triggered++;
     }
 
+    // 3. Freelancers escalados hoje (openings filled/completed) sem check-in
+    let freelancerTriggered = 0;
+    const { data: openings } = await supabase
+      .from("freelancer_job_openings")
+      .select("id, store_id, title, start_time, filled_freelancer_id, payment_id")
+      .eq("work_date", dateStr)
+      .in("status", ["filled", "completed"])
+      .not("filled_freelancer_id", "is", null)
+      .not("start_time", "is", null);
+
+    if (openings && openings.length > 0) {
+      const paymentIds = openings.map((o: any) => o.payment_id).filter(Boolean);
+      const freelancerIds = Array.from(new Set(openings.map((o: any) => o.filled_freelancer_id)));
+
+      const [{ data: payments }, { data: freelancers }] = await Promise.all([
+        paymentIds.length > 0
+          ? supabase
+              .from("freelancer_daily_payments")
+              .select("id, freelancer_id, work_date, check_in_at, late_alert_sent_at")
+              .in("id", paymentIds)
+          : Promise.resolve({ data: [] }),
+        supabase.from("freelancers").select("id, full_name").in("id", freelancerIds),
+      ]);
+
+      const paymentMap = new Map((payments ?? []).map((p: any) => [p.id, p]));
+      const freelancerMap = new Map((freelancers ?? []).map((f: any) => [f.id, f]));
+
+      for (const op of openings) {
+        const expectedStart = tzDateTimeToUtc(dateStr, op.start_time);
+        const lateBy = (nowMs - expectedStart.getTime()) / 60000;
+        if (lateBy < LATE_THRESHOLD_MIN) continue;
+
+        const payment = op.payment_id ? paymentMap.get(op.payment_id) : null;
+        if (payment?.check_in_at) continue;
+        if (payment?.late_alert_sent_at) continue;
+
+        const freelancer = freelancerMap.get(op.filled_freelancer_id);
+        if (!freelancer) continue;
+
+        const store = op.store_id ? storeMap.get(op.store_id) : null;
+
+        let managerUserIds = cache.managers.get(op.store_id ?? "__all__");
+        if (!managerUserIds) {
+          managerUserIds = await resolveManagers(supabase, op.store_id);
+          cache.managers.set(op.store_id ?? "__all__", managerUserIds);
+        }
+        if (managerUserIds.length === 0) continue;
+
+        const lateMin = Math.round(lateBy);
+        const title = `⏰ Freelancer atrasado: ${freelancer.full_name}`;
+        const message =
+          `${freelancer.full_name} (freelancer) ainda não fez check-in.\n` +
+          `Vaga: ${op.title} · Início: ${op.start_time.slice(0, 5)}${store ? ` · ${store.name}` : ""}\n` +
+          `Atraso: ${lateMin} min`;
+
+        const rows = managerUserIds.map((uid) => ({
+          user_id: uid,
+          title,
+          message,
+          url: "/freelancers",
+          tag: `late-freela-${op.id}-${dateStr}`,
+          category: "timeclock",
+        }));
+
+        const { error: insErr } = await supabase.from("user_notifications").insert(rows);
+        if (insErr) {
+          console.error("[late-alerts] freelancer notification error", insErr);
+          continue;
+        }
+
+        if (payment?.id) {
+          await supabase
+            .from("freelancer_daily_payments")
+            .update({ late_alert_sent_at: new Date().toISOString() })
+            .eq("id", payment.id);
+        }
+        freelancerTriggered++;
+      }
+    }
+
     return new Response(
-      JSON.stringify({ ok: true, date: dateStr, scanned: schedules.length, triggered }),
+      JSON.stringify({
+        ok: true,
+        date: dateStr,
+        scanned: schedules.length,
+        triggered,
+        freelancerTriggered,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
