@@ -179,7 +179,23 @@ Deno.serve(async (req) => {
       });
     }
 
-    const result = await sendByProvider(normalized, body.message);
+    // Resolver remetente: sender_id explícito > categoria (notification_settings) > default > env
+    let effectiveSenderId = body.sender_id;
+    if (!effectiveSenderId && body.category) {
+      const { data: setting } = await admin
+        .from("notification_settings")
+        .select("whatsapp_sender_id, whatsapp_enabled")
+        .eq("alert_key", body.category)
+        .maybeSingle();
+      if (setting && setting.whatsapp_enabled === false) {
+        return new Response(JSON.stringify({ ok: true, status: "skipped", reason: "whatsapp-disabled-for-category" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (setting?.whatsapp_sender_id) effectiveSenderId = setting.whatsapp_sender_id;
+    }
+    const creds = await resolveSenderCreds(admin, effectiveSenderId);
+    const result = await sendByProvider(creds, normalized, body.message);
 
     await admin.from("whatsapp_notifications_log").insert({
       user_id: body.user_id ?? null, employee_id: employeeId, phone: normalized,
