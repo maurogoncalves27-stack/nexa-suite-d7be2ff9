@@ -42,17 +42,21 @@ function normalizePhone(raw: string): string | null {
   return null;
 }
 
-async function sendViaZapi(phone: string, message: string): Promise<{ ok: boolean; id?: string; error?: string }> {
-  if (!ZAPI_INSTANCE_ID || !ZAPI_TOKEN || !ZAPI_CLIENT_TOKEN) {
-    return { ok: false, error: "Z-API não configurada (faltam ZAPI_INSTANCE_ID/ZAPI_TOKEN/ZAPI_CLIENT_TOKEN)" };
+async function sendViaZapi(
+  creds: { instanceId: string; token: string; clientToken: string },
+  phone: string,
+  message: string,
+): Promise<{ ok: boolean; id?: string; error?: string }> {
+  if (!creds.instanceId || !creds.token || !creds.clientToken) {
+    return { ok: false, error: "Z-API não configurada (faltam credenciais)" };
   }
-  const url = `https://api.z-api.io/instances/${ZAPI_INSTANCE_ID}/token/${ZAPI_TOKEN}/send-text`;
+  const url = `https://api.z-api.io/instances/${creds.instanceId}/token/${creds.token}/send-text`;
   try {
     const res = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Client-Token": ZAPI_CLIENT_TOKEN,
+        "Client-Token": creds.clientToken,
       },
       body: JSON.stringify({ phone, message }),
     });
@@ -66,10 +70,37 @@ async function sendViaZapi(phone: string, message: string): Promise<{ ok: boolea
   }
 }
 
-async function sendByProvider(phone: string, message: string) {
-  if (PROVIDER === "zapi") return await sendViaZapi(phone, message);
-  // stub futuro:
-  // if (PROVIDER === "meta_cloud") return await sendViaMetaCloud(phone, message);
+async function resolveSenderCreds(
+  admin: ReturnType<typeof createClient>,
+  senderId?: string,
+): Promise<{ instanceId: string; token: string; clientToken: string; sender_id: string | null }> {
+  // 1) explicit sender_id
+  if (senderId) {
+    const { data } = await admin
+      .from("whatsapp_senders")
+      .select("id, zapi_instance_id, zapi_token, zapi_client_token, active")
+      .eq("id", senderId)
+      .maybeSingle();
+    if (data && data.active) {
+      return { instanceId: data.zapi_instance_id, token: data.zapi_token, clientToken: data.zapi_client_token, sender_id: data.id };
+    }
+  }
+  // 2) default ativo
+  const { data: def } = await admin
+    .from("whatsapp_senders")
+    .select("id, zapi_instance_id, zapi_token, zapi_client_token")
+    .eq("is_default", true)
+    .eq("active", true)
+    .maybeSingle();
+  if (def) {
+    return { instanceId: def.zapi_instance_id, token: def.zapi_token, clientToken: def.zapi_client_token, sender_id: def.id };
+  }
+  // 3) fallback env
+  return { ...ENV_ZAPI, sender_id: null };
+}
+
+async function sendByProvider(creds: { instanceId: string; token: string; clientToken: string }, phone: string, message: string) {
+  if (PROVIDER === "zapi") return await sendViaZapi(creds, phone, message);
   return { ok: false, error: `Provider '${PROVIDER}' não implementado` };
 }
 
