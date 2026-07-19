@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const LATE_THRESHOLD_MIN = 30;
+const LATE_THRESHOLD_MIN = 15;
 const TZ = "America/Sao_Paulo";
 
 // Retorna a data atual (YYYY-MM-DD) e timestamp em ms no fuso de São Paulo
