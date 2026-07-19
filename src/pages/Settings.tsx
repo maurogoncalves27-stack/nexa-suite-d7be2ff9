@@ -19,47 +19,47 @@ const Settings = () => {
           </h1>
           <p className="text-muted-foreground">Centralize aqui as configurações do sistema.</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
-          <Button asChild variant="outline" size="sm" className="gap-2">
+        <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 sm:flex-wrap">
+          <Button asChild variant="outline" size="sm" className="gap-2 justify-start sm:justify-center">
             <Link to="/configuracoes/integracoes">
-              <KeyRound className="h-4 w-4" />
-              Integrações e APIs
+              <KeyRound className="h-4 w-4 shrink-0" />
+              <span className="truncate">Integrações e APIs</span>
             </Link>
           </Button>
-          <Button asChild variant="outline" size="sm" className="gap-2">
+          <Button asChild variant="outline" size="sm" className="gap-2 justify-start sm:justify-center">
             <Link to="/configuracoes/alertas">
-              <Bell className="h-4 w-4" />
-              Alertas e notificações
+              <Bell className="h-4 w-4 shrink-0" />
+              <span className="truncate">Alertas e notificações</span>
             </Link>
           </Button>
-          <Button asChild variant="outline" size="sm" className="gap-2">
+          <Button asChild variant="outline" size="sm" className="gap-2 justify-start sm:justify-center">
             <Link to="/configuracoes/rede-lojas">
-              <Router className="h-4 w-4" />
-              Rede das lojas
+              <Router className="h-4 w-4 shrink-0" />
+              <span className="truncate">Rede das lojas</span>
             </Link>
           </Button>
-          <Button asChild variant="outline" size="sm" className="gap-2">
+          <Button asChild variant="outline" size="sm" className="gap-2 justify-start sm:justify-center">
             <Link to="/configuracoes/acesso-remoto">
-              <Monitor className="h-4 w-4" />
-              Acesso remoto
+              <Monitor className="h-4 w-4 shrink-0" />
+              <span className="truncate">Acesso remoto</span>
             </Link>
           </Button>
-          <Button asChild variant="outline" size="sm" className="gap-2">
+          <Button asChild variant="outline" size="sm" className="gap-2 justify-start sm:justify-center">
             <Link to="/configuracoes/tef-payer">
-              <CreditCard className="h-4 w-4" />
-              TEF Payer
+              <CreditCard className="h-4 w-4 shrink-0" />
+              <span className="truncate">TEF Payer</span>
             </Link>
           </Button>
-          <Button asChild variant="outline" size="sm" className="gap-2">
+          <Button asChild variant="outline" size="sm" className="gap-2 justify-start sm:justify-center">
             <Link to="/configuracoes/tef-paygo">
-              <CreditCard className="h-4 w-4" />
-              TEF PayGo
+              <CreditCard className="h-4 w-4 shrink-0" />
+              <span className="truncate">TEF PayGo</span>
             </Link>
           </Button>
-          <Button asChild variant="outline" size="sm" className="gap-2">
+          <Button asChild variant="outline" size="sm" className="gap-2 justify-start sm:justify-center col-span-2">
             <Link to="/configuracoes/nfce-tester">
-              <FlaskConical className="h-4 w-4" />
-              Teste NFC-e (ACBr)
+              <FlaskConical className="h-4 w-4 shrink-0" />
+              <span className="truncate">Teste NFC-e (ACBr)</span>
             </Link>
           </Button>
         </div>
