@@ -119,6 +119,17 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
+    // Consulta config do tipo de alerta (categoria)
+    const alertKey = body.category ?? "general";
+    const { data: alertSetting } = await admin
+      .from("notification_settings")
+      .select("push_enabled, whatsapp_enabled, whatsapp_sender_id")
+      .eq("alert_key", alertKey)
+      .maybeSingle();
+    const pushEnabled = alertSetting?.push_enabled ?? true;
+    const waEnabled = alertSetting?.whatsapp_enabled ?? false;
+    const waSenderId = alertSetting?.whatsapp_sender_id ?? null;
+
     const isOccurrence = body.category === "occurrence";
     const detectedStore = isOccurrence ? detectStore(`${body.title} ${body.message}`) : null;
     const finalTitle = titleWithStoreEmoji(body.title, detectedStore);
@@ -134,11 +145,13 @@ Deno.serve(async (req) => {
     });
     if (insErr) console.error("user_notifications insert error", insErr);
 
-    // 2) Tenta enviar push (se tiver subscriptions)
-    const { data: subs, error: subsErr } = await admin
-      .from("push_subscriptions")
-      .select("endpoint, p256dh, auth")
-      .eq("user_id", body.user_id);
+    // 2) Tenta enviar push (se tiver subscriptions e categoria permitir)
+    const { data: subs, error: subsErr } = pushEnabled
+      ? await admin
+          .from("push_subscriptions")
+          .select("endpoint, p256dh, auth")
+          .eq("user_id", body.user_id)
+      : { data: [] as any[], error: null };
 
     if (subsErr) {
       return new Response(JSON.stringify({ error: subsErr.message, in_app: !insErr }), {
