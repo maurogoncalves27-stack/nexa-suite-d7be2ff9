@@ -9117,6 +9117,47 @@ export type Database = {
           },
         ]
       }
+      notification_settings: {
+        Row: {
+          alert_key: string
+          category_group: string
+          description: string | null
+          label: string
+          push_enabled: boolean
+          updated_at: string
+          whatsapp_enabled: boolean
+          whatsapp_sender_id: string | null
+        }
+        Insert: {
+          alert_key: string
+          category_group?: string
+          description?: string | null
+          label: string
+          push_enabled?: boolean
+          updated_at?: string
+          whatsapp_enabled?: boolean
+          whatsapp_sender_id?: string | null
+        }
+        Update: {
+          alert_key?: string
+          category_group?: string
+          description?: string | null
+          label?: string
+          push_enabled?: boolean
+          updated_at?: string
+          whatsapp_enabled?: boolean
+          whatsapp_sender_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_settings_whatsapp_sender_id_fkey"
+            columns: ["whatsapp_sender_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_senders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nutri_day_records: {
         Row: {
           date: string
@@ -17631,6 +17672,45 @@ export type Database = {
           status?: string
           tag?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      whatsapp_senders: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          is_default: boolean
+          label: string
+          phone_display: string | null
+          updated_at: string
+          zapi_client_token: string
+          zapi_instance_id: string
+          zapi_token: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          label: string
+          phone_display?: string | null
+          updated_at?: string
+          zapi_client_token: string
+          zapi_instance_id: string
+          zapi_token: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          label?: string
+          phone_display?: string | null
+          updated_at?: string
+          zapi_client_token?: string
+          zapi_instance_id?: string
+          zapi_token?: string
         }
         Relationships: []
       }

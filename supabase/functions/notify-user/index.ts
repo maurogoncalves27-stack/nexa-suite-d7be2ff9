@@ -119,6 +119,17 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
+    // Consulta config do tipo de alerta (categoria)
+    const alertKey = body.category ?? "general";
+    const { data: alertSetting } = await admin
+      .from("notification_settings")
+      .select("push_enabled, whatsapp_enabled, whatsapp_sender_id")
+      .eq("alert_key", alertKey)
+      .maybeSingle();
+    const pushEnabled = alertSetting?.push_enabled ?? true;
+    const waEnabled = alertSetting?.whatsapp_enabled ?? false;
+    const waSenderId = alertSetting?.whatsapp_sender_id ?? null;
+
     const isOccurrence = body.category === "occurrence";
     const detectedStore = isOccurrence ? detectStore(`${body.title} ${body.message}`) : null;
     const finalTitle = titleWithStoreEmoji(body.title, detectedStore);
@@ -134,11 +145,13 @@ Deno.serve(async (req) => {
     });
     if (insErr) console.error("user_notifications insert error", insErr);
 
-    // 2) Tenta enviar push (se tiver subscriptions)
-    const { data: subs, error: subsErr } = await admin
-      .from("push_subscriptions")
-      .select("endpoint, p256dh, auth")
-      .eq("user_id", body.user_id);
+    // 2) Tenta enviar push (se tiver subscriptions e categoria permitir)
+    const { data: subs, error: subsErr } = pushEnabled
+      ? await admin
+          .from("push_subscriptions")
+          .select("endpoint, p256dh, auth")
+          .eq("user_id", body.user_id)
+      : { data: [] as any[], error: null };
 
     if (subsErr) {
       return new Response(JSON.stringify({ error: subsErr.message, in_app: !insErr }), {
@@ -195,9 +208,12 @@ Deno.serve(async (req) => {
       }),
     );
 
-    // 3) Canal WhatsApp (paralelo, fire-and-forget). Apenas categorias relevantes.
-    const WA_ENABLED_CATEGORIES = new Set(["occurrence", "announcement", "payslip", "schedule"]);
-    if (WA_ENABLED_CATEGORIES.has(body.category ?? "")) {
+    // 3) Canal WhatsApp — respeita notification_settings; fallback nas categorias legadas.
+    const LEGACY_WA_CATEGORIES = new Set(["occurrence", "announcement", "payslip", "schedule", "timeclock"]);
+    const shouldSendWa = alertSetting
+      ? waEnabled
+      : LEGACY_WA_CATEGORIES.has(body.category ?? "");
+    if (shouldSendWa) {
       fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
         method: "POST",
         headers: {
@@ -209,6 +225,7 @@ Deno.serve(async (req) => {
           message: `*${finalTitle}*\n${body.message}`,
           category: body.category,
           tag: body.tag,
+          sender_id: waSenderId,
         }),
       }).catch((e) => console.error("send-whatsapp dispatch error", e));
     }

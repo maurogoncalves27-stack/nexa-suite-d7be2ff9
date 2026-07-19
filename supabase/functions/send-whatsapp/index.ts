@@ -12,10 +12,12 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const PROVIDER = (Deno.env.get("WHATSAPP_PROVIDER") ?? "zapi").toLowerCase();
 
-// Z-API
-const ZAPI_INSTANCE_ID = Deno.env.get("ZAPI_INSTANCE_ID") ?? "";
-const ZAPI_TOKEN = Deno.env.get("ZAPI_TOKEN") ?? "";
-const ZAPI_CLIENT_TOKEN = Deno.env.get("ZAPI_CLIENT_TOKEN") ?? "";
+// Z-API (fallback vindo de env; pode ser sobrescrito por remetente configurado no DB)
+const ENV_ZAPI = {
+  instanceId: Deno.env.get("ZAPI_INSTANCE_ID") ?? "",
+  token: Deno.env.get("ZAPI_TOKEN") ?? "",
+  clientToken: Deno.env.get("ZAPI_CLIENT_TOKEN") ?? "",
+};
 
 interface Body {
   user_id?: string;
@@ -24,6 +26,7 @@ interface Body {
   message: string;
   category?: string;
   tag?: string;
+  sender_id?: string;
 }
 
 // Normaliza para formato E.164 sem '+', com DDI 55 padrão Brasil
@@ -39,17 +42,21 @@ function normalizePhone(raw: string): string | null {
   return null;
 }
 
-async function sendViaZapi(phone: string, message: string): Promise<{ ok: boolean; id?: string; error?: string }> {
-  if (!ZAPI_INSTANCE_ID || !ZAPI_TOKEN || !ZAPI_CLIENT_TOKEN) {
-    return { ok: false, error: "Z-API não configurada (faltam ZAPI_INSTANCE_ID/ZAPI_TOKEN/ZAPI_CLIENT_TOKEN)" };
+async function sendViaZapi(
+  creds: { instanceId: string; token: string; clientToken: string },
+  phone: string,
+  message: string,
+): Promise<{ ok: boolean; id?: string; error?: string }> {
+  if (!creds.instanceId || !creds.token || !creds.clientToken) {
+    return { ok: false, error: "Z-API não configurada (faltam credenciais)" };
   }
-  const url = `https://api.z-api.io/instances/${ZAPI_INSTANCE_ID}/token/${ZAPI_TOKEN}/send-text`;
+  const url = `https://api.z-api.io/instances/${creds.instanceId}/token/${creds.token}/send-text`;
   try {
     const res = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Client-Token": ZAPI_CLIENT_TOKEN,
+        "Client-Token": creds.clientToken,
       },
       body: JSON.stringify({ phone, message }),
     });
@@ -63,10 +70,37 @@ async function sendViaZapi(phone: string, message: string): Promise<{ ok: boolea
   }
 }
 
-async function sendByProvider(phone: string, message: string) {
-  if (PROVIDER === "zapi") return await sendViaZapi(phone, message);
-  // stub futuro:
-  // if (PROVIDER === "meta_cloud") return await sendViaMetaCloud(phone, message);
+async function resolveSenderCreds(
+  admin: ReturnType<typeof createClient>,
+  senderId?: string,
+): Promise<{ instanceId: string; token: string; clientToken: string; sender_id: string | null }> {
+  // 1) explicit sender_id
+  if (senderId) {
+    const { data } = await admin
+      .from("whatsapp_senders")
+      .select("id, zapi_instance_id, zapi_token, zapi_client_token, active")
+      .eq("id", senderId)
+      .maybeSingle();
+    if (data && data.active) {
+      return { instanceId: data.zapi_instance_id, token: data.zapi_token, clientToken: data.zapi_client_token, sender_id: data.id };
+    }
+  }
+  // 2) default ativo
+  const { data: def } = await admin
+    .from("whatsapp_senders")
+    .select("id, zapi_instance_id, zapi_token, zapi_client_token")
+    .eq("is_default", true)
+    .eq("active", true)
+    .maybeSingle();
+  if (def) {
+    return { instanceId: def.zapi_instance_id, token: def.zapi_token, clientToken: def.zapi_client_token, sender_id: def.id };
+  }
+  // 3) fallback env
+  return { ...ENV_ZAPI, sender_id: null };
+}
+
+async function sendByProvider(creds: { instanceId: string; token: string; clientToken: string }, phone: string, message: string) {
+  if (PROVIDER === "zapi") return await sendViaZapi(creds, phone, message);
   return { ok: false, error: `Provider '${PROVIDER}' não implementado` };
 }
 
@@ -145,7 +179,23 @@ Deno.serve(async (req) => {
       });
     }
 
-    const result = await sendByProvider(normalized, body.message);
+    // Resolver remetente: sender_id explícito > categoria (notification_settings) > default > env
+    let effectiveSenderId = body.sender_id;
+    if (!effectiveSenderId && body.category) {
+      const { data: setting } = await admin
+        .from("notification_settings")
+        .select("whatsapp_sender_id, whatsapp_enabled")
+        .eq("alert_key", body.category)
+        .maybeSingle();
+      if (setting && setting.whatsapp_enabled === false) {
+        return new Response(JSON.stringify({ ok: true, status: "skipped", reason: "whatsapp-disabled-for-category" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (setting?.whatsapp_sender_id) effectiveSenderId = setting.whatsapp_sender_id;
+    }
+    const creds = await resolveSenderCreds(admin, effectiveSenderId);
+    const result = await sendByProvider(creds, normalized, body.message);
 
     await admin.from("whatsapp_notifications_log").insert({
       user_id: body.user_id ?? null, employee_id: employeeId, phone: normalized,
