@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Bell, Plus, Pencil, Trash2, Star, Loader2, MessageCircle, Smartphone } from "lucide-react";
+import { Bell, Plus, Pencil, Trash2, Star, Loader2, MessageCircle, Smartphone, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -13,6 +13,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 
 interface Sender {
@@ -129,14 +130,14 @@ export default function NotificationSettings() {
 
       {/* Remetentes de WhatsApp */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <MessageCircle className="h-5 w-5 text-primary" />
-            Números de WhatsApp (remetentes)
+        <CardHeader className="flex flex-row items-center justify-between gap-2 p-4 sm:p-6">
+          <CardTitle className="flex items-center gap-2 text-sm sm:text-base min-w-0">
+            <MessageCircle className="h-5 w-5 text-primary shrink-0" />
+            <span className="truncate">Números de WhatsApp</span>
           </CardTitle>
           <Dialog open={newOpen} onOpenChange={(o) => { setNewOpen(o); if (!o) { setDraft(emptySender); } }}>
             <DialogTrigger asChild>
-              <Button size="sm" className="gap-1"><Plus className="h-4 w-4" /> Novo</Button>
+              <Button size="sm" className="gap-1 shrink-0"><Plus className="h-4 w-4" /> Novo</Button>
             </DialogTrigger>
             <SenderDialog
               title="Novo remetente"
@@ -145,30 +146,28 @@ export default function NotificationSettings() {
             />
           </Dialog>
         </CardHeader>
-        <CardContent className="space-y-2">
+        <CardContent className="space-y-2 p-4 sm:p-6 pt-0 sm:pt-0">
           {loading ? (
             <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin" /></div>
           ) : senders.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Nenhum número cadastrado. Sem remetentes cadastrados aqui, o sistema usa as credenciais Z-API globais das variáveis de ambiente.
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              Nenhum número cadastrado. O sistema usa as credenciais Z-API padrão.
             </p>
           ) : (
             senders.map((s) => (
-              <div key={s.id} className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-md border p-3">
+              <div key={s.id} className="flex items-center gap-2 rounded-md border p-2.5">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium truncate">{s.label}</span>
-                    {s.is_default && <Badge variant="secondary" className="gap-1"><Star className="h-3 w-3" />Padrão</Badge>}
-                    {!s.active && <Badge variant="outline">Inativo</Badge>}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-medium text-sm truncate">{s.label}</span>
+                    {s.is_default && <Badge variant="secondary" className="gap-1 h-5 px-1.5 text-[10px]"><Star className="h-2.5 w-2.5" />Padrão</Badge>}
+                    {!s.active && <Badge variant="outline" className="h-5 px-1.5 text-[10px]">Inativo</Badge>}
                   </div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {s.phone_display || "sem número visível"} · instance {s.zapi_instance_id.slice(0, 8)}…
+                  <div className="text-[11px] text-muted-foreground truncate">
+                    {s.phone_display || "sem número"} · {s.zapi_instance_id.slice(0, 10)}…
                   </div>
                 </div>
-                <div className="flex gap-1">
-                  <Button size="sm" variant="ghost" onClick={() => openEdit(s)}><Pencil className="h-4 w-4" /></Button>
-                  <Button size="sm" variant="ghost" onClick={() => deleteSender(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                </div>
+                <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => openEdit(s)}><Pencil className="h-4 w-4" /></Button>
+                <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => deleteSender(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
               </div>
             ))
           )}
@@ -184,55 +183,60 @@ export default function NotificationSettings() {
       </Dialog>
 
       {/* Alertas */}
-      {Object.entries(grouped).map(([group, rows]) => (
-        <Card key={group}>
-          <CardHeader>
-            <CardTitle className="text-base">{group}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {rows.map((s) => (
-              <div key={s.alert_key} className="rounded-md border p-3 space-y-3">
-                <div>
-                  <div className="font-medium">{s.label}</div>
-                  {s.description && <p className="text-xs text-muted-foreground">{s.description}</p>}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="flex items-center justify-between rounded-md bg-muted/40 px-3 py-2">
-                    <span className="flex items-center gap-2 text-sm"><Smartphone className="h-4 w-4" /> Push</span>
-                    <Switch checked={s.push_enabled} onCheckedChange={(v) => updateSetting(s.alert_key, { push_enabled: v })} />
-                  </div>
-                  <div className="flex items-center justify-between rounded-md bg-muted/40 px-3 py-2">
-                    <span className="flex items-center gap-2 text-sm"><MessageCircle className="h-4 w-4" /> WhatsApp</span>
-                    <Switch checked={s.whatsapp_enabled} onCheckedChange={(v) => updateSetting(s.alert_key, { whatsapp_enabled: v })} />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Select
-                      value={s.whatsapp_sender_id ?? "__default__"}
-                      onValueChange={(v) => updateSetting(s.alert_key, { whatsapp_sender_id: v === "__default__" ? null : v })}
-                      disabled={!s.whatsapp_enabled}
-                    >
-                      <SelectTrigger className="text-sm"><SelectValue placeholder="Remetente" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__default__">Padrão do sistema</SelectItem>
-                        {senders.filter((x) => x.active).map((x) => (
-                          <SelectItem key={x.id} value={x.id}>
-                            {x.label}{x.phone_display ? ` — ${x.phone_display}` : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                {s.whatsapp_enabled && !s.whatsapp_sender_id && (
-                  <p className="text-xs text-muted-foreground">
-                    Usando remetente padrão: <b>{senderLabel(null)}</b>{senders.find((x) => x.is_default) ? ` → ${senderLabel(senders.find((x) => x.is_default)!.id)}` : ""}
-                  </p>
-                )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      ))}
+      {Object.entries(grouped).map(([group, rows]) => {
+        const activeCount = rows.filter((r) => r.push_enabled || r.whatsapp_enabled).length;
+        return (
+          <Card key={group}>
+            <Collapsible defaultOpen>
+              <CollapsibleTrigger className="w-full group">
+                <CardHeader className="flex flex-row items-center justify-between gap-2 p-4 sm:p-6">
+                  <CardTitle className="text-sm sm:text-base flex items-center gap-2 min-w-0">
+                    <span className="truncate">{group}</span>
+                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px] shrink-0">{activeCount}/{rows.length}</Badge>
+                  </CardTitle>
+                  <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-data-[state=closed]:-rotate-90" />
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="space-y-2 p-4 sm:p-6 pt-0 sm:pt-0">
+                  {rows.map((s) => (
+                    <div key={s.alert_key} className="rounded-md border p-3 space-y-2.5">
+                      <div>
+                        <div className="font-medium text-sm">{s.label}</div>
+                        {s.description && <p className="text-[11px] leading-snug text-muted-foreground mt-0.5">{s.description}</p>}
+                      </div>
+                      <div className="flex items-center justify-between rounded-md bg-muted/40 px-2.5 py-1.5">
+                        <span className="flex items-center gap-2 text-xs sm:text-sm"><Smartphone className="h-4 w-4" /> Push</span>
+                        <Switch checked={s.push_enabled} onCheckedChange={(v) => updateSetting(s.alert_key, { push_enabled: v })} />
+                      </div>
+                      <div className="flex items-center justify-between rounded-md bg-muted/40 px-2.5 py-1.5">
+                        <span className="flex items-center gap-2 text-xs sm:text-sm"><MessageCircle className="h-4 w-4" /> WhatsApp</span>
+                        <Switch checked={s.whatsapp_enabled} onCheckedChange={(v) => updateSetting(s.alert_key, { whatsapp_enabled: v })} />
+                      </div>
+                      {s.whatsapp_enabled && (
+                        <Select
+                          value={s.whatsapp_sender_id ?? "__default__"}
+                          onValueChange={(v) => updateSetting(s.alert_key, { whatsapp_sender_id: v === "__default__" ? null : v })}
+                        >
+                          <SelectTrigger className="text-xs sm:text-sm h-9"><SelectValue placeholder="Remetente" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__default__">Padrão do sistema</SelectItem>
+                            {senders.filter((x) => x.active).map((x) => (
+                              <SelectItem key={x.id} value={x.id}>
+                                {x.label}{x.phone_display ? ` — ${x.phone_display}` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  ))}
+                </CardContent>
+              </CollapsibleContent>
+            </Collapsible>
+          </Card>
+        );
+      })}
     </div>
   );
 }
