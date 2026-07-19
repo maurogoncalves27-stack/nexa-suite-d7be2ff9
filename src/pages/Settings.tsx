@@ -27,6 +27,12 @@ const Settings = () => {
             </Link>
           </Button>
           <Button asChild variant="outline" size="sm" className="gap-2">
+            <Link to="/configuracoes/alertas">
+              <Bell className="h-4 w-4" />
+              Alertas e notificações
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm" className="gap-2">
             <Link to="/configuracoes/rede-lojas">
               <Router className="h-4 w-4" />
               Rede das lojas
