@@ -12,10 +12,12 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const PROVIDER = (Deno.env.get("WHATSAPP_PROVIDER") ?? "zapi").toLowerCase();
 
-// Z-API
-const ZAPI_INSTANCE_ID = Deno.env.get("ZAPI_INSTANCE_ID") ?? "";
-const ZAPI_TOKEN = Deno.env.get("ZAPI_TOKEN") ?? "";
-const ZAPI_CLIENT_TOKEN = Deno.env.get("ZAPI_CLIENT_TOKEN") ?? "";
+// Z-API (fallback vindo de env; pode ser sobrescrito por remetente configurado no DB)
+const ENV_ZAPI = {
+  instanceId: Deno.env.get("ZAPI_INSTANCE_ID") ?? "",
+  token: Deno.env.get("ZAPI_TOKEN") ?? "",
+  clientToken: Deno.env.get("ZAPI_CLIENT_TOKEN") ?? "",
+};
 
 interface Body {
   user_id?: string;
@@ -24,6 +26,7 @@ interface Body {
   message: string;
   category?: string;
   tag?: string;
+  sender_id?: string;
 }
 
 // Normaliza para formato E.164 sem '+', com DDI 55 padrão Brasil
