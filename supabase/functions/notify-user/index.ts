@@ -208,9 +208,12 @@ Deno.serve(async (req) => {
       }),
     );
 
-    // 3) Canal WhatsApp (paralelo, fire-and-forget). Apenas categorias relevantes.
-    const WA_ENABLED_CATEGORIES = new Set(["occurrence", "announcement", "payslip", "schedule"]);
-    if (WA_ENABLED_CATEGORIES.has(body.category ?? "")) {
+    // 3) Canal WhatsApp — respeita notification_settings; fallback nas categorias legadas.
+    const LEGACY_WA_CATEGORIES = new Set(["occurrence", "announcement", "payslip", "schedule", "timeclock"]);
+    const shouldSendWa = alertSetting
+      ? waEnabled
+      : LEGACY_WA_CATEGORIES.has(body.category ?? "");
+    if (shouldSendWa) {
       fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
         method: "POST",
         headers: {
@@ -222,6 +225,7 @@ Deno.serve(async (req) => {
           message: `*${finalTitle}*\n${body.message}`,
           category: body.category,
           tag: body.tag,
+          sender_id: waSenderId,
         }),
       }).catch((e) => console.error("send-whatsapp dispatch error", e));
     }
