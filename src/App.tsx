@@ -413,6 +413,7 @@ const App = () => (
               <Route path="/recrutamento" element={<Guarded staff><Recruitment /></Guarded>} />
               <Route path="/configuracoes" element={<Guarded staff><Settings /></Guarded>} />
               <Route path="/configuracoes/integracoes" element={<Guarded staff><IntegrationsPage /></Guarded>} />
+              <Route path="/configuracoes/alertas" element={<Guarded staff><NotificationSettings /></Guarded>} />
               <Route path="/configuracoes/acessos-externos" element={<Guarded staff><ExternalAccess /></Guarded>} />
               <Route path="/configuracoes/whatsapp-cliente" element={<Guarded staff><WhatsAppCustomerAdmin /></Guarded>} />
               <Route path="/configuracoes/entregas" element={<Guarded staff><DeliverySettings /></Guarded>} />
