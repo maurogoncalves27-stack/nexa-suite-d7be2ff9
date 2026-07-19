@@ -88,6 +88,7 @@ const CRM = lazy(() => import("./pages/CRM.tsx"));
 
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const IntegrationsPage = lazy(() => import("./pages/IntegrationsPage.tsx"));
+const NotificationSettings = lazy(() => import("./pages/NotificationSettings.tsx"));
 const VerifySignature = lazy(() => import("./pages/VerifySignature.tsx"));
 const InventoryReceiving = lazy(() => import("./pages/InventoryReceiving.tsx"));
 const NfArchived = lazy(() => import("./pages/NfArchived.tsx"));
