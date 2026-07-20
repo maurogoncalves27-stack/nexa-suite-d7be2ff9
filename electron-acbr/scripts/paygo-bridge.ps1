@@ -1741,6 +1741,74 @@ public static class PayGoBridge
         );
     }
 
+    // Drena PW_iExecTransac ate obter retorno final (algo != MOREDATA/NOTHING),
+    // dando tempo para o host PayGo devolver o status da autorizacao apos a
+    // remocao do cartao. Necessario porque PW_iConfirmation so pode ser
+    // enviada com o resultado real da transacao (regra Setis) — nao pode ir
+    // logo apos PW_iPPRemoveCard sem esperar o retorno.
+    private static short DrainFinalTransaction()
+    {
+        short count = 0;
+        PW_GetData[] data = null;
+        int drainMs = EnvInt("PAYGO_DRAIN_TIMEOUT_MS", 30000);
+        DateTime deadline = DateTime.UtcNow.AddMilliseconds(drainMs);
+        while (DateTime.UtcNow < deadline)
+        {
+            count = 9;
+            data = NewDataArray(count);
+            short execRet = Fn<PW_iExecTransac_>("PW_iExecTransac")(data, ref count);
+            EmitEvent("INFO", "Drain PW_iExecTransac ret=" + execRet + " capturas=" + count);
+            if (execRet == PWRET_MOREDATA || execRet == PWRET_NOTHING)
+            {
+                System.Threading.Thread.Sleep(200);
+                continue;
+            }
+            return execRet;
+        }
+        EmitEvent("INFO", "Drain PW_iExecTransac esgotou timeout (" + drainMs + "ms) aguardando retorno da transacao.");
+        return PWRET_TIMEOUT;
+    }
+
+    // Regra Setis: apos toda transacao SALE, ler PWINFO_CNFREQ via
+    // PW_iGetResult. Se == "1", a automacao DEVE informar o status final via
+    // PW_iConfirmation (PWCNF_CNF_AUTO quando aprovada / PWCNF_REV_MANU_AUT
+    // quando negada). Quando o operador optou pela confirmacao manual, nao
+    // confirmamos aqui — o modal do PDV envia PW_iConfirmation depois.
+    private static void FinalizeSaleConfirmation(bool approved)
+    {
+        try
+        {
+            if (!RequiresConfirmation())
+            {
+                EmitEvent("INFO", "PWINFO_CNFREQ=0 — nenhuma PW_iConfirmation pos-transacao necessaria.");
+                return;
+            }
+            if (_manualConfirmation == "1")
+            {
+                EmitEvent("INFO", "PWINFO_CNFREQ=1 detectado; aguardando confirmacao MANUAL do operador (nao confirmando automaticamente).");
+                return;
+            }
+            uint code = approved ? PWCNF_CNF_AUTO : PWCNF_REV_MANU_AUT;
+            EmitEvent("INFO", "PWINFO_CNFREQ=1 apos retorno da transacao — enviando PW_iConfirmation " + (approved ? "PWCNF_CNF_AUTO" : "PWCNF_REV_MANU_AUT") + ".");
+            short cret = ConfirmCurrent(code);
+            if (cret != PWRET_OK)
+            {
+                EmitEvent("INFO", "PW_iConfirmation pos-SALE ret=" + cret);
+            }
+            else
+            {
+                EmitEvent("CONFIRMED", approved
+                    ? "Confirmacao automatica enviada apos retorno da transacao (PWCNF_CNF_AUTO)."
+                    : "Desfazimento enviado apos transacao negada (PWCNF_REV_MANU_AUT).");
+            }
+        }
+        catch (Exception ex)
+        {
+            EmitEvent("INFO", "Falha em FinalizeSaleConfirmation: " + ex.Message);
+        }
+    }
+
+
     private static string First(string a, string b)
     {
         return String.IsNullOrWhiteSpace(a) ? b : a;
