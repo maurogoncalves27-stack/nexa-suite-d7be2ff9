@@ -46,6 +46,7 @@ export default function MentalHealth({ embedded = false }: { embedded?: boolean 
   const [loading, setLoading] = useState(true);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [agg, setAgg] = useState<StoreAgg[]>([]);
+  const [allStores, setAllStores] = useState<{ id: string; name: string }[]>([]);
   const [participants30d, setParticipants30d] = useState<number>(0);
   const [activeAlert, setActiveAlert] = useState<Alert | null>(null);
   const [followupType, setFollowupType] = useState("conversa_rh");
@@ -56,7 +57,7 @@ export default function MentalHealth({ embedded = false }: { embedded?: boolean 
   const load = async () => {
     setLoading(true);
     const d30ago = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const [{ data: al }, { data: ag }, { data: recentMood }] = await Promise.all([
+    const [{ data: al }, { data: ag }, { data: recentMood }, { data: st }] = await Promise.all([
       supabase
         .from("mental_health_alerts")
         .select("*, employee:employees!mental_health_alerts_employee_id_fkey(full_name, store:stores!employees_store_id_fkey(name))")
@@ -73,9 +74,15 @@ export default function MentalHealth({ embedded = false }: { embedded?: boolean 
         .eq("skipped", false)
         .gte("created_at", d30ago)
         .limit(5000),
+      supabase
+        .from("stores")
+        .select("id, name")
+        .eq("is_virtual", false)
+        .order("name"),
     ]);
     setAlerts((al ?? []) as any);
     setAgg((ag ?? []) as any);
+    setAllStores((st ?? []) as any);
     const distinct = new Set(((recentMood ?? []) as { employee_id: string }[]).map(r => r.employee_id));
     setParticipants30d(distinct.size);
     setLoading(false);
@@ -90,9 +97,10 @@ export default function MentalHealth({ embedded = false }: { embedded?: boolean 
   }, [agg]);
   const stores = useMemo(() => {
     const map = new Map<string, string>();
-    agg.forEach((a) => { if (a.store_id) map.set(a.store_id, a.store_name || "—"); });
-    return Array.from(map.entries());
-  }, [agg]);
+    allStores.forEach((s) => map.set(s.id, s.name));
+    agg.forEach((a) => { if (a.store_id && !map.has(a.store_id)) map.set(a.store_id, a.store_name || "—"); });
+    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1], "pt-BR"));
+  }, [agg, allStores]);
 
   const cellFor = (storeId: string, week: string) =>
     agg.find((a) => a.store_id === storeId && a.week_start === week);
