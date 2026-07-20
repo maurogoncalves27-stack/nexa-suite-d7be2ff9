@@ -131,7 +131,7 @@ export default function ClimateResults({ questions }: { questions: ClimateQuesti
             ))}
           </SelectContent>
         </Select>
-        <Badge variant="outline" className="self-start sm:self-auto">{total} respostas</Badge>
+        <Badge variant="outline" className="self-start sm:self-auto">{total}/{employeeCount} respostas</Badge>
       </div>
 
       {total < MIN_FOR_DISPLAY ? (
