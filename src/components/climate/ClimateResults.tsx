@@ -165,7 +165,7 @@ export default function ClimateResults({ questions }: { questions: ClimateQuesti
             <Card>
               <CardHeader className="pb-2 p-3 sm:p-6"><CardTitle className="text-xs sm:text-sm text-muted-foreground">Total respostas</CardTitle></CardHeader>
               <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                <div className="text-2xl sm:text-3xl font-bold text-foreground">{total}</div>
+                <div className="text-2xl sm:text-3xl font-bold text-foreground">{total}<span className="text-sm sm:text-base text-muted-foreground">/{employeeCount}</span></div>
               </CardContent>
             </Card>
             <Card>
