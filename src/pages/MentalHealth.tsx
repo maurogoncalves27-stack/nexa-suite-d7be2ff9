@@ -284,15 +284,22 @@ export default function MentalHealth({ embedded = false }: { embedded?: boolean 
                       {weeks.map((w) => {
                         const c = cellFor(id, w);
                         const v = c?.avg_mood ?? null;
+                        const resp = c?.respondents ?? 0;
                         return (
                           <td key={w} className="px-1 py-1 text-center">
-                            <div className={`inline-flex flex-col items-center justify-center rounded border px-2 py-1 min-w-[52px] ${moodColor(v ? Number(v) : null)}`}>
+                            <button
+                              type="button"
+                              disabled={resp === 0}
+                              onClick={() => openCellDetail(id, name, w)}
+                              className={`inline-flex flex-col items-center justify-center rounded border px-2 py-1 min-w-[52px] transition ${moodColor(v ? Number(v) : null)} ${resp === 0 ? "cursor-default opacity-70" : "hover:ring-2 hover:ring-primary/40 cursor-pointer"}`}
+                            >
                               <span className="font-semibold">{v != null ? Number(v).toFixed(1) : "—"}</span>
-                              <span className="text-[10px] opacity-70">{c?.respondents ?? 0} resp.</span>
-                            </div>
+                              <span className="text-[10px] opacity-70">{resp} resp.</span>
+                            </button>
                           </td>
                         );
                       })}
+
                     </tr>
                   ))}
                   {stores.length === 0 && (
