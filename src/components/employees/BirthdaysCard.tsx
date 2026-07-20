@@ -42,17 +42,25 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
         return;
       }
 
-      const list: (BirthdayEmployee & { _photoPath?: string | null })[] = (data ?? [])
+      const nowD = new Date().getDate();
+      const nowM = new Date().getMonth() + 1;
+      const list: (BirthdayEmployee & { _photoPath?: string | null; month: number })[] = (data ?? [])
         .map((e: any) => ({
           id: e.id,
           full_name: e.display_name,
           position: e.job_position,
           birth_date: `0000-${String(e.birth_month).padStart(2, "0")}-${String(e.birth_day).padStart(2, "0")}`,
           day: e.birth_day,
+          month: e.birth_month,
           photoUrl: null as string | null,
           _photoPath: e.photo_path as string | null,
         }))
-        .sort((a, b) => a.day - b.day);
+        .sort((a, b) => {
+          const aToday = a.day === nowD && a.month === nowM ? 0 : 1;
+          const bToday = b.day === nowD && b.month === nowM ? 0 : 1;
+          if (aToday !== bToday) return aToday - bToday;
+          return a.day - b.day;
+        });
 
       await Promise.all(
         list.map(async (item) => {
@@ -86,13 +94,15 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
   const today = new Date();
   const todayDay = today.getDate();
   const todayMonth = today.getMonth() + 1;
+  const todays = items.filter((e) => e.day === todayDay && parseInt(e.birth_date.slice(5, 7), 10) === todayMonth);
+  const others = items.filter((e) => !(e.day === todayDay && parseInt(e.birth_date.slice(5, 7), 10) === todayMonth));
 
   return (
     <div
-      className={`transition-opacity duration-500 flex items-center gap-3 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 via-accent/15 to-primary/10 px-3 py-2.5 shadow-sm backdrop-blur-sm ${fading ? "opacity-0" : "opacity-100"}`}
+      className={`transition-opacity duration-500 flex items-center gap-3 rounded-2xl border ${todays.length > 0 ? "border-accent/50 bg-gradient-to-r from-accent/20 via-primary/15 to-accent/20" : "border-primary/30 bg-gradient-to-r from-primary/10 via-accent/15 to-primary/10"} px-3 py-2.5 shadow-sm backdrop-blur-sm ${fading ? "opacity-0" : "opacity-100"}`}
     >
       <div className="flex flex-col items-center gap-0.5 shrink-0 pl-0.5 self-center">
-        <div className="rounded-full bg-gradient-to-br from-primary to-accent p-1.5 shadow-sm">
+        <div className={`rounded-full bg-gradient-to-br from-primary to-accent p-1.5 shadow-sm ${todays.length > 0 ? "animate-bounce" : ""}`}>
           <Cake className="h-4 w-4 text-primary-foreground" />
         </div>
         <span className="text-[11px] font-semibold text-primary capitalize whitespace-nowrap leading-tight">
@@ -102,9 +112,40 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
 
       <div className="h-10 w-px bg-primary/20 shrink-0 self-center" />
 
+      {todays.length > 0 && (
+        <>
+          <div className="flex gap-2 shrink-0 items-center">
+            {todays.map((emp) => {
+              const firstName = emp.full_name.split(" ")[0];
+              return (
+                <div
+                  key={emp.id}
+                  className="flex flex-col items-center gap-1 shrink-0 relative"
+                  title={`${emp.full_name} — Aniversariante do dia!`}
+                >
+                  <span className="absolute -top-2 text-sm z-10">🎉</span>
+                  <Avatar className="h-16 w-16 rounded-lg border-2 border-accent ring-4 ring-accent/50 shadow-lg animate-pulse">
+                    {emp.photoUrl && <AvatarImage src={emp.photoUrl} alt={emp.full_name} className="rounded-lg object-cover" />}
+                    <AvatarFallback className="bg-accent/20 text-accent text-sm font-bold rounded-lg">
+                      <User className="h-6 w-6" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-[11px] font-bold text-accent text-center leading-tight max-w-[72px] truncate">
+                    {firstName}
+                  </span>
+                  <span className="text-[9px] font-semibold text-accent/80 uppercase tracking-wide leading-none">
+                    Hoje 🎂
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          {others.length > 0 && <div className="h-10 w-px bg-primary/20 shrink-0 self-center" />}
+        </>
+      )}
+
       <div className="flex gap-1.5 overflow-hidden flex-1 min-w-0 items-center">
-        {items.map((emp) => {
-          const isToday = emp.day === todayDay && parseInt(emp.birth_date.slice(5, 7), 10) === todayMonth;
+        {others.map((emp) => {
           const firstName = emp.full_name.split(" ")[0];
           return (
             <div
@@ -112,23 +153,15 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
               className="flex flex-col items-center gap-0.5 shrink-0"
               title={`${emp.full_name} — dia ${String(emp.day).padStart(2, "0")}`}
             >
-              <Avatar
-                className={`h-10 w-10 rounded-md border-2 ${
-                  isToday
-                    ? "border-accent ring-2 ring-accent/40 animate-pulse"
-                    : "border-primary/40"
-                }`}
-              >
+              <Avatar className="h-10 w-10 rounded-md border-2 border-primary/40">
                 {emp.photoUrl && <AvatarImage src={emp.photoUrl} alt={emp.full_name} className="rounded-md object-cover" />}
                 <AvatarFallback className="bg-primary/15 text-primary text-xs font-semibold rounded-md">
                   <User className="h-4 w-4" />
                 </AvatarFallback>
               </Avatar>
-              <span className={`text-[10px] font-medium text-center leading-tight ${isToday ? "text-accent font-bold" : "text-foreground/85"}`}>
+              <span className="text-[10px] font-medium text-center leading-tight text-foreground/85">
                 {firstName}
-                <span className="text-muted-foreground ml-0.5">
-                  {isToday ? "🎉" : String(emp.day).padStart(2, "0")}
-                </span>
+                <span className="text-muted-foreground ml-0.5">{String(emp.day).padStart(2, "0")}</span>
               </span>
             </div>
           );
