@@ -81,14 +81,25 @@ export default function PsychosocialRisksPanel() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: risks }, { data: st }, { data: emp }] = await Promise.all([
+    const [{ data: risks }, { data: st }, { data: managerRoles }] = await Promise.all([
       supabase.from("psychosocial_risks").select("*").order("created_at", { ascending: false }),
       supabase.from("stores").select("id, name").order("name"),
-      supabase.from("employees").select("id, full_name").eq("status", "active").order("full_name"),
+      supabase.from("user_roles").select("user_id").in("role", ["manager", "admin", "hr"]),
     ]);
+    const managerUserIds = Array.from(new Set((managerRoles ?? []).map((r: any) => r.user_id).filter(Boolean)));
+    let emp: { id: string; full_name: string }[] = [];
+    if (managerUserIds.length) {
+      const { data } = await supabase
+        .from("employees")
+        .select("id, full_name")
+        .eq("status", "active")
+        .in("user_id", managerUserIds)
+        .order("full_name");
+      emp = (data ?? []) as any;
+    }
     setRows((risks ?? []) as Row[]);
     setStores((st ?? []) as any);
-    setEmployees((emp ?? []) as any);
+    setEmployees(emp);
     setLoading(false);
   };
 
