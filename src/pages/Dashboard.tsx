@@ -25,6 +25,7 @@ import { SupplierOffersCard } from "@/components/dashboard/SupplierOffersCard";
 import ColdChamberStatusCard from "@/components/dashboard/ColdChamberStatusCard";
 const AnalyticsCharts = lazy(() => import("@/components/dashboard/AnalyticsCharts"));
 import MaintenanceSummaryCard from "@/components/dashboard/MaintenanceSummaryCard";
+import CrmReservationsCard from "@/components/dashboard/CrmReservationsCard";
 import { useDashboardPrefs } from "@/hooks/useDashboardPrefs";
 import { useDashboardMetrics } from "@/components/dashboard/useDashboardMetrics";
 import { useSegmentMetrics } from "@/components/dashboard/useSegmentMetrics";
@@ -529,6 +530,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <ColdChamberStatusCard />
           <MaintenanceSummaryCard />
+          <CrmReservationsCard />
           {(vacationSummary.expired > 0 || vacationSummary.critical > 0 || vacationAlerts.length > 0) && (
             <div className="lg:col-span-2">{renderVacationsCard()}</div>
           )}
