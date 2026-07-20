@@ -48,6 +48,52 @@ export default function MentalHealth({ embedded = false }: { embedded?: boolean 
   const [agg, setAgg] = useState<StoreAgg[]>([]);
   const [allStores, setAllStores] = useState<{ id: string; name: string }[]>([]);
   const [participants30d, setParticipants30d] = useState<number>(0);
+  const [cellDetail, setCellDetail] = useState<{ storeName: string; week: string; loading: boolean; rows: { name: string; score: number | null; skipped: boolean; comment: string | null }[] } | null>(null);
+
+  const openCellDetail = async (storeId: string, storeName: string, week: string) => {
+    setCellDetail({ storeName, week, loading: true, rows: [] });
+    const weekEnd = new Date(week + "T00:00:00");
+    weekEnd.setDate(weekEnd.getDate() + 7);
+    const weekEndStr = weekEnd.toISOString().slice(0, 10);
+    const [{ data: checkins }, { data: scheds }] = await Promise.all([
+      supabase
+        .from("mood_checkins")
+        .select("employee_id, mood_score, skipped, comment, employee:employees!mood_checkins_employee_id_fkey(full_name, store_id)")
+        .eq("week_start", week),
+      supabase
+        .from("work_schedules")
+        .select("employee_id, store_id")
+        .gte("schedule_date", week)
+        .lt("schedule_date", weekEndStr)
+        .eq("is_day_off", false),
+    ]);
+    // effective store per employee that week
+    const counts = new Map<string, Map<string, number>>();
+    (scheds ?? []).forEach((s: any) => {
+      if (!s.employee_id || !s.store_id) return;
+      if (!counts.has(s.employee_id)) counts.set(s.employee_id, new Map());
+      const m = counts.get(s.employee_id)!;
+      m.set(s.store_id, (m.get(s.store_id) ?? 0) + 1);
+    });
+    const effectiveStore = (empId: string, fallback: string | null) => {
+      const m = counts.get(empId);
+      if (!m || m.size === 0) return fallback;
+      let best: [string, number] | null = null;
+      m.forEach((n, sid) => { if (!best || n > best[1]) best = [sid, n]; });
+      return best ? best[0] : fallback;
+    };
+    const rows = (checkins ?? [])
+      .filter((c: any) => effectiveStore(c.employee_id, c.employee?.store_id ?? null) === storeId)
+      .map((c: any) => ({
+        name: c.employee?.full_name ?? "—",
+        score: c.skipped ? null : c.mood_score,
+        skipped: !!c.skipped,
+        comment: c.comment ?? null,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+    setCellDetail({ storeName, week, loading: false, rows });
+  };
+
   const [activeAlert, setActiveAlert] = useState<Alert | null>(null);
   const [followupType, setFollowupType] = useState("conversa_rh");
   const [followupNotes, setFollowupNotes] = useState("");
