@@ -17,18 +17,26 @@ export default function ClimateResults({ questions }: { questions: ClimateQuesti
   const [selectedId, setSelectedId] = useState<string>("");
   const [responses, setResponses] = useState<ResponseRow[]>([]);
   const [answers, setAnswers] = useState<AnswerRow[]>([]);
+  const [employeeCount, setEmployeeCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from("climate_surveys")
-        .select("id, name, year, semester, status")
-        .order("year", { ascending: false })
-        .order("semester", { ascending: false });
+      const [{ data }, { count }] = await Promise.all([
+        supabase
+          .from("climate_surveys")
+          .select("id, name, year, semester, status")
+          .order("year", { ascending: false })
+          .order("semester", { ascending: false }),
+        supabase
+          .from("employees")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "active"),
+      ]);
       const list = (data ?? []) as Survey[];
       setSurveys(list);
       if (list.length > 0) setSelectedId(list[0].id);
+      setEmployeeCount(count ?? 0);
       setLoading(false);
     })();
   }, []);
