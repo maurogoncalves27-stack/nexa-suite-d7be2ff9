@@ -101,8 +101,11 @@ export default function MentalHealth({ embedded = false }: { embedded?: boolean 
     const map = new Map<string, string>();
     allStores.forEach((s) => map.set(s.id, s.name));
     agg.forEach((a) => { if (a.store_id && !map.has(a.store_id)) map.set(a.store_id, a.store_name || "—"); });
-    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1], "pt-BR"));
+    return Array.from(map.entries())
+      .filter(([, name]) => !/estoque central/i.test(name))
+      .sort((a, b) => a[1].localeCompare(b[1], "pt-BR"));
   }, [agg, allStores]);
+
 
   const cellFor = (storeId: string, week: string) =>
     agg.find((a) => a.store_id === storeId && a.week_start === week);
