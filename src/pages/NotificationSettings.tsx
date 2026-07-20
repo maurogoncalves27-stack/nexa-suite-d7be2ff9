@@ -370,18 +370,40 @@ function SenderDialog({
         <div><Label>Apelido *</Label>
           <Input value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} placeholder="Ex.: Alertas Gerais" />
         </div>
+        <div><Label>Provedor *</Label>
+          <Select value={draft.provider} onValueChange={(v) => setDraft({ ...draft, provider: v as "zapi" | "uazapi" })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="zapi">Z-API</SelectItem>
+              <SelectItem value="uazapi">UAZAPI</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div><Label>Número exibido (para referência)</Label>
           <Input value={draft.phone_display ?? ""} onChange={(e) => setDraft({ ...draft, phone_display: e.target.value })} placeholder="+55 61 9 9999-9999" />
         </div>
-        <div><Label>Z-API Instance ID *</Label>
-          <Input value={draft.zapi_instance_id} onChange={(e) => setDraft({ ...draft, zapi_instance_id: e.target.value })} />
-        </div>
-        <div><Label>Z-API Token *</Label>
-          <Input value={draft.zapi_token} onChange={(e) => setDraft({ ...draft, zapi_token: e.target.value })} />
-        </div>
-        <div><Label>Z-API Client-Token *</Label>
-          <Input value={draft.zapi_client_token} onChange={(e) => setDraft({ ...draft, zapi_client_token: e.target.value })} />
-        </div>
+        {draft.provider === "zapi" ? (
+          <>
+            <div><Label>Z-API Instance ID *</Label>
+              <Input value={draft.zapi_instance_id ?? ""} onChange={(e) => setDraft({ ...draft, zapi_instance_id: e.target.value })} />
+            </div>
+            <div><Label>Z-API Token *</Label>
+              <Input value={draft.zapi_token ?? ""} onChange={(e) => setDraft({ ...draft, zapi_token: e.target.value })} />
+            </div>
+            <div><Label>Z-API Client-Token *</Label>
+              <Input value={draft.zapi_client_token ?? ""} onChange={(e) => setDraft({ ...draft, zapi_client_token: e.target.value })} />
+            </div>
+          </>
+        ) : (
+          <>
+            <div><Label>UAZAPI Base URL *</Label>
+              <Input value={draft.uazapi_base_url ?? ""} onChange={(e) => setDraft({ ...draft, uazapi_base_url: e.target.value })} placeholder="https://sua-instancia.uazapi.com" />
+            </div>
+            <div><Label>UAZAPI Instance Token *</Label>
+              <Input value={draft.uazapi_token ?? ""} onChange={(e) => setDraft({ ...draft, uazapi_token: e.target.value })} />
+            </div>
+          </>
+        )}
         <div className="flex items-center justify-between rounded-md bg-muted/40 px-3 py-2">
           <span className="text-sm">Definir como padrão</span>
           <Switch checked={draft.is_default} onCheckedChange={(v) => setDraft({ ...draft, is_default: v })} />
@@ -392,7 +414,15 @@ function SenderDialog({
         </div>
       </div>
       <DialogFooter>
-        <Button onClick={onSave} disabled={saving || !draft.label || !draft.zapi_instance_id || !draft.zapi_token || !draft.zapi_client_token}>
+        <Button
+          onClick={onSave}
+          disabled={
+            saving || !draft.label ||
+            (draft.provider === "zapi"
+              ? (!draft.zapi_instance_id || !draft.zapi_token || !draft.zapi_client_token)
+              : (!draft.uazapi_base_url || !draft.uazapi_token))
+          }
+        >
           {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
           Salvar
         </Button>
