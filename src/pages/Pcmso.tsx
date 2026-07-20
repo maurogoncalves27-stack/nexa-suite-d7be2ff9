@@ -38,7 +38,7 @@ interface Doc {
   file_path: string | null;
   file_name: string | null;
   mime_type: string | null;
-  employee?: { full_name: string; store?: { name: string } | null };
+  employee?: { full_name: string; status?: string | null; store?: { name: string } | null };
 }
 
 export default function Pcmso({ embedded = false }: { embedded?: boolean } = {}) {
