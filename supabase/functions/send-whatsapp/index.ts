@@ -189,7 +189,7 @@ Deno.serve(async (req) => {
       await admin.from("whatsapp_notifications_log").insert({
         user_id: body.user_id ?? null, employee_id: employeeId, phone: normalized,
         message: body.message, category: body.category, tag: body.tag,
-        provider: PROVIDER, status: "skipped", error: "opt-out",
+        provider: "unknown", status: "skipped", error: "opt-out",
       });
       return new Response(JSON.stringify({ ok: true, status: "skipped", reason: "opt-out" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
