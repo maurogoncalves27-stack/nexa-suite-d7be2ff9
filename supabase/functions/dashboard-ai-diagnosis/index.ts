@@ -43,7 +43,7 @@ Manutenções pendentes/urgentes, avisos ativos, tarefas, checklists. Relacione 
 Contas a pagar em aberto/vencidas, a receber, vendas POS. Comente liquidez e disciplina de caixa.
 
 ## 4. Estoque & Cardápio
-Sem saldo, estoque baixo, movimentação POS. Aponte risco de ruptura.
+**PULE ESTA SEÇÃO** — módulo em testes (não produtivo). Escreva apenas: "_Módulo em fase de testes — análise ignorada._"
 
 ## 5. CRM & Clientes
 Reservas do mês, tendência. Se não houver dado, dizer explicitamente.
