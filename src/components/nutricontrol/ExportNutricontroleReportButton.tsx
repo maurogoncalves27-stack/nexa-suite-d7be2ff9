@@ -60,8 +60,8 @@ export default function ExportNutricontroleReportButton({ storeId }: Props) {
           temperature: Number(r.temperature), humidity: r.humidity != null ? Number(r.humidity) : null, note: r.note ?? "",
         })),
         temperatureAlerts: (tempAlerts.data ?? []).map((a: any) => ({
-          started_at: a.started_at ?? a.created_at, equipment: eqMap.get(a.equipment_id) ?? "—",
-          kind: a.kind ?? a.alert_type ?? "—", value: a.value != null ? Number(a.value) : null, resolved_at: a.resolved_at,
+          started_at: a.triggered_at, equipment: a.sensor_code ?? "—",
+          kind: a.kind ?? "—", value: a.last_temperature != null ? Number(a.last_temperature) : null, resolved_at: a.resolved_at,
         })),
         merchandise: (merch.data ?? []) as any,
         oilQuality: (oilQ.data ?? []) as any,
