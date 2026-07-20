@@ -20,9 +20,12 @@ interface Sender {
   id: string;
   label: string;
   phone_display: string | null;
-  zapi_instance_id: string;
-  zapi_token: string;
-  zapi_client_token: string;
+  provider: "zapi" | "uazapi";
+  zapi_instance_id: string | null;
+  zapi_token: string | null;
+  zapi_client_token: string | null;
+  uazapi_base_url: string | null;
+  uazapi_token: string | null;
   is_default: boolean;
   active: boolean;
 }
@@ -50,7 +53,9 @@ interface Setting {
 }
 
 const emptySender: Omit<Sender, "id"> = {
-  label: "", phone_display: "", zapi_instance_id: "", zapi_token: "", zapi_client_token: "",
+  label: "", phone_display: "", provider: "zapi",
+  zapi_instance_id: "", zapi_token: "", zapi_client_token: "",
+  uazapi_base_url: "", uazapi_token: "",
   is_default: false, active: true,
 };
 
@@ -142,8 +147,11 @@ export default function NotificationSettings() {
     setEditSender(s);
     setDraft({
       label: s.label, phone_display: s.phone_display ?? "",
-      zapi_instance_id: s.zapi_instance_id, zapi_token: s.zapi_token,
-      zapi_client_token: s.zapi_client_token, is_default: s.is_default, active: s.active,
+      provider: s.provider ?? "zapi",
+      zapi_instance_id: s.zapi_instance_id ?? "", zapi_token: s.zapi_token ?? "",
+      zapi_client_token: s.zapi_client_token ?? "",
+      uazapi_base_url: s.uazapi_base_url ?? "", uazapi_token: s.uazapi_token ?? "",
+      is_default: s.is_default, active: s.active,
     });
   };
 
@@ -197,11 +205,12 @@ export default function NotificationSettings() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="font-medium text-sm truncate">{s.label}</span>
+                    <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase">{s.provider ?? "zapi"}</Badge>
                     {s.is_default && <Badge variant="secondary" className="gap-1 h-5 px-1.5 text-[10px]"><Star className="h-2.5 w-2.5" />Padrão</Badge>}
                     {!s.active && <Badge variant="outline" className="h-5 px-1.5 text-[10px]">Inativo</Badge>}
                   </div>
                   <div className="text-[11px] text-muted-foreground truncate">
-                    {s.phone_display || "sem número"} · {s.zapi_instance_id.slice(0, 10)}…
+                    {s.phone_display || "sem número"} · {(s.provider === "uazapi" ? (s.uazapi_base_url ?? "") : (s.zapi_instance_id ?? "")).slice(0, 24)}…
                   </div>
                 </div>
                 <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => openEdit(s)}><Pencil className="h-4 w-4" /></Button>
@@ -361,18 +370,40 @@ function SenderDialog({
         <div><Label>Apelido *</Label>
           <Input value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} placeholder="Ex.: Alertas Gerais" />
         </div>
+        <div><Label>Provedor *</Label>
+          <Select value={draft.provider} onValueChange={(v) => setDraft({ ...draft, provider: v as "zapi" | "uazapi" })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="zapi">Z-API</SelectItem>
+              <SelectItem value="uazapi">UAZAPI</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div><Label>Número exibido (para referência)</Label>
           <Input value={draft.phone_display ?? ""} onChange={(e) => setDraft({ ...draft, phone_display: e.target.value })} placeholder="+55 61 9 9999-9999" />
         </div>
-        <div><Label>Z-API Instance ID *</Label>
-          <Input value={draft.zapi_instance_id} onChange={(e) => setDraft({ ...draft, zapi_instance_id: e.target.value })} />
-        </div>
-        <div><Label>Z-API Token *</Label>
-          <Input value={draft.zapi_token} onChange={(e) => setDraft({ ...draft, zapi_token: e.target.value })} />
-        </div>
-        <div><Label>Z-API Client-Token *</Label>
-          <Input value={draft.zapi_client_token} onChange={(e) => setDraft({ ...draft, zapi_client_token: e.target.value })} />
-        </div>
+        {draft.provider === "zapi" ? (
+          <>
+            <div><Label>Z-API Instance ID *</Label>
+              <Input value={draft.zapi_instance_id ?? ""} onChange={(e) => setDraft({ ...draft, zapi_instance_id: e.target.value })} />
+            </div>
+            <div><Label>Z-API Token *</Label>
+              <Input value={draft.zapi_token ?? ""} onChange={(e) => setDraft({ ...draft, zapi_token: e.target.value })} />
+            </div>
+            <div><Label>Z-API Client-Token *</Label>
+              <Input value={draft.zapi_client_token ?? ""} onChange={(e) => setDraft({ ...draft, zapi_client_token: e.target.value })} />
+            </div>
+          </>
+        ) : (
+          <>
+            <div><Label>UAZAPI Base URL *</Label>
+              <Input value={draft.uazapi_base_url ?? ""} onChange={(e) => setDraft({ ...draft, uazapi_base_url: e.target.value })} placeholder="https://sua-instancia.uazapi.com" />
+            </div>
+            <div><Label>UAZAPI Instance Token *</Label>
+              <Input value={draft.uazapi_token ?? ""} onChange={(e) => setDraft({ ...draft, uazapi_token: e.target.value })} />
+            </div>
+          </>
+        )}
         <div className="flex items-center justify-between rounded-md bg-muted/40 px-3 py-2">
           <span className="text-sm">Definir como padrão</span>
           <Switch checked={draft.is_default} onCheckedChange={(v) => setDraft({ ...draft, is_default: v })} />
@@ -383,7 +414,15 @@ function SenderDialog({
         </div>
       </div>
       <DialogFooter>
-        <Button onClick={onSave} disabled={saving || !draft.label || !draft.zapi_instance_id || !draft.zapi_token || !draft.zapi_client_token}>
+        <Button
+          onClick={onSave}
+          disabled={
+            saving || !draft.label ||
+            (draft.provider === "zapi"
+              ? (!draft.zapi_instance_id || !draft.zapi_token || !draft.zapi_client_token)
+              : (!draft.uazapi_base_url || !draft.uazapi_token))
+          }
+        >
           {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
           Salvar
         </Button>

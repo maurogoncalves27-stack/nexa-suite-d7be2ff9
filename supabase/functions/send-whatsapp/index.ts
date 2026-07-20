@@ -10,14 +10,22 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const PROVIDER = (Deno.env.get("WHATSAPP_PROVIDER") ?? "zapi").toLowerCase();
 
-// Z-API (fallback vindo de env; pode ser sobrescrito por remetente configurado no DB)
+// Z-API env fallback
 const ENV_ZAPI = {
   instanceId: Deno.env.get("ZAPI_INSTANCE_ID") ?? "",
   token: Deno.env.get("ZAPI_TOKEN") ?? "",
   clientToken: Deno.env.get("ZAPI_CLIENT_TOKEN") ?? "",
 };
+// UAZAPI env fallback
+const ENV_UAZAPI = {
+  baseUrl: (Deno.env.get("UAZAPI_BASE_URL") ?? "").replace(/\/+$/, ""),
+  token: Deno.env.get("UAZAPI_INSTANCE_TOKEN") ?? "",
+};
+
+type SenderCreds =
+  | { provider: "zapi"; instanceId: string; token: string; clientToken: string; sender_id: string | null }
+  | { provider: "uazapi"; baseUrl: string; token: string; sender_id: string | null };
 
 interface Body {
   user_id?: string;
@@ -54,10 +62,7 @@ async function sendViaZapi(
   try {
     const res = await fetch(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Client-Token": creds.clientToken,
-      },
+      headers: { "Content-Type": "application/json", "Client-Token": creds.clientToken },
       body: JSON.stringify({ phone, message }),
     });
     const text = await res.text();
@@ -70,38 +75,60 @@ async function sendViaZapi(
   }
 }
 
+async function sendViaUazapi(
+  creds: { baseUrl: string; token: string },
+  phone: string,
+  message: string,
+): Promise<{ ok: boolean; id?: string; error?: string }> {
+  if (!creds.baseUrl || !creds.token) {
+    return { ok: false, error: "UAZAPI não configurada (faltam credenciais)" };
+  }
+  const url = `${creds.baseUrl.replace(/\/+$/, "")}/send/text`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", token: creds.token },
+      body: JSON.stringify({ number: phone, text: message }),
+    });
+    const text = await res.text();
+    let json: any = {};
+    try { json = JSON.parse(text); } catch { /* ignore */ }
+    if (!res.ok) return { ok: false, error: `UAZAPI ${res.status}: ${text.slice(0, 300)}` };
+    return { ok: true, id: json?.messageid ?? json?.id ?? json?.key?.id };
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? "fetch error" };
+  }
+}
+
 async function resolveSenderCreds(
   admin: ReturnType<typeof createClient>,
   senderId?: string,
-): Promise<{ instanceId: string; token: string; clientToken: string; sender_id: string | null }> {
-  // 1) explicit sender_id
+): Promise<SenderCreds> {
+  const cols = "id, provider, zapi_instance_id, zapi_token, zapi_client_token, uazapi_base_url, uazapi_token, active";
   if (senderId) {
-    const { data } = await admin
-      .from("whatsapp_senders")
-      .select("id, zapi_instance_id, zapi_token, zapi_client_token, active")
-      .eq("id", senderId)
-      .maybeSingle();
-    if (data && data.active) {
-      return { instanceId: data.zapi_instance_id, token: data.zapi_token, clientToken: data.zapi_client_token, sender_id: data.id };
-    }
+    const { data } = await admin.from("whatsapp_senders").select(cols).eq("id", senderId).maybeSingle();
+    if (data && (data as any).active) return buildCreds(data);
   }
-  // 2) default ativo
   const { data: def } = await admin
-    .from("whatsapp_senders")
-    .select("id, zapi_instance_id, zapi_token, zapi_client_token")
-    .eq("is_default", true)
-    .eq("active", true)
-    .maybeSingle();
-  if (def) {
-    return { instanceId: def.zapi_instance_id, token: def.zapi_token, clientToken: def.zapi_client_token, sender_id: def.id };
-  }
-  // 3) fallback env
-  return { ...ENV_ZAPI, sender_id: null };
+    .from("whatsapp_senders").select(cols).eq("is_default", true).eq("active", true).maybeSingle();
+  if (def) return buildCreds(def);
+  // env fallback: prefer zapi if configured, else uazapi
+  if (ENV_ZAPI.instanceId) return { provider: "zapi", ...ENV_ZAPI, sender_id: null };
+  return { provider: "uazapi", baseUrl: ENV_UAZAPI.baseUrl, token: ENV_UAZAPI.token, sender_id: null };
 }
 
-async function sendByProvider(creds: { instanceId: string; token: string; clientToken: string }, phone: string, message: string) {
-  if (PROVIDER === "zapi") return await sendViaZapi(creds, phone, message);
-  return { ok: false, error: `Provider '${PROVIDER}' não implementado` };
+function buildCreds(row: any): SenderCreds {
+  const provider = (row.provider ?? "zapi") as "zapi" | "uazapi";
+  if (provider === "uazapi") {
+    return { provider: "uazapi", baseUrl: row.uazapi_base_url ?? "", token: row.uazapi_token ?? "", sender_id: row.id };
+  }
+  return { provider: "zapi", instanceId: row.zapi_instance_id ?? "", token: row.zapi_token ?? "", clientToken: row.zapi_client_token ?? "", sender_id: row.id };
+}
+
+async function sendByProvider(creds: SenderCreds, phone: string, message: string) {
+  if (creds.provider === "zapi") return await sendViaZapi(creds, phone, message);
+  if (creds.provider === "uazapi") return await sendViaUazapi(creds, phone, message);
+  return { ok: false, error: `Provider desconhecido` };
 }
 
 Deno.serve(async (req) => {
@@ -162,7 +189,7 @@ Deno.serve(async (req) => {
       await admin.from("whatsapp_notifications_log").insert({
         user_id: body.user_id ?? null, employee_id: employeeId, phone: normalized,
         message: body.message, category: body.category, tag: body.tag,
-        provider: PROVIDER, status: "skipped", error: "opt-out",
+        provider: "unknown", status: "skipped", error: "opt-out",
       });
       return new Response(JSON.stringify({ ok: true, status: "skipped", reason: "opt-out" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -172,7 +199,7 @@ Deno.serve(async (req) => {
       await admin.from("whatsapp_notifications_log").insert({
         user_id: body.user_id ?? null, employee_id: employeeId, phone: phone || null,
         message: body.message, category: body.category, tag: body.tag,
-        provider: PROVIDER, status: "skipped", error: "telefone inválido ou ausente",
+        provider: "unknown", status: "skipped", error: "telefone inválido ou ausente",
       });
       return new Response(JSON.stringify({ ok: true, status: "skipped", reason: "invalid-phone" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -200,7 +227,7 @@ Deno.serve(async (req) => {
     await admin.from("whatsapp_notifications_log").insert({
       user_id: body.user_id ?? null, employee_id: employeeId, phone: normalized,
       message: body.message, category: body.category, tag: body.tag,
-      provider: PROVIDER,
+      provider: creds.provider,
       status: result.ok ? "sent" : "failed",
       provider_message_id: result.id ?? null,
       error: result.error ?? null,
