@@ -280,14 +280,18 @@ function RiskDialog({
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setForm(editing ?? {
-      category: "carga_de_trabalho",
-      severity: "medium",
-      probability: "medium",
-      status: "open",
-      source: "manual",
-      resolved_at: today,
-    });
+    if (editing) {
+      setForm({ ...editing, resolved_at: editing.resolved_at ?? today });
+    } else {
+      setForm({
+        category: "carga_de_trabalho",
+        severity: "medium",
+        probability: "medium",
+        status: "open",
+        source: "manual",
+        resolved_at: today,
+      });
+    }
   }, [editing]);
 
   const submit = async () => {
