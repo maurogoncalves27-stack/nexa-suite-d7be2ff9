@@ -288,6 +288,54 @@ export default function Pcmso({ embedded = false }: { embedded?: boolean } = {})
                   </AccordionItem>
                 );
               })}
+              {terminatedDocs.length > 0 && (
+                <AccordionItem value="__terminated__">
+                  <AccordionTrigger className="hover:no-underline">
+                    <div className="flex items-center gap-2 flex-wrap text-left">
+                      <span className="font-medium text-muted-foreground">Desligados</span>
+                      <Badge variant="secondary">{terminatedDocs.length}</Badge>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b text-left">
+                            <th className="py-2 pr-2">Colaborador</th>
+                            <th className="py-2 pr-2">Tipo</th>
+                            <th className="py-2 pr-2">Data</th>
+                            <th className="py-2 pr-2">Validade</th>
+                            <th className="py-2 pr-2">Médico</th>
+                            <th className="py-2 pr-2 text-right">Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {terminatedDocs.map((d) => (
+                            <tr key={d.id} className="border-b hover:bg-muted/40">
+                              <td className="py-2 pr-2">
+                                <div className="font-medium">{d.employee?.full_name}</div>
+                                <div className="text-xs text-muted-foreground">{d.employee?.store?.name}</div>
+                              </td>
+                              <td className="py-2 pr-2">{DOC_TYPES.find(t => t.value === d.document_type)?.label ?? d.document_type}</td>
+                              <td className="py-2 pr-2 whitespace-nowrap">{new Date(d.certificate_date + "T00:00:00").toLocaleDateString("pt-BR")}</td>
+                              <td className="py-2 pr-2 whitespace-nowrap">
+                                {d.valid_until ? new Date(d.valid_until + "T00:00:00").toLocaleDateString("pt-BR") : "—"}
+                              </td>
+                              <td className="py-2 pr-2 text-xs">{d.doctor_name}{d.doctor_crm ? ` — ${d.doctor_crm}` : ""}</td>
+                              <td className="py-2 pr-2 text-right whitespace-nowrap">
+                                {d.file_path && (
+                                  <Button size="icon" variant="ghost" onClick={() => download(d)}><Download className="h-4 w-4" /></Button>
+                                )}
+                                <Button size="icon" variant="ghost" onClick={() => remove(d)}><Trash2 className="h-4 w-4 text-red-600" /></Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              )}
             </Accordion>
           )}
         </CardContent>
