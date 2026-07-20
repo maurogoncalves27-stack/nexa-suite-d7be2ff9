@@ -20,9 +20,12 @@ interface Sender {
   id: string;
   label: string;
   phone_display: string | null;
-  zapi_instance_id: string;
-  zapi_token: string;
-  zapi_client_token: string;
+  provider: "zapi" | "uazapi";
+  zapi_instance_id: string | null;
+  zapi_token: string | null;
+  zapi_client_token: string | null;
+  uazapi_base_url: string | null;
+  uazapi_token: string | null;
   is_default: boolean;
   active: boolean;
 }
