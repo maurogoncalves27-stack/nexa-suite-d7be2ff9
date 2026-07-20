@@ -109,6 +109,8 @@ async function fetchSegmentMetrics(): Promise<Omit<SegmentMetrics, "loading">> {
     maintenanceUrgent: maintUrgent.count ?? 0,
     announcementsActive: announcements.count ?? 0,
     tasksActive: tasks.count ?? 0,
+    occurrencesMonth: occMonth.count ?? 0,
+    occurrencesPending: occPending.count ?? 0,
     checklistsToday: 0,
     productsOutOfStock,
     productsLowStock,
