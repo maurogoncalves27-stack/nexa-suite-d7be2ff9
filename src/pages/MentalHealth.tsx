@@ -46,6 +46,7 @@ export default function MentalHealth({ embedded = false }: { embedded?: boolean 
   const [loading, setLoading] = useState(true);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [agg, setAgg] = useState<StoreAgg[]>([]);
+  const [participants30d, setParticipants30d] = useState<number>(0);
   const [activeAlert, setActiveAlert] = useState<Alert | null>(null);
   const [followupType, setFollowupType] = useState("conversa_rh");
   const [followupNotes, setFollowupNotes] = useState("");
@@ -54,7 +55,8 @@ export default function MentalHealth({ embedded = false }: { embedded?: boolean 
 
   const load = async () => {
     setLoading(true);
-    const [{ data: al }, { data: ag }] = await Promise.all([
+    const d30ago = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const [{ data: al }, { data: ag }, { data: recentMood }] = await Promise.all([
       supabase
         .from("mental_health_alerts")
         .select("*, employee:employees!mental_health_alerts_employee_id_fkey(full_name, store:stores!employees_store_id_fkey(name))")
@@ -65,9 +67,17 @@ export default function MentalHealth({ embedded = false }: { embedded?: boolean 
         .select("*")
         .order("week_start", { ascending: false })
         .limit(200),
+      supabase
+        .from("mood_checkins")
+        .select("employee_id")
+        .eq("skipped", false)
+        .gte("created_at", d30ago)
+        .limit(5000),
     ]);
     setAlerts((al ?? []) as any);
     setAgg((ag ?? []) as any);
+    const distinct = new Set(((recentMood ?? []) as { employee_id: string }[]).map(r => r.employee_id));
+    setParticipants30d(distinct.size);
     setLoading(false);
   };
 
@@ -153,8 +163,8 @@ export default function MentalHealth({ embedded = false }: { embedded?: boolean 
           <CardContent><div className="text-3xl font-bold">{openAlerts.length}</div></CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Colaboradores participando</CardTitle></CardHeader>
-          <CardContent><div className="text-3xl font-bold">{agg.filter(a => a.week_start === weeks[0]).reduce((s,a)=>s+(a.respondents||0),0)}</div></CardContent>
+          <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Colaboradores participando (30d)</CardTitle></CardHeader>
+          <CardContent><div className="text-3xl font-bold">{participants30d}</div></CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><TrendingDown className="h-4 w-4 text-red-500" /> Baixos esta semana</CardTitle></CardHeader>
