@@ -168,18 +168,21 @@ export default function Pcmso({ embedded = false }: { embedded?: boolean } = {})
   const expiring = useMemo(() => docs.filter((d) => d.valid_until && d.valid_until >= today && d.valid_until <= in30), [docs]);
   const expired = useMemo(() => docs.filter((d) => d.valid_until && d.valid_until < today), [docs]);
 
-  const grouped = useMemo(() => {
+  const { grouped, terminatedDocs } = useMemo(() => {
     const map = new Map<string, { name: string; store?: string | null; docs: Doc[] }>();
+    const term: Doc[] = [];
     for (const d of docs) {
+      if (d.employee?.status === "terminated") { term.push(d); continue; }
       const key = d.employee_id;
       if (!map.has(key)) {
         map.set(key, { name: d.employee?.full_name ?? "—", store: d.employee?.store?.name ?? null, docs: [] });
       }
       map.get(key)!.docs.push(d);
     }
-    return Array.from(map.entries())
+    const arr = Array.from(map.entries())
       .map(([id, v]) => ({ id, ...v }))
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+    return { grouped: arr, terminatedDocs: term };
   }, [docs]);
 
   return (
