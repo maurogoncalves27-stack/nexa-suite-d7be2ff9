@@ -123,12 +123,15 @@ Deno.serve(async (req) => {
     const alertKey = body.category ?? "general";
     const { data: alertSetting } = await admin
       .from("notification_settings")
-      .select("push_enabled, whatsapp_enabled, whatsapp_sender_id")
+      .select("push_enabled, whatsapp_enabled, whatsapp_sender_id, sms_enabled, sms_sender_id")
       .eq("alert_key", alertKey)
       .maybeSingle();
     const pushEnabled = alertSetting?.push_enabled ?? true;
     const waEnabled = alertSetting?.whatsapp_enabled ?? false;
     const waSenderId = alertSetting?.whatsapp_sender_id ?? null;
+    const smsEnabled = alertSetting?.sms_enabled ?? false;
+    const smsSenderId = alertSetting?.sms_sender_id ?? null;
+
 
     const isOccurrence = body.category === "occurrence";
     const detectedStore = isOccurrence ? detectStore(`${body.title} ${body.message}`) : null;
@@ -228,6 +231,24 @@ Deno.serve(async (req) => {
           sender_id: waSenderId,
         }),
       }).catch((e) => console.error("send-whatsapp dispatch error", e));
+    }
+
+    // 4) Canal SMS (TextBee) — respeita notification_settings.
+    if (smsEnabled) {
+      fetch(`${SUPABASE_URL}/functions/v1/send-sms`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${SERVICE_ROLE}`,
+        },
+        body: JSON.stringify({
+          user_id: body.user_id,
+          message: `${finalTitle}\n${body.message}`,
+          category: body.category,
+          tag: body.tag,
+          sender_id: smsSenderId,
+        }),
+      }).catch((e) => console.error("send-sms dispatch error", e));
     }
 
     return new Response(JSON.stringify({ ok: true, sent, removed }), {
