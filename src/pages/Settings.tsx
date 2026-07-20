@@ -1,12 +1,24 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Store, ShieldCheck, Handshake, Link2, Eye, Settings as SettingsIcon, FlaskConical, CreditCard, Monitor, KeyRound, Router, Bell } from "lucide-react";
+import { Store, ShieldCheck, Handshake, Link2, Eye, Settings as SettingsIcon, FlaskConical, CreditCard, Monitor, KeyRound, Router, Bell, Wrench, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import StoresPanel from "@/components/settings/StoresPanel";
 import AccessControlPanel from "@/components/settings/AccessControlPanel";
 import UserLinksPanel from "@/components/settings/UserLinksPanel";
 import PartnersPanel from "@/components/settings/PartnersPanel";
 import ExternalAccess from "@/pages/ExternalAccess";
+import IntegrationsPage from "@/pages/IntegrationsPage";
+import NotificationSettings from "@/pages/NotificationSettings";
+import NetworkMonitor from "@/pages/NetworkMonitor";
+import RemoteAccess from "@/pages/RemoteAccess";
 
 const Settings = () => {
   return (
@@ -19,54 +31,41 @@ const Settings = () => {
           </h1>
           <p className="text-muted-foreground">Centralize aqui as configurações do sistema.</p>
         </div>
-        <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 sm:flex-wrap">
-          <Button asChild variant="outline" size="sm" className="gap-2 justify-start sm:justify-center">
-            <Link to="/configuracoes/integracoes">
-              <KeyRound className="h-4 w-4 shrink-0" />
-              <span className="truncate">Integrações e APIs</span>
-            </Link>
-          </Button>
-          <Button asChild variant="outline" size="sm" className="gap-2 justify-start sm:justify-center">
-            <Link to="/configuracoes/alertas">
-              <Bell className="h-4 w-4 shrink-0" />
-              <span className="truncate">Alertas e notificações</span>
-            </Link>
-          </Button>
-          <Button asChild variant="outline" size="sm" className="gap-2 justify-start sm:justify-center">
-            <Link to="/configuracoes/rede-lojas">
-              <Router className="h-4 w-4 shrink-0" />
-              <span className="truncate">Rede das lojas</span>
-            </Link>
-          </Button>
-          <Button asChild variant="outline" size="sm" className="gap-2 justify-start sm:justify-center">
-            <Link to="/configuracoes/acesso-remoto">
-              <Monitor className="h-4 w-4 shrink-0" />
-              <span className="truncate">Acesso remoto</span>
-            </Link>
-          </Button>
-          <Button asChild variant="outline" size="sm" className="gap-2 justify-start sm:justify-center">
-            <Link to="/configuracoes/tef-payer">
-              <CreditCard className="h-4 w-4 shrink-0" />
-              <span className="truncate">TEF Payer</span>
-            </Link>
-          </Button>
-          <Button asChild variant="outline" size="sm" className="gap-2 justify-start sm:justify-center">
-            <Link to="/configuracoes/tef-paygo">
-              <CreditCard className="h-4 w-4 shrink-0" />
-              <span className="truncate">TEF PayGo</span>
-            </Link>
-          </Button>
-          <Button asChild variant="outline" size="sm" className="gap-2 justify-start sm:justify-center col-span-2">
-            <Link to="/configuracoes/nfce-tester">
-              <FlaskConical className="h-4 w-4 shrink-0" />
-              <span className="truncate">Teste NFC-e (ACBr)</span>
-            </Link>
-          </Button>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Wrench className="h-4 w-4" />
+              Opções dev
+              <ChevronDown className="h-4 w-4 opacity-60" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>Ferramentas de homologação</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link to="/configuracoes/tef-payer" className="cursor-pointer">
+                <CreditCard className="h-4 w-4 mr-2" />
+                TEF Payer
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/configuracoes/tef-paygo" className="cursor-pointer">
+                <CreditCard className="h-4 w-4 mr-2" />
+                TEF PayGo
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/configuracoes/nfce-tester" className="cursor-pointer">
+                <FlaskConical className="h-4 w-4 mr-2" />
+                Teste NFC-e (ACBr)
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <Tabs defaultValue="stores" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 h-auto">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-9 h-auto">
           <TabsTrigger value="stores" className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5">
             <Store className="h-4 w-4" />
             <span className="text-xs sm:text-sm">Lojas</span>
@@ -85,7 +84,23 @@ const Settings = () => {
           </TabsTrigger>
           <TabsTrigger value="external" className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5">
             <Handshake className="h-4 w-4" />
-            <span className="text-xs sm:text-sm">Acessos externos</span>
+            <span className="text-xs sm:text-sm">Externos</span>
+          </TabsTrigger>
+          <TabsTrigger value="integrations" className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5">
+            <KeyRound className="h-4 w-4" />
+            <span className="text-xs sm:text-sm">Integrações</span>
+          </TabsTrigger>
+          <TabsTrigger value="alerts" className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5">
+            <Bell className="h-4 w-4" />
+            <span className="text-xs sm:text-sm">Alertas</span>
+          </TabsTrigger>
+          <TabsTrigger value="network" className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5">
+            <Router className="h-4 w-4" />
+            <span className="text-xs sm:text-sm">Rede</span>
+          </TabsTrigger>
+          <TabsTrigger value="remote" className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5">
+            <Monitor className="h-4 w-4" />
+            <span className="text-xs sm:text-sm">Remoto</span>
           </TabsTrigger>
         </TabsList>
 
@@ -94,6 +109,10 @@ const Settings = () => {
         <TabsContent value="links" className="mt-4"><UserLinksPanel /></TabsContent>
         <TabsContent value="partners" className="mt-4"><PartnersPanel /></TabsContent>
         <TabsContent value="external" className="mt-4"><ExternalAccess /></TabsContent>
+        <TabsContent value="integrations" className="mt-4"><IntegrationsPage /></TabsContent>
+        <TabsContent value="alerts" className="mt-4"><NotificationSettings /></TabsContent>
+        <TabsContent value="network" className="mt-4"><NetworkMonitor /></TabsContent>
+        <TabsContent value="remote" className="mt-4"><RemoteAccess /></TabsContent>
       </Tabs>
     </div>
   );
