@@ -90,8 +90,9 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
   ]);
 
 
-  const activeEmployees = empActive.count ?? 0;
-  const activeIds = new Set(((empActive.data ?? []) as { id: string }[]).map((e) => e.id));
+  const activeEmpRows = (empActive.data ?? []) as { id: string; hire_date: string | null; termination_date: string | null }[];
+  const activeEmployees = activeEmpRows.length;
+  const activeIds = new Set(activeEmpRows.map((e) => e.id));
 
   // Climate
   let climateAdherencePct: number | null = null;
@@ -108,8 +109,14 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     // Get answers via responses
     const { data: respIds } = await supabase.from("climate_responses").select("id").eq("survey_id", lastSurvey.id);
     const ids = (respIds ?? []).map((r: any) => r.id);
-    if (activeEmployees > 0 && respCount != null) {
-      climateAdherencePct = Math.round((respCount / activeEmployees) * 100);
+    // Denominador: apenas CLT que já estavam ativos ao fim da campanha
+    const surveyEnd = lastSurvey.end_date;
+    const eligibleAtSurvey = activeEmpRows.filter((e) =>
+      (!e.hire_date || e.hire_date <= surveyEnd) &&
+      (!e.termination_date || e.termination_date > surveyEnd)
+    ).length;
+    if (eligibleAtSurvey > 0 && respCount != null) {
+      climateAdherencePct = Math.min(100, Math.round((respCount / eligibleAtSurvey) * 100));
     }
     if (ids.length > 0) {
       const { data: ans } = await supabase
