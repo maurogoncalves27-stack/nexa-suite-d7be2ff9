@@ -1,0 +1,1 @@
+ALTER TABLE public.psychosocial_risks ADD COLUMN IF NOT EXISTS resolved_at date;

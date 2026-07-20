@@ -13461,6 +13461,7 @@ export type Database = {
           next_review_at: string | null
           probability: string
           resolution_notes: string | null
+          resolved_at: string | null
           responsible_employee_id: string | null
           severity: string
           source: string
@@ -13480,6 +13481,7 @@ export type Database = {
           next_review_at?: string | null
           probability?: string
           resolution_notes?: string | null
+          resolved_at?: string | null
           responsible_employee_id?: string | null
           severity?: string
           source?: string
@@ -13499,6 +13501,7 @@ export type Database = {
           next_review_at?: string | null
           probability?: string
           resolution_notes?: string | null
+          resolved_at?: string | null
           responsible_employee_id?: string | null
           severity?: string
           source?: string
