@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -82,6 +83,7 @@ const getDisplayStatus = (risk: Row): Row["status"] => (
 
 export default function PsychosocialRisksPanel() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [rows, setRows] = useState<Row[]>([]);
   const [stores, setStores] = useState<{ id: string; name: string }[]>([]);
   const [employees, setEmployees] = useState<{ id: string; full_name: string }[]>([]);
@@ -151,6 +153,7 @@ export default function PsychosocialRisksPanel() {
     toast({ title: editing ? "Risco atualizado" : "Risco cadastrado" });
     setDialogOpen(false);
     setEditing(null);
+    queryClient.invalidateQueries({ queryKey: ["nr1-metrics"] });
     load();
   };
 
