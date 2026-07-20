@@ -109,9 +109,9 @@ const Settings = () => {
         <TabsContent value="links" className="mt-4"><UserLinksPanel /></TabsContent>
         <TabsContent value="partners" className="mt-4"><PartnersPanel /></TabsContent>
         <TabsContent value="external" className="mt-4"><ExternalAccess /></TabsContent>
-        <TabsContent value="integrations" className="mt-4"><IntegrationsSettings /></TabsContent>
+        <TabsContent value="integrations" className="mt-4"><IntegrationsPage /></TabsContent>
         <TabsContent value="alerts" className="mt-4"><NotificationSettings /></TabsContent>
-        <TabsContent value="network" className="mt-4"><StoreNetwork /></TabsContent>
+        <TabsContent value="network" className="mt-4"><NetworkMonitor /></TabsContent>
         <TabsContent value="remote" className="mt-4"><RemoteAccess /></TabsContent>
       </Tabs>
     </div>
