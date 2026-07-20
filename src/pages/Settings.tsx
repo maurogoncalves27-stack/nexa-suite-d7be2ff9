@@ -15,9 +15,9 @@ import AccessControlPanel from "@/components/settings/AccessControlPanel";
 import UserLinksPanel from "@/components/settings/UserLinksPanel";
 import PartnersPanel from "@/components/settings/PartnersPanel";
 import ExternalAccess from "@/pages/ExternalAccess";
-import IntegrationsSettings from "@/pages/IntegrationsSettings";
+import IntegrationsPage from "@/pages/IntegrationsPage";
 import NotificationSettings from "@/pages/NotificationSettings";
-import StoreNetwork from "@/pages/StoreNetwork";
+import NetworkMonitor from "@/pages/NetworkMonitor";
 import RemoteAccess from "@/pages/RemoteAccess";
 
 const Settings = () => {
