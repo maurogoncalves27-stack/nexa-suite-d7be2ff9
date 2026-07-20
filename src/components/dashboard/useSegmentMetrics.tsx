@@ -67,6 +67,8 @@ async function fetchSegmentMetrics(): Promise<Omit<SegmentMetrics, "loading">> {
     tasks,
     stock,
     posMonth,
+    occMonth,
+    occPending,
   ] = await Promise.all([
     supabase.from("accounts_payable").select("id", { count: "exact", head: true }).eq("status", "open"),
     supabase.from("accounts_payable").select("id", { count: "exact", head: true }).eq("status", "open").lt("due_date", today),
@@ -80,6 +82,8 @@ async function fetchSegmentMetrics(): Promise<Omit<SegmentMetrics, "loading">> {
     supabase.from("employee_tasks").select("id", { count: "exact", head: true }).eq("is_active", true),
     supabase.from("inventory_stock").select("quantity, min_qty"),
     supabase.from("pdv_orders").select("total").eq("status", "concluded").gte("concluded_at", monthStart).lte("concluded_at", monthEnd + "T23:59:59"),
+    supabase.from("occurrence_alerts").select("id", { count: "exact", head: true }).gte("created_at", monthStart).lte("created_at", monthEnd + "T23:59:59"),
+    supabase.from("occurrence_alerts").select("id", { count: "exact", head: true }).eq("status", "pending"),
   ]);
 
   const sumAmount = (rows: any[] | null | undefined) =>
