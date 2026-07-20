@@ -1,0 +1,1 @@
+UPDATE public.psychosocial_risks SET status = 'mitigated' WHERE resolved_at IS NOT NULL AND status IN ('open','in_progress');
