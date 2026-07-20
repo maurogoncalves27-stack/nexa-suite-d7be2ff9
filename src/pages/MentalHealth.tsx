@@ -163,8 +163,8 @@ export default function MentalHealth({ embedded = false }: { embedded?: boolean 
           <CardContent><div className="text-3xl font-bold">{openAlerts.length}</div></CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Colaboradores participando</CardTitle></CardHeader>
-          <CardContent><div className="text-3xl font-bold">{agg.filter(a => a.week_start === weeks[0]).reduce((s,a)=>s+(a.respondents||0),0)}</div></CardContent>
+          <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Colaboradores participando (30d)</CardTitle></CardHeader>
+          <CardContent><div className="text-3xl font-bold">{participants30d}</div></CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><TrendingDown className="h-4 w-4 text-red-500" /> Baixos esta semana</CardTitle></CardHeader>
