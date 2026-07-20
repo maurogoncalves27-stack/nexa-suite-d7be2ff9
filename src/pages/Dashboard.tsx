@@ -28,6 +28,7 @@ import MaintenanceSummaryCard from "@/components/dashboard/MaintenanceSummaryCar
 import { useDashboardPrefs } from "@/hooks/useDashboardPrefs";
 import { useDashboardMetrics } from "@/components/dashboard/useDashboardMetrics";
 import { useSegmentMetrics } from "@/components/dashboard/useSegmentMetrics";
+import DashboardAiDiagnosisButton from "@/components/dashboard/DashboardAiDiagnosisButton";
 
 interface TrainingItem {
   id: string;
