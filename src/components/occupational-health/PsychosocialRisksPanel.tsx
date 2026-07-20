@@ -30,6 +30,7 @@ type Row = {
   resolution_notes: string | null;
   responsible_employee_id: string | null;
   deadline: string | null;
+  resolved_at: string | null;
   status: "open" | "in_progress" | "mitigated" | "accepted";
   auto_generated: boolean;
   created_at: string;
@@ -80,14 +81,25 @@ export default function PsychosocialRisksPanel() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: risks }, { data: st }, { data: emp }] = await Promise.all([
+    const [{ data: risks }, { data: st }, { data: managerRoles }] = await Promise.all([
       supabase.from("psychosocial_risks").select("*").order("created_at", { ascending: false }),
       supabase.from("stores").select("id, name").order("name"),
-      supabase.from("employees").select("id, full_name").eq("status", "active").order("full_name"),
+      supabase.from("user_roles").select("user_id").in("role", ["manager", "admin", "hr"]),
     ]);
+    const managerUserIds = Array.from(new Set((managerRoles ?? []).map((r: any) => r.user_id).filter(Boolean)));
+    let emp: { id: string; full_name: string }[] = [];
+    if (managerUserIds.length) {
+      const { data } = await supabase
+        .from("employees")
+        .select("id, full_name")
+        .eq("status", "active")
+        .in("user_id", managerUserIds)
+        .order("full_name");
+      emp = (data ?? []) as any;
+    }
     setRows((risks ?? []) as Row[]);
     setStores((st ?? []) as any);
-    setEmployees((emp ?? []) as any);
+    setEmployees(emp);
     setLoading(false);
   };
 
@@ -104,7 +116,14 @@ export default function PsychosocialRisksPanel() {
   const autoCount = rows.filter((r) => r.auto_generated && r.status === "open").length;
 
   const save = async (payload: Partial<Row>) => {
-    const clean = { ...payload };
+    const clean: Partial<Row> = { ...payload };
+    // Auto set/clear resolved_at based on status
+    if (clean.status === "mitigated" && !clean.resolved_at) {
+      clean.resolved_at = new Date().toISOString().slice(0, 10);
+    }
+    if (clean.status && !["mitigated", "accepted"].includes(clean.status)) {
+      clean.resolved_at = null;
+    }
     if (editing) {
       const { error } = await supabase.from("psychosocial_risks").update(clean).eq("id", editing.id);
       if (error) { toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" }); return; }
@@ -377,13 +396,16 @@ function RiskDialog({
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
-            <Label>Responsável</Label>
+            <Label>Responsável (gestor)</Label>
             <Select value={form.responsible_employee_id ?? "__none__"} onValueChange={(v) => setForm({ ...form, responsible_employee_id: v === "__none__" ? null : v })}>
               <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">—</SelectItem>
+                {employees.length === 0 && (
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">Nenhum gestor cadastrado</div>
+                )}
                 {employees.map((e) => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -394,6 +416,14 @@ function RiskDialog({
               type="date"
               value={form.deadline ?? ""}
               onChange={(e) => setForm({ ...form, deadline: e.target.value || null })}
+            />
+          </div>
+          <div>
+            <Label>Data da correção</Label>
+            <Input
+              type="date"
+              value={form.resolved_at ?? ""}
+              onChange={(e) => setForm({ ...form, resolved_at: e.target.value || null })}
             />
           </div>
         </div>
