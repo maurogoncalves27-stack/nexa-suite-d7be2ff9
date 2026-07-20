@@ -117,13 +117,11 @@ export default function PsychosocialRisksPanel() {
 
   const save = async (payload: Partial<Row>) => {
     const clean: Partial<Row> = { ...payload };
-    // Auto set/clear resolved_at based on status
+    // Auto-fill resolved_at when transitioning to mitigated without a date
     if (clean.status === "mitigated" && !clean.resolved_at) {
       clean.resolved_at = new Date().toISOString().slice(0, 10);
     }
-    if (clean.status && !["mitigated", "accepted"].includes(clean.status)) {
-      clean.resolved_at = null;
-    }
+    // Respect whatever date the user typed for any status (do not clear it)
     if (editing) {
       const { error } = await supabase.from("psychosocial_risks").update(clean).eq("id", editing.id);
       if (error) { toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" }); return; }
@@ -282,14 +280,18 @@ function RiskDialog({
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setForm(editing ?? {
-      category: "carga_de_trabalho",
-      severity: "medium",
-      probability: "medium",
-      status: "open",
-      source: "manual",
-      resolved_at: today,
-    });
+    if (editing) {
+      setForm({ ...editing, resolved_at: editing.resolved_at ?? today });
+    } else {
+      setForm({
+        category: "carga_de_trabalho",
+        severity: "medium",
+        probability: "medium",
+        status: "open",
+        source: "manual",
+        resolved_at: today,
+      });
+    }
   }, [editing]);
 
   const submit = async () => {
