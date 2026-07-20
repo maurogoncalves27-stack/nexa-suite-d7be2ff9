@@ -228,9 +228,10 @@ export default function PsychosocialRisksPanel() {
                     <strong>Plano:</strong> {r.action_plan}
                   </p>
                 )}
-                {r.next_review_at && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" /> Reavaliar até {format(parseISO(r.next_review_at), "dd/MM/yyyy", { locale: ptBR })}
+                {r.resolution_notes && (
+                  <p className="text-xs text-muted-foreground border-l-2 border-success/40 pl-2">
+                    <CheckCircle2 className="h-3 w-3 inline mr-1 text-success" />
+                    <strong>O que foi feito:</strong> {r.resolution_notes}
                   </p>
                 )}
               </CardContent>
