@@ -199,7 +199,7 @@ Deno.serve(async (req) => {
       await admin.from("whatsapp_notifications_log").insert({
         user_id: body.user_id ?? null, employee_id: employeeId, phone: phone || null,
         message: body.message, category: body.category, tag: body.tag,
-        provider: PROVIDER, status: "skipped", error: "telefone inválido ou ausente",
+        provider: "unknown", status: "skipped", error: "telefone inválido ou ausente",
       });
       return new Response(JSON.stringify({ ok: true, status: "skipped", reason: "invalid-phone" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
