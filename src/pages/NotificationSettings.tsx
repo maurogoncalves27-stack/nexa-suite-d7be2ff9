@@ -53,7 +53,9 @@ interface Setting {
 }
 
 const emptySender: Omit<Sender, "id"> = {
-  label: "", phone_display: "", zapi_instance_id: "", zapi_token: "", zapi_client_token: "",
+  label: "", phone_display: "", provider: "zapi",
+  zapi_instance_id: "", zapi_token: "", zapi_client_token: "",
+  uazapi_base_url: "", uazapi_token: "",
   is_default: false, active: true,
 };
 
