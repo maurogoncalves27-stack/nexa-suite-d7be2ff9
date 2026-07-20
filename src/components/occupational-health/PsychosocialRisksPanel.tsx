@@ -367,7 +367,17 @@ function RiskDialog({
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div>
+          <Label>O que a empresa fez para sanar</Label>
+          <Textarea
+            value={form.resolution_notes ?? ""}
+            onChange={(e) => setForm({ ...form, resolution_notes: e.target.value })}
+            rows={3}
+            placeholder="Descreva as ações executadas, treinamentos realizados, mudanças implantadas, etc."
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <Label>Responsável</Label>
             <Select value={form.responsible_employee_id ?? "__none__"} onValueChange={(v) => setForm({ ...form, responsible_employee_id: v === "__none__" ? null : v })}>
@@ -384,14 +394,6 @@ function RiskDialog({
               type="date"
               value={form.deadline ?? ""}
               onChange={(e) => setForm({ ...form, deadline: e.target.value || null })}
-            />
-          </div>
-          <div>
-            <Label>Próxima reavaliação</Label>
-            <Input
-              type="date"
-              value={form.next_review_at ?? ""}
-              onChange={(e) => setForm({ ...form, next_review_at: e.target.value || null })}
             />
           </div>
         </div>
