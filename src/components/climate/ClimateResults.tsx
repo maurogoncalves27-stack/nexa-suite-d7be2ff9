@@ -17,18 +17,26 @@ export default function ClimateResults({ questions }: { questions: ClimateQuesti
   const [selectedId, setSelectedId] = useState<string>("");
   const [responses, setResponses] = useState<ResponseRow[]>([]);
   const [answers, setAnswers] = useState<AnswerRow[]>([]);
+  const [employeeCount, setEmployeeCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from("climate_surveys")
-        .select("id, name, year, semester, status")
-        .order("year", { ascending: false })
-        .order("semester", { ascending: false });
+      const [{ data }, { count }] = await Promise.all([
+        supabase
+          .from("climate_surveys")
+          .select("id, name, year, semester, status")
+          .order("year", { ascending: false })
+          .order("semester", { ascending: false }),
+        supabase
+          .from("employees")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "active"),
+      ]);
       const list = (data ?? []) as Survey[];
       setSurveys(list);
       if (list.length > 0) setSelectedId(list[0].id);
+      setEmployeeCount(count ?? 0);
       setLoading(false);
     })();
   }, []);
@@ -123,7 +131,7 @@ export default function ClimateResults({ questions }: { questions: ClimateQuesti
             ))}
           </SelectContent>
         </Select>
-        <Badge variant="outline" className="self-start sm:self-auto">{total} respostas</Badge>
+        <Badge variant="outline" className="self-start sm:self-auto">{total}/{employeeCount} respostas</Badge>
       </div>
 
       {total < MIN_FOR_DISPLAY ? (
@@ -157,7 +165,7 @@ export default function ClimateResults({ questions }: { questions: ClimateQuesti
             <Card>
               <CardHeader className="pb-2 p-3 sm:p-6"><CardTitle className="text-xs sm:text-sm text-muted-foreground">Total respostas</CardTitle></CardHeader>
               <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                <div className="text-2xl sm:text-3xl font-bold text-foreground">{total}</div>
+                <div className="text-2xl sm:text-3xl font-bold text-foreground">{total}<span className="text-sm sm:text-base text-muted-foreground">/{employeeCount}</span></div>
               </CardContent>
             </Card>
             <Card>
