@@ -227,7 +227,7 @@ Deno.serve(async (req) => {
     await admin.from("whatsapp_notifications_log").insert({
       user_id: body.user_id ?? null, employee_id: employeeId, phone: normalized,
       message: body.message, category: body.category, tag: body.tag,
-      provider: PROVIDER,
+      provider: creds.provider,
       status: result.ok ? "sent" : "failed",
       provider_message_id: result.id ?? null,
       error: result.error ?? null,
