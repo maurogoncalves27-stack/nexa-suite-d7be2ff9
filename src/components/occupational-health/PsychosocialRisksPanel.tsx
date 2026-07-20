@@ -282,7 +282,7 @@ function RiskDialog({
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setFormediting ?? {
+    setForm(editing ?? {
       category: "carga_de_trabalho",
       severity: "medium",
       probability: "medium",
