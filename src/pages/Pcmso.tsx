@@ -38,7 +38,7 @@ interface Doc {
   file_path: string | null;
   file_name: string | null;
   mime_type: string | null;
-  employee?: { full_name: string; store?: { name: string } | null };
+  employee?: { full_name: string; status?: string | null; store?: { name: string } | null };
 }
 
 export default function Pcmso({ embedded = false }: { embedded?: boolean } = {}) {
@@ -68,7 +68,7 @@ export default function Pcmso({ embedded = false }: { embedded?: boolean } = {})
         .not("contract_type", "eq", "Estágio")
         .order("full_name"),
       supabase.from("medical_certificates")
-        .select("*, employee:employees!medical_certificates_employee_id_fkey(full_name, store:stores!employees_store_id_fkey(name))")
+        .select("*, employee:employees!medical_certificates_employee_id_fkey(full_name, status, store:stores!employees_store_id_fkey(name))")
         .eq("is_pcmso", true)
         .order("certificate_date", { ascending: false }),
     ]);
@@ -168,18 +168,21 @@ export default function Pcmso({ embedded = false }: { embedded?: boolean } = {})
   const expiring = useMemo(() => docs.filter((d) => d.valid_until && d.valid_until >= today && d.valid_until <= in30), [docs]);
   const expired = useMemo(() => docs.filter((d) => d.valid_until && d.valid_until < today), [docs]);
 
-  const grouped = useMemo(() => {
+  const { grouped, terminatedDocs } = useMemo(() => {
     const map = new Map<string, { name: string; store?: string | null; docs: Doc[] }>();
+    const term: Doc[] = [];
     for (const d of docs) {
+      if (d.employee?.status === "terminated") { term.push(d); continue; }
       const key = d.employee_id;
       if (!map.has(key)) {
         map.set(key, { name: d.employee?.full_name ?? "—", store: d.employee?.store?.name ?? null, docs: [] });
       }
       map.get(key)!.docs.push(d);
     }
-    return Array.from(map.entries())
+    const arr = Array.from(map.entries())
       .map(([id, v]) => ({ id, ...v }))
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+    return { grouped: arr, terminatedDocs: term };
   }, [docs]);
 
   return (
@@ -285,6 +288,54 @@ export default function Pcmso({ embedded = false }: { embedded?: boolean } = {})
                   </AccordionItem>
                 );
               })}
+              {terminatedDocs.length > 0 && (
+                <AccordionItem value="__terminated__">
+                  <AccordionTrigger className="hover:no-underline">
+                    <div className="flex items-center gap-2 flex-wrap text-left">
+                      <span className="font-medium text-muted-foreground">Desligados</span>
+                      <Badge variant="secondary">{terminatedDocs.length}</Badge>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b text-left">
+                            <th className="py-2 pr-2">Colaborador</th>
+                            <th className="py-2 pr-2">Tipo</th>
+                            <th className="py-2 pr-2">Data</th>
+                            <th className="py-2 pr-2">Validade</th>
+                            <th className="py-2 pr-2">Médico</th>
+                            <th className="py-2 pr-2 text-right">Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {terminatedDocs.map((d) => (
+                            <tr key={d.id} className="border-b hover:bg-muted/40">
+                              <td className="py-2 pr-2">
+                                <div className="font-medium">{d.employee?.full_name}</div>
+                                <div className="text-xs text-muted-foreground">{d.employee?.store?.name}</div>
+                              </td>
+                              <td className="py-2 pr-2">{DOC_TYPES.find(t => t.value === d.document_type)?.label ?? d.document_type}</td>
+                              <td className="py-2 pr-2 whitespace-nowrap">{new Date(d.certificate_date + "T00:00:00").toLocaleDateString("pt-BR")}</td>
+                              <td className="py-2 pr-2 whitespace-nowrap">
+                                {d.valid_until ? new Date(d.valid_until + "T00:00:00").toLocaleDateString("pt-BR") : "—"}
+                              </td>
+                              <td className="py-2 pr-2 text-xs">{d.doctor_name}{d.doctor_crm ? ` — ${d.doctor_crm}` : ""}</td>
+                              <td className="py-2 pr-2 text-right whitespace-nowrap">
+                                {d.file_path && (
+                                  <Button size="icon" variant="ghost" onClick={() => download(d)}><Download className="h-4 w-4" /></Button>
+                                )}
+                                <Button size="icon" variant="ghost" onClick={() => remove(d)}><Trash2 className="h-4 w-4 text-red-600" /></Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              )}
             </Accordion>
           )}
         </CardContent>
