@@ -68,7 +68,7 @@ export default function Pcmso({ embedded = false }: { embedded?: boolean } = {})
         .not("contract_type", "eq", "Estágio")
         .order("full_name"),
       supabase.from("medical_certificates")
-        .select("*, employee:employees!medical_certificates_employee_id_fkey(full_name, store:stores!employees_store_id_fkey(name))")
+        .select("*, employee:employees!medical_certificates_employee_id_fkey(full_name, status, store:stores!employees_store_id_fkey(name))")
         .eq("is_pcmso", true)
         .order("certificate_date", { ascending: false }),
     ]);
