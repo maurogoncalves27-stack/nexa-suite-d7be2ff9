@@ -25,7 +25,8 @@ Lista numerada 1, 2, 3 — ações concretas priorizadas.
 
 Regras:
 - Cite números do snapshot. Não invente dados.
-- Cubra RH, operações, financeiro, estoque, CRM e saúde ocupacional quando houver dados.
+- Cubra RH, operações, financeiro, CRM e saúde ocupacional quando houver dados.
+- **Estoque/Cardápio está EM TESTES (não produtivo)** — NÃO comente, NÃO analise, NÃO gere alertas nem recomendações sobre esse módulo.
 - Seja direto, sem enrolação.`;
 
 const SYSTEM_ANALITICA = `Você é um controller/consultor sênior da NEXA Gestão Inteligente (rede de restaurantes).
@@ -42,7 +43,7 @@ Manutenções pendentes/urgentes, avisos ativos, tarefas, checklists. Relacione 
 Contas a pagar em aberto/vencidas, a receber, vendas POS. Comente liquidez e disciplina de caixa.
 
 ## 4. Estoque & Cardápio
-Sem saldo, estoque baixo, movimentação POS. Aponte risco de ruptura.
+**PULE ESTA SEÇÃO** — módulo em testes (não produtivo). Escreva apenas: "_Módulo em fase de testes — análise ignorada._"
 
 ## 5. CRM & Clientes
 Reservas do mês, tendência. Se não houver dado, dizer explicitamente.
