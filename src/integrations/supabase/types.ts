@@ -18111,15 +18111,7 @@ export type Database = {
           store_name: string | null
           week_start: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "employees_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Functions: {
