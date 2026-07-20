@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, CheckCircle2, CalendarClock, AlertCircle, HeartHandshake } from "lucide-react";
+import { Loader2, CalendarClock, HeartHandshake } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useClimateStatus } from "@/hooks/useClimateStatus";
 import { format, parseISO } from "date-fns";
@@ -92,40 +92,14 @@ export default function Climate({ embedded = false }: { embedded?: boolean } = {
 
       {!climateStatus.loading && (
         <Card>
-          <CardContent className="py-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-            {climateStatus.pendingResponse ? (
-              <div className="flex items-center gap-2 text-warning">
-                <AlertCircle className="h-4 w-4" />
-                <span><strong>Pesquisa pendente:</strong> responda agora abaixo.</span>
-              </div>
-            ) : climateStatus.openSurvey ? (
-              <div className="flex items-center gap-2 text-success">
-                <CheckCircle2 className="h-4 w-4" />
-                <span>Você já respondeu a pesquisa atual. Obrigado!</span>
-              </div>
+          <CardContent className="py-4 flex items-center gap-2 text-sm text-muted-foreground">
+            <CalendarClock className="h-4 w-4" />
+            {climateStatus.nextDueDate ? (
+              <span>
+                Próxima pesquisa: <strong>{format(parseISO(climateStatus.nextDueDate), "dd/MM/yyyy")}</strong>
+              </span>
             ) : (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <CalendarClock className="h-4 w-4" />
-                <span>Nenhuma pesquisa aberta no momento.</span>
-              </div>
-            )}
-
-            {climateStatus.lastAnsweredAt && (
-              <div className="text-muted-foreground">
-                Última resposta: <strong>{format(parseISO(climateStatus.lastAnsweredAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</strong>
-              </div>
-            )}
-
-            {climateStatus.daysUntilNext != null && !climateStatus.pendingResponse && (
-              <div className="text-muted-foreground">
-                Próxima pesquisa obrigatória em{" "}
-                <strong>
-                  {climateStatus.daysUntilNext > 0
-                    ? `${climateStatus.daysUntilNext} dia(s)`
-                    : `atrasada há ${Math.abs(climateStatus.daysUntilNext)} dia(s)`}
-                </strong>
-                {climateStatus.nextDueDate && ` (≈ ${format(parseISO(climateStatus.nextDueDate), "dd/MM/yyyy")})`}
-              </div>
+              <span>Próxima pesquisa: <strong>sem data programada</strong></span>
             )}
           </CardContent>
         </Card>
