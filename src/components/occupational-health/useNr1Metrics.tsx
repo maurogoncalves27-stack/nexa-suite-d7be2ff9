@@ -76,7 +76,7 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     psychoRisks,
   ] = await Promise.all([
     supabase.from("employees").select("id, hire_date, termination_date, contract_type").eq("status", "active").eq("contract_type", "CLT"),
-    supabase.from("climate_surveys").select("id, name, end_date, start_date").order("end_date", { ascending: false }).limit(1),
+    supabase.from("climate_surveys").select("id, name, end_date, start_date, status").order("end_date", { ascending: false }),
     supabase.from("mood_checkins").select("mood_score").gte("created_at", d30ago).eq("skipped", false),
     supabase.from("mood_checkins").select("mood_score").gte("created_at", d60ago).lt("created_at", d30ago).eq("skipped", false),
     supabase.from("mental_health_alerts").select("id", { count: "exact", head: true }).in("status", ["open", "in_progress"]),
@@ -99,7 +99,21 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
   let climateENps: number | null = null;
   let climateLastDate: string | null = null;
   const climateAvgByDimension: Record<string, number> = {};
-  const lastSurvey = (surveys.data ?? [])[0];
+  // Escolhe a pesquisa de referência: primeiro a última FECHADA com respostas
+  // (adesão só faz sentido depois que a campanha encerrou); se não houver,
+  // usa a última aberta.
+  const allSurveys = (surveys.data ?? []) as { id: string; name: string; end_date: string; start_date: string; status: string }[];
+  let lastSurvey = allSurveys.find((s) => s.status === "closed") ?? allSurveys[0];
+  if (lastSurvey) {
+    const { count: rc } = await supabase
+      .from("climate_responses")
+      .select("id", { count: "exact", head: true })
+      .eq("survey_id", lastSurvey.id);
+    if (!rc || rc === 0) {
+      const withResp = allSurveys.find((s) => s.id !== lastSurvey!.id && s.status === "closed");
+      if (withResp) lastSurvey = withResp;
+    }
+  }
   if (lastSurvey) {
     climateLastDate = lastSurvey.end_date;
     const [{ count: respCount }, { data: answers }] = await Promise.all([
