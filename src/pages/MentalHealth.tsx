@@ -78,7 +78,9 @@ export default function MentalHealth({ embedded = false }: { embedded?: boolean 
         .from("stores")
         .select("id, name")
         .eq("is_virtual", false)
+        .not("name", "ilike", "%estoque central%")
         .order("name"),
+
     ]);
     setAlerts((al ?? []) as any);
     setAgg((ag ?? []) as any);
