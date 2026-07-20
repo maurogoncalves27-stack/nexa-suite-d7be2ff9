@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -68,8 +69,21 @@ const STATUS_LABEL: Record<Row["status"], string> = {
   accepted: "Aceito",
 };
 
+const hasResolutionNotes = (risk: Pick<Row, "resolution_notes">) =>
+  Boolean(risk.resolution_notes?.trim());
+
+const isRiskConcluded = (risk: Pick<Row, "status" | "resolved_at" | "resolution_notes">) =>
+  ["mitigated", "accepted"].includes(risk.status) || Boolean(risk.resolved_at) || hasResolutionNotes(risk);
+
+const getDisplayStatus = (risk: Row): Row["status"] => (
+  isRiskConcluded(risk) && ["open", "in_progress"].includes(risk.status)
+    ? "mitigated"
+    : risk.status
+);
+
 export default function PsychosocialRisksPanel() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [rows, setRows] = useState<Row[]>([]);
   const [stores, setStores] = useState<{ id: string; name: string }[]>([]);
   const [employees, setEmployees] = useState<{ id: string; full_name: string }[]>([]);
@@ -107,22 +121,23 @@ export default function PsychosocialRisksPanel() {
 
   const filtered = useMemo(() => {
     if (filter === "all") return rows;
-    if (filter === "open") return rows.filter((r) => ["open", "in_progress"].includes(r.status));
-    return rows.filter((r) => ["mitigated", "accepted"].includes(r.status));
+    if (filter === "open") return rows.filter((r) => !isRiskConcluded(r));
+    return rows.filter((r) => isRiskConcluded(r));
   }, [rows, filter]);
 
-  const openCount = rows.filter((r) => ["open", "in_progress"].includes(r.status)).length;
-  const highCount = rows.filter((r) => ["open", "in_progress"].includes(r.status) && ["high", "critical"].includes(r.severity)).length;
-  const autoCount = rows.filter((r) => r.auto_generated && r.status === "open").length;
+  const openCount = rows.filter((r) => !isRiskConcluded(r)).length;
+  const highCount = rows.filter((r) => !isRiskConcluded(r) && ["high", "critical"].includes(r.severity)).length;
+  const autoCount = rows.filter((r) => r.auto_generated && !isRiskConcluded(r)).length;
 
   const save = async (payload: Partial<Row>) => {
     const clean: Partial<Row> = { ...payload };
-    // If user filled resolved_at, treat the risk as mitigated
-    if (clean.resolved_at && (!clean.status || ["open", "in_progress"].includes(clean.status))) {
+    const hasResolution = Boolean(clean.resolved_at) || Boolean(clean.resolution_notes?.trim());
+    // If user filled correction date or what was done, treat the risk as mitigated
+    if (hasResolution && (!clean.status || ["open", "in_progress"].includes(clean.status))) {
       clean.status = "mitigated";
     }
-    // Auto-fill resolved_at when transitioning to mitigated without a date
-    if (clean.status === "mitigated" && !clean.resolved_at) {
+    // Auto-fill resolved_at when transitioning to mitigated or adding resolution notes without a date
+    if ((clean.status === "mitigated" || hasResolution) && !clean.resolved_at) {
       clean.resolved_at = new Date().toISOString().slice(0, 10);
     }
     if (editing) {
@@ -138,6 +153,7 @@ export default function PsychosocialRisksPanel() {
     toast({ title: editing ? "Risco atualizado" : "Risco cadastrado" });
     setDialogOpen(false);
     setEditing(null);
+    queryClient.invalidateQueries({ queryKey: ["nr1-metrics"] });
     load();
   };
 
@@ -220,8 +236,8 @@ export default function PsychosocialRisksPanel() {
                     <Badge variant="outline" className={SEVERITY_TONE[r.severity]}>
                       {r.severity === "critical" ? "Crítico" : r.severity === "high" ? "Alto" : r.severity === "medium" ? "Médio" : "Baixo"}
                     </Badge>
-                    <Badge variant="outline" className={STATUS_TONE[r.status]}>
-                      {STATUS_LABEL[r.status]}
+                    <Badge variant="outline" className={STATUS_TONE[getDisplayStatus(r)]}>
+                      {STATUS_LABEL[getDisplayStatus(r)]}
                     </Badge>
                     <span className="text-xs text-muted-foreground">
                       {CATEGORIES.find((c) => c.value === r.category)?.label ?? r.category}
