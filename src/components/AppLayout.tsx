@@ -434,6 +434,7 @@ export const AppLayout = ({ children }: { children?: ReactNode }) => {
     "/nutricontrol",
     "/financeiro/vale-gas",
     "/solicitacoes-fabrica",
+    "/clima",
   ];
   const isEmployeeRouteAllowed =
     pathname === "/" ||
