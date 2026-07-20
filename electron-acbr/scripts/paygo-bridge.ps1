@@ -264,7 +264,7 @@ public static class PayGoBridge
             Add(PWINFO_AUTNAME, "PDV");
             Add(PWINFO_AUTVER, "1.0.0");
             Add(PWINFO_AUTDEV, "PayGo");
-            Add(PWINFO_AUTCAP, "452"); // Alinhado com referencia (display/vias/remocao de cartao)
+            Add(PWINFO_AUTCAP, "512"); // Homologacao PayGo: fixo em 512 (0x24). Em producao dependera das funcionalidades utilizadas.
             Add(PWINFO_DSPQRPREF, QrDisplayPreference());
             EmitEvent("INFO", "Preferencia QR PayGo=" + QrDisplayPreference() + " (1=pinpad, 2=checkout/PC)");
             Add(PWINFO_TOTAMNT, amountInCents.ToString());
