@@ -83,17 +83,18 @@ export default function ClimateRespond({ survey, questions, onSubmitted }: Props
       .eq("user_id", user.id)
       .maybeSingle();
 
-    // 1) cria a resposta anônima
-    const { data: respIns, error: respErr } = await supabase
+    // 1) cria a resposta anônima. O ID é gerado no cliente para não precisar
+    // ler a linha de volta (colaboradores não têm SELECT nessa tabela anônima).
+    const responseId = crypto.randomUUID();
+    const { error: respErr } = await supabase
       .from("climate_responses")
       .insert({
+        id: responseId,
         survey_id: survey.id,
         store_id: emp?.store_id ?? null,
         position: emp?.position ?? null,
       })
-      .select("id")
-      .single();
-    if (respErr || !respIns) {
+    if (respErr) {
       setSubmitting(false);
       toast({ title: "Erro", description: respErr?.message ?? "Falha ao registrar resposta", variant: "destructive" });
       return;
@@ -105,9 +106,9 @@ export default function ClimateRespond({ survey, questions, onSubmitted }: Props
         const a = answers[q.id];
         if (q.question_type === "open_text") {
           if (!a?.text_value?.trim()) return null;
-          return { response_id: respIns.id, question_id: q.id, text_value: a.text_value.trim(), numeric_value: null };
+          return { response_id: responseId, question_id: q.id, text_value: a.text_value.trim(), numeric_value: null };
         }
-        return { response_id: respIns.id, question_id: q.id, numeric_value: a?.numeric_value ?? null, text_value: null };
+        return { response_id: responseId, question_id: q.id, numeric_value: a?.numeric_value ?? null, text_value: null };
       })
       .filter((r): r is NonNullable<typeof r> => r !== null);
     const { error: ansErr } = await supabase.from("climate_response_answers").insert(rows);
