@@ -10,14 +10,22 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const PROVIDER = (Deno.env.get("WHATSAPP_PROVIDER") ?? "zapi").toLowerCase();
 
-// Z-API (fallback vindo de env; pode ser sobrescrito por remetente configurado no DB)
+// Z-API env fallback
 const ENV_ZAPI = {
   instanceId: Deno.env.get("ZAPI_INSTANCE_ID") ?? "",
   token: Deno.env.get("ZAPI_TOKEN") ?? "",
   clientToken: Deno.env.get("ZAPI_CLIENT_TOKEN") ?? "",
 };
+// UAZAPI env fallback
+const ENV_UAZAPI = {
+  baseUrl: (Deno.env.get("UAZAPI_BASE_URL") ?? "").replace(/\/+$/, ""),
+  token: Deno.env.get("UAZAPI_INSTANCE_TOKEN") ?? "",
+};
+
+type SenderCreds =
+  | { provider: "zapi"; instanceId: string; token: string; clientToken: string; sender_id: string | null }
+  | { provider: "uazapi"; baseUrl: string; token: string; sender_id: string | null };
 
 interface Body {
   user_id?: string;
