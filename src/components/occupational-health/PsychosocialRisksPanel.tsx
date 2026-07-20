@@ -30,6 +30,7 @@ type Row = {
   resolution_notes: string | null;
   responsible_employee_id: string | null;
   deadline: string | null;
+  resolved_at: string | null;
   status: "open" | "in_progress" | "mitigated" | "accepted";
   auto_generated: boolean;
   created_at: string;
