@@ -142,27 +142,13 @@ export const createPaygoAdapter = (config: TefConfig): TefAdapter => {
         }
         result.message = effectiveMessage ?? fallbackMessage;
 
-        // Auto-confirma a venda aprovada (libera o token PGWEB: na DLL).
-        // Sem isso a próxima venda trava com "Existe transacao pendente de confirmacao no PayGo".
-        if (status === "approved" && r.reqNum) {
-          try {
-            const conf = await fetch(joinAgentUrl(config.agentUrl, "/tef/confirm"), {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                reqNum: r.reqNum,
-                locRef: r.locRef ?? "",
-                extRef: r.extRef ?? "",
-                virtMerch: r.virtMerch ?? "",
-                authSyst: r.authSyst ?? "",
-              }),
-            });
-            const confData = await conf.json().catch(() => ({}));
-            (result.raw as any).__autoConfirm = { ok: !!confData?.ok, message: confData?.message };
-          } catch (e) {
-            (result.raw as any).__autoConfirm = { ok: false, error: e instanceof Error ? e.message : String(e) };
-          }
-        }
+        // NÃO chamar /tef/confirm aqui em fluxo automático: o bridge PS já
+        // envia PW_iConfirmation(PWCNF_CNF_AUTO, 0x121) dentro de
+        // FinalizeSaleConfirmation quando manualConfirmation=0. Enviar de novo
+        // daqui dispara PWCNF_CNF_MANU_AUT (0x3221) na mesma reqNum, o que
+        // colide com o CNF_AUTO ainda em curso e pode desfazer a venda no
+        // host. A confirmação manual (checkbox) é enviada pelo modal do PDV
+        // via /tef/confirm quando o operador clica em "Confirmar".
 
         onStatus?.(status, result.message);
         return result;
