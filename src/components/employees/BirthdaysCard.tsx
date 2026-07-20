@@ -42,17 +42,25 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
         return;
       }
 
-      const list: (BirthdayEmployee & { _photoPath?: string | null })[] = (data ?? [])
+      const nowD = new Date().getDate();
+      const nowM = new Date().getMonth() + 1;
+      const list: (BirthdayEmployee & { _photoPath?: string | null; month: number })[] = (data ?? [])
         .map((e: any) => ({
           id: e.id,
           full_name: e.display_name,
           position: e.job_position,
           birth_date: `0000-${String(e.birth_month).padStart(2, "0")}-${String(e.birth_day).padStart(2, "0")}`,
           day: e.birth_day,
+          month: e.birth_month,
           photoUrl: null as string | null,
           _photoPath: e.photo_path as string | null,
         }))
-        .sort((a, b) => a.day - b.day);
+        .sort((a, b) => {
+          const aToday = a.day === nowD && a.month === nowM ? 0 : 1;
+          const bToday = b.day === nowD && b.month === nowM ? 0 : 1;
+          if (aToday !== bToday) return aToday - bToday;
+          return a.day - b.day;
+        });
 
       await Promise.all(
         list.map(async (item) => {
