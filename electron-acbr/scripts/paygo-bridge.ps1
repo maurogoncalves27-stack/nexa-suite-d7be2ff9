@@ -553,7 +553,7 @@ public static class PayGoBridge
             if (ret != PWRET_OK) return Error("PW_iInit", ret);
 
             EmitEvent("INFO", "Cleanup: forcando PW_iConfirmation(PWCNF_REV_MANU_AUT) com params vazios");
-            short cnfRet = Fn<PW_iConfirmation_>("PW_iConfirmation")(PWCNF_REV_MANU_AUT, "", "", "", "", "");
+            short cnfRet = ConfirmWithRetry(PWCNF_REV_MANU_AUT, "", "", "", "", "", "cleanup");
             if (cnfRet != PWRET_OK)
             {
                 EmitEvent("INFO", "Cleanup: PW_iConfirmation ret=" + cnfRet + " (nenhuma pendencia ou ja limpa)");
@@ -585,7 +585,18 @@ public static class PayGoBridge
             string resolvedVirtMerch = First(virtMerch, Result(PWINFO_PNDVIRTMERCH));
             string resolvedAuthSyst = First(authSyst, Result(PWINFO_PNDAUTHSYST));
 
-            ret = Fn<PW_iConfirmation_>("PW_iConfirmation")(confirmation, resolvedReqNum ?? "", resolvedLocRef ?? "", resolvedExtRef ?? "", resolvedVirtMerch ?? "", resolvedAuthSyst ?? "");
+            // Guarda: se nao ha reqNum resolvido, a transacao ja foi
+            // auto-confirmada por FinalizeSaleConfirmation (fluxo CNFREQ=0
+            // ou confirmacao automatica pos-SALE). Enviar PW_iConfirmation
+            // agora causaria erro -2494 (nada para confirmar) e — se o codigo
+            // fosse de desfazimento — reverteria a venda ja confirmada.
+            if (String.IsNullOrWhiteSpace(resolvedReqNum))
+            {
+                EmitEvent("INFO", "Confirmation: sem pendencia (PWINFO_PNDREQNUM vazio); nada a fazer — venda ja confirmada anteriormente.");
+                return "{\"ok\":true,\"status\":\"noop\",\"message\":\"Sem pendencia — venda ja confirmada\",\"ret\":0}";
+            }
+
+            ret = ConfirmWithRetry(confirmation, resolvedReqNum, resolvedLocRef, resolvedExtRef, resolvedVirtMerch, resolvedAuthSyst, "manual");
             if (ret != PWRET_OK) return Error("PW_iConfirmation", ret);
             EmitEvent("CONFIRMED", IsUndoConfirmation(confirmation) ? "Desfazimento enviado ao PayGo" : "Confirmacao enviada ao PayGo");
             return "{\"ok\":true,\"status\":\"confirmed\",\"message\":\"PW_iConfirmation OK\"}";
@@ -594,6 +605,35 @@ public static class PayGoBridge
         {
             return "{\"ok\":false,\"status\":\"error\",\"message\":\"" + Esc(ex.Message) + "\"}";
         }
+    }
+
+    // PW_iConfirmation pode retornar -2494 quando a chamada colide com um
+    // envio anterior ainda em andamento (host lento / DLL ocupada apos SALE).
+    // Nesses casos precisamos reenviar EXATAMENTE o mesmo codigo (nunca trocar
+    // por 0x3231/undo, senao a venda aprovada e desfeita) ate obter PWRET_OK
+    // ou esgotar as tentativas.
+    private static short ConfirmWithRetry(uint confirmation, string reqNum, string locRef, string extRef, string virtMerch, string authSyst, string origin)
+    {
+        int maxAttempts = EnvInt("PAYGO_CONFIRM_MAX_ATTEMPTS", 6);
+        int sleepMs = EnvInt("PAYGO_CONFIRM_RETRY_MS", 1000);
+        short ret = 0;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            ret = Fn<PW_iConfirmation_>("PW_iConfirmation")(
+                confirmation,
+                reqNum ?? "",
+                locRef ?? "",
+                extRef ?? "",
+                virtMerch ?? "",
+                authSyst ?? ""
+            );
+            if (ret == PWRET_OK) return ret;
+            bool transient = (ret == -2494 || ret == -2495 || ret == -2496 || ret == -2497);
+            EmitEvent("INFO", "PW_iConfirmation (" + origin + ") tentativa " + attempt + "/" + maxAttempts + " code=0x" + confirmation.ToString("X") + " ret=" + ret + (transient ? " (transitorio, reenviando MESMO codigo)" : ""));
+            if (!transient) return ret;
+            if (attempt < maxAttempts) System.Threading.Thread.Sleep(sleepMs);
+        }
+        return ret;
     }
 
     private static short ExecLoop()
