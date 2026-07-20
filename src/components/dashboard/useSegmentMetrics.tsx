@@ -38,6 +38,8 @@ const EMPTY: Omit<SegmentMetrics, "loading"> = {
   maintenanceUrgent: 0,
   announcementsActive: 0,
   tasksActive: 0,
+  occurrencesMonth: 0,
+  occurrencesPending: 0,
   checklistsToday: 0,
   productsOutOfStock: 0,
   productsLowStock: 0,
