@@ -205,11 +205,12 @@ export default function NotificationSettings() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="font-medium text-sm truncate">{s.label}</span>
+                    <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase">{s.provider ?? "zapi"}</Badge>
                     {s.is_default && <Badge variant="secondary" className="gap-1 h-5 px-1.5 text-[10px]"><Star className="h-2.5 w-2.5" />Padrão</Badge>}
                     {!s.active && <Badge variant="outline" className="h-5 px-1.5 text-[10px]">Inativo</Badge>}
                   </div>
                   <div className="text-[11px] text-muted-foreground truncate">
-                    {s.phone_display || "sem número"} · {s.zapi_instance_id.slice(0, 10)}…
+                    {s.phone_display || "sem número"} · {(s.provider === "uazapi" ? (s.uazapi_base_url ?? "") : (s.zapi_instance_id ?? "")).slice(0, 24)}…
                   </div>
                 </div>
                 <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => openEdit(s)}><Pencil className="h-4 w-4" /></Button>
