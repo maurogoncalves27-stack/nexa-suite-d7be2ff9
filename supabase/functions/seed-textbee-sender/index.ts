@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
     const { data: existing } = await admin.from("sms_senders").select("id").eq("device_id", deviceId).maybeSingle();
     if (existing) {
       const { error } = await admin.from("sms_senders")
-        .update({ api_key: apiKey, active: true, is_default: true, name: "Motorola Edge 50 Neo (TIM)" })
+        .update({ api_key: apiKey, active: true, is_default: true, label: "Motorola Edge 50 Neo (TIM)" })
         .eq("id", existing.id);
       if (error) throw error;
       return new Response(JSON.stringify({ ok: true, updated: existing.id }), {
@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
       });
     }
     const { data, error } = await admin.from("sms_senders").insert({
-      name: "Motorola Edge 50 Neo (TIM)",
+      label: "Motorola Edge 50 Neo (TIM)",
       provider: "textbee",
       api_key: apiKey,
       device_id: deviceId,
