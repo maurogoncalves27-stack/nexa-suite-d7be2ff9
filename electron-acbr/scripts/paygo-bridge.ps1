@@ -1771,13 +1771,14 @@ public static class PayGoBridge
 
     private static short ConfirmCurrent(uint confirmation)
     {
-        return Fn<PW_iConfirmation_>("PW_iConfirmation")(
+        return ConfirmWithRetry(
             confirmation,
             Result(PWINFO_REQNUM),
             Result(PWINFO_AUTLOCREF),
             Result(PWINFO_AUTEXTREF),
             Result(PWINFO_VIRTMERCH),
-            Result(PWINFO_AUTHSYST)
+            Result(PWINFO_AUTHSYST),
+            "post-transac"
         );
     }
 
