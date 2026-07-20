@@ -376,6 +376,37 @@ export default function MentalHealth({ embedded = false }: { embedded?: boolean 
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!cellDetail} onOpenChange={(v) => !v && setCellDetail(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {cellDetail?.storeName} — semana de {cellDetail ? new Date(cellDetail.week + "T00:00:00").toLocaleDateString("pt-BR") : ""}
+            </DialogTitle>
+          </DialogHeader>
+          {cellDetail?.loading ? (
+            <div className="py-8 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+          ) : (
+            <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+              {cellDetail?.rows.length === 0 && (
+                <div className="text-sm text-muted-foreground text-center py-4">Nenhuma resposta.</div>
+              )}
+              {cellDetail?.rows.map((r, i) => (
+                <div key={i} className="flex items-start justify-between gap-3 border rounded p-2">
+                  <div className="min-w-0">
+                    <div className="font-medium text-sm">{r.name}</div>
+                    {r.comment && <div className="text-xs text-muted-foreground mt-1 break-words">{r.comment}</div>}
+                  </div>
+                  <Badge variant={r.skipped ? "secondary" : "default"}>
+                    {r.skipped ? "Pulou" : `${r.score}/5`}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
