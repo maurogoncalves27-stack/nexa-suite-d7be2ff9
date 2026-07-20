@@ -396,13 +396,16 @@ function RiskDialog({
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
-            <Label>Responsável</Label>
+            <Label>Responsável (gestor)</Label>
             <Select value={form.responsible_employee_id ?? "__none__"} onValueChange={(v) => setForm({ ...form, responsible_employee_id: v === "__none__" ? null : v })}>
               <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">—</SelectItem>
+                {employees.length === 0 && (
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">Nenhum gestor cadastrado</div>
+                )}
                 {employees.map((e) => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -413,6 +416,14 @@ function RiskDialog({
               type="date"
               value={form.deadline ?? ""}
               onChange={(e) => setForm({ ...form, deadline: e.target.value || null })}
+            />
+          </div>
+          <div>
+            <Label>Data da correção</Label>
+            <Input
+              type="date"
+              value={form.resolved_at ?? ""}
+              onChange={(e) => setForm({ ...form, resolved_at: e.target.value || null })}
             />
           </div>
         </div>
