@@ -11,6 +11,7 @@ import SstDocumentsPanel from "@/components/sst/SstDocumentsPanel";
 import SstSmartUploadButton from "@/components/sst/SstSmartUploadButton";
 import Nr1CompliancePanel from "@/components/occupational-health/Nr1CompliancePanel";
 import PsychosocialRisksPanel from "@/components/occupational-health/PsychosocialRisksPanel";
+import ExportOhReportButton from "@/components/occupational-health/ExportOhReportButton";
 
 type TabKey = "nr1" | "riscos-psicossociais" | "atestados" | "pcmso" | "saude-mental" | "documentos-sst" | "clima";
 
@@ -66,7 +67,10 @@ export default function OccupationalHealth() {
             Atestados, ASO, documentos SST, saúde mental e clima — tudo o que a NR-1 exige em um só lugar.
           </p>
         </div>
-        {canSstDocs && <SstSmartUploadButton />}
+        <div className="flex gap-2 flex-wrap">
+          {canNr1 && <ExportOhReportButton />}
+          {canSstDocs && <SstSmartUploadButton />}
+        </div>
       </div>
 
       {availableTabs.length === 1 ? (
