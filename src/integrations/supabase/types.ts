@@ -18230,6 +18230,10 @@ export type Database = {
         Returns: boolean
       }
       can_receive_inventory: { Args: { _user_id: string }; Returns: boolean }
+      can_submit_climate_answer: {
+        Args: { _response_id: string }
+        Returns: boolean
+      }
       can_submit_climate_response: {
         Args: { _survey_id: string }
         Returns: boolean
