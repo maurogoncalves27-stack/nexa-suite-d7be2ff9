@@ -15,6 +15,8 @@ export interface SegmentMetrics {
   maintenanceUrgent: number;
   announcementsActive: number;
   tasksActive: number;
+  occurrencesMonth: number;
+  occurrencesPending: number;
   checklistsToday: number;
   // Estoque & Cardápio
   productsOutOfStock: number;
