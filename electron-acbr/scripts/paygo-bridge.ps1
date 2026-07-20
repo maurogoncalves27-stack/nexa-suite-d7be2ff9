@@ -251,6 +251,7 @@ public static class PayGoBridge
             _interactive = true;
             _captureSeq = 0;
             _currentOperation = PWOPER_SALE;
+            _manualConfirmation = (manualConfirmation == "1") ? "1" : "0";
             EmitEvent("INFO", "Iniciando venda PayGo TEF saleId=" + saleId + " valorCentavos=" + amountInCents + " metodo=" + method);
 
             Load(dllPath);
@@ -275,7 +276,7 @@ public static class PayGoBridge
             // operador marca o checkbox no UI. Sem isso, a DLL pode confirmar
             // internamente a transação (fluxo offline chip) e nada fica
             // pendente no PayGo mesmo se o agente cair antes do modal.
-            if (manualConfirmation == "1")
+            if (_manualConfirmation == "1")
             {
                 Add(PWINFO_CNFREQ, "1");
                 EmitEvent("INFO", "Confirmacao manual solicitada (PWINFO_CNFREQ=1)");
@@ -307,8 +308,20 @@ public static class PayGoBridge
             ret = ExecLoop();
             if (ret == BRIDGE_AUTHORIZED_AFTER_REMOVE_TIMEOUT)
             {
-                EmitEvent("APPROVED", "Transacao autorizada. Finalizando fluxo do pinpad.");
-                return Json("approved", true, First(Result(PWINFO_RESULTMSG), "Transacao autorizada"), PWRET_OK, ResultsJson(true));
+                EmitEvent("INFO", "Cartao removido com timeout no pinpad; aguardando retorno da transacao antes de decidir sobre PW_iConfirmation.");
+                // Regra Setis: nao enviar PW_iConfirmation logo apos a
+                // remocao do cartao. Precisamos deixar o PW_iExecTransac
+                // devolver o status final vindo do host para so entao ler
+                // PWINFO_CNFREQ via PW_iGetResult e confirmar corretamente.
+                short drainRet = DrainFinalTransaction();
+                if (drainRet == PWRET_FROMHOSTPENDTRN)
+                {
+                    return Json("pendingConfirmation", false, "Existe transacao pendente de confirmacao no PayGo", drainRet, PendingResultsJson());
+                }
+                bool drainApproved = (drainRet == PWRET_OK) || IsAuthorizedMessage(Result(PWINFO_RESULTMSG));
+                FinalizeSaleConfirmation(drainApproved);
+                EmitEvent(drainApproved ? "APPROVED" : "DENIED", First(Result(PWINFO_RESULTMSG), drainApproved ? "Transacao autorizada" : "Transacao nao autorizada"));
+                return Json(drainApproved ? "approved" : "denied", drainApproved, First(Result(PWINFO_RESULTMSG), drainApproved ? "Transacao autorizada" : "Transacao nao autorizada"), drainApproved ? PWRET_OK : drainRet, ResultsJson(true));
             }
 
             if (ret == PWRET_FROMHOSTPENDTRN)
@@ -334,16 +347,26 @@ public static class PayGoBridge
                 {
                     // Fluxo Setis: nao chamar PW_iPPAbort aqui. A liberacao do
                     // pinpad ocorre naturalmente na chamada seguinte de
-                    // PW_iConfirmation.
-                    EmitEvent("APPROVED", "Transacao autorizada. Timeout apenas na finalizacao do pinpad.");
-                    return Json("approved", true, resultMessage, ret, ResultsJson(true));
+                    // PW_iConfirmation. Aguardamos o retorno final antes de
+                    // enviar PW_iConfirmation (nao logo apos a remocao do cartao).
+                    short drainRet2 = DrainFinalTransaction();
+                    if (drainRet2 == PWRET_FROMHOSTPENDTRN)
+                        return Json("pendingConfirmation", false, First(Result(PWINFO_RESULTMSG), resultMessage), drainRet2, PendingResultsJson());
+                    bool ok2 = (drainRet2 == PWRET_OK) || IsAuthorizedMessage(First(Result(PWINFO_RESULTMSG), resultMessage));
+                    FinalizeSaleConfirmation(ok2);
+                    EmitEvent(ok2 ? "APPROVED" : "DENIED", First(Result(PWINFO_RESULTMSG), resultMessage));
+                    return Json(ok2 ? "approved" : "denied", ok2, First(Result(PWINFO_RESULTMSG), resultMessage), ok2 ? PWRET_OK : drainRet2, ResultsJson(true));
                 }
 
+                // Transacao negada com retorno definitivo do host: mesmo assim
+                // precisamos honrar CNFREQ para desfazer no PayGo.
+                FinalizeSaleConfirmation(false);
                 EmitEvent("DENIED", First(resultMessage, "Transacao nao aprovada pelo PayGo"));
                 return Json("denied", false, resultMessage, ret, ResultsJson(true));
             }
 
-            EmitEvent("APPROVED", "Transacao autorizada pelo PayGo");
+            FinalizeSaleConfirmation(true);
+            EmitEvent("APPROVED", Result(PWINFO_RESULTMSG));
             return Json("approved", true, Result(PWINFO_RESULTMSG), ret, ResultsJson(true));
         }
         catch (Exception ex)
@@ -355,6 +378,7 @@ public static class PayGoBridge
             _interactive = false;
         }
     }
+
 
     public static string Operation(string dllPath, string workingDir, byte operation, string cpfCnpj, string pontoDeCaptura, string ambiente, string senhaTecnica, string usePinpad, string pinpadPort, string paygoMenuChoice, bool interactive)
     {
