@@ -15507,6 +15507,30 @@ export type Database = {
         }
         Relationships: []
       }
+      system_health_state: {
+        Row: {
+          details: Json | null
+          key: string
+          last_changed_at: string
+          last_checked_at: string
+          status: string
+        }
+        Insert: {
+          details?: Json | null
+          key: string
+          last_changed_at?: string
+          last_checked_at?: string
+          status: string
+        }
+        Update: {
+          details?: Json | null
+          key?: string
+          last_changed_at?: string
+          last_checked_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       template_access_groups: {
         Row: {
           created_at: string
