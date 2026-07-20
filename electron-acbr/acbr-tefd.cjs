@@ -959,6 +959,13 @@ async function efetuarPagamento(opts = {}) {
       if (typeof opts.onDisplay === "function" && ev.message) opts.onDisplay(ev.message);
     }});
 
+    // Só tratamos cnfReq=1 como "aguardando confirmação manual" quando o
+    // operador REALMENTE pediu confirmação manual (checkbox marcado). Sem o
+    // checkbox, o bridge PS já chamou PW_iConfirmation(PWCNF_CNF_AUTO) em
+    // FinalizeSaleConfirmation, então o cnfReq=1 do payload é só reflexo do
+    // PWINFO_CNFREQ capturado antes da auto-confirmação — não é pendência.
+    const manualConfirmRequested = !!opts.manualConfirmation;
+
     if (payload?.status === "pendingConfirmation" || isPayGoPendingPayload(payload)) {
       const pendingReason = Number(payload?.ret) === PAYGO_PENDING_RET
         ? "pendingConfirmation"
@@ -967,7 +974,7 @@ async function efetuarPagamento(opts = {}) {
     }
 
     if (payload?.ok === false) {
-      if (String(payload?.data?.cnfReq || "") === "1" && hasPayGoConfirmationTuple(payload?.data)) {
+      if (manualConfirmRequested && String(payload?.data?.cnfReq || "") === "1" && hasPayGoConfirmationTuple(payload?.data)) {
         return finishPendingSale(paymentId, payload, "cnfReq=1", saleMeta);
       }
       setSaleStatus({ status: "error", message: payload?.message || "Transação não aprovada" });
@@ -975,15 +982,13 @@ async function efetuarPagamento(opts = {}) {
       return payload;
     }
 
-    if (String(payload?.data?.cnfReq || "") === "1" && hasPayGoConfirmationTuple(payload?.data)) {
+    if (manualConfirmRequested && String(payload?.data?.cnfReq || "") === "1" && hasPayGoConfirmationTuple(payload?.data)) {
       // Em confirmação manual, a venda aprovada precisa sobreviver a reload ou
       // queda abrupta do front/agente. Esse arquivo é limpo em confirmar/desfazer.
       maybePersistPendingFromPayload(payload, "cnfReq=1", saleMeta);
       setSaleStatus({ status: "waiting_confirmation", message: payload?.message || "Transação aprovada aguardando confirmação manual", pendingCaptures: null });
     } else {
       clearPendingConfirmation();
-    }
-    if (String(payload?.data?.cnfReq || "") !== "1") {
       setSaleStatus({ status: "done", message: payload?.message || payload?.status || "Concluído", pendingCaptures: null });
     }
     emitSaleEvent({ paymentId, type: "APPROVED", message: payload?.message || "Transação aprovada", payload });
