@@ -530,6 +530,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <ColdChamberStatusCard />
           <MaintenanceSummaryCard />
+          <CrmReservationsCard />
           {(vacationSummary.expired > 0 || vacationSummary.critical > 0 || vacationAlerts.length > 0) && (
             <div className="lg:col-span-2">{renderVacationsCard()}</div>
           )}
