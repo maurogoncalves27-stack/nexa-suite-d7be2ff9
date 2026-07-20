@@ -23,12 +23,16 @@ const sanitize = (raw: Stored | null, allCardIds: string[], allSectionIds: strin
   const order = (raw?.order ?? []).filter((id) => allCardIds.includes(id));
   const missing = allCardIds.filter((id) => !order.includes(id));
   const fav = raw?.favoriteSection ?? null;
-  const openSections = (raw?.openSections ?? allSectionIds).filter((id) => allSectionIds.includes(id));
+  // Segmentos de detalhes começam fechados por padrão (novo usuário). Se o
+  // usuário já escolheu quais abrir, preserva a escolha (inclusive vazia).
+  const openSections = raw?.openSections
+    ? raw.openSections.filter((id) => allSectionIds.includes(id))
+    : [];
   return {
     order: [...order, ...missing],
     hidden: (raw?.hidden ?? []).filter((id) => allCardIds.includes(id)),
     favoriteSection: fav && allSectionIds.includes(fav) ? fav : null,
-    openSections: openSections.length > 0 ? openSections : allSectionIds,
+    openSections,
   };
 };
 

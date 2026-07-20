@@ -29,8 +29,6 @@ import { useDashboardPrefs } from "@/hooks/useDashboardPrefs";
 import { useDashboardMetrics } from "@/components/dashboard/useDashboardMetrics";
 import { useSegmentMetrics } from "@/components/dashboard/useSegmentMetrics";
 
-
-
 interface TrainingItem {
   id: string;
   full_name: string;
@@ -55,7 +53,7 @@ const daysBetween = (start: string | null) => {
 const BRL = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
-// Segmentos da nova Dashboard
+// Segmentos (detalhes por área, sanfona fechada por padrão)
 const SECTION_IDS = ["rh", "operations", "finance", "inventory"] as const;
 type SectionId = typeof SECTION_IDS[number];
 
@@ -66,17 +64,20 @@ const SECTION_INFO: Record<SectionId, { title: string; description: string; icon
   inventory: { title: "Estoque & Cardápio", description: "Estoque, vendas POS, uniformes", icon: Boxes },
 };
 
-// Cards reordenáveis (para personalização)
 const CARD_IDS = [
+  "critical-alerts",
   "executive-kpis",
   "quick-actions",
+  "priority-grid",
   "analytics-charts",
   "pending-assignments",
 ] as const;
 type CardId = typeof CARD_IDS[number];
 const CARD_LABELS: Record<CardId, string> = {
-  "executive-kpis": "KPIs executivos",
+  "critical-alerts": "Alertas críticos",
+  "executive-kpis": "KPIs essenciais",
   "quick-actions": "Botões do gestor",
+  "priority-grid": "Painel prioritário",
   "analytics-charts": "Gráficos analíticos",
   "pending-assignments": "Pendências de assinatura",
 };
@@ -95,7 +96,7 @@ export default function Dashboard() {
     allSectionIds,
   );
 
-  // Reordena seções: favorito primeiro
+  // Segmentos começam fechados por padrão (detalhe sob demanda)
   const orderedSections = useMemo(() => {
     const fav = prefs.favoriteSection as SectionId | null;
     if (!fav) return [...SECTION_IDS];
@@ -181,20 +182,26 @@ export default function Dashboard() {
   const vacationSummary = vacationData?.summary ?? { ok: 0, warning: 0, critical: 0, expired: 0 };
   const vacationAlerts = vacationData?.alerts ?? [];
 
-  // ---- KPIs executivos (topo) ----
+  // ---- KPIs essenciais (5 métricas de alto nível) ----
   const executiveMetrics: Metric[] = [
-    { label: "Ativos", value: metrics.active, icon: UserCheck, color: "text-success", to: "/colaboradores" },
+    { label: "Colaboradores ativos", value: metrics.active, icon: UserCheck, color: "text-success", to: "/colaboradores" },
     { label: "Lojas", value: metrics.stores, icon: Building2, color: "text-primary", to: "/lojas" },
-    {
-      label: "A pagar (vencidas)",
-      value: seg.payablesOverdue,
-      icon: AlertCircle,
-      color: seg.payablesOverdue > 0 ? "text-destructive" : "text-muted-foreground",
-      to: "/financeiro",
-    },
-    { label: "Manut. urgentes", value: seg.maintenanceUrgent, icon: Wrench, color: seg.maintenanceUrgent > 0 ? "text-destructive" : "text-warning", to: "/nutri-visita" },
-    { label: "Pontos não batidos", value: metrics.missingPunchWeek, icon: Clock, color: "text-warning", to: "/ponto" },
+    { label: "A pagar (aberto)", value: seg.payablesOpen, icon: ReceiptText, color: "text-primary", to: "/financeiro", hint: BRL(seg.payablesAmountOpen) },
+    { label: "A receber", value: seg.receivablesOpen, icon: TrendingUp, color: "text-success", to: "/financeiro", hint: BRL(seg.receivablesAmountOpen) },
+    { label: "Vendas POS/mês", value: seg.posSalesMonth, icon: TrendingUp, color: "text-primary", to: "/pdv-novo", hint: BRL(seg.posRevenueMonth) },
   ];
+
+  // ---- Alertas críticos (só mostra se houver algo) ----
+  const criticalAlerts: Metric[] = [
+    seg.payablesOverdue > 0 && { label: "Contas vencidas", value: seg.payablesOverdue, icon: AlertCircle, color: "text-destructive", to: "/financeiro" },
+    seg.maintenanceUrgent > 0 && { label: "Manut. urgentes", value: seg.maintenanceUrgent, icon: Wrench, color: "text-destructive", to: "/nutri-visita" },
+    (vacationSummary.expired + vacationSummary.critical) > 0 && { label: "Férias em risco", value: vacationSummary.expired + vacationSummary.critical, icon: Plane, color: "text-destructive", to: "/ferias" },
+    seg.productsOutOfStock > 0 && { label: "Sem saldo", value: seg.productsOutOfStock, icon: AlertCircle, color: "text-destructive", to: "/estoque" },
+    metrics.missingPunchWeek > 0 && { label: "Pontos não batidos", value: metrics.missingPunchWeek, icon: Clock, color: "text-warning", to: "/ponto" },
+    metrics.warningsMonth > 0 && { label: "Advert./mês", value: metrics.warningsMonth, icon: ShieldAlert, color: "text-destructive", to: "/avaliacoes" },
+  ].filter(Boolean) as Metric[];
+
+  const hasCriticalAlerts = criticalAlerts.length > 0;
 
   // ---- Métricas por segmento ----
   const rhMetrics: Metric[] = [
@@ -335,7 +342,6 @@ export default function Dashboard() {
         return (
           <>
             <MetricsCard metrics={opsMetrics} loading={seg.loading} />
-            <MaintenanceSummaryCard />
             <ChecklistsByStorePanel />
           </>
         );
@@ -373,7 +379,6 @@ export default function Dashboard() {
     }
   };
 
-  // Badges resumo por seção
   const sectionBadge = (id: SectionId): { value: string | number; variant: "destructive" | "outline" } | undefined => {
     if (id === "rh") {
       const total = vacationSummary.expired + vacationSummary.critical + metrics.warningsMonth;
@@ -415,7 +420,7 @@ export default function Dashboard() {
 
       {editing && (
         <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs sm:text-sm text-muted-foreground space-y-2">
-          <p>Use o ⭐ para favoritar a seção que abre primeiro. Clique em uma seção para abrir/fechar. Use o olho para ocultar/exibir cards do topo.</p>
+          <p>Use o ⭐ para favoritar a seção de detalhes que abre primeiro. Use o olho para ocultar/exibir cards do topo.</p>
           <div className="flex flex-wrap gap-2">
             {allCardIds.map((id) => {
               const hidden = prefs.hidden.includes(id);
@@ -435,28 +440,58 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ===== Visão executiva (topo) ===== */}
+      {/* 1) Alertas críticos — só se houver algo que precise de atenção */}
+      {isStaff && hasCriticalAlerts && !prefs.hidden.includes("critical-alerts") && (
+        <Card className="border-destructive/40 bg-destructive/5">
+          <CardHeader className="flex flex-row items-center gap-2 pb-2">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            <CardTitle className="text-base">Precisa de atenção</CardTitle>
+            <Badge variant="destructive" className="ml-auto">{criticalAlerts.length}</Badge>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <MetricsCard metrics={criticalAlerts} loading={metrics.loading || seg.loading} />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 2) KPIs essenciais (5) */}
       {isStaff && !prefs.hidden.includes("executive-kpis") && (
         <MetricsCard metrics={executiveMetrics} loading={metrics.loading || seg.loading} />
       )}
 
+      {/* 3) Ações rápidas do gestor */}
       {isStaff && !prefs.hidden.includes("quick-actions") && <ManagerQuickActions />}
 
-      {isStaff && <SupplierOffersCard />}
+      {/* 4) Painel prioritário — 2 colunas com cards que exigem monitoramento diário */}
+      {isStaff && !prefs.hidden.includes("priority-grid") && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <ColdChamberStatusCard />
+          <MaintenanceSummaryCard />
+          {(vacationSummary.expired > 0 || vacationSummary.critical > 0 || vacationAlerts.length > 0) && (
+            <div className="lg:col-span-2">{renderVacationsCard()}</div>
+          )}
+          <div className="lg:col-span-2">
+            <SupplierOffersCard />
+          </div>
+        </div>
+      )}
 
-      {isStaff && <ColdChamberStatusCard />}
-
+      {/* 5) Gráficos analíticos */}
       {isStaff && !prefs.hidden.includes("analytics-charts") && (
         <Suspense fallback={<Card><CardContent className="p-6 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-primary" /></CardContent></Card>}>
           <AnalyticsCharts />
         </Suspense>
       )}
 
+      {/* 6) Pendências de assinatura */}
       {isStaff && !prefs.hidden.includes("pending-assignments") && <PendingAssignmentsCard />}
 
-      {/* ===== Segmentos ===== */}
+      {/* 7) Detalhes por segmento — sanfona (fechada por padrão) */}
       {isStaff && (
-        <div className="space-y-3">
+        <div className="space-y-2 pt-2">
+          <div className="text-xs uppercase tracking-wide text-muted-foreground font-medium px-1">
+            Mais detalhes por área
+          </div>
           {orderedSections.map((id) => {
             const info = SECTION_INFO[id];
             const badge = sectionBadge(id);
@@ -480,8 +515,6 @@ export default function Dashboard() {
           })}
         </div>
       )}
-      
     </div>
   );
 }
-
