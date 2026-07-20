@@ -1819,9 +1819,12 @@ public static class PayGoBridge
     {
         try
         {
-            if (!RequiresConfirmation())
+            string cnfReq = Result(PWINFO_CNFREQ);
+            EmitEvent("INFO", "FinalizeSaleConfirmation: approved=" + approved + " CNFREQ=" + (String.IsNullOrEmpty(cnfReq) ? "<vazio>" : cnfReq) + " manualConfirmation=" + _manualConfirmation);
+
+            if (cnfReq != "1")
             {
-                EmitEvent("INFO", "PWINFO_CNFREQ=0 — nenhuma PW_iConfirmation pos-transacao necessaria.");
+                EmitEvent("INFO", "PWINFO_CNFREQ!=1 — nenhuma PW_iConfirmation pos-transacao necessaria.");
                 return;
             }
             if (_manualConfirmation == "1")
@@ -1829,18 +1832,25 @@ public static class PayGoBridge
                 EmitEvent("INFO", "PWINFO_CNFREQ=1 detectado; aguardando confirmacao MANUAL do operador (nao confirmando automaticamente).");
                 return;
             }
-            uint code = approved ? PWCNF_CNF_AUTO : PWCNF_REV_MANU_AUT;
-            EmitEvent("INFO", "PWINFO_CNFREQ=1 apos retorno da transacao — enviando PW_iConfirmation " + (approved ? "PWCNF_CNF_AUTO" : "PWCNF_REV_MANU_AUT") + ".");
-            short cret = ConfirmCurrent(code);
+            if (!approved)
+            {
+                // Transacao negada com CNFREQ=1: NAO enviamos REV_MANU_AUT
+                // automaticamente daqui. A reversao/desfazimento deve ser
+                // decisao explicita do operador via UI (/tef/undo), nunca do
+                // bridge — senao vendas com retorno ambiguo do host podem ser
+                // erroneamente revertidas. Deixamos a pendencia registrada.
+                EmitEvent("INFO", "Transacao NAO aprovada com CNFREQ=1 — pendencia deixada para /tef/undo do operador.");
+                return;
+            }
+            EmitEvent("INFO", "PWINFO_CNFREQ=1 apos retorno da transacao — enviando PW_iConfirmation PWCNF_CNF_AUTO.");
+            short cret = ConfirmCurrent(PWCNF_CNF_AUTO);
             if (cret != PWRET_OK)
             {
                 EmitEvent("INFO", "PW_iConfirmation pos-SALE ret=" + cret);
             }
             else
             {
-                EmitEvent("CONFIRMED", approved
-                    ? "Confirmacao automatica enviada apos retorno da transacao (PWCNF_CNF_AUTO)."
-                    : "Desfazimento enviado apos transacao negada (PWCNF_REV_MANU_AUT).");
+                EmitEvent("CONFIRMED", "Confirmacao automatica enviada apos retorno da transacao (PWCNF_CNF_AUTO).");
             }
         }
         catch (Exception ex)
