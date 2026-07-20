@@ -404,19 +404,80 @@ export default function Dashboard() {
           <LayoutDashboard className="h-6 w-6 md:h-7 md:w-7 text-primary" />
           Dashboard
         </h1>
-        {isAdmin && (
-          <div className="flex items-center gap-2 shrink-0">
-            {editing && (
-              <Button variant="ghost" size="sm" onClick={reset} title="Restaurar padrão">
-                <RotateCcw className="h-4 w-4 mr-1" /> Restaurar
+        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+          <DashboardAiDiagnosisButton
+            buildSnapshot={async () => {
+              const today = new Date();
+              const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
+              const [reservationsMonth, reservationsOpen, psychoOpen, medActive, moodWeek] = await Promise.all([
+                supabase.from("reservations").select("id", { count: "exact", head: true }).gte("reservation_date", monthStart),
+                supabase.from("reservations").select("id", { count: "exact", head: true }).in("status", ["pending", "confirmed"]).gte("reservation_date", today.toISOString().slice(0, 10)),
+                supabase.from("psychosocial_risks").select("id", { count: "exact", head: true }).is("resolved_at", null),
+                supabase.from("medical_certificates").select("id", { count: "exact", head: true }).gte("start_date", monthStart),
+                supabase.from("mood_checkins").select("id", { count: "exact", head: true }).gte("created_at", new Date(Date.now() - 7 * 86400000).toISOString()),
+              ]);
+              return {
+                data_referencia: today.toISOString().slice(0, 10),
+                rh: {
+                  colaboradores_ativos: metrics.active,
+                  total_cadastrados: metrics.employees,
+                  estagiarios: metrics.trainees,
+                  em_treinamento: metrics.inTraining,
+                  avaliacoes_pendentes: metrics.pendingEvaluations,
+                  advertencias_mes: metrics.warningsMonth,
+                  infracoes_mes: metrics.infractionsMonth,
+                  aniversariantes_mes: metrics.birthdaysMonth,
+                  ponto_nao_batido_semana: metrics.missingPunchWeek,
+                  pesquisas_clima_ativas: metrics.activeSurveys,
+                },
+                ferias: vacationSummary,
+                operacoes: {
+                  manutencao_pendente: seg.maintenancePending,
+                  manutencao_urgente: seg.maintenanceUrgent,
+                  avisos_ativos: seg.announcementsActive,
+                  tarefas_ativas: seg.tasksActive,
+                },
+                financeiro: {
+                  a_pagar_aberto: seg.payablesOpen,
+                  a_pagar_valor: seg.payablesAmountOpen,
+                  a_pagar_vencidas: seg.payablesOverdue,
+                  vencem_em_7d: seg.payablesDueWeek,
+                  a_receber_aberto: seg.receivablesOpen,
+                  a_receber_valor: seg.receivablesAmountOpen,
+                  vendas_pos_mes: seg.posSalesMonth,
+                  receita_pos_mes: seg.posRevenueMonth,
+                },
+                estoque: {
+                  sem_saldo: seg.productsOutOfStock,
+                  estoque_baixo: seg.productsLowStock,
+                },
+                crm: {
+                  reservas_mes: reservationsMonth.count ?? 0,
+                  reservas_abertas_futuras: reservationsOpen.count ?? 0,
+                },
+                saude_ocupacional: {
+                  riscos_psicossociais_abertos: psychoOpen.count ?? 0,
+                  atestados_medicos_mes: medActive.count ?? 0,
+                  mood_checkins_ultimos_7d: moodWeek.count ?? 0,
+                },
+                lojas: metrics.stores,
+              };
+            }}
+          />
+          {isAdmin && (
+            <>
+              {editing && (
+                <Button variant="ghost" size="sm" onClick={reset} title="Restaurar padrão">
+                  <RotateCcw className="h-4 w-4 mr-1" /> Restaurar
+                </Button>
+              )}
+              <Button variant={editing ? "default" : "outline"} size="sm" onClick={() => setEditing((v) => !v)}>
+                {editing ? <Check className="h-4 w-4 mr-1" /> : <Settings2 className="h-4 w-4 mr-1" />}
+                {editing ? "Concluir" : "Personalizar"}
               </Button>
-            )}
-            <Button variant={editing ? "default" : "outline"} size="sm" onClick={() => setEditing((v) => !v)}>
-              {editing ? <Check className="h-4 w-4 mr-1" /> : <Settings2 className="h-4 w-4 mr-1" />}
-              {editing ? "Concluir" : "Personalizar"}
-            </Button>
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       {editing && (
