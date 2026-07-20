@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, CheckCircle2, CalendarClock, AlertCircle, HeartHandshake } from "lucide-react";
+import { Loader2, CalendarClock, HeartHandshake } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useClimateStatus } from "@/hooks/useClimateStatus";
 import { format, parseISO } from "date-fns";
