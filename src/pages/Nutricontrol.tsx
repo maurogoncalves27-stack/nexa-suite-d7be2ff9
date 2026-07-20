@@ -15,6 +15,7 @@ import { NutriOilQualityControl } from "@/components/nutricontrol/NutriOilQualit
 import { NutriOilDisposalControl } from "@/components/nutricontrol/NutriOilDisposalControl";
 import { NutriPestControl } from "@/components/nutricontrol/NutriPestControl";
 import { NutriMaintenanceControl } from "@/components/nutricontrol/NutriMaintenanceControl";
+import ExportNutricontroleReportButton from "@/components/nutricontrol/ExportNutricontroleReportButton";
 
 const Nutricontrol = () => {
   const STORAGE_KEY = "nutricontrol:context";
@@ -85,7 +86,10 @@ const Nutricontrol = () => {
             Controles diários de boas práticas em manipulação de alimentos
           </p>
         </div>
-        <NutriStoreSelector value={storeId} onChange={(v) => setStoreId(v ? v : null)} />
+        <div className="flex items-center gap-2 flex-wrap">
+          <ExportNutricontroleReportButton storeId={storeId} />
+          <NutriStoreSelector value={storeId} onChange={(v) => setStoreId(v ? v : null)} />
+        </div>
       </div>
 
       <Card>
