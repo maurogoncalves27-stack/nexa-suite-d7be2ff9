@@ -27,10 +27,10 @@ type Row = {
   probability: "low" | "medium" | "high";
   source: string;
   action_plan: string | null;
+  resolution_notes: string | null;
   responsible_employee_id: string | null;
   deadline: string | null;
   status: "open" | "in_progress" | "mitigated" | "accepted";
-  next_review_at: string | null;
   auto_generated: boolean;
   created_at: string;
 };
