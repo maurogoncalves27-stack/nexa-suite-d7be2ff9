@@ -224,52 +224,68 @@ export default function Pcmso({ embedded = false }: { embedded?: boolean } = {})
           ) : docs.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">Nenhum ASO cadastrado ainda.</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left">
-                    <th className="py-2 pr-2">Colaborador</th>
-                    <th className="py-2 pr-2">Tipo</th>
-                    <th className="py-2 pr-2">Data</th>
-                    <th className="py-2 pr-2">Validade</th>
-                    <th className="py-2 pr-2">Médico</th>
-                    <th className="py-2 pr-2 text-right">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {docs.map((d) => {
-                    const isExpired = d.valid_until && d.valid_until < today;
-                    const isSoon = d.valid_until && !isExpired && d.valid_until <= in30;
-                    return (
-                      <tr key={d.id} className="border-b hover:bg-muted/40">
-                        <td className="py-2 pr-2">
-                          <div className="font-medium">{d.employee?.full_name}</div>
-                          <div className="text-xs text-muted-foreground">{d.employee?.store?.name}</div>
-                        </td>
-                        <td className="py-2 pr-2">{DOC_TYPES.find(t => t.value === d.document_type)?.label ?? d.document_type}</td>
-                        <td className="py-2 pr-2 whitespace-nowrap">{new Date(d.certificate_date + "T00:00:00").toLocaleDateString("pt-BR")}</td>
-                        <td className="py-2 pr-2 whitespace-nowrap">
-                          {d.valid_until ? (
-                            <div className="flex items-center gap-1">
-                              {new Date(d.valid_until + "T00:00:00").toLocaleDateString("pt-BR")}
-                              {isExpired && <Badge variant="destructive">Vencido</Badge>}
-                              {isSoon && <Badge className="bg-orange-100 text-orange-800">30d</Badge>}
-                            </div>
-                          ) : "—"}
-                        </td>
-                        <td className="py-2 pr-2 text-xs">{d.doctor_name}{d.doctor_crm ? ` — ${d.doctor_crm}` : ""}</td>
-                        <td className="py-2 pr-2 text-right whitespace-nowrap">
-                          {d.file_path && (
-                            <Button size="icon" variant="ghost" onClick={() => download(d)}><Download className="h-4 w-4" /></Button>
-                          )}
-                          <Button size="icon" variant="ghost" onClick={() => remove(d)}><Trash2 className="h-4 w-4 text-red-600" /></Button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <Accordion type="multiple" className="w-full">
+              {grouped.map((g) => {
+                const hasExpired = g.docs.some((d) => d.valid_until && d.valid_until < today);
+                const hasSoon = g.docs.some((d) => d.valid_until && d.valid_until >= today && d.valid_until <= in30);
+                return (
+                  <AccordionItem key={g.id} value={g.id}>
+                    <AccordionTrigger className="hover:no-underline">
+                      <div className="flex items-center gap-2 flex-wrap text-left">
+                        <span className="font-medium">{g.name}</span>
+                        {g.store && <span className="text-xs text-muted-foreground">— {g.store}</span>}
+                        <Badge variant="secondary">{g.docs.length}</Badge>
+                        {hasExpired && <Badge variant="destructive">Vencido</Badge>}
+                        {!hasExpired && hasSoon && <Badge className="bg-orange-100 text-orange-800">Vencendo</Badge>}
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b text-left">
+                              <th className="py-2 pr-2">Tipo</th>
+                              <th className="py-2 pr-2">Data</th>
+                              <th className="py-2 pr-2">Validade</th>
+                              <th className="py-2 pr-2">Médico</th>
+                              <th className="py-2 pr-2 text-right">Ações</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {g.docs.map((d) => {
+                              const isExpired = d.valid_until && d.valid_until < today;
+                              const isSoon = d.valid_until && !isExpired && d.valid_until <= in30;
+                              return (
+                                <tr key={d.id} className="border-b hover:bg-muted/40">
+                                  <td className="py-2 pr-2">{DOC_TYPES.find(t => t.value === d.document_type)?.label ?? d.document_type}</td>
+                                  <td className="py-2 pr-2 whitespace-nowrap">{new Date(d.certificate_date + "T00:00:00").toLocaleDateString("pt-BR")}</td>
+                                  <td className="py-2 pr-2 whitespace-nowrap">
+                                    {d.valid_until ? (
+                                      <div className="flex items-center gap-1">
+                                        {new Date(d.valid_until + "T00:00:00").toLocaleDateString("pt-BR")}
+                                        {isExpired && <Badge variant="destructive">Vencido</Badge>}
+                                        {isSoon && <Badge className="bg-orange-100 text-orange-800">30d</Badge>}
+                                      </div>
+                                    ) : "—"}
+                                  </td>
+                                  <td className="py-2 pr-2 text-xs">{d.doctor_name}{d.doctor_crm ? ` — ${d.doctor_crm}` : ""}</td>
+                                  <td className="py-2 pr-2 text-right whitespace-nowrap">
+                                    {d.file_path && (
+                                      <Button size="icon" variant="ghost" onClick={() => download(d)}><Download className="h-4 w-4" /></Button>
+                                    )}
+                                    <Button size="icon" variant="ghost" onClick={() => remove(d)}><Trash2 className="h-4 w-4 text-red-600" /></Button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
           )}
         </CardContent>
       </Card>
