@@ -205,7 +205,7 @@ export default function Dashboard() {
 
   // ---- Métricas por segmento ----
   const rhMetrics: Metric[] = [
-    { label: "Colaboradores", value: metrics.employees, icon: Users, to: "/colaboradores" },
+    { label: "Colaboradores", value: metrics.active, icon: Users, to: "/colaboradores", hint: "Ativos" },
     { label: "Em treinamento", value: metrics.inTraining, icon: BookOpen, color: "text-warning", to: "/treinamentos" },
     { label: "Estagiários", value: metrics.trainees, icon: GraduationCap, to: "/estagio" },
     { label: "Aniversariantes", value: metrics.birthdaysMonth, icon: Cake, color: "text-pink-500", hint: "Este mês" },
