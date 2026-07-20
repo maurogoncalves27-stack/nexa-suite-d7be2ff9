@@ -84,7 +84,7 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     supabase.from("medical_certificates").select("employee_id, valid_until, document_type, is_pcmso").or("is_pcmso.eq.true,document_type.eq.aso"),
     supabase.from("medical_certificates").select("days_off, cid_code, employee_id, certificate_date").gte("certificate_date", m3ago),
     supabase.from("medical_certificates").select("days_off, cid_code, employee_id, certificate_date").gte("certificate_date", m12ago),
-    supabase.from("medical_certificates").select("days_off, employee:employees(store:stores(name))").gte("certificate_date", monthStart),
+    supabase.from("medical_certificates").select("days_off, employee_id, employee:employees(store:stores(name))").gte("certificate_date", monthStart),
     supabase.from("sst_documents").select("id, valid_until, is_active").eq("is_active", true),
     supabase.from("psychosocial_risks").select("id, severity, status, deadline"),
   ]);
