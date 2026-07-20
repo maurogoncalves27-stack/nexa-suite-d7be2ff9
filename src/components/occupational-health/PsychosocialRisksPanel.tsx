@@ -117,11 +117,14 @@ export default function PsychosocialRisksPanel() {
 
   const save = async (payload: Partial<Row>) => {
     const clean: Partial<Row> = { ...payload };
+    // If user filled resolved_at, treat the risk as mitigated
+    if (clean.resolved_at && (!clean.status || ["open", "in_progress"].includes(clean.status))) {
+      clean.status = "mitigated";
+    }
     // Auto-fill resolved_at when transitioning to mitigated without a date
     if (clean.status === "mitigated" && !clean.resolved_at) {
       clean.resolved_at = new Date().toISOString().slice(0, 10);
     }
-    // Respect whatever date the user typed for any status (do not clear it)
     if (editing) {
       const { error } = await supabase.from("psychosocial_risks").update(clean).eq("id", editing.id);
       if (error) { toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" }); return; }
