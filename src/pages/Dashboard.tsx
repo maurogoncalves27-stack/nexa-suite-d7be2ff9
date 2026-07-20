@@ -220,6 +220,7 @@ export default function Dashboard() {
   const opsMetrics: Metric[] = [
     { label: "Manut. pendentes", value: seg.maintenancePending, icon: Wrench, color: seg.maintenancePending > 0 ? "text-warning" : "text-muted-foreground", to: "/nutri-visita" },
     { label: "Manut. urgentes", value: seg.maintenanceUrgent, icon: AlertTriangle, color: "text-destructive", to: "/nutri-visita" },
+    { label: "Ocorrências (mês)", value: seg.occurrencesMonth, icon: AlertCircle, color: seg.occurrencesPending > 0 ? "text-warning" : "text-primary", to: "/ocorrencias", hint: seg.occurrencesPending > 0 ? `${seg.occurrencesPending} pendente${seg.occurrencesPending > 1 ? "s" : ""}` : undefined },
     { label: "Avisos ativos", value: seg.announcementsActive, icon: Megaphone, color: "text-primary", to: "/avisos" },
     { label: "Tarefas ativas", value: seg.tasksActive, icon: ShieldAlert, color: "text-accent", to: "/tarefas" },
   ];
