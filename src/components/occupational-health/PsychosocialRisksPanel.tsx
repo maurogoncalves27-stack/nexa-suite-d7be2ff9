@@ -270,12 +270,14 @@ function RiskDialog({
   employees: { id: string; full_name: string }[];
   onSave: (payload: Partial<Row>) => Promise<void>;
 }) {
+  const today = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState<Partial<Row>>(() => editing ?? {
     category: "carga_de_trabalho",
     severity: "medium",
     probability: "medium",
     status: "open",
     source: "manual",
+    resolved_at: today,
   });
   const [saving, setSaving] = useState(false);
 
@@ -286,6 +288,7 @@ function RiskDialog({
       probability: "medium",
       status: "open",
       source: "manual",
+      resolved_at: today,
     });
   }, [editing]);
 
