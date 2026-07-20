@@ -59,7 +59,7 @@ async function fetchDashboardMetrics(): Promise<Omit<DashboardMetrics, "loading"
     supabase.from("employees").select("id", { count: "exact", head: true }),
     supabase.from("stores").select("id", { count: "exact", head: true }),
     supabase.from("employees").select("id", { count: "exact", head: true }).eq("status", "active"),
-    supabase.from("employees").select("id", { count: "exact", head: true }).eq("contract_type", "Estágio"),
+    supabase.from("employees").select("id", { count: "exact", head: true }).eq("contract_type", "Estágio").eq("status", "active"),
     supabase.from("employees").select("id", { count: "exact", head: true }).in("training_status", ["pending", "in_progress"]),
     supabase.from("employees").select("birth_date").eq("status", "active").not("birth_date", "is", null),
     supabase.from("evaluations").select("id", { count: "exact", head: true }).eq("status", "draft"),
