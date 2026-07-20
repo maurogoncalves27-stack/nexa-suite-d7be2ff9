@@ -25,6 +25,7 @@ import { SupplierOffersCard } from "@/components/dashboard/SupplierOffersCard";
 import ColdChamberStatusCard from "@/components/dashboard/ColdChamberStatusCard";
 const AnalyticsCharts = lazy(() => import("@/components/dashboard/AnalyticsCharts"));
 import MaintenanceSummaryCard from "@/components/dashboard/MaintenanceSummaryCard";
+import CrmReservationsCard from "@/components/dashboard/CrmReservationsCard";
 import { useDashboardPrefs } from "@/hooks/useDashboardPrefs";
 import { useDashboardMetrics } from "@/components/dashboard/useDashboardMetrics";
 import { useSegmentMetrics } from "@/components/dashboard/useSegmentMetrics";
