@@ -86,7 +86,7 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     supabase.from("medical_certificates").select("days_off, cid_code, employee_id, certificate_date").gte("certificate_date", m12ago),
     supabase.from("medical_certificates").select("days_off, employee_id, employee:employees(store:stores(name))").gte("certificate_date", monthStart),
     supabase.from("sst_documents").select("id, valid_until, is_active").eq("is_active", true),
-    supabase.from("psychosocial_risks").select("id, severity, status, deadline"),
+    supabase.from("psychosocial_risks").select("id, severity, status, deadline, resolved_at, resolution_notes"),
   ]);
 
 
@@ -224,10 +224,12 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
   const cidfEmployees90d = new Set(cidfRows90.map((r: any) => r.employee_id)).size;
 
   // Riscos psicossociais
-  const riskRows = (psychoRisks.data ?? []) as { severity: string; status: string; deadline: string | null }[];
-  const psychoRisksOpen = riskRows.filter((r) => ["open", "in_progress"].includes(r.status)).length;
-  const psychoRisksHigh = riskRows.filter((r) => ["open", "in_progress"].includes(r.status) && ["high", "critical"].includes(r.severity)).length;
-  const psychoRisksOverdue = riskRows.filter((r) => ["open", "in_progress"].includes(r.status) && r.deadline && r.deadline < todayStr).length;
+  const riskRows = (psychoRisks.data ?? []) as { severity: string; status: string; deadline: string | null; resolved_at: string | null; resolution_notes: string | null }[];
+  const isRiskOpen = (r: typeof riskRows[number]) =>
+    ["open", "in_progress"].includes(r.status) && !r.resolved_at && !r.resolution_notes?.trim();
+  const psychoRisksOpen = riskRows.filter(isRiskOpen).length;
+  const psychoRisksHigh = riskRows.filter((r) => isRiskOpen(r) && ["high", "critical"].includes(r.severity)).length;
+  const psychoRisksOverdue = riskRows.filter((r) => isRiskOpen(r) && r.deadline && r.deadline < todayStr).length;
 
   // SST
   const sstRows = (sst.data ?? []) as { valid_until: string | null }[];
