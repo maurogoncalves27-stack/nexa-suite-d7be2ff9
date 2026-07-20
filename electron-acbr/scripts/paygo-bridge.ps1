@@ -451,7 +451,7 @@ public static class PayGoBridge
         Add(PWINFO_AUTNAME, "PDV");
         Add(PWINFO_AUTVER, "1.0.0");
         Add(PWINFO_AUTDEV, "PayGo");
-        Add(PWINFO_AUTCAP, "452");
+        Add(PWINFO_AUTCAP, "512"); // Homologacao PayGo: fixo em 512 (0x24)
         Add(PWINFO_DSPQRPREF, "2");
 
         // Modo nao-interativo (install legado): mantem behavior antigo com params extras.
