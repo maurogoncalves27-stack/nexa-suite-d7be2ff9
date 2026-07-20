@@ -9124,6 +9124,8 @@ export type Database = {
           description: string | null
           label: string
           push_enabled: boolean
+          sms_enabled: boolean
+          sms_sender_id: string | null
           updated_at: string
           whatsapp_enabled: boolean
           whatsapp_sender_id: string | null
@@ -9134,6 +9136,8 @@ export type Database = {
           description?: string | null
           label: string
           push_enabled?: boolean
+          sms_enabled?: boolean
+          sms_sender_id?: string | null
           updated_at?: string
           whatsapp_enabled?: boolean
           whatsapp_sender_id?: string | null
@@ -9144,11 +9148,20 @@ export type Database = {
           description?: string | null
           label?: string
           push_enabled?: boolean
+          sms_enabled?: boolean
+          sms_sender_id?: string | null
           updated_at?: string
           whatsapp_enabled?: boolean
           whatsapp_sender_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "notification_settings_sms_sender_id_fkey"
+            columns: ["sms_sender_id"]
+            isOneToOne: false
+            referencedRelation: "sms_senders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notification_settings_whatsapp_sender_id_fkey"
             columns: ["whatsapp_sender_id"]
@@ -14835,6 +14848,45 @@ export type Database = {
           secondary_color?: string
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      sms_senders: {
+        Row: {
+          active: boolean
+          api_key: string
+          created_at: string
+          device_id: string
+          id: string
+          is_default: boolean
+          label: string
+          phone_display: string | null
+          provider: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          api_key: string
+          created_at?: string
+          device_id: string
+          id?: string
+          is_default?: boolean
+          label: string
+          phone_display?: string | null
+          provider?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          api_key?: string
+          created_at?: string
+          device_id?: string
+          id?: string
+          is_default?: boolean
+          label?: string
+          phone_display?: string | null
+          provider?: string
+          updated_at?: string
         }
         Relationships: []
       }
