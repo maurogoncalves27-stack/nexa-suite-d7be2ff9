@@ -84,7 +84,7 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
     supabase.from("medical_certificates").select("employee_id, valid_until, document_type, is_pcmso").or("is_pcmso.eq.true,document_type.eq.aso"),
     supabase.from("medical_certificates").select("days_off, cid_code, employee_id, certificate_date").gte("certificate_date", m3ago),
     supabase.from("medical_certificates").select("days_off, cid_code, employee_id, certificate_date").gte("certificate_date", m12ago),
-    supabase.from("medical_certificates").select("days_off, employee:employees(store:stores(name))").gte("certificate_date", monthStart),
+    supabase.from("medical_certificates").select("days_off, employee_id, employee:employees(store:stores(name))").gte("certificate_date", monthStart),
     supabase.from("sst_documents").select("id, valid_until, is_active").eq("is_active", true),
     supabase.from("psychosocial_risks").select("id, severity, status, deadline"),
   ]);
@@ -177,9 +177,9 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
   const empWithoutAso = Math.max(0, activeEmployees - latestByEmp.size);
   pcmsoExpired += empWithoutAso;
 
-  // Atestados
-  const rows3m = (certs3m.data ?? []) as any[];
-  const rows12m = (certs12m.data ?? []) as any[];
+  // Atestados — ignora ex-colaboradores para casar com o denominador (headcount ativo)
+  const rows3m = ((certs3m.data ?? []) as any[]).filter((r) => activeIds.has(r.employee_id));
+  const rows12m = ((certs12m.data ?? []) as any[]).filter((r) => activeIds.has(r.employee_id));
   const absenteeismDays3m = rows3m.reduce((s, r) => s + Number(r.days_off ?? 0), 0);
   const absenteeismDays12m = rows12m.reduce((s, r) => s + Number(r.days_off ?? 0), 0);
   const workingDays3m = activeEmployees * 90;
@@ -191,10 +191,12 @@ async function fetchMetrics(): Promise<Nr1Metrics> {
   const topCids = Object.entries(cidCount).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([cid, count]) => ({ cid, count }));
 
   const byStore: Record<string, number> = {};
-  ((certsMonth.data ?? []) as any[]).forEach((r) => {
-    const s = r.employee?.store?.name ?? "Sem loja";
-    byStore[s] = (byStore[s] ?? 0) + Number(r.days_off ?? 0);
-  });
+  ((certsMonth.data ?? []) as any[])
+    .filter((r: any) => activeIds.has(r.employee_id))
+    .forEach((r) => {
+      const s = r.employee?.store?.name ?? "Sem loja";
+      byStore[s] = (byStore[s] ?? 0) + Number(r.days_off ?? 0);
+    });
   const daysByStoreMonth = Object.entries(byStore).sort((a, b) => b[1] - a[1]).map(([store, days]) => ({ store, days }));
 
   // CID F (transtornos mentais)
