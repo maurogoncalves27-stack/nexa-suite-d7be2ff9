@@ -448,8 +448,8 @@ export default function Dashboard() {
                   receita_pos_mes: seg.posRevenueMonth,
                 },
                 estoque: {
-                  sem_saldo: seg.productsOutOfStock,
-                  estoque_baixo: seg.productsLowStock,
+                  status: "em_testes_nao_produtivo",
+                  observacao: "Módulo de estoque ainda em fase de testes — ignorar nas conclusões e não gerar recomendações sobre ruptura/saldo.",
                 },
                 crm: {
                   reservas_mes: reservationsMonth.count ?? 0,
