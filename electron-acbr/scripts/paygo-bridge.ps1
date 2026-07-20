@@ -858,7 +858,7 @@ public static class PayGoBridge
             string normalizedText = NormalizeChoice(matchedText);
             if (normalizedValue.Contains("PIX") || normalizedText.Contains("PIX"))
             {
-                Add(PWINFO_AUTCAP, "399");
+                Add(PWINFO_AUTCAP, "512"); // Homologacao PayGo: fixo em 512 (0x24), inclusive no fluxo PIX
                 Add(PWINFO_DSPQRPREF, "1");
                 Add(PWINFO_PAYMNTTYPE, "8");
                 EmitEvent("INFO", "Fluxo PIX selecionado; QR Code preferencialmente no pinpad");
