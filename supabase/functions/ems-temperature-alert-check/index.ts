@@ -16,6 +16,17 @@ const REPEAT_COOLDOWN_MIN = 180; // 3h entre alertas do mesmo tipo (persistênci
 const PERSISTENCE_WINDOW_MIN = 30; // janela para considerar temperatura "persistente"
 const PERSISTENCE_MIN_READINGS = 3; // nº mínimo de leituras na janela, todas fora da faixa
 const MAX_PROBLEM_ALERTS_PER_DAY = 2; // máx de alertas de problema por sensor/dia
+const RECOVERED_DEDUP_MIN = 30; // dedup de mensagens de normalização
+
+// Início do dia local (America/Sao_Paulo) em ISO UTC
+function dayStartBRTIso(): string {
+  const nowBrt = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+  nowBrt.setHours(0, 0, 0, 0);
+  // nowBrt agora representa 00:00 BRT como se fosse hora local do runtime.
+  // Convertemos de volta para UTC subtraindo o offset BRT (-3h => +3h em UTC).
+  const utcMs = nowBrt.getTime() + 3 * 60 * 60 * 1000;
+  return new Date(utcMs).toISOString();
+}
 
 type Kind = "out_of_range" | "offline" | "recovered";
 
