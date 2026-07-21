@@ -10,8 +10,9 @@ import {
 } from "@/components/ui/dialog";
 import {
   Calculator, Download, Check, ArrowLeft, FileText, Loader2, AlertTriangle, History, FileDown,
-  Users, FolderOpen, Stethoscope, ShieldAlert, Plane, LogOut, Bus, Wallet, Award, Receipt,
+  Users, FolderOpen, Stethoscope, ShieldAlert, Plane, LogOut, Bus, Wallet, Award, Receipt, TrendingUp,
 } from "lucide-react";
+
 
 import { toast } from "@/hooks/use-toast";
 import { Link, Navigate } from "react-router-dom";
