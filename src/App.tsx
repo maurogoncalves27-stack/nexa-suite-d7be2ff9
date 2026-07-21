@@ -26,6 +26,7 @@ const Employees = lazy(() => import("./pages/Employees.tsx"));
 const TerminatedEmployees = lazy(() => import("./pages/TerminatedEmployees.tsx"));
 const EmployeeForm = lazy(() => import("./pages/EmployeeForm.tsx"));
 const Evaluations = lazy(() => import("./pages/Evaluations.tsx"));
+const Pccs = lazy(() => import("./pages/Pccs.tsx"));
 const WeeklyPayments = lazy(() => import("./pages/WeeklyPayments.tsx"));
 const EmployeeRanking = lazy(() => import("./pages/EmployeeRanking.tsx"));
 const Gratifications = lazy(() => import("./pages/Gratifications.tsx"));
@@ -380,6 +381,7 @@ const App = () => (
               <Route path="/colaboradores/desligados" element={<Guarded staff accountant><TerminatedEmployees /></Guarded>} />
               <Route path="/colaboradores/:id" element={<Guarded staff accountant><EmployeeForm /></Guarded>} />
               <Route path="/avaliacoes" element={<Guarded staff><Evaluations /></Guarded>} />
+              <Route path="/pccs" element={<Guarded staff><Pccs /></Guarded>} />
               <Route path="/bonificacoes" element={<Guarded staff><WeeklyPayments /></Guarded>} />
               {/* /ranking definido acima com partner */}
               <Route path="/gratificacoes" element={<Guarded staff><Gratifications /></Guarded>} />
