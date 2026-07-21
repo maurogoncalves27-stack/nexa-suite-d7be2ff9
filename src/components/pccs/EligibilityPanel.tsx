@@ -38,21 +38,47 @@ export default function EligibilityPanel() {
     try {
       const today = new Date();
       const cutoffWarn = subMonths(today, 6).toISOString();
+      const cutoffSched = subMonths(today, 2).toISOString().slice(0, 10);
 
-      const [empRes, critRes, trackRes, warnRes, posRes] = await Promise.all([
-        supabase.from("employees").select("id, full_name, position, position_id, hire_date, status, store:stores!employees_store_id_fkey(name)").eq("status", "active"),
+      const [empRes, critRes, trackRes, warnRes, posRes, storesRes, schedRes] = await Promise.all([
+        supabase.from("employees").select("id, full_name, position, position_id, hire_date, status, store_id").eq("status", "active"),
         supabase.from("promotion_criteria").select("*"),
         supabase.from("career_track_steps").select("from_position_id, to_position_id, track_name").order("order_index"),
         supabase.from("employee_warnings").select("employee_id, issued_at").gte("issued_at", cutoffWarn),
         supabase.from("positions").select("id, name"),
+        supabase.from("stores").select("id, name"),
+        supabase.from("work_schedules").select("employee_id, store_id, work_date").gte("work_date", cutoffSched),
       ]);
 
-      const employees = (empRes.data ?? []) as unknown as Emp[];
+      const employees = (empRes.data ?? []) as any[];
       const criteria = (critRes.data ?? []) as Criteria[];
       const tracks = (trackRes.data ?? []) as TrackStep[];
       const warnings = (warnRes.data ?? []) as { employee_id: string; issued_at: string }[];
       const positions = (posRes.data ?? []) as { id: string; name: string }[];
+      const stores = (storesRes.data ?? []) as { id: string; name: string }[];
+      const schedules = (schedRes.data ?? []) as { employee_id: string; store_id: string | null }[];
       const posName = new Map(positions.map((p) => [p.id, p.name]));
+      const storeName = new Map(stores.map((s) => [s.id, s.name]));
+
+      // Loja alocada: store_id mais frequente nas escalas dos últimos 60 dias
+      const schedCounts = new Map<string, Map<string, number>>();
+      schedules.forEach((s) => {
+        if (!s.store_id) return;
+        const inner = schedCounts.get(s.employee_id) ?? new Map();
+        inner.set(s.store_id, (inner.get(s.store_id) ?? 0) + 1);
+        schedCounts.set(s.employee_id, inner);
+      });
+      const allocatedStore = new Map<string, string>();
+      schedCounts.forEach((inner, empId) => {
+        let best: string | null = null; let max = 0;
+        inner.forEach((n, sid) => { if (n > max) { max = n; best = sid; } });
+        if (best) allocatedStore.set(empId, best);
+      });
+
+      const empList: Emp[] = employees.map((e) => {
+        const sid = allocatedStore.get(e.id) ?? e.store_id;
+        return { ...e, store: sid ? { name: storeName.get(sid) ?? "—" } : null };
+      });
 
       const warnByEmp = new Map<string, string[]>();
       warnings.forEach((w) => {
