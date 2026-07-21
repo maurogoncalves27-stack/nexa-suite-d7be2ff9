@@ -103,13 +103,15 @@ export default function EligibilityPanel() {
       const warnByEmp = new Map<string, number>();
       warnings.forEach((w) => warnByEmp.set(w.employee_id, (warnByEmp.get(w.employee_id) ?? 0) + 1));
 
-      // Última avaliação por colaborador
+      // Última avaliação por colaborador (normaliza escala 0-10 → 0-100)
       const evalByEmp = new Map<string, number>();
       evaluations
         .sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1))
         .forEach((e) => {
           if (!evalByEmp.has(e.employee_id) && e.final_score != null) {
-            evalByEmp.set(e.employee_id, Number(e.final_score));
+            const raw = Number(e.final_score);
+            const normalized = raw <= 10 ? raw * 10 : raw;
+            evalByEmp.set(e.employee_id, normalized);
           }
         });
 
