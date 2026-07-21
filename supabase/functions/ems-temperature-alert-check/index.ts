@@ -12,7 +12,10 @@ const corsHeaders: Record<string, string> = {
 };
 
 const OFFLINE_THRESHOLD_MIN = 30; // sem leitura há mais que isto = offline
-const REPEAT_COOLDOWN_MIN = 60; // só re-envia o mesmo tipo de alerta após este intervalo
+const REPEAT_COOLDOWN_MIN = 180; // 3h entre alertas do mesmo tipo (persistência)
+const PERSISTENCE_WINDOW_MIN = 30; // janela para considerar temperatura "persistente"
+const PERSISTENCE_MIN_READINGS = 3; // nº mínimo de leituras na janela, todas fora da faixa
+const MAX_PROBLEM_ALERTS_PER_DAY = 2; // máx de alertas de problema por sensor/dia
 
 type Kind = "out_of_range" | "offline" | "recovered";
 
