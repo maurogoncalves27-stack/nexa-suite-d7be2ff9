@@ -126,7 +126,7 @@ export default function PromotionCriteriaPanel() {
                     </div>
                   </div>
                   <ul className="text-xs text-muted-foreground space-y-0.5">
-                    <li>≥ {c.min_months_in_role} meses no cargo</li>
+                    <li>≥ {c.min_months_in_role} meses no nível atual</li>
                     <li>Avaliação ≥ {c.min_evaluation_score}%</li>
                     <li>Frequência ≥ {c.min_attendance_pct}%</li>
                     <li>Sem advertência há {c.no_warnings_months} meses</li>
