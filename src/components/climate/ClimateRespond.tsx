@@ -77,11 +77,31 @@ export default function ClimateRespond({ survey, questions, onSubmitted }: Props
     setSubmitting(true);
 
     // Buscar loja/cargo do colaborador para guardar agregadamente (sem identificá-lo)
+    // Prioriza a loja da ESCALA real (últimos 60 dias) em vez do cadastro
     const { data: emp } = await supabase
       .from("employees")
-      .select("store_id, position")
+      .select("id, store_id, position")
       .eq("user_id", user.id)
       .maybeSingle();
+
+    let scheduledStoreId: string | null = null;
+    if (emp?.id) {
+      const since = new Date();
+      since.setDate(since.getDate() - 60);
+      const { data: sched } = await supabase
+        .from("work_schedules")
+        .select("store_id")
+        .eq("employee_id", emp.id)
+        .gte("schedule_date", since.toISOString().slice(0, 10))
+        .eq("is_day_off", false)
+        .order("schedule_date", { ascending: false })
+        .limit(200);
+      if (sched && sched.length > 0) {
+        const counts: Record<string, number> = {};
+        for (const r of sched) if (r.store_id) counts[r.store_id] = (counts[r.store_id] ?? 0) + 1;
+        scheduledStoreId = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+      }
+    }
 
     // 1) cria a resposta anônima. O ID é gerado no cliente para não precisar
     // ler a linha de volta (colaboradores não têm SELECT nessa tabela anônima).
@@ -91,7 +111,7 @@ export default function ClimateRespond({ survey, questions, onSubmitted }: Props
       .insert({
         id: responseId,
         survey_id: survey.id,
-        store_id: emp?.store_id ?? null,
+        store_id: scheduledStoreId ?? emp?.store_id ?? null,
         position: emp?.position ?? null,
       })
     if (respErr) {
