@@ -10,12 +10,15 @@ import {
 } from "@/components/ui/dialog";
 import {
   Calculator, Download, Check, ArrowLeft, FileText, Loader2, AlertTriangle, History, FileDown,
-  Users, FolderOpen, Stethoscope, ShieldAlert, Plane, LogOut, Bus, Wallet, Award, Receipt,
+  Users, FolderOpen, Stethoscope, ShieldAlert, Plane, LogOut, Bus, Wallet, Award, Receipt, TrendingUp,
 } from "lucide-react";
+
 
 import { toast } from "@/hooks/use-toast";
 import { Link, Navigate } from "react-router-dom";
 import { buildS1200Xml, downloadS1200Xml } from "@/lib/esocialS1200Export";
+import PromotionAlertsCard from "@/components/contabilidade/PromotionAlertsCard";
+
 
 interface PayrollImport {
   id: string;
@@ -322,6 +325,9 @@ export default function Contabilidade() {
           </div>
         </CardContent>
       </Card>
+
+      <PromotionAlertsCard />
+
 
 
       {/* Pendentes */}
