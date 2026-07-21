@@ -62,7 +62,7 @@ export default function EligibilityPanel() {
         supabase.from("employee_warnings").select("employee_id, issued_at").gte("issued_at", cutoffWarn),
         supabase.from("stores").select("id, name"),
         supabase.from("work_schedules").select("employee_id, store_id, schedule_date").gte("schedule_date", cutoffSched).eq("is_day_off", false),
-        supabase.from("evaluations").select("employee_id, final_score, updated_at").eq("status", "completed").not("final_score", "is", null),
+        supabase.from("evaluations").select("employee_id, final_score, updated_at").in("status", ["finalized", "completed"]).not("final_score", "is", null),
       ]);
 
       const employees = (empRes.data ?? []) as Emp[];
