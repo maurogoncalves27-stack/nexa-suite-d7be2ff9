@@ -9,14 +9,14 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Pencil, Trash2, ClipboardCheck, TrendingUp, ArrowUpRight } from "lucide-react";
+import { Loader2, Pencil, Trash2, ClipboardCheck, TrendingUp } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { usePositions } from "@/hooks/usePositions";
 
 type Criteria = {
   id: string;
   position_id: string;
-  promotion_type: "horizontal" | "vertical";
+  promotion_type: "horizontal" | "vertical" | "level";
   min_months_in_role: number;
   min_evaluation_score: number;
   min_attendance_pct: number;
@@ -33,7 +33,7 @@ export default function PromotionCriteriaPanel() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Criteria | null>(null);
   const [form, setForm] = useState<Omit<Criteria, "id">>({
-    position_id: "", promotion_type: "horizontal",
+    position_id: "", promotion_type: "level",
     min_months_in_role: 12, min_evaluation_score: 80, min_attendance_pct: 95,
     no_warnings_months: 6, require_training_completion: true, require_pdi_completion: false, notes: null,
   });
@@ -66,7 +66,7 @@ export default function PromotionCriteriaPanel() {
   const openNew = () => {
     setEditing(null);
     setForm({
-      position_id: "", promotion_type: "horizontal",
+      position_id: "", promotion_type: "level",
       min_months_in_role: 12, min_evaluation_score: 80, min_attendance_pct: 95,
       no_warnings_months: 6, require_training_completion: true, require_pdi_completion: false, notes: null,
     });
@@ -116,9 +116,9 @@ export default function PromotionCriteriaPanel() {
               {list.map((c) => (
                 <div key={c.id} className="border rounded-md p-3 space-y-2">
                   <div className="flex items-center justify-between">
-                    <Badge variant={c.promotion_type === "vertical" ? "default" : "secondary"} className="gap-1">
-                      {c.promotion_type === "vertical" ? <ArrowUpRight className="h-3 w-3" /> : <TrendingUp className="h-3 w-3" />}
-                      {c.promotion_type === "vertical" ? "Vertical" : "Horizontal"}
+                    <Badge variant="default" className="gap-1">
+                      <TrendingUp className="h-3 w-3" />
+                      Progressão por nível
                     </Badge>
                     <div className="flex gap-1">
                       <Button size="sm" variant="ghost" onClick={() => openEdit(c)}><Pencil className="h-3.5 w-3.5" /></Button>
@@ -126,7 +126,7 @@ export default function PromotionCriteriaPanel() {
                     </div>
                   </div>
                   <ul className="text-xs text-muted-foreground space-y-0.5">
-                    <li>≥ {c.min_months_in_role} meses no cargo</li>
+                    <li>≥ {c.min_months_in_role} meses no nível atual</li>
                     <li>Avaliação ≥ {c.min_evaluation_score}%</li>
                     <li>Frequência ≥ {c.min_attendance_pct}%</li>
                     <li>Sem advertência há {c.no_warnings_months} meses</li>
@@ -158,24 +158,9 @@ export default function PromotionCriteriaPanel() {
                 {positions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
-            <div>
-              <Label>Tipo</Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button" size="sm"
-                  variant={form.promotion_type === "horizontal" ? "default" : "outline"}
-                  onClick={() => setForm({ ...form, promotion_type: "horizontal" })}
-                >Horizontal</Button>
-                <Button
-                  type="button" size="sm"
-                  variant={form.promotion_type === "vertical" ? "default" : "outline"}
-                  onClick={() => setForm({ ...form, promotion_type: "vertical" })}
-                >Vertical</Button>
-              </div>
-            </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label>Meses mínimos no cargo</Label>
+                <Label>Meses mínimos no nível</Label>
                 <Input type="number" value={form.min_months_in_role} onChange={(e) => setForm({ ...form, min_months_in_role: Number(e.target.value) })} />
               </div>
               <div>

@@ -36,16 +36,14 @@ export default function Pccs() {
 
       <Tabs value={active} onValueChange={setActive}>
         <TabsList className="w-full sm:w-auto flex-wrap h-auto">
-          <TabsTrigger value="cargos" className="flex-1 sm:flex-none">Cargos & Salários</TabsTrigger>
+          <TabsTrigger value="cargos" className="flex-1 sm:flex-none">Cargos & Níveis</TabsTrigger>
           <TabsTrigger value="competencias" className="flex-1 sm:flex-none">Competências</TabsTrigger>
-          <TabsTrigger value="trilhas" className="flex-1 sm:flex-none">Trilhas</TabsTrigger>
           <TabsTrigger value="criterios" className="flex-1 sm:flex-none">Critérios</TabsTrigger>
           <TabsTrigger value="elegiveis" className="flex-1 sm:flex-none">Elegíveis Agora</TabsTrigger>
         </TabsList>
 
         <TabsContent value="cargos" className="mt-4"><SalaryLevelsPanel /></TabsContent>
         <TabsContent value="competencias" className="mt-4"><CompetenciesPanel /></TabsContent>
-        <TabsContent value="trilhas" className="mt-4"><CareerTracksPanel /></TabsContent>
         <TabsContent value="criterios" className="mt-4"><PromotionCriteriaPanel /></TabsContent>
         <TabsContent value="elegiveis" className="mt-4"><EligibilityPanel /></TabsContent>
       </Tabs>

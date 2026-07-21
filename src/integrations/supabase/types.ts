@@ -4230,6 +4230,7 @@ export type Database = {
           ctps_number: string | null
           ctps_series: string | null
           ctps_uf: string | null
+          current_level: string | null
           department: string | null
           disability_type: string | null
           education_level: string | null
@@ -4257,6 +4258,7 @@ export type Database = {
           is_apprentice: boolean | null
           is_tester: boolean
           journey_type: string | null
+          level_updated_at: string | null
           marital_status: string | null
           monthly_hours: number | null
           mother_name: string | null
@@ -4329,6 +4331,7 @@ export type Database = {
           ctps_number?: string | null
           ctps_series?: string | null
           ctps_uf?: string | null
+          current_level?: string | null
           department?: string | null
           disability_type?: string | null
           education_level?: string | null
@@ -4356,6 +4359,7 @@ export type Database = {
           is_apprentice?: boolean | null
           is_tester?: boolean
           journey_type?: string | null
+          level_updated_at?: string | null
           marital_status?: string | null
           monthly_hours?: number | null
           mother_name?: string | null
@@ -4428,6 +4432,7 @@ export type Database = {
           ctps_number?: string | null
           ctps_series?: string | null
           ctps_uf?: string | null
+          current_level?: string | null
           department?: string | null
           disability_type?: string | null
           education_level?: string | null
@@ -4455,6 +4460,7 @@ export type Database = {
           is_apprentice?: boolean | null
           is_tester?: boolean
           journey_type?: string | null
+          level_updated_at?: string | null
           marital_status?: string | null
           monthly_hours?: number | null
           mother_name?: string | null
