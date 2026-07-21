@@ -13739,6 +13739,82 @@ export type Database = {
           },
         ]
       }
+      promotion_history: {
+        Row: {
+          created_at: string
+          employee_id: string
+          from_level: string | null
+          from_position: string | null
+          from_position_id: string | null
+          from_salary: number | null
+          id: string
+          notes: string | null
+          promoted_by: string | null
+          promoted_by_name: string | null
+          promotion_type: string
+          to_level: string | null
+          to_position: string | null
+          to_position_id: string | null
+          to_salary: number | null
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          from_level?: string | null
+          from_position?: string | null
+          from_position_id?: string | null
+          from_salary?: number | null
+          id?: string
+          notes?: string | null
+          promoted_by?: string | null
+          promoted_by_name?: string | null
+          promotion_type: string
+          to_level?: string | null
+          to_position?: string | null
+          to_position_id?: string | null
+          to_salary?: number | null
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          from_level?: string | null
+          from_position?: string | null
+          from_position_id?: string | null
+          from_salary?: number | null
+          id?: string
+          notes?: string | null
+          promoted_by?: string | null
+          promoted_by_name?: string | null
+          promotion_type?: string
+          to_level?: string | null
+          to_position?: string | null
+          to_position_id?: string | null
+          to_salary?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotion_history_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promotion_history_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promotion_history_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "uniform_pending_returns"
+            referencedColumns: ["employee_id"]
+          },
+        ]
+      }
       psychosocial_risks: {
         Row: {
           action_plan: string | null

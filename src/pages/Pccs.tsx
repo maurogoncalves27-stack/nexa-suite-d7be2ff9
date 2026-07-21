@@ -7,6 +7,7 @@ import CompetenciesPanel from "@/components/pccs/CompetenciesPanel";
 import CareerTracksPanel from "@/components/pccs/CareerTracksPanel";
 import PromotionCriteriaPanel from "@/components/pccs/PromotionCriteriaPanel";
 import EligibilityPanel from "@/components/pccs/EligibilityPanel";
+import PromotedPanel from "@/components/pccs/PromotedPanel";
 
 export default function Pccs() {
   const [params, setParams] = useSearchParams();
@@ -40,12 +41,14 @@ export default function Pccs() {
           <TabsTrigger value="competencias" className="flex-1 sm:flex-none">Competências</TabsTrigger>
           <TabsTrigger value="criterios" className="flex-1 sm:flex-none">Critérios</TabsTrigger>
           <TabsTrigger value="elegiveis" className="flex-1 sm:flex-none">Elegíveis Agora</TabsTrigger>
+          <TabsTrigger value="promovidos" className="flex-1 sm:flex-none">Promovidos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="cargos" className="mt-4"><SalaryLevelsPanel /></TabsContent>
         <TabsContent value="competencias" className="mt-4"><CompetenciesPanel /></TabsContent>
         <TabsContent value="criterios" className="mt-4"><PromotionCriteriaPanel /></TabsContent>
         <TabsContent value="elegiveis" className="mt-4"><EligibilityPanel /></TabsContent>
+        <TabsContent value="promovidos" className="mt-4"><PromotedPanel /></TabsContent>
       </Tabs>
     </div>
   );
