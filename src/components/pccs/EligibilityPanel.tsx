@@ -165,7 +165,7 @@ export default function EligibilityPanel() {
         if (monthsSince < minMonths) gaps.push(`Faltam ${minMonths - monthsSince}m no nível`);
         if (warns > 0) gaps.push(`${warns} advertência(s) recentes`);
         if (score == null) gaps.push(`Sem avaliação registrada`);
-        else if (score < minScore) gaps.push(`Avaliação ${score}% < ${minScore}%`);
+        else if (score < minScore) gaps.push(`Avaliação ${score.toFixed(1)}% < ${minScore}%`);
 
         out.push({
           employee: emp,
@@ -223,7 +223,7 @@ export default function EligibilityPanel() {
         if (monthsIn < minMonths) gaps.push(`Faltam ${minMonths - monthsIn}m no cargo`);
         if (warns > 0) gaps.push(`${warns} advertência(s) recentes`);
         if (score == null) gaps.push(`Sem avaliação registrada`);
-        else if (score < minScore) gaps.push(`Avaliação ${score}% < ${minScore}%`);
+        else if (score < minScore) gaps.push(`Avaliação ${score.toFixed(1)}% < ${minScore}%`);
 
         vout.push({
           employee: emp,
@@ -374,7 +374,7 @@ export default function EligibilityPanel() {
                   <div className="flex items-center gap-2">
                     <Badge variant="default">
                       <TrendingUp className="h-3 w-3 mr-1" />
-                      {r.months_since_last}m · {r.eval_score ?? "—"}%
+                      {r.months_since_last}m · {r.eval_score != null ? r.eval_score.toFixed(1) : "—"}%
                     </Badge>
                     <Button size="sm" onClick={() => promote(r)}>Promover</Button>
                   </div>
@@ -443,7 +443,7 @@ export default function EligibilityPanel() {
                   <div className="flex items-center gap-2">
                     <Badge variant="default">
                       <TrendingUp className="h-3 w-3 mr-1" />
-                      {v.months_in_role}m · {v.eval_score ?? "—"}%
+                      {v.months_in_role}m · {v.eval_score != null ? v.eval_score.toFixed(1) : "—"}%
                     </Badge>
                     <Button size="sm" onClick={() => promoteVertical(v)}>Promover</Button>
                   </div>
