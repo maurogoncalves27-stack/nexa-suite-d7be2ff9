@@ -37,27 +37,27 @@ export default function EligibilityPanel() {
     setLoading(true);
     try {
       const today = new Date();
-      const cutoffWarn = subMonths(today, 6).toISOString().slice(0, 10);
+      const cutoffWarn = subMonths(today, 6).toISOString();
 
       const [empRes, critRes, trackRes, warnRes, posRes] = await Promise.all([
-        supabase.from("employees").select("id, full_name, position, position_id, hire_date, status, store:stores(name)").eq("status", "active"),
+        supabase.from("employees").select("id, full_name, position, position_id, hire_date, status, store:stores!employees_store_id_fkey(name)").eq("status", "active"),
         supabase.from("promotion_criteria").select("*"),
         supabase.from("career_track_steps").select("from_position_id, to_position_id, track_name").order("order_index"),
-        supabase.from("employee_warnings").select("employee_id, warning_date").gte("warning_date", cutoffWarn),
+        supabase.from("employee_warnings").select("employee_id, issued_at").gte("issued_at", cutoffWarn),
         supabase.from("positions").select("id, name"),
       ]);
 
-      const employees = (empRes.data ?? []) as Emp[];
+      const employees = (empRes.data ?? []) as unknown as Emp[];
       const criteria = (critRes.data ?? []) as Criteria[];
       const tracks = (trackRes.data ?? []) as TrackStep[];
-      const warnings = (warnRes.data ?? []) as { employee_id: string; warning_date: string }[];
+      const warnings = (warnRes.data ?? []) as { employee_id: string; issued_at: string }[];
       const positions = (posRes.data ?? []) as { id: string; name: string }[];
       const posName = new Map(positions.map((p) => [p.id, p.name]));
 
       const warnByEmp = new Map<string, string[]>();
       warnings.forEach((w) => {
         const arr = warnByEmp.get(w.employee_id) ?? [];
-        arr.push(w.warning_date);
+        arr.push(w.issued_at);
         warnByEmp.set(w.employee_id, arr);
       });
 
