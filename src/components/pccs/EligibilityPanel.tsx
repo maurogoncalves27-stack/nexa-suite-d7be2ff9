@@ -186,8 +186,66 @@ export default function EligibilityPanel() {
       }
 
       setResults(out);
+
+      // === Progressão vertical (troca de cargo) via career_track_steps ===
+      // Próximo cargo por cargo atual (menor order_index)
+      const nextByFrom = new Map<string, { to_position_id: string; order_index: number }>();
+      tracks.forEach((t) => {
+        if (!t.from_position_id) return;
+        const cur = nextByFrom.get(t.from_position_id);
+        if (!cur || t.order_index < cur.order_index) {
+          nextByFrom.set(t.from_position_id, { to_position_id: t.to_position_id, order_index: t.order_index });
+        }
+      });
+
+      const vout: VerticalResult[] = [];
+      for (const emp of employees) {
+        if (!emp.position_id || !emp.hire_date) continue;
+        const next = nextByFrom.get(emp.position_id);
+        if (!next) continue;
+
+        // Salário-base do próximo cargo (menor order_index)
+        const nextLevels = levelsByPos.get(next.to_position_id) ?? [];
+        const toSalary = nextLevels[0]?.salary ?? null;
+
+        // Ancoragem: last level_updated_at OU hire_date (proxy p/ tempo no cargo)
+        const anchorDate = emp.level_updated_at ? new Date(emp.level_updated_at) : new Date(emp.hire_date);
+        const monthsIn = differenceInMonths(today, anchorDate);
+
+        const cVert = criteria.find((k) => k.position_id === emp.position_id && k.promotion_type === "vertical");
+        const cAny = cVert ?? criteria.find((k) => k.position_id === emp.position_id);
+        const minMonths = cAny?.min_months_in_role ?? 12;
+        const minScore = cAny?.min_evaluation_score ?? 80;
+
+        const warns = warnByEmp.get(emp.id) ?? 0;
+        const score = evalByEmp.get(emp.id) ?? null;
+
+        const gaps: string[] = [];
+        if (monthsIn < minMonths) gaps.push(`Faltam ${minMonths - monthsIn}m no cargo`);
+        if (warns > 0) gaps.push(`${warns} advertência(s) recentes`);
+        if (score == null) gaps.push(`Sem avaliação registrada`);
+        else if (score < minScore) gaps.push(`Avaliação ${score}% < ${minScore}%`);
+
+        vout.push({
+          employee: emp,
+          store_name: storeName.get(allocatedStore.get(emp.id) ?? emp.store_id ?? "") ?? null,
+          from_position: emp.position ?? posName.get(emp.position_id) ?? "—",
+          to_position_id: next.to_position_id,
+          to_position: posName.get(next.to_position_id) ?? "—",
+          to_salary: toSalary,
+          months_in_role: monthsIn,
+          min_months: minMonths,
+          eval_score: score,
+          min_score: minScore,
+          warnings: warns,
+          is_eligible: gaps.length === 0,
+          gaps,
+        });
+      }
+      setVerticalResults(vout);
+
       setLastRun(new Date());
-      toast({ title: `${out.filter((r) => r.is_eligible).length} elegíveis para subir de nível` });
+      toast({ title: `${out.filter((r) => r.is_eligible).length} elegíveis para subir de nível · ${vout.filter((v) => v.is_eligible).length} para promoção vertical` });
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
     } finally {
