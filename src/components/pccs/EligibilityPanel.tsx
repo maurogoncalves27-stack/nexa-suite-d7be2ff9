@@ -72,9 +72,12 @@ export default function EligibilityPanel() {
         const hCrit = criteria.find((c) => c.position_id === emp.position_id && c.promotion_type === "horizontal");
         if (hCrit) out.push(evaluate(emp, hCrit, monthsInRole, warnByEmp, emp.position_id, posName));
 
-        // Vertical (próximo cargo em alguma trilha)
+        // Vertical (próximo cargo em alguma trilha) — dedup por cargo destino
         const nextSteps = tracks.filter((t) => t.from_position_id === emp.position_id);
+        const seenTargets = new Set<string>();
         for (const step of nextSteps) {
+          if (seenTargets.has(step.to_position_id)) continue;
+          seenTargets.add(step.to_position_id);
           const vCrit = criteria.find((c) => c.position_id === step.to_position_id && c.promotion_type === "vertical");
           if (vCrit) out.push(evaluate(emp, vCrit, monthsInRole, warnByEmp, step.to_position_id, posName));
         }
