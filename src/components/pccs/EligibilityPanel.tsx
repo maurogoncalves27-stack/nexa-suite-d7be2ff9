@@ -8,24 +8,39 @@ import { toast } from "@/hooks/use-toast";
 import { differenceInMonths, subMonths } from "date-fns";
 
 type Emp = {
-  id: string; full_name: string; position: string | null; position_id: string | null;
-  hire_date: string | null; status: string; store: { name: string } | null;
+  id: string;
+  full_name: string;
+  position: string | null;
+  position_id: string | null;
+  hire_date: string | null;
+  status: string;
+  store_id: string | null;
+  current_level: string | null;
+  level_updated_at: string | null;
 };
+
+type Level = { position_id: string; level: string; salary: number; order_index: number };
 type Criteria = {
-  position_id: string; promotion_type: "horizontal" | "vertical";
-  min_months_in_role: number; min_evaluation_score: number; min_attendance_pct: number;
-  no_warnings_months: number; require_training_completion: boolean; require_pdi_completion: boolean;
+  position_id: string;
+  min_months_in_role: number;
+  min_evaluation_score: number;
+  no_warnings_months: number;
 };
-type TrackStep = { from_position_id: string | null; to_position_id: string; track_name: string };
 
 type Result = {
   employee: Emp;
-  promotion_type: "horizontal" | "vertical";
-  target_position_id: string | null;
-  target_position_name: string;
+  store_name: string | null;
+  current_level: string;
+  current_salary: number | null;
+  next_level: string;
+  next_salary: number | null;
+  months_since_last: number;
+  min_months: number;
+  eval_score: number | null;
+  min_score: number;
+  warnings: number;
   is_eligible: boolean;
   gaps: string[];
-  meets: string[];
 };
 
 export default function EligibilityPanel() {
@@ -40,27 +55,36 @@ export default function EligibilityPanel() {
       const cutoffWarn = subMonths(today, 6).toISOString();
       const cutoffSched = subMonths(today, 2).toISOString().slice(0, 10);
 
-      const [empRes, critRes, trackRes, warnRes, posRes, storesRes, schedRes] = await Promise.all([
-        supabase.from("employees").select("id, full_name, position, position_id, hire_date, status, store_id").eq("status", "active"),
-        supabase.from("promotion_criteria").select("*"),
-        supabase.from("career_track_steps").select("from_position_id, to_position_id, track_name").order("order_index"),
+      const [empRes, levelsRes, critRes, warnRes, storesRes, schedRes, evalRes] = await Promise.all([
+        supabase.from("employees").select("id, full_name, position, position_id, hire_date, status, store_id, current_level, level_updated_at").eq("status", "active"),
+        supabase.from("position_salary_levels").select("position_id, level, salary, order_index").order("order_index"),
+        supabase.from("promotion_criteria").select("position_id, min_months_in_role, min_evaluation_score, no_warnings_months"),
         supabase.from("employee_warnings").select("employee_id, issued_at").gte("issued_at", cutoffWarn),
-        supabase.from("positions").select("id, name"),
         supabase.from("stores").select("id, name"),
         supabase.from("work_schedules").select("employee_id, store_id, schedule_date").gte("schedule_date", cutoffSched).eq("is_day_off", false),
+        supabase.from("evaluations").select("employee_id, final_score, updated_at").eq("status", "completed").not("final_score", "is", null),
       ]);
 
-      const employees = (empRes.data ?? []) as any[];
+      const employees = (empRes.data ?? []) as Emp[];
+      const levels = (levelsRes.data ?? []) as Level[];
       const criteria = (critRes.data ?? []) as Criteria[];
-      const tracks = (trackRes.data ?? []) as TrackStep[];
       const warnings = (warnRes.data ?? []) as { employee_id: string; issued_at: string }[];
-      const positions = (posRes.data ?? []) as { id: string; name: string }[];
       const stores = (storesRes.data ?? []) as { id: string; name: string }[];
       const schedules = (schedRes.data ?? []) as { employee_id: string; store_id: string | null }[];
-      const posName = new Map(positions.map((p) => [p.id, p.name]));
+      const evaluations = (evalRes.data ?? []) as { employee_id: string; final_score: number | null; updated_at: string }[];
+
       const storeName = new Map(stores.map((s) => [s.id, s.name]));
 
-      // Loja alocada: store_id mais frequente nas escalas dos últimos 60 dias
+      // Níveis agrupados por cargo, ordenados
+      const levelsByPos = new Map<string, Level[]>();
+      levels.forEach((l) => {
+        const arr = levelsByPos.get(l.position_id) ?? [];
+        arr.push(l);
+        levelsByPos.set(l.position_id, arr);
+      });
+      levelsByPos.forEach((arr) => arr.sort((a, b) => a.order_index - b.order_index));
+
+      // Loja alocada por escala (últimos 60d)
       const schedCounts = new Map<string, Map<string, number>>();
       schedules.forEach((s) => {
         if (!s.store_id) return;
@@ -70,48 +94,75 @@ export default function EligibilityPanel() {
       });
       const allocatedStore = new Map<string, string>();
       schedCounts.forEach((inner, empId) => {
-        let best: string | null = null; let max = 0;
+        let best: string | null = null;
+        let max = 0;
         inner.forEach((n, sid) => { if (n > max) { max = n; best = sid; } });
         if (best) allocatedStore.set(empId, best);
       });
 
-      const empList: Emp[] = employees.map((e) => {
-        const sid = allocatedStore.get(e.id) ?? e.store_id;
-        return { ...e, store: sid ? { name: storeName.get(sid) ?? "—" } : null };
-      });
+      const warnByEmp = new Map<string, number>();
+      warnings.forEach((w) => warnByEmp.set(w.employee_id, (warnByEmp.get(w.employee_id) ?? 0) + 1));
 
-      const warnByEmp = new Map<string, string[]>();
-      warnings.forEach((w) => {
-        const arr = warnByEmp.get(w.employee_id) ?? [];
-        arr.push(w.issued_at);
-        warnByEmp.set(w.employee_id, arr);
-      });
+      // Última avaliação por colaborador
+      const evalByEmp = new Map<string, number>();
+      evaluations
+        .sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1))
+        .forEach((e) => {
+          if (!evalByEmp.has(e.employee_id) && e.final_score != null) {
+            evalByEmp.set(e.employee_id, Number(e.final_score));
+          }
+        });
 
       const out: Result[] = [];
 
       for (const emp of employees) {
         if (!emp.position_id || !emp.hire_date) continue;
+        const posLevels = levelsByPos.get(emp.position_id);
+        if (!posLevels || posLevels.length === 0) continue;
 
-        const monthsInRole = differenceInMonths(today, new Date(emp.hire_date));
+        const currentLevel = emp.current_level ?? posLevels[0].level;
+        const currentIdx = posLevels.findIndex((l) => l.level === currentLevel);
+        const current = currentIdx >= 0 ? posLevels[currentIdx] : posLevels[0];
+        const nextIdx = currentIdx >= 0 ? currentIdx + 1 : 1;
+        if (nextIdx >= posLevels.length) continue; // já no topo
+        const next = posLevels[nextIdx];
 
-        // Horizontal (mesmo cargo)
-        const hCrit = criteria.find((c) => c.position_id === emp.position_id && c.promotion_type === "horizontal");
-        if (hCrit) out.push(evaluate(emp, hCrit, monthsInRole, warnByEmp, emp.position_id, posName));
+        const anchorDate = emp.level_updated_at ? new Date(emp.level_updated_at) : new Date(emp.hire_date);
+        const monthsSince = differenceInMonths(today, anchorDate);
 
-        // Vertical (próximo cargo em alguma trilha) — dedup por cargo destino
-        const nextSteps = tracks.filter((t) => t.from_position_id === emp.position_id);
-        const seenTargets = new Set<string>();
-        for (const step of nextSteps) {
-          if (seenTargets.has(step.to_position_id)) continue;
-          seenTargets.add(step.to_position_id);
-          const vCrit = criteria.find((c) => c.position_id === step.to_position_id && c.promotion_type === "vertical");
-          if (vCrit) out.push(evaluate(emp, vCrit, monthsInRole, warnByEmp, step.to_position_id, posName));
-        }
+        const c = criteria.find((k) => k.position_id === emp.position_id);
+        const minMonths = c?.min_months_in_role ?? 12;
+        const minScore = c?.min_evaluation_score ?? 80;
+
+        const warns = warnByEmp.get(emp.id) ?? 0;
+        const score = evalByEmp.get(emp.id) ?? null;
+
+        const gaps: string[] = [];
+        if (monthsSince < minMonths) gaps.push(`Faltam ${minMonths - monthsSince}m no nível`);
+        if (warns > 0) gaps.push(`${warns} advertência(s) recentes`);
+        if (score == null) gaps.push(`Sem avaliação registrada`);
+        else if (score < minScore) gaps.push(`Avaliação ${score}% < ${minScore}%`);
+
+        out.push({
+          employee: emp,
+          store_name: storeName.get(allocatedStore.get(emp.id) ?? emp.store_id ?? "") ?? null,
+          current_level: current.level,
+          current_salary: current.salary,
+          next_level: next.level,
+          next_salary: next.salary,
+          months_since_last: monthsSince,
+          min_months: minMonths,
+          eval_score: score,
+          min_score: minScore,
+          warnings: warns,
+          is_eligible: gaps.length === 0,
+          gaps,
+        });
       }
 
       setResults(out);
       setLastRun(new Date());
-      toast({ title: `${out.filter((r) => r.is_eligible).length} elegíveis identificados` });
+      toast({ title: `${out.filter((r) => r.is_eligible).length} elegíveis para subir de nível` });
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
     } finally {
@@ -124,12 +175,26 @@ export default function EligibilityPanel() {
   const eligibles = useMemo(() => results.filter((r) => r.is_eligible), [results]);
   const notEligibles = useMemo(() => results.filter((r) => !r.is_eligible && r.gaps.length <= 2), [results]);
 
+  const promote = async (r: Result) => {
+    try {
+      const { error } = await supabase
+        .from("employees")
+        .update({ current_level: r.next_level, level_updated_at: new Date().toISOString(), salary: r.next_salary })
+        .eq("id", r.employee.id);
+      if (error) throw error;
+      toast({ title: `${r.employee.full_name} promovido para nível ${r.next_level}` });
+      compute();
+    } catch (e: any) {
+      toast({ title: "Erro ao promover", description: e.message, variant: "destructive" });
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
           <p className="text-sm text-muted-foreground">
-            Colaboradores prontos para promoção. O cálculo cruza tempo no cargo, advertências e critérios cadastrados.
+            Progressão por níveis dentro do mesmo cargo (I → II → III…) com base em tempo no nível, avaliações e ausência de advertências.
           </p>
           {lastRun && <p className="text-xs text-muted-foreground mt-1">Última análise: {lastRun.toLocaleString("pt-BR")}</p>}
         </div>
@@ -143,7 +208,7 @@ export default function EligibilityPanel() {
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-primary" />
-            Elegíveis agora ({eligibles.length})
+            Elegíveis para subir de nível ({eligibles.length})
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
@@ -151,19 +216,25 @@ export default function EligibilityPanel() {
             <p className="text-sm text-muted-foreground italic">Ninguém elegível no momento.</p>
           ) : (
             <div className="space-y-2">
-              {eligibles.map((r, i) => (
-                <div key={`${r.employee.id}-${i}`} className="border rounded-md p-3 flex items-center justify-between gap-2 flex-wrap">
+              {eligibles.map((r) => (
+                <div key={r.employee.id} className="border rounded-md p-3 flex items-center justify-between gap-2 flex-wrap">
                   <div>
                     <div className="font-medium">{r.employee.full_name}</div>
                     <div className="text-xs text-muted-foreground">
-                      {r.employee.position} → <span className="font-medium text-foreground">{r.target_position_name}</span>
-                      {r.employee.store?.name && <span> · {r.employee.store.name}</span>}
+                      {r.employee.position} · Nível <span className="font-medium text-foreground">{r.current_level}</span> → <span className="font-medium text-foreground">{r.next_level}</span>
+                      {r.current_salary != null && r.next_salary != null && (
+                        <> · R$ {r.current_salary.toFixed(2)} → R$ {r.next_salary.toFixed(2)}</>
+                      )}
+                      {r.store_name && <> · {r.store_name}</>}
                     </div>
                   </div>
-                  <Badge variant={r.promotion_type === "vertical" ? "default" : "secondary"}>
-                    <TrendingUp className="h-3 w-3 mr-1" />
-                    {r.promotion_type === "vertical" ? "Promoção vertical" : "Progressão horizontal"}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="default">
+                      <TrendingUp className="h-3 w-3 mr-1" />
+                      {r.months_since_last}m · {r.eval_score ?? "—"}%
+                    </Badge>
+                    <Button size="sm" onClick={() => promote(r)}>Promover</Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -183,12 +254,12 @@ export default function EligibilityPanel() {
             <p className="text-sm text-muted-foreground italic">Nenhum próximo da elegibilidade.</p>
           ) : (
             <div className="space-y-2">
-              {notEligibles.slice(0, 30).map((r, i) => (
-                <div key={`${r.employee.id}-${i}`} className="border rounded-md p-3 space-y-1">
+              {notEligibles.slice(0, 30).map((r) => (
+                <div key={r.employee.id} className="border rounded-md p-3 space-y-1">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <div className="font-medium text-sm">{r.employee.full_name}</div>
                     <span className="text-xs text-muted-foreground">
-                      {r.employee.position} → {r.target_position_name}
+                      {r.employee.position} · Nível {r.current_level} → {r.next_level}
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-1">
@@ -204,39 +275,4 @@ export default function EligibilityPanel() {
       </Card>
     </div>
   );
-}
-
-function evaluate(
-  emp: Emp, c: Criteria, monthsInRole: number,
-  warnByEmp: Map<string, string[]>, targetPositionId: string,
-  posName: Map<string, string>
-): Result {
-  const gaps: string[] = [];
-  const meets: string[] = [];
-
-  if (monthsInRole >= c.min_months_in_role) meets.push(`${monthsInRole}m no cargo`);
-  else gaps.push(`Faltam ${c.min_months_in_role - monthsInRole}m no cargo`);
-
-  const warns = warnByEmp.get(emp.id) ?? [];
-  if (warns.length === 0) meets.push(`Sem advertência (${c.no_warnings_months}m)`);
-  else gaps.push(`${warns.length} advertência(s) recentes`);
-
-  // Nota da avaliação e frequência: sem dados confiáveis para todos → marcamos como "sem dados" (bloqueia por padrão)
-  // Isso evita falsos positivos; quando existir avaliação, o RH avalia caso a caso.
-  gaps.push(`Requer avaliação ≥ ${c.min_evaluation_score}%`);
-  if (c.require_training_completion) gaps.push("Treinamentos obrigatórios");
-  if (c.require_pdi_completion) gaps.push("PDI concluído");
-
-  // MVP: é elegível apenas se cumpre tempo + sem advertência (os demais são checagens manuais)
-  const is_eligible = monthsInRole >= c.min_months_in_role && warns.length === 0;
-
-  return {
-    employee: emp,
-    promotion_type: c.promotion_type,
-    target_position_id: targetPositionId,
-    target_position_name: posName.get(targetPositionId) ?? "—",
-    is_eligible,
-    gaps: is_eligible ? [] : gaps,
-    meets,
-  };
 }
