@@ -62,6 +62,8 @@ type VerticalResult = {
 export default function EligibilityPanel() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Result[]>([]);
+  const [verticalResults, setVerticalResults] = useState<VerticalResult[]>([]);
+  const [positionsMap, setPositionsMap] = useState<Map<string, string>>(new Map());
   const [lastRun, setLastRun] = useState<Date | null>(null);
 
   const compute = async () => {
