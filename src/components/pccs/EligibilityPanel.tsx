@@ -93,7 +93,7 @@ export default function EligibilityPanel() {
       const tracks = (tracksRes.data ?? []) as { from_position_id: string | null; to_position_id: string; order_index: number }[];
       const positions = (posRes.data ?? []) as { id: string; name: string }[];
       const posName = new Map(positions.map((p) => [p.id, p.name]));
-      setPositionsMap(posName);
+      
 
       const storeName = new Map(stores.map((s) => [s.id, s.name]));
 
