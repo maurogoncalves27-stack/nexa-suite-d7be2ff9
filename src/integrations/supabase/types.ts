@@ -13741,7 +13741,9 @@ export type Database = {
       }
       promotion_history: {
         Row: {
+          applied_at: string | null
           created_at: string
+          effective_date: string | null
           employee_id: string
           from_level: string | null
           from_position: string | null
@@ -13758,7 +13760,9 @@ export type Database = {
           to_salary: number | null
         }
         Insert: {
+          applied_at?: string | null
           created_at?: string
+          effective_date?: string | null
           employee_id: string
           from_level?: string | null
           from_position?: string | null
@@ -13775,7 +13779,9 @@ export type Database = {
           to_salary?: number | null
         }
         Update: {
+          applied_at?: string | null
           created_at?: string
+          effective_date?: string | null
           employee_id?: string
           from_level?: string | null
           from_position?: string | null
@@ -18675,6 +18681,12 @@ export type Database = {
           _today?: string
         }
         Returns: boolean
+      }
+      apply_pending_promotions: {
+        Args: never
+        Returns: {
+          applied_count: number
+        }[]
       }
       apply_shift_swap: { Args: { _swap_id: string }; Returns: undefined }
       approve_inventory_count: { Args: { _count_id: string }; Returns: Json }

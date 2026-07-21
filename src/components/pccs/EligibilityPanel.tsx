@@ -259,23 +259,27 @@ export default function EligibilityPanel() {
   const verticalEligibles = useMemo(() => verticalResults.filter((v) => v.is_eligible), [verticalResults]);
   const verticalNear = useMemo(() => verticalResults.filter((v) => !v.is_eligible && v.gaps.length <= 2), [verticalResults]);
 
+  const nextMonthFirstDay = () => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth() + 1, 1);
+  };
+  const formatDateBR = (d: Date) => d.toLocaleDateString("pt-BR");
+
   const promote = async (r: Result) => {
+    const effective = nextMonthFirstDay();
+    const effectiveISO = effective.toISOString().slice(0, 10);
     const salaryTxt = r.next_salary != null
       ? `R$ ${Number(r.next_salary).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
       : "salário atual";
     if (!confirm(
-      `Promover ${r.employee.full_name} do nível ${r.current_level} para o nível ${r.next_level}?\n\n` +
+      `Agendar promoção de ${r.employee.full_name} do nível ${r.current_level} para ${r.next_level}?\n\n` +
       `Novo salário: ${salaryTxt}\n` +
-      `O tempo no nível será reiniciado a partir de hoje.`
+      `Data efetiva: ${formatDateBR(effective)} (1º dia do mês seguinte).\n\n` +
+      `A mudança será aplicada automaticamente nessa data e refletida na folha do próximo mês.`
     )) return;
     try {
-      const { error } = await supabase
-        .from("employees")
-        .update({ current_level: r.next_level, level_updated_at: new Date().toISOString(), salary: r.next_salary })
-        .eq("id", r.employee.id);
-      if (error) throw error;
       const { data: userData } = await supabase.auth.getUser();
-      await supabase.from("promotion_history").insert({
+      const { error } = await supabase.from("promotion_history").insert({
         employee_id: r.employee.id,
         promotion_type: "horizontal",
         from_position: r.employee.position,
@@ -286,32 +290,36 @@ export default function EligibilityPanel() {
         to_level: r.next_level,
         from_salary: r.current_salary,
         to_salary: r.next_salary,
+        effective_date: effectiveISO,
+        applied_at: null,
         promoted_by: userData.user?.id ?? null,
         promoted_by_name: userData.user?.email ?? null,
       });
+      if (error) throw error;
       toast({
-        title: `✅ ${r.employee.full_name} promovido(a) para nível ${r.next_level}`,
-        description: `Novo salário: ${salaryTxt}. Colaborador saiu da lista de elegíveis (tempo no nível reiniciado).`,
+        title: `📅 Promoção agendada — ${r.employee.full_name}`,
+        description: `Nível ${r.next_level} · ${salaryTxt}. Efetiva em ${formatDateBR(effective)}.`,
       });
       compute();
     } catch (e: any) {
-      toast({ title: "Erro ao promover", description: e.message, variant: "destructive" });
+      toast({ title: "Erro ao agendar promoção", description: e.message, variant: "destructive" });
     }
   };
 
   const promoteVertical = async (v: VerticalResult) => {
-    if (!confirm(`Promover ${v.employee.full_name} de "${v.from_position}" para "${v.to_position}"?`)) return;
+    const effective = nextMonthFirstDay();
+    const effectiveISO = effective.toISOString().slice(0, 10);
+    const salaryTxt = v.to_salary != null
+      ? `R$ ${Number(v.to_salary).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+      : "salário a definir";
+    if (!confirm(
+      `Agendar promoção de ${v.employee.full_name} de "${v.from_position}" para "${v.to_position}"?\n\n` +
+      `Novo salário: ${salaryTxt}\n` +
+      `Data efetiva: ${formatDateBR(effective)} (1º dia do mês seguinte).`
+    )) return;
     try {
-      const payload: any = {
-        position_id: v.to_position_id,
-        current_level: "I",
-        level_updated_at: new Date().toISOString(),
-      };
-      if (v.to_salary != null) payload.salary = v.to_salary;
-      const { error } = await supabase.from("employees").update(payload).eq("id", v.employee.id);
-      if (error) throw error;
       const { data: userData } = await supabase.auth.getUser();
-      await supabase.from("promotion_history").insert({
+      const { error } = await supabase.from("promotion_history").insert({
         employee_id: v.employee.id,
         promotion_type: "vertical",
         from_position: v.from_position,
@@ -322,15 +330,22 @@ export default function EligibilityPanel() {
         to_level: "I",
         from_salary: (v as any).from_salary ?? null,
         to_salary: v.to_salary ?? null,
+        effective_date: effectiveISO,
+        applied_at: null,
         promoted_by: userData.user?.id ?? null,
         promoted_by_name: userData.user?.email ?? null,
       });
-      toast({ title: `${v.employee.full_name} promovido para ${v.to_position}` });
+      if (error) throw error;
+      toast({
+        title: `📅 Promoção agendada — ${v.employee.full_name}`,
+        description: `${v.to_position} · ${salaryTxt}. Efetiva em ${formatDateBR(effective)}.`,
+      });
       compute();
     } catch (e: any) {
-      toast({ title: "Erro ao promover", description: e.message, variant: "destructive" });
+      toast({ title: "Erro ao agendar promoção", description: e.message, variant: "destructive" });
     }
   };
+
 
   return (
     <div className="space-y-4">
