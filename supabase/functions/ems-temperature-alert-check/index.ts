@@ -12,7 +12,10 @@ const corsHeaders: Record<string, string> = {
 };
 
 const OFFLINE_THRESHOLD_MIN = 30; // sem leitura há mais que isto = offline
-const REPEAT_COOLDOWN_MIN = 60; // só re-envia o mesmo tipo de alerta após este intervalo
+const REPEAT_COOLDOWN_MIN = 180; // 3h entre alertas do mesmo tipo (persistência)
+const PERSISTENCE_WINDOW_MIN = 30; // janela para considerar temperatura "persistente"
+const PERSISTENCE_MIN_READINGS = 3; // nº mínimo de leituras na janela, todas fora da faixa
+const MAX_PROBLEM_ALERTS_PER_DAY = 2; // máx de alertas de problema por sensor/dia
 
 type Kind = "out_of_range" | "offline" | "recovered";
 
@@ -180,10 +183,52 @@ Deno.serve(async (req: Request) => {
       }
 
       // kind = out_of_range ou offline
+      // Regra de persistência: exige várias leituras na janela, todas fora da faixa.
+      // Se oscilar (ex.: porta aberta), não dispara.
+      if (kind === "out_of_range") {
+        const sinceIso = new Date(Date.now() - PERSISTENCE_WINDOW_MIN * 60_000).toISOString();
+        const { data: recentRows } = await supabase
+          .from("ems_sensor_readings")
+          .select("measurement, measured_at")
+          .eq("sensor_code", sensor.unique_code)
+          .gte("measured_at", sinceIso)
+          .order("measured_at", { ascending: false });
+        const recent = (recentRows ?? []) as Reading[];
+        const allOut =
+          recent.length >= PERSISTENCE_MIN_READINGS &&
+          recent.every(
+            (r) =>
+              (sensor.min_value != null && Number(r.measurement) < Number(sensor.min_value)) ||
+              (sensor.max_value != null && Number(r.measurement) > Number(sensor.max_value)),
+          );
+        if (!allOut) {
+          results.push({ sensor: sensor.unique_code, kind, skipped: "not_persistent", readings: recent.length });
+          continue;
+        }
+      }
+
+      // Cooldown de 3h entre alertas do mesmo tipo
       let shouldSend = true;
       if (openAlert && openAlert.kind === kind) {
         const ageMinAlert = (Date.now() - new Date(openAlert.triggered_at).getTime()) / 60000;
         if (ageMinAlert < REPEAT_COOLDOWN_MIN) shouldSend = false;
+      }
+
+      // Limite de alertas de problema por dia (por sensor)
+      if (shouldSend) {
+        const dayStart = new Date();
+        dayStart.setHours(0, 0, 0, 0);
+        const { count: todayCount } = await supabase
+          .from("nutri_temperature_alerts")
+          .select("id", { count: "exact", head: true })
+          .eq("sensor_code", sensor.unique_code)
+          .in("kind", ["out_of_range", "offline"])
+          .gte("triggered_at", dayStart.toISOString());
+        if ((todayCount ?? 0) >= MAX_PROBLEM_ALERTS_PER_DAY) {
+          shouldSend = false;
+          results.push({ sensor: sensor.unique_code, kind, skipped: "daily_cap", today: todayCount });
+          continue;
+        }
       }
 
       if (!shouldSend) {
