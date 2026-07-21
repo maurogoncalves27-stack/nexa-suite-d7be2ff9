@@ -17,6 +17,8 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { Link, Navigate } from "react-router-dom";
 import { buildS1200Xml, downloadS1200Xml } from "@/lib/esocialS1200Export";
+import PromotionAlertsCard from "@/components/contabilidade/PromotionAlertsCard";
+
 
 interface PayrollImport {
   id: string;
