@@ -18,20 +18,29 @@ export default function ExportOhReportButton() {
     }
     setLoading(true);
     try {
-      const [{ data: risks }, { data: sst }] = await Promise.all([
+      const [risksRes, sstRes] = await Promise.all([
         supabase.from("psychosocial_risks")
-          .select("category, severity, status, description, action_plan, resolution_notes, deadline, auto_generated")
+          .select("category, severity, status, description, action_plan, resolution_notes, deadline, resolved_at, auto_generated")
           .order("severity", { ascending: false })
           .order("created_at", { ascending: false }),
         supabase.from("sst_documents")
-          .select("title, document_type, valid_until, is_active")
+          .select("doc_type, company_name, valid_from, valid_until, is_active")
           .eq("is_active", true)
           .order("valid_until", { ascending: true, nullsFirst: false }),
       ]);
+      if (risksRes.error) throw risksRes.error;
+      if (sstRes.error) throw sstRes.error;
+
+      const sstDocs = (sstRes.data ?? []).map((d: any) => ({
+        title: d.company_name ? `${d.doc_type} — ${d.company_name}` : d.doc_type,
+        document_type: d.doc_type,
+        valid_until: d.valid_until,
+        is_active: d.is_active,
+      }));
 
       const doc = generateOccupationalHealthReportPdf(metrics, {
-        psychoRisks: (risks ?? []) as any,
-        sstDocs: (sst ?? []) as any,
+        psychoRisks: (risksRes.data ?? []) as any,
+        sstDocs: sstDocs as any,
         companyName: "NEXA Gestão Inteligente",
       });
       doc.save(`relatorio-saude-ocupacional-${format(new Date(), "yyyy-MM-dd")}.pdf`);
