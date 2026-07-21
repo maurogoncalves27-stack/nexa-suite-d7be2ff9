@@ -158,24 +158,9 @@ export default function PromotionCriteriaPanel() {
                 {positions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
-            <div>
-              <Label>Tipo</Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button" size="sm"
-                  variant={form.promotion_type === "horizontal" ? "default" : "outline"}
-                  onClick={() => setForm({ ...form, promotion_type: "horizontal" })}
-                >Horizontal</Button>
-                <Button
-                  type="button" size="sm"
-                  variant={form.promotion_type === "vertical" ? "default" : "outline"}
-                  onClick={() => setForm({ ...form, promotion_type: "vertical" })}
-                >Vertical</Button>
-              </div>
-            </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label>Meses mínimos no cargo</Label>
+                <Label>Meses mínimos no nível</Label>
                 <Input type="number" value={form.min_months_in_role} onChange={(e) => setForm({ ...form, min_months_in_role: Number(e.target.value) })} />
               </div>
               <div>
