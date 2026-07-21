@@ -7,6 +7,7 @@ import CompetenciesPanel from "@/components/pccs/CompetenciesPanel";
 import CareerTracksPanel from "@/components/pccs/CareerTracksPanel";
 import PromotionCriteriaPanel from "@/components/pccs/PromotionCriteriaPanel";
 import EligibilityPanel from "@/components/pccs/EligibilityPanel";
+import PromotedPanel from "@/components/pccs/PromotedPanel";
 
 export default function Pccs() {
   const [params, setParams] = useSearchParams();
