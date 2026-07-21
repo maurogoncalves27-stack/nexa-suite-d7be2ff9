@@ -67,6 +67,7 @@ const rhGroups: Group[] = [
     icon: Award,
     items: [
       { title: "Avaliações", url: "/avaliacoes", icon: Award, staffOnly: true },
+      { title: "Plano de Carreira (PCCS)", url: "/pccs", icon: TrendingUp, staffOnly: true },
       { title: "Infrações e Advertências", url: "/infracoes", icon: ShieldAlert, staffOnly: true },
       { title: "Regras automáticas", url: "/regras-automaticas", icon: Settings, staffOnly: true },
     ],
