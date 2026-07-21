@@ -238,23 +238,32 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // Cooldown de 3h entre alertas do mesmo tipo
+      // Cooldown de 3h entre alertas do mesmo tipo — baseado no ÚLTIMO alerta
+      // desse kind (resolvido ou não), não só no aberto. Evita re-disparo quando
+      // o sensor pisca (offline → ok → offline).
       let shouldSend = true;
-      if (openAlert && openAlert.kind === kind) {
-        const ageMinAlert = (Date.now() - new Date(openAlert.triggered_at).getTime()) / 60000;
-        if (ageMinAlert < REPEAT_COOLDOWN_MIN) shouldSend = false;
+      const cooldownStart = new Date(Date.now() - REPEAT_COOLDOWN_MIN * 60_000).toISOString();
+      const { data: recentSame } = await supabase
+        .from("nutri_temperature_alerts")
+        .select("id, triggered_at")
+        .eq("sensor_code", sensor.unique_code)
+        .eq("kind", kind)
+        .gte("triggered_at", cooldownStart)
+        .limit(1);
+      if (recentSame && recentSame.length) {
+        shouldSend = false;
+        results.push({ sensor: sensor.unique_code, kind, skipped: "cooldown_last_alert" });
+        continue;
       }
 
-      // Limite de alertas de problema por dia (por sensor)
+      // Limite de alertas de problema por dia (por sensor), respeitando dia BRT
       if (shouldSend) {
-        const dayStart = new Date();
-        dayStart.setHours(0, 0, 0, 0);
         const { count: todayCount } = await supabase
           .from("nutri_temperature_alerts")
           .select("id", { count: "exact", head: true })
           .eq("sensor_code", sensor.unique_code)
           .in("kind", ["out_of_range", "offline"])
-          .gte("triggered_at", dayStart.toISOString());
+          .gte("triggered_at", dayStartBRTIso());
         if ((todayCount ?? 0) >= MAX_PROBLEM_ALERTS_PER_DAY) {
           shouldSend = false;
           results.push({ sensor: sensor.unique_code, kind, skipped: "daily_cap", today: todayCount });
