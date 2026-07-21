@@ -43,9 +43,26 @@ type Result = {
   gaps: string[];
 };
 
+type VerticalResult = {
+  employee: Emp;
+  store_name: string | null;
+  from_position: string;
+  to_position_id: string;
+  to_position: string;
+  to_salary: number | null;
+  months_in_role: number;
+  min_months: number;
+  eval_score: number | null;
+  min_score: number;
+  warnings: number;
+  is_eligible: boolean;
+  gaps: string[];
+};
+
 export default function EligibilityPanel() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Result[]>([]);
+  const [verticalResults, setVerticalResults] = useState<VerticalResult[]>([]);
   const [lastRun, setLastRun] = useState<Date | null>(null);
 
   const compute = async () => {
@@ -55,23 +72,28 @@ export default function EligibilityPanel() {
       const cutoffWarn = subMonths(today, 6).toISOString();
       const cutoffSched = subMonths(today, 2).toISOString().slice(0, 10);
 
-      const [empRes, levelsRes, critRes, warnRes, storesRes, schedRes, evalRes] = await Promise.all([
+      const [empRes, levelsRes, critRes, warnRes, storesRes, schedRes, evalRes, tracksRes, posRes] = await Promise.all([
         supabase.from("employees").select("id, full_name, position, position_id, hire_date, status, store_id, current_level, level_updated_at").eq("status", "active"),
         supabase.from("position_salary_levels").select("position_id, level, salary, order_index").order("order_index"),
-        supabase.from("promotion_criteria").select("position_id, min_months_in_role, min_evaluation_score, no_warnings_months"),
+        supabase.from("promotion_criteria").select("position_id, promotion_type, min_months_in_role, min_evaluation_score, no_warnings_months"),
         supabase.from("employee_warnings").select("employee_id, issued_at").gte("issued_at", cutoffWarn),
         supabase.from("stores").select("id, name"),
         supabase.from("work_schedules").select("employee_id, store_id, schedule_date").gte("schedule_date", cutoffSched).eq("is_day_off", false),
         supabase.from("evaluations").select("employee_id, final_score, updated_at").in("status", ["finalized", "completed"]).not("final_score", "is", null),
+        supabase.from("career_track_steps").select("from_position_id, to_position_id, order_index").order("order_index"),
+        supabase.from("positions").select("id, name"),
       ]);
-
       const employees = (empRes.data ?? []) as Emp[];
       const levels = (levelsRes.data ?? []) as Level[];
-      const criteria = (critRes.data ?? []) as Criteria[];
+      const criteria = (critRes.data ?? []) as (Criteria & { promotion_type?: string })[];
       const warnings = (warnRes.data ?? []) as { employee_id: string; issued_at: string }[];
       const stores = (storesRes.data ?? []) as { id: string; name: string }[];
       const schedules = (schedRes.data ?? []) as { employee_id: string; store_id: string | null }[];
       const evaluations = (evalRes.data ?? []) as { employee_id: string; final_score: number | null; updated_at: string }[];
+      const tracks = (tracksRes.data ?? []) as { from_position_id: string | null; to_position_id: string; order_index: number }[];
+      const positions = (posRes.data ?? []) as { id: string; name: string }[];
+      const posName = new Map(positions.map((p) => [p.id, p.name]));
+      
 
       const storeName = new Map(stores.map((s) => [s.id, s.name]));
 
@@ -163,8 +185,66 @@ export default function EligibilityPanel() {
       }
 
       setResults(out);
+
+      // === Progressão vertical (troca de cargo) via career_track_steps ===
+      // Próximo cargo por cargo atual (menor order_index)
+      const nextByFrom = new Map<string, { to_position_id: string; order_index: number }>();
+      tracks.forEach((t) => {
+        if (!t.from_position_id) return;
+        const cur = nextByFrom.get(t.from_position_id);
+        if (!cur || t.order_index < cur.order_index) {
+          nextByFrom.set(t.from_position_id, { to_position_id: t.to_position_id, order_index: t.order_index });
+        }
+      });
+
+      const vout: VerticalResult[] = [];
+      for (const emp of employees) {
+        if (!emp.position_id || !emp.hire_date) continue;
+        const next = nextByFrom.get(emp.position_id);
+        if (!next) continue;
+
+        // Salário-base do próximo cargo (menor order_index)
+        const nextLevels = levelsByPos.get(next.to_position_id) ?? [];
+        const toSalary = nextLevels[0]?.salary ?? null;
+
+        // Ancoragem: last level_updated_at OU hire_date (proxy p/ tempo no cargo)
+        const anchorDate = emp.level_updated_at ? new Date(emp.level_updated_at) : new Date(emp.hire_date);
+        const monthsIn = differenceInMonths(today, anchorDate);
+
+        const cVert = criteria.find((k) => k.position_id === emp.position_id && k.promotion_type === "vertical");
+        const cAny = cVert ?? criteria.find((k) => k.position_id === emp.position_id);
+        const minMonths = cAny?.min_months_in_role ?? 12;
+        const minScore = cAny?.min_evaluation_score ?? 80;
+
+        const warns = warnByEmp.get(emp.id) ?? 0;
+        const score = evalByEmp.get(emp.id) ?? null;
+
+        const gaps: string[] = [];
+        if (monthsIn < minMonths) gaps.push(`Faltam ${minMonths - monthsIn}m no cargo`);
+        if (warns > 0) gaps.push(`${warns} advertência(s) recentes`);
+        if (score == null) gaps.push(`Sem avaliação registrada`);
+        else if (score < minScore) gaps.push(`Avaliação ${score}% < ${minScore}%`);
+
+        vout.push({
+          employee: emp,
+          store_name: storeName.get(allocatedStore.get(emp.id) ?? emp.store_id ?? "") ?? null,
+          from_position: emp.position ?? posName.get(emp.position_id) ?? "—",
+          to_position_id: next.to_position_id,
+          to_position: posName.get(next.to_position_id) ?? "—",
+          to_salary: toSalary,
+          months_in_role: monthsIn,
+          min_months: minMonths,
+          eval_score: score,
+          min_score: minScore,
+          warnings: warns,
+          is_eligible: gaps.length === 0,
+          gaps,
+        });
+      }
+      setVerticalResults(vout);
+
       setLastRun(new Date());
-      toast({ title: `${out.filter((r) => r.is_eligible).length} elegíveis para subir de nível` });
+      toast({ title: `${out.filter((r) => r.is_eligible).length} elegíveis para subir de nível · ${vout.filter((v) => v.is_eligible).length} para promoção vertical` });
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
     } finally {
@@ -176,6 +256,8 @@ export default function EligibilityPanel() {
 
   const eligibles = useMemo(() => results.filter((r) => r.is_eligible), [results]);
   const notEligibles = useMemo(() => results.filter((r) => !r.is_eligible && r.gaps.length <= 2), [results]);
+  const verticalEligibles = useMemo(() => verticalResults.filter((v) => v.is_eligible), [verticalResults]);
+  const verticalNear = useMemo(() => verticalResults.filter((v) => !v.is_eligible && v.gaps.length <= 2), [verticalResults]);
 
   const promote = async (r: Result) => {
     try {
@@ -185,6 +267,24 @@ export default function EligibilityPanel() {
         .eq("id", r.employee.id);
       if (error) throw error;
       toast({ title: `${r.employee.full_name} promovido para nível ${r.next_level}` });
+      compute();
+    } catch (e: any) {
+      toast({ title: "Erro ao promover", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const promoteVertical = async (v: VerticalResult) => {
+    if (!confirm(`Promover ${v.employee.full_name} de "${v.from_position}" para "${v.to_position}"?`)) return;
+    try {
+      const payload: any = {
+        position_id: v.to_position_id,
+        current_level: "I",
+        level_updated_at: new Date().toISOString(),
+      };
+      if (v.to_salary != null) payload.salary = v.to_salary;
+      const { error } = await supabase.from("employees").update(payload).eq("id", v.employee.id);
+      if (error) throw error;
+      toast({ title: `${v.employee.full_name} promovido para ${v.to_position}` });
       compute();
     } catch (e: any) {
       toast({ title: "Erro ao promover", description: e.message, variant: "destructive" });
@@ -275,6 +375,73 @@ export default function EligibilityPanel() {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-primary" />
+            Elegíveis para promoção vertical (troca de cargo) ({verticalEligibles.length})
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">Auxiliares e estagiários seguem trilha até Supervisor de Loja.</p>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {verticalEligibles.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">Ninguém elegível para troca de cargo no momento.</p>
+          ) : (
+            <div className="space-y-2">
+              {verticalEligibles.map((v) => (
+                <div key={v.employee.id} className="border rounded-md p-3 flex items-center justify-between gap-2 flex-wrap">
+                  <div>
+                    <div className="font-medium">{v.employee.full_name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">{v.from_position}</span> → <span className="font-medium text-foreground">{v.to_position}</span>
+                      {v.to_salary != null && <> · novo salário R$ {v.to_salary.toFixed(2)}</>}
+                      {v.store_name && <> · {v.store_name}</>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="default">
+                      <TrendingUp className="h-3 w-3 mr-1" />
+                      {v.months_in_role}m · {v.eval_score ?? "—"}%
+                    </Badge>
+                    <Button size="sm" onClick={() => promoteVertical(v)}>Promover</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {verticalNear.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2 text-muted-foreground">
+              <XCircle className="h-4 w-4" />
+              Perto da promoção vertical (até 2 critérios faltando)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-2">
+              {verticalNear.slice(0, 30).map((v) => (
+                <div key={v.employee.id} className="border rounded-md p-3 space-y-1">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="font-medium text-sm">{v.employee.full_name}</div>
+                    <span className="text-xs text-muted-foreground">
+                      {v.from_position} → {v.to_position}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {v.gaps.map((g, j) => (
+                      <Badge key={j} variant="outline" className="text-xs">{g}</Badge>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
