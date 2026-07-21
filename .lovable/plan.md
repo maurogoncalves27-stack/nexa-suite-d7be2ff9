@@ -1,66 +1,138 @@
-## Plano de Cargos, Carreira e Salários (PCCS)
 
-Recriar o PCCS completo baseado no documento anexo, com nova rota `/pccs` no módulo RH.
+# Integração Yolo Club ↔ NEXA Suite
 
-### 1. Banco (uma migration só)
+## Contexto
 
-**Novas tabelas**
+Cliente compra no app Yolo Club um **código promocional** que dá direito a **desconto** (ou combo especial) em compras no restaurante parceiro. Hoje esse resgate é manual — queremos que o cliente digite o código no **Totem** ou o garçom aplique no **NEXA Garçom**, e o NEXA valide **automaticamente** via API da Yolo em tempo real.
 
-- `position_salary_levels` — níveis salariais por cargo
-  - `position_id`, `level` (I/II/III/IV), `salary`, `order_index`
-- `position_competencies` — matriz de competências
-  - `position_id`, `name`, `type` (`technical`|`behavioral`), `is_required`, `order_index`
-- `career_track_steps` — trilhas de carreira (grafo)
-  - `track_name` (ex.: "Cozinha → Gestão"), `from_position_id`, `to_position_id`, `order_index`, `notes`
-- `promotion_criteria` — critérios por cargo destino
-  - `position_id`, `min_months_in_role`, `min_evaluation_score`, `min_attendance_pct`, `no_warnings_months`, `require_training_completion`, `require_pdi_completion`, `promotion_type` (`horizontal`|`vertical`)
-- `promotion_eligibility_snapshots` — cache mensal de quem está elegível (calculado)
-  - `employee_id`, `target_position_id`, `is_eligible`, `criteria_met` (jsonb), `computed_at`
+## O que precisamos do dev da Yolo (spec técnica pra enviar pra eles)
 
-**Extensão do PDI existente** (`development_plans`):
-- Adicionar `competency` (text), `expected_result` (text), `responsible_employee_id` (uuid FK employees)
-- Migrar `mentor_name` → tenta match por nome em employees; se não achar, mantém texto em `notes`
-- Nenhum dado perdido
+Precisamos de **2 endpoints REST + 1 webhook opcional**, protegidos por API key/OAuth. Modelo padrão de mercado (igual iFood/Rappi voucher):
 
-Todas com RLS: leitura para `hr`/`admin`/`manager`; escrita só `hr`/`admin`. Colaborador vê seu próprio PDI.
+### 1) `POST /vouchers/validate` — valida o código sem consumir
 
-### 2. Seed inicial (do documento)
+**Objetivo:** quando o cliente digita o código no totem, checamos se é válido **antes** de aplicar o desconto no carrinho.
 
-- Faixas I-IV para Supervisor (2.090 → 2.419,43)
-- Salários-base sugeridos para todos os cargos do doc (Estagiário R$ 1.000 até Gerente R$ 2.500)
-- Competências dos exemplos (Aux Cozinha + Supervisor)
-- Trilha principal: Estagiário → Aux Cozinha → Aux Produção → Encarregado → Supervisor → Coordenador → Gerente
-- Trilha alternativa: Atendente → Aux A&B → Supervisor → Coordenador
-- Critérios padrão: horizontal (12m, 80%, 95% freq, 0 advertências 6m, treinamentos ok) / vertical (85%, PDI concluído)
+Request:
+```json
+{
+  "code": "YOLO-ABC123",
+  "partner_id": "aquela-parme",
+  "store_id": "asa-sul",           // qual loja tá validando
+  "channel": "totem" | "online",
+  "cart_total_cents": 8500          // opcional, pra validar valor mínimo
+}
+```
 
-### 3. Nova rota `/pccs` (mobile-first, padrão de header do projeto)
+Response 200 (válido):
+```json
+{
+  "valid": true,
+  "voucher_id": "vch_9f2a...",       // ID interno da Yolo (usaremos no redeem)
+  "customer": { "name": "João", "phone_masked": "***9988" },
+  "benefit": {
+    "type": "percent" | "fixed" | "combo",
+    "value": 15,                     // 15% OU 1500 centavos OU id do combo
+    "applies_to": "cart" | "items",
+    "eligible_skus": ["PARM-001"],   // se items
+    "min_cart_cents": 5000,
+    "max_discount_cents": 3000
+  },
+  "expires_at": "2026-08-01T23:59:59Z",
+  "single_use": true
+}
+```
 
-Ícone `TrendingUp` (adicionar em AppSidebar sob "RH" e em `PAGE_TITLES`).
+Response 4xx (com motivo legível pro cliente):
+```json
+{ "valid": false, "reason": "expired" | "already_used" | "not_found" | "min_cart_not_met" | "wrong_store", "message": "Cupom já utilizado" }
+```
 
-Abas:
-1. **Cargos & Salários** — lista de cargos com níveis editáveis inline
-2. **Competências** — matriz por cargo (badges técnicas/comportamentais, checkboxes)
-3. **Trilhas de Carreira** — visualização em grafo/steps + editor drag-and-drop simples
-4. **Critérios de Promoção** — formulário por cargo destino
-5. **Elegíveis Agora** — lista de colaboradores prontos pra promoção (roda a checagem contra ponto, advertências, avaliações, treinamentos)
+### 2) `POST /vouchers/redeem` — confirma o consumo
 
-### 4. Integração com o resto do sistema
+Chamado **depois** que o pedido é fechado/pago no PDV. Idempotente por `order_id`.
 
-- Card no Dashboard do gestor: "N colaboradores elegíveis para promoção"
-- Botão "Ver PCCS do meu cargo" na `AreaColaborador` (colaborador vê caminho + o que falta pra próximo nível)
-- PDI (`/pdi` ou aba existente) passa a puxar competência da matriz do cargo alvo
+Request:
+```json
+{
+  "voucher_id": "vch_9f2a...",
+  "code": "YOLO-ABC123",
+  "partner_id": "aquela-parme",
+  "store_id": "asa-sul",
+  "order_id": "nexa-ord-12345",      // idempotency key
+  "order_total_cents": 8500,
+  "discount_applied_cents": 1275,
+  "redeemed_at": "2026-07-21T14:32:00Z"
+}
+```
 
-### 5. Fora do escopo desta entrega
+Response 200: `{ "redeemed": true, "voucher_id": "vch_9f2a..." }`
+Response 409: `{ "redeemed": false, "reason": "already_redeemed" }`
 
-- Avaliação de desempenho 360° (já existe `evaluations` — só vincular scores no cálculo de elegibilidade, sem criar módulo novo)
-- Reconhecimento por mérito (certificados trimestrais) — pode virar backlog
-- Aprovação eletrônica de promoção com assinatura — backlog
+### 3) (Opcional) `POST /vouchers/void` — estorna se pedido foi cancelado
 
-### Ordem de execução
+Mesmo payload do redeem + `reason`. Libera o cupom pra ser usado de novo, ou registra estorno.
 
-1. Migration única (tabelas + extensão PDI + seed do documento)
-2. Página `/pccs` com as 5 abas
-3. Cálculo de elegibilidade (função SQL + RPC)
-4. Card no dashboard + link na AreaColaborador
+### 4) (Opcional) Webhook Yolo → NEXA
 
-Confirma que posso seguir com isso?
+Quando a Yolo emite/cancela um voucher, notifica: `POST https://<nossa-edge>/yolo-webhook` com HMAC-SHA256 no header `X-Yolo-Signature`. Útil pra sincronizar campanhas mas **não é bloqueante** — o fluxo síncrono acima já resolve.
+
+### Autenticação
+- `Authorization: Bearer <YOLO_API_KEY>` (uma key por parceiro)
+- Base URL sandbox + prod separadas
+- Rate limit informado no header
+
+---
+
+## O que a gente vai construir no NEXA
+
+### Backend (Lovable Cloud)
+- Tabelas novas:
+  - `yolo_vouchers_used` — log de cada validate/redeem (voucher_id, code, order_id, store_id, benefit_snapshot, status, timestamps) pra auditoria e não pagar cupom em duplicidade offline.
+  - `yolo_config` — API key, base URL, partner_id, mapping store_id NEXA → store_id Yolo. Editável em `/configuracoes/integracoes/yolo`.
+- 3 edge functions (chamam a API da Yolo com a secret `YOLO_API_KEY`):
+  - `yolo-validate` — proxy pro `/vouchers/validate`
+  - `yolo-redeem` — chamado no fechamento do pedido, idempotente por `order_id`
+  - `yolo-void` — chamado se o pedido for cancelado (integrado ao fluxo de cancelamento do PDV)
+
+### Frontend — Totem (`electron-totem` / `/totem`)
+- Novo passo antes do pagamento: **"Tem cupom Yolo?"** → campo de código + teclado on-screen
+- Chama `yolo-validate` → mostra benefício aplicado no carrinho
+- No fechamento chama `yolo-redeem` com o `order_id` da NFC-e
+- Se pagamento falhar, chama `yolo-void`
+
+### Frontend — Garçom (`/garcom`)
+- Botão **"Aplicar Yolo"** na comanda da mesa
+- Mesmo fluxo: validate → aplica desconto na rodada → redeem no fechamento
+- Se garçom cancelar item/rodada com Yolo aplicado, chama `void`
+
+### Frontend — Online (quando existir e-commerce/link de pedido)
+- Mesmo campo de cupom, mesma edge function `yolo-validate/redeem`
+
+### Segurança
+- API key da Yolo **só** na secret `YOLO_API_KEY` (nunca no client)
+- Toda chamada passa pelas nossas edge functions (nunca do browser direto pra Yolo)
+- Idempotency por `order_id` evita duplo desconto se o totem travar e reenviar
+- Log completo em `yolo_vouchers_used` pra conciliação mensal com relatório da Yolo
+
+---
+
+## Detalhes técnicos (pra passar pro dev deles)
+
+Resumo curto do que pedimos:
+1. **REST JSON**, HTTPS, Bearer token por parceiro
+2. Endpoints: `POST /vouchers/validate`, `POST /vouchers/redeem`, `POST /vouchers/void`
+3. **Idempotência** no redeem via `order_id` (parceiro fornece)
+4. Códigos de erro semânticos (`expired`, `already_used`, `not_found`, `min_cart_not_met`, `wrong_store`)
+5. Ambientes **sandbox + produção** separados com credenciais distintas
+6. Doc OpenAPI/Swagger e uns 5 códigos de teste no sandbox pra homologarmos
+7. (Bônus) Webhook assinado com HMAC pra eventos de emissão/cancelamento
+
+Com isso a gente entrega totem + garçom validando Yolo em ~1 sprint.
+
+---
+
+## Fora de escopo desta fase
+- Emissão de vouchers pelo NEXA (continua na Yolo)
+- Cashback pós-compra (só se a Yolo pedir explicitamente via webhook de `order.completed`)
+- Integração no PDV físico do balcão (`/pdv-novo`) — dá pra incluir depois com o mesmo backend, só falta o botão na UI
