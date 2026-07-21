@@ -16,7 +16,7 @@ import { usePositions } from "@/hooks/usePositions";
 type Criteria = {
   id: string;
   position_id: string;
-  promotion_type: "level" | "vertical" | "level";
+  promotion_type: "horizontal" | "vertical" | "level";
   min_months_in_role: number;
   min_evaluation_score: number;
   min_attendance_pct: number;
