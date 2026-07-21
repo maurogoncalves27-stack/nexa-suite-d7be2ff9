@@ -158,16 +158,27 @@ Deno.serve(async (req: Request) => {
             .update({ resolved_at: new Date().toISOString() })
             .eq("id", openAlert.id);
 
-          // Dedup: só notifica normalização se não houve outra recovered nos últimos 30min
-          const dedupStart = new Date(Date.now() - RECOVERED_DEDUP_MIN * 60_000).toISOString();
-          const { data: recentRecovered } = await supabase
+          // Dedup: só notifica normalização se houve um NOVO alerta de problema
+          // (out_of_range OU offline) disparado APÓS a última mensagem recovered.
+          // Garante uma única normalização por ciclo problema→ok.
+          const { data: lastRecovered } = await supabase
             .from("nutri_temperature_alerts")
-            .select("id")
+            .select("triggered_at")
             .eq("sensor_code", sensor.unique_code)
             .eq("kind", "recovered")
-            .gte("triggered_at", dedupStart)
+            .order("triggered_at", { ascending: false })
             .limit(1);
-          const shouldNotifyRecovered = !(recentRecovered && recentRecovered.length);
+          let shouldNotifyRecovered = true;
+          if (lastRecovered && lastRecovered.length) {
+            const { count: problemsSince } = await supabase
+              .from("nutri_temperature_alerts")
+              .select("id", { count: "exact", head: true })
+              .eq("sensor_code", sensor.unique_code)
+              .in("kind", ["out_of_range", "offline"])
+              .gt("triggered_at", lastRecovered[0].triggered_at);
+            shouldNotifyRecovered = (problemsSince ?? 0) > 0;
+          }
+
 
           const recipients = (recipientsAll ?? []).filter(
             (r) => !r.store_id || r.store_id === sensor.store_id,
