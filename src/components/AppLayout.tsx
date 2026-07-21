@@ -70,6 +70,7 @@ const PAGE_TITLES: PageMeta[] = [
 
   // Desempenho
   { match: (p) => p.startsWith("/avaliacoes"), title: "Avaliações", group: "Desempenho" },
+  { match: (p) => p.startsWith("/pccs"), title: "Plano de Carreira (PCCS)", group: "Desempenho" },
   { match: (p) => p.startsWith("/clima"), title: "Clima Organizacional", group: "Saúde Ocupacional" },
   { match: (p) => p.startsWith("/regras-automaticas"), title: "Regras automáticas", group: "Desempenho" },
   { match: (p) => p.startsWith("/infracoes"), title: "Infrações e Advertências", group: "Desempenho" },
