@@ -122,6 +122,7 @@ export default function Dashboard() {
         .from("employees")
         .select("id, full_name, training_start_date, gender, contract_type")
         .in("training_status", ["pending", "in_progress"])
+        .eq("is_tester", false)
         .order("training_start_date", { ascending: true, nullsFirst: false });
       const list = (trainees ?? []) as { id: string; full_name: string; training_start_date: string | null; gender: string | null; contract_type: string | null }[];
       if (list.length === 0) return [];
