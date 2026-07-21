@@ -443,7 +443,7 @@ export default function EligibilityPanel() {
                   <div className="flex items-center gap-2">
                     <Badge variant="default">
                       <TrendingUp className="h-3 w-3 mr-1" />
-                      {v.months_in_role}m · {v.eval_score ?? "—"}%
+                      {v.months_in_role}m · {v.eval_score != null ? v.eval_score.toFixed(1) : "—"}%
                     </Badge>
                     <Button size="sm" onClick={() => promoteVertical(v)}>Promover</Button>
                   </div>
