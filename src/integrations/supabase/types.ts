@@ -18230,6 +18230,101 @@ export type Database = {
           },
         ]
       }
+      yolo_config: {
+        Row: {
+          base_url: string
+          created_at: string
+          enabled: boolean
+          environment: string
+          id: string
+          notes: string | null
+          partner_id: string | null
+          store_mapping: Json
+          updated_at: string
+        }
+        Insert: {
+          base_url?: string
+          created_at?: string
+          enabled?: boolean
+          environment?: string
+          id?: string
+          notes?: string | null
+          partner_id?: string | null
+          store_mapping?: Json
+          updated_at?: string
+        }
+        Update: {
+          base_url?: string
+          created_at?: string
+          enabled?: boolean
+          environment?: string
+          id?: string
+          notes?: string | null
+          partner_id?: string | null
+          store_mapping?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      yolo_vouchers_used: {
+        Row: {
+          benefit_snapshot: Json | null
+          channel: string
+          code: string
+          created_at: string
+          discount_applied_cents: number | null
+          failure_reason: string | null
+          id: string
+          order_id: string | null
+          order_total_cents: number | null
+          raw_response: Json | null
+          status: string
+          store_id: string | null
+          updated_at: string
+          voucher_id: string | null
+        }
+        Insert: {
+          benefit_snapshot?: Json | null
+          channel: string
+          code: string
+          created_at?: string
+          discount_applied_cents?: number | null
+          failure_reason?: string | null
+          id?: string
+          order_id?: string | null
+          order_total_cents?: number | null
+          raw_response?: Json | null
+          status: string
+          store_id?: string | null
+          updated_at?: string
+          voucher_id?: string | null
+        }
+        Update: {
+          benefit_snapshot?: Json | null
+          channel?: string
+          code?: string
+          created_at?: string
+          discount_applied_cents?: number | null
+          failure_reason?: string | null
+          id?: string
+          order_id?: string | null
+          order_total_cents?: number | null
+          raw_response?: Json | null
+          status?: string
+          store_id?: string | null
+          updated_at?: string
+          voucher_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "yolo_vouchers_used_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       employees_directory: {
