@@ -257,6 +257,8 @@ export default function EligibilityPanel() {
 
   const eligibles = useMemo(() => results.filter((r) => r.is_eligible), [results]);
   const notEligibles = useMemo(() => results.filter((r) => !r.is_eligible && r.gaps.length <= 2), [results]);
+  const verticalEligibles = useMemo(() => verticalResults.filter((v) => v.is_eligible), [verticalResults]);
+  const verticalNear = useMemo(() => verticalResults.filter((v) => !v.is_eligible && v.gaps.length <= 2), [verticalResults]);
 
   const promote = async (r: Result) => {
     try {
@@ -266,6 +268,24 @@ export default function EligibilityPanel() {
         .eq("id", r.employee.id);
       if (error) throw error;
       toast({ title: `${r.employee.full_name} promovido para nível ${r.next_level}` });
+      compute();
+    } catch (e: any) {
+      toast({ title: "Erro ao promover", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const promoteVertical = async (v: VerticalResult) => {
+    if (!confirm(`Promover ${v.employee.full_name} de "${v.from_position}" para "${v.to_position}"?`)) return;
+    try {
+      const payload: any = {
+        position_id: v.to_position_id,
+        current_level: "I",
+        level_updated_at: new Date().toISOString(),
+      };
+      if (v.to_salary != null) payload.salary = v.to_salary;
+      const { error } = await supabase.from("employees").update(payload).eq("id", v.employee.id);
+      if (error) throw error;
+      toast({ title: `${v.employee.full_name} promovido para ${v.to_position}` });
       compute();
     } catch (e: any) {
       toast({ title: "Erro ao promover", description: e.message, variant: "destructive" });
