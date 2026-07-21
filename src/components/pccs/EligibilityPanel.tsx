@@ -43,6 +43,22 @@ type Result = {
   gaps: string[];
 };
 
+type VerticalResult = {
+  employee: Emp;
+  store_name: string | null;
+  from_position: string;
+  to_position_id: string;
+  to_position: string;
+  to_salary: number | null;
+  months_in_role: number;
+  min_months: number;
+  eval_score: number | null;
+  min_score: number;
+  warnings: number;
+  is_eligible: boolean;
+  gaps: string[];
+};
+
 export default function EligibilityPanel() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Result[]>([]);
