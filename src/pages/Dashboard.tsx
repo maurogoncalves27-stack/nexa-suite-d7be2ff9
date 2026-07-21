@@ -153,7 +153,8 @@ export default function Dashboard() {
       const { data: activeEmps } = await supabase
         .from("employees")
         .select("id, full_name")
-        .eq("status", "active");
+        .eq("status", "active")
+        .eq("is_tester", false);
       const counts: Record<VacationRisk, number> = { ok: 0, warning: 0, critical: 0, expired: 0 };
       const alerts: VacationAlertItem[] = [];
       const emps = (activeEmps ?? []) as { id: string; full_name: string }[];
