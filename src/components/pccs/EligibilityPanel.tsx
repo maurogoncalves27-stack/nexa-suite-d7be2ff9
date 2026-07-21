@@ -165,7 +165,7 @@ export default function EligibilityPanel() {
         if (monthsSince < minMonths) gaps.push(`Faltam ${minMonths - monthsSince}m no nível`);
         if (warns > 0) gaps.push(`${warns} advertência(s) recentes`);
         if (score == null) gaps.push(`Sem avaliação registrada`);
-        else if (score < minScore) gaps.push(`Avaliação ${score}% < ${minScore}%`);
+        else if (score < minScore) gaps.push(`Avaliação ${score.toFixed(1)}% < ${minScore}%`);
 
         out.push({
           employee: emp,
