@@ -84,12 +84,17 @@ export default function EligibilityPanel() {
         supabase.from("career_track_steps").select("from_position_id, to_position_id, order_index").order("order_index"),
         supabase.from("positions").select("id, name"),
       ]);
+      const employees = (empRes.data ?? []) as Emp[];
       const levels = (levelsRes.data ?? []) as Level[];
-      const criteria = (critRes.data ?? []) as Criteria[];
+      const criteria = (critRes.data ?? []) as (Criteria & { promotion_type?: string })[];
       const warnings = (warnRes.data ?? []) as { employee_id: string; issued_at: string }[];
       const stores = (storesRes.data ?? []) as { id: string; name: string }[];
       const schedules = (schedRes.data ?? []) as { employee_id: string; store_id: string | null }[];
       const evaluations = (evalRes.data ?? []) as { employee_id: string; final_score: number | null; updated_at: string }[];
+      const tracks = (tracksRes.data ?? []) as { from_position_id: string | null; to_position_id: string; order_index: number }[];
+      const positions = (posRes.data ?? []) as { id: string; name: string }[];
+      const posName = new Map(positions.map((p) => [p.id, p.name]));
+      setPositionsMap(posName);
 
       const storeName = new Map(stores.map((s) => [s.id, s.name]));
 
