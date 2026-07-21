@@ -16,6 +16,17 @@ const REPEAT_COOLDOWN_MIN = 180; // 3h entre alertas do mesmo tipo (persistênci
 const PERSISTENCE_WINDOW_MIN = 30; // janela para considerar temperatura "persistente"
 const PERSISTENCE_MIN_READINGS = 3; // nº mínimo de leituras na janela, todas fora da faixa
 const MAX_PROBLEM_ALERTS_PER_DAY = 2; // máx de alertas de problema por sensor/dia
+const RECOVERED_DEDUP_MIN = 30; // dedup de mensagens de normalização
+
+// Início do dia local (America/Sao_Paulo) em ISO UTC
+function dayStartBRTIso(): string {
+  const nowBrt = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+  nowBrt.setHours(0, 0, 0, 0);
+  // nowBrt agora representa 00:00 BRT como se fosse hora local do runtime.
+  // Convertemos de volta para UTC subtraindo o offset BRT (-3h => +3h em UTC).
+  const utcMs = nowBrt.getTime() + 3 * 60 * 60 * 1000;
+  return new Date(utcMs).toISOString();
+}
 
 type Kind = "out_of_range" | "offline" | "recovered";
 
@@ -141,29 +152,44 @@ Deno.serve(async (req: Request) => {
 
       if (kind === "ok") {
         if (openAlert) {
-          // Resolver e notificar normalização
+          // Resolver o alerta aberto sempre
           await supabase
             .from("nutri_temperature_alerts")
             .update({ resolved_at: new Date().toISOString() })
             .eq("id", openAlert.id);
 
+          // Dedup: só notifica normalização se não houve outra recovered nos últimos 30min
+          const dedupStart = new Date(Date.now() - RECOVERED_DEDUP_MIN * 60_000).toISOString();
+          const { data: recentRecovered } = await supabase
+            .from("nutri_temperature_alerts")
+            .select("id")
+            .eq("sensor_code", sensor.unique_code)
+            .eq("kind", "recovered")
+            .gte("triggered_at", dedupStart)
+            .limit(1);
+          const shouldNotifyRecovered = !(recentRecovered && recentRecovered.length);
+
           const recipients = (recipientsAll ?? []).filter(
             (r) => !r.store_id || r.store_id === sensor.store_id,
           );
           const storeName = sensor.store_id ? storeNames[sensor.store_id] ?? null : null;
-          const message = buildMessage("recovered", sensor, storeName, last ?? null);
           const notified: Array<{ phone: string; name: string; ok: boolean; error?: string }> = [];
-          for (const r of recipients) {
-            const { data: sendData, error: sendErr } = await supabase.functions.invoke("uazapi-send-text", {
-              body: { phone: r.phone, message },
-            });
-            notified.push({
-              phone: r.phone,
-              name: r.name,
-              ok: !sendErr && (sendData as any)?.ok !== false,
-              error: sendErr?.message,
-            });
+
+          if (shouldNotifyRecovered) {
+            const message = buildMessage("recovered", sensor, storeName, last ?? null);
+            for (const r of recipients) {
+              const { data: sendData, error: sendErr } = await supabase.functions.invoke("uazapi-send-text", {
+                body: { phone: r.phone, message },
+              });
+              notified.push({
+                phone: r.phone,
+                name: r.name,
+                ok: !sendErr && (sendData as any)?.ok !== false,
+                error: sendErr?.message,
+              });
+            }
           }
+
           await supabase.from("nutri_temperature_alerts").insert({
             sensor_code: sensor.unique_code,
             store_id: sensor.store_id,
@@ -175,7 +201,12 @@ Deno.serve(async (req: Request) => {
             notified_phones: notified,
             resolved_at: new Date().toISOString(),
           });
-          results.push({ sensor: sensor.unique_code, kind: "recovered", recipients: notified.length });
+          results.push({
+            sensor: sensor.unique_code,
+            kind: "recovered",
+            recipients: notified.length,
+            notified: shouldNotifyRecovered,
+          });
         } else {
           results.push({ sensor: sensor.unique_code, kind: "ok" });
         }
@@ -207,23 +238,32 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // Cooldown de 3h entre alertas do mesmo tipo
+      // Cooldown de 3h entre alertas do mesmo tipo — baseado no ÚLTIMO alerta
+      // desse kind (resolvido ou não), não só no aberto. Evita re-disparo quando
+      // o sensor pisca (offline → ok → offline).
       let shouldSend = true;
-      if (openAlert && openAlert.kind === kind) {
-        const ageMinAlert = (Date.now() - new Date(openAlert.triggered_at).getTime()) / 60000;
-        if (ageMinAlert < REPEAT_COOLDOWN_MIN) shouldSend = false;
+      const cooldownStart = new Date(Date.now() - REPEAT_COOLDOWN_MIN * 60_000).toISOString();
+      const { data: recentSame } = await supabase
+        .from("nutri_temperature_alerts")
+        .select("id, triggered_at")
+        .eq("sensor_code", sensor.unique_code)
+        .eq("kind", kind)
+        .gte("triggered_at", cooldownStart)
+        .limit(1);
+      if (recentSame && recentSame.length) {
+        shouldSend = false;
+        results.push({ sensor: sensor.unique_code, kind, skipped: "cooldown_last_alert" });
+        continue;
       }
 
-      // Limite de alertas de problema por dia (por sensor)
+      // Limite de alertas de problema por dia (por sensor), respeitando dia BRT
       if (shouldSend) {
-        const dayStart = new Date();
-        dayStart.setHours(0, 0, 0, 0);
         const { count: todayCount } = await supabase
           .from("nutri_temperature_alerts")
           .select("id", { count: "exact", head: true })
           .eq("sensor_code", sensor.unique_code)
           .in("kind", ["out_of_range", "offline"])
-          .gte("triggered_at", dayStart.toISOString());
+          .gte("triggered_at", dayStartBRTIso());
         if ((todayCount ?? 0) >= MAX_PROBLEM_ALERTS_PER_DAY) {
           shouldSend = false;
           results.push({ sensor: sensor.unique_code, kind, skipped: "daily_cap", today: todayCount });
