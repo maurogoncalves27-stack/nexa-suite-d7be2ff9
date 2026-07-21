@@ -47,7 +47,7 @@ export default function PromotedPanel() {
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) throw error;
-      const empIds = Array.from(new Set((data ?? []).map((r: any) => r.employee_id)));
+      const empIds = Array.from(new Set((data ?? []).map((r: any) => r.employee_id as string)));
       let names: Record<string, string> = {};
       if (empIds.length) {
         const { data: emps } = await supabase
