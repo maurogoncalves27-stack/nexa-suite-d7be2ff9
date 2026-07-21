@@ -72,7 +72,8 @@ export default function EligibilityPanel() {
       const cutoffWarn = subMonths(today, 6).toISOString();
       const cutoffSched = subMonths(today, 2).toISOString().slice(0, 10);
 
-      const [empRes, levelsRes, critRes, warnRes, storesRes, schedRes, evalRes, tracksRes, posRes] = await Promise.all([
+      const yearStart = new Date(today.getFullYear(), 0, 1).toISOString();
+      const [empRes, levelsRes, critRes, warnRes, storesRes, schedRes, evalRes, tracksRes, posRes, promRes] = await Promise.all([
         supabase.from("employees").select("id, full_name, position, position_id, hire_date, status, store_id, current_level, level_updated_at").eq("status", "active"),
         supabase.from("position_salary_levels").select("position_id, level, salary, order_index").order("order_index"),
         supabase.from("promotion_criteria").select("position_id, promotion_type, min_months_in_role, min_evaluation_score, no_warnings_months"),
@@ -82,7 +83,9 @@ export default function EligibilityPanel() {
         supabase.from("evaluations").select("employee_id, final_score, updated_at").in("status", ["finalized", "completed"]).not("final_score", "is", null),
         supabase.from("career_track_steps").select("from_position_id, to_position_id, order_index").order("order_index"),
         supabase.from("positions").select("id, name"),
+        supabase.from("promotion_history").select("employee_id, created_at, effective_date").gte("created_at", yearStart),
       ]);
+      const promotedThisYear = new Set<string>((promRes.data ?? []).map((p: any) => p.employee_id));
       const employees = (empRes.data ?? []) as Emp[];
       const levels = (levelsRes.data ?? []) as Level[];
       const criteria = (critRes.data ?? []) as (Criteria & { promotion_type?: string })[];
@@ -166,6 +169,7 @@ export default function EligibilityPanel() {
         if (warns > 0) gaps.push(`${warns} advertência(s) recentes`);
         if (score == null) gaps.push(`Sem avaliação registrada`);
         else if (score < minScore) gaps.push(`Avaliação ${score.toFixed(1)}% < ${minScore}%`);
+        if (promotedThisYear.has(emp.id)) gaps.push(`Já promovido em ${today.getFullYear()}`);
 
         out.push({
           employee: emp,
@@ -224,6 +228,7 @@ export default function EligibilityPanel() {
         if (warns > 0) gaps.push(`${warns} advertência(s) recentes`);
         if (score == null) gaps.push(`Sem avaliação registrada`);
         else if (score < minScore) gaps.push(`Avaliação ${score.toFixed(1)}% < ${minScore}%`);
+        if (promotedThisYear.has(emp.id)) gaps.push(`Já promovido em ${today.getFullYear()}`);
 
         vout.push({
           employee: emp,
