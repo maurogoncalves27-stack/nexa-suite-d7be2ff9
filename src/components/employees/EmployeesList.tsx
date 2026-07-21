@@ -70,6 +70,7 @@ export default function EmployeesList() {
       supabase
         .from("employees")
         .select("*, contracting_store:stores!employees_store_id_fkey(name), allocated_store:stores!employees_allocated_store_id_fkey(name, parent_store_id)")
+        .eq("is_tester", false)
         .order("created_at", { ascending: false }),
       supabase.from("stores").select("id, name, parent_store_id, store_type").eq("is_virtual", false).order("name"),
     ]);

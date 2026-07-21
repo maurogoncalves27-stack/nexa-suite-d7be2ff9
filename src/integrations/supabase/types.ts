@@ -4255,6 +4255,7 @@ export type Database = {
           hire_date: string | null
           id: string
           is_apprentice: boolean | null
+          is_tester: boolean
           journey_type: string | null
           marital_status: string | null
           monthly_hours: number | null
@@ -4353,6 +4354,7 @@ export type Database = {
           hire_date?: string | null
           id?: string
           is_apprentice?: boolean | null
+          is_tester?: boolean
           journey_type?: string | null
           marital_status?: string | null
           monthly_hours?: number | null
@@ -4451,6 +4453,7 @@ export type Database = {
           hire_date?: string | null
           id?: string
           is_apprentice?: boolean | null
+          is_tester?: boolean
           journey_type?: string | null
           marital_status?: string | null
           monthly_hours?: number | null
