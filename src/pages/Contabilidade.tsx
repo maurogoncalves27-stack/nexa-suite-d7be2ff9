@@ -326,6 +326,9 @@ export default function Contabilidade() {
         </CardContent>
       </Card>
 
+      <PromotionAlertsCard />
+
+
 
       {/* Pendentes */}
       <Card>
