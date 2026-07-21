@@ -26,6 +26,7 @@ const Employees = lazy(() => import("./pages/Employees.tsx"));
 const TerminatedEmployees = lazy(() => import("./pages/TerminatedEmployees.tsx"));
 const EmployeeForm = lazy(() => import("./pages/EmployeeForm.tsx"));
 const Evaluations = lazy(() => import("./pages/Evaluations.tsx"));
+const Pccs = lazy(() => import("./pages/Pccs.tsx"));
 const WeeklyPayments = lazy(() => import("./pages/WeeklyPayments.tsx"));
 const EmployeeRanking = lazy(() => import("./pages/EmployeeRanking.tsx"));
 const Gratifications = lazy(() => import("./pages/Gratifications.tsx"));
