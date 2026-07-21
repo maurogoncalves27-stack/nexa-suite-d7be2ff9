@@ -374,7 +374,7 @@ export default function EligibilityPanel() {
                   <div className="flex items-center gap-2">
                     <Badge variant="default">
                       <TrendingUp className="h-3 w-3 mr-1" />
-                      {r.months_since_last}m · {r.eval_score ?? "—"}%
+                      {r.months_since_last}m · {r.eval_score != null ? r.eval_score.toFixed(1) : "—"}%
                     </Badge>
                     <Button size="sm" onClick={() => promote(r)}>Promover</Button>
                   </div>
