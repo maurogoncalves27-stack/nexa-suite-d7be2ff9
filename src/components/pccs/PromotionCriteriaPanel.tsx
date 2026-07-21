@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Pencil, Trash2, ClipboardCheck, TrendingUp, ArrowUpRight } from "lucide-react";
+import { Loader2, Pencil, Trash2, ClipboardCheck, TrendingUp } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { usePositions } from "@/hooks/usePositions";
 
