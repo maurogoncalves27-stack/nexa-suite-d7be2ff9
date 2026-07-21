@@ -116,9 +116,9 @@ export default function PromotionCriteriaPanel() {
               {list.map((c) => (
                 <div key={c.id} className="border rounded-md p-3 space-y-2">
                   <div className="flex items-center justify-between">
-                    <Badge variant={c.promotion_type === "vertical" ? "default" : "secondary"} className="gap-1">
-                      {c.promotion_type === "vertical" ? <ArrowUpRight className="h-3 w-3" /> : <TrendingUp className="h-3 w-3" />}
-                      {c.promotion_type === "vertical" ? "Vertical" : "Horizontal"}
+                    <Badge variant="default" className="gap-1">
+                      <TrendingUp className="h-3 w-3" />
+                      Progressão por nível
                     </Badge>
                     <div className="flex gap-1">
                       <Button size="sm" variant="ghost" onClick={() => openEdit(c)}><Pencil className="h-3.5 w-3.5" /></Button>
