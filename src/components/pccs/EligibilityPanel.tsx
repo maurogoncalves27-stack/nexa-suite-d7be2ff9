@@ -376,6 +376,73 @@ export default function EligibilityPanel() {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-primary" />
+            Elegíveis para promoção vertical (troca de cargo) ({verticalEligibles.length})
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">Auxiliares e estagiários seguem trilha até Supervisor de Loja.</p>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {verticalEligibles.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">Ninguém elegível para troca de cargo no momento.</p>
+          ) : (
+            <div className="space-y-2">
+              {verticalEligibles.map((v) => (
+                <div key={v.employee.id} className="border rounded-md p-3 flex items-center justify-between gap-2 flex-wrap">
+                  <div>
+                    <div className="font-medium">{v.employee.full_name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">{v.from_position}</span> → <span className="font-medium text-foreground">{v.to_position}</span>
+                      {v.to_salary != null && <> · novo salário R$ {v.to_salary.toFixed(2)}</>}
+                      {v.store_name && <> · {v.store_name}</>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="default">
+                      <TrendingUp className="h-3 w-3 mr-1" />
+                      {v.months_in_role}m · {v.eval_score ?? "—"}%
+                    </Badge>
+                    <Button size="sm" onClick={() => promoteVertical(v)}>Promover</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {verticalNear.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2 text-muted-foreground">
+              <XCircle className="h-4 w-4" />
+              Perto da promoção vertical (até 2 critérios faltando)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-2">
+              {verticalNear.slice(0, 30).map((v) => (
+                <div key={v.employee.id} className="border rounded-md p-3 space-y-1">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="font-medium text-sm">{v.employee.full_name}</div>
+                    <span className="text-xs text-muted-foreground">
+                      {v.from_position} → {v.to_position}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {v.gaps.map((g, j) => (
+                      <Badge key={j} variant="outline" className="text-xs">{g}</Badge>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
