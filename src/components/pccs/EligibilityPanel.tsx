@@ -274,6 +274,21 @@ export default function EligibilityPanel() {
         .update({ current_level: r.next_level, level_updated_at: new Date().toISOString(), salary: r.next_salary })
         .eq("id", r.employee.id);
       if (error) throw error;
+      const { data: userData } = await supabase.auth.getUser();
+      await supabase.from("promotion_history").insert({
+        employee_id: r.employee.id,
+        promotion_type: "horizontal",
+        from_position: r.employee.position,
+        to_position: r.employee.position,
+        from_position_id: r.employee.position_id,
+        to_position_id: r.employee.position_id,
+        from_level: r.current_level,
+        to_level: r.next_level,
+        from_salary: r.current_salary,
+        to_salary: r.next_salary,
+        promoted_by: userData.user?.id ?? null,
+        promoted_by_name: userData.user?.email ?? null,
+      });
       toast({
         title: `✅ ${r.employee.full_name} promovido(a) para nível ${r.next_level}`,
         description: `Novo salário: ${salaryTxt}. Colaborador saiu da lista de elegíveis (tempo no nível reiniciado).`,
@@ -295,6 +310,21 @@ export default function EligibilityPanel() {
       if (v.to_salary != null) payload.salary = v.to_salary;
       const { error } = await supabase.from("employees").update(payload).eq("id", v.employee.id);
       if (error) throw error;
+      const { data: userData } = await supabase.auth.getUser();
+      await supabase.from("promotion_history").insert({
+        employee_id: v.employee.id,
+        promotion_type: "vertical",
+        from_position: v.from_position,
+        to_position: v.to_position,
+        from_position_id: v.employee.position_id,
+        to_position_id: v.to_position_id,
+        from_level: v.employee.current_level ?? "I",
+        to_level: "I",
+        from_salary: (v as any).from_salary ?? null,
+        to_salary: v.to_salary ?? null,
+        promoted_by: userData.user?.id ?? null,
+        promoted_by_name: userData.user?.email ?? null,
+      });
       toast({ title: `${v.employee.full_name} promovido para ${v.to_position}` });
       compute();
     } catch (e: any) {
