@@ -223,7 +223,7 @@ export default function EligibilityPanel() {
         if (monthsIn < minMonths) gaps.push(`Faltam ${minMonths - monthsIn}m no cargo`);
         if (warns > 0) gaps.push(`${warns} advertência(s) recentes`);
         if (score == null) gaps.push(`Sem avaliação registrada`);
-        else if (score < minScore) gaps.push(`Avaliação ${score}% < ${minScore}%`);
+        else if (score < minScore) gaps.push(`Avaliação ${score.toFixed(1)}% < ${minScore}%`);
 
         vout.push({
           employee: emp,
