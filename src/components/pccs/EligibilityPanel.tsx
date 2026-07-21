@@ -260,13 +260,24 @@ export default function EligibilityPanel() {
   const verticalNear = useMemo(() => verticalResults.filter((v) => !v.is_eligible && v.gaps.length <= 2), [verticalResults]);
 
   const promote = async (r: Result) => {
+    const salaryTxt = r.next_salary != null
+      ? `R$ ${Number(r.next_salary).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+      : "salário atual";
+    if (!confirm(
+      `Promover ${r.employee.full_name} do nível ${r.current_level} para o nível ${r.next_level}?\n\n` +
+      `Novo salário: ${salaryTxt}\n` +
+      `O tempo no nível será reiniciado a partir de hoje.`
+    )) return;
     try {
       const { error } = await supabase
         .from("employees")
         .update({ current_level: r.next_level, level_updated_at: new Date().toISOString(), salary: r.next_salary })
         .eq("id", r.employee.id);
       if (error) throw error;
-      toast({ title: `${r.employee.full_name} promovido para nível ${r.next_level}` });
+      toast({
+        title: `✅ ${r.employee.full_name} promovido(a) para nível ${r.next_level}`,
+        description: `Novo salário: ${salaryTxt}. Colaborador saiu da lista de elegíveis (tempo no nível reiniciado).`,
+      });
       compute();
     } catch (e: any) {
       toast({ title: "Erro ao promover", description: e.message, variant: "destructive" });
