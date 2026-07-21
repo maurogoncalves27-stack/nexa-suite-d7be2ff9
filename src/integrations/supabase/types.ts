@@ -1298,6 +1298,54 @@ export type Database = {
           },
         ]
       }
+      career_track_steps: {
+        Row: {
+          created_at: string
+          from_position_id: string | null
+          id: string
+          notes: string | null
+          order_index: number
+          to_position_id: string
+          track_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          from_position_id?: string | null
+          id?: string
+          notes?: string | null
+          order_index?: number
+          to_position_id: string
+          track_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          from_position_id?: string | null
+          id?: string
+          notes?: string | null
+          order_index?: number
+          to_position_id?: string
+          track_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "career_track_steps_from_position_id_fkey"
+            columns: ["from_position_id"]
+            isOneToOne: false
+            referencedRelation: "positions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "career_track_steps_to_position_id_fkey"
+            columns: ["to_position_id"]
+            isOneToOne: false
+            referencedRelation: "positions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cbo_codes: {
         Row: {
           code: string
@@ -2562,44 +2610,56 @@ export type Database = {
       development_plans: {
         Row: {
           actions: string | null
+          competency: string | null
           created_at: string
           created_by: string | null
           due_date: string | null
           employee_id: string
+          expected_result: string | null
           id: string
           mentor_name: string | null
           notes: string | null
           objective: string
           progress: number
+          responsible_employee_id: string | null
           status: string
+          target_position_id: string | null
           updated_at: string
         }
         Insert: {
           actions?: string | null
+          competency?: string | null
           created_at?: string
           created_by?: string | null
           due_date?: string | null
           employee_id: string
+          expected_result?: string | null
           id?: string
           mentor_name?: string | null
           notes?: string | null
           objective: string
           progress?: number
+          responsible_employee_id?: string | null
           status?: string
+          target_position_id?: string | null
           updated_at?: string
         }
         Update: {
           actions?: string | null
+          competency?: string | null
           created_at?: string
           created_by?: string | null
           due_date?: string | null
           employee_id?: string
+          expected_result?: string | null
           id?: string
           mentor_name?: string | null
           notes?: string | null
           objective?: string
           progress?: number
+          responsible_employee_id?: string | null
           status?: string
+          target_position_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2623,6 +2683,34 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "uniform_pending_returns"
             referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "development_plans_responsible_employee_id_fkey"
+            columns: ["responsible_employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "development_plans_responsible_employee_id_fkey"
+            columns: ["responsible_employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "development_plans_responsible_employee_id_fkey"
+            columns: ["responsible_employee_id"]
+            isOneToOne: false
+            referencedRelation: "uniform_pending_returns"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "development_plans_target_position_id_fkey"
+            columns: ["target_position_id"]
+            isOneToOne: false
+            referencedRelation: "positions"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -13101,6 +13189,47 @@ export type Database = {
           },
         ]
       }
+      position_competencies: {
+        Row: {
+          competency_type: string
+          created_at: string
+          id: string
+          is_required: boolean
+          name: string
+          order_index: number
+          position_id: string
+          updated_at: string
+        }
+        Insert: {
+          competency_type: string
+          created_at?: string
+          id?: string
+          is_required?: boolean
+          name: string
+          order_index?: number
+          position_id: string
+          updated_at?: string
+        }
+        Update: {
+          competency_type?: string
+          created_at?: string
+          id?: string
+          is_required?: boolean
+          name?: string
+          order_index?: number
+          position_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "position_competencies_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "positions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       position_responsibilities: {
         Row: {
           created_at: string
@@ -13133,6 +13262,44 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      position_salary_levels: {
+        Row: {
+          created_at: string
+          id: string
+          level: string
+          order_index: number
+          position_id: string
+          salary: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          level: string
+          order_index?: number
+          position_id: string
+          salary: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          level?: string
+          order_index?: number
+          position_id?: string
+          salary?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "position_salary_levels_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "positions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       position_term_acceptances: {
         Row: {
@@ -13444,6 +13611,121 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      promotion_criteria: {
+        Row: {
+          created_at: string
+          id: string
+          min_attendance_pct: number
+          min_evaluation_score: number
+          min_months_in_role: number
+          no_warnings_months: number
+          notes: string | null
+          position_id: string
+          promotion_type: string
+          require_pdi_completion: boolean
+          require_training_completion: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          min_attendance_pct?: number
+          min_evaluation_score?: number
+          min_months_in_role?: number
+          no_warnings_months?: number
+          notes?: string | null
+          position_id: string
+          promotion_type: string
+          require_pdi_completion?: boolean
+          require_training_completion?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          min_attendance_pct?: number
+          min_evaluation_score?: number
+          min_months_in_role?: number
+          no_warnings_months?: number
+          notes?: string | null
+          position_id?: string
+          promotion_type?: string
+          require_pdi_completion?: boolean
+          require_training_completion?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotion_criteria_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "positions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      promotion_eligibility_snapshots: {
+        Row: {
+          computed_at: string
+          criteria_met: Json
+          employee_id: string
+          gap_notes: string | null
+          id: string
+          is_eligible: boolean
+          promotion_type: string
+          target_position_id: string
+        }
+        Insert: {
+          computed_at?: string
+          criteria_met?: Json
+          employee_id: string
+          gap_notes?: string | null
+          id?: string
+          is_eligible: boolean
+          promotion_type: string
+          target_position_id: string
+        }
+        Update: {
+          computed_at?: string
+          criteria_met?: Json
+          employee_id?: string
+          gap_notes?: string | null
+          id?: string
+          is_eligible?: boolean
+          promotion_type?: string
+          target_position_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotion_eligibility_snapshots_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promotion_eligibility_snapshots_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promotion_eligibility_snapshots_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "uniform_pending_returns"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "promotion_eligibility_snapshots_target_position_id_fkey"
+            columns: ["target_position_id"]
+            isOneToOne: false
+            referencedRelation: "positions"
             referencedColumns: ["id"]
           },
         ]
