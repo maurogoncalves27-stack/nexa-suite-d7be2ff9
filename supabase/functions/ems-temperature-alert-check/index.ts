@@ -152,29 +152,44 @@ Deno.serve(async (req: Request) => {
 
       if (kind === "ok") {
         if (openAlert) {
-          // Resolver e notificar normalização
+          // Resolver o alerta aberto sempre
           await supabase
             .from("nutri_temperature_alerts")
             .update({ resolved_at: new Date().toISOString() })
             .eq("id", openAlert.id);
 
+          // Dedup: só notifica normalização se não houve outra recovered nos últimos 30min
+          const dedupStart = new Date(Date.now() - RECOVERED_DEDUP_MIN * 60_000).toISOString();
+          const { data: recentRecovered } = await supabase
+            .from("nutri_temperature_alerts")
+            .select("id")
+            .eq("sensor_code", sensor.unique_code)
+            .eq("kind", "recovered")
+            .gte("triggered_at", dedupStart)
+            .limit(1);
+          const shouldNotifyRecovered = !(recentRecovered && recentRecovered.length);
+
           const recipients = (recipientsAll ?? []).filter(
             (r) => !r.store_id || r.store_id === sensor.store_id,
           );
           const storeName = sensor.store_id ? storeNames[sensor.store_id] ?? null : null;
-          const message = buildMessage("recovered", sensor, storeName, last ?? null);
           const notified: Array<{ phone: string; name: string; ok: boolean; error?: string }> = [];
-          for (const r of recipients) {
-            const { data: sendData, error: sendErr } = await supabase.functions.invoke("uazapi-send-text", {
-              body: { phone: r.phone, message },
-            });
-            notified.push({
-              phone: r.phone,
-              name: r.name,
-              ok: !sendErr && (sendData as any)?.ok !== false,
-              error: sendErr?.message,
-            });
+
+          if (shouldNotifyRecovered) {
+            const message = buildMessage("recovered", sensor, storeName, last ?? null);
+            for (const r of recipients) {
+              const { data: sendData, error: sendErr } = await supabase.functions.invoke("uazapi-send-text", {
+                body: { phone: r.phone, message },
+              });
+              notified.push({
+                phone: r.phone,
+                name: r.name,
+                ok: !sendErr && (sendData as any)?.ok !== false,
+                error: sendErr?.message,
+              });
+            }
           }
+
           await supabase.from("nutri_temperature_alerts").insert({
             sensor_code: sensor.unique_code,
             store_id: sensor.store_id,
@@ -186,7 +201,12 @@ Deno.serve(async (req: Request) => {
             notified_phones: notified,
             resolved_at: new Date().toISOString(),
           });
-          results.push({ sensor: sensor.unique_code, kind: "recovered", recipients: notified.length });
+          results.push({
+            sensor: sensor.unique_code,
+            kind: "recovered",
+            recipients: notified.length,
+            notified: shouldNotifyRecovered,
+          });
         } else {
           results.push({ sensor: sensor.unique_code, kind: "ok" });
         }
