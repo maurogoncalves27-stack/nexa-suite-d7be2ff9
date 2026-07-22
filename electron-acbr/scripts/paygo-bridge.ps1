@@ -133,6 +133,7 @@ public static class PayGoBridge
     private static string _eventId = "";
     private static string _lastQrEmitted = "";
     private static string _manualConfirmation = "0";
+    private static bool _autoConfirmedInBridge = false;
     private static bool _interactive = false;
     private static byte _currentOperation = 0;
     private static byte _selectedAdminOperation = 0;
@@ -252,6 +253,7 @@ public static class PayGoBridge
             _captureSeq = 0;
             _currentOperation = PWOPER_SALE;
             _manualConfirmation = (manualConfirmation == "1") ? "1" : "0";
+            _autoConfirmedInBridge = false;
             EmitEvent("INFO", "Iniciando venda PayGo TEF saleId=" + saleId + " valorCentavos=" + amountInCents + " metodo=" + method);
 
             Load(dllPath);
@@ -1725,6 +1727,7 @@ public static class PayGoBridge
         Field(sb, "virtMerch", includeConfirmation ? Result(PWINFO_VIRTMERCH) : "", true);
         Field(sb, "authSyst", includeConfirmation ? Result(PWINFO_AUTHSYST) : "", true);
         Field(sb, "cnfReq", Result(PWINFO_CNFREQ), true);
+        sb.Append(",\"autoConfirmed\":").Append(_autoConfirmedInBridge ? "true" : "false");
         sb.Append("}");
         return sb.ToString();
     }
@@ -1868,6 +1871,7 @@ public static class PayGoBridge
             }
             else
             {
+                _autoConfirmedInBridge = true;
                 EmitEvent("CONFIRMED", "Confirmacao automatica enviada apos retorno da transacao (PWCNF_CNF_AUTO).");
             }
         }

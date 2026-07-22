@@ -553,6 +553,22 @@ async function handle(req, res) {
             return paymentStore.get(payment.id);
           }
 
+          // Se o bridge (paygo-bridge.ps1) já enviou PW_iConfirmation(PWCNF_CNF_AUTO)
+          // dentro de FinalizeSaleConfirmation, NÃO chamar confirmarVenda de novo:
+          // a 2ª PW_iConfirmation(PWCNF_CNF_MANU_AUT=0x3221) no mesmo reqNum
+          // (a) volta -2494 (transitório) até o host processar a 1ª e
+          // (b) mantém PWINFO_PNDREQNUM populado por vários segundos, fazendo
+          // qualquer probePending seguinte enxergar pendência fantasma e abrir
+          // o modal na UI, mesmo em venda simples e aprovada.
+          if (data?.autoConfirmed === true) {
+            updatePayment(payment.id, {
+              status: "CONFIRMADA",
+              message: retorno?.message || "Venda confirmada no PayGo (auto)",
+            });
+            publishTefEvent({ paymentId: payment.id, type: "CONFIRMED", message: "Venda confirmada automaticamente pelo bridge (PWCNF_CNF_AUTO)" });
+            return paymentStore.get(payment.id);
+          }
+
           try {
             const confirmationJsonBase64 = Buffer.from(JSON.stringify(paygoTuple), "utf8").toString("base64");
             const confirmRet = await tef.confirmarVenda({ confirmationJsonBase64 });
