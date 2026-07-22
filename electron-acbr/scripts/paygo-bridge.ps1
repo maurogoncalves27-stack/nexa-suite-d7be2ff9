@@ -133,6 +133,7 @@ public static class PayGoBridge
     private static string _eventId = "";
     private static string _lastQrEmitted = "";
     private static string _manualConfirmation = "0";
+    private static bool _autoConfirmedInBridge = false;
     private static bool _interactive = false;
     private static byte _currentOperation = 0;
     private static byte _selectedAdminOperation = 0;
