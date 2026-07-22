@@ -579,19 +579,25 @@ export default function TefTestSaleCard({ storeId }: Props) {
       }
 
       if (data?.type === "APPROVED" && busyRef.current) {
-        // Após APROVADA, checa se a PayGo deixou a transação pendente de
-        // confirmação (PWINFO_PNDREQNUM preenchido). Se sim, abre o modal
-        // — não depende mais do checkbox manualConfirmation.
+        // APPROVED é transitório no fluxo automático: o agente marca a venda
+        // como APROVADA_NAO_CONFIRMADA enquanto ainda vai chamar /confirm.
+        // Isso NÃO é pendência real e não deve abrir modal quando a confirmação
+        // manual está desmarcada. Modal aqui só para:
+        // 1) PENDENTE_CONFIRMACAO real; ou
+        // 2) APROVADA_NAO_CONFIRMADA quando o operador marcou confirmação manual.
         void (async () => {
           await new Promise((resolve) => window.setTimeout(resolve, 600));
           const payment = await fetchPaymentById(agentUrl, paymentId);
-          if (payment && isPaygoPendingApiStatus(payment.status)) {
+          const payStatus = String(payment?.status || "").toUpperCase();
+          const isRealPending = payStatus === "PENDENTE_CONFIRMACAO";
+          const isManualApproval = payStatus === "APROVADA_NAO_CONFIRMADA" && manualConfirmationRef.current;
+          if (payment && (isRealPending || isManualApproval)) {
             setStatus("pending_confirmation");
             setConfirmSaleModalOpen(true);
             await waitAndIngestPendingConfirmation(paymentId, {
               payment,
               fromAgentSync: true,
-              forceAgentProbe: true,
+              forceAgentProbe: isRealPending,
               openModal: true,
               maxAttempts: 6,
             });
