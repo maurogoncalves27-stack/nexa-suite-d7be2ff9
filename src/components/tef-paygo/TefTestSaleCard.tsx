@@ -557,26 +557,31 @@ export default function TefTestSaleCard({ storeId }: Props) {
         || (data?.type === "INFO" && isPendingEventMessage(String(data?.message || "")));
 
       if (isPendingEvent && busyRef.current) {
-        const openModal = manualConfirmationRef.current;
+        // Comportamento correto: sempre abrir o modal de pendência ao detectar
+        // transação pendente na PayGo, independentemente da flag manualConfirmation.
         void (async () => {
           const ingested = await waitAndIngestPendingConfirmation(paymentId, {
             fromAgentSync: true,
             forceAgentProbe: true,
-            openModal,
+            openModal: true,
             maxAttempts: 8,
           });
           if (ingested) {
-            if (openModal) {
-              setStatus("pending_confirmation");
-              setConfirmSaleModalOpen(true);
-            } else {
-              setConfirmSaleModalOpen(false);
-            }
+            setStatus("pending_confirmation");
+            setConfirmSaleModalOpen(true);
+          } else {
+            // Mesmo sem conseguir ingerir no Supabase, mostra o modal com o que
+            // temos do agente para o operador decidir confirmar/desfazer.
+            setStatus("pending_confirmation");
+            setConfirmSaleModalOpen(true);
           }
         })();
       }
 
-      if (data?.type === "APPROVED" && busyRef.current && manualConfirmationRef.current) {
+      if (data?.type === "APPROVED" && busyRef.current) {
+        // Após APROVADA, checa se a PayGo deixou a transação pendente de
+        // confirmação (PWINFO_PNDREQNUM preenchido). Se sim, abre o modal
+        // — não depende mais do checkbox manualConfirmation.
         void (async () => {
           await new Promise((resolve) => window.setTimeout(resolve, 600));
           const payment = await fetchPaymentById(agentUrl, paymentId);
