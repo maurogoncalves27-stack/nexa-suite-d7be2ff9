@@ -253,6 +253,7 @@ public static class PayGoBridge
             _captureSeq = 0;
             _currentOperation = PWOPER_SALE;
             _manualConfirmation = (manualConfirmation == "1") ? "1" : "0";
+            _autoConfirmedInBridge = false;
             EmitEvent("INFO", "Iniciando venda PayGo TEF saleId=" + saleId + " valorCentavos=" + amountInCents + " metodo=" + method);
 
             Load(dllPath);
