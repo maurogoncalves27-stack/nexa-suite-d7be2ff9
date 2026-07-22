@@ -552,14 +552,32 @@ public static class PayGoBridge
             short ret = Init(workingDir);
             if (ret != PWRET_OK) return Error("PW_iInit", ret);
 
-            EmitEvent("INFO", "Cleanup: forcando PW_iConfirmation(PWCNF_REV_MANU_AUT) com params vazios");
-            short cnfRet = ConfirmWithRetry(PWCNF_REV_MANU_AUT, "", "", "", "", "", "cleanup");
+            // CORRIGIDO: NUNCA chamar PW_iConfirmation com params vazios.
+            // Isso poluía os comms logs com "0x3231 (, , , , , )" mesmo quando
+            // nao havia nada a desfazer, e a retentativa de -2494 gerava 2-3
+            // linhas por chamada. Agora resolvemos os campos PWINFO_PND* primeiro
+            // e só emitimos o PW_iConfirmation se houver pendencia real.
+            string pndReqNum = Result(PWINFO_PNDREQNUM);
+            if (String.IsNullOrWhiteSpace(pndReqNum))
+            {
+                EmitEvent("INFO", "Cleanup: PGWebLib nao possui pendencia (PWINFO_PNDREQNUM vazio) — nada a fazer.");
+                return "{\"ok\":true,\"status\":\"noPending\",\"message\":\"Sem pendencia PayGo\",\"ret\":0}";
+            }
+
+            EmitEvent("INFO", "Cleanup: pendencia detectada reqNum=" + pndReqNum + " — enviando PWCNF_REV_MANU_AUT.");
+            short cnfRet = ConfirmWithRetry(
+                PWCNF_REV_MANU_AUT,
+                pndReqNum,
+                Result(PWINFO_PNDAUTLOCREF),
+                Result(PWINFO_PNDAUTEXTREF),
+                Result(PWINFO_PNDVIRTMERCH),
+                Result(PWINFO_PNDAUTHSYST),
+                "cleanup"
+            );
             if (cnfRet != PWRET_OK)
             {
-                EmitEvent("INFO", "Cleanup: PW_iConfirmation ret=" + cnfRet + " (nenhuma pendencia ou ja limpa)");
-                // Não tratamos como erro fatal — se não havia pendência, a DLL
-                // retorna algo != 0 e tudo bem, a próxima venda funciona.
-                return "{\"ok\":true,\"status\":\"cleanup\",\"message\":\"Sem pendencia a limpar (ret=" + cnfRet + ")\",\"ret\":" + cnfRet + "}";
+                EmitEvent("INFO", "Cleanup: PW_iConfirmation ret=" + cnfRet);
+                return "{\"ok\":false,\"status\":\"cleanupFailed\",\"message\":\"Falha ao desfazer pendencia (ret=" + cnfRet + ")\",\"ret\":" + cnfRet + "}";
             }
 
             EmitEvent("CONFIRMED", "Cleanup: pendencia anterior desfeita com sucesso");
