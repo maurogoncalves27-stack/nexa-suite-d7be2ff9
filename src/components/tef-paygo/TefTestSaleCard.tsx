@@ -557,8 +557,8 @@ export default function TefTestSaleCard({ storeId }: Props) {
         || (data?.type === "INFO" && isPendingEventMessage(String(data?.message || "")));
 
       if (isPendingEvent && busyRef.current) {
-        // Comportamento correto: sempre abrir o modal de pendência ao detectar
-        // transação pendente na PayGo, independentemente da flag manualConfirmation.
+        // Só abre modal se o agente confirmar PNDREQNUM ativo. Eventos PENDING
+        // podem chegar atrasados ou de arquivo local stale já resolvido.
         void (async () => {
           const ingested = await waitAndIngestPendingConfirmation(paymentId, {
             fromAgentSync: true,
@@ -569,9 +569,11 @@ export default function TefTestSaleCard({ storeId }: Props) {
           if (ingested) {
             setStatus("pending_confirmation");
             setConfirmSaleModalOpen(true);
-          } else {
-            // Mesmo sem conseguir ingerir no Supabase, mostra o modal com o que
-            // temos do agente para o operador decidir confirmar/desfazer.
+            return;
+          }
+
+          const { pending } = await fetchAgentPendingConfirmation(agentUrl);
+          if (pending?.reqNum) {
             setStatus("pending_confirmation");
             setConfirmSaleModalOpen(true);
           }
@@ -895,6 +897,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
       const resp = await fetch(joinAgentUrl(baseUrl, "/api/tef/pending"));
       if (!resp.ok) return { pending: null, api: null };
       const data = await resp.json().catch(() => ({} as any));
+      if (data?.hasPending === false) return { pending: null, api: data };
       const stored = data?.pending;
       const tuple = data?.tuple || stored;
       if (!tuple?.reqNum && !data?.reqNum) return { pending: null, api: data };
