@@ -446,12 +446,12 @@ async function getPendingDetails() {
   const probeReqNum = probeData?.reqNum;
   if (probeReqNum && wasRecentlyResolved(probeReqNum) && !stored?.reqNum) {
     console.log(`[TEF] Pendência ${probeReqNum} já resolvida nesta sessão; ignorando probe residual.`);
-    // Best-effort: força cleanup na DLL para sumir com o resíduo interno.
-    try {
-      await runBridge({ action: "cleanup" }, { timeoutMs: 8000, stopHostOnTimeout: false });
-    } catch (e) {
-      console.warn("[TEF] cleanup pós-resolução falhou:", e.message);
-    }
+    // NÃO chamar cleanup na DLL aqui: `cleanup` dispara
+    // PW_iConfirmation(PWCNF_REV_MANU_AUT=0x3231) com params vazios, o que
+    // (a) semanticamente é um desfazimento — se o host ainda tivesse algo
+    // pendente diferente do que resolvemos, seria revertido silenciosamente;
+    // (b) sempre volta -2494 e vira ruído no comms.log. O dedup por
+    // wasRecentlyResolved já basta pra suprimir o modal residual.
     return buildPendingDetailsFromStored(null, { status: "noPending" }, {});
   }
 
