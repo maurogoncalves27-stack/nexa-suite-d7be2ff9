@@ -1727,6 +1727,7 @@ public static class PayGoBridge
         Field(sb, "virtMerch", includeConfirmation ? Result(PWINFO_VIRTMERCH) : "", true);
         Field(sb, "authSyst", includeConfirmation ? Result(PWINFO_AUTHSYST) : "", true);
         Field(sb, "cnfReq", Result(PWINFO_CNFREQ), true);
+        sb.Append(",\"autoConfirmed\":").Append(_autoConfirmedInBridge ? "true" : "false");
         sb.Append("}");
         return sb.ToString();
     }
