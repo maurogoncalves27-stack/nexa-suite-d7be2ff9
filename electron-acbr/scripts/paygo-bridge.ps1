@@ -1870,6 +1870,7 @@ public static class PayGoBridge
             }
             else
             {
+                _autoConfirmedInBridge = true;
                 EmitEvent("CONFIRMED", "Confirmacao automatica enviada apos retorno da transacao (PWCNF_CNF_AUTO).");
             }
         }
