@@ -433,11 +433,13 @@ async function getPendingDetails() {
   }
 
   if (stored?.reqNum && probePayload?.status === "noPending") {
-    // A PGWebLib nem sempre popula PWINFO_PND* em probes leves (PW_iInit).
-    // Se temos arquivo local de uma venda aprovada e ainda não resolvida, ele é
-    // a fonte confiável até confirmação/desfazimento explícito pelo operador.
-    console.log("[TEF] Probe leve não expôs PND*, preservando pendência local aguardando resolução manual.");
-    return buildPendingDetailsFromStored(stored, probePayload, probeData);
+    // A fonte de verdade para pendência real é PWINFO_PNDREQNUM. Se o probe do
+    // bridge voltou noPending, o arquivo local é resíduo antigo e não pode mais
+    // bloquear venda nem reabrir o modal.
+    console.log(`[TEF] Arquivo local de pendência ${stored.reqNum} não existe mais na PGWebLib; limpando resíduo.`);
+    markPendingResolved(stored.reqNum, "probe-noPending");
+    clearPendingConfirmation();
+    return buildPendingDetailsFromStored(null, probePayload, {});
   }
 
   // Se o probe traz um reqNum que o operador acabou de confirmar/desfazer nesta
