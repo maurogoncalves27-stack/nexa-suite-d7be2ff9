@@ -209,8 +209,35 @@ function clearPendingConfirmation() {
 // preenchido no próximo PW_iInit (residual em memória/arquivo local antes do
 // host processar a baixa). Sem esse dedup, o probe da próxima venda enxerga o
 // MESMO reqNum já resolvido e re-abre o modal de pendência indefinidamente.
-const RECENTLY_RESOLVED_TTL_MS = 5 * 60 * 1000;
+const RECENTLY_RESOLVED_TTL_MS = 60 * 60 * 1000; // 1h — sobrevive a restart do agente
+const RESOLVED_FILE = path.join(PENDING_DIR, "paygo-resolved-pending.json");
 const recentlyResolvedPending = new Map(); // reqNum -> { at, action }
+
+function loadResolvedFromDisk() {
+  try {
+    if (!fs.existsSync(RESOLVED_FILE)) return;
+    const raw = JSON.parse(fs.readFileSync(RESOLVED_FILE, "utf8"));
+    const now = Date.now();
+    if (Array.isArray(raw)) {
+      for (const entry of raw) {
+        if (entry?.reqNum && entry?.at && now - entry.at <= RECENTLY_RESOLVED_TTL_MS) {
+          recentlyResolvedPending.set(String(entry.reqNum), { at: entry.at, action: entry.action || "unknown" });
+        }
+      }
+    }
+  } catch { /* ignore */ }
+}
+
+function persistResolvedToDisk() {
+  try {
+    ensurePendingDir();
+    const arr = [];
+    for (const [reqNum, val] of recentlyResolvedPending) {
+      arr.push({ reqNum, at: val.at, action: val.action });
+    }
+    fs.writeFileSync(RESOLVED_FILE, JSON.stringify(arr, null, 2));
+  } catch { /* ignore */ }
+}
 
 function markPendingResolved(reqNum, action) {
   if (!reqNum) return;
@@ -219,6 +246,7 @@ function markPendingResolved(reqNum, action) {
   for (const [key, val] of recentlyResolvedPending) {
     if (now - val.at > RECENTLY_RESOLVED_TTL_MS) recentlyResolvedPending.delete(key);
   }
+  persistResolvedToDisk();
 }
 
 function wasRecentlyResolved(reqNum) {
@@ -227,10 +255,13 @@ function wasRecentlyResolved(reqNum) {
   if (!entry) return false;
   if (Date.now() - entry.at > RECENTLY_RESOLVED_TTL_MS) {
     recentlyResolvedPending.delete(String(reqNum));
+    persistResolvedToDisk();
     return false;
   }
   return true;
 }
+
+loadResolvedFromDisk();
 
 function encodeConfirmationJson(data) {
   return Buffer.from(JSON.stringify({
@@ -415,12 +446,12 @@ async function getPendingDetails() {
   const probeReqNum = probeData?.reqNum;
   if (probeReqNum && wasRecentlyResolved(probeReqNum) && !stored?.reqNum) {
     console.log(`[TEF] Pendência ${probeReqNum} já resolvida nesta sessão; ignorando probe residual.`);
-    // Best-effort: força cleanup na DLL para sumir com o resíduo interno.
-    try {
-      await runBridge({ action: "cleanup" }, { timeoutMs: 8000, stopHostOnTimeout: false });
-    } catch (e) {
-      console.warn("[TEF] cleanup pós-resolução falhou:", e.message);
-    }
+    // NÃO chamar cleanup na DLL aqui: `cleanup` dispara
+    // PW_iConfirmation(PWCNF_REV_MANU_AUT=0x3231) com params vazios, o que
+    // (a) semanticamente é um desfazimento — se o host ainda tivesse algo
+    // pendente diferente do que resolvemos, seria revertido silenciosamente;
+    // (b) sempre volta -2494 e vira ruído no comms.log. O dedup por
+    // wasRecentlyResolved já basta pra suprimir o modal residual.
     return buildPendingDetailsFromStored(null, { status: "noPending" }, {});
   }
 
