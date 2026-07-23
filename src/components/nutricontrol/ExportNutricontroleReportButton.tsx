@@ -56,8 +56,13 @@ export default function ExportNutricontroleReportButton({ storeId }: Props) {
       const schedIds = Array.from(new Set(((schedEmps.data ?? []) as any[]).map((r) => r.employee_id).filter(Boolean)));
       const missingIds = schedIds.filter((id) => !empMap.has(id));
       if (missingIds.length) {
-        const { data: extras } = await supabase.from("employees").select("id, full_name, position, status").in("id", missingIds).eq("status", "active");
-        (extras ?? []).forEach((e: any) => empMap.set(e.id, { id: e.id, name: e.full_name, position: e.position ?? "" }));
+        const { data: extras } = await supabase.from("employees").select("id, full_name, position, status, allocated_store_id").in("id", missingIds).eq("status", "active");
+        // Só adiciona quem tem escala nessa loja E não está allocated em outra
+        (extras ?? []).forEach((e: any) => {
+          if (!e.allocated_store_id || e.allocated_store_id === storeId) {
+            empMap.set(e.id, { id: e.id, name: e.full_name, position: e.position ?? "" });
+          }
+        });
       }
       const empIds = Array.from(empMap.keys());
       const asoMap = new Map<string, { document_type: string; certificate_date: string; valid_until: string | null }>();
