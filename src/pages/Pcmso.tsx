@@ -168,22 +168,38 @@ export default function Pcmso({ embedded = false }: { embedded?: boolean } = {})
   const expiring = useMemo(() => docs.filter((d) => d.valid_until && d.valid_until >= today && d.valid_until <= in30), [docs]);
   const expired = useMemo(() => docs.filter((d) => d.valid_until && d.valid_until < today), [docs]);
 
-  const { grouped, terminatedDocs } = useMemo(() => {
-    const map = new Map<string, { name: string; store?: string | null; docs: Doc[] }>();
+  const { groupedByStore, terminatedDocs } = useMemo(() => {
+    const empMap = new Map<string, { name: string; store?: string | null; docs: Doc[] }>();
     const term: Doc[] = [];
     for (const d of docs) {
       if (d.employee?.status === "terminated") { term.push(d); continue; }
       const key = d.employee_id;
-      if (!map.has(key)) {
-        map.set(key, { name: d.employee?.full_name ?? "—", store: d.employee?.store?.name ?? null, docs: [] });
+      if (!empMap.has(key)) {
+        empMap.set(key, { name: d.employee?.full_name ?? "—", store: d.employee?.store?.name ?? null, docs: [] });
       }
-      map.get(key)!.docs.push(d);
+      empMap.get(key)!.docs.push(d);
     }
-    const arr = Array.from(map.entries())
+    const employees = Array.from(empMap.entries())
       .map(([id, v]) => ({ id, ...v }))
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
-    return { grouped: arr, terminatedDocs: term };
+
+    const storeMap = new Map<string, typeof employees>();
+    for (const e of employees) {
+      const key = e.store ?? "Sem loja";
+      if (!storeMap.has(key)) storeMap.set(key, []);
+      storeMap.get(key)!.push(e);
+    }
+    const groupedByStore = Array.from(storeMap.entries())
+      .map(([store, emps]) => ({
+        store,
+        employees: emps,
+        docsCount: emps.reduce((s, e) => s + e.docs.length, 0),
+      }))
+      .sort((a, b) => a.store.localeCompare(b.store, "pt-BR"));
+
+    return { groupedByStore, terminatedDocs: term };
   }, [docs]);
+
 
   return (
     <div className="space-y-6">
