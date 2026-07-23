@@ -450,6 +450,72 @@ export function generateNutricontroleReportPdf(d: NutriReportData): jsPDF {
     });
   }
 
+  // ============= 10. ASOs DOS COLABORADORES =============
+  newSection(
+    10,
+    "ASOs dos colaboradores alocados",
+    "Situação dos Atestados de Saúde Ocupacional dos colaboradores alocados nesta loja (por cadastro ou escala).",
+  );
+  const asos = d.employeeAsos ?? [];
+  if (!asos.length) empty("Nenhum colaborador alocado nesta loja no período.");
+  else {
+    const vigentes = asos.filter((a) => a.status === "vigente").length;
+    const vencendo = asos.filter((a) => a.status === "vence_em_30d").length;
+    const vencidos = asos.filter((a) => a.status === "vencido" || a.status === "sem_aso").length;
+
+    const asoKpis: Array<{ label: string; value: number; danger?: boolean; warn?: boolean }> = [
+      { label: "Colaboradores alocados", value: asos.length },
+      { label: "ASOs vigentes", value: vigentes },
+      { label: "Vencendo em 30 dias", value: vencendo, warn: vencendo > 0 },
+      { label: "Vencidos / sem ASO", value: vencidos, danger: vencidos > 0 },
+    ];
+    const perRow = 4;
+    const kGap = 10;
+    const kW = (pageW - margin * 2 - kGap * (perRow - 1)) / perRow;
+    const kH = 56;
+    asoKpis.forEach((k, i) => {
+      const x = margin + i * (kW + kGap);
+      doc.setDrawColor(220).setLineWidth(0.5).setFillColor(250, 251, 253);
+      doc.roundedRect(x, y, kW, kH, 4, 4, "FD");
+      doc.setFont("helvetica", "normal").setFontSize(8.5).setTextColor(...MUTED);
+      doc.text(k.label, x + 10, y + 16);
+      doc.setFont("helvetica", "bold").setFontSize(20);
+      doc.setTextColor(...(k.danger ? DANGER : k.warn ? [217, 119, 6] as [number, number, number] : PRIMARY));
+      doc.text(String(k.value), x + 10, y + 44);
+      doc.setTextColor(0);
+    });
+    y += kH + 16;
+
+    const order = { vencido: 0, sem_aso: 1, vence_em_30d: 2, vigente: 3 } as const;
+    const sorted = [...asos].sort((a, b) => {
+      const d1 = order[a.status] - order[b.status];
+      if (d1 !== 0) return d1;
+      return a.employee_name.localeCompare(b.employee_name);
+    });
+
+    const body = sorted.map((a) => {
+      const color =
+        a.status === "vencido" || a.status === "sem_aso" ? DANGER :
+        a.status === "vence_em_30d" ? ([217, 119, 6] as [number, number, number]) :
+        SUCCESS;
+      return [
+        a.employee_name,
+        a.position || "—",
+        ASO_TYPE_LABEL[a.aso_type] ?? a.aso_type ?? "—",
+        a.certificate_date ? fmtDate(a.certificate_date) : "—",
+        a.valid_until ? fmtDate(a.valid_until) : "—",
+        { content: ASO_STATUS_LABEL[a.status] ?? a.status, styles: { textColor: color, fontStyle: "bold", halign: "center" } },
+      ];
+    });
+    runTable(["Colaborador", "Cargo", "Tipo do ASO", "Emissão", "Vencimento", "Situação"], body, {
+      1: { cellWidth: 90 },
+      2: { cellWidth: 90 },
+      3: { cellWidth: 65, halign: "center" },
+      4: { cellWidth: 65, halign: "center" },
+      5: { cellWidth: 80 },
+    });
+  }
+
   // ============= FOOTER + PAGE NUMBERS =============
   const total = doc.getNumberOfPages();
   for (let i = 1; i <= total; i++) {
