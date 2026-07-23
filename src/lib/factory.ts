@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 export type RecipeScope = "fabrica" | "loja";
 
 export const isFactoryName = (name?: string | null) =>
-  !!name && /f[áa]brica/i.test(name);
+  !!name && (/f[áa]brica/i.test(name) || /\bcd\b/i.test(name));
 
 /**
  * Determina o escopo das fichas técnicas que o funcionário pode produzir
