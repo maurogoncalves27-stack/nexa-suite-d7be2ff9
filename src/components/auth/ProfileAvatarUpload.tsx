@@ -106,12 +106,6 @@ export default function ProfileAvatarUpload({
             <Upload className="h-4 w-4 mr-2" />
             {hasAvatar ? "Trocar foto" : "Adicionar foto"}
           </DropdownMenuItem>
-          {hasAvatar && (
-            <DropdownMenuItem onClick={remove} className="text-destructive focus:text-destructive">
-              <Trash2 className="h-4 w-4 mr-2" />
-              Remover foto
-            </DropdownMenuItem>
-          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </>
