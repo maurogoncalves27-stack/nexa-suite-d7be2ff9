@@ -181,6 +181,10 @@ export default function NutriSensors() {
 
         <TabsContent value="temperature" className="space-y-4">
           <div className="flex gap-2 flex-wrap justify-end">
+            <Button variant="outline" onClick={() => setTypesOpen(true)}>
+              <Wrench className="h-4 w-4 mr-2" />
+              Configurar equipamentos
+            </Button>
             <Button variant="outline" onClick={runSync} disabled={syncing}>
               <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
               Sincronizar agora
@@ -190,6 +194,7 @@ export default function NutriSensors() {
               Adicionar sensor
             </Button>
           </div>
+
 
 
       {loading ? (
