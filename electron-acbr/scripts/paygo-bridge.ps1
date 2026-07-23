@@ -413,11 +413,25 @@ public static class PayGoBridge
             if (ret == BRIDGE_ADMIN_OPERATION_FINISHED)
             {
                 EmitEvent("INFO", "Operacao administrativa finalizada pela PayGo");
+                // Mesmo em caminho "finished" sem erro, checar pendencia — algumas
+                // operacoes administrativas (ex.: Relatorio Sintetico) deixam
+                // PWINFO_PNDREQNUM preenchido e travariam a proxima transacao
+                // com ERRO DE AUTENTICACAO DO PONTO DE CAPTURA.
+                TryConfirmPendency();
                 _interactive = false;
                 return Json("ok", true, "Operacao PayGo concluida", PWRET_OK, ResultsJson(true));
             }
 
-            if (ret != PWRET_OK) return Error("PW_iExecTransac", ret);
+            if (ret != PWRET_OK)
+            {
+                // Caminho de erro/cancelamento (ex.: operador abandonou o menu
+                // administrativo, PWRET_CANCEL). Ainda assim precisamos limpar
+                // qualquer pendencia registrada pela DLL para a proxima operacao
+                // nao herdar o token PGWEB: da transacao ADMIN abortada.
+                TryConfirmPendency();
+                _interactive = false;
+                return Error("PW_iExecTransac", ret);
+            }
 
             // Pendencia: espelha Fluxos.FluxoConfirmacaoPendencia da demo oficial.
             // Apos ADMIN, se ficou pendencia confirma automaticamente para nao
@@ -436,10 +450,16 @@ public static class PayGoBridge
         }
         catch (Exception ex)
         {
+            // Em excecoes tambem tentamos confirmar pendencia — a DLL pode ter
+            // registrado PWINFO_PNDREQNUM antes da falha (ex.: menu abandonado
+            // durante Relatorio Sintetico) e sem esse cleanup a proxima
+            // transacao falha em "ERRO DE AUTENTICACAO DO PONTO DE CAPTURA".
+            try { TryConfirmPendency(); } catch { }
             _interactive = false;
             return "{\"ok\":false,\"status\":\"error\",\"message\":\"" + Esc(ex.Message) + "\"}";
         }
     }
+
 
     private static short ExecuteOperation(byte operation)
     {
