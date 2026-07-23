@@ -72,6 +72,14 @@ export default function NutriSensors() {
   const [editing, setEditing] = useState<Equip | null>(null);
   const [editingEms, setEditingEms] = useState<EmsSensor | null>(null);
   const [emsSensors, setEmsSensors] = useState<EmsSensor[]>([]);
+  const [equipTypes, setEquipTypes] = useState<EquipType[]>([]);
+  const [typesOpen, setTypesOpen] = useState(false);
+
+  async function loadTypes() {
+    const { data } = await supabase.from("nutri_equipment_types").select("*").order("sort_order").order("name");
+    setEquipTypes((data ?? []) as EquipType[]);
+  }
+
 
 
   async function load() {
