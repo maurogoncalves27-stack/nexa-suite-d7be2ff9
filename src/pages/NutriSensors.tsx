@@ -613,20 +613,24 @@ function AddSensorDialog({
 
 
 function EditSensorDialog({
-  equip, stores, onOpenChange, onSaved,
+  equip, stores, types, onOpenChange, onSaved,
 }: {
   equip: Equip | null;
   stores: Store[];
+  types: EquipType[];
   onOpenChange: (o: boolean) => void;
   onSaved: () => void;
 }) {
   const [name, setName] = useState("");
   const [storeId, setStoreId] = useState("");
+  const [typeId, setTypeId] = useState<string>("");
   const [minTemp, setMinTemp] = useState("");
   const [maxTemp, setMaxTemp] = useState("");
   const [delay, setDelay] = useState("15");
   const [active, setActive] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const activeTypes = useMemo(() => types.filter((t) => t.active), [types]);
 
   useEffect(() => {
     if (equip) {
@@ -636,8 +640,22 @@ function EditSensorDialog({
       setMaxTemp(equip.max_temp_c?.toString() ?? "");
       setDelay(equip.alert_delay_minutes.toString());
       setActive(equip.tuya_active);
+      // pré-seleciona tipo cuja faixa bate exatamente
+      const match = types.find(
+        (t) => t.active && t.min_temp_c === equip.min_temp_c && t.max_temp_c === equip.max_temp_c,
+      );
+      setTypeId(match?.id ?? "");
     }
-  }, [equip]);
+  }, [equip, types]);
+
+  function onTypeChange(id: string) {
+    setTypeId(id);
+    const def = activeTypes.find((t) => t.id === id);
+    if (def) {
+      setMinTemp(String(def.min_temp_c));
+      setMaxTemp(String(def.max_temp_c));
+    }
+  }
 
   async function save() {
     if (!equip) return;
@@ -688,6 +706,22 @@ function EditSensorDialog({
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>Tipo de equipamento</Label>
+              <Select value={typeId} onValueChange={onTypeChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder={activeTypes.length ? "Escolha…" : "Nenhum equipamento cadastrado"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeTypes.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.name} ({t.min_temp_c}~{t.max_temp_c}°C)</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Selecionar preenche Mín/Máx automaticamente. Gerencie em "Configurar equipamentos".
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Mín °C</Label>
@@ -702,6 +736,7 @@ function EditSensorDialog({
               <Label>Alertar após (min fora da faixa)</Label>
               <Input type="number" value={delay} onChange={(e) => setDelay(e.target.value)} />
             </div>
+
             <div className="flex items-center justify-between border rounded-md p-3">
               <div>
                 <div className="text-sm font-medium">Monitoramento ativo</div>
