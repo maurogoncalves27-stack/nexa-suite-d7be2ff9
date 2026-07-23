@@ -316,7 +316,12 @@ export default function NutriSensors() {
           ))}
         </div>
       )}
+        </TabsContent>
 
+        <TabsContent value="others">
+          <SmartDevicesPanel />
+        </TabsContent>
+      </Tabs>
 
       <AddSensorDialog
         open={addOpen}
