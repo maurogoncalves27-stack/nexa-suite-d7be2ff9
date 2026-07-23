@@ -121,6 +121,7 @@ export function generateNutricontroleReportPdf(d: NutriReportData): jsPDF {
       "7.  Controle de pragas",
       "8.  Manutenção de equipamentos",
       "9.  Higienização de caixa d'água",
+      "10. ASOs dos colaboradores alocados",
     ];
     doc.setFont("helvetica", "normal").setFontSize(11).setTextColor(0);
     sections.forEach((s, i) => doc.text(s, margin, sumY + 30 + i * 20));
