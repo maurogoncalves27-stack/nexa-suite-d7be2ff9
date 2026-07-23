@@ -373,9 +373,11 @@ export default function NutriSensors() {
       <EditSensorDialog
         equip={editing}
         stores={stores}
+        types={equipTypes}
         onOpenChange={(o) => !o && setEditing(null)}
         onSaved={() => { setEditing(null); load(); }}
       />
+
 
       <EditEmsSensorDialog
         sensor={editingEms}
