@@ -721,3 +721,120 @@ function EditSensorDialog({
     </Dialog>
   );
 }
+
+function EquipmentTypesDialog({
+  open, onOpenChange, types, onChanged,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  types: EquipType[];
+  onChanged: () => void;
+}) {
+  const [newName, setNewName] = useState("");
+  const [newMin, setNewMin] = useState("");
+  const [newMax, setNewMax] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function addType() {
+    if (!newName || newMin === "" || newMax === "") return toast.error("Preencha nome e faixa");
+    setSaving(true);
+    const { error } = await supabase.from("nutri_equipment_types").insert({
+      name: newName,
+      min_temp_c: Number(newMin),
+      max_temp_c: Number(newMax),
+      sort_order: (types.at(-1)?.sort_order ?? 0) + 1,
+    });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    setNewName(""); setNewMin(""); setNewMax("");
+    toast.success("Equipamento cadastrado");
+    onChanged();
+  }
+
+  async function updateType(id: string, patch: Partial<EquipType>) {
+    const { error } = await supabase.from("nutri_equipment_types").update(patch).eq("id", id);
+    if (error) return toast.error(error.message);
+    onChanged();
+  }
+
+  async function removeType(id: string) {
+    if (!confirm("Excluir este equipamento? Sensores já vinculados mantêm sua faixa atual.")) return;
+    const { error } = await supabase.from("nutri_equipment_types").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Equipamento removido");
+    onChanged();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Configurar equipamentos e faixas</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Estes equipamentos aparecem no select ao cadastrar um novo sensor, já com a faixa de temperatura padrão.
+          </p>
+
+          <div className="space-y-2">
+            {types.length === 0 && (
+              <div className="text-sm text-muted-foreground text-center py-4">Nenhum equipamento cadastrado.</div>
+            )}
+            {types.map((t) => (
+              <div key={t.id} className="grid grid-cols-12 gap-2 items-center border rounded-md p-2">
+                <Input
+                  className="col-span-5"
+                  defaultValue={t.name}
+                  onBlur={(e) => e.target.value !== t.name && updateType(t.id, { name: e.target.value })}
+                />
+                <Input
+                  className="col-span-2"
+                  type="number" step="0.1"
+                  defaultValue={t.min_temp_c}
+                  onBlur={(e) => Number(e.target.value) !== Number(t.min_temp_c) && updateType(t.id, { min_temp_c: Number(e.target.value) })}
+                />
+                <Input
+                  className="col-span-2"
+                  type="number" step="0.1"
+                  defaultValue={t.max_temp_c}
+                  onBlur={(e) => Number(e.target.value) !== Number(t.max_temp_c) && updateType(t.id, { max_temp_c: Number(e.target.value) })}
+                />
+                <div className="col-span-2 flex items-center gap-1 text-xs">
+                  <Switch checked={t.active} onCheckedChange={(v) => updateType(t.id, { active: v })} />
+                  <span className="text-muted-foreground">{t.active ? "Ativo" : "Inativo"}</span>
+                </div>
+                <Button variant="ghost" size="icon" className="col-span-1" onClick={() => removeType(t.id)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t pt-3 space-y-2">
+            <Label className="text-sm font-semibold">Novo equipamento</Label>
+            <div className="grid grid-cols-12 gap-2 items-end">
+              <div className="col-span-5">
+                <Label className="text-xs">Nome</Label>
+                <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ex: Câmara de peixes" />
+              </div>
+              <div className="col-span-2">
+                <Label className="text-xs">Mín °C</Label>
+                <Input type="number" step="0.1" value={newMin} onChange={(e) => setNewMin(e.target.value)} />
+              </div>
+              <div className="col-span-2">
+                <Label className="text-xs">Máx °C</Label>
+                <Input type="number" step="0.1" value={newMax} onChange={(e) => setNewMax(e.target.value)} />
+              </div>
+              <Button className="col-span-3" onClick={addType} disabled={saving}>
+                <Plus className="h-4 w-4 mr-1" /> Adicionar
+              </Button>
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
