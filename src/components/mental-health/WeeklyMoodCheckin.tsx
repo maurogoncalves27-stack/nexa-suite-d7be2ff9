@@ -112,6 +112,8 @@ export default function WeeklyMoodCheckin() {
       }
     })();
     return () => { cancelled = true; };
+  }, [user, loading, checked, today]);
+
   const save = async (score: number) => {
     if (!employeeId || !user || saving) return;
     setSaving(true);
