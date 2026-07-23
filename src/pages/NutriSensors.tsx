@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Thermometer, RefreshCw, Plus, Settings2, Wifi, WifiOff } from "lucide-react";
+import { Thermometer, RefreshCw, Plus, Settings2, Wifi, WifiOff, Battery, BatteryLow, BatteryMedium, BatteryFull, Store as StoreIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +29,7 @@ type Equip = {
   last_temp_c: number | null;
   last_humidity_pct: number | null;
   last_online: boolean;
+  last_battery_pct: number | null;
 };
 type TuyaDevice = {
   device_id: string;
@@ -124,6 +125,28 @@ export default function NutriSensors() {
   const linkedIds = useMemo(() => new Set(equips.map((e) => e.tuya_device_id)), [equips]);
   const availableDevices = devices.filter((d) => !linkedIds.has(d.device_id));
 
+  // Agrupa TODOS os sensores (EMS-A + Tuya) por loja
+  const groupedByStore = useMemo(() => {
+    const map = new Map<string, { store: Store | null; ems: EmsSensor[]; tuya: Equip[] }>();
+    const bucket = (id: string | null) => {
+      const key = id ?? "__unassigned";
+      if (!map.has(key)) {
+        map.set(key, { store: stores.find((s) => s.id === id) ?? null, ems: [], tuya: [] });
+      }
+      return map.get(key)!;
+    };
+    for (const s of emsSensors) bucket(s.store_id).ems.push(s);
+    for (const e of equips) bucket(e.store_id).tuya.push(e);
+    // ordena: lojas com nome primeiro (alfabético), depois "sem loja"
+    return Array.from(map.entries()).sort(([ka, a], [kb, b]) => {
+      if (ka === "__unassigned") return 1;
+      if (kb === "__unassigned") return -1;
+      return (a.store?.name ?? "").localeCompare(b.store?.name ?? "");
+    });
+  }, [emsSensors, equips, stores]);
+
+  const hasAny = emsSensors.length > 0 || equips.length > 0;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
@@ -133,10 +156,10 @@ export default function NutriSensors() {
             Sensores de temperatura
           </h1>
           <p className="text-muted-foreground">
-            Leituras automáticas dos sensores Tuya Wi-Fi instalados nas câmaras frias. Sincroniza a cada 5 min.
+            Leituras automáticas dos sensores Tuya Wi-Fi e EMS-A, agrupadas por loja. Sincroniza a cada 5 min.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" onClick={runSync} disabled={syncing}>
             <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
             Sincronizar agora
@@ -150,17 +173,31 @@ export default function NutriSensors() {
 
       {loading ? (
         <div className="text-muted-foreground text-sm">Carregando…</div>
+      ) : !hasAny ? (
+        <Card>
+          <CardContent className="py-10 text-center space-y-3">
+            <Thermometer className="h-10 w-10 mx-auto text-muted-foreground" />
+            <p className="text-muted-foreground">Nenhum sensor vinculado ainda.</p>
+            <Button onClick={openAdd}>
+              <Plus className="h-4 w-4 mr-2" /> Adicionar primeiro sensor
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
-        <>
-          {emsSensors.length > 0 && (
-            <div className="space-y-2">
-              <div>
-                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Sensores EMS-A (Câmara Fria)</h2>
-                <p className="text-xs text-muted-foreground">Ingestão automática via API EMS-A a cada 5 min.</p>
+        <div className="space-y-6">
+          {groupedByStore.map(([key, { store, ems, tuya }]) => (
+            <section key={key} className="space-y-3">
+              <div className="flex items-center gap-2 border-b border-border pb-2">
+                <StoreIcon className="h-4 w-4 text-primary" />
+                <h2 className="text-base font-semibold">
+                  {store?.name ?? "Sem loja vinculada"}
+                </h2>
+                <Badge variant="outline" className="ml-auto text-xs">
+                  {ems.length + tuya.length} sensor{ems.length + tuya.length === 1 ? "" : "es"}
+                </Badge>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {emsSensors.map((s) => {
-                  const store = stores.find((x) => x.id === s.store_id);
+                {ems.map((s) => {
                   const temp = s.last_measurement;
                   const ageMin = s.last_measured_at
                     ? (Date.now() - new Date(s.last_measured_at).getTime()) / 60_000
@@ -185,8 +222,9 @@ export default function NutriSensors() {
                             {status.label}
                           </Badge>
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {store?.name ?? "—"} · Faixa {s.min_value ?? "?"}~{s.max_value ?? "?"}°C · EMS-A
+                        <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                          <Badge variant="outline" className="text-[10px]">EMS-A</Badge>
+                          <span>Faixa {s.min_value ?? "?"}~{s.max_value ?? "?"}°C</span>
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-2">
@@ -203,84 +241,73 @@ export default function NutriSensors() {
                         </Button>
                       </CardContent>
                     </Card>
+                  );
+                })}
 
+                {tuya.map((eq) => {
+                  const temp = eq.last_temp_c;
+                  const outOfRange =
+                    temp !== null &&
+                    ((eq.min_temp_c !== null && temp < Number(eq.min_temp_c)) ||
+                      (eq.max_temp_c !== null && temp > Number(eq.max_temp_c)));
+                  const status = !eq.last_online
+                    ? { label: "Offline", cls: "bg-muted text-muted-foreground", Icon: WifiOff }
+                    : outOfRange
+                      ? { label: "Fora da faixa", cls: "bg-destructive text-destructive-foreground", Icon: Wifi }
+                      : { label: "OK", cls: "bg-success text-success-foreground", Icon: Wifi };
+                  const batt = eq.last_battery_pct;
+                  const BattIcon = batt == null ? null : batt >= 70 ? BatteryFull : batt >= 30 ? BatteryMedium : batt >= 10 ? BatteryLow : Battery;
+                  const battCls = batt == null ? "" : batt >= 30 ? "text-success" : batt >= 15 ? "text-warning" : "text-destructive";
+                  return (
+                    <Card key={eq.id}>
+                      <CardHeader className="pb-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <CardTitle className="text-base">{eq.name}</CardTitle>
+                          <Badge className={status.cls}>
+                            <status.Icon className="h-3 w-3 mr-1" />
+                            {status.label}
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                          <Badge variant="outline" className="text-[10px]">Tuya</Badge>
+                          <span>Faixa {eq.min_temp_c ?? "?"}~{eq.max_temp_c ?? "?"}°C</span>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex items-end gap-3">
+                          <div className={`text-4xl font-bold ${outOfRange ? "text-destructive" : ""}`}>
+                            {temp !== null ? `${Number(temp).toFixed(1)}°C` : "—"}
+                          </div>
+                          {eq.last_humidity_pct !== null && (
+                            <div className="text-sm text-muted-foreground pb-1">
+                              {Number(eq.last_humidity_pct).toFixed(0)}% umid.
+                            </div>
+                          )}
+                        </div>
+                        {BattIcon && (
+                          <div className={`flex items-center gap-1.5 text-xs font-medium ${battCls}`}>
+                            <BattIcon className="h-4 w-4" />
+                            Bateria {batt}%
+                          </div>
+                        )}
+                        <div className="text-xs text-muted-foreground">
+                          {eq.last_reading_at
+                            ? `Atualizado ${formatDistanceToNow(new Date(eq.last_reading_at), { addSuffix: true, locale: ptBR })}`
+                            : "Sem leituras ainda"}
+                        </div>
+                        <Button variant="outline" size="sm" className="w-full" onClick={() => setEditing(eq)}>
+                          <Settings2 className="h-4 w-4 mr-2" /> Configurar
+                        </Button>
+                      </CardContent>
+                    </Card>
                   );
                 })}
               </div>
-            </div>
-          )}
-
-          {equips.length > 0 && (
-            <div className="space-y-2">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Sensores Tuya Wi-Fi</h2>
-            </div>
-          )}
-        </>
-      )}
-
-      {!loading && equips.length === 0 && emsSensors.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center space-y-3">
-            <Thermometer className="h-10 w-10 mx-auto text-muted-foreground" />
-            <p className="text-muted-foreground">Nenhum sensor Tuya vinculado ainda.</p>
-            <Button onClick={openAdd}>
-              <Plus className="h-4 w-4 mr-2" /> Adicionar primeiro sensor
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {equips.map((eq) => {
-            const store = stores.find((s) => s.id === eq.store_id);
-            const temp = eq.last_temp_c;
-            const outOfRange =
-              temp !== null &&
-              ((eq.min_temp_c !== null && temp < Number(eq.min_temp_c)) ||
-                (eq.max_temp_c !== null && temp > Number(eq.max_temp_c)));
-            const status = !eq.last_online
-              ? { label: "Offline", cls: "bg-muted text-muted-foreground", Icon: WifiOff }
-              : outOfRange
-                ? { label: "Fora da faixa", cls: "bg-destructive text-destructive-foreground", Icon: Wifi }
-                : { label: "OK", cls: "bg-success text-success-foreground", Icon: Wifi };
-            return (
-              <Card key={eq.id}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-base">{eq.name}</CardTitle>
-                    <Badge className={status.cls}>
-                      <status.Icon className="h-3 w-3 mr-1" />
-                      {status.label}
-                    </Badge>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {store?.name ?? "—"} · Faixa {eq.min_temp_c ?? "?"}~{eq.max_temp_c ?? "?"}°C
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-end gap-3">
-                    <div className={`text-4xl font-bold ${outOfRange ? "text-destructive" : ""}`}>
-                      {temp !== null ? `${Number(temp).toFixed(1)}°C` : "—"}
-                    </div>
-                    {eq.last_humidity_pct !== null && (
-                      <div className="text-sm text-muted-foreground pb-1">
-                        {Number(eq.last_humidity_pct).toFixed(0)}% umid.
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {eq.last_reading_at
-                      ? `Atualizado ${formatDistanceToNow(new Date(eq.last_reading_at), { addSuffix: true, locale: ptBR })}`
-                      : "Sem leituras ainda"}
-                  </div>
-                  <Button variant="outline" size="sm" className="w-full" onClick={() => setEditing(eq)}>
-                    <Settings2 className="h-4 w-4 mr-2" /> Configurar
-                  </Button>
-                </CardContent>
-              </Card>
-            );
-          })}
+            </section>
+          ))}
         </div>
       )}
+
 
       <AddSensorDialog
         open={addOpen}

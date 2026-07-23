@@ -1,0 +1,1 @@
+ALTER TABLE public.nutri_equipment ADD COLUMN IF NOT EXISTS last_battery_pct numeric;

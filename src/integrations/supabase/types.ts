@@ -9321,6 +9321,7 @@ export type Database = {
           ems_sensor_code: string | null
           equipment_type: string
           id: string
+          last_battery_pct: number | null
           last_humidity_pct: number | null
           last_online: boolean
           last_reading_at: string | null
@@ -9342,6 +9343,7 @@ export type Database = {
           ems_sensor_code?: string | null
           equipment_type?: string
           id?: string
+          last_battery_pct?: number | null
           last_humidity_pct?: number | null
           last_online?: boolean
           last_reading_at?: string | null
@@ -9363,6 +9365,7 @@ export type Database = {
           ems_sensor_code?: string | null
           equipment_type?: string
           id?: string
+          last_battery_pct?: number | null
           last_humidity_pct?: number | null
           last_online?: boolean
           last_reading_at?: string | null
