@@ -51,12 +51,12 @@ export default function ExportNutricontroleReportButton({ storeId }: Props) {
 
       // Colaboradores alocados: por cadastro + por escala no período
       const empMap = new Map<string, { id: string; name: string; position: string }>();
-      (empByStore.data ?? []).forEach((e: any) => empMap.set(e.id, { id: e.id, name: e.name, position: e.position ?? "" }));
+      (empByStore.data ?? []).forEach((e: any) => empMap.set(e.id, { id: e.id, name: e.full_name, position: e.position ?? "" }));
       const schedIds = Array.from(new Set(((schedEmps.data ?? []) as any[]).map((r) => r.employee_id).filter(Boolean)));
       const missingIds = schedIds.filter((id) => !empMap.has(id));
       if (missingIds.length) {
-        const { data: extras } = await supabase.from("employees").select("id, name, position, status").in("id", missingIds).eq("status", "active");
-        (extras ?? []).forEach((e: any) => empMap.set(e.id, { id: e.id, name: e.name, position: e.position ?? "" }));
+        const { data: extras } = await supabase.from("employees").select("id, full_name, position, status").in("id", missingIds).eq("status", "active");
+        (extras ?? []).forEach((e: any) => empMap.set(e.id, { id: e.id, name: e.full_name, position: e.position ?? "" }));
       }
       const empIds = Array.from(empMap.keys());
       const asoMap = new Map<string, { document_type: string; certificate_date: string; valid_until: string | null }>();
