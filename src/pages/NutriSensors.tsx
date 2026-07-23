@@ -224,8 +224,8 @@ export default function NutriSensors() {
                     </div>
                   </div>
                 </AccordionTrigger>
-                <AccordionContent className="px-4 pb-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                <AccordionContent className="px-3 pb-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                     {ems.map((s) => {
                       const temp = s.last_measurement;
                       const ageMin = s.last_measured_at
@@ -237,38 +237,38 @@ export default function NutriSensors() {
                         ((s.min_value !== null && temp < Number(s.min_value)) ||
                           (s.max_value !== null && temp > Number(s.max_value)));
                       return (
-                        <Card key={s.unique_code}>
-                          <CardHeader className="pb-2">
+                        <Card key={s.unique_code} className="overflow-hidden">
+                          <CardHeader className="py-2 px-3 pb-1 space-y-0">
                             <div className="flex items-start justify-between gap-2">
-                              <CardTitle className="text-base">{s.label ?? s.unique_code}</CardTitle>
-                              <div className="flex flex-col gap-1 items-end">
-                                <Badge className={online ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"}>
-                                  {online ? <Wifi className="h-3 w-3 mr-1" /> : <WifiOff className="h-3 w-3 mr-1" />}
+                              <CardTitle className="text-sm leading-tight">{s.label ?? s.unique_code}</CardTitle>
+                              <div className="flex flex-col gap-0.5 items-end">
+                                <Badge className={online ? "bg-success text-success-foreground text-[10px]" : "bg-muted text-muted-foreground text-[10px]"}>
+                                  {online ? <Wifi className="h-2.5 w-2.5 mr-1" /> : <WifiOff className="h-2.5 w-2.5 mr-1" />}
                                   {online ? "Online" : "Offline"}
                                 </Badge>
                                 {online && (
-                                  <Badge className={outOfRange ? "bg-destructive text-destructive-foreground" : "bg-success text-success-foreground"}>
-                                    {outOfRange ? "Fora da faixa" : "OK"}
+                                  <Badge className={outOfRange ? "bg-destructive text-destructive-foreground text-[10px]" : "bg-success text-success-foreground text-[10px]"}>
+                                    {outOfRange ? "Fora" : "OK"}
                                   </Badge>
                                 )}
                               </div>
                             </div>
-                            <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                              <Badge variant="outline" className="text-[10px]">EMS-A</Badge>
-                              <span>Faixa {s.min_value ?? "?"}~{s.max_value ?? "?"}°C</span>
+                            <div className="text-[10px] text-muted-foreground flex items-center gap-1.5 flex-wrap">
+                              <Badge variant="outline" className="text-[9px] px-1 py-0">EMS-A</Badge>
+                              <span>{s.min_value ?? "?"}~{s.max_value ?? "?"}°C</span>
                             </div>
                           </CardHeader>
-                          <CardContent className="space-y-2">
-                            <div className={`text-4xl font-bold ${outOfRange ? "text-destructive" : ""}`}>
+                          <CardContent className="px-3 py-2 space-y-1">
+                            <div className={`text-2xl font-bold leading-none ${outOfRange ? "text-destructive" : ""}`}>
                               {temp !== null ? `${temp.toFixed(1)}°C` : "—"}
                             </div>
-                            <div className="text-xs text-muted-foreground">
+                            <div className="text-[10px] text-muted-foreground leading-tight">
                               {s.last_measured_at
                                 ? `Atualizado ${formatDistanceToNow(new Date(s.last_measured_at), { addSuffix: true, locale: ptBR })}`
-                                : "Sem leituras ainda"}
+                                : "Sem leituras"}
                             </div>
-                            <Button variant="outline" size="sm" className="w-full" onClick={() => setEditingEms(s)}>
-                              <Settings2 className="h-4 w-4 mr-2" /> Configurar
+                            <Button variant="outline" size="sm" className="w-full h-7 text-xs mt-1" onClick={() => setEditingEms(s)}>
+                              <Settings2 className="h-3 w-3 mr-1.5" /> Configurar
                             </Button>
                           </CardContent>
                         </Card>
@@ -285,46 +285,46 @@ export default function NutriSensors() {
                       const BattIcon = batt == null ? null : batt >= 70 ? BatteryFull : batt >= 30 ? BatteryMedium : batt >= 10 ? BatteryLow : Battery;
                       const battCls = batt == null ? "" : batt >= 30 ? "text-success" : batt >= 15 ? "text-warning" : "text-destructive";
                       return (
-                        <Card key={eq.id}>
-                          <CardHeader className="pb-2">
+                        <Card key={eq.id} className="overflow-hidden">
+                          <CardHeader className="py-2 px-3 pb-1 space-y-0">
                             <div className="flex items-start justify-between gap-2">
-                              <CardTitle className="text-base">{eq.name}</CardTitle>
-                              <div className="flex flex-col gap-1 items-end">
-                                <Badge className={eq.last_online ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"}>
-                                  {eq.last_online ? <Wifi className="h-3 w-3 mr-1" /> : <WifiOff className="h-3 w-3 mr-1" />}
+                              <CardTitle className="text-sm leading-tight">{eq.name}</CardTitle>
+                              <div className="flex flex-col gap-0.5 items-end">
+                                <Badge className={eq.last_online ? "bg-success text-success-foreground text-[10px]" : "bg-muted text-muted-foreground text-[10px]"}>
+                                  {eq.last_online ? <Wifi className="h-2.5 w-2.5 mr-1" /> : <WifiOff className="h-2.5 w-2.5 mr-1" />}
                                   {eq.last_online ? "Online" : "Offline"}
                                 </Badge>
                                 {eq.last_online && (
-                                  <Badge className={outOfRange ? "bg-destructive text-destructive-foreground" : "bg-success text-success-foreground"}>
-                                    {outOfRange ? "Fora da faixa" : "OK"}
+                                  <Badge className={outOfRange ? "bg-destructive text-destructive-foreground text-[10px]" : "bg-success text-success-foreground text-[10px]"}>
+                                    {outOfRange ? "Fora" : "OK"}
                                   </Badge>
                                 )}
                               </div>
                             </div>
-                            <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                              <Badge variant="outline" className="text-[10px]">Tuya</Badge>
-                              <span>Faixa {eq.min_temp_c ?? "?"}~{eq.max_temp_c ?? "?"}°C</span>
+                            <div className="text-[10px] text-muted-foreground flex items-center gap-1.5 flex-wrap">
+                              <Badge variant="outline" className="text-[9px] px-1 py-0">Tuya</Badge>
+                              <span>{eq.min_temp_c ?? "?"}~{eq.max_temp_c ?? "?"}°C</span>
                             </div>
                           </CardHeader>
-                          <CardContent className="space-y-3">
-                            <div className="flex items-end gap-3">
-                              <div className={`text-4xl font-bold ${outOfRange ? "text-destructive" : ""}`}>
+                          <CardContent className="px-3 py-2 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <div className={`text-2xl font-bold leading-none ${outOfRange ? "text-destructive" : ""}`}>
                                 {temp !== null ? `${Number(temp).toFixed(1)}°C` : "—"}
                               </div>
+                              {BattIcon && (
+                                <div className={`flex items-center gap-1 text-[10px] font-medium ${battCls}`}>
+                                  <BattIcon className="h-3 w-3" />
+                                  {batt}%
+                                </div>
+                              )}
                             </div>
-                            {BattIcon && (
-                              <div className={`flex items-center gap-1.5 text-xs font-medium ${battCls}`}>
-                                <BattIcon className="h-4 w-4" />
-                                Bateria {batt}%
-                              </div>
-                            )}
-                            <div className="text-xs text-muted-foreground">
+                            <div className="text-[10px] text-muted-foreground leading-tight">
                               {eq.last_reading_at
                                 ? `Atualizado ${formatDistanceToNow(new Date(eq.last_reading_at), { addSuffix: true, locale: ptBR })}`
-                                : "Sem leituras ainda"}
+                                : "Sem leituras"}
                             </div>
-                            <Button variant="outline" size="sm" className="w-full" onClick={() => setEditing(eq)}>
-                              <Settings2 className="h-4 w-4 mr-2" /> Configurar
+                            <Button variant="outline" size="sm" className="w-full h-7 text-xs mt-1" onClick={() => setEditing(eq)}>
+                              <Settings2 className="h-3 w-3 mr-1.5" /> Configurar
                             </Button>
                           </CardContent>
                         </Card>
