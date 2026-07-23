@@ -88,6 +88,7 @@ async function fetchDeviceStatus(deviceId: string) {
 function extractTempHumidity(status: Array<{ code: string; value: unknown }>) {
   let temp: number | null = null;
   let hum: number | null = null;
+  let batt: number | null = null;
   for (const s of status) {
     const code = s.code.toLowerCase();
     if (temp === null && (code === 'va_temperature' || code === 'temp_current' || code === 'temperature' || code === 'cur_temperature')) {
@@ -96,8 +97,17 @@ function extractTempHumidity(status: Array<{ code: string; value: unknown }>) {
     if (hum === null && (code === 'va_humidity' || code === 'humidity_value' || code === 'humidity' || code === 'cur_humidity')) {
       hum = Number(s.value);
     }
+    if (batt === null && (code === 'battery_percentage' || code === 'battery_value' || code === 'battery' || code === 'residual_electricity' || code === 'va_battery')) {
+      const n = Number(s.value);
+      if (!Number.isNaN(n)) batt = n > 100 ? Math.round(n / 10) : Math.round(n);
+    }
+    if (batt === null && code === 'battery_state') {
+      // low/middle/high => percentual estimado
+      const v = String(s.value).toLowerCase();
+      batt = v === 'high' ? 90 : v === 'middle' ? 50 : v === 'low' ? 15 : null;
+    }
   }
-  return { temp, hum };
+  return { temp, hum, batt };
 }
 
 Deno.serve(async (req) => {
