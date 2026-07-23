@@ -96,7 +96,10 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
   const todayDay = today.getDate();
   const todayMonth = today.getMonth() + 1;
   const todays = items.filter((e) => e.day === todayDay && parseInt(e.birth_date.slice(5, 7), 10) === todayMonth);
-  const others = items.filter((e) => !(e.day === todayDay && parseInt(e.birth_date.slice(5, 7), 10) === todayMonth));
+  const others = items.filter((e) => {
+    const m = parseInt(e.birth_date.slice(5, 7), 10);
+    return m === todayMonth && e.day > todayDay;
+  });
 
   return (
     <div
