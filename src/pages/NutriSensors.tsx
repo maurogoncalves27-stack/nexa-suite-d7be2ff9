@@ -116,7 +116,7 @@ export default function NutriSensors() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadTypes(); }, []);
 
   async function runSync() {
     setSyncing(true);
