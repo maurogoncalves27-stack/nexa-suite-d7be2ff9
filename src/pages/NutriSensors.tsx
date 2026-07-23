@@ -51,12 +51,15 @@ type EmsSensor = {
   last_measured_at: string | null;
 };
 
-const SENSOR_DEFAULTS: Record<string, { min: number; max: number; label: string }> = {
-  freezer: { min: -25, max: -15, label: "Congelador" },
-  chiller: { min: 0, max: 5, label: "Resfriado" },
-  dry: { min: 15, max: 25, label: "Seco" },
-  custom: { min: 0, max: 10, label: "Personalizado" },
+type EquipType = {
+  id: string;
+  name: string;
+  min_temp_c: number;
+  max_temp_c: number;
+  sort_order: number;
+  active: boolean;
 };
+
 
 export default function NutriSensors() {
   const [stores, setStores] = useState<Store[]>([]);
