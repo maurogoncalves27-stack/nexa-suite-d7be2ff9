@@ -521,7 +521,7 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
             const parme = brands.find((b) => /parm/i.test(b.name));
             const box = brands.find((b) => /box/i.test(b.name));
             const estro = brands.find((b) => /estrog/i.test(b.name));
-            const isFabrica = (name: string) => /f[aá]brica/i.test(name);
+            const isFabrica = (name: string) => /f[aá]brica|\bcd\b/i.test(name);
             const nonFabrica = stores.filter((s) => !isFabrica(s.name));
             const brandCols = [
               { id: parme?.id, key: "P", label: "Aquela Parmê", color: "hsl(0 72% 51%)" },
