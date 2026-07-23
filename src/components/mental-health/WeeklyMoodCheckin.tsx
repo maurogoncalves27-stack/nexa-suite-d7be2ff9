@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 
 const MOODS: { score: number; emoji: string; label: string; bg: string }[] = [
   { score: 1, emoji: "😞", label: "Muito mal", bg: "bg-red-100 hover:bg-red-200 border-red-300" },
@@ -114,30 +112,25 @@ export default function WeeklyMoodCheckin() {
       }
     })();
     return () => { cancelled = true; };
-  }, [user, loading, checked, today]);
-
-  const save = async (skip = false) => {
-    if (!employeeId || !user) return;
-    if (!skip && selected == null) return;
+  const save = async (score: number) => {
+    if (!employeeId || !user || saving) return;
     setSaving(true);
     try {
       const { error } = await supabase.from("mood_checkins").upsert({
         employee_id: employeeId,
         user_id: user.id,
         week_start: weekStartStr(),
-        mood_score: skip ? null : selected,
-        comment: skip ? null : (comment.trim() || null),
-        skipped: skip,
+        mood_score: score,
+        comment: null,
+        skipped: false,
       }, { onConflict: "employee_id,week_start" });
       if (error) throw error;
-      if (!skip) {
-        toast({
-          title: "Obrigado por compartilhar 💚",
-          description: selected && selected <= 2
-            ? "Se precisar de apoio, nosso RH está à disposição."
-            : "Tenha um ótimo dia!",
-        });
-      }
+      toast({
+        title: "Obrigado por compartilhar 💚",
+        description: score <= 2
+          ? "Se precisar de apoio, nosso RH está à disposição."
+          : "Tenha um ótimo dia!",
+      });
       sessionStorage.setItem("mood_checkin_dismissed", today);
       setOpen(false);
     } catch (err: any) {
@@ -147,24 +140,20 @@ export default function WeeklyMoodCheckin() {
     }
   };
 
-  const optOut = async () => {
-    if (!user) return;
+  const skip = async () => {
+    if (!employeeId || !user || saving) return;
     setSaving(true);
     try {
-      const until = new Date();
-      until.setDate(until.getDate() + OPTOUT_DAYS);
-      const { error } = await supabase
-        .from("profiles")
-        .update({ mood_optout_until: until.toISOString() })
-        .eq("user_id", user.id);
-      if (error) throw error;
-      toast({
-        title: "Ok, não perguntaremos mais por 90 dias",
-        description: "Você pode reativar em Configurações → Perfil quando quiser.",
-      });
+      await supabase.from("mood_checkins").upsert({
+        employee_id: employeeId,
+        user_id: user.id,
+        week_start: weekStartStr(),
+        mood_score: null,
+        comment: null,
+        skipped: true,
+      }, { onConflict: "employee_id,week_start" });
+      sessionStorage.setItem("mood_checkin_dismissed", today);
       setOpen(false);
-    } catch (err: any) {
-      toast({ title: "Não foi possível desativar", description: err.message, variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -180,7 +169,7 @@ export default function WeeklyMoodCheckin() {
         <div className="rounded-md bg-primary/5 border border-primary/20 p-3 text-xs text-muted-foreground flex gap-2">
           <ShieldCheck className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
           <div>
-            <strong className="text-foreground">Resposta 100% voluntária.</strong> Usada apenas de forma agregada, no nível da loja, para atender à NR-1 (riscos psicossociais). Você pode pular ou desativar a qualquer momento — nenhuma resposta é vista individualmente por seu gestor.
+            <strong className="text-foreground">Resposta 100% voluntária e anônima.</strong> Toque no emoji que representa como está — a resposta é enviada na hora, usada apenas de forma agregada por loja (NR-1).
           </div>
         </div>
 
@@ -189,8 +178,9 @@ export default function WeeklyMoodCheckin() {
             <button
               key={m.score}
               type="button"
-              onClick={() => setSelected(m.score)}
-              className={`flex flex-col items-center gap-1 rounded-lg border-2 p-2 transition ${m.bg} ${selected === m.score ? "ring-2 ring-primary ring-offset-2" : "border-transparent"}`}
+              disabled={saving}
+              onClick={() => save(m.score)}
+              className={`flex flex-col items-center gap-1 rounded-lg border-2 border-transparent p-2 transition disabled:opacity-50 ${m.bg}`}
             >
               <span className="text-3xl">{m.emoji}</span>
               <span className="text-[10px] font-medium text-center leading-tight">{m.label}</span>
@@ -198,33 +188,16 @@ export default function WeeklyMoodCheckin() {
           ))}
         </div>
 
-        {selected != null && selected <= 2 && (
-          <div className="rounded-md bg-orange-50 border border-orange-200 p-3 text-sm text-orange-900">
-            Sentimos muito que o dia esteja difícil. Se quiser, deixe um recado — o RH pode conversar com você em sigilo.
-          </div>
-        )}
-
-        <Textarea
-          value={comment}
-          onChange={(e) => setComment(e.target.value.slice(0, 500))}
-          placeholder="Quer contar mais alguma coisa? (opcional)"
-          rows={3}
-        />
-
-        <DialogFooter className="flex-col sm:flex-row gap-2">
-          <Button variant="ghost" size="sm" onClick={optOut} disabled={saving} className="text-xs text-muted-foreground">
-            Não me perguntar mais (90 dias)
-          </Button>
-          <div className="flex gap-2 sm:ml-auto">
-            <Button variant="outline" onClick={() => save(true)} disabled={saving}>
-              Prefiro não responder
-            </Button>
-            <Button onClick={() => save(false)} disabled={saving || selected == null}>
-              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Enviar
-            </Button>
-          </div>
-        </DialogFooter>
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={skip}
+            disabled={saving}
+            className="text-[11px] text-muted-foreground/70 hover:text-muted-foreground underline underline-offset-2"
+          >
+            não responder
+          </button>
+        </div>
       </DialogContent>
     </Dialog>
   );
