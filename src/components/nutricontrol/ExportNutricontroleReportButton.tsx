@@ -27,7 +27,7 @@ export default function ExportNutricontroleReportButton({ storeId }: Props) {
       const fromTs = from.toISOString();
       const toTs = to.toISOString();
 
-      const [store, checklist, temps, tempAlerts, merch, oilQ, oilD, pestC, pestO, maint, maintReq, water, equipments, items] = await Promise.all([
+      const [store, checklist, temps, tempAlerts, merch, oilQ, oilD, pestC, pestO, maint, maintReq, water, equipments, items, empByStore, schedEmps] = await Promise.all([
         supabase.from("stores").select("name").eq("id", storeId).maybeSingle(),
         supabase.from("nutri_day_records").select("date, item_id, sim_nao, note, user_id").eq("store_id", storeId).gte("date", fromISO).lte("date", toISO).order("date", { ascending: false }).limit(1000),
         supabase.from("nutri_temperature_readings").select("recorded_at, equipment_id, temperature, humidity, note").eq("store_id", storeId).gte("date", fromISO).lte("date", toISO).order("recorded_at", { ascending: false }).limit(1000),
@@ -42,6 +42,8 @@ export default function ExportNutricontroleReportButton({ storeId }: Props) {
         supabase.from("nutri_water_tank_cleanings").select("cleaning_date, responsible, note, report_url").eq("store_id", storeId).gte("cleaning_date", fromISO).lte("cleaning_date", toISO).order("cleaning_date", { ascending: false }).limit(50),
         supabase.from("nutri_equipment").select("id, name"),
         supabase.from("nutri_items").select("id, name"),
+        supabase.from("employees").select("id, name, position, status").eq("store_id", storeId).eq("status", "active"),
+        supabase.from("work_schedules").select("employee_id").eq("store_id", storeId).gte("schedule_date", fromISO).lte("schedule_date", toISO).limit(5000),
       ]);
 
       const eqMap = new Map((equipments.data ?? []).map((e: any) => [e.id, e.name]));
