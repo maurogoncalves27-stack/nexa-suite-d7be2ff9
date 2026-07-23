@@ -55,6 +55,7 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
           photoUrl: null as string | null,
           _photoPath: e.photo_path as string | null,
         }))
+        .filter((e) => e.month === nowM)
         .sort((a, b) => {
           const aToday = a.day === nowD && a.month === nowM ? 0 : 1;
           const bToday = b.day === nowD && b.month === nowM ? 0 : 1;
