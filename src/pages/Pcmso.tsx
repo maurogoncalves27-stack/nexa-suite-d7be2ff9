@@ -168,22 +168,38 @@ export default function Pcmso({ embedded = false }: { embedded?: boolean } = {})
   const expiring = useMemo(() => docs.filter((d) => d.valid_until && d.valid_until >= today && d.valid_until <= in30), [docs]);
   const expired = useMemo(() => docs.filter((d) => d.valid_until && d.valid_until < today), [docs]);
 
-  const { grouped, terminatedDocs } = useMemo(() => {
-    const map = new Map<string, { name: string; store?: string | null; docs: Doc[] }>();
+  const { groupedByStore, terminatedDocs } = useMemo(() => {
+    const empMap = new Map<string, { name: string; store?: string | null; docs: Doc[] }>();
     const term: Doc[] = [];
     for (const d of docs) {
       if (d.employee?.status === "terminated") { term.push(d); continue; }
       const key = d.employee_id;
-      if (!map.has(key)) {
-        map.set(key, { name: d.employee?.full_name ?? "—", store: d.employee?.store?.name ?? null, docs: [] });
+      if (!empMap.has(key)) {
+        empMap.set(key, { name: d.employee?.full_name ?? "—", store: d.employee?.store?.name ?? null, docs: [] });
       }
-      map.get(key)!.docs.push(d);
+      empMap.get(key)!.docs.push(d);
     }
-    const arr = Array.from(map.entries())
+    const employees = Array.from(empMap.entries())
       .map(([id, v]) => ({ id, ...v }))
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
-    return { grouped: arr, terminatedDocs: term };
+
+    const storeMap = new Map<string, typeof employees>();
+    for (const e of employees) {
+      const key = e.store ?? "Sem loja";
+      if (!storeMap.has(key)) storeMap.set(key, []);
+      storeMap.get(key)!.push(e);
+    }
+    const groupedByStore = Array.from(storeMap.entries())
+      .map(([store, emps]) => ({
+        store,
+        employees: emps,
+        docsCount: emps.reduce((s, e) => s + e.docs.length, 0),
+      }))
+      .sort((a, b) => a.store.localeCompare(b.store, "pt-BR"));
+
+    return { groupedByStore, terminatedDocs: term };
   }, [docs]);
+
 
   return (
     <div className="space-y-6">
@@ -227,63 +243,83 @@ export default function Pcmso({ embedded = false }: { embedded?: boolean } = {})
           ) : docs.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">Nenhum ASO cadastrado ainda.</div>
           ) : (
-            <Accordion type="multiple" className="w-full">
-              {grouped.map((g) => {
-                const hasExpired = g.docs.some((d) => d.valid_until && d.valid_until < today);
-                const hasSoon = g.docs.some((d) => d.valid_until && d.valid_until >= today && d.valid_until <= in30);
+            <Accordion type="multiple" className="w-full" defaultValue={groupedByStore.map((g) => `store:${g.store}`)}>
+              {groupedByStore.map((store) => {
+                const storeHasExpired = store.employees.some((e) => e.docs.some((d) => d.valid_until && d.valid_until < today));
+                const storeHasSoon = store.employees.some((e) => e.docs.some((d) => d.valid_until && d.valid_until >= today && d.valid_until <= in30));
                 return (
-                  <AccordionItem key={g.id} value={g.id}>
+                  <AccordionItem key={`store:${store.store}`} value={`store:${store.store}`}>
                     <AccordionTrigger className="hover:no-underline">
                       <div className="flex items-center gap-2 flex-wrap text-left">
-                        <span className="font-medium">{g.name}</span>
-                        {g.store && <span className="text-xs text-muted-foreground">— {g.store}</span>}
-                        <Badge variant="secondary">{g.docs.length}</Badge>
-                        {hasExpired && <Badge variant="destructive">Vencido</Badge>}
-                        {!hasExpired && hasSoon && <Badge className="bg-orange-100 text-orange-800">Vencendo</Badge>}
+                        <span className="font-semibold text-base">{store.store}</span>
+                        <Badge variant="outline">{store.employees.length} colaborador{store.employees.length === 1 ? "" : "es"}</Badge>
+                        <Badge variant="secondary">{store.docsCount} doc{store.docsCount === 1 ? "" : "s"}</Badge>
+                        {storeHasExpired && <Badge variant="destructive">Vencido</Badge>}
+                        {!storeHasExpired && storeHasSoon && <Badge className="bg-orange-100 text-orange-800">Vencendo</Badge>}
                       </div>
                     </AccordionTrigger>
                     <AccordionContent>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b text-left">
-                              <th className="py-2 pr-2">Tipo</th>
-                              <th className="py-2 pr-2">Data</th>
-                              <th className="py-2 pr-2">Validade</th>
-                              <th className="py-2 pr-2">Médico</th>
-                              <th className="py-2 pr-2 text-right">Ações</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {g.docs.map((d) => {
-                              const isExpired = d.valid_until && d.valid_until < today;
-                              const isSoon = d.valid_until && !isExpired && d.valid_until <= in30;
-                              return (
-                                <tr key={d.id} className="border-b hover:bg-muted/40">
-                                  <td className="py-2 pr-2">{DOC_TYPES.find(t => t.value === d.document_type)?.label ?? d.document_type}</td>
-                                  <td className="py-2 pr-2 whitespace-nowrap">{new Date(d.certificate_date + "T00:00:00").toLocaleDateString("pt-BR")}</td>
-                                  <td className="py-2 pr-2 whitespace-nowrap">
-                                    {d.valid_until ? (
-                                      <div className="flex items-center gap-1">
-                                        {new Date(d.valid_until + "T00:00:00").toLocaleDateString("pt-BR")}
-                                        {isExpired && <Badge variant="destructive">Vencido</Badge>}
-                                        {isSoon && <Badge className="bg-orange-100 text-orange-800">30d</Badge>}
-                                      </div>
-                                    ) : "—"}
-                                  </td>
-                                  <td className="py-2 pr-2 text-xs">{d.doctor_name}{d.doctor_crm ? ` — ${d.doctor_crm}` : ""}</td>
-                                  <td className="py-2 pr-2 text-right whitespace-nowrap">
-                                    {d.file_path && (
-                                      <Button size="icon" variant="ghost" onClick={() => download(d)}><Download className="h-4 w-4" /></Button>
-                                    )}
-                                    <Button size="icon" variant="ghost" onClick={() => remove(d)}><Trash2 className="h-4 w-4 text-red-600" /></Button>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
+                      <Accordion type="multiple" className="w-full pl-2 border-l">
+                        {store.employees.map((g) => {
+                          const hasExpired = g.docs.some((d) => d.valid_until && d.valid_until < today);
+                          const hasSoon = g.docs.some((d) => d.valid_until && d.valid_until >= today && d.valid_until <= in30);
+                          return (
+                            <AccordionItem key={g.id} value={g.id}>
+                              <AccordionTrigger className="hover:no-underline">
+                                <div className="flex items-center gap-2 flex-wrap text-left">
+                                  <span className="font-medium">{g.name}</span>
+                                  <Badge variant="secondary">{g.docs.length}</Badge>
+                                  {hasExpired && <Badge variant="destructive">Vencido</Badge>}
+                                  {!hasExpired && hasSoon && <Badge className="bg-orange-100 text-orange-800">Vencendo</Badge>}
+                                </div>
+                              </AccordionTrigger>
+                              <AccordionContent>
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-sm">
+                                    <thead>
+                                      <tr className="border-b text-left">
+                                        <th className="py-2 pr-2">Tipo</th>
+                                        <th className="py-2 pr-2">Data</th>
+                                        <th className="py-2 pr-2">Validade</th>
+                                        <th className="py-2 pr-2">Médico</th>
+                                        <th className="py-2 pr-2 text-right">Ações</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {g.docs.map((d) => {
+                                        const isExpired = d.valid_until && d.valid_until < today;
+                                        const isSoon = d.valid_until && !isExpired && d.valid_until <= in30;
+                                        return (
+                                          <tr key={d.id} className="border-b hover:bg-muted/40">
+                                            <td className="py-2 pr-2">{DOC_TYPES.find(t => t.value === d.document_type)?.label ?? d.document_type}</td>
+                                            <td className="py-2 pr-2 whitespace-nowrap">{new Date(d.certificate_date + "T00:00:00").toLocaleDateString("pt-BR")}</td>
+                                            <td className="py-2 pr-2 whitespace-nowrap">
+                                              {d.valid_until ? (
+                                                <div className="flex items-center gap-1">
+                                                  {new Date(d.valid_until + "T00:00:00").toLocaleDateString("pt-BR")}
+                                                  {isExpired && <Badge variant="destructive">Vencido</Badge>}
+                                                  {isSoon && <Badge className="bg-orange-100 text-orange-800">30d</Badge>}
+                                                </div>
+                                              ) : "—"}
+                                            </td>
+                                            <td className="py-2 pr-2 text-xs">{d.doctor_name}{d.doctor_crm ? ` — ${d.doctor_crm}` : ""}</td>
+                                            <td className="py-2 pr-2 text-right whitespace-nowrap">
+                                              {d.file_path && (
+                                                <Button size="icon" variant="ghost" onClick={() => download(d)}><Download className="h-4 w-4" /></Button>
+                                              )}
+                                              <Button size="icon" variant="ghost" onClick={() => remove(d)}><Trash2 className="h-4 w-4 text-red-600" /></Button>
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </AccordionContent>
+                            </AccordionItem>
+                          );
+                        })}
+                      </Accordion>
                     </AccordionContent>
                   </AccordionItem>
                 );
