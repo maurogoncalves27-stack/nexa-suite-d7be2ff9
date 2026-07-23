@@ -64,23 +64,6 @@ export default function ProfileAvatarUpload({
     }
   };
 
-  const remove = async () => {
-    if (!confirm("Remover sua foto de perfil?")) return;
-    setBusy(true);
-    try {
-      const { error } = await supabase
-        .from("employees")
-        .update({ avatar_path: null })
-        .eq("id", employeeId);
-      if (error) throw error;
-      toast({ title: "Foto removida" });
-      onChanged();
-    } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const initials = (fullName ?? "").split(" ").filter(Boolean).map(n => n[0]).slice(0, 2).join("").toUpperCase();
 
