@@ -311,11 +311,6 @@ export default function NutriSensors() {
                               <div className={`text-4xl font-bold ${outOfRange ? "text-destructive" : ""}`}>
                                 {temp !== null ? `${Number(temp).toFixed(1)}°C` : "—"}
                               </div>
-                              {eq.last_humidity_pct !== null && (
-                                <div className="text-sm text-muted-foreground pb-1">
-                                  {Number(eq.last_humidity_pct).toFixed(0)}% umid.
-                                </div>
-                              )}
                             </div>
                             {BattIcon && (
                               <div className={`flex items-center gap-1.5 text-xs font-medium ${battCls}`}>
