@@ -377,22 +377,29 @@ function AddSmartDeviceDialog({
           <div className="py-6 text-center text-muted-foreground text-sm">Buscando dispositivos…</div>
         ) : devices.length === 0 ? (
           <div className="py-6 text-center text-muted-foreground text-sm">
-            Nenhum dispositivo novo encontrado. Pareie no app Smart Life e vincule a conta no projeto Cloud da Tuya.
+            Nenhum dispositivo encontrado na conta Tuya. Pareie no app Smart Life e confirme que a conta está vinculada ao projeto Cloud.
           </div>
         ) : (
           <div className="space-y-3">
             <div>
-              <Label>Dispositivo detectado</Label>
+              <Label>Dispositivo detectado ({devices.length} total)</Label>
               <Select value={deviceId} onValueChange={setDeviceId}>
                 <SelectTrigger><SelectValue placeholder="Escolha…" /></SelectTrigger>
                 <SelectContent>
-                  {devices.map((d) => (
-                    <SelectItem key={d.device_id} value={d.device_id}>
-                      {d.name} {d.online ? "🟢" : "🔴"} — {d.product_name ?? d.category}
-                    </SelectItem>
-                  ))}
+                  {devices.map((d) => {
+                    const already = linkedIds.has(d.device_id);
+                    return (
+                      <SelectItem key={d.device_id} value={d.device_id} disabled={already}>
+                        {d.name} {d.online ? "🟢" : "🔴"} — {d.product_name ?? d.category}
+                        {already ? " ✓ já vinculado" : ""}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Não aparece o exaustor? Confirme que ele está pareado nesta mesma conta Smart Life vinculada ao Cloud Project da Tuya.
+              </p>
             </div>
             <div>
               <Label>Apelido (ex: Exaustor Cozinha)</Label>
