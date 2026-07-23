@@ -366,12 +366,14 @@ export default function NutriSensors() {
         loading={loadingDevices}
         devices={availableDevices}
         stores={stores}
+        types={equipTypes}
         onSaved={() => { setAddOpen(false); load(); }}
       />
 
       <EditSensorDialog
         equip={editing}
         stores={stores}
+        types={equipTypes}
         onOpenChange={(o) => !o && setEditing(null)}
         onSaved={() => { setEditing(null); load(); }}
       />
@@ -379,10 +381,19 @@ export default function NutriSensors() {
       <EditEmsSensorDialog
         sensor={editingEms}
         stores={stores}
+        types={equipTypes}
         onOpenChange={(o) => !o && setEditingEms(null)}
         onSaved={() => { setEditingEms(null); load(); }}
       />
+
+      <EquipmentTypesDialog
+        open={typesOpen}
+        onOpenChange={setTypesOpen}
+        types={equipTypes}
+        onChanged={loadTypes}
+      />
     </div>
+
   );
 }
 
