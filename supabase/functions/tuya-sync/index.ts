@@ -59,7 +59,8 @@ async function tuyaGet(host: string, path: string, token: string) {
   return res.json();
 }
 
-// Try all data centers to find where the device lives
+// Try all data centers to find where the device lives. Fetches both /status and
+// shadow properties (which include per-DP timestamps used to detect stale sensors).
 async function fetchDeviceStatus(deviceId: string) {
   const dcOrder = [DC, 'us', 'us-e', 'eu', 'eu-w', 'cn', 'in'];
   const seen = new Set<string>();
@@ -71,7 +72,17 @@ async function fetchDeviceStatus(deviceId: string) {
     try {
       const token = await getToken(host);
       const res = await tuyaGet(host, `/v1.0/devices/${deviceId}/status`, token);
-      if (res.success) return { ok: true as const, result: res.result, host, dc: dcKey };
+      if (res.success) {
+        // Best-effort: also grab per-DP timestamps from shadow properties.
+        let properties: Array<{ code: string; value: unknown; time?: number }> = [];
+        try {
+          const shadow = await tuyaGet(host, `/v2.0/cloud/thing/${deviceId}/shadow/properties`, token);
+          if (shadow?.success && Array.isArray(shadow.result?.properties)) {
+            properties = shadow.result.properties;
+          }
+        } catch (_) { /* ignore */ }
+        return { ok: true as const, result: res.result, properties, host, dc: dcKey };
+      }
       lastErr = { host, dc: dcKey, res };
       // If it's not a DC-permission error, don't keep trying
       if (res.code !== 28841107 && res.code !== 1106 && res.code !== 2007) {
@@ -85,30 +96,50 @@ async function fetchDeviceStatus(deviceId: string) {
 }
 
 
-function extractTempHumidity(status: Array<{ code: string; value: unknown }>) {
+const TEMP_CODES = new Set(['va_temperature', 'temp_current', 'temperature', 'cur_temperature']);
+const HUM_CODES = new Set(['va_humidity', 'humidity_value', 'humidity', 'cur_humidity']);
+const BATT_CODES = new Set(['battery_percentage', 'battery_value', 'battery', 'residual_electricity', 'va_battery']);
+
+function extractTempHumidity(
+  status: Array<{ code: string; value: unknown }>,
+  properties: Array<{ code: string; value: unknown; time?: number }> = [],
+) {
   let temp: number | null = null;
   let hum: number | null = null;
   let batt: number | null = null;
   for (const s of status) {
     const code = s.code.toLowerCase();
-    if (temp === null && (code === 'va_temperature' || code === 'temp_current' || code === 'temperature' || code === 'cur_temperature')) {
+    if (temp === null && TEMP_CODES.has(code)) {
       temp = Number(s.value) / 10; // Tuya returns °C * 10 for most sensors
     }
-    if (hum === null && (code === 'va_humidity' || code === 'humidity_value' || code === 'humidity' || code === 'cur_humidity')) {
+    if (hum === null && HUM_CODES.has(code)) {
       hum = Number(s.value);
     }
-    if (batt === null && (code === 'battery_percentage' || code === 'battery_value' || code === 'battery' || code === 'residual_electricity' || code === 'va_battery')) {
+    if (batt === null && BATT_CODES.has(code)) {
       const n = Number(s.value);
       if (!Number.isNaN(n)) batt = n > 100 ? Math.round(n / 10) : Math.round(n);
     }
     if (batt === null && code === 'battery_state') {
-      // low/middle/high => percentual estimado
       const v = String(s.value).toLowerCase();
       batt = v === 'high' ? 90 : v === 'middle' ? 50 : v === 'low' ? 15 : null;
     }
   }
-  return { temp, hum, batt };
+  // Timestamp of the last real temperature update (ms). null if unknown.
+  let tempTime: number | null = null;
+  for (const p of properties) {
+    const code = String(p.code ?? '').toLowerCase();
+    if (TEMP_CODES.has(code) && typeof p.time === 'number') {
+      tempTime = p.time;
+      break;
+    }
+  }
+  return { temp, hum, batt, tempTime };
 }
+
+// Consider a Tuya sensor offline when the temperature DP hasn't been updated
+// for this many minutes (Smart Life keeps showing cached values even when the
+// device is powered off, so we must derive freshness from the DP timestamp).
+const STALE_MINUTES = 30;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -142,13 +173,30 @@ Deno.serve(async (req) => {
           report.errors.push(`${eq.name}: ${JSON.stringify(statusRes.err)}`);
           continue;
         }
-        const { temp, hum, batt } = extractTempHumidity(statusRes.result ?? []);
+        const { temp, hum, batt, tempTime } = extractTempHumidity(statusRes.result ?? [], statusRes.properties ?? []);
         if (temp === null) {
           report.errors.push(`${eq.name}: leitura sem temperatura (dc=${statusRes.dc})`);
           continue;
         }
 
         const now = new Date().toISOString();
+        const nowMs = Date.now();
+        const staleMs = STALE_MINUTES * 60 * 1000;
+        const isStale = tempTime !== null && (nowMs - tempTime) > staleMs;
+
+        if (isStale) {
+          // Device is reporting cached values (typical when batteries are pulled
+          // but the gateway still lists it as online). Mark offline and do not
+          // record a fake reading nor trigger out-of-range alerts.
+          const staleMins = Math.round((nowMs - (tempTime as number)) / 60000);
+          await admin.from('nutri_equipment').update({
+            last_online: false,
+            out_of_range_since: null,
+          }).eq('id', eq.id);
+          report.offline++;
+          report.errors.push(`${eq.name}: sem atualização Tuya há ${staleMins} min → offline`);
+          continue;
+        }
 
         // Insert reading
         await admin.from('nutri_temperature_readings').insert({
