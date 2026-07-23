@@ -29,6 +29,7 @@ type Equip = {
   last_temp_c: number | null;
   last_humidity_pct: number | null;
   last_online: boolean;
+  last_battery_pct: number | null;
 };
 type TuyaDevice = {
   device_id: string;
