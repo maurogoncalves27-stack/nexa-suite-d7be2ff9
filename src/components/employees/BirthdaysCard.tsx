@@ -55,6 +55,7 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
           photoUrl: null as string | null,
           _photoPath: e.photo_path as string | null,
         }))
+        .filter((e) => e.month === nowM)
         .sort((a, b) => {
           const aToday = a.day === nowD && a.month === nowM ? 0 : 1;
           const bToday = b.day === nowD && b.month === nowM ? 0 : 1;
@@ -124,7 +125,7 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
                   title={`${emp.full_name} — Aniversariante do dia!`}
                 >
                   <span className="absolute -top-2 text-sm z-10">🎉</span>
-                  <Avatar className="h-16 w-16 rounded-lg border-2 border-accent ring-4 ring-accent/50 shadow-lg animate-pulse">
+                  <Avatar className="h-20 w-20 rounded-lg border-2 border-accent ring-4 ring-accent/50 shadow-lg animate-pulse">
                     {emp.photoUrl && <AvatarImage src={emp.photoUrl} alt={emp.full_name} className="rounded-lg object-cover" />}
                     <AvatarFallback className="bg-accent/20 text-accent text-sm font-bold rounded-lg">
                       <User className="h-6 w-6" />
@@ -153,7 +154,7 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
               className="flex flex-col items-center gap-0.5 shrink-0"
               title={`${emp.full_name} — dia ${String(emp.day).padStart(2, "0")}`}
             >
-              <Avatar className="h-10 w-10 rounded-md border-2 border-primary/40">
+              <Avatar className="h-12 w-12 rounded-md border-2 border-primary/40">
                 {emp.photoUrl && <AvatarImage src={emp.photoUrl} alt={emp.full_name} className="rounded-md object-cover" />}
                 <AvatarFallback className="bg-primary/15 text-primary text-xs font-semibold rounded-md">
                   <User className="h-4 w-4" />

@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Camera, Loader2, Trash2, UserCircle, Upload } from "lucide-react";
+import { Camera, Loader2, UserCircle, Upload } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface Props {
@@ -64,23 +64,6 @@ export default function ProfileAvatarUpload({
     }
   };
 
-  const remove = async () => {
-    if (!confirm("Remover sua foto de perfil?")) return;
-    setBusy(true);
-    try {
-      const { error } = await supabase
-        .from("employees")
-        .update({ avatar_path: null })
-        .eq("id", employeeId);
-      if (error) throw error;
-      toast({ title: "Foto removida" });
-      onChanged();
-    } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const initials = (fullName ?? "").split(" ").filter(Boolean).map(n => n[0]).slice(0, 2).join("").toUpperCase();
 
@@ -103,7 +86,7 @@ export default function ProfileAvatarUpload({
             className="relative group rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 shrink-0"
             aria-label="Alterar foto de perfil"
           >
-            <Avatar className="h-16 w-16 md:h-20 md:w-20 border-2 border-primary/40 shadow-md">
+            <Avatar className="h-20 w-20 md:h-24 md:w-24 border-2 border-primary/40 shadow-md">
               {avatarUrl && <AvatarImage src={avatarUrl} alt={fullName} />}
               <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
                 {avatarUrl ? initials : <UserCircle className="h-8 w-8" />}
@@ -123,12 +106,6 @@ export default function ProfileAvatarUpload({
             <Upload className="h-4 w-4 mr-2" />
             {hasAvatar ? "Trocar foto" : "Adicionar foto"}
           </DropdownMenuItem>
-          {hasAvatar && (
-            <DropdownMenuItem onClick={remove} className="text-destructive focus:text-destructive">
-              <Trash2 className="h-4 w-4 mr-2" />
-              Remover foto
-            </DropdownMenuItem>
-          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </>
