@@ -43,7 +43,7 @@ type TuyaDevice = {
 };
 
 const KIND_LABEL: Record<SmartDevice["kind"], string> = {
-  door: "Abridor de porta",
+  door: "Controle de porta",
   switch: "Interruptor",
   plug: "Tomada",
   exhaust: "Exaustor",
@@ -251,7 +251,7 @@ export default function SmartDevicesPanel() {
                             </p>
                             {!d.last_online && (
                               <p className="text-[10px] text-warning">
-                                Dispositivo reportado offline pela Tuya. O comando será tentado mesmo assim — abridores de portão às vezes ficam em standby até receberem ordem.
+                                Dispositivo reportado offline pela Tuya. O comando será tentado mesmo assim — controles de portão às vezes ficam em standby até receberem ordem.
                               </p>
                             )}
                           </div>
