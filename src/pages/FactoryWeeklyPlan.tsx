@@ -246,7 +246,7 @@ export default function FactoryWeeklyPlan() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Nível 1 — Produto acabado</CardTitle>
-              <CardDescription>O que a CD precisa entregar esta semana, considerando todas as lojas.</CardDescription>
+              <CardDescription>O que o CD precisa entregar esta semana, considerando todas as lojas.</CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (

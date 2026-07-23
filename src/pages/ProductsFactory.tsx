@@ -244,8 +244,8 @@ const ProductsFactory = () => {
         </h1>
         <p className="text-muted-foreground">
           {viewFilter === "cardapio"
-            ? "Produtos que a CD vende para as lojas. Desmarque \"No cardápio\" para retirar sem excluir o cadastro."
-            : "Cadastro único do CD: insumos, embalagens e produzidos. Use \"No cardápio\" para marcar o que a CD vende às lojas."}
+            ? "Produtos que o CD vende para as lojas. Desmarque \"No cardápio\" para retirar sem excluir o cadastro."
+            : "Cadastro único do CD: insumos, embalagens e produzidos. Use \"No cardápio\" para marcar o que o CD vende às lojas."}
         </p>
       </div>
 
