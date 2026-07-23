@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import SmartDevicesPanel from "@/components/nutri/SmartDevicesPanel";
 
 type Store = { id: string; name: string };
 type Equip = {
@@ -149,27 +151,34 @@ export default function NutriSensors() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-            <Thermometer className="h-6 w-6 md:h-7 md:w-7 text-primary" />
-            Sensores de temperatura
-          </h1>
-          <p className="text-muted-foreground">
-            Leituras automáticas dos sensores Tuya Wi-Fi e EMS-A, agrupadas por loja. Sincroniza a cada 5 min.
-          </p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" onClick={runSync} disabled={syncing}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
-            Sincronizar agora
-          </Button>
-          <Button onClick={openAdd}>
-            <Plus className="h-4 w-4 mr-2" />
-            Adicionar sensor
-          </Button>
-        </div>
+      <div>
+        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+          <Thermometer className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+          Sensores e dispositivos
+        </h1>
+        <p className="text-muted-foreground">
+          Sensores de temperatura (Tuya + EMS-A) e demais dispositivos Smart Life (portas, interruptores, exaustores) agrupados por loja.
+        </p>
       </div>
+
+      <Tabs defaultValue="temperature" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="temperature">Temperatura</TabsTrigger>
+          <TabsTrigger value="others">Outros dispositivos</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="temperature" className="space-y-4">
+          <div className="flex gap-2 flex-wrap justify-end">
+            <Button variant="outline" onClick={runSync} disabled={syncing}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
+              Sincronizar agora
+            </Button>
+            <Button onClick={openAdd}>
+              <Plus className="h-4 w-4 mr-2" />
+              Adicionar sensor
+            </Button>
+          </div>
+
 
       {loading ? (
         <div className="text-muted-foreground text-sm">Carregando…</div>
@@ -307,7 +316,12 @@ export default function NutriSensors() {
           ))}
         </div>
       )}
+        </TabsContent>
 
+        <TabsContent value="others">
+          <SmartDevicesPanel />
+        </TabsContent>
+      </Tabs>
 
       <AddSensorDialog
         open={addOpen}

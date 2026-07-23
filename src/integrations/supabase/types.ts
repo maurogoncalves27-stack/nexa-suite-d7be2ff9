@@ -15233,6 +15233,65 @@ export type Database = {
         }
         Relationships: []
       }
+      smart_devices: {
+        Row: {
+          active: boolean
+          category: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: string
+          last_online: boolean
+          last_seen_at: string | null
+          last_state: Json | null
+          name: string
+          product_name: string | null
+          store_id: string | null
+          tuya_device_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind: string
+          last_online?: boolean
+          last_seen_at?: string | null
+          last_state?: Json | null
+          name: string
+          product_name?: string | null
+          store_id?: string | null
+          tuya_device_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          last_online?: boolean
+          last_seen_at?: string | null
+          last_state?: Json | null
+          name?: string
+          product_name?: string | null
+          store_id?: string | null
+          tuya_device_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "smart_devices_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sms_senders: {
         Row: {
           active: boolean
