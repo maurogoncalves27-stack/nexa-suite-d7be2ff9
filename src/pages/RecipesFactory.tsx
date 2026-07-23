@@ -95,7 +95,7 @@ const RecipesFactory = () => {
       <div className="flex flex-col sm:flex-row sm:items-end gap-2 sm:justify-between">
         <div>
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-            <FlaskConical className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Fichas técnicas do CD
+            <FlaskConical className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Fichas técnicas do Centro de Distribuição
           </h1>
           <p className="text-muted-foreground">Cada ficha gera uma porção que é transferida às lojas via Solicitações do CD.</p>
         </div>
