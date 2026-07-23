@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
           const stat: any[] = status?.result ?? [];
 
           const findFn = (re: RegExp) => funcs.find((f) => re.test(f.code));
-          const control = findFn(/^control$/i) || findFn(/^doorcontact_state$/i);
+          const control = findFn(/^door_control|^control$/i);
           const unlock = findFn(/unlock|open_door|door_open/i);
           const lockFn = findFn(/^lock$|manual_lock/i);
           const sw = findFn(/^switch/i) || stat.find((s) => /^switch/i.test(s.code));
