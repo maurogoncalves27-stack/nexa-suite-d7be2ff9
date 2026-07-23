@@ -154,7 +154,7 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
               className="flex flex-col items-center gap-0.5 shrink-0"
               title={`${emp.full_name} — dia ${String(emp.day).padStart(2, "0")}`}
             >
-              <Avatar className="h-10 w-10 rounded-md border-2 border-primary/40">
+              <Avatar className="h-12 w-12 rounded-md border-2 border-primary/40">
                 {emp.photoUrl && <AvatarImage src={emp.photoUrl} alt={emp.full_name} className="rounded-md object-cover" />}
                 <AvatarFallback className="bg-primary/15 text-primary text-xs font-semibold rounded-md">
                   <User className="h-4 w-4" />
