@@ -316,12 +316,13 @@ export default function SmartDevicesPanel() {
 }
 
 function AddSmartDeviceDialog({
-  open, onOpenChange, loading, devices, stores, onSaved,
+  open, onOpenChange, loading, devices, linkedIds, stores, onSaved,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   loading: boolean;
   devices: TuyaDevice[];
+  linkedIds: Set<string | null>;
   stores: Store[];
   onSaved: () => void;
 }) {
