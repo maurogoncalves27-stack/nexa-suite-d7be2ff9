@@ -120,6 +120,7 @@ export default function ExportNutricontroleReportButton({ storeId }: Props) {
         waterTank: (water.data ?? []).map((w: any) => ({
           cleaning_date: w.cleaning_date, responsible: w.responsible ?? "", note: w.note ?? "", has_report: !!w.report_url,
         })),
+        employeeAsos,
       };
 
       const doc = generateNutricontroleReportPdf(data);
