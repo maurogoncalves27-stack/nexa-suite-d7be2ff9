@@ -42,7 +42,7 @@ export default function ExportNutricontroleReportButton({ storeId }: Props) {
         supabase.from("nutri_water_tank_cleanings").select("cleaning_date, responsible, note, report_url").eq("store_id", storeId).gte("cleaning_date", fromISO).lte("cleaning_date", toISO).order("cleaning_date", { ascending: false }).limit(50),
         supabase.from("nutri_equipment").select("id, name"),
         supabase.from("nutri_items").select("id, name"),
-        supabase.from("employees").select("id, name, position, status").eq("store_id", storeId).eq("status", "active"),
+        supabase.from("employees").select("id, full_name, position, status").or(`store_id.eq.${storeId},allocated_store_id.eq.${storeId}`).eq("status", "active"),
         supabase.from("work_schedules").select("employee_id").eq("store_id", storeId).gte("schedule_date", fromISO).lte("schedule_date", toISO).limit(5000),
       ]);
 
