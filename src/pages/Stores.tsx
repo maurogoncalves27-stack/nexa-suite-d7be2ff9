@@ -495,12 +495,12 @@ export default function Stores() {
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="loja">Loja (PDV / atendimento)</SelectItem>
-                        <SelectItem value="fabrica">Fábrica (produção)</SelectItem>
+                        <SelectItem value="fabrica">CD (produção)</SelectItem>
                         <SelectItem value="central">Estoque central (distribuição)</SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
-                      <b>Loja</b>: ponto de venda. <b>Fábrica</b>: produz e envia ao central. <b>Central</b>: recebe da fábrica/compras e distribui (apenas 1 permitido).
+                      <b>Loja</b>: ponto de venda. <b>CD</b>: produz e envia ao central. <b>Central</b>: recebe da CD/compras e distribui (apenas 1 permitido).
                     </p>
                   </div>
                 )}
@@ -743,7 +743,7 @@ export default function Stores() {
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {s.store_type === "fabrica" && (
-                          <Badge variant="outline" className="text-xs border-primary text-primary">Fábrica</Badge>
+                          <Badge variant="outline" className="text-xs border-primary text-primary">CD</Badge>
                         )}
                         {s.store_type === "central" && (
                           <Badge variant="default" className="text-xs">Central</Badge>
@@ -833,7 +833,7 @@ export default function Stores() {
                                 <Badge variant="secondary" className="text-[10px] py-0 px-1.5 h-4">Filial</Badge>
                               )}
                               {s.store_type === "fabrica" && (
-                                <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 border-primary text-primary">Fábrica</Badge>
+                                <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 border-primary text-primary">CD</Badge>
                               )}
                               {s.store_type === "central" && (
                                 <Badge variant="default" className="text-[10px] py-0 px-1.5 h-4">Central</Badge>

@@ -25,21 +25,21 @@ const TYPES = [
 
 const SCOPES = [
   { value: "central", label: "Só Estoque Central" },
-  { value: "factory", label: "Central + Fábrica" },
+  { value: "factory", label: "Central + CD" },
   { value: "store", label: "Central + Lojas" },
-  { value: "factory_and_store", label: "Central + Fábrica + Lojas" },
+  { value: "factory_and_store", label: "Central + CD + Lojas" },
 ] as const;
 
 const FLOWS = [
   { value: "comprado", label: "Comprado (vem de fornecedor)" },
-  { value: "produzido_fabrica", label: "Produzido pela Fábrica" },
+  { value: "produzido_fabrica", label: "Produzido pela CD" },
   { value: "misto", label: "Misto (compra ou produção)" },
 ] as const;
 
 const ROLES = [
   { value: "venda_loja", label: "Venda na Loja (cardápio)" },
-  { value: "venda_fabrica", label: "Venda pela Fábrica (cardápio)" },
-  { value: "insumo_producao", label: "Insumo de produção (fábrica)" },
+  { value: "venda_fabrica", label: "Venda pela CD (cardápio)" },
+  { value: "insumo_producao", label: "Insumo de produção (CD)" },
   { value: "insumo_montagem", label: "Insumo de montagem (loja)" },
 ] as const;
 
@@ -216,13 +216,13 @@ const ProductsFactory = () => {
     try {
       const { error } = await supabase.from("inventory_products").delete().eq("id", deleting.id);
       if (error) {
-        // FK conflict → soft remove (tira da fábrica)
+        // FK conflict → soft remove (tira da CD)
         const { error: err2 } = await supabase
           .from("inventory_products")
           .update({ factory_only: false, is_active: false })
           .eq("id", deleting.id);
         if (err2) throw err2;
-        toast.success("Produto removido da Fábrica (histórico preservado)");
+        toast.success("Produto removido da CD (histórico preservado)");
       } else {
         toast.success("Produto excluído");
       }
@@ -240,12 +240,12 @@ const ProductsFactory = () => {
       <div>
         <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
           <Layers className="h-6 w-6 md:h-7 md:w-7 text-primary" />
-          {viewFilter === "cardapio" ? "Cardápio da Fábrica" : "Produtos da Fábrica"}
+          {viewFilter === "cardapio" ? "Cardápio da CD" : "Produtos da CD"}
         </h1>
         <p className="text-muted-foreground">
           {viewFilter === "cardapio"
-            ? "Produtos que a fábrica vende para as lojas. Desmarque \"No cardápio\" para retirar sem excluir o cadastro."
-            : "Cadastro único da fábrica: insumos, embalagens e produzidos. Use \"No cardápio\" para marcar o que a fábrica vende às lojas."}
+            ? "Produtos que a CD vende para as lojas. Desmarque \"No cardápio\" para retirar sem excluir o cadastro."
+            : "Cadastro único da CD: insumos, embalagens e produzidos. Use \"No cardápio\" para marcar o que a CD vende às lojas."}
         </p>
       </div>
 
@@ -269,7 +269,7 @@ const ProductsFactory = () => {
                 <SelectContent>
                   <SelectItem value="all">Todos os produtos</SelectItem>
                   <SelectItem value="cardapio">📋 Cardápio (vende p/ loja)</SelectItem>
-                  <SelectItem value="produzidos">Produzidos pela fábrica</SelectItem>
+                  <SelectItem value="produzidos">Produzidos pela CD</SelectItem>
                   <SelectItem value="insumos">Insumos / Embalagens</SelectItem>
                 </SelectContent>
               </Select>
@@ -353,7 +353,7 @@ const ProductsFactory = () => {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>{editing ? "Editar produto" : "Novo produto da Fábrica"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editing ? "Editar produto" : "Novo produto da CD"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div>
               <Label>Nome</Label>
@@ -445,7 +445,7 @@ const ProductsFactory = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir produto?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir <strong>{deleting?.name}</strong> da Fábrica? Se o produto já tem histórico (contagens, fichas, movimentos), ele será apenas removido da Fábrica preservando o histórico.
+              Tem certeza que deseja excluir <strong>{deleting?.name}</strong> da CD? Se o produto já tem histórico (contagens, fichas, movimentos), ele será apenas removido da CD preservando o histórico.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

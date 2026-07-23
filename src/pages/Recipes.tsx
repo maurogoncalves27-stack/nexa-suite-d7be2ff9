@@ -80,7 +80,7 @@ const Recipes = () => {
     return recipes.filter((r) => {
       const set = recipeBrandMap[r.id];
       const linkedFactory = !!(factoryBrandId && set?.has(factoryBrandId));
-      // Fichas da fábrica têm página própria — não aparecem aqui
+      // Fichas da CD têm página própria — não aparecem aqui
       if (r.scope === "fabrica" || linkedFactory) return false;
 
       if (activeBrand && (!set || !set.has(activeBrand))) return false;

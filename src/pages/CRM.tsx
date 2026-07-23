@@ -294,7 +294,7 @@ function extractClientInfo(conv: any, msgs: any[] | null): Record<string, string
       "aqui","cliente","gerente","atendente","sim","nao","não","ok","oi","olá","ola",
       "bom","dia","tarde","noite","ola!","obrigado","obrigada","blz","beleza",
       "pedido","pedi","quero","comprar","ifood","whatsapp","asa","sul","norte",
-      "lago","aguas","águas","claras","fabrica","fábrica","parme","parmê","box","caipira",
+      "lago","aguas","águas","claras","fabrica","CD","parme","parmê","box","caipira",
       "estrogonofe","retirada","delivery","entrega","mesa","reserva","cardapio","cardápio",
     ]);
     const isNameToken = (t: string) =>

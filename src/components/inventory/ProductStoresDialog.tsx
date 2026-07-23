@@ -203,7 +203,7 @@ export function ProductStoresDialog({
                             variant="outline"
                             className="text-[10px] py-0 px-1.5 h-4 border-primary text-primary"
                           >
-                            Fábrica
+                            CD
                           </Badge>
                         )}
                         {s.store_type === "estoque_central" && (

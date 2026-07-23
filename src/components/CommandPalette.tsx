@@ -79,7 +79,7 @@ const NAV_ITEMS: Item[] = [
   { title: "Recebimento", url: "/recebimento", icon: PackageCheck, group: "Estoque", keywords: "nota fiscal entrada" },
   { title: "Transferências", url: "/transferencias", icon: Send, group: "Estoque", staffOnly: true },
   { title: "Solicitações de urgência", url: "/solicitacoes-fabrica", icon: AlertTriangle, group: "Estoque", keywords: "fabrica urgencia" },
-  { title: "Plano semanal da fábrica", url: "/plano-fabrica", icon: CalendarDays, group: "Estoque", staffOnly: true },
+  { title: "Plano semanal da CD", url: "/plano-fabrica", icon: CalendarDays, group: "Estoque", staffOnly: true },
   { title: "Checklist de separação", url: "/separacao", icon: ClipboardList, group: "Estoque", staffOnly: true },
   { title: "Saldo de estoque", url: "/estoque", icon: TrendingUp, group: "Estoque" },
   { title: "Contagem", url: "/inventario", icon: Boxes, group: "Estoque", keywords: "contagem inventário físico" },

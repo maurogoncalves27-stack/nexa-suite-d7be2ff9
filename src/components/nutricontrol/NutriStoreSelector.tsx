@@ -28,7 +28,7 @@ export const NutriStoreSelector = ({ value, onChange }: Props) => {
       setLoading(true);
       let list: StoreOption[] = [];
 
-      const ALLOWED = ["asa sul", "asa norte", "aguas claras", "águas claras", "lago sul", "fabrica", "fábrica"];
+      const ALLOWED = ["asa sul", "asa norte", "aguas claras", "águas claras", "lago sul", "fabrica", "CD"];
       const isAllowed = (name: string) => {
         const n = name.toLowerCase();
         return ALLOWED.some((a) => n.includes(a));

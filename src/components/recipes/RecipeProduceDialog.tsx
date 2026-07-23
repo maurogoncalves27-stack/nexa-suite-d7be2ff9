@@ -82,7 +82,7 @@ const RecipeProduceDialog = ({ open, onOpenChange, recipe, onProduced }: Props) 
         if (ids.length) query = query.in("id", ids);
       }
       const { data: st } = await query;
-      // Filtra por escopo da ficha: 'fabrica' só mostra lojas-fábrica; 'loja' exclui fábrica
+      // Filtra por escopo da ficha: 'fabrica' só mostra lojas-CD; 'loja' exclui CD
       const scope = recipe.scope ?? "loja";
       const filteredStores = (st ?? []).filter((s) =>
         scope === "fabrica" ? isFactoryName(s.name) : !isFactoryName(s.name),

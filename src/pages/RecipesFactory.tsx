@@ -72,7 +72,7 @@ const RecipesFactory = () => {
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return recipes.filter((r) => {
-      // scope='fabrica' já filtrado na query; ainda aceitamos vínculo legado por marca fábrica
+      // scope='fabrica' já filtrado na query; ainda aceitamos vínculo legado por marca CD
       const set = recipeBrandMap[r.id];
       const linkedFactory = !!(factoryBrandId && set?.has(factoryBrandId));
       const isFactoryScope = r.scope === "fabrica" || linkedFactory;
@@ -95,9 +95,9 @@ const RecipesFactory = () => {
       <div className="flex flex-col sm:flex-row sm:items-end gap-2 sm:justify-between">
         <div>
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-            <FlaskConical className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Fichas técnicas da Fábrica
+            <FlaskConical className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Fichas técnicas da CD
           </h1>
-          <p className="text-muted-foreground">Cada ficha gera uma porção que é transferida às lojas via Solicitações da Fábrica.</p>
+          <p className="text-muted-foreground">Cada ficha gera uma porção que é transferida às lojas via Solicitações da CD.</p>
         </div>
         {canReceive && (
           <div className="flex flex-wrap gap-2">
@@ -150,7 +150,7 @@ const RecipesFactory = () => {
               )}
 
               {filtered.length === 0 && !creatingNew ? (
-                <p className="text-sm text-muted-foreground text-center py-6">Nenhuma ficha técnica da fábrica.</p>
+                <p className="text-sm text-muted-foreground text-center py-6">Nenhuma ficha técnica da CD.</p>
               ) : (
                 <div className="flex flex-col gap-2">
                   {filtered.map((r) => (

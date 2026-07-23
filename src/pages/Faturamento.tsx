@@ -200,7 +200,7 @@ export default function Faturamento() {
   }
   useEffect(() => { load(); }, []);
 
-  // Filtra lojas operacionais (sem ESCRITÓRIO/FÁBRICA/ESTOQUE)
+  // Filtra lojas operacionais (sem ESCRITÓRIO/CD/ESTOQUE)
   const operationalStores = useMemo(
     () => stores.filter(s => !/escrit|fabri|estoque/i.test(s.name)),
     [stores]
@@ -229,7 +229,7 @@ export default function Faturamento() {
     [rows, year]
   );
 
-  // Marcas de produto (exclui FÁBRICA, TOTEM e SALÃO — esses são canais
+  // Marcas de produto (exclui CD, TOTEM e SALÃO — esses são canais
   // usados apenas em Vendas Próprias).
   const productBrands = useMemo(
     () => brands.filter(b => !/fabri|totem|salao/i.test(normalize(b.name))),
@@ -434,7 +434,7 @@ export default function Faturamento() {
   const isIfoodChannel = (brandId: string | null) => {
     if (!brandId) return false;
     const n = normalize(brandById.get(brandId) || "");
-    // iFood = marcas de produto (Parmê, Estrogonofe, Box). Exclui Fábrica.
+    // iFood = marcas de produto (Parmê, Estrogonofe, Box). Exclui CD.
     if (/fabri/.test(n)) return false;
     return /parme|estrogonofe|box/.test(n);
   };

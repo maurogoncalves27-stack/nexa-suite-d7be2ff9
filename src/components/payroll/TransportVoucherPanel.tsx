@@ -502,7 +502,7 @@ export default function TransportVoucherPanel() {
         return;
       }
 
-      // Centro de custo = loja alocada do colaborador (Fábrica como padrão)
+      // Centro de custo = loja alocada do colaborador (CD como padrão)
       const resolvedStoreIds = await Promise.all(
         pixRows.map(async (x) => {
           const { data } = await (supabase as any).rpc("get_employee_cost_center_by_name", {

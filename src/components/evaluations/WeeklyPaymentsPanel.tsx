@@ -403,7 +403,7 @@ export default function WeeklyPaymentsPanel({ weekStart }: WeeklyPaymentsPanelPr
         return;
       }
 
-      // Centro de custo = loja alocada do colaborador (Fábrica como padrão)
+      // Centro de custo = loja alocada do colaborador (CD como padrão)
       const resolvedStoreIds = await Promise.all(
         payableRows.map(async (r) => {
           const { data } = await (supabase as any).rpc("get_employee_cost_center_by_name", {

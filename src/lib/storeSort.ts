@@ -10,7 +10,7 @@ type StoreLike = {
 const rank = (s: StoreLike): number => {
   const type = (s.store_type ?? "").toLowerCase();
   const name = (s.name ?? "").toUpperCase();
-  if (type === "fabrica" || name === "FABRICA") return 2;
+  if (type === "fabrica" || name === "CD") return 2;
   if (type === "central" || name.includes("ESTOQUE CENTRAL")) return 1;
   return 0;
 };

@@ -94,7 +94,7 @@ export default function FactoryWeeklyPlan() {
       return;
     }
     if (!factoryStoreId) {
-      toast.error("Loja FÁBRICA não encontrada.");
+      toast.error("Loja CD não encontrada.");
       return;
     }
     const raw = (actualQty[row.product_id] ?? "").replace(",", ".").trim();
@@ -144,7 +144,7 @@ export default function FactoryWeeklyPlan() {
 
   const createQuotation = async () => {
     if (consolidated.length === 0) {
-      toast.info("Nada a cotar: nenhum item em déficit nas lojas ou na fábrica.");
+      toast.info("Nada a cotar: nenhum item em déficit nas lojas ou na CD.");
       return;
     }
     setCreatingQuote(true);
@@ -161,7 +161,7 @@ export default function FactoryWeeklyPlan() {
         .from("quotations")
         .insert({
           title: `Cotação consolidada — ${new Date().toLocaleDateString("pt-BR")}`,
-          description: `Gerada automaticamente: ${fabCount} insumo(s) da fábrica + ${lojCount} produto(s) abaixo do mínimo nas lojas (descontando cotações abertas).`,
+          description: `Gerada automaticamente: ${fabCount} insumo(s) da CD + ${lojCount} produto(s) abaixo do mínimo nas lojas (descontando cotações abertas).`,
           deadline: deadline.toISOString(),
           status: "open",
           created_by: uid,
@@ -172,7 +172,7 @@ export default function FactoryWeeklyPlan() {
 
       const items = consolidated.map((r, i) => {
         const parts: string[] = [];
-        if (r.qty_factory > 0) parts.push(`Fábrica: ${r.qty_factory}`);
+        if (r.qty_factory > 0) parts.push(`CD: ${r.qty_factory}`);
         if (r.qty_stores > 0) parts.push(`Lojas: ${r.qty_stores}`);
         if (r.qty_open_quotations > 0) parts.push(`Já cotado: ${r.qty_open_quotations}`);
         return {
@@ -202,7 +202,7 @@ export default function FactoryWeeklyPlan() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-            <CalendarRange className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Plano semanal da fábrica
+            <CalendarRange className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Plano semanal da CD
           </h1>
           <p className="text-muted-foreground text-sm">
             Consolida sugestões automáticas (estoque mínimo das lojas) + solicitações manuais e
@@ -246,7 +246,7 @@ export default function FactoryWeeklyPlan() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Nível 1 — Produto acabado</CardTitle>
-              <CardDescription>O que a fábrica precisa entregar esta semana, considerando todas as lojas.</CardDescription>
+              <CardDescription>O que a CD precisa entregar esta semana, considerando todas as lojas.</CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -264,7 +264,7 @@ export default function FactoryWeeklyPlan() {
                         <TableHead>Origem</TableHead>
                         <TableHead className="hidden sm:table-cell">Ficha técnica</TableHead>
                         <TableHead className="text-right">Total previsto</TableHead>
-                        <TableHead className="text-right">Estoque fábrica</TableHead>
+                        <TableHead className="text-right">Estoque CD</TableHead>
                         <TableHead className="text-right">A produzir</TableHead>
                         <TableHead className="text-right min-w-[200px]">Produção real</TableHead>
                       </TableRow>

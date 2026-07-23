@@ -116,7 +116,7 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
 
   async function load() {
     setLoading(true);
-    const ALLOWED_STORES = ["ASA SUL", "ASA NORTE", "AGUAS CLARAS", "ÁGUAS CLARAS", "LAGO SUL", "FABRICA", "FÁBRICA"];
+    const ALLOWED_STORES = ["ASA SUL", "ASA NORTE", "AGUAS CLARAS", "ÁGUAS CLARAS", "LAGO SUL", "CD", "CD"];
     const ALLOWED_BRANDS = ["AQUELA PARME", "AQUELA PARMÊ", "AQUELE ESTROGONOFE", "AQUELE ESTROGONOFÊ", "BOX CAIPIRA"];
     const [r, b, s, g] = await Promise.all([
       supabase.from("customer_reviews").select("*").order("published_at", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false }).limit(500),
@@ -180,9 +180,9 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
     });
   }, [reviews]);
 
-  // Média manual do iFood por loja+marca (Fábrica não vende no iFood)
+  // Média manual do iFood por loja+marca (CD não vende no iFood)
   const IFOOD_STORES_KEY = "crm.ifood.manual_by_store_brand";
-  // Média manual do Google por loja+marca (Fábrica não tem Google público)
+  // Média manual do Google por loja+marca (CD não tem Google público)
   const GOOGLE_STORES_KEY = "crm.google.manual_by_store_brand";
   type ManualEntry = { avg: number; count: number };
   type IfoodEntry = ManualEntry;

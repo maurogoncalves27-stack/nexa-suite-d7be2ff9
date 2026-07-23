@@ -1,6 +1,6 @@
 /**
- * Helpers para identificar lojas tipo "fábrica" (sem schema novo).
- * A fábrica é reconhecida pelo nome contendo "fabrica" / "fábrica".
+ * Helpers para identificar lojas tipo "CD" (sem schema novo).
+ * A CD é reconhecida pelo nome contendo "fabrica" / "CD".
  */
 import { supabase } from "@/integrations/supabase/client";
 
@@ -13,7 +13,7 @@ export const isFactoryName = (name?: string | null) =>
  * Determina o escopo das fichas técnicas que o funcionário pode produzir
  * com base na loja vinculada (store_id ou allocated_store_id).
  *
- * - Se a loja vinculada é a fábrica → "fabrica"
+ * - Se a loja vinculada é a CD → "fabrica"
  * - Caso contrário (ou sem vínculo) → "loja"
  *
  * Admin e gestor recebem null (sem restrição).

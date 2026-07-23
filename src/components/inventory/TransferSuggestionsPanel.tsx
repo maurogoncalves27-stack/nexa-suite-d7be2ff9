@@ -46,7 +46,7 @@ export default function TransferSuggestionsPanel({ onTransfersCreated }: Props) 
       const list = (data ?? []) as Store[];
       setStores(sortStores(list));
       const factory = list.find((s) =>
-        ["fábrica", "fabrica", "central", "matriz"].some((k) => s.name.toLowerCase().includes(k))
+        ["CD", "fabrica", "central", "matriz"].some((k) => s.name.toLowerCase().includes(k))
       );
       setOriginId(factory?.id ?? list[0]?.id ?? "");
     };
@@ -137,7 +137,7 @@ export default function TransferSuggestionsPanel({ onTransfersCreated }: Props) 
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <Select value={originId} onValueChange={setOriginId}>
-          <SelectTrigger><SelectValue placeholder="Loja origem (fábrica)" /></SelectTrigger>
+          <SelectTrigger><SelectValue placeholder="Loja origem (CD)" /></SelectTrigger>
           <SelectContent>
             {stores.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
           </SelectContent>
