@@ -299,7 +299,8 @@ export default function SmartDevicesPanel() {
         open={addOpen}
         onOpenChange={setAddOpen}
         loading={loadingTuya}
-        devices={availableTuya}
+        devices={tuyaDevices}
+        linkedIds={linkedIds}
         stores={stores}
         onSaved={() => { setAddOpen(false); load(); }}
       />
