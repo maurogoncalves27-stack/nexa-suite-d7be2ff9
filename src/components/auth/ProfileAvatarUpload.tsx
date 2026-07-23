@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Camera, Loader2, Trash2, UserCircle, Upload } from "lucide-react";
+import { Camera, Loader2, UserCircle, Upload } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface Props {
