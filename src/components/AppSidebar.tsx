@@ -99,7 +99,7 @@ const estoqueSections: Section[] = [
     { title: "Sugestão de abastecimento", url: "/sugestao-abastecimento", icon: Sparkles, staffOnly: true },
     { title: "Transferências", url: "/transferencias", icon: ArrowLeftRight, staffOnly: true },
     { title: "Requisições de urgência", url: "/solicitacoes-fabrica", icon: AlertTriangle },
-    { title: "Plano semanal do CD", url: "/plano-fabrica", icon: CalendarRange, staffOnly: true },
+    { title: "Plano semanal do Centro de Distribuição", url: "/plano-fabrica", icon: CalendarRange, staffOnly: true },
     { title: "Checklist de separação", url: "/separacao", icon: ClipboardList, staffOnly: true },
   ]},
   { label: "Controle", items: [
