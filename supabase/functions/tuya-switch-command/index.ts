@@ -107,23 +107,55 @@ Deno.serve(async (req) => {
       seen.add(host);
       try {
         const token = await getToken(host);
-        // Discover switch code if not provided
-        let switchCode = code as string | undefined;
-        if (!switchCode) {
+
+        // Discover the right command code + value shape by inspecting device functions/status.
+        // Priority order for door/opener devices:
+        //   1) explicit `code` param from client
+        //   2) garage-door style: `control` with "open"/"close"/"stop" (string enum)
+        //   3) door-lock style: `unlock_request` / `manual_lock` (bool)
+        //   4) generic switch_*  (bool)
+        let cmdCode = code as string | undefined;
+        let cmdValue: any = value;
+
+        if (!cmdCode) {
+          // functions endpoint tells us available commands + type
+          const fn = await tuyaGet(host, `/v1.0/devices/${device_id}/functions`, token);
+          const funcs: any[] = fn?.result?.functions ?? [];
           const status = await tuyaGet(host, `/v1.0/devices/${device_id}/status`, token);
-          if (status.success) {
-            const first = (status.result ?? []).find((s: any) => /^switch/i.test(s.code));
-            switchCode = first?.code ?? 'switch_1';
+          const stat: any[] = status?.result ?? [];
+
+          const findFn = (re: RegExp) => funcs.find((f) => re.test(f.code));
+          const control = findFn(/^control$/i) || findFn(/^doorcontact_state$/i);
+          const unlock = findFn(/unlock|open_door|door_open/i);
+          const lockFn = findFn(/^lock$|manual_lock/i);
+          const sw = findFn(/^switch/i) || stat.find((s) => /^switch/i.test(s.code));
+
+          if (control) {
+            cmdCode = control.code;
+            cmdValue = value ? 'open' : 'close';
+          } else if (value && unlock) {
+            cmdCode = unlock.code;
+            cmdValue = true;
+          } else if (!value && lockFn) {
+            cmdCode = lockFn.code;
+            cmdValue = true;
+          } else if (sw) {
+            cmdCode = sw.code;
+            cmdValue = value;
+          } else {
+            cmdCode = 'switch_1';
+            cmdValue = value;
           }
         }
-        const body = { commands: [{ code: switchCode ?? 'switch_1', value }] };
+
+        const body = { commands: [{ code: cmdCode, value: cmdValue }] };
         const r = await tuyaPost(host, `/v1.0/devices/${device_id}/commands`, token, body);
         if (r.success) {
-          return new Response(JSON.stringify({ ok: true, host, dc, code: switchCode, value }), {
+          return new Response(JSON.stringify({ ok: true, host, dc, code: cmdCode, value: cmdValue }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
-        lastErr = { host, dc, r };
+        lastErr = { host, dc, r, tried: { cmdCode, cmdValue } };
         if (r.code !== 28841107 && r.code !== 1106 && r.code !== 2007) break;
       } catch (e) { lastErr = { dc, err: String(e) }; }
     }
