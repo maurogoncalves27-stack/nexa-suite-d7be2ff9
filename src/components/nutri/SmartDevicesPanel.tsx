@@ -139,7 +139,6 @@ export default function SmartDevicesPanel() {
   }
 
   const linkedIds = useMemo(() => new Set(devices.map((d) => d.tuya_device_id)), [devices]);
-  const availableTuya = tuyaDevices.filter((d) => !linkedIds.has(d.device_id));
 
   const grouped = useMemo(() => {
     const map = new Map<string, { store: Store | null; items: SmartDevice[] }>();
