@@ -42,7 +42,8 @@ export default function ExportNutricontroleReportButton({ storeId }: Props) {
         supabase.from("nutri_water_tank_cleanings").select("cleaning_date, responsible, note, report_url").eq("store_id", storeId).gte("cleaning_date", fromISO).lte("cleaning_date", toISO).order("cleaning_date", { ascending: false }).limit(50),
         supabase.from("nutri_equipment").select("id, name"),
         supabase.from("nutri_items").select("id, name"),
-        supabase.from("employees").select("id, full_name, position, status").or(`store_id.eq.${storeId},allocated_store_id.eq.${storeId}`).eq("status", "active"),
+        // Regra de alocação: allocated_store_id é a verdade; store_id só conta quando não há allocated_store_id
+        supabase.from("employees").select("id, full_name, position, status, store_id, allocated_store_id").or(`allocated_store_id.eq.${storeId},and(allocated_store_id.is.null,store_id.eq.${storeId})`).eq("status", "active"),
         supabase.from("work_schedules").select("employee_id").eq("store_id", storeId).gte("schedule_date", fromISO).lte("schedule_date", toISO).limit(5000),
       ]);
 
@@ -55,8 +56,13 @@ export default function ExportNutricontroleReportButton({ storeId }: Props) {
       const schedIds = Array.from(new Set(((schedEmps.data ?? []) as any[]).map((r) => r.employee_id).filter(Boolean)));
       const missingIds = schedIds.filter((id) => !empMap.has(id));
       if (missingIds.length) {
-        const { data: extras } = await supabase.from("employees").select("id, full_name, position, status").in("id", missingIds).eq("status", "active");
-        (extras ?? []).forEach((e: any) => empMap.set(e.id, { id: e.id, name: e.full_name, position: e.position ?? "" }));
+        const { data: extras } = await supabase.from("employees").select("id, full_name, position, status, allocated_store_id").in("id", missingIds).eq("status", "active");
+        // Só adiciona quem tem escala nessa loja E não está allocated em outra
+        (extras ?? []).forEach((e: any) => {
+          if (!e.allocated_store_id || e.allocated_store_id === storeId) {
+            empMap.set(e.id, { id: e.id, name: e.full_name, position: e.position ?? "" });
+          }
+        });
       }
       const empIds = Array.from(empMap.keys());
       const asoMap = new Map<string, { document_type: string; certificate_date: string; valid_until: string | null }>();
