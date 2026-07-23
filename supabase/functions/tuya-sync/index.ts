@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
           report.errors.push(`${eq.name}: ${JSON.stringify(statusRes.err)}`);
           continue;
         }
-        const { temp, hum } = extractTempHumidity(statusRes.result ?? []);
+        const { temp, hum, batt } = extractTempHumidity(statusRes.result ?? []);
         if (temp === null) {
           report.errors.push(`${eq.name}: leitura sem temperatura (dc=${statusRes.dc})`);
           continue;
@@ -173,6 +173,7 @@ Deno.serve(async (req) => {
           last_humidity_pct: hum,
           last_online: true,
         };
+        if (batt !== null) patch.last_battery_pct = batt;
 
         if (outOfRange) {
           if (!eq.out_of_range_since) {
