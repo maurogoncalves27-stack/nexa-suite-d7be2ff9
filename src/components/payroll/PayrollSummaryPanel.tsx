@@ -847,7 +847,7 @@ export default function PayrollSummaryPanel() {
       const dueDate = `${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, "0")}-${String(due.getDate()).padStart(2, "0")}`;
       const competence = `${String(refMonth).padStart(2, "0")}/${refYear}`;
 
-      // Centro de custo = loja alocada do colaborador (Fábrica como padrão)
+      // Centro de custo = loja alocada do colaborador (CD como padrão)
       const resolvedStoreIds = await Promise.all(
         eligible.map(async (r) => {
           const name = r.full_name ?? "";

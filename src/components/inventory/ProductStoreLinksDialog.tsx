@@ -35,7 +35,7 @@ const ProductStoreLinksDialog = ({ open, onOpenChange, productId, productName }:
         supabase.from("stores").select("id, name, store_type").eq("is_virtual", false).order("name"),
         supabase.from("product_store_links").select("store_id").eq("product_id", productId),
       ]);
-      // Excluir lojas do tipo fábrica/central (são origem, não destino)
+      // Excluir lojas do tipo CD/central (são origem, não destino)
       const filtered = (st ?? []).filter((s) => !isFactoryName(s.name));
       setStores(sortStores(filtered));
       setSelected(new Set((links ?? []).map((l: { store_id: string }) => l.store_id)));

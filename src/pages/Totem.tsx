@@ -179,7 +179,7 @@ export default function Totem() {
   useEffect(() => {
     void (async () => {
       const [b, s, ta] = await Promise.all([
-        supabase.from("brands").select("id,name,slug").eq("is_active", true).not("name", "ilike", "%fábrica%").not("name", "ilike", "%fabrica%").order("sort_order"),
+        supabase.from("brands").select("id,name,slug").eq("is_active", true).not("name", "ilike", "%CD%").not("name", "ilike", "%fabrica%").order("sort_order"),
         supabase.from("stores").select("id,name,brand_id,parent_store_id,parent_store:parent_store_id(name)").order("name"),
         (supabase as any).from("totem_assets").select("kind,brand_slug,image_url,sort_order,is_active").eq("is_active", true).order("sort_order"),
       ]);

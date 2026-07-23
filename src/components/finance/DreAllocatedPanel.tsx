@@ -42,8 +42,8 @@ const monthsAgoISO = (n: number) => {
 
 // Lojas físicas que recebem rateio (por nome, robusto a remapeamento de IDs)
 const ALLOCATION_STORE_NAMES = ["ÁGUAS CLARAS", "ASA NORTE", "ASA SUL", "LAGO SUL"];
-// Identificação da fábrica (por nome)
-const FACTORY_STORE_NAMES = ["FABRICA", "FÁBRICA"];
+// Identificação do CD (por nome)
+const FACTORY_STORE_NAMES = ["CD", "CD"];
 
 const applyExpense = (col: DreColumn, group: DreGroup | null, debit: number) => {
   if (group === "excluded") return;
@@ -150,7 +150,7 @@ export default function DreAllocatedPanel() {
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [start, end]);
 
-  // Resolve quais ids são lojas-alvo do rateio e quais são fábrica.
+  // Resolve quais ids são lojas-alvo do rateio e quais são CD.
   // Para evitar problema com lojas físicas vs virtuais de mesmo nome, usamos is_virtual=false.
   const allocationStoreIds = useMemo(() => {
     const map = new Map<string, string>(); // id -> name
@@ -202,7 +202,7 @@ export default function DreAllocatedPanel() {
       cols.set(id, emptyDreColumn(id, name));
     }
     const FACTORY_KEY = "__factory__";
-    cols.set(FACTORY_KEY, emptyDreColumn(FACTORY_KEY, "FÁBRICA (rateado)"));
+    cols.set(FACTORY_KEY, emptyDreColumn(FACTORY_KEY, "CD (rateado)"));
 
     const allMonths = monthsInRange(start, end);
     const liveMonthSet = new Set(allMonths.filter((m) => !isHistoricalMonth(m)));
@@ -333,7 +333,7 @@ export default function DreAllocatedPanel() {
       </div>
 
       <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-        Despesas pagas da <strong>FÁBRICA</strong> (e de lojas sem destinação direta) são rateadas entre
+        Despesas pagas da <strong>CD</strong> (e de lojas sem destinação direta) são rateadas entre
         as 4 lojas físicas conforme o <strong>% de faturamento bruto</strong> do período. Despesas com
         store_id de uma das 4 lojas vão direto para a coluna dela.
       </div>

@@ -106,11 +106,11 @@ const RecipeBook = ({ scope = "loja" }: Props) => {
       <div>
         <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
           <BookMarked className="h-6 w-6 md:h-7 md:w-7 text-primary" />
-          {scope === "fabrica" ? "Receituário da Fábrica" : "Receituário"}
+          {scope === "fabrica" ? "Receituário do Centro de Distribuição" : "Receituário"}
         </h1>
         <p className="text-muted-foreground">
           {scope === "fabrica"
-            ? "Receituários gerados a partir das fichas técnicas da Fábrica. Editar ou excluir aqui não afeta a ficha original."
+            ? "Receituários gerados a partir das fichas técnicas do CD. Editar ou excluir aqui não afeta a ficha original."
             : "Receituários gerados a partir das fichas técnicas das lojas. Editar ou excluir aqui não afeta a ficha original."}
         </p>
       </div>

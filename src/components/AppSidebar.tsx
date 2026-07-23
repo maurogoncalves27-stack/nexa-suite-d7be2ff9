@@ -99,7 +99,7 @@ const estoqueSections: Section[] = [
     { title: "Sugestão de abastecimento", url: "/sugestao-abastecimento", icon: Sparkles, staffOnly: true },
     { title: "Transferências", url: "/transferencias", icon: ArrowLeftRight, staffOnly: true },
     { title: "Requisições de urgência", url: "/solicitacoes-fabrica", icon: AlertTriangle },
-    { title: "Plano semanal da fábrica", url: "/plano-fabrica", icon: CalendarRange, staffOnly: true },
+    { title: "Plano semanal do Centro de Distribuição", url: "/plano-fabrica", icon: CalendarRange, staffOnly: true },
     { title: "Checklist de separação", url: "/separacao", icon: ClipboardList, staffOnly: true },
   ]},
   { label: "Controle", items: [
@@ -232,7 +232,7 @@ const pdvSections: Section[] = [
 ];
 
 
-// Fábrica: produção (sem rótulos — conforme print)
+// CD: produção (sem rótulos — conforme print)
 const fabricaSections: Section[] = [
   { label: "Planejamento", items: [
     { title: "Plano semanal", url: "/plano-fabrica", icon: CalendarRange, staffOnly: true },
@@ -742,7 +742,7 @@ export function AppSidebar() {
           { kind: "mode", mode: "estoque", label: "Estoque", icon: Package },
           { kind: "mode", mode: "compras", label: "Compras", icon: ShoppingCart },
           { kind: "mode", mode: "pdv", label: "PDV", icon: Monitor },
-          { kind: "mode", mode: "fabrica", label: "Fábrica", icon: Factory },
+          { kind: "mode", mode: "fabrica", label: "CD", icon: Factory },
           { kind: "mode", mode: "operacao", label: "Operação", icon: ChefHat },
           { kind: "mode", mode: "docs", label: "Docs", icon: FolderOpen },
         ];

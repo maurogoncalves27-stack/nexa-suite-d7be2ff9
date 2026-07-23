@@ -40,7 +40,7 @@ const monthsAgoISO = (n: number) => {
   return d.toISOString().slice(0, 10);
 };
 
-const FACTORY_NAMES = ["FABRICA", "FÁBRICA"];
+const FACTORY_NAMES = ["CD", "CD"];
 
 const applyExpense = (col: DreColumn, group: DreGroup | null, debit: number) => {
   if (group === "excluded") return;
@@ -273,7 +273,7 @@ export default function DreByStorePanel() {
       }
     }
 
-    // Rateio da fábrica — só meses ao vivo
+    // Rateio do CD — só meses ao vivo
     let factoryShare = 0;
     let allocPctValue = 0;
     let factoryTotal = 0;
@@ -296,7 +296,7 @@ export default function DreByStorePanel() {
       const myGross = grossByStore.get(selectedStoreId) ?? 0;
       allocPctValue = totalGross > 0 ? myGross / totalGross : 0;
 
-      const factoryCol = emptyDreColumn("__f__", "Fábrica");
+      const factoryCol = emptyDreColumn("__f__", "CD");
       for (const p of payables) {
         if (p.status === "cancelled") continue;
         const comp = p.competence_date ?? p.due_date;
@@ -367,7 +367,7 @@ export default function DreByStorePanel() {
               onCheckedChange={setIncludeFactoryShare}
             />
             <Label htmlFor="alloc-factory" className="text-xs cursor-pointer">
-              Incluir rateio da fábrica
+              Incluir rateio do CD
             </Label>
           </div>
         )}
@@ -376,7 +376,7 @@ export default function DreByStorePanel() {
       {includeFactoryShare && !selectedIsFactory && data && (
         <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
           Esta loja representa <strong>{(data.allocPct * 100).toFixed(1)}%</strong> do faturamento bruto das lojas físicas no período.
-          Despesas rateadas da fábrica: <strong className="text-foreground">{fmtBRL(data.factoryShare)}</strong>.
+          Despesas rateadas do CD: <strong className="text-foreground">{fmtBRL(data.factoryShare)}</strong>.
         </div>
       )}
 

@@ -239,7 +239,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
 
   const syncBrands = async (rid: string) => {
     if (factoryMode) {
-      // Fichas da fábrica não têm vínculo com marcas — geram porções transferidas às lojas
+      // Fichas do CD não têm vínculo com marcas — geram porções transferidas às lojas
       await supabase.from("recipe_brands").delete().eq("recipe_id", rid);
       return;
     }
@@ -449,7 +449,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
                       e.stopPropagation();
                       const factory = brands.find((b) => isFactoryBrandName(b.name));
                       if (!factory) {
-                        toast.error("Marca 'PRÉ PREPARO/FÁBRICA' não encontrada");
+                        toast.error("Marca 'PRÉ PREPARO/CD' não encontrada");
                         return;
                       }
                       setSelectedBrands((prev) => {
@@ -540,7 +540,7 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="porcao">Porção (item porcionado transferido às lojas)</SelectItem>
-                          <SelectItem value="prep">Pré-preparo (insumo usado por outra ficha da fábrica)</SelectItem>
+                          <SelectItem value="prep">Pré-preparo (insumo usado por outra ficha do CD)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -556,12 +556,12 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
                           </SelectContent>
                         </Select>
                         <p className="text-[11px] text-muted-foreground">
-                          A fábrica não tem cardápio — o item porcionado é o "cardápio da fábrica". Só produtos da categoria <strong>PORCIONADOS</strong> aparecem aqui. As porções produzidas são transferidas às lojas via Solicitações da Fábrica.
+                          O CD não tem cardápio — o item porcionado é o "cardápio do CD". Só produtos da categoria <strong>PORCIONADOS</strong> aparecem aqui. As porções produzidas são transferidas às lojas via Solicitações do CD.
                         </p>
                       </div>
                     ) : (
                       <div className="rounded-md border border-dashed bg-muted/40 p-3 text-[11px] text-muted-foreground">
-                        Pré-preparo da fábrica: não gera item porcionado. Esta ficha será usada como ingrediente dentro de outra ficha da fábrica.
+                        Pré-preparo do CD: não gera item porcionado. Esta ficha será usada como ingrediente dentro de outra ficha do CD.
                       </div>
                     )}
                   </>
@@ -716,8 +716,8 @@ const RecipeFormCard = ({ recipeId, defaultOpen, initialBrandId, hideFactory, fa
 
                 {factoryMode ? (
                   <div className="rounded-md border border-dashed bg-muted/40 p-3 text-sm text-muted-foreground">
-                    Esta ficha gera <strong>porções</strong> que são transferidas às lojas via Solicitações da Fábrica.
-                    A fábrica não tem cardápio — defina o <em>produto de saída</em> acima para que as porções entrem no estoque das lojas que solicitarem.
+                    Esta ficha gera <strong>porções</strong> que são transferidas às lojas via Solicitações do CD.
+                    O CD não tem cardápio — defina o <em>produto de saída</em> acima para que as porções entrem no estoque das lojas que solicitarem.
                   </div>
                 ) : (
                   <>
