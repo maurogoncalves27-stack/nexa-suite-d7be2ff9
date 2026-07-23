@@ -9397,6 +9397,39 @@ export type Database = {
           },
         ]
       }
+      nutri_equipment_types: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          max_temp_c: number
+          min_temp_c: number
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          max_temp_c: number
+          min_temp_c: number
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          max_temp_c?: number
+          min_temp_c?: number
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       nutri_items: {
         Row: {
           category: number

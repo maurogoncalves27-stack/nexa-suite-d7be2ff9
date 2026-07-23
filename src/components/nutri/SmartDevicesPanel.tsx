@@ -237,24 +237,18 @@ export default function SmartDevicesPanel() {
                             <div className={`text-3xl font-bold ${doorOpen ? "text-warning" : ""}`}>
                               {doorOpen === null ? "—" : doorOpen ? "Aberta" : "Fechada"}
                             </div>
-                            <div className="grid grid-cols-2 gap-2">
-                              <Button
-                                variant={doorOpen === true ? "default" : "outline"}
-                                size="sm"
-                                disabled={toggling === d.id}
-                                onClick={() => toggleSwitch(d, true)}
-                              >
-                                {toggling === d.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><DoorOpen className="h-4 w-4 mr-1" /> Abrir</>}
-                              </Button>
-                              <Button
-                                variant={doorOpen === false ? "default" : "outline"}
-                                size="sm"
-                                disabled={toggling === d.id}
-                                onClick={() => toggleSwitch(d, false)}
-                              >
-                                {toggling === d.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><DoorClosed className="h-4 w-4 mr-1" /> Fechar</>}
-                              </Button>
-                            </div>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="w-full"
+                              disabled={toggling === d.id}
+                              onClick={() => toggleSwitch(d, true)}
+                            >
+                              {toggling === d.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><DoorOpen className="h-4 w-4 mr-1" /> Abrir</>}
+                            </Button>
+                            <p className="text-[10px] text-muted-foreground">
+                              A porta fecha automaticamente após a abertura.
+                            </p>
                             {!d.last_online && (
                               <p className="text-[10px] text-warning">
                                 Dispositivo reportado offline pela Tuya. O comando será tentado mesmo assim — abridores de portão às vezes ficam em standby até receberem ordem.
@@ -262,6 +256,7 @@ export default function SmartDevicesPanel() {
                             )}
                           </div>
                         )}
+
                         {isSwitchLike && (
                           <div className="flex items-center justify-between border rounded-md p-3">
                             <div>

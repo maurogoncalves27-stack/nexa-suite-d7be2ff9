@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Thermometer, RefreshCw, Plus, Settings2, Wifi, WifiOff, Battery, BatteryLow, BatteryMedium, BatteryFull, Store as StoreIcon } from "lucide-react";
+import { Thermometer, RefreshCw, Plus, Settings2, Wifi, WifiOff, Battery, BatteryLow, BatteryMedium, BatteryFull, Store as StoreIcon, Wrench, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -51,12 +51,15 @@ type EmsSensor = {
   last_measured_at: string | null;
 };
 
-const SENSOR_DEFAULTS: Record<string, { min: number; max: number; label: string }> = {
-  freezer: { min: -25, max: -15, label: "Congelador" },
-  chiller: { min: 0, max: 5, label: "Resfriado" },
-  dry: { min: 15, max: 25, label: "Seco" },
-  custom: { min: 0, max: 10, label: "Personalizado" },
+type EquipType = {
+  id: string;
+  name: string;
+  min_temp_c: number;
+  max_temp_c: number;
+  sort_order: number;
+  active: boolean;
 };
+
 
 export default function NutriSensors() {
   const [stores, setStores] = useState<Store[]>([]);
@@ -69,6 +72,14 @@ export default function NutriSensors() {
   const [editing, setEditing] = useState<Equip | null>(null);
   const [editingEms, setEditingEms] = useState<EmsSensor | null>(null);
   const [emsSensors, setEmsSensors] = useState<EmsSensor[]>([]);
+  const [equipTypes, setEquipTypes] = useState<EquipType[]>([]);
+  const [typesOpen, setTypesOpen] = useState(false);
+
+  async function loadTypes() {
+    const { data } = await supabase.from("nutri_equipment_types").select("*").order("sort_order").order("name");
+    setEquipTypes((data ?? []) as EquipType[]);
+  }
+
 
 
   async function load() {
@@ -105,7 +116,7 @@ export default function NutriSensors() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadTypes(); }, []);
 
   async function runSync() {
     setSyncing(true);
@@ -170,6 +181,10 @@ export default function NutriSensors() {
 
         <TabsContent value="temperature" className="space-y-4">
           <div className="flex gap-2 flex-wrap justify-end">
+            <Button variant="outline" onClick={() => setTypesOpen(true)}>
+              <Wrench className="h-4 w-4 mr-2" />
+              Configurar equipamentos
+            </Button>
             <Button variant="outline" onClick={runSync} disabled={syncing}>
               <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
               Sincronizar agora
@@ -179,6 +194,7 @@ export default function NutriSensors() {
               Adicionar sensor
             </Button>
           </div>
+
 
 
       {loading ? (
@@ -350,6 +366,7 @@ export default function NutriSensors() {
         loading={loadingDevices}
         devices={availableDevices}
         stores={stores}
+        types={equipTypes}
         onSaved={() => { setAddOpen(false); load(); }}
       />
 
@@ -366,7 +383,16 @@ export default function NutriSensors() {
         onOpenChange={(o) => !o && setEditingEms(null)}
         onSaved={() => { setEditingEms(null); load(); }}
       />
+
+
+      <EquipmentTypesDialog
+        open={typesOpen}
+        onOpenChange={setTypesOpen}
+        types={equipTypes}
+        onChanged={loadTypes}
+      />
     </div>
+
   );
 }
 
@@ -459,24 +485,31 @@ function EditEmsSensorDialog({
 
 
 function AddSensorDialog({
-  open, onOpenChange, loading, devices, stores, onSaved,
+  open, onOpenChange, loading, devices, stores, types, onSaved,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   loading: boolean;
   devices: TuyaDevice[];
   stores: Store[];
+  types: EquipType[];
   onSaved: () => void;
 }) {
   const [deviceId, setDeviceId] = useState("");
   const [name, setName] = useState("");
   const [storeId, setStoreId] = useState("");
-  const [type, setType] = useState<keyof typeof SENSOR_DEFAULTS>("chiller");
+  const [typeId, setTypeId] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
+  const activeTypes = useMemo(() => types.filter((t) => t.active), [types]);
+
   useEffect(() => {
-    if (!open) { setDeviceId(""); setName(""); setStoreId(""); setType("chiller"); }
+    if (!open) { setDeviceId(""); setName(""); setStoreId(""); setTypeId(""); }
   }, [open]);
+
+  useEffect(() => {
+    if (open && !typeId && activeTypes.length > 0) setTypeId(activeTypes[0].id);
+  }, [open, activeTypes, typeId]);
 
   useEffect(() => {
     const d = devices.find((x) => x.device_id === deviceId);
@@ -484,22 +517,24 @@ function AddSensorDialog({
   }, [deviceId]);
 
   async function save() {
-    if (!deviceId || !name || !storeId) return toast.error("Preencha todos os campos");
+    if (!deviceId || !name || !storeId || !typeId) return toast.error("Preencha todos os campos");
+    const def = activeTypes.find((t) => t.id === typeId);
+    if (!def) return toast.error("Selecione um equipamento");
     setSaving(true);
-    const def = SENSOR_DEFAULTS[type];
     const { data: user } = await supabase.auth.getUser();
+    const isFreezer = Number(def.max_temp_c) <= 0;
     const { error } = await supabase.from("nutri_equipment").insert({
       name,
-      equipment_type: type === "freezer" ? "freezer" : "refrigerator",
+      equipment_type: isFreezer ? "freezer" : "refrigerator",
       store_id: storeId,
       created_by: user.user!.id,
       tuya_device_id: deviceId,
-      tuya_sensor_type: type,
-      min_temp_c: def.min,
-      max_temp_c: def.max,
+      tuya_sensor_type: def.name,
+      min_temp_c: Number(def.min_temp_c),
+      max_temp_c: Number(def.max_temp_c),
       alert_delay_minutes: 15,
       tuya_active: true,
-    });
+    } as any);
 
     setSaving(false);
     if (error) return toast.error(error.message);
@@ -550,15 +585,18 @@ function AddSensorDialog({
               </Select>
             </div>
             <div>
-              <Label>Tipo de câmara</Label>
-              <Select value={type} onValueChange={(v) => setType(v as any)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Label>Tipo de equipamento</Label>
+              <Select value={typeId} onValueChange={setTypeId}>
+                <SelectTrigger><SelectValue placeholder={activeTypes.length ? "Escolha…" : "Nenhum equipamento cadastrado"} /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(SENSOR_DEFAULTS).map(([k, v]) => (
-                    <SelectItem key={k} value={k}>{v.label} ({v.min}~{v.max}°C)</SelectItem>
+                  {activeTypes.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.name} ({t.min_temp_c}~{t.max_temp_c}°C)</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Gerencie a lista em "Configurar equipamentos".
+              </p>
             </div>
           </div>
         )}
@@ -570,6 +608,7 @@ function AddSensorDialog({
     </Dialog>
   );
 }
+
 
 function EditSensorDialog({
   equip, stores, onOpenChange, onSaved,
@@ -677,6 +716,123 @@ function EditSensorDialog({
           <Button variant="destructive" onClick={remove} className="sm:mr-auto">Desvincular</Button>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={save} disabled={saving}>Salvar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EquipmentTypesDialog({
+  open, onOpenChange, types, onChanged,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  types: EquipType[];
+  onChanged: () => void;
+}) {
+  const [newName, setNewName] = useState("");
+  const [newMin, setNewMin] = useState("");
+  const [newMax, setNewMax] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function addType() {
+    if (!newName || newMin === "" || newMax === "") return toast.error("Preencha nome e faixa");
+    setSaving(true);
+    const { error } = await supabase.from("nutri_equipment_types").insert({
+      name: newName,
+      min_temp_c: Number(newMin),
+      max_temp_c: Number(newMax),
+      sort_order: (types.at(-1)?.sort_order ?? 0) + 1,
+    });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    setNewName(""); setNewMin(""); setNewMax("");
+    toast.success("Equipamento cadastrado");
+    onChanged();
+  }
+
+  async function updateType(id: string, patch: Partial<EquipType>) {
+    const { error } = await supabase.from("nutri_equipment_types").update(patch).eq("id", id);
+    if (error) return toast.error(error.message);
+    onChanged();
+  }
+
+  async function removeType(id: string) {
+    if (!confirm("Excluir este equipamento? Sensores já vinculados mantêm sua faixa atual.")) return;
+    const { error } = await supabase.from("nutri_equipment_types").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Equipamento removido");
+    onChanged();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Configurar equipamentos e faixas</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Estes equipamentos aparecem no select ao cadastrar um novo sensor, já com a faixa de temperatura padrão.
+          </p>
+
+          <div className="space-y-2">
+            {types.length === 0 && (
+              <div className="text-sm text-muted-foreground text-center py-4">Nenhum equipamento cadastrado.</div>
+            )}
+            {types.map((t) => (
+              <div key={t.id} className="grid grid-cols-12 gap-2 items-center border rounded-md p-2">
+                <Input
+                  className="col-span-5"
+                  defaultValue={t.name}
+                  onBlur={(e) => e.target.value !== t.name && updateType(t.id, { name: e.target.value })}
+                />
+                <Input
+                  className="col-span-2"
+                  type="number" step="0.1"
+                  defaultValue={t.min_temp_c}
+                  onBlur={(e) => Number(e.target.value) !== Number(t.min_temp_c) && updateType(t.id, { min_temp_c: Number(e.target.value) })}
+                />
+                <Input
+                  className="col-span-2"
+                  type="number" step="0.1"
+                  defaultValue={t.max_temp_c}
+                  onBlur={(e) => Number(e.target.value) !== Number(t.max_temp_c) && updateType(t.id, { max_temp_c: Number(e.target.value) })}
+                />
+                <div className="col-span-2 flex items-center gap-1 text-xs">
+                  <Switch checked={t.active} onCheckedChange={(v) => updateType(t.id, { active: v })} />
+                  <span className="text-muted-foreground">{t.active ? "Ativo" : "Inativo"}</span>
+                </div>
+                <Button variant="ghost" size="icon" className="col-span-1" onClick={() => removeType(t.id)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t pt-3 space-y-2">
+            <Label className="text-sm font-semibold">Novo equipamento</Label>
+            <div className="grid grid-cols-12 gap-2 items-end">
+              <div className="col-span-5">
+                <Label className="text-xs">Nome</Label>
+                <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ex: Câmara de peixes" />
+              </div>
+              <div className="col-span-2">
+                <Label className="text-xs">Mín °C</Label>
+                <Input type="number" step="0.1" value={newMin} onChange={(e) => setNewMin(e.target.value)} />
+              </div>
+              <div className="col-span-2">
+                <Label className="text-xs">Máx °C</Label>
+                <Input type="number" step="0.1" value={newMax} onChange={(e) => setNewMax(e.target.value)} />
+              </div>
+              <Button className="col-span-3" onClick={addType} disabled={saving}>
+                <Plus className="h-4 w-4 mr-1" /> Adicionar
+              </Button>
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
