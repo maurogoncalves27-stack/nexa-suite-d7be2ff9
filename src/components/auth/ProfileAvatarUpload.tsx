@@ -86,7 +86,7 @@ export default function ProfileAvatarUpload({
             className="relative group rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 shrink-0"
             aria-label="Alterar foto de perfil"
           >
-            <Avatar className="h-16 w-16 md:h-20 md:w-20 border-2 border-primary/40 shadow-md">
+            <Avatar className="h-20 w-20 md:h-24 md:w-24 border-2 border-primary/40 shadow-md">
               {avatarUrl && <AvatarImage src={avatarUrl} alt={fullName} />}
               <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
                 {avatarUrl ? initials : <UserCircle className="h-8 w-8" />}
