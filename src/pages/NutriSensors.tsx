@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Thermometer, RefreshCw, Plus, Settings2, Wifi, WifiOff } from "lucide-react";
+import { Thermometer, RefreshCw, Plus, Settings2, Wifi, WifiOff, Battery, BatteryLow, BatteryMedium, BatteryFull, Store as StoreIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
