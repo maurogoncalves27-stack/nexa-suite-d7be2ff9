@@ -50,7 +50,7 @@ export default function FactoryRequests() {
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
 
-  // Edição de quantidades aprovadas/entregues (gestão da CD)
+  // Edição de quantidades aprovadas/entregues (gestão do CD)
   const [actionsBusy, setActionsBusy] = useState<string | null>(null);
 
   const isStaff = isAdmin || isManager;
@@ -86,7 +86,7 @@ export default function FactoryRequests() {
     setLoading(false);
   }, []);
 
-  // Verifica se o usuário trabalha na CD
+  // Verifica se o usuário trabalha no CD
   useEffect(() => {
     if (!user) return;
     const check = async () => {
@@ -189,7 +189,7 @@ export default function FactoryRequests() {
         .insert(itemsPayload);
       if (itemsErr) throw itemsErr;
 
-      toast.success("Solicitação enviada para a CD");
+      toast.success("Solicitação enviada para o CD");
       setOpenNew(false);
       resetDraft();
       await loadAll();
@@ -355,7 +355,7 @@ export default function FactoryRequests() {
             <AlertTriangle className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Requisições de urgência
           </h1>
           <p className="text-muted-foreground text-sm">
-            Lojas pedem itens avulsos à CD. A CD aprova, separa e envia. A loja confirma
+            Lojas pedem itens avulsos ao CD. O CD aprova, separa e envia. A loja confirma
             o recebimento e o estoque é atualizado automaticamente.
           </p>
         </div>
@@ -518,7 +518,7 @@ export default function FactoryRequests() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar recebimento?</AlertDialogTitle>
             <AlertDialogDescription>
-              Ao confirmar, os itens serão dados como <b>baixa no estoque da CD</b> e{" "}
+              Ao confirmar, os itens serão dados como <b>baixa no estoque do CD</b> e{" "}
               <b>entrada no estoque da loja</b>, usando as quantidades entregues. Confirme apenas
               após conferir fisicamente.
             </AlertDialogDescription>

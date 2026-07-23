@@ -124,7 +124,7 @@ const PAGE_TITLES: PageMeta[] = [
   { match: (p) => p.startsWith("/inventario"), title: "Contagem", group: "Estoque" },
   { match: (p) => p.startsWith("/sugestao-transferencia"), title: "Transferências", group: "Estoque" },
   { match: (p) => p.startsWith("/envio-itens"), title: "Transferências", group: "Estoque" },
-  { match: (p) => p.startsWith("/plano-fabrica"), title: "Plano semanal da CD", group: "Estoque" },
+  { match: (p) => p.startsWith("/plano-fabrica"), title: "Plano semanal do CD", group: "Estoque" },
   { match: (p) => p.startsWith("/sugestao-abastecimento"), title: "Sugestão de abastecimento", group: "Estoque" },
   { match: (p) => p.startsWith("/separacao"), title: "Checklist de separação", group: "Estoque" },
   { match: (p) => p.startsWith("/solicitacoes-fabrica"), title: "Solicitações de urgência", group: "Estoque" },
@@ -133,7 +133,7 @@ const PAGE_TITLES: PageMeta[] = [
   { match: (p) => p.startsWith("/lotes"), title: "Lotes, validades e perdas", group: "Estoque" },
   { match: (p) => p.startsWith("/fatores-conversao"), title: "Fatores de conversão", group: "Estoque" },
   { match: (p) => p.startsWith("/fichas-fabrica"), title: "Fichas técnicas", group: "CD" },
-  { match: (p) => p.startsWith("/produtos-fabrica"), title: "Produtos da CD", group: "CD" },
+  { match: (p) => p.startsWith("/produtos-fabrica"), title: "Produtos do CD", group: "CD" },
   { match: (p) => p.startsWith("/cardapio-fabrica"), title: "Cardápio", group: "CD" },
   { match: (p) => p.startsWith("/fichas-tecnicas"), title: "Fichas técnicas", group: "Estoque" },
 

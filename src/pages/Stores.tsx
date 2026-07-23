@@ -500,7 +500,7 @@ export default function Stores() {
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
-                      <b>Loja</b>: ponto de venda. <b>CD</b>: produz e envia ao central. <b>Central</b>: recebe da CD/compras e distribui (apenas 1 permitido).
+                      <b>Loja</b>: ponto de venda. <b>CD</b>: produz e envia ao central. <b>Central</b>: recebe do CD/compras e distribui (apenas 1 permitido).
                     </p>
                   </div>
                 )}

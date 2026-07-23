@@ -108,7 +108,7 @@ const ProductionSuggestionsPanel = ({ onProduce }: Props) => {
               <Sparkles className="h-5 w-5" /> Sugestão de produção
             </CardTitle>
             <CardDescription>
-              Soma a contingência de cada loja vinculada e desconta o estoque atual da CD.
+              Soma a contingência de cada loja vinculada e desconta o estoque atual do CD.
             </CardDescription>
           </div>
           <Button size="sm" variant="ghost" onClick={load} disabled={loading}>
@@ -183,11 +183,11 @@ const ProductionSuggestionsPanel = ({ onProduce }: Props) => {
               {confirmDistribute && (
                 <div className="space-y-2 text-sm">
                   <p>
-                    Será criada uma transferência da CD para cada loja com necessidade do produto{" "}
+                    Será criada uma transferência do CD para cada loja com necessidade do produto{" "}
                     <b>{confirmDistribute.output_product_name}</b>.
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Estoque disponível na CD: <b>{fmt(confirmDistribute.factory_stock)} {confirmDistribute.yield_unit}</b>
+                    Estoque disponível no CD: <b>{fmt(confirmDistribute.factory_stock)} {confirmDistribute.yield_unit}</b>
                   </p>
                   <div className="border rounded-md divide-y bg-muted/30">
                     {confirmDistribute.store_breakdown
@@ -202,7 +202,7 @@ const ProductionSuggestionsPanel = ({ onProduce }: Props) => {
                       ))}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Se o estoque da CD não cobrir tudo, será priorizada a loja com maior necessidade.
+                    Se o estoque do CD não cobrir tudo, será priorizada a loja com maior necessidade.
                   </p>
                 </div>
               )}
@@ -272,7 +272,7 @@ const SuggestionCard = ({
               className="gap-1"
               disabled={!canDistribute || distributing}
               onClick={onDistribute}
-              title={!canDistribute ? "Sem estoque na CD ou sem lojas com necessidade" : "Distribuir o estoque atual da CD"}
+              title={!canDistribute ? "Sem estoque no CD ou sem lojas com necessidade" : "Distribuir o estoque atual do CD"}
             >
               {distributing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />}
               Distribuir

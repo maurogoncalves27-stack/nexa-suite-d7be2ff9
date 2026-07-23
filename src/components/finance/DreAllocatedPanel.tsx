@@ -42,7 +42,7 @@ const monthsAgoISO = (n: number) => {
 
 // Lojas físicas que recebem rateio (por nome, robusto a remapeamento de IDs)
 const ALLOCATION_STORE_NAMES = ["ÁGUAS CLARAS", "ASA NORTE", "ASA SUL", "LAGO SUL"];
-// Identificação da CD (por nome)
+// Identificação do CD (por nome)
 const FACTORY_STORE_NAMES = ["CD", "CD"];
 
 const applyExpense = (col: DreColumn, group: DreGroup | null, debit: number) => {

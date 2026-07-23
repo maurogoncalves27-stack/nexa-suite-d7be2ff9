@@ -144,7 +144,7 @@ export default function FactoryWeeklyPlan() {
 
   const createQuotation = async () => {
     if (consolidated.length === 0) {
-      toast.info("Nada a cotar: nenhum item em déficit nas lojas ou na CD.");
+      toast.info("Nada a cotar: nenhum item em déficit nas lojas ou no CD.");
       return;
     }
     setCreatingQuote(true);
@@ -161,7 +161,7 @@ export default function FactoryWeeklyPlan() {
         .from("quotations")
         .insert({
           title: `Cotação consolidada — ${new Date().toLocaleDateString("pt-BR")}`,
-          description: `Gerada automaticamente: ${fabCount} insumo(s) da CD + ${lojCount} produto(s) abaixo do mínimo nas lojas (descontando cotações abertas).`,
+          description: `Gerada automaticamente: ${fabCount} insumo(s) do CD + ${lojCount} produto(s) abaixo do mínimo nas lojas (descontando cotações abertas).`,
           deadline: deadline.toISOString(),
           status: "open",
           created_by: uid,
@@ -202,7 +202,7 @@ export default function FactoryWeeklyPlan() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-            <CalendarRange className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Plano semanal da CD
+            <CalendarRange className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Plano semanal do CD
           </h1>
           <p className="text-muted-foreground text-sm">
             Consolida sugestões automáticas (estoque mínimo das lojas) + solicitações manuais e

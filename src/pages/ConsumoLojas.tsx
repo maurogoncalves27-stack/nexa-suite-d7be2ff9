@@ -194,7 +194,7 @@ export default function ConsumoLojas() {
 
       // Rateio água/luz 50/50 Asa Sul × CD (dividem o mesmo espaço físico).
       // A fatura normalmente vem lançada só na Asa Sul; somamos qualquer lançamento
-      // eventual na CD e redistribuímos meio a meio. Gás e óleo permanecem separados.
+      // eventual no CD e redistribuímos meio a meio. Gás e óleo permanecem separados.
       const asaSul = out.find((r) => r.storeName === ASA_SUL_NAME);
       const fabrica = out.find((r) => r.storeName === FABRICA_NAME);
       if (asaSul && fabrica) {

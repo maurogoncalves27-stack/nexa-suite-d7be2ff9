@@ -1,6 +1,6 @@
 /**
  * Helpers para identificar lojas tipo "CD" (sem schema novo).
- * A CD é reconhecida pelo nome contendo "fabrica" / "CD".
+ * O CD é reconhecida pelo nome contendo "fabrica" / "CD".
  */
 import { supabase } from "@/integrations/supabase/client";
 

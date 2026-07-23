@@ -49,10 +49,10 @@ export default function NewRequestDialog({
       <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Plus className="h-5 w-5 text-primary" /> Nova solicitação à CD
+            <Plus className="h-5 w-5 text-primary" /> Nova solicitação ao CD
           </DialogTitle>
           <DialogDescription>
-            Selecione a loja que está solicitando e adicione os itens desejados. A CD vai
+            Selecione a loja que está solicitando e adicione os itens desejados. O CD vai
             avaliar antes de enviar.
           </DialogDescription>
         </DialogHeader>
@@ -158,7 +158,7 @@ export default function NewRequestDialog({
           </Button>
           <Button onClick={onSubmit} disabled={creating} className="gap-2">
             {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Enviar à CD
+            Enviar ao CD
           </Button>
         </DialogFooter>
       </DialogContent>

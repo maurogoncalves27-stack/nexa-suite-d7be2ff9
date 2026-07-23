@@ -151,7 +151,7 @@ const ReplenishmentSuggestion = () => {
           <Sparkles className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Sugestão de abastecimento
         </h1>
         <p className="text-muted-foreground">
-          Cruza saldo atual × mínimo × meta de cada loja e propõe o que precisa ser <b>produzido pela CD</b> ou <b>transferido do Estoque Central</b>.
+          Cruza saldo atual × mínimo × meta de cada loja e propõe o que precisa ser <b>produzido pelo CD</b> ou <b>transferido do Estoque Central</b>.
         </p>
       </div>
 
@@ -181,7 +181,7 @@ const ReplenishmentSuggestion = () => {
             <Tabs defaultValue="produzir" className="space-y-3">
               <TabsList className="grid w-full max-w-lg grid-cols-2">
                 <TabsTrigger value="produzir" className="gap-2">
-                  <Factory className="h-4 w-4" /> Produzir na CD ({groupProduction.length})
+                  <Factory className="h-4 w-4" /> Produzir no CD ({groupProduction.length})
                 </TabsTrigger>
                 <TabsTrigger value="transferir" className="gap-2">
                   <ArrowRight className="h-4 w-4" /> Transferir do Central ({groupTransfer.length})

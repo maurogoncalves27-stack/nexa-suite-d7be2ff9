@@ -79,7 +79,7 @@ const TAB_TITLES: Record<TabKey, string> = {
   ocorrencias: "Ocorrências",
   recebimento: "Recebimento",
   transferencias: "Transferências",
-  fabrica: "Solicitações à CD",
+  fabrica: "Solicitações ao CD",
 };
 
 export default function EmployeeTasksCard({ employeeId, storeId, allocatedStoreId }: {

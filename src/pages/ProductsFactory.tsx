@@ -32,13 +32,13 @@ const SCOPES = [
 
 const FLOWS = [
   { value: "comprado", label: "Comprado (vem de fornecedor)" },
-  { value: "produzido_fabrica", label: "Produzido pela CD" },
+  { value: "produzido_fabrica", label: "Produzido pelo CD" },
   { value: "misto", label: "Misto (compra ou produção)" },
 ] as const;
 
 const ROLES = [
   { value: "venda_loja", label: "Venda na Loja (cardápio)" },
-  { value: "venda_fabrica", label: "Venda pela CD (cardápio)" },
+  { value: "venda_fabrica", label: "Venda pelo CD (cardápio)" },
   { value: "insumo_producao", label: "Insumo de produção (CD)" },
   { value: "insumo_montagem", label: "Insumo de montagem (loja)" },
 ] as const;
@@ -216,13 +216,13 @@ const ProductsFactory = () => {
     try {
       const { error } = await supabase.from("inventory_products").delete().eq("id", deleting.id);
       if (error) {
-        // FK conflict → soft remove (tira da CD)
+        // FK conflict → soft remove (tira do CD)
         const { error: err2 } = await supabase
           .from("inventory_products")
           .update({ factory_only: false, is_active: false })
           .eq("id", deleting.id);
         if (err2) throw err2;
-        toast.success("Produto removido da CD (histórico preservado)");
+        toast.success("Produto removido do CD (histórico preservado)");
       } else {
         toast.success("Produto excluído");
       }
@@ -240,12 +240,12 @@ const ProductsFactory = () => {
       <div>
         <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
           <Layers className="h-6 w-6 md:h-7 md:w-7 text-primary" />
-          {viewFilter === "cardapio" ? "Cardápio da CD" : "Produtos da CD"}
+          {viewFilter === "cardapio" ? "Cardápio do CD" : "Produtos do CD"}
         </h1>
         <p className="text-muted-foreground">
           {viewFilter === "cardapio"
             ? "Produtos que a CD vende para as lojas. Desmarque \"No cardápio\" para retirar sem excluir o cadastro."
-            : "Cadastro único da CD: insumos, embalagens e produzidos. Use \"No cardápio\" para marcar o que a CD vende às lojas."}
+            : "Cadastro único do CD: insumos, embalagens e produzidos. Use \"No cardápio\" para marcar o que a CD vende às lojas."}
         </p>
       </div>
 
@@ -269,7 +269,7 @@ const ProductsFactory = () => {
                 <SelectContent>
                   <SelectItem value="all">Todos os produtos</SelectItem>
                   <SelectItem value="cardapio">📋 Cardápio (vende p/ loja)</SelectItem>
-                  <SelectItem value="produzidos">Produzidos pela CD</SelectItem>
+                  <SelectItem value="produzidos">Produzidos pelo CD</SelectItem>
                   <SelectItem value="insumos">Insumos / Embalagens</SelectItem>
                 </SelectContent>
               </Select>
@@ -353,7 +353,7 @@ const ProductsFactory = () => {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>{editing ? "Editar produto" : "Novo produto da CD"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editing ? "Editar produto" : "Novo produto do CD"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div>
               <Label>Nome</Label>
@@ -445,7 +445,7 @@ const ProductsFactory = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir produto?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir <strong>{deleting?.name}</strong> da CD? Se o produto já tem histórico (contagens, fichas, movimentos), ele será apenas removido da CD preservando o histórico.
+              Tem certeza que deseja excluir <strong>{deleting?.name}</strong> do CD? Se o produto já tem histórico (contagens, fichas, movimentos), ele será apenas removido do CD preservando o histórico.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
