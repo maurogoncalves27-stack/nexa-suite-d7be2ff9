@@ -486,24 +486,31 @@ function EditEmsSensorDialog({
 
 
 function AddSensorDialog({
-  open, onOpenChange, loading, devices, stores, onSaved,
+  open, onOpenChange, loading, devices, stores, types, onSaved,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   loading: boolean;
   devices: TuyaDevice[];
   stores: Store[];
+  types: EquipType[];
   onSaved: () => void;
 }) {
   const [deviceId, setDeviceId] = useState("");
   const [name, setName] = useState("");
   const [storeId, setStoreId] = useState("");
-  const [type, setType] = useState<keyof typeof SENSOR_DEFAULTS>("chiller");
+  const [typeId, setTypeId] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
+  const activeTypes = useMemo(() => types.filter((t) => t.active), [types]);
+
   useEffect(() => {
-    if (!open) { setDeviceId(""); setName(""); setStoreId(""); setType("chiller"); }
+    if (!open) { setDeviceId(""); setName(""); setStoreId(""); setTypeId(""); }
   }, [open]);
+
+  useEffect(() => {
+    if (open && !typeId && activeTypes.length > 0) setTypeId(activeTypes[0].id);
+  }, [open, activeTypes, typeId]);
 
   useEffect(() => {
     const d = devices.find((x) => x.device_id === deviceId);
@@ -511,22 +518,24 @@ function AddSensorDialog({
   }, [deviceId]);
 
   async function save() {
-    if (!deviceId || !name || !storeId) return toast.error("Preencha todos os campos");
+    if (!deviceId || !name || !storeId || !typeId) return toast.error("Preencha todos os campos");
+    const def = activeTypes.find((t) => t.id === typeId);
+    if (!def) return toast.error("Selecione um equipamento");
     setSaving(true);
-    const def = SENSOR_DEFAULTS[type];
     const { data: user } = await supabase.auth.getUser();
+    const isFreezer = Number(def.max_temp_c) <= 0;
     const { error } = await supabase.from("nutri_equipment").insert({
       name,
-      equipment_type: type === "freezer" ? "freezer" : "refrigerator",
+      equipment_type: isFreezer ? "freezer" : "refrigerator",
       store_id: storeId,
       created_by: user.user!.id,
       tuya_device_id: deviceId,
-      tuya_sensor_type: type,
-      min_temp_c: def.min,
-      max_temp_c: def.max,
+      tuya_sensor_type: def.name,
+      min_temp_c: Number(def.min_temp_c),
+      max_temp_c: Number(def.max_temp_c),
       alert_delay_minutes: 15,
       tuya_active: true,
-    });
+    } as any);
 
     setSaving(false);
     if (error) return toast.error(error.message);
@@ -577,15 +586,18 @@ function AddSensorDialog({
               </Select>
             </div>
             <div>
-              <Label>Tipo de câmara</Label>
-              <Select value={type} onValueChange={(v) => setType(v as any)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Label>Tipo de equipamento</Label>
+              <Select value={typeId} onValueChange={setTypeId}>
+                <SelectTrigger><SelectValue placeholder={activeTypes.length ? "Escolha…" : "Nenhum equipamento cadastrado"} /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(SENSOR_DEFAULTS).map(([k, v]) => (
-                    <SelectItem key={k} value={k}>{v.label} ({v.min}~{v.max}°C)</SelectItem>
+                  {activeTypes.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.name} ({t.min_temp_c}~{t.max_temp_c}°C)</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Gerencie a lista em "Configurar equipamentos".
+              </p>
             </div>
           </div>
         )}
@@ -597,6 +609,7 @@ function AddSensorDialog({
     </Dialog>
   );
 }
+
 
 function EditSensorDialog({
   equip, stores, onOpenChange, onSaved,
