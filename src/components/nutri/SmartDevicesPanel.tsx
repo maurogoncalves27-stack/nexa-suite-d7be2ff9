@@ -139,7 +139,6 @@ export default function SmartDevicesPanel() {
   }
 
   const linkedIds = useMemo(() => new Set(devices.map((d) => d.tuya_device_id)), [devices]);
-  const availableTuya = tuyaDevices.filter((d) => !linkedIds.has(d.device_id));
 
   const grouped = useMemo(() => {
     const map = new Map<string, { store: Store | null; items: SmartDevice[] }>();
@@ -232,8 +231,31 @@ export default function SmartDevicesPanel() {
                       </CardHeader>
                       <CardContent className="space-y-3">
                         {d.kind === "door" && (
-                          <div className={`text-3xl font-bold ${doorOpen ? "text-warning" : ""}`}>
-                            {doorOpen === null ? "—" : doorOpen ? "Aberta" : "Fechada"}
+                          <div className="space-y-2">
+                            <div className={`text-3xl font-bold ${doorOpen ? "text-warning" : ""}`}>
+                              {doorOpen === null ? "—" : doorOpen ? "Aberta" : "Fechada"}
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Button
+                                variant={doorOpen === true ? "default" : "outline"}
+                                size="sm"
+                                disabled={!d.last_online || toggling === d.id}
+                                onClick={() => toggleSwitch(d, true)}
+                              >
+                                {toggling === d.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><DoorOpen className="h-4 w-4 mr-1" /> Abrir</>}
+                              </Button>
+                              <Button
+                                variant={doorOpen === false ? "default" : "outline"}
+                                size="sm"
+                                disabled={!d.last_online || toggling === d.id}
+                                onClick={() => toggleSwitch(d, false)}
+                              >
+                                {toggling === d.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><DoorClosed className="h-4 w-4 mr-1" /> Fechar</>}
+                              </Button>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground">
+                              Comandos funcionam apenas em fechaduras/atuadores. Sensores passivos só reportam estado.
+                            </p>
                           </div>
                         )}
                         {isSwitchLike && (
@@ -277,7 +299,8 @@ export default function SmartDevicesPanel() {
         open={addOpen}
         onOpenChange={setAddOpen}
         loading={loadingTuya}
-        devices={availableTuya}
+        devices={tuyaDevices}
+        linkedIds={linkedIds}
         stores={stores}
         onSaved={() => { setAddOpen(false); load(); }}
       />
@@ -293,12 +316,13 @@ export default function SmartDevicesPanel() {
 }
 
 function AddSmartDeviceDialog({
-  open, onOpenChange, loading, devices, stores, onSaved,
+  open, onOpenChange, loading, devices, linkedIds, stores, onSaved,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   loading: boolean;
   devices: TuyaDevice[];
+  linkedIds: Set<string | null>;
   stores: Store[];
   onSaved: () => void;
 }) {
@@ -353,22 +377,29 @@ function AddSmartDeviceDialog({
           <div className="py-6 text-center text-muted-foreground text-sm">Buscando dispositivos…</div>
         ) : devices.length === 0 ? (
           <div className="py-6 text-center text-muted-foreground text-sm">
-            Nenhum dispositivo novo encontrado. Pareie no app Smart Life e vincule a conta no projeto Cloud da Tuya.
+            Nenhum dispositivo encontrado na conta Tuya. Pareie no app Smart Life e confirme que a conta está vinculada ao projeto Cloud.
           </div>
         ) : (
           <div className="space-y-3">
             <div>
-              <Label>Dispositivo detectado</Label>
+              <Label>Dispositivo detectado ({devices.length} total)</Label>
               <Select value={deviceId} onValueChange={setDeviceId}>
                 <SelectTrigger><SelectValue placeholder="Escolha…" /></SelectTrigger>
                 <SelectContent>
-                  {devices.map((d) => (
-                    <SelectItem key={d.device_id} value={d.device_id}>
-                      {d.name} {d.online ? "🟢" : "🔴"} — {d.product_name ?? d.category}
-                    </SelectItem>
-                  ))}
+                  {devices.map((d) => {
+                    const already = linkedIds.has(d.device_id);
+                    return (
+                      <SelectItem key={d.device_id} value={d.device_id} disabled={already}>
+                        {d.name} {d.online ? "🟢" : "🔴"} — {d.product_name ?? d.category}
+                        {already ? " ✓ já vinculado" : ""}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Não aparece o exaustor? Confirme que ele está pareado nesta mesma conta Smart Life vinculada ao Cloud Project da Tuya.
+              </p>
             </div>
             <div>
               <Label>Apelido (ex: Exaustor Cozinha)</Label>
