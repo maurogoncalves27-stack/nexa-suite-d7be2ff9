@@ -14,6 +14,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import SmartDevicesPanel from "@/components/nutri/SmartDevicesPanel";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 type Store = { id: string; name: string };
 type Equip = {
@@ -193,128 +194,153 @@ export default function NutriSensors() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-6">
-          {groupedByStore.map(([key, { store, ems, tuya }]) => (
-            <section key={key} className="space-y-3">
-              <div className="flex items-center gap-2 border-b border-border pb-2">
-                <StoreIcon className="h-4 w-4 text-primary" />
-                <h2 className="text-base font-semibold">
-                  {store?.name ?? "Sem loja vinculada"}
-                </h2>
-                <Badge variant="outline" className="ml-auto text-xs">
-                  {ems.length + tuya.length} sensor{ems.length + tuya.length === 1 ? "" : "es"}
-                </Badge>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {ems.map((s) => {
-                  const temp = s.last_measurement;
-                  const ageMin = s.last_measured_at
-                    ? (Date.now() - new Date(s.last_measured_at).getTime()) / 60_000
-                    : Infinity;
-                  const online = temp !== null && ageMin < 30;
-                  const outOfRange =
-                    temp !== null &&
-                    ((s.min_value !== null && temp < Number(s.min_value)) ||
-                      (s.max_value !== null && temp > Number(s.max_value)));
-                  const status = !online
-                    ? { label: "Offline", cls: "bg-muted text-muted-foreground", Icon: WifiOff }
-                    : outOfRange
-                      ? { label: "Fora da faixa", cls: "bg-destructive text-destructive-foreground", Icon: Wifi }
-                      : { label: "OK", cls: "bg-success text-success-foreground", Icon: Wifi };
-                  return (
-                    <Card key={s.unique_code}>
-                      <CardHeader className="pb-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <CardTitle className="text-base">{s.label ?? s.unique_code}</CardTitle>
-                          <Badge className={status.cls}>
-                            <status.Icon className="h-3 w-3 mr-1" />
-                            {status.label}
-                          </Badge>
-                        </div>
-                        <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                          <Badge variant="outline" className="text-[10px]">EMS-A</Badge>
-                          <span>Faixa {s.min_value ?? "?"}~{s.max_value ?? "?"}°C</span>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        <div className={`text-4xl font-bold ${outOfRange ? "text-destructive" : ""}`}>
-                          {temp !== null ? `${temp.toFixed(1)}°C` : "—"}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {s.last_measured_at
-                            ? `Atualizado ${formatDistanceToNow(new Date(s.last_measured_at), { addSuffix: true, locale: ptBR })}`
-                            : "Sem leituras ainda"}
-                        </div>
-                        <Button variant="outline" size="sm" className="w-full" onClick={() => setEditingEms(s)}>
-                          <Settings2 className="h-4 w-4 mr-2" /> Configurar
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-
-                {tuya.map((eq) => {
-                  const temp = eq.last_temp_c;
-                  const outOfRange =
-                    temp !== null &&
-                    ((eq.min_temp_c !== null && temp < Number(eq.min_temp_c)) ||
-                      (eq.max_temp_c !== null && temp > Number(eq.max_temp_c)));
-                  const status = !eq.last_online
-                    ? { label: "Offline", cls: "bg-muted text-muted-foreground", Icon: WifiOff }
-                    : outOfRange
-                      ? { label: "Fora da faixa", cls: "bg-destructive text-destructive-foreground", Icon: Wifi }
-                      : { label: "OK", cls: "bg-success text-success-foreground", Icon: Wifi };
-                  const batt = eq.last_battery_pct;
-                  const BattIcon = batt == null ? null : batt >= 70 ? BatteryFull : batt >= 30 ? BatteryMedium : batt >= 10 ? BatteryLow : Battery;
-                  const battCls = batt == null ? "" : batt >= 30 ? "text-success" : batt >= 15 ? "text-warning" : "text-destructive";
-                  return (
-                    <Card key={eq.id}>
-                      <CardHeader className="pb-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <CardTitle className="text-base">{eq.name}</CardTitle>
-                          <Badge className={status.cls}>
-                            <status.Icon className="h-3 w-3 mr-1" />
-                            {status.label}
-                          </Badge>
-                        </div>
-                        <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                          <Badge variant="outline" className="text-[10px]">Tuya</Badge>
-                          <span>Faixa {eq.min_temp_c ?? "?"}~{eq.max_temp_c ?? "?"}°C</span>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="flex items-end gap-3">
-                          <div className={`text-4xl font-bold ${outOfRange ? "text-destructive" : ""}`}>
-                            {temp !== null ? `${Number(temp).toFixed(1)}°C` : "—"}
-                          </div>
-                          {eq.last_humidity_pct !== null && (
-                            <div className="text-sm text-muted-foreground pb-1">
-                              {Number(eq.last_humidity_pct).toFixed(0)}% umid.
+        <Accordion type="multiple" defaultValue={groupedByStore.map(([k]) => k)} className="space-y-3">
+          {groupedByStore.map(([key, { store, ems, tuya }]) => {
+            const total = ems.length + tuya.length;
+            let offlineCount = 0;
+            let outCount = 0;
+            for (const s of ems) {
+              const ageMin = s.last_measured_at ? (Date.now() - new Date(s.last_measured_at).getTime()) / 60_000 : Infinity;
+              const online = s.last_measurement !== null && ageMin < 30;
+              if (!online) offlineCount++;
+              else if (s.last_measurement !== null && ((s.min_value !== null && s.last_measurement < Number(s.min_value)) || (s.max_value !== null && s.last_measurement > Number(s.max_value)))) outCount++;
+            }
+            for (const eq of tuya) {
+              if (!eq.last_online) offlineCount++;
+              else if (eq.last_temp_c !== null && ((eq.min_temp_c !== null && eq.last_temp_c < Number(eq.min_temp_c)) || (eq.max_temp_c !== null && eq.last_temp_c > Number(eq.max_temp_c)))) outCount++;
+            }
+            const okCount = total - offlineCount - outCount;
+            return (
+              <AccordionItem key={key} value={key} className="border rounded-lg bg-card">
+                <AccordionTrigger className="px-4 hover:no-underline">
+                  <div className="flex items-center gap-2 flex-1 flex-wrap">
+                    <StoreIcon className="h-4 w-4 text-primary shrink-0" />
+                    <span className="font-semibold text-base">{store?.name ?? "Sem loja vinculada"}</span>
+                    <div className="flex items-center gap-1.5 ml-auto mr-2 flex-wrap">
+                      <Badge variant="outline" className="text-[10px]">{total} sensor{total === 1 ? "" : "es"}</Badge>
+                      {okCount > 0 && <Badge className="bg-success text-success-foreground text-[10px]">{okCount} OK</Badge>}
+                      {outCount > 0 && <Badge className="bg-destructive text-destructive-foreground text-[10px]">{outCount} fora da faixa</Badge>}
+                      {offlineCount > 0 && <Badge className="bg-muted text-muted-foreground text-[10px]">{offlineCount} offline</Badge>}
+                    </div>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {ems.map((s) => {
+                      const temp = s.last_measurement;
+                      const ageMin = s.last_measured_at
+                        ? (Date.now() - new Date(s.last_measured_at).getTime()) / 60_000
+                        : Infinity;
+                      const online = temp !== null && ageMin < 30;
+                      const outOfRange =
+                        temp !== null &&
+                        ((s.min_value !== null && temp < Number(s.min_value)) ||
+                          (s.max_value !== null && temp > Number(s.max_value)));
+                      return (
+                        <Card key={s.unique_code}>
+                          <CardHeader className="pb-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <CardTitle className="text-base">{s.label ?? s.unique_code}</CardTitle>
+                              <div className="flex flex-col gap-1 items-end">
+                                <Badge className={online ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"}>
+                                  {online ? <Wifi className="h-3 w-3 mr-1" /> : <WifiOff className="h-3 w-3 mr-1" />}
+                                  {online ? "Online" : "Offline"}
+                                </Badge>
+                                {online && (
+                                  <Badge className={outOfRange ? "bg-destructive text-destructive-foreground" : "bg-success text-success-foreground"}>
+                                    {outOfRange ? "Fora da faixa" : "OK"}
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
-                          )}
-                        </div>
-                        {BattIcon && (
-                          <div className={`flex items-center gap-1.5 text-xs font-medium ${battCls}`}>
-                            <BattIcon className="h-4 w-4" />
-                            Bateria {batt}%
-                          </div>
-                        )}
-                        <div className="text-xs text-muted-foreground">
-                          {eq.last_reading_at
-                            ? `Atualizado ${formatDistanceToNow(new Date(eq.last_reading_at), { addSuffix: true, locale: ptBR })}`
-                            : "Sem leituras ainda"}
-                        </div>
-                        <Button variant="outline" size="sm" className="w-full" onClick={() => setEditing(eq)}>
-                          <Settings2 className="h-4 w-4 mr-2" /> Configurar
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
-        </div>
+                            <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                              <Badge variant="outline" className="text-[10px]">EMS-A</Badge>
+                              <span>Faixa {s.min_value ?? "?"}~{s.max_value ?? "?"}°C</span>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="space-y-2">
+                            <div className={`text-4xl font-bold ${outOfRange ? "text-destructive" : ""}`}>
+                              {temp !== null ? `${temp.toFixed(1)}°C` : "—"}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {s.last_measured_at
+                                ? `Atualizado ${formatDistanceToNow(new Date(s.last_measured_at), { addSuffix: true, locale: ptBR })}`
+                                : "Sem leituras ainda"}
+                            </div>
+                            <Button variant="outline" size="sm" className="w-full" onClick={() => setEditingEms(s)}>
+                              <Settings2 className="h-4 w-4 mr-2" /> Configurar
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+
+                    {tuya.map((eq) => {
+                      const temp = eq.last_temp_c;
+                      const outOfRange =
+                        temp !== null &&
+                        ((eq.min_temp_c !== null && temp < Number(eq.min_temp_c)) ||
+                          (eq.max_temp_c !== null && temp > Number(eq.max_temp_c)));
+                      const batt = eq.last_battery_pct;
+                      const BattIcon = batt == null ? null : batt >= 70 ? BatteryFull : batt >= 30 ? BatteryMedium : batt >= 10 ? BatteryLow : Battery;
+                      const battCls = batt == null ? "" : batt >= 30 ? "text-success" : batt >= 15 ? "text-warning" : "text-destructive";
+                      return (
+                        <Card key={eq.id}>
+                          <CardHeader className="pb-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <CardTitle className="text-base">{eq.name}</CardTitle>
+                              <div className="flex flex-col gap-1 items-end">
+                                <Badge className={eq.last_online ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"}>
+                                  {eq.last_online ? <Wifi className="h-3 w-3 mr-1" /> : <WifiOff className="h-3 w-3 mr-1" />}
+                                  {eq.last_online ? "Online" : "Offline"}
+                                </Badge>
+                                {eq.last_online && (
+                                  <Badge className={outOfRange ? "bg-destructive text-destructive-foreground" : "bg-success text-success-foreground"}>
+                                    {outOfRange ? "Fora da faixa" : "OK"}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                              <Badge variant="outline" className="text-[10px]">Tuya</Badge>
+                              <span>Faixa {eq.min_temp_c ?? "?"}~{eq.max_temp_c ?? "?"}°C</span>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            <div className="flex items-end gap-3">
+                              <div className={`text-4xl font-bold ${outOfRange ? "text-destructive" : ""}`}>
+                                {temp !== null ? `${Number(temp).toFixed(1)}°C` : "—"}
+                              </div>
+                              {eq.last_humidity_pct !== null && (
+                                <div className="text-sm text-muted-foreground pb-1">
+                                  {Number(eq.last_humidity_pct).toFixed(0)}% umid.
+                                </div>
+                              )}
+                            </div>
+                            {BattIcon && (
+                              <div className={`flex items-center gap-1.5 text-xs font-medium ${battCls}`}>
+                                <BattIcon className="h-4 w-4" />
+                                Bateria {batt}%
+                              </div>
+                            )}
+                            <div className="text-xs text-muted-foreground">
+                              {eq.last_reading_at
+                                ? `Atualizado ${formatDistanceToNow(new Date(eq.last_reading_at), { addSuffix: true, locale: ptBR })}`
+                                : "Sem leituras ainda"}
+                            </div>
+                            <Button variant="outline" size="sm" className="w-full" onClick={() => setEditing(eq)}>
+                              <Settings2 className="h-4 w-4 mr-2" /> Configurar
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            );
+          })}
+        </Accordion>
       )}
         </TabsContent>
 
