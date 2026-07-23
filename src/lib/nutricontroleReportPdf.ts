@@ -20,7 +20,30 @@ export interface NutriReportData {
   maintenance: Array<{ date: string; equipment_type: string; maintenance_type: string; note: string }>;
   maintenanceRequests: Array<{ requested_at: string; equipment_type: string; description: string; urgency: string; status: string }>;
   waterTank: Array<{ cleaning_date: string; responsible: string; note: string; has_report: boolean }>;
+  employeeAsos?: Array<{
+    employee_name: string;
+    position: string;
+    aso_type: string;
+    certificate_date: string | null;
+    valid_until: string | null;
+    status: "vigente" | "vence_em_30d" | "vencido" | "sem_aso";
+  }>;
 }
+
+const ASO_TYPE_LABEL: Record<string, string> = {
+  aso_admissional: "Admissional",
+  aso_periodico: "Periódico",
+  aso_retorno: "Retorno ao trabalho",
+  aso_mudanca_funcao: "Mudança de função",
+  aso_demissional: "Demissional",
+};
+
+const ASO_STATUS_LABEL: Record<string, string> = {
+  vigente: "Vigente",
+  vence_em_30d: "Vence em 30 dias",
+  vencido: "Vencido",
+  sem_aso: "Sem ASO",
+};
 
 const STORAGE: Record<string, string> = { refrigerado: "Refrigerado", congelado: "Congelado", seco: "Seco" };
 const URGENCY: Record<string, string> = { baixa: "Baixa", media: "Média", alta: "Alta", critica: "Crítica" };
