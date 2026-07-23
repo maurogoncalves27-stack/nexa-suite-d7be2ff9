@@ -49,6 +49,49 @@ export default function ExportNutricontroleReportButton({ storeId }: Props) {
       const eqMap = new Map((equipments.data ?? []).map((e: any) => [e.id, e.name]));
       const itemMap = new Map((items.data ?? []).map((i: any) => [i.id, i.name]));
 
+      // Colaboradores alocados: por cadastro + por escala no período
+      const empMap = new Map<string, { id: string; name: string; position: string }>();
+      (empByStore.data ?? []).forEach((e: any) => empMap.set(e.id, { id: e.id, name: e.name, position: e.position ?? "" }));
+      const schedIds = Array.from(new Set(((schedEmps.data ?? []) as any[]).map((r) => r.employee_id).filter(Boolean)));
+      const missingIds = schedIds.filter((id) => !empMap.has(id));
+      if (missingIds.length) {
+        const { data: extras } = await supabase.from("employees").select("id, name, position, status").in("id", missingIds).eq("status", "active");
+        (extras ?? []).forEach((e: any) => empMap.set(e.id, { id: e.id, name: e.name, position: e.position ?? "" }));
+      }
+      const empIds = Array.from(empMap.keys());
+      const asoMap = new Map<string, { document_type: string; certificate_date: string; valid_until: string | null }>();
+      if (empIds.length) {
+        const { data: asoRows } = await supabase
+          .from("medical_certificates")
+          .select("employee_id, document_type, certificate_date, valid_until")
+          .in("employee_id", empIds)
+          .eq("is_pcmso", true)
+          .eq("status", "approved")
+          .order("certificate_date", { ascending: false });
+        (asoRows ?? []).forEach((r: any) => {
+          if (!asoMap.has(r.employee_id)) {
+            asoMap.set(r.employee_id, { document_type: r.document_type, certificate_date: r.certificate_date, valid_until: r.valid_until });
+          }
+        });
+      }
+      const todayISO = format(new Date(), "yyyy-MM-dd");
+      const in30ISO = format(new Date(Date.now() + 30 * 86400_000), "yyyy-MM-dd");
+      const employeeAsos = Array.from(empMap.values())
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((e) => {
+          const aso = asoMap.get(e.id);
+          if (!aso) {
+            return { employee_name: e.name, position: e.position, aso_type: "—", certificate_date: null, valid_until: null, status: "sem_aso" as const };
+          }
+          const vu = aso.valid_until
+            ?? (aso.certificate_date ? format(new Date(new Date(aso.certificate_date).getTime() + 365 * 86400_000), "yyyy-MM-dd") : null);
+          let status: "vigente" | "vence_em_30d" | "vencido" | "sem_aso" = "vigente";
+          if (!vu) status = "vigente";
+          else if (vu < todayISO) status = "vencido";
+          else if (vu <= in30ISO) status = "vence_em_30d";
+          return { employee_name: e.name, position: e.position, aso_type: aso.document_type, certificate_date: aso.certificate_date, valid_until: vu, status };
+        });
+
       const data: NutriReportData = {
         storeName: store.data?.name ?? "—",
         periodFrom: fromISO,
