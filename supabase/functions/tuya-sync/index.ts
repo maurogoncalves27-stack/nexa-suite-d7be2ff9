@@ -173,13 +173,30 @@ Deno.serve(async (req) => {
           report.errors.push(`${eq.name}: ${JSON.stringify(statusRes.err)}`);
           continue;
         }
-        const { temp, hum, batt } = extractTempHumidity(statusRes.result ?? []);
+        const { temp, hum, batt, tempTime } = extractTempHumidity(statusRes.result ?? [], statusRes.properties ?? []);
         if (temp === null) {
           report.errors.push(`${eq.name}: leitura sem temperatura (dc=${statusRes.dc})`);
           continue;
         }
 
         const now = new Date().toISOString();
+        const nowMs = Date.now();
+        const staleMs = STALE_MINUTES * 60 * 1000;
+        const isStale = tempTime !== null && (nowMs - tempTime) > staleMs;
+
+        if (isStale) {
+          // Device is reporting cached values (typical when batteries are pulled
+          // but the gateway still lists it as online). Mark offline and do not
+          // record a fake reading nor trigger out-of-range alerts.
+          const staleMins = Math.round((nowMs - (tempTime as number)) / 60000);
+          await admin.from('nutri_equipment').update({
+            last_online: false,
+            out_of_range_since: null,
+          }).eq('id', eq.id);
+          report.offline++;
+          report.errors.push(`${eq.name}: sem atualização Tuya há ${staleMins} min → offline`);
+          continue;
+        }
 
         // Insert reading
         await admin.from('nutri_temperature_readings').insert({
