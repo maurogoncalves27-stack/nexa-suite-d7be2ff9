@@ -43,7 +43,7 @@ type TuyaDevice = {
 };
 
 const KIND_LABEL: Record<SmartDevice["kind"], string> = {
-  door: "Sensor de porta",
+  door: "Abridor de porta",
   switch: "Interruptor",
   plug: "Tomada",
   exhaust: "Exaustor",
@@ -53,6 +53,8 @@ const KIND_LABEL: Record<SmartDevice["kind"], string> = {
 function guessKind(category?: string, product?: string): SmartDevice["kind"] {
   const c = (category ?? "").toLowerCase();
   const p = (product ?? "").toLowerCase();
+  // ckmkzq = garage door controller / opener (tem control open/close)
+  if (c === "ckmkzq" || /garage|opener|abridor/.test(p)) return "door";
   if (c === "mcs" || /door|porta|janela|window/.test(p)) return "door";
   if (/exaust|fan|ventil/.test(p)) return "exhaust";
   if (c === "cz" || c === "pc" || /plug|tomada|socket|outlet/.test(p)) return "plug";
@@ -239,7 +241,7 @@ export default function SmartDevicesPanel() {
                               <Button
                                 variant={doorOpen === true ? "default" : "outline"}
                                 size="sm"
-                                disabled={!d.last_online || toggling === d.id}
+                                disabled={toggling === d.id}
                                 onClick={() => toggleSwitch(d, true)}
                               >
                                 {toggling === d.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><DoorOpen className="h-4 w-4 mr-1" /> Abrir</>}
@@ -247,15 +249,17 @@ export default function SmartDevicesPanel() {
                               <Button
                                 variant={doorOpen === false ? "default" : "outline"}
                                 size="sm"
-                                disabled={!d.last_online || toggling === d.id}
+                                disabled={toggling === d.id}
                                 onClick={() => toggleSwitch(d, false)}
                               >
                                 {toggling === d.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><DoorClosed className="h-4 w-4 mr-1" /> Fechar</>}
                               </Button>
                             </div>
-                            <p className="text-[10px] text-muted-foreground">
-                              Comandos funcionam apenas em fechaduras/atuadores. Sensores passivos só reportam estado.
-                            </p>
+                            {!d.last_online && (
+                              <p className="text-[10px] text-warning">
+                                Dispositivo reportado offline pela Tuya. O comando será tentado mesmo assim — abridores de portão às vezes ficam em standby até receberem ordem.
+                              </p>
+                            )}
                           </div>
                         )}
                         {isSwitchLike && (
