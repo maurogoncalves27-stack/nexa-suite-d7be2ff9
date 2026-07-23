@@ -42,7 +42,8 @@ export default function ExportNutricontroleReportButton({ storeId }: Props) {
         supabase.from("nutri_water_tank_cleanings").select("cleaning_date, responsible, note, report_url").eq("store_id", storeId).gte("cleaning_date", fromISO).lte("cleaning_date", toISO).order("cleaning_date", { ascending: false }).limit(50),
         supabase.from("nutri_equipment").select("id, name"),
         supabase.from("nutri_items").select("id, name"),
-        supabase.from("employees").select("id, full_name, position, status").or(`store_id.eq.${storeId},allocated_store_id.eq.${storeId}`).eq("status", "active"),
+        // Regra de alocação: allocated_store_id é a verdade; store_id só conta quando não há allocated_store_id
+        supabase.from("employees").select("id, full_name, position, status, store_id, allocated_store_id").or(`allocated_store_id.eq.${storeId},and(allocated_store_id.is.null,store_id.eq.${storeId})`).eq("status", "active"),
         supabase.from("work_schedules").select("employee_id").eq("store_id", storeId).gte("schedule_date", fromISO).lte("schedule_date", toISO).limit(5000),
       ]);
 
