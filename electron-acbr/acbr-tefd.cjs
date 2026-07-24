@@ -869,13 +869,20 @@ function versao() {
 function diagnostics() {
   const dll = findDllPath();
   const candidates = workDirCandidates(dll);
+  const workingDir = resolveWorkingDir(dll);
+  const probeFiles = workingDir ? [
+    path.join(workingDir, "nexa-paygo-cwd-probe.txt"),
+    path.join(workingDir, "nexa-paygo-ps-cwd-probe.txt"),
+    path.join(workingDir, "nexa-paygo-csharp-cwd-probe.txt"),
+  ] : [];
   return {
     dllPath: dll || null,
     bridgePath: bridgeScriptPath(),
     bridgeExists: fs.existsSync(bridgeScriptPath()),
     hostRunning: !!host,
     initialized: !!host,
-    workingDir: resolveWorkingDir(dll),
+    workingDir,
+    cwdProbeFiles: probeFiles.map((file) => ({ file, exists: fs.existsSync(file) })),
     workDirCandidates: candidates,
     defaults: { ...NEXA_DEFAULTS },
     pendingConfirmation: loadPendingConfirmation(),
