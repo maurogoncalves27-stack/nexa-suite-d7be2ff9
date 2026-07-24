@@ -49,12 +49,15 @@ const DEFAULT_DLL_PATHS = [
 ];
 
 function findDllPath() {
-  // Regra do projeto: priorizar sempre a DLL oficial em x64.
-  if (fs.existsSync(FORCED_PAYGO_DLL_PATH)) {
-    return FORCED_PAYGO_DLL_PATH;
-  }
+  // Override manual sempre vence — útil para apontar para builds locais da
+  // PGWebLib (ex.: C:\ProjetoMauro\...\x64\PGWebLib.dll) sem precisar mexer
+  // na instalação oficial do PayGo Integrado.
   if (process.env.PAYGO_DLL_PATH && fs.existsSync(process.env.PAYGO_DLL_PATH)) {
     return process.env.PAYGO_DLL_PATH;
+  }
+  // Regra do projeto: priorizar a DLL oficial em x64.
+  if (fs.existsSync(FORCED_PAYGO_DLL_PATH)) {
+    return FORCED_PAYGO_DLL_PATH;
   }
   for (const p of DEFAULT_DLL_PATHS) {
     if (fs.existsSync(p)) return p;
