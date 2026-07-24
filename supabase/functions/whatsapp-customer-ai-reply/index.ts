@@ -433,7 +433,7 @@ Deno.serve(async (req) => {
       const aiResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LOVABLE_API_KEY}` },
-        body: JSON.stringify({ model: MODEL, messages: msgs, tools, tool_choice: 'auto' }),
+        body: JSON.stringify({ model: MODEL, messages: msgs, tools, tool_choice: 'auto', temperature: 0.3 }),
       });
       if (!aiResp.ok) {
         console.error('AI gateway error', aiResp.status, await aiResp.text());
