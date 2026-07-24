@@ -151,6 +151,7 @@ export default function WeeklyMoodCheckin() {
           : "Tenha um ótimo dia!",
       });
       sessionStorage.setItem("mood_checkin_dismissed", today);
+      snoozeFor(CHECKIN_INTERVAL_DAYS);
       setOpen(false);
     } catch (err: any) {
       toast({ title: "Não foi possível salvar", description: err.message, variant: "destructive" });
