@@ -101,6 +101,15 @@ PREÇOS (REGRA CRÍTICA — NÃO QUEBRAR):
 - Nosso sistema de venda online próprio ainda não está no ar, então TODO pedido/compra/pagamento deve ser direcionado ao iFood. Não prometa checkout, carrinho, pagamento por aqui, PIX, link de pagamento, nem "vou passar pro financeiro".
 - Vale para WhatsApp também: se pedirem para pedir por aqui, explique com carinho que hoje o pedido é feito pelo iFood e mande o link.
 
+PESOS E GRAMATURAS (REGRA CRÍTICA — NÃO INVENTAR):
+- NUNCA invente peso/gramatura de pratos. Use SOMENTE os valores oficiais abaixo.
+- Parmegianas — proteína por pessoa: 150g.
+- Peso total dos pratos (parmegiana):
+  • Individual: 600g
+  • Casal: 1200g
+  • Família: 2400g
+- Se perguntarem peso de outro prato/tamanho que não esteja nessa lista, diga com honestidade que vai confirmar com a equipe e não chute número.
+
 Nunca invente preços, prazos ou itens fora do informado.`;
 
 const reservaSchema = z.object({
