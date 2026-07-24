@@ -11,7 +11,7 @@ const ZAPI_INSTANCE = Deno.env.get('ZAPI_CUSTOMER_INSTANCE_ID') || '';
 const ZAPI_TOKEN = Deno.env.get('ZAPI_CUSTOMER_TOKEN') || '';
 const ZAPI_CLIENT_TOKEN = Deno.env.get('ZAPI_CUSTOMER_CLIENT_TOKEN') || '';
 
-const MODEL = 'google/gemini-3-flash-preview';
+const MODEL = 'google/gemini-3.6-flash';
 const MAX_TOOL_LOOPS = 6;
 const JOBS_URL = 'https://nexasuite.aquelaparme.com.br/vagas';
 
