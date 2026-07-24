@@ -24,6 +24,14 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# PGWebLib grava comms_*.log no CWD do processo. Forcamos o CWD para o
+# WorkingDir (pasta da DLL) antes de qualquer coisa, para que os logs
+# apareçam no mesmo diretorio da PGWebLib.dll.
+if ($WorkingDir -and (Test-Path -LiteralPath $WorkingDir)) {
+  try { Set-Location -LiteralPath $WorkingDir } catch { }
+  try { [System.IO.Directory]::SetCurrentDirectory($WorkingDir) } catch { }
+}
+
 $source = @"
 using System;
 using System.Collections.Generic;
