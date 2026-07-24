@@ -1,36 +1,40 @@
-## Objetivo
-Incluir no PDF de fiscalização do NutriControle uma seção com os **ASOs dos colaboradores alocados naquela loja**, para atender inspeção sanitária/trabalhista em um único documento.
+## Problema
 
-## O que muda
+Mesmo com regras "críticas" no prompt, a Giana continua inventando peso (500g) e nº de pessoas (3) da Parmegiana Família. O modelo atual é `google/gemini-3-flash-preview` (preview, mais fraco) e o único guard-rail real hoje é o de **preço** (`PRICE_REGEX` reescreve a resposta). Peso/porções ficam só na base do prompt — que o modelo ignora.
 
-### 1. `src/lib/nutricontroleReportPdf.ts`
-- Adicionar novo campo em `NutriReportData`:
-  ```ts
-  employeeAsos: Array<{
-    employee_name: string;
-    position: string;
-    aso_type: string;           // Admissional / Periódico / Retorno / Mudança / Demissional
-    certificate_date: string;   // data do ASO
-    valid_until: string | null; // vencimento (12 meses após, se não vier)
-    status: "vigente" | "vence_em_30d" | "vencido" | "sem_aso";
-  }>
-  ```
-- Nova seção **"ASOs dos Colaboradores"** logo após "Água" e antes do rodapé:
-  - KPI cards: Total de colaboradores · ASOs vigentes · Vencendo em 30 dias · Vencidos/sem ASO
-  - Tabela agrupada por status (vencidos primeiro em vermelho, vencendo em amarelo, vigentes em verde), com colunas: Colaborador · Cargo · Tipo do ASO · Emissão · Vencimento · Status.
-- Colaboradores sem ASO aparecem no bloco "Vencidos/sem ASO" para o fiscal ver a pendência.
+## O que fazer
 
-### 2. `src/components/nutricontrol/ExportNutricontroleReportButton.tsx`
-Adicionar às `Promise.all` a busca dos colaboradores alocados + ASOs mais recentes:
-- **Alocação por loja** (mesma regra usada no resto do RH): união de
-  - `employees` com `store_id = storeId` e `status = 'active'`
-  - `employees` que aparecem em `work_schedules` daquela loja no período (via `useEmployeesAtStore` reutilizado como fetch inline, ou query direta em `work_schedules`).
-- Para cada colaborador, pegar o ASO mais recente de `medical_certificates` (`is_pcmso = true`, `status = 'approved'`), calcular vencimento (`valid_until` se existir, senão `certificate_date + 365d`) e classificar status.
-- Passar `employeeAsos` para `generateNutricontroleReportPdf`.
+Três camadas, na ordem de eficácia:
+
+### 1. Hard-guard de fatos canônicos (igual ao guard de preço)
+Em `supabase/functions/parme-chat/index.ts`, adicionar sanitizador que roda no stream e no persistido:
+
+- Detecta menção a Parmegiana Família + número de pessoas ≠ 4 (`/fam[ií]lia[^.]{0,80}?(?:\b([123]|cinco|seis)\b\s*pessoas|at[eé]\s*3)/i`) → substitui pela frase canônica: *"Nossa Parmegiana Família serve 4 pessoas (2400g no total, 150g de proteína por pessoa) 😊"*.
+- Detecta peso de parmegiana com valor fora da tabela oficial (600/1200/2400g) → mesma substituição.
+- Mesma abordagem para Casal (2 pessoas / 1200g) e Individual (1 / 600g).
+- Aplicar no `wrapSseWithPriceGuard` (renomear para `wrapSseWithFactGuard`) e no ponto de persistência final da mensagem do assistente.
+
+Isso garante que **o cliente nunca mais vê** um número errado, mesmo se o modelo tentar.
+
+### 2. Trocar o modelo
+`google/gemini-3-flash-preview` → `google/gemini-3.6-flash` (default recomendado, mais estável) na linha 707. Sem custo extra relevante, segue as regras do prompt melhor.
+
+### 3. Baixar a "criatividade"
+Passar `temperature: 0.3` no `streamText` (hoje usa default ~0.7). Menos improviso = menos invenção.
 
 ## Fora do escopo
-- Não altera dados. Não muda o relatório de Saúde Ocupacional (que já tem ASOs por colaborador em `Pcmso.tsx`).
-- Não anexa PDFs dos ASOs no relatório (apenas o extrato tabular por colaborador). Se quiser anexar arquivos, é uma segunda fase.
 
-## Verificação
-Gerar o PDF para uma loja com colaboradores e conferir se a nova seção lista todos os alocados, com o status correto de vigência.
+- Não mexer em tools, cardápio, fluxo de reserva, iFood, dedup de mensagens.
+- Não tocar em Z-API / webhook.
+- Não adicionar UI nova.
+
+## Detalhes técnicos
+
+Arquivo único alterado: `supabase/functions/parme-chat/index.ts`.
+Deploy automático pelo Lovable Cloud após o edit.
+Testes manuais sugeridos depois do deploy:
+1. "Quanto pesa a parmegiana família?" → deve responder 2400g.
+2. "Serve quantas pessoas?" → deve responder 4.
+3. "E a de casal?" → 2 pessoas / 1200g.
+
+Se o modelo ainda escapar em algum caso, o guard reescreve antes de chegar no cliente.

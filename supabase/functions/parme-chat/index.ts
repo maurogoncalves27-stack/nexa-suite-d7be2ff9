@@ -141,21 +141,76 @@ function sb() {
   );
 }
 
-// ============ Hard-guard contra alucinação de preço ============
-// A Giana NÃO pode informar preço em R$. Se o modelo tentar, substituímos
-// a resposta por um redirecionamento pro iFood — tanto no stream (o que o
-// cliente vê) quanto no persistido (histórico da conversa).
+// ============ Hard-guard contra alucinação de preço/fatos ============
+// A Giana NÃO pode informar preço em R$ nem inventar peso/porções de
+// parmegiana. Se o modelo tentar, substituímos a resposta por um texto
+// canônico — tanto no stream (o que o cliente vê) quanto no persistido.
 const PRICE_REGEX =
   /R\$\s*\d|(?:\d+\s*[.,]\s*\d{2})\s*(?:reais|R\$)|\b\d+\s*reais\b/i;
 const PRICE_REPLACEMENT =
   "Os preços atualizadinhos ficam lá no iFood 😊 posso te mandar o link da unidade mais pertinho de você?";
 
+const FAMILIA_REPLACEMENT =
+  "Nossa Parmegiana Família serve 4 pessoas — 2400g no total, com 150g de proteína por pessoa 😊 Posso te ajudar em mais alguma coisa?";
+const CASAL_REPLACEMENT =
+  "Nossa Parmegiana Casal serve 2 pessoas — 1200g no total, com 150g de proteína por pessoa 😊 Posso te ajudar em mais alguma coisa?";
+const INDIVIDUAL_REPLACEMENT =
+  "Nossa Parmegiana Individual serve 1 pessoa — 600g no total, com 150g de proteína 😊 Posso te ajudar em mais alguma coisa?";
+
 function containsPrice(s: string): boolean {
   return PRICE_REGEX.test(String(s || ""));
 }
 
-function sanitizePriceText(s: string): string {
-  return containsPrice(s) ? PRICE_REPLACEMENT : s;
+// Detecta violação factual sobre parmegiana (peso/pessoas fora do canônico).
+// Só dispara quando o texto menciona um dos tamanhos + um número claramente errado.
+function detectFactViolation(raw: string): string | null {
+  const t = String(raw || "").toLowerCase();
+  if (!/(parmeg|parmê|fam[ií]lia|casal|individual)/.test(t)) return null;
+
+  const checkSize = (
+    sizeRe: RegExp,
+    okPessoas: number,
+    okTotal: number,
+    okProt: number,
+    replacement: string,
+  ): string | null => {
+    if (!sizeRe.test(t)) return null;
+    let m: RegExpExecArray | null;
+    const pessoasRe = /\b(\d{1,2})\s+pessoas?\b/g;
+    while ((m = pessoasRe.exec(t)) !== null) {
+      const n = parseInt(m[1], 10);
+      if (!isNaN(n) && n !== okPessoas && n <= 12) return replacement;
+    }
+    const ateMatch = t.match(/\bat[eé]\s+(\d{1,2})\s+pessoas?\b/);
+    if (ateMatch) {
+      const n = parseInt(ateMatch[1], 10);
+      if (!isNaN(n) && n !== okPessoas) return replacement;
+    }
+    const protRe = /(\d{2,4})\s*g\s+de\s+(?:file|filé|frango|prote[ií]na|carne|peito)/g;
+    while ((m = protRe.exec(t)) !== null) {
+      const n = parseInt(m[1], 10);
+      if (!isNaN(n) && n !== okProt && n !== 150) return replacement;
+    }
+    const totalRe = /(?:total|pesa|peso|vem\s+com)[^.]{0,60}?(\d{2,4})\s*g/g;
+    while ((m = totalRe.exec(t)) !== null) {
+      const n = parseInt(m[1], 10);
+      if (!isNaN(n) && n !== okTotal && n !== okProt && n !== 150) return replacement;
+    }
+    return null;
+  };
+
+  return (
+    checkSize(/\bfam[ií]lia\b/, 4, 2400, 600, FAMILIA_REPLACEMENT) ||
+    checkSize(/\bcasal\b/, 2, 1200, 300, CASAL_REPLACEMENT) ||
+    checkSize(/\bindividual\b/, 1, 600, 150, INDIVIDUAL_REPLACEMENT)
+  );
+}
+
+function sanitizeAssistantText(s: string): string {
+  if (containsPrice(s)) return PRICE_REPLACEMENT;
+  const fact = detectFactViolation(s);
+  if (fact) return fact;
+  return s;
 }
 
 function wrapSseWithPriceGuard(
@@ -189,7 +244,14 @@ function wrapSseWithPriceGuard(
       if (containsPrice(accum)) {
         blocked = true;
         (obj as Record<string, unknown>)[key] = PRICE_REPLACEMENT;
-        console.warn("[parme-chat] price-guard triggered", { snippet: accum.slice(-60) });
+        console.warn("[parme-chat] price-guard triggered", { snippet: accum.slice(-80) });
+        return "data: " + JSON.stringify(obj);
+      }
+      const fact = detectFactViolation(accum);
+      if (fact) {
+        blocked = true;
+        (obj as Record<string, unknown>)[key] = fact;
+        console.warn("[parme-chat] fact-guard triggered", { snippet: accum.slice(-120) });
         return "data: " + JSON.stringify(obj);
       }
     }
@@ -704,7 +766,7 @@ Deno.serve(async (req) => {
         "X-Lovable-AIG-SDK": "vercel-ai-sdk",
       },
     });
-    const model = provider("google/gemini-3-flash-preview");
+    const model = provider("google/gemini-3.6-flash");
 
     const tools = {
       consultar_cardapio: tool({
@@ -1065,6 +1127,7 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
       messages: await convertToModelMessages(messages),
       tools,
       stopWhen: stepCountIs(50),
+      temperature: 0.3,
     });
 
     const response = result.toUIMessageStreamResponse({
@@ -1087,10 +1150,11 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
             if (e.id && e.ts) tsById.set(e.id, e.ts);
           }
           flat = mergeFlatMessages(existingMessages, flattenUIMessages(finalMessages, now, tsById));
-          // Hard-guard: substitui qualquer mensagem da Giana que tenha vazado preço.
+          // Hard-guard: reescreve qualquer mensagem da Giana que tenha
+          // vazado preço OU fato errado (peso/pessoas de parmegiana).
           flat = flat.map((m) =>
-            isAssistantMessage(m) && containsPrice(m.content)
-              ? { ...m, content: PRICE_REPLACEMENT }
+            isAssistantMessage(m)
+              ? { ...m, content: sanitizeAssistantText(m.content) }
               : m
           );
           await supabase.from("chat_conversations").upsert(
