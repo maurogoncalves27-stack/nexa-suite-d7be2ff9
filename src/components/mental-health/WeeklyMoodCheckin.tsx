@@ -173,6 +173,7 @@ export default function WeeklyMoodCheckin() {
         skipped: true,
       }, { onConflict: "employee_id,week_start" });
       sessionStorage.setItem("mood_checkin_dismissed", today);
+      snoozeFor(SKIP_SNOOZE_DAYS);
       setOpen(false);
     } finally {
       setSaving(false);
