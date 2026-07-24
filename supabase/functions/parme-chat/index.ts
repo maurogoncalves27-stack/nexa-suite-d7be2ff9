@@ -14,6 +14,17 @@ import {
 import { createOpenAICompatible } from "npm:@ai-sdk/openai-compatible@1";
 import { z } from "npm:zod@3";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  MARCAS,
+  PRATOS,
+  PARMEGIANA_REGRAS,
+  INFO,
+  FAQ,
+  findPrato,
+  findFaq,
+  tamanhosParmegianaResumo,
+  type MarcaKey,
+} from "./knowledge.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,26 +32,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-
-const MENU = {
-  "aquela-parme": {
-    name: "Aquela Parmê",
-    descricao:
-      "Filé bovino empanado com molho da casa, muçarela derretida, arroz e batata frita.",
-    slogan: "Cremoso de verdade",
-  },
-  "aquele-estrogonofe": {
-    name: "Aquele Estrogonofe",
-    descricao: "Estrogonofe de filé mignon, arroz e muita batata palha.",
-    slogan: "O barulhinho da crocância",
-  },
-  "box-caipira": {
-    name: "Box Caipira",
-    descricao:
-      "Arroz, feijão, lombo empanado, couve, farofa e banana. Tudo na caixinha.",
-    slogan: "Tempero da roça",
-  },
-} as const;
 
 const SYSTEM = `Você é a Giana, atendente virtual do Aquela Parmê, um restaurante brasileiro especializado em parmegiana, estrogonofe e cozinha caipira.
 Tom: caloroso, cordial, breve, com sotaque carioca/mineiro leve. Sempre em português.
