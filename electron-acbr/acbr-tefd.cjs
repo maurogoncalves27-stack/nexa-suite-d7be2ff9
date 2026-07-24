@@ -40,8 +40,9 @@ const path = require("path");
 const { EventEmitter } = require("events");
 
 // ---------- caminhos de DLL e diretório de trabalho ----------
-const FORCED_PAYGO_DLL_PATH = "C:\\Program Files (x86)\\PayGo\\PGWebLib\\x64\\PGWebLib.dll";
+const FORCED_PAYGO_DLL_PATH = "C:\\ProjetoMauro\\20260715-Integracao-PGWebLib_v4.1.50.924\\x64\\PGWebLib.dll";
 const DEFAULT_DLL_PATHS = [
+  "C:\\ProjetoMauro\\20260715-Integracao-PGWebLib_v4.1.50.924\\x64\\PGWebLib.dll",
   "C:\\Program Files (x86)\\PayGo\\PGWebLib\\x64\\PGWebLib.dll",
   "C:\\Program Files (x86)\\PayGo\\PGWebLib\\PGWebLib.dll",
   "C:\\PayGo\\PGWebLib\\x64\\PGWebLib.dll",
