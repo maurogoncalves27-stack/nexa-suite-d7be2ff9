@@ -32,6 +32,11 @@ if ($WorkingDir -and (Test-Path -LiteralPath $WorkingDir)) {
   try { [System.IO.Directory]::SetCurrentDirectory($WorkingDir) } catch { }
 }
 
+try {
+  $psProbe = Join-Path ([System.IO.Directory]::GetCurrentDirectory()) "nexa-paygo-ps-cwd-probe.txt"
+  "PowerShell CWD probe`r`ncreatedAt=$([DateTime]::UtcNow.ToString('O'))`r`nworkingDir=$WorkingDir`r`ndllPath=$DllPath`r`ncurrentDir=$([System.IO.Directory]::GetCurrentDirectory())" | Set-Content -LiteralPath $psProbe -Encoding UTF8
+} catch { }
+
 $source = @"
 using System;
 using System.Collections.Generic;
@@ -1718,6 +1723,17 @@ public static class PayGoBridge
         {
             try { Directory.SetCurrentDirectory(workingDir); } catch { }
         }
+        try
+        {
+            string cwd = Directory.GetCurrentDirectory();
+            string probePath = Path.Combine(cwd, "nexa-paygo-csharp-cwd-probe.txt");
+            File.WriteAllText(
+                probePath,
+                "C# CWD probe\r\ncreatedAt=" + DateTime.UtcNow.ToString("O") + "\r\nworkingDir=" + workingDir + "\r\ncurrentDir=" + cwd + "\r\npaygoDllPath=" + (Environment.GetEnvironmentVariable("PAYGO_DLL_PATH") ?? "") + "\r\n",
+                Encoding.UTF8
+            );
+        }
+        catch { }
         short ret = Fn<PW_iInit_>("PW_iInit")(workingDir);
         if (ret == PWRET_OK) _initialized = true;
         return ret;
