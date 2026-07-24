@@ -97,6 +97,9 @@ async function fetchDeviceStatus(deviceId: string) {
 
 
 const TEMP_CODES = new Set(['va_temperature', 'temp_current', 'temperature', 'cur_temperature']);
+// Offset de calibração aplicado a TODAS as leituras Tuya.
+// Sensores estão instalados próximos à porta e marcam ~3°C acima do interior real.
+const TUYA_TEMP_OFFSET_C = -3;
 const HUM_CODES = new Set(['va_humidity', 'humidity_value', 'humidity', 'cur_humidity']);
 const BATT_CODES = new Set(['battery_percentage', 'battery_value', 'battery', 'residual_electricity', 'va_battery']);
 
