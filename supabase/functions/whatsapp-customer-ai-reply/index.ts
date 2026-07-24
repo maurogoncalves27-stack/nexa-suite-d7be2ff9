@@ -11,7 +11,7 @@ const ZAPI_INSTANCE = Deno.env.get('ZAPI_CUSTOMER_INSTANCE_ID') || '';
 const ZAPI_TOKEN = Deno.env.get('ZAPI_CUSTOMER_TOKEN') || '';
 const ZAPI_CLIENT_TOKEN = Deno.env.get('ZAPI_CUSTOMER_CLIENT_TOKEN') || '';
 
-const MODEL = 'google/gemini-3-flash-preview';
+const MODEL = 'google/gemini-3.6-flash';
 const MAX_TOOL_LOOPS = 6;
 const JOBS_URL = 'https://nexasuite.aquelaparme.com.br/vagas';
 
@@ -296,13 +296,16 @@ const DEFAULT_SYSTEM_PROMPT = `Você é um atendente virtual de restaurante via 
 REGRAS CRÍTICAS:
 - NUNCA invente preços, descrições ou itens do cardápio. Sempre use search_menu antes de citar produto.
 - NUNCA invente horários/endereços — use get_store_info.
-- Reclamações: confirme e chame register_complaint.
+- register_complaint SÓ pode ser chamada quando o cliente descreve claramente um PROBLEMA com um pedido (algo errado, faltando, frio, atrasado, cobrança indevida, comida estragada). NÃO chame para dúvida, informação, pergunta sobre vaga, sobre horário de retorno, ou qualquer coisa que não seja um problema real.
+- Se o cliente perguntar quanto tempo o atendimento humano leva pra responder, ou pedir previsão de retorno, seja HONESTO: diga que o atendimento humano funciona no horário comercial da loja e você não tem como cravar um tempo exato. NÃO invente "algumas horas", "super rapidinho", nem diga que "registrou um chamado de prioridade". NÃO repita a mesma frase de encerramento duas vezes seguidas.
+- Se o cliente insistir que tem pressa e você não pode resolver, ofereça: (a) o telefone da loja via get_store_info, (b) pedir pelo iFood se for pedido, ou (c) aguardar retorno humano no horário comercial. Não force nova pergunta educada de encerramento se ele já sinalizou incômodo.
 - Pedidos pelo WhatsApp: SE get_store_info devolver sales_enabled=true, monte o pedido com add_to_cart, view_cart, depois chame set_pickup (nome, horário desejado, forma de pagamento) e checkout.
-- IMPORTANTE: ENTREGA está INDISPONÍVEL pelo WhatsApp — só RETIRADA na loja. Se o cliente pedir entrega, explique que ainda não temos entrega por aqui e oriente a pedir pelo iFood, OU seguir com retirada.
+- ENTREGA está INDISPONÍVEL pelo WhatsApp — só RETIRADA na loja. Se o cliente pedir entrega, explique que ainda não temos entrega por aqui e oriente a pedir pelo iFood, OU seguir com retirada.
 - Antes de checkout, confirme o pedido e tenha set_pickup já executado. Nunca peça endereço.
 - Quando o checkout retornar payment_link, envie o link cru em uma linha, informe o total, o pickup_code e o horário combinado. Diga que o pedido vai pra cozinha assim que o pagamento for confirmado.
 - Vagas/emprego/trabalhe conosco/currículo/candidatura: não colete dados no chat. Responda indicando exclusivamente este link: ${JOBS_URL}
-- Mensagens curtas (no máx 3 linhas). Emojis com moderação.`;
+- Se não souber a resposta, diga que não sabe e que vai passar pra equipe humana — sem inventar dado e sem prometer prazo.
+- Mensagens curtas (no máx 3 linhas). Emojis com moderação. Não repita a mesma pergunta ("posso te ajudar com mais alguma coisa?") em turnos consecutivos.`;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -430,7 +433,7 @@ Deno.serve(async (req) => {
       const aiResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LOVABLE_API_KEY}` },
-        body: JSON.stringify({ model: MODEL, messages: msgs, tools, tool_choice: 'auto' }),
+        body: JSON.stringify({ model: MODEL, messages: msgs, tools, tool_choice: 'auto', temperature: 0.3 }),
       });
       if (!aiResp.ok) {
         console.error('AI gateway error', aiResp.status, await aiResp.text());
