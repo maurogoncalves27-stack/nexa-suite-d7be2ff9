@@ -113,7 +113,7 @@ function extractTempHumidity(
   for (const s of status) {
     const code = s.code.toLowerCase();
     if (temp === null && TEMP_CODES.has(code)) {
-      temp = Number(s.value) / 10; // Tuya returns °C * 10 for most sensors
+      temp = Number(s.value) / 10 + TUYA_TEMP_OFFSET_C; // Tuya °C*10 + calibração porta
     }
     if (hum === null && HUM_CODES.has(code)) {
       hum = Number(s.value);
