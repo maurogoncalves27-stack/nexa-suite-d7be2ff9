@@ -487,7 +487,7 @@ public static class PayGoBridge
         Add(PWINFO_AUTVER, "1.0.0");
         Add(PWINFO_AUTDEV, "PayGo");
         Add(PWINFO_AUTCAP, "512"); // Homologacao PayGo: fixo em 512 (0x24)
-        Add(PWINFO_DSPQRPREF, "2");
+        // PWINFO_DSPQRPREF (0x7F50) NAO deve ser enviado em ADMIN — refere-se a QR Code de venda PIX.
 
         // Modo nao-interativo (install legado): mantem behavior antigo com params extras.
         if (!_interactive) AddActivationParams();
