@@ -1703,6 +1703,13 @@ public static class PayGoBridge
     {
         if (_initialized) return PWRET_OK;
         if (String.IsNullOrWhiteSpace(workingDir)) workingDir = Path.GetDirectoryName(Environment.GetEnvironmentVariable("PAYGO_DLL_PATH") ?? "");
+        // PGWebLib grava comms_*.log no diretorio corrente do processo, nao no
+        // workingDir passado ao PW_iInit. Forcamos o CWD para que os logs
+        // apareçam ao lado da DLL (ex.: C:\ProjetoMauro\...\x64).
+        if (!String.IsNullOrWhiteSpace(workingDir))
+        {
+            try { Directory.SetCurrentDirectory(workingDir); } catch { }
+        }
         short ret = Fn<PW_iInit_>("PW_iInit")(workingDir);
         if (ret == PWRET_OK) _initialized = true;
         return ret;
