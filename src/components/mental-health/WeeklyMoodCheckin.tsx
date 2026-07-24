@@ -93,13 +93,16 @@ export default function WeeklyMoodCheckin() {
         }
         setEmployeeId(emp.id);
 
+        // Snooze local (cobre sessão fechada / PWA reaberto)
+        if (isSnoozed()) { setChecked(true); return; }
+
         // Se o usuário já dispensou/respondeu nesta sessão, não reabrir
         const dismissedToday = sessionStorage.getItem("mood_checkin_dismissed") === today;
         if (dismissedToday) { setChecked(true); return; }
 
         const { data: last } = await supabase
           .from("mood_checkins")
-          .select("created_at")
+          .select("created_at, skipped")
           .eq("employee_id", emp.id)
           .order("created_at", { ascending: false })
           .limit(1)
@@ -109,15 +112,14 @@ export default function WeeklyMoodCheckin() {
         if (last) {
           const lastDate = new Date(last.created_at);
           const lastDayStr = `${lastDate.getFullYear()}-${String(lastDate.getMonth() + 1).padStart(2, "0")}-${String(lastDate.getDate()).padStart(2, "0")}`;
-          // Se já respondeu hoje, não pergunta de novo
           if (lastDayStr === today) {
             sessionStorage.setItem("mood_checkin_dismissed", today);
             setChecked(true);
             return;
           }
-          // Só reabre depois de 3 dias completos desde a última resposta
           const daysSince = Math.floor((Date.now() - lastDate.getTime()) / (24 * 60 * 60 * 1000));
-          if (daysSince < CHECKIN_INTERVAL_DAYS) { setChecked(true); return; }
+          const minGap = last.skipped ? SKIP_SNOOZE_DAYS : CHECKIN_INTERVAL_DAYS;
+          if (daysSince < minGap) { setChecked(true); return; }
         }
         setOpen(true);
       } catch {
