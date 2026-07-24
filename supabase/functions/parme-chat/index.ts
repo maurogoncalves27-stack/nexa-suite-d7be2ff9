@@ -766,7 +766,7 @@ Deno.serve(async (req) => {
         "X-Lovable-AIG-SDK": "vercel-ai-sdk",
       },
     });
-    const model = provider("google/gemini-3-flash-preview");
+    const model = provider("google/gemini-3.6-flash");
 
     const tools = {
       consultar_cardapio: tool({
