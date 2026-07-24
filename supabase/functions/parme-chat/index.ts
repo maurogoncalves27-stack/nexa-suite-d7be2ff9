@@ -724,38 +724,90 @@ Deno.serve(async (req) => {
 
     const tools = {
       consultar_cardapio: tool({
-        description: "Lista os pratos do cardápio do Aquela Parmê e suas descrições.",
+        description:
+          "Lista marcas e pratos oficiais. Use antes de falar de qualquer prato/marca. Sem essa consulta, NÃO invente item.",
         inputSchema: z.object({
-          prato: z.enum([
-            "aquela-parme",
-            "aquele-estrogonofe",
-            "box-caipira",
-            "todos",
-          ]).default("todos"),
+          marca: z.enum(["aquela-parme", "aquele-estrogonofe", "box-caipira", "todos"]).default("todos"),
         }),
-        execute: ({ prato }) => {
-          if (prato === "todos") return MENU;
-          return { [prato]: MENU[prato as keyof typeof MENU] };
+        execute: ({ marca }) => {
+          const marcasOut = marca === "todos"
+            ? MARCAS
+            : { [marca]: MARCAS[marca as MarcaKey] };
+          const pratosOut = marca === "todos"
+            ? PRATOS
+            : PRATOS.filter((p) => p.marca === marca);
+          return {
+            marcas: marcasOut,
+            pratos: pratosOut,
+            regras_parmegiana: {
+              proteina_por_pessoa_g: PARMEGIANA_REGRAS.proteinaPorPessoaG,
+              tamanhos: tamanhosParmegianaResumo(),
+            },
+          };
         },
       }),
-      recomendar_prato: tool({
-        description: "Recomenda um prato com base no gosto do cliente.",
-        inputSchema: z.object({ preferencia: z.string().min(2).max(300) }),
-        execute: ({ preferencia }) => {
-          const p = preferencia.toLowerCase();
-          if (p.includes("cremos") || p.includes("queijo") || p.includes("parm")) {
-            return { recomendado: MENU["aquela-parme"] };
+      consultar_prato: tool({
+        description:
+          "Busca um prato específico pelo nome/palavra-chave e devolve dados canônicos (tamanhos oficiais de parmegiana se aplicável). Use SEMPRE que o cliente perguntar peso, porção, tamanho, ingrediente ou quantas pessoas serve.",
+        inputSchema: z.object({ termo: z.string().min(2).max(120) }),
+        execute: ({ termo }) => {
+          const p = findPrato(termo);
+          if (!p) {
+            return {
+              encontrado: false,
+              instrucao:
+                "Prato NÃO encontrado no cardápio oficial. Responda ao cliente que vai confirmar com a equipe — NÃO invente peso, porção ou ingrediente.",
+            };
           }
-          if (p.includes("estrog") || p.includes("mignon") || p.includes("cogumelo")) {
-            return { recomendado: MENU["aquele-estrogonofe"] };
+          const tamanhos = p.tamanhos?.map((t) => ({
+            tamanho: t,
+            ...PARMEGIANA_REGRAS.tamanhos[t],
+          })) ?? null;
+          return {
+            encontrado: true,
+            prato: p,
+            marca: MARCAS[p.marca],
+            tamanhos_oficiais: tamanhos,
+            observacao_pesos: tamanhos ? PARMEGIANA_REGRAS.observacao : null,
+          };
+        },
+      }),
+      consultar_info: tool({
+        description:
+          "Devolve informação institucional oficial (horários, endereços, pagamento no salão, delivery, reservas). Use SEMPRE antes de responder qualquer dessas perguntas. Se o campo vier vazio/null, diga ao cliente que vai confirmar com a equipe.",
+        inputSchema: z.object({
+          topico: z.enum(["horarios", "enderecos", "pagamento", "delivery", "reservas"]),
+          loja: z.enum(["asa-sul", "asa-norte", "aguas-claras", "lago-sul"]).optional(),
+        }),
+        execute: ({ topico, loja }) => {
+          if (topico === "delivery") return { texto: INFO.delivery };
+          if (topico === "pagamento") return { texto: INFO.pagamento_salao };
+          if (topico === "reservas") return { texto: INFO.reservas };
+          if (topico === "horarios" || topico === "enderecos") {
+            const lojas = loja ? { [loja]: INFO.lojas[loja] } : INFO.lojas;
+            return {
+              lojas,
+              instrucao:
+                "Se o campo horario/endereco vier null para a loja perguntada, responda ao cliente que a equipe confirma na hora — NÃO invente.",
+            };
           }
-          if (
-            p.includes("caipir") || p.includes("feijão") ||
-            p.includes("roça") || p.includes("levar")
-          ) {
-            return { recomendado: MENU["box-caipira"] };
+          return { encontrado: false };
+        },
+      }),
+      consultar_faq: tool({
+        description:
+          "Consulta perguntas comuns (sem glúten, vegano, pix, entrega própria, estacionamento, menu infantil, calorias). Use SEMPRE antes de responder esses temas.",
+        inputSchema: z.object({ pergunta: z.string().min(2).max(300) }),
+        execute: ({ pergunta }) => {
+          const f = findFaq(pergunta);
+          if (!f) {
+            return {
+              encontrado: false,
+              instrucao:
+                "Pergunta fora da FAQ oficial. Responda ao cliente que vai confirmar com a equipe — NÃO invente resposta.",
+            };
           }
-          return { recomendado: MENU["aquela-parme"], motivo: "Carro-chefe da casa." };
+          return { encontrado: true, resposta: f.resposta };
         },
       }),
       criar_reserva: tool({
