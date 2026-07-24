@@ -181,7 +181,7 @@ export default function WeeklyMoodCheckin() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!saving) { if (!v) sessionStorage.setItem("mood_checkin_dismissed", today); setOpen(v); } }}>
+    <Dialog open={open} onOpenChange={(v) => { if (!saving) { if (!v) { sessionStorage.setItem("mood_checkin_dismissed", today); snoozeFor(CLOSE_SNOOZE_DAYS); } setOpen(v); } }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Como você está se sentindo hoje?</DialogTitle>
