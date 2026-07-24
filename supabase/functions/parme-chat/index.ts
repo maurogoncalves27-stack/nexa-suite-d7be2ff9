@@ -1150,10 +1150,11 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
             if (e.id && e.ts) tsById.set(e.id, e.ts);
           }
           flat = mergeFlatMessages(existingMessages, flattenUIMessages(finalMessages, now, tsById));
-          // Hard-guard: substitui qualquer mensagem da Giana que tenha vazado preço.
+          // Hard-guard: reescreve qualquer mensagem da Giana que tenha
+          // vazado preço OU fato errado (peso/pessoas de parmegiana).
           flat = flat.map((m) =>
-            isAssistantMessage(m) && containsPrice(m.content)
-              ? { ...m, content: PRICE_REPLACEMENT }
+            isAssistantMessage(m)
+              ? { ...m, content: sanitizeAssistantText(m.content) }
               : m
           );
           await supabase.from("chat_conversations").upsert(
