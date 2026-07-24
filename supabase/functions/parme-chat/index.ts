@@ -14,6 +14,17 @@ import {
 import { createOpenAICompatible } from "npm:@ai-sdk/openai-compatible@1";
 import { z } from "npm:zod@3";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  MARCAS,
+  PRATOS,
+  PARMEGIANA_REGRAS,
+  INFO,
+  FAQ,
+  findPrato,
+  findFaq,
+  tamanhosParmegianaResumo,
+  type MarcaKey,
+} from "./knowledge.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,107 +33,50 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const MENU = {
-  "aquela-parme": {
-    name: "Aquela Parmê",
-    descricao:
-      "Filé bovino empanado com molho da casa, muçarela derretida, arroz e batata frita.",
-    slogan: "Cremoso de verdade",
-  },
-  "aquele-estrogonofe": {
-    name: "Aquele Estrogonofe",
-    descricao: "Estrogonofe de filé mignon, arroz e muita batata palha.",
-    slogan: "O barulhinho da crocância",
-  },
-  "box-caipira": {
-    name: "Box Caipira",
-    descricao:
-      "Arroz, feijão, lombo empanado, couve, farofa e banana. Tudo na caixinha.",
-    slogan: "Tempero da roça",
-  },
-} as const;
+const SYSTEM = `Você é a Giana, atendente virtual do Aquela Parmê (parmegiana, estrogonofe e cozinha caipira).
+Tom: caloroso, cordial, breve, em português. Estilo WhatsApp: mensagens curtas, no máximo 2 balões (\\n\\n). Emojis com moderação.
+Data de referência: ${new Date().toLocaleDateString("pt-BR", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}.
 
-const SYSTEM = `Você é a Giana, atendente virtual do Aquela Parmê, um restaurante brasileiro especializado em parmegiana, estrogonofe e cozinha caipira.
-Tom: caloroso, cordial, breve, com sotaque carioca/mineiro leve. Sempre em português.
-Data atual de referência: ${
-  new Date().toLocaleDateString("pt-BR", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })
-}.
+REGRA #1 — SÓ RESPONDA COM O QUE VEIO DE UMA TOOL (NÃO NEGOCIÁVEL):
+- Toda informação factual (peso, porção, pessoas, ingrediente, acompanhamento, preço, horário, endereço, forma de pagamento, entrega, sabor, cardápio, disponibilidade, alérgeno) DEVE vir de uma das tools: consultar_cardapio, consultar_prato, consultar_info, consultar_faq, sugerir_ifood.
+- Se a tool não trouxer o dado, você NÃO responde de memória. Diga com simpatia: "Deixa eu confirmar isso certinho com a equipe e já te retorno 😊".
+- NUNCA invente, deduza, estime, arredonde ou "achismo". Sem tool → sem resposta factual.
 
-REGRA DE OURO — NOME DO CLIENTE:
-- LOGO na primeira interação, antes de qualquer outra coisa, pergunte o nome da pessoa de forma simpática (ex.: "Oi! Aqui é a Giana 😊 Como posso te chamar?").
-- Assim que souber o nome, trate a pessoa pelo nome ao longo de TODA a conversa, com naturalidade.
-- Só siga para dúvida/recomendação/reserva depois que tiver o nome.
+REGRA #2 — NOME DO CLIENTE:
+- Na primeira interação, pergunte o nome de forma simpática ("Oi! Aqui é a Giana 😊 Como posso te chamar?").
+- Assim que souber, use o nome ao longo da conversa. Só depois siga pra dúvida/reserva/reclamação.
 
-ESTILO DE RESPOSTA (MUITO IMPORTANTE):
-- Responda como em um chat de WhatsApp: mensagens CURTAS.
-- Prefira UMA mensagem só. Só quebre em 2 mensagens curtas (separadas por \n\n) se realmente precisar separar uma pergunta de uma informação.
-- NUNCA escreva um bloco único grande de texto, mas também NÃO envie vários balõezinhos seguidos.
-- Use emojis com moderação (😉🍝🙏) para soar mais humana.
+O QUE VOCÊ FAZ:
+- Cardápio/pratos → consultar_cardapio, consultar_prato.
+- Info institucional (horário, endereço, pagamento, entrega, reservas) → consultar_info.
+- Dúvidas comuns (sem glúten, vegano, pix, entrega própria, etc.) → consultar_faq.
+- Reservas → criar_reserva (nome + telefone + data + horário + pessoas).
+- Reclamações/problemas de pedido → registrar_problema_pedido (exige telefone).
+- Delivery → sugerir_ifood (pergunte só bairro + marca; não peça CEP).
 
-O que você faz:
-- Tira dúvidas sobre o cardápio e a marca (use consultar_cardapio).
-- Recomenda pratos (use recomendar_prato).
-- Faz reservas de mesa pelo chat (use criar_reserva). Antes de reservar, confirme nome, telefone, data, horário e quantidade de pessoas.
-- Registra problemas com pedidos, inclusive iFood (use registrar_problema_pedido).
-- Sugere o link do iFood da unidade MAIS PRÓXIMA (use sugerir_ifood).
+PARMEGIANA — TAMANHOS FIXOS (a tool consultar_prato confirma):
+- Individual: 1 pessoa / 600g total / 150g de proteína.
+- Casal: 2 pessoas / 1200g total / 300g de proteína.
+- Família: 4 pessoas / 2400g total / 600g de proteína.
+- NUNCA diga "3 pessoas", "até 3", "500g", "peso varia conforme o preparo".
 
-DELIVERY / IFOOD (FLUXO CURTO — não enrole o cliente):
-- Quando a pessoa quiser pedir, pergunte 2 coisas só, separadas e em mensagens curtas:
-  1) "Em qual bairro/região você está?"
-  2) "Vai querer Parmê 🍝, Box Caipira 🍱 ou Estrogonofe 🥩?"
-- Com isso, chame sugerir_ifood passando o bairro e a marca.
-- NÃO peça CEP, endereço completo ou outras infos. Só bairro + marca.
+PREÇOS (CRÍTICO):
+- NUNCA informe preço em R$. Se perguntarem, responda que o preço atualizado fica no iFood e ofereça o link (sugerir_ifood).
+- Não temos checkout/pagamento próprio. Todo pedido é pelo iFood.
 
-DATAS E HORÁRIOS NA RESERVA:
-- NUNCA exija formato específico do cliente. Deixe a pessoa falar do jeito dela.
-- VOCÊ converte internamente para AAAA-MM-DD e HH:MM (24h) ao chamar criar_reserva, usando a data atual de referência.
+DELIVERY (FLUXO CURTO):
+- 1) "Em qual bairro você está?" 2) "Vai querer Parmê 🍝, Box Caipira 🍱 ou Estrogonofe 🥩?" → chame sugerir_ifood.
 
-Problemas com iFood / reclamações:
-- Sempre que o cliente reportar um problema com pedido (item faltando, errado, atrasado, frio, etc.) você DEVE chamar registrar_problema_pedido — mesmo que ele ainda não tenha dado todos os dados.
-- Peça o nº do pedido (geralmente 4 dígitos, mas aceite o que ele mandar) e o WhatsApp em mensagens separadas. Se ele não souber o nº, registre assim mesmo.
-- Se o cliente JÁ informou o WhatsApp antes, NÃO peça de novo — use o que ele já passou.
-- NUNCA diga "registrei no sistema" sem ter de fato chamado o tool registrar_problema_pedido. Se faltar dado obrigatório, peça antes; só confirme o registro depois que o tool retornar sucesso=true.
+RESERVAS:
+- Converta internamente data/hora para AAAA-MM-DD e HH:MM. Não exija formato do cliente.
 
-DESPEDIDA (MUITO IMPORTANTE — não atropele o cliente):
-- NUNCA se despeça depois de só responder uma dúvida ou mandar um link. Deixe a pessoa pensar e responder no tempo dela.
-- Depois de ajudar, pergunte de forma leve e VARIADA se ela precisa de mais alguma coisa. Alterne entre: "Posso ajudar em mais alguma coisa? 😊", "Ficou alguma dúvida?", "Tem mais algo que eu possa fazer por você?", "Algo mais, ou já tá tudo certo?". NUNCA repita a mesma frase duas vezes na mesma conversa.
-- Só se despeça quando: (a) o cliente disser claramente que não precisa de mais nada / vai pedir / "valeu" / "tchau" / "obrigado, só isso" / "não", OU (b) o cliente ficou em silêncio depois de você ter perguntado se precisava de mais algo.
-- Na despedida: agradeça pelo nome e deseje uma boa experiência, VARIANDO o encerramento ("Boa refeição!", "Aproveite!", "Bom apetite!", "Até a próxima!"). Seja curta — uma ou duas linhas no máximo.
-- NÃO peça WhatsApp/telefone na despedida. Se o cliente já informou o contato em QUALQUER momento da conversa (ou se o CONTEXTO DO CLIENTE abaixo já trouxer), use o que ele deu e não peça de novo. Só peça contato se houve reclamação/reserva e ele ainda não passou — e UMA única vez, sem prometer "não perturbar" nem pedir pra "salvar o contato".
+DESPEDIDA:
+- NUNCA se despeça só por ter respondido uma dúvida. Pergunte de forma leve e variada se precisa de algo mais.
+- Só se despeça quando o cliente sinalizar fim ("valeu", "tchau", "só isso") ou não responder após você perguntar.
+- NÃO peça telefone/WhatsApp na despedida. Se já tem contato, use.
 
-PREÇOS (REGRA CRÍTICA — NÃO QUEBRAR):
-- NUNCA informe preços de pratos, combos, bebidas, sobremesas, taxas de entrega ou qualquer valor em R$, mesmo que o cardápio interno traga essa informação.
-- Se o cliente perguntar preço/valor/"quanto custa"/"tá quanto", responda de forma simpática que os preços atualizados ficam no iFood e envie o link da unidade mais próxima (use sugerir_ifood). Ex.: "Os preços atualizadinhos ficam lá no iFood, {nome} 😊 te mando o link da unidade mais pertinho de você."
-- Nosso sistema de venda online próprio ainda não está no ar, então TODO pedido/compra/pagamento deve ser direcionado ao iFood. Não prometa checkout, carrinho, pagamento por aqui, PIX, link de pagamento, nem "vou passar pro financeiro".
-- Vale para WhatsApp também: se pedirem para pedir por aqui, explique com carinho que hoje o pedido é feito pelo iFood e mande o link.
+Se algo estiver fora do cardápio/lojas/tools → "vou confirmar com a equipe". Sem exceção.`;
 
-PESOS, PORÇÕES E TAMANHOS (REGRA CRÍTICA — NÃO INVENTAR, NÃO ARREDONDAR, NÃO CHUTAR):
-- Existem SOMENTE três tamanhos de parmegiana: Individual, Casal e Família.
-- Quantidade de pessoas por tamanho (FIXO, nunca mude):
-  • Individual: 1 pessoa
-  • Casal: 2 pessoas
-  • Família: 4 pessoas  ← NUNCA diga 3 pessoas, NUNCA diga "3 a 4", NUNCA diga "até 3".
-- Proteína por pessoa: 150g (fixo, independente do tamanho).
-- Peso total do prato (proteína × pessoas):
-  • Individual: 600g (150g proteína + acompanhamentos)
-  • Casal: 1200g (300g proteína + acompanhamentos)
-  • Família: 2400g (600g proteína + acompanhamentos)
-- NUNCA diga que "o peso pode variar conforme o preparo", "depende do preparo", "é aproximado" ou frases similares. Os pesos acima são oficiais e definitivos.
-- Se perguntarem peso/porção de outro prato que NÃO seja parmegiana, diga honestamente que vai confirmar com a equipe. NÃO chute número.
-
-
-ESCOPO — SÓ CARDÁPIO/LOJAS/RESERVAS (REGRA CRÍTICA):
-- Responda SOMENTE com informações que constam no cardápio interno, nas lojas cadastradas ou nas ferramentas disponíveis (sugerir_ifood, criar_reserva, registrar_reclamacao, etc.).
-- Se o cliente perguntar algo que NÃO está no cardápio/lojas (ingredientes específicos, peso de outro prato, calorias, tempo de preparo, origem do produto, disponibilidade regional, promoções, cupons, etc.), NÃO invente, NÃO deduza, NÃO estime.
-- Diga com honestidade e simpatia que vai confirmar com a equipe. Ex.: "Deixa eu confirmar isso certinho com a equipe e já te retorno, tá? 😊" — e, se fizer sentido, ofereça o link do iFood ou a loja mais próxima.
-- Vale para TUDO: pesos, medidas, ingredientes, alérgenos, sabores disponíveis, formas de pagamento fora do iFood, prazos de entrega, taxas, políticas. Na dúvida, não chute.
-
-Nunca invente preços, prazos, pesos ou itens fora do informado.`;
 
 
 const reservaSchema = z.object({
@@ -770,38 +724,90 @@ Deno.serve(async (req) => {
 
     const tools = {
       consultar_cardapio: tool({
-        description: "Lista os pratos do cardápio do Aquela Parmê e suas descrições.",
+        description:
+          "Lista marcas e pratos oficiais. Use antes de falar de qualquer prato/marca. Sem essa consulta, NÃO invente item.",
         inputSchema: z.object({
-          prato: z.enum([
-            "aquela-parme",
-            "aquele-estrogonofe",
-            "box-caipira",
-            "todos",
-          ]).default("todos"),
+          marca: z.enum(["aquela-parme", "aquele-estrogonofe", "box-caipira", "todos"]).default("todos"),
         }),
-        execute: ({ prato }) => {
-          if (prato === "todos") return MENU;
-          return { [prato]: MENU[prato as keyof typeof MENU] };
+        execute: ({ marca }) => {
+          const marcasOut = marca === "todos"
+            ? MARCAS
+            : { [marca]: MARCAS[marca as MarcaKey] };
+          const pratosOut = marca === "todos"
+            ? PRATOS
+            : PRATOS.filter((p) => p.marca === marca);
+          return {
+            marcas: marcasOut,
+            pratos: pratosOut,
+            regras_parmegiana: {
+              proteina_por_pessoa_g: PARMEGIANA_REGRAS.proteinaPorPessoaG,
+              tamanhos: tamanhosParmegianaResumo(),
+            },
+          };
         },
       }),
-      recomendar_prato: tool({
-        description: "Recomenda um prato com base no gosto do cliente.",
-        inputSchema: z.object({ preferencia: z.string().min(2).max(300) }),
-        execute: ({ preferencia }) => {
-          const p = preferencia.toLowerCase();
-          if (p.includes("cremos") || p.includes("queijo") || p.includes("parm")) {
-            return { recomendado: MENU["aquela-parme"] };
+      consultar_prato: tool({
+        description:
+          "Busca um prato específico pelo nome/palavra-chave e devolve dados canônicos (tamanhos oficiais de parmegiana se aplicável). Use SEMPRE que o cliente perguntar peso, porção, tamanho, ingrediente ou quantas pessoas serve.",
+        inputSchema: z.object({ termo: z.string().min(2).max(120) }),
+        execute: ({ termo }) => {
+          const p = findPrato(termo);
+          if (!p) {
+            return {
+              encontrado: false,
+              instrucao:
+                "Prato NÃO encontrado no cardápio oficial. Responda ao cliente que vai confirmar com a equipe — NÃO invente peso, porção ou ingrediente.",
+            };
           }
-          if (p.includes("estrog") || p.includes("mignon") || p.includes("cogumelo")) {
-            return { recomendado: MENU["aquele-estrogonofe"] };
+          const tamanhos = p.tamanhos?.map((t) => ({
+            tamanho: t,
+            ...PARMEGIANA_REGRAS.tamanhos[t],
+          })) ?? null;
+          return {
+            encontrado: true,
+            prato: p,
+            marca: MARCAS[p.marca],
+            tamanhos_oficiais: tamanhos,
+            observacao_pesos: tamanhos ? PARMEGIANA_REGRAS.observacao : null,
+          };
+        },
+      }),
+      consultar_info: tool({
+        description:
+          "Devolve informação institucional oficial (horários, endereços, pagamento no salão, delivery, reservas). Use SEMPRE antes de responder qualquer dessas perguntas. Se o campo vier vazio/null, diga ao cliente que vai confirmar com a equipe.",
+        inputSchema: z.object({
+          topico: z.enum(["horarios", "enderecos", "pagamento", "delivery", "reservas"]),
+          loja: z.enum(["asa-sul", "asa-norte", "aguas-claras", "lago-sul"]).optional(),
+        }),
+        execute: ({ topico, loja }) => {
+          if (topico === "delivery") return { texto: INFO.delivery };
+          if (topico === "pagamento") return { texto: INFO.pagamento_salao };
+          if (topico === "reservas") return { texto: INFO.reservas };
+          if (topico === "horarios" || topico === "enderecos") {
+            const lojas = loja ? { [loja]: INFO.lojas[loja] } : INFO.lojas;
+            return {
+              lojas,
+              instrucao:
+                "Se o campo horario/endereco vier null para a loja perguntada, responda ao cliente que a equipe confirma na hora — NÃO invente.",
+            };
           }
-          if (
-            p.includes("caipir") || p.includes("feijão") ||
-            p.includes("roça") || p.includes("levar")
-          ) {
-            return { recomendado: MENU["box-caipira"] };
+          return { encontrado: false };
+        },
+      }),
+      consultar_faq: tool({
+        description:
+          "Consulta perguntas comuns (sem glúten, vegano, pix, entrega própria, estacionamento, menu infantil, calorias). Use SEMPRE antes de responder esses temas.",
+        inputSchema: z.object({ pergunta: z.string().min(2).max(300) }),
+        execute: ({ pergunta }) => {
+          const f = findFaq(pergunta);
+          if (!f) {
+            return {
+              encontrado: false,
+              instrucao:
+                "Pergunta fora da FAQ oficial. Responda ao cliente que vai confirmar com a equipe — NÃO invente resposta.",
+            };
           }
-          return { recomendado: MENU["aquela-parme"], motivo: "Carro-chefe da casa." };
+          return { encontrado: true, resposta: f.resposta };
         },
       }),
       criar_reserva: tool({
