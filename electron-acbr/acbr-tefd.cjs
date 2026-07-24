@@ -111,7 +111,7 @@ function resolveWorkingDir(dllPath) {
   // Com a PGWebLib instalada em Program Files, usa SEMPRE a pasta da DLL
   // (mesmo comportamento da demo de referencia). Ignora PAYGO_WORKING_DIR
   // apontando para AppData/NexaACBr, que gera config/certificados divergentes.
-  if (dllPath === FORCED_PAYGO_DLL_PATH && dllDir) {
+  if (dllPath && dllDir && path.normalize(dllPath).toLowerCase() === path.normalize(FORCED_PAYGO_DLL_PATH).toLowerCase()) {
     return dllDir;
   }
 
@@ -124,6 +124,22 @@ function resolveWorkingDir(dllPath) {
     if (canUseWorkingDir(dir)) return dir;
   }
   return null;
+}
+
+function preparePayGoWorkingDir(dir) {
+  if (!dir) return { ok: false, error: "workingDir vazio" };
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    const probePath = path.join(dir, "nexa-paygo-cwd-probe.txt");
+    fs.writeFileSync(
+      probePath,
+      `NEXA PayGo cwd probe\r\ncreatedAt=${new Date().toISOString()}\r\n`,
+      "utf8"
+    );
+    return { ok: true, probePath };
+  } catch (err) {
+    return { ok: false, error: err?.message || String(err) };
+  }
 }
 
 function formatBridgeError(payload, fallback) {
@@ -641,6 +657,7 @@ function ensureHost() {
 
   const workingDir = resolveWorkingDir(dllPath);
   const bridge = bridgeScriptPath();
+  const workingDirProbe = preparePayGoWorkingDir(workingDir);
 
   if (!fs.existsSync(bridge)) {
     hostLastError = `Bridge PayGo não encontrado em ${bridge}`;
@@ -650,7 +667,7 @@ function ensureHost() {
     return p;
   }
 
-  console.log("[TEF] iniciando PayGo host (PS+C#) DLL=" + dllPath + " workingDir=" + workingDir);
+  console.log("[TEF] iniciando PayGo host (PS+C#) DLL=" + dllPath + " workingDir=" + workingDir + " cwdProbe=" + (workingDirProbe.ok ? workingDirProbe.probePath : `FALHOU: ${workingDirProbe.error}`));
 
   hostReadyPromise = new Promise((resolve, reject) => {
     let settled = false;
@@ -680,7 +697,17 @@ function ensureHost() {
         "-DllPath", dllPath,
         "-WorkingDir", workingDir,
       ],
-      { windowsHide: true }
+      {
+        windowsHide: true,
+        cwd: workingDir || undefined,
+        env: {
+          ...process.env,
+          PAYGO_DLL_PATH: dllPath,
+          PAYGO_WORKING_DIR: workingDir || "",
+          PGWEBLIB_WORKING_DIR: workingDir || "",
+          PGWEBLIB_LOG_DIR: workingDir || "",
+        },
+      }
     );
 
     host = proc;
