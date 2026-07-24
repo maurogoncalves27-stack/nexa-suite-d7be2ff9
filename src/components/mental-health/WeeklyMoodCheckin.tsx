@@ -28,8 +28,23 @@ function weekStartStr(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-const CHECKIN_INTERVAL_DAYS = 3;
+const CHECKIN_INTERVAL_DAYS = 7;
+const SKIP_SNOOZE_DAYS = 3;
+const CLOSE_SNOOZE_DAYS = 2;
 const OPTOUT_DAYS = 90;
+const NEXT_ASK_KEY = "mood_next_ask_at";
+
+function snoozeFor(days: number) {
+  const next = Date.now() + days * 24 * 60 * 60 * 1000;
+  try { localStorage.setItem(NEXT_ASK_KEY, String(next)); } catch {}
+}
+function isSnoozed(): boolean {
+  try {
+    const v = localStorage.getItem(NEXT_ASK_KEY);
+    if (!v) return false;
+    return Date.now() < Number(v);
+  } catch { return false; }
+}
 
 /**
  * Check-in de humor voluntário (NR-1 / LGPD).
