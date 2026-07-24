@@ -1127,6 +1127,7 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
       messages: await convertToModelMessages(messages),
       tools,
       stopWhen: stepCountIs(50),
+      temperature: 0.3,
     });
 
     const response = result.toUIMessageStreamResponse({
