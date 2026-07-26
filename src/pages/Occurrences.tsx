@@ -464,15 +464,19 @@ export default function Occurrences() {
         analysis.causa_raiz ? `Causa raiz: ${analysis.causa_raiz}` : null,
       ].filter(Boolean).join("\n");
 
-      const { error: insErr } = await supabase.from("occurrence_alerts").insert({
-        occurrence_id: chosenOccId,
-        created_by: user.id,
-        store_id: detectedStoreId,
-        note,
-        order_number: orderNumber,
-        order_value: orderValue,
-        subcategory: subcat,
-      } as never);
+      const { data: insertedAlert, error: insErr } = await supabase
+        .from("occurrence_alerts")
+        .insert({
+          occurrence_id: chosenOccId,
+          created_by: user.id,
+          store_id: detectedStoreId,
+          note,
+          order_number: orderNumber,
+          order_value: orderValue,
+          subcategory: subcat,
+        } as never)
+        .select("id")
+        .single();
       if (insErr) throw insErr;
 
       const chosen = [analysis.ocorrencia_principal, ...analysis.alternativas].find((o) => o?.id === chosenOccId);
