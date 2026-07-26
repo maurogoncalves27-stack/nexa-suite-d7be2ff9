@@ -32,6 +32,7 @@ import DocumentsPendingBanner from "@/components/auth/DocumentsPendingBanner";
 import EmployeeInfractionsAlert from "@/components/evaluations/EmployeeInfractionsAlert";
 import EmployeeMaintenanceAlert from "@/components/nutricontrol/EmployeeMaintenanceAlert";
 import MaintenanceRequestsAlert from "@/components/nutricontrol/MaintenanceRequestsAlert";
+import MaintenanceConfirmAlert from "@/components/nutricontrol/MaintenanceConfirmAlert";
 import ShiftSwapPendingBanner from "@/components/schedules/ShiftSwapPendingBanner";
 import ShiftSwapManagerBanner from "@/components/schedules/ShiftSwapManagerBanner";
 import NoticesStack from "@/components/employees/NoticesStack";
