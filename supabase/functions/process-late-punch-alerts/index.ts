@@ -117,6 +117,45 @@ Deno.serve(async (req) => {
 
   const { dateStr, nowMs } = nowInTz();
 
+  // Config WhatsApp para o alerta 'timeclock'
+  const { data: notifCfg } = await supabase
+    .from("notification_settings")
+    .select("whatsapp_enabled, whatsapp_sender_id")
+    .eq("alert_key", "timeclock")
+    .maybeSingle();
+  const waEnabled = !!notifCfg?.whatsapp_enabled;
+  const waConfig = waEnabled ? await loadWaConfig(supabase, notifCfg?.whatsapp_sender_id ?? null) : null;
+
+  // Cache de telefones por user_id (gestores/admins)
+  const phoneCache = new Map<string, string | null>();
+  async function getManagerPhones(userIds: string[]): Promise<string[]> {
+    const missing = userIds.filter((u) => !phoneCache.has(u));
+    if (missing.length > 0) {
+      const { data: emps } = await supabase
+        .from("employees")
+        .select("user_id, phone")
+        .in("user_id", missing);
+      const found = new Map((emps ?? []).map((e: any) => [e.user_id, e.phone]));
+      for (const u of missing) phoneCache.set(u, normalizePhone(found.get(u) ?? null));
+    }
+    return userIds
+      .map((u) => phoneCache.get(u) ?? null)
+      .filter((p): p is string => !!p);
+  }
+
+  async function fanoutWhatsapp(userIds: string[], text: string) {
+    if (!waEnabled || !waConfig) return 0;
+    const phones = await getManagerPhones(userIds);
+    let ok = 0;
+    for (const p of phones) {
+      const r = await sendWhatsapp(waConfig, p, text);
+      if (r.ok) ok++;
+      else console.warn("[late-alerts] whatsapp fail", p, r);
+    }
+    return ok;
+  }
+
+
   try {
     // 1. Escalas de hoje (não folga, com shift definido)
     const { data: schedules, error: schedErr } = await supabase
