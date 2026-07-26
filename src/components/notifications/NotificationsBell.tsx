@@ -279,7 +279,7 @@ export default function NotificationsBell() {
             </Button>
           )}
         </div>
-        <ScrollArea className="max-h-[60vh]">
+        <ScrollArea className="h-[min(70vh,520px)]">
           {announcements.length > 0 && (
             <div className="p-2 space-y-2 border-b">
               <div className="text-[10px] uppercase tracking-wide text-muted-foreground px-1 font-semibold">
