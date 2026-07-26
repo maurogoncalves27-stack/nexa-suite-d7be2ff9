@@ -1,38 +1,13 @@
-// Envia alerta WhatsApp para gestores/admins da loja da ocorrência.
-// Filtra por loja (admin sem loja recebe tudo) e respeita opt-out em
-// notification_settings (event_type = 'occurrence').
+// Envia alerta WhatsApp para gestores/admins da loja da ocorrência
+// e para destinatários extras configurados em notification_settings.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { loadAlertConfig, normalizePhone, sendWhatsapp, fanoutExtras } from "../_shared/notifyChannels.ts";
 
-const UAZAPI_BASE = (Deno.env.get("UAZAPI_BASE_URL") || "").replace(/\/+$/, "");
-const UAZAPI_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN") || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const APP_BASE_URL =
   Deno.env.get("APP_PUBLIC_URL") || "https://nexasuite.aquelaparme.com.br";
-
-function normalizePhone(raw: string | null | undefined): string | null {
-  const d = (raw || "").replace(/\D+/g, "");
-  if (!d) return null;
-  if (d.startsWith("55") && d.length >= 12) return d;
-  if (d.length === 10 || d.length === 11) return "55" + d;
-  return d;
-}
-
-async function sendWhatsapp(phone: string, message: string) {
-  if (!UAZAPI_BASE || !UAZAPI_TOKEN) return { ok: false, error: "UAZAPI not configured" };
-  try {
-    const res = await fetch(`${UAZAPI_BASE}/send/text`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", token: UAZAPI_TOKEN },
-      body: JSON.stringify({ number: phone, text: message }),
-    });
-    const t = await res.text();
-    return { ok: res.ok, status: res.status, body: t };
-  } catch (e) {
-    return { ok: false, error: (e as Error).message };
-  }
-}
 
 interface Body {
   alert_id?: string;
