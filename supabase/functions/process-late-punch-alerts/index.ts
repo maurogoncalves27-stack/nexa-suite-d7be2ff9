@@ -53,14 +53,8 @@ Deno.serve(async (req) => {
 
   const { dateStr, nowMs } = nowInTz();
 
-  // Config WhatsApp para o alerta 'timeclock'
-  const { data: notifCfg } = await supabase
-    .from("notification_settings")
-    .select("whatsapp_enabled, whatsapp_sender_id")
-    .eq("alert_key", "timeclock")
-    .maybeSingle();
-  const waEnabled = !!notifCfg?.whatsapp_enabled;
-  const waConfig = waEnabled ? await loadWaConfig(supabase, notifCfg?.whatsapp_sender_id ?? null) : null;
+  // Config WhatsApp para o alerta 'timeclock' (inclui destinatários extras)
+  const { enabled: waEnabled, waConfig, extras } = await loadAlertConfig(supabase, "timeclock");
 
   // Cache de telefones por user_id (gestores/admins)
   const phoneCache = new Map<string, string | null>();
@@ -81,13 +75,17 @@ Deno.serve(async (req) => {
 
   async function fanoutWhatsapp(userIds: string[], text: string) {
     if (!waEnabled || !waConfig) return 0;
+    const sent = new Set<string>();
     const phones = await getManagerPhones(userIds);
     let ok = 0;
     for (const p of phones) {
+      if (sent.has(p)) continue;
       const r = await sendWhatsapp(waConfig, p, text);
+      sent.add(p);
       if (r.ok) ok++;
       else console.warn("[late-alerts] whatsapp fail", p, r);
     }
+    ok += await fanoutExtras(waConfig, extras, text, sent);
     return ok;
   }
 
