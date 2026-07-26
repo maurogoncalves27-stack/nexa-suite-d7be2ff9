@@ -165,12 +165,6 @@ export default function MaintenanceRequestsAlert() {
     refresh();
   };
 
-  if (!user || (!isAdmin && !isManager)) return null;
-  if (loading) return null;
-  if (items.length === 0) return null;
-
-  const urgent = items.filter((i) => i.urgency === "alta").length;
-
   const byStore = useMemo(() => {
     const map = new Map<string, PendingRequest[]>();
     for (const item of items) {
@@ -180,6 +174,12 @@ export default function MaintenanceRequestsAlert() {
     }
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [items]);
+
+  if (!user || (!isAdmin && !isManager)) return null;
+  if (loading) return null;
+  if (items.length === 0) return null;
+
+  const urgent = items.filter((i) => i.urgency === "alta").length;
 
   return (
     <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-3">
