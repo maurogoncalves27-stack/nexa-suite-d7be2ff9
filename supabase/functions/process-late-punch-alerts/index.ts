@@ -264,6 +264,14 @@ Deno.serve(async (req) => {
         continue;
       }
 
+      const waText =
+        `⏰ *Atraso de ponto*\n` +
+        `*${emp.full_name}* ainda não bateu o ponto de entrada.\n` +
+        `Escala: ${shift.start_time.slice(0, 5)}${store ? ` · ${store.name}` : ""}\n` +
+        `Atraso: ${lateMin} min\n\n` +
+        `Abrir: ${APP_BASE_URL}/ponto`;
+      await fanoutWhatsapp(managerUserIds, waText);
+
       await supabase.from("late_punch_alerts_sent").insert({
         employee_id: sch.employee_id,
         schedule_date: dateStr,
