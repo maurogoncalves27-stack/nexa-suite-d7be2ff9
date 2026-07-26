@@ -353,6 +353,15 @@ Deno.serve(async (req) => {
           continue;
         }
 
+        const waText =
+          `⏰ *Freelancer atrasado*\n` +
+          `*${freelancer.full_name}* ainda não fez check-in.\n` +
+          `Vaga: ${op.title} · Início: ${op.start_time.slice(0, 5)}${store ? ` · ${store.name}` : ""}\n` +
+          `Atraso: ${lateMin} min\n\n` +
+          `Abrir: ${APP_BASE_URL}/freelancers`;
+        await fanoutWhatsapp(managerUserIds, waText);
+
+
         if (payment?.id) {
           await supabase
             .from("freelancer_daily_payments")
