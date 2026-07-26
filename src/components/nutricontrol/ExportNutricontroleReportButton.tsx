@@ -30,7 +30,7 @@ export default function ExportNutricontroleReportButton({ storeId }: Props) {
       const [store, checklist, temps, tempAlerts, merch, oilQ, oilD, pestC, pestO, maint, maintReq, water, equipments, items, empByStore, schedEmps] = await Promise.all([
         supabase.from("stores").select("name").eq("id", storeId).maybeSingle(),
         supabase.from("nutri_day_records").select("date, item_id, sim_nao, note, user_id").eq("store_id", storeId).gte("date", fromISO).lte("date", toISO).order("date", { ascending: false }).limit(1000),
-        supabase.from("nutri_temperature_readings").select("recorded_at, equipment_id, temperature, humidity, note").eq("store_id", storeId).gte("date", fromISO).lte("date", toISO).order("recorded_at", { ascending: false }).limit(1000),
+        supabase.from("nutri_temperature_readings").select("recorded_at, equipment_id, temperature, humidity, note").eq("store_id", storeId).gte("date", fromISO).lte("date", toISO).order("recorded_at", { ascending: false }).limit(20000),
         supabase.from("nutri_temperature_alerts").select("triggered_at, sensor_code, kind, last_temperature, resolved_at").eq("store_id", storeId).gte("triggered_at", fromTs).lte("triggered_at", toTs).order("triggered_at", { ascending: false }).limit(500),
         supabase.from("nutri_merchandise_receipts").select("received_at, supplier, product_name, batch, temperature, storage_type, has_irregularity, is_return, note").eq("store_id", storeId).gte("date", fromISO).lte("date", toISO).order("received_at", { ascending: false }).limit(500),
         supabase.from("nutri_oil_quality_records").select("recorded_at, quality, changed, note").eq("store_id", storeId).gte("date", fromISO).lte("date", toISO).order("recorded_at", { ascending: false }).limit(500),
