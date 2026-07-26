@@ -375,6 +375,7 @@ export default function EmployeeArea({ impersonateUserId, managerView = false }:
           employeePosition={employee.position}
           employeeContractType={(employee as any).contract_type}
         />
+        {managerView && <MaintenanceRequestsAlert />}
         <EmployeeMaintenanceAlert />
         <ShiftSwapPendingBanner />
         <ShiftSwapManagerBanner />
