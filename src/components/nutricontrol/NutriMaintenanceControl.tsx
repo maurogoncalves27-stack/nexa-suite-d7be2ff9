@@ -313,14 +313,18 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
         photo_path = path;
       }
 
-      const { error } = await supabase.from("nutri_maintenance_requests").insert({
-        user_id: user.id,
-        store_id: reqStoreId,
-        equipment_type: reqEquipment.trim(),
-        description: reqDescription.trim(),
-        urgency: reqUrgency,
-        photo_path,
-      });
+      const { data: inserted, error } = await supabase
+        .from("nutri_maintenance_requests")
+        .insert({
+          user_id: user.id,
+          store_id: reqStoreId,
+          equipment_type: reqEquipment.trim(),
+          description: reqDescription.trim(),
+          urgency: reqUrgency,
+          photo_path,
+        })
+        .select("id")
+        .single();
 
       if (error) {
         console.error("Erro ao criar solicitação:", error);
@@ -331,6 +335,12 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
         }
       } else {
         toast.success("Solicitação enviada");
+        // Alerta WhatsApp para gestores/admins (fire-and-forget)
+        if (inserted?.id) {
+          supabase.functions
+            .invoke("notify-maintenance-request", { body: { request_id: inserted.id } })
+            .catch((e) => console.warn("Falha ao notificar gestores:", e));
+        }
         setReqEquipment("");
         setReqDescription("");
         setReqUrgency("media");

@@ -31,6 +31,7 @@ import ClimatePendingBanner from "@/components/climate/ClimatePendingBanner";
 import DocumentsPendingBanner from "@/components/auth/DocumentsPendingBanner";
 import EmployeeInfractionsAlert from "@/components/evaluations/EmployeeInfractionsAlert";
 import EmployeeMaintenanceAlert from "@/components/nutricontrol/EmployeeMaintenanceAlert";
+import MaintenanceRequestsAlert from "@/components/nutricontrol/MaintenanceRequestsAlert";
 import ShiftSwapPendingBanner from "@/components/schedules/ShiftSwapPendingBanner";
 import ShiftSwapManagerBanner from "@/components/schedules/ShiftSwapManagerBanner";
 import NoticesStack from "@/components/employees/NoticesStack";
@@ -374,6 +375,7 @@ export default function EmployeeArea({ impersonateUserId, managerView = false }:
           employeePosition={employee.position}
           employeeContractType={(employee as any).contract_type}
         />
+        {managerView && <MaintenanceRequestsAlert />}
         <EmployeeMaintenanceAlert />
         <ShiftSwapPendingBanner />
         <ShiftSwapManagerBanner />
