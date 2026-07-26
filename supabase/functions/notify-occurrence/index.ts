@@ -120,29 +120,40 @@ Deno.serve(async (req) => {
       (summary ? `\n\n${summary}` : "") +
       `\n\nAbrir: ${APP_BASE_URL}/ocorrencias/relatorio`;
 
-    const results: Array<{ user_id: string; ok: boolean }> = [];
+    const { enabled, waConfig, extras } = await loadAlertConfig(admin, "occurrence");
+    if (!enabled || !waConfig) {
+      return new Response(
+        JSON.stringify({ ok: true, notified: 0, reason: "whatsapp_disabled" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const sent = new Set<string>();
+    const results: Array<{ target: string; ok: boolean }> = [];
     for (const m of managers || []) {
       if (m.status && m.status !== "active") continue;
       if (optOut.has(m.user_id)) continue;
-      // Se a ocorrência tem loja: só gestor daquela loja; admin sem loja recebe tudo.
       if (storeId) {
         const managesStore =
-          !m.store_id ||
-          m.store_id === storeId ||
-          m.allocated_store_id === storeId;
+          !m.store_id || m.store_id === storeId || m.allocated_store_id === storeId;
         if (!managesStore) continue;
       }
       const phone = normalizePhone(m.phone);
-      if (!phone) {
-        results.push({ user_id: m.user_id, ok: false });
-        continue;
-      }
-      const r = await sendWhatsapp(phone, text);
-      results.push({ user_id: m.user_id, ok: !!r.ok });
+      if (!phone || sent.has(phone)) continue;
+      const r = await sendWhatsapp(waConfig, phone, text);
+      sent.add(phone);
+      results.push({ target: m.user_id, ok: !!r.ok });
     }
 
+    const extrasOk = await fanoutExtras(waConfig, extras, text, sent);
+
     return new Response(
-      JSON.stringify({ ok: true, notified: results.filter((r) => r.ok).length, results }),
+      JSON.stringify({
+        ok: true,
+        notified: results.filter((r) => r.ok).length + extrasOk,
+        managers: results,
+        extras_notified: extrasOk,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
