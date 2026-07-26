@@ -464,15 +464,19 @@ export default function Occurrences() {
         analysis.causa_raiz ? `Causa raiz: ${analysis.causa_raiz}` : null,
       ].filter(Boolean).join("\n");
 
-      const { error: insErr } = await supabase.from("occurrence_alerts").insert({
-        occurrence_id: chosenOccId,
-        created_by: user.id,
-        store_id: detectedStoreId,
-        note,
-        order_number: orderNumber,
-        order_value: orderValue,
-        subcategory: subcat,
-      } as never);
+      const { data: insertedAlert, error: insErr } = await supabase
+        .from("occurrence_alerts")
+        .insert({
+          occurrence_id: chosenOccId,
+          created_by: user.id,
+          store_id: detectedStoreId,
+          note,
+          order_number: orderNumber,
+          order_value: orderValue,
+          subcategory: subcat,
+        } as never)
+        .select("id")
+        .single();
       if (insErr) throw insErr;
 
       const chosen = [analysis.ocorrencia_principal, ...analysis.alternativas].find((o) => o?.id === chosenOccId);
@@ -520,18 +524,17 @@ export default function Occurrences() {
         ),
       );
 
-      // Notificação WhatsApp fixa (central de ocorrências)
-      const waMsg = [
-        `🚨 Ocorrência: ${problemaCurto}`,
-        linha1Parts.join(" • "),
-        resumo,
-      ].filter(Boolean).join("\n");
-      void supabase.functions.invoke("send-whatsapp", {
+      // WhatsApp para gestores/admins da loja da ocorrência (broadcast segmentado)
+      void supabase.functions.invoke("notify-occurrence", {
         body: {
-          phone: "5561998158029",
-          message: waMsg,
-          category: "occurrence",
-          tag: `occurrence-${chosenOccId}`,
+          alert_id: insertedAlert?.id,
+          store_id: detectedStoreId,
+          store_name: detectedStoreName,
+          occurrence_title: problemaCurto,
+          summary: resumo,
+          order_number: orderNumber,
+          order_value: orderValue,
+          reporter_name: null,
         },
       });
 
