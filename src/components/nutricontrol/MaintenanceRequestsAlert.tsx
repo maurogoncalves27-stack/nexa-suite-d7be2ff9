@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { AlertTriangle, Wrench, Loader2, CheckCircle2 } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import { AlertTriangle, Wrench, Loader2, CheckCircle2, Store } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface PendingRequest {
   id: string;
@@ -170,6 +171,16 @@ export default function MaintenanceRequestsAlert() {
 
   const urgent = items.filter((i) => i.urgency === "alta").length;
 
+  const byStore = useMemo(() => {
+    const map = new Map<string, PendingRequest[]>();
+    for (const item of items) {
+      const key = item.store_name ?? "Loja";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(item);
+    }
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [items]);
+
   return (
     <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-3">
       <div className="flex items-center gap-2">
@@ -191,70 +202,94 @@ export default function MaintenanceRequestsAlert() {
         </div>
       </div>
 
-      <div className="space-y-2">
-        {items.map((r) => {
-          const urg = URGENCY[r.urgency] ?? URGENCY.media;
-          const photoUrl = r.photo_path
-            ? supabase.storage.from(PHOTO_BUCKET).getPublicUrl(r.photo_path).data.publicUrl
-            : null;
+      <Accordion type="multiple" defaultValue={byStore.map(([store]) => store)} className="w-full">
+        {byStore.map(([storeName, requests]) => {
+          const storeUrgent = requests.filter((r) => r.urgency === "alta").length;
           return (
-            <div key={r.id} className="rounded-md border bg-card p-3 space-y-2">
-              <div className="flex items-start justify-between gap-2 flex-wrap">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-foreground truncate">
-                    {r.equipment_type}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {r.store_name ?? "Loja"}
-                    {r.requester_name && <> · {r.requester_name}</>}
-                    <> · {format(new Date(r.requested_at), "dd/MM 'às' HH:mm", { locale: ptBR })}</>
-                  </p>
-                </div>
-                <Badge variant="outline" className={`text-[10px] ${urg.className}`}>
-                  {urg.label}
-                </Badge>
-              </div>
-
-              {r.description && (
-                <p className="text-xs text-muted-foreground whitespace-pre-wrap">{r.description}</p>
-              )}
-
-              {photoUrl && (
-                <a href={photoUrl} target="_blank" rel="noreferrer" className="block">
-                  <img
-                    src={photoUrl}
-                    alt="Foto do equipamento"
-                    className="rounded-md border max-h-40 object-cover"
-                  />
-                </a>
-              )}
-
-              <Textarea
-                value={notes[r.id] ?? ""}
-                onChange={(e) => setNotes((prev) => ({ ...prev, [r.id]: e.target.value }))}
-                placeholder="Observação (opcional) — o que foi feito?"
-                className="text-sm min-h-[60px]"
-              />
-
-              <div className="flex justify-end">
-                <Button
-                  size="sm"
-                  onClick={() => resolveOne(r)}
-                  disabled={resolving === r.id}
-                  className="h-8 gap-1"
-                >
-                  {resolving === r.id ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="h-3.5 w-3.5" />
+            <AccordionItem key={storeName} value={storeName} className="border-0">
+              <AccordionTrigger className="rounded-md border bg-card px-3 py-2 text-sm hover:no-underline hover:bg-muted/40">
+                <span className="flex items-center gap-2">
+                  <Store className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-semibold text-foreground">{storeName}</span>
+                  <Badge variant="secondary" className="text-[10px]">
+                    {requests.length}
+                  </Badge>
+                  {storeUrgent > 0 && (
+                    <Badge variant="outline" className="text-[10px] bg-destructive/15 text-destructive border-destructive/30">
+                      {storeUrgent} urgente{storeUrgent > 1 ? "s" : ""}
+                    </Badge>
                   )}
-                  Resolver
-                </Button>
-              </div>
-            </div>
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="pt-2">
+                <div className="space-y-2">
+                  {requests.map((r) => {
+                    const urg = URGENCY[r.urgency] ?? URGENCY.media;
+                    const photoUrl = r.photo_path
+                      ? supabase.storage.from(PHOTO_BUCKET).getPublicUrl(r.photo_path).data.publicUrl
+                      : null;
+                    return (
+                      <div key={r.id} className="rounded-md border bg-card p-3 space-y-2">
+                        <div className="flex items-start justify-between gap-2 flex-wrap">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-foreground truncate">
+                              {r.equipment_type}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {r.requester_name && <>{r.requester_name}</>}
+                              <> · {format(new Date(r.requested_at), "dd/MM 'às' HH:mm", { locale: ptBR })}</>
+                            </p>
+                          </div>
+                          <Badge variant="outline" className={`text-[10px] ${urg.className}`}>
+                            {urg.label}
+                          </Badge>
+                        </div>
+
+                        {r.description && (
+                          <p className="text-xs text-muted-foreground whitespace-pre-wrap">{r.description}</p>
+                        )}
+
+                        {photoUrl && (
+                          <a href={photoUrl} target="_blank" rel="noreferrer" className="block">
+                            <img
+                              src={photoUrl}
+                              alt="Foto do equipamento"
+                              className="rounded-md border max-h-40 object-cover"
+                            />
+                          </a>
+                        )}
+
+                        <Textarea
+                          value={notes[r.id] ?? ""}
+                          onChange={(e) => setNotes((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                          placeholder="Observação (opcional) — o que foi feito?"
+                          className="text-sm min-h-[60px]"
+                        />
+
+                        <div className="flex justify-end">
+                          <Button
+                            size="sm"
+                            onClick={() => resolveOne(r)}
+                            disabled={resolving === r.id}
+                            className="h-8 gap-1"
+                          >
+                            {resolving === r.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                            )}
+                            Resolver
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
           );
         })}
-      </div>
+      </Accordion>
     </div>
   );
 }
