@@ -524,18 +524,17 @@ export default function Occurrences() {
         ),
       );
 
-      // Notificação WhatsApp fixa (central de ocorrências)
-      const waMsg = [
-        `🚨 Ocorrência: ${problemaCurto}`,
-        linha1Parts.join(" • "),
-        resumo,
-      ].filter(Boolean).join("\n");
-      void supabase.functions.invoke("send-whatsapp", {
+      // WhatsApp para gestores/admins da loja da ocorrência (broadcast segmentado)
+      void supabase.functions.invoke("notify-occurrence", {
         body: {
-          phone: "5561998158029",
-          message: waMsg,
-          category: "occurrence",
-          tag: `occurrence-${chosenOccId}`,
+          alert_id: insertedAlert?.id,
+          store_id: detectedStoreId,
+          store_name: detectedStoreName,
+          occurrence_title: problemaCurto,
+          summary: resumo,
+          order_number: orderNumber,
+          order_value: orderValue,
+          reporter_name: null,
         },
       });
 
