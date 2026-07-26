@@ -188,7 +188,14 @@ export default function NotificationsBell() {
   };
 
   const removeOne = async (id: string) => {
-    await supabase.from("user_notifications").delete().eq("id", id);
+    // Otimista: some da UI imediatamente
+    setItems((cur) => cur.filter((n) => n.id !== id));
+    const { error } = await supabase.from("user_notifications").delete().eq("id", id);
+    if (error) {
+      console.error("Falha ao remover notificação", error);
+      // Rollback via reload
+      load();
+    }
   };
 
   const dismissAnnouncement = async (announcementId: string) => {
@@ -272,7 +279,7 @@ export default function NotificationsBell() {
             </Button>
           )}
         </div>
-        <ScrollArea className="max-h-[60vh]">
+        <ScrollArea className="h-[min(70vh,520px)]">
           {announcements.length > 0 && (
             <div className="p-2 space-y-2 border-b">
               <div className="text-[10px] uppercase tracking-wide text-muted-foreground px-1 font-semibold">
