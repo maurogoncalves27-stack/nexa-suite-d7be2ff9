@@ -111,28 +111,26 @@ export default function MaintenanceConfirmAlert() {
       await supabase.from("nutri_maintenance_records").delete().eq("id", r.maintenance_record_id);
     }
 
+    const { data: current } = await supabase
+      .from("nutri_maintenance_requests")
+      .select("reopen_count")
+      .eq("id", r.id)
+      .maybeSingle();
+    const nextCount = (Number((current as any)?.reopen_count) || 0) + 1;
+
     const { error } = await supabase
       .from("nutri_maintenance_requests")
       .update({
         status: "pending",
         reopen_reason: reason,
         reopened_at: new Date().toISOString(),
-        reopen_count: 0, // será incrementado abaixo via RPC simples
+        reopen_count: nextCount,
         approved_by: null,
         approved_at: null,
         maintenance_record_id: null,
         resolved_note: null,
       })
       .eq("id", r.id);
-
-    if (!error) {
-      // incremento pós-update para não depender de RPC específica
-      await supabase.rpc("increment" as never, {} as never).catch(() => null);
-      await supabase
-        .from("nutri_maintenance_requests")
-        .update({ reopen_count: (Number((r as any).reopen_count) || 0) + 1 })
-        .eq("id", r.id);
-    }
 
     setBusy(null);
     if (error) {
