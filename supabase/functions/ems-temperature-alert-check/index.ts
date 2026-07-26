@@ -312,22 +312,26 @@ Deno.serve(async (req: Request) => {
           .eq("id", openAlert.id);
       }
 
-      const recipients = (recipientsAll ?? []).filter(
+      const recipients = allRecipients.filter(
         (r) => !r.store_id || r.store_id === sensor.store_id,
       );
       const storeName = sensor.store_id ? storeNames[sensor.store_id] ?? null : null;
       const message = buildMessage(kind, sensor, storeName, last ?? null);
       const notified: Array<{ phone: string; name: string; ok: boolean; error?: string }> = [];
-      for (const r of recipients) {
-        const { data: sendData, error: sendErr } = await supabase.functions.invoke("uazapi-send-text", {
-          body: { phone: r.phone, message },
-        });
-        notified.push({
-          phone: r.phone,
-          name: r.name,
-          ok: !sendErr && (sendData as any)?.ok !== false,
-          error: sendErr?.message,
-        });
+      if (waEnabled && waConfig) {
+        const sent = new Set<string>();
+        for (const r of recipients) {
+          const p = normalizePhone(r.phone);
+          if (!p || sent.has(p)) continue;
+          const res = await sendWhatsapp(waConfig, p, message);
+          sent.add(p);
+          notified.push({
+            phone: p,
+            name: r.name,
+            ok: !!res.ok,
+            error: res.ok ? undefined : (res as any).error ?? String((res as any).status ?? ""),
+          });
+        }
       }
 
       await supabase.from("nutri_temperature_alerts").insert({
