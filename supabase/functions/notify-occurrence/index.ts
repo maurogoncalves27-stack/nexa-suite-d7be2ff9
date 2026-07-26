@@ -1,38 +1,13 @@
-// Envia alerta WhatsApp para gestores/admins da loja da ocorrência.
-// Filtra por loja (admin sem loja recebe tudo) e respeita opt-out em
-// notification_settings (event_type = 'occurrence').
+// Envia alerta WhatsApp para gestores/admins da loja da ocorrência
+// e para destinatários extras configurados em notification_settings.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { loadAlertConfig, normalizePhone, sendWhatsapp, fanoutExtras } from "../_shared/notifyChannels.ts";
 
-const UAZAPI_BASE = (Deno.env.get("UAZAPI_BASE_URL") || "").replace(/\/+$/, "");
-const UAZAPI_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN") || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const APP_BASE_URL =
   Deno.env.get("APP_PUBLIC_URL") || "https://nexasuite.aquelaparme.com.br";
-
-function normalizePhone(raw: string | null | undefined): string | null {
-  const d = (raw || "").replace(/\D+/g, "");
-  if (!d) return null;
-  if (d.startsWith("55") && d.length >= 12) return d;
-  if (d.length === 10 || d.length === 11) return "55" + d;
-  return d;
-}
-
-async function sendWhatsapp(phone: string, message: string) {
-  if (!UAZAPI_BASE || !UAZAPI_TOKEN) return { ok: false, error: "UAZAPI not configured" };
-  try {
-    const res = await fetch(`${UAZAPI_BASE}/send/text`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", token: UAZAPI_TOKEN },
-      body: JSON.stringify({ number: phone, text: message }),
-    });
-    const t = await res.text();
-    return { ok: res.ok, status: res.status, body: t };
-  } catch (e) {
-    return { ok: false, error: (e as Error).message };
-  }
-}
 
 interface Body {
   alert_id?: string;
@@ -145,29 +120,40 @@ Deno.serve(async (req) => {
       (summary ? `\n\n${summary}` : "") +
       `\n\nAbrir: ${APP_BASE_URL}/ocorrencias/relatorio`;
 
-    const results: Array<{ user_id: string; ok: boolean }> = [];
+    const { enabled, waConfig, extras } = await loadAlertConfig(admin, "occurrence");
+    if (!enabled || !waConfig) {
+      return new Response(
+        JSON.stringify({ ok: true, notified: 0, reason: "whatsapp_disabled" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const sent = new Set<string>();
+    const results: Array<{ target: string; ok: boolean }> = [];
     for (const m of managers || []) {
       if (m.status && m.status !== "active") continue;
       if (optOut.has(m.user_id)) continue;
-      // Se a ocorrência tem loja: só gestor daquela loja; admin sem loja recebe tudo.
       if (storeId) {
         const managesStore =
-          !m.store_id ||
-          m.store_id === storeId ||
-          m.allocated_store_id === storeId;
+          !m.store_id || m.store_id === storeId || m.allocated_store_id === storeId;
         if (!managesStore) continue;
       }
       const phone = normalizePhone(m.phone);
-      if (!phone) {
-        results.push({ user_id: m.user_id, ok: false });
-        continue;
-      }
-      const r = await sendWhatsapp(phone, text);
-      results.push({ user_id: m.user_id, ok: !!r.ok });
+      if (!phone || sent.has(phone)) continue;
+      const r = await sendWhatsapp(waConfig, phone, text);
+      sent.add(phone);
+      results.push({ target: m.user_id, ok: !!r.ok });
     }
 
+    const extrasOk = await fanoutExtras(waConfig, extras, text, sent);
+
     return new Response(
-      JSON.stringify({ ok: true, notified: results.filter((r) => r.ok).length, results }),
+      JSON.stringify({
+        ok: true,
+        notified: results.filter((r) => r.ok).length + extrasOk,
+        managers: results,
+        extras_notified: extrasOk,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {

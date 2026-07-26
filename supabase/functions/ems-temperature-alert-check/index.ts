@@ -4,6 +4,11 @@
 // Auditoria + dedup ficam em public.nutri_temperature_alerts.
 import { createClient } from "npm:@supabase/supabase-js@2.45.0";
 import { requireCronOrRole } from "../_shared/requireRole.ts";
+import {
+  loadAlertConfig,
+  normalizePhone,
+  sendWhatsapp,
+} from "../_shared/notifyChannels.ts";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -109,11 +114,21 @@ Deno.serve(async (req: Request) => {
       (storesData ?? []).forEach((s: any) => (storeNames[s.id] = s.name));
     }
 
-    // Destinatários ativos (globais + por loja)
+    // Destinatários ativos (globais + por loja) + extras do notification_settings
     const { data: recipientsAll } = await supabase
       .from("nutri_temperature_alert_recipients")
       .select("phone, name, store_id, active")
       .eq("active", true);
+
+    const { enabled: waEnabled, waConfig, extras: extraPhones } =
+      await loadAlertConfig(supabase, "temperature");
+    const extraRecipients = extraPhones.map((p) => ({
+      phone: p,
+      name: "Extra",
+      store_id: null as string | null,
+      active: true,
+    }));
+    const allRecipients = [...(recipientsAll ?? []), ...extraRecipients];
 
     const results: Array<Record<string, unknown>> = [];
 
@@ -180,23 +195,25 @@ Deno.serve(async (req: Request) => {
           }
 
 
-          const recipients = (recipientsAll ?? []).filter(
+          const recipients = allRecipients.filter(
             (r) => !r.store_id || r.store_id === sensor.store_id,
           );
           const storeName = sensor.store_id ? storeNames[sensor.store_id] ?? null : null;
           const notified: Array<{ phone: string; name: string; ok: boolean; error?: string }> = [];
 
-          if (shouldNotifyRecovered) {
+          if (shouldNotifyRecovered && waEnabled && waConfig) {
             const message = buildMessage("recovered", sensor, storeName, last ?? null);
+            const sent = new Set<string>();
             for (const r of recipients) {
-              const { data: sendData, error: sendErr } = await supabase.functions.invoke("uazapi-send-text", {
-                body: { phone: r.phone, message },
-              });
+              const p = normalizePhone(r.phone);
+              if (!p || sent.has(p)) continue;
+              const res = await sendWhatsapp(waConfig, p, message);
+              sent.add(p);
               notified.push({
-                phone: r.phone,
+                phone: p,
                 name: r.name,
-                ok: !sendErr && (sendData as any)?.ok !== false,
-                error: sendErr?.message,
+                ok: !!res.ok,
+                error: res.ok ? undefined : (res as any).error ?? String((res as any).status ?? ""),
               });
             }
           }
@@ -295,22 +312,26 @@ Deno.serve(async (req: Request) => {
           .eq("id", openAlert.id);
       }
 
-      const recipients = (recipientsAll ?? []).filter(
+      const recipients = allRecipients.filter(
         (r) => !r.store_id || r.store_id === sensor.store_id,
       );
       const storeName = sensor.store_id ? storeNames[sensor.store_id] ?? null : null;
       const message = buildMessage(kind, sensor, storeName, last ?? null);
       const notified: Array<{ phone: string; name: string; ok: boolean; error?: string }> = [];
-      for (const r of recipients) {
-        const { data: sendData, error: sendErr } = await supabase.functions.invoke("uazapi-send-text", {
-          body: { phone: r.phone, message },
-        });
-        notified.push({
-          phone: r.phone,
-          name: r.name,
-          ok: !sendErr && (sendData as any)?.ok !== false,
-          error: sendErr?.message,
-        });
+      if (waEnabled && waConfig) {
+        const sent = new Set<string>();
+        for (const r of recipients) {
+          const p = normalizePhone(r.phone);
+          if (!p || sent.has(p)) continue;
+          const res = await sendWhatsapp(waConfig, p, message);
+          sent.add(p);
+          notified.push({
+            phone: p,
+            name: r.name,
+            ok: !!res.ok,
+            error: res.ok ? undefined : (res as any).error ?? String((res as any).status ?? ""),
+          });
+        }
       }
 
       await supabase.from("nutri_temperature_alerts").insert({
