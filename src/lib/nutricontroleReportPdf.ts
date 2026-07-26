@@ -255,7 +255,11 @@ export function generateNutricontroleReportPdf(d: NutriReportData): jsPDF {
   }
 
   // ============= 3. TEMPERATURA POR EQUIPAMENTO =============
-  newSection(3, "Controle de temperatura por equipamento", "Leituras agrupadas por equipamento, com estatísticas do período (mínima, máxima e média).");
+  newSection(
+    3,
+    "Controle de temperatura por equipamento",
+    "Para fins de registro, considera-se apenas a temperatura MÍNIMA de cada dia por equipamento (uma medição oficial diária). Matriz: linhas = equipamento, colunas = dia.",
+  );
   if (!d.temperatures.length) empty("Sem leituras no período.");
   else {
     // Agrupar por equipamento
@@ -267,41 +271,85 @@ export function generateNutricontroleReportPdf(d: NutriReportData): jsPDF {
     });
     const equipments = Array.from(grouped.keys()).sort();
 
-    // Tabela de resumo por equipamento
-    subTitle("Resumo por equipamento");
-    const resumo = equipments.map((eq) => {
-      const arr = grouped.get(eq)!;
-      const temps = arr.map((r) => Number(r.temperature)).filter((n) => !isNaN(n));
-      const min = temps.length ? Math.min(...temps) : 0;
-      const max = temps.length ? Math.max(...temps) : 0;
-      const avg = temps.length ? temps.reduce((a, b) => a + b, 0) / temps.length : 0;
-      return [eq, String(arr.length), `${min.toFixed(1)}°C`, `${max.toFixed(1)}°C`, `${avg.toFixed(1)}°C`];
-    });
-    runTable(["Equipamento", "Leituras", "Mínima", "Máxima", "Média"], resumo, {
-      0: { cellWidth: "auto", fontStyle: "bold" },
-      1: { cellWidth: 60, halign: "center" },
-      2: { cellWidth: 70, halign: "center" },
-      3: { cellWidth: 70, halign: "center" },
-      4: { cellWidth: 70, halign: "center" },
+    // Mínima diária por equipamento (data ISO yyyy-MM-dd -> temperatura mínima)
+    const dailyMin = new Map<string, Map<string, number>>();
+    equipments.forEach((eq) => {
+      const perDay = new Map<string, number>();
+      grouped.get(eq)!.forEach((r) => {
+        const t = Number(r.temperature);
+        if (isNaN(t)) return;
+        const day = format(new Date(r.recorded_at), "yyyy-MM-dd");
+        const cur = perDay.get(day);
+        if (cur === undefined || t < cur) perDay.set(day, t);
+      });
+      dailyMin.set(eq, perDay);
     });
 
-    // Detalhamento por equipamento
-    equipments.forEach((eq) => {
-      const arr = grouped.get(eq)!.slice(0, 200);
-      subTitle(`Detalhamento — ${eq}`);
-      const body = arr.map((r) => [
-        fmtDT(r.recorded_at),
-        `${Number(r.temperature).toFixed(1)}°C`,
-        r.humidity != null ? `${r.humidity}%` : "—",
-        r.note || "—",
-      ]);
-      runTable(["Data/Hora", "Temperatura", "Umidade", "Observação"], body, {
-        0: { cellWidth: 110 },
-        1: { cellWidth: 80, halign: "center", fontStyle: "bold" },
-        2: { cellWidth: 60, halign: "center" },
-      });
-      const total = grouped.get(eq)!.length;
-      if (total > 200) empty(`... e mais ${total - 200} leituras omitidas para este equipamento.`);
+    // Resumo do período (baseado nas mínimas diárias)
+    subTitle("Resumo por equipamento (temperatura mínima diária)");
+    const resumo = equipments.map((eq) => {
+      const vals = Array.from(dailyMin.get(eq)!.values());
+      const min = vals.length ? Math.min(...vals) : 0;
+      const max = vals.length ? Math.max(...vals) : 0;
+      const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+      return [eq, String(vals.length), `${min.toFixed(1)}°C`, `${max.toFixed(1)}°C`, `${avg.toFixed(1)}°C`];
+    });
+    runTable(["Equipamento", "Dias c/ registro", "Mín. do período", "Máx. das mínimas", "Média das mínimas"], resumo, {
+      0: { cellWidth: "auto", fontStyle: "bold" },
+      1: { cellWidth: 80, halign: "center" },
+      2: { cellWidth: 80, halign: "center" },
+      3: { cellWidth: 80, halign: "center" },
+      4: { cellWidth: 80, halign: "center" },
+    });
+
+    // Matriz mensal: uma tabela por mês, dividida em 1º e 2º quinzenas
+    const monthsSet = new Set<string>();
+    const from = new Date(d.periodFrom + "T00:00:00");
+    const to = new Date(d.periodTo + "T00:00:00");
+    const cursor = new Date(from.getFullYear(), from.getMonth(), 1);
+    while (cursor <= to) {
+      monthsSet.add(format(cursor, "yyyy-MM"));
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    const months = Array.from(monthsSet).sort();
+
+    months.forEach((ym) => {
+      const [y, m] = ym.split("-").map(Number);
+      const daysInMonth = new Date(y, m, 0).getDate();
+      const monthLabel = format(new Date(y, m - 1, 1), "MMMM 'de' yyyy", { locale: ptBR });
+      subTitle(`Matriz diária — ${monthLabel[0].toUpperCase() + monthLabel.slice(1)}`);
+
+      const buildHalf = (startDay: number, endDay: number) => {
+        const dayCols: number[] = [];
+        for (let dd = startDay; dd <= endDay; dd++) dayCols.push(dd);
+        const head = ["Equipamento", ...dayCols.map((dd) => String(dd).padStart(2, "0"))];
+        const body = equipments.map((eq) => {
+          const perDay = dailyMin.get(eq)!;
+          const row: any[] = [{ content: eq, styles: { fontStyle: "bold", halign: "left" } }];
+          dayCols.forEach((dd) => {
+            const key = `${ym}-${String(dd).padStart(2, "0")}`;
+            const v = perDay.get(key);
+            if (v === undefined) {
+              row.push({ content: "—", styles: { textColor: MUTED } });
+            } else {
+              row.push(`${v.toFixed(1)}`);
+            }
+          });
+          return row;
+        });
+        const styles: Record<number, any> = { 0: { cellWidth: 110, halign: "left" } };
+        for (let i = 1; i <= dayCols.length; i++) {
+          styles[i] = { cellWidth: "auto", halign: "center" };
+        }
+        runTable(head, body, styles);
+      };
+
+      if (daysInMonth <= 16) {
+        buildHalf(1, daysInMonth);
+      } else {
+        buildHalf(1, 15);
+        buildHalf(16, daysInMonth);
+      }
     });
   }
 
