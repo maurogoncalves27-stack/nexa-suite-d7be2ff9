@@ -139,10 +139,11 @@ export default function MaintenanceRequestsAlert() {
     const { error: updErr } = await supabase
       .from("nutri_maintenance_requests")
       .update({
-        status: "completed",
+        status: "awaiting_confirmation",
         approved_by: user.id,
         approved_at: new Date().toISOString(),
         maintenance_record_id: rec.id,
+        resolved_note: note,
       })
       .eq("id", req.id);
 
@@ -150,7 +151,11 @@ export default function MaintenanceRequestsAlert() {
     if (updErr) {
       toast.error("Histórico registrado, mas falha ao atualizar o chamado");
     } else {
-      toast.success("Chamado resolvido");
+      toast.success("Enviado para confirmação da loja");
+      // Notifica o colaborador que abriu o chamado (fire-and-forget)
+      supabase.functions
+        .invoke("notify-maintenance-resolved", { body: { request_id: req.id } })
+        .catch(() => null);
       setNotes((prev) => {
         const { [req.id]: _omit, ...rest } = prev;
         return rest;

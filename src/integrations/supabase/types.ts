@@ -9505,6 +9505,8 @@ export type Database = {
           approved_by: string | null
           assigned_company_id: string | null
           assigned_professional_id: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
           created_at: string
           description: string
           equipment_type: string
@@ -9512,7 +9514,11 @@ export type Database = {
           maintenance_record_id: string | null
           photo_path: string | null
           rejection_reason: string | null
+          reopen_count: number
+          reopen_reason: string | null
+          reopened_at: string | null
           requested_at: string
+          resolved_note: string | null
           status: string
           store_id: string
           updated_at: string
@@ -9525,6 +9531,8 @@ export type Database = {
           approved_by?: string | null
           assigned_company_id?: string | null
           assigned_professional_id?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           created_at?: string
           description: string
           equipment_type: string
@@ -9532,7 +9540,11 @@ export type Database = {
           maintenance_record_id?: string | null
           photo_path?: string | null
           rejection_reason?: string | null
+          reopen_count?: number
+          reopen_reason?: string | null
+          reopened_at?: string | null
           requested_at?: string
+          resolved_note?: string | null
           status?: string
           store_id: string
           updated_at?: string
@@ -9545,6 +9557,8 @@ export type Database = {
           approved_by?: string | null
           assigned_company_id?: string | null
           assigned_professional_id?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           created_at?: string
           description?: string
           equipment_type?: string
@@ -9552,7 +9566,11 @@ export type Database = {
           maintenance_record_id?: string | null
           photo_path?: string | null
           rejection_reason?: string | null
+          reopen_count?: number
+          reopen_reason?: string | null
+          reopened_at?: string | null
           requested_at?: string
+          resolved_note?: string | null
           status?: string
           store_id?: string
           updated_at?: string
