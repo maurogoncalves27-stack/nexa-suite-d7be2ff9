@@ -4,6 +4,11 @@
 // Auditoria + dedup ficam em public.nutri_temperature_alerts.
 import { createClient } from "npm:@supabase/supabase-js@2.45.0";
 import { requireCronOrRole } from "../_shared/requireRole.ts";
+import {
+  loadAlertConfig,
+  normalizePhone,
+  sendWhatsapp,
+} from "../_shared/notifyChannels.ts";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
