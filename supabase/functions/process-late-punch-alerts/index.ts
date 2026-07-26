@@ -8,6 +8,78 @@ const corsHeaders = {
 
 const LATE_THRESHOLD_MIN = 15;
 const TZ = "America/Sao_Paulo";
+const APP_BASE_URL =
+  Deno.env.get("APP_PUBLIC_URL") || "https://nexasuite.aquelaparme.com.br";
+
+function normalizePhone(raw: string | null | undefined): string | null {
+  const d = (raw || "").replace(/\D+/g, "");
+  if (!d) return null;
+  if (d.startsWith("55") && d.length >= 12) return d;
+  if (d.length === 10 || d.length === 11) return "55" + d;
+  return d;
+}
+
+type WaConfig = {
+  provider: "zapi" | "uazapi";
+  uazapi_base_url?: string | null;
+  uazapi_token?: string | null;
+  zapi_instance_id?: string | null;
+  zapi_token?: string | null;
+  zapi_client_token?: string | null;
+} | null;
+
+async function loadWaConfig(supabase: any, senderId: string | null): Promise<WaConfig> {
+  if (senderId) {
+    const { data } = await supabase
+      .from("whatsapp_senders")
+      .select("provider, uazapi_base_url, uazapi_token, zapi_instance_id, zapi_token, zapi_client_token, active")
+      .eq("id", senderId)
+      .maybeSingle();
+    if (data?.active) return data as WaConfig;
+  }
+  const { data: def } = await supabase
+    .from("whatsapp_senders")
+    .select("provider, uazapi_base_url, uazapi_token, zapi_instance_id, zapi_token, zapi_client_token, active")
+    .eq("is_default", true)
+    .eq("active", true)
+    .maybeSingle();
+  if (def) return def as WaConfig;
+  const base = Deno.env.get("UAZAPI_BASE_URL");
+  const token = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
+  if (base && token) {
+    return { provider: "uazapi", uazapi_base_url: base, uazapi_token: token };
+  }
+  return null;
+}
+
+async function sendWhatsapp(cfg: WaConfig, phone: string, text: string) {
+  if (!cfg) return { ok: false, error: "no_config" };
+  try {
+    if (cfg.provider === "uazapi") {
+      const base = (cfg.uazapi_base_url || "").replace(/\/+$/, "");
+      if (!base || !cfg.uazapi_token) return { ok: false, error: "uazapi_missing" };
+      const r = await fetch(`${base}/send/text`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", token: cfg.uazapi_token },
+        body: JSON.stringify({ number: phone, text }),
+      });
+      return { ok: r.ok, status: r.status };
+    } else {
+      if (!cfg.zapi_instance_id || !cfg.zapi_token) return { ok: false, error: "zapi_missing" };
+      const url = `https://api.z-api.io/instances/${cfg.zapi_instance_id}/token/${cfg.zapi_token}/send-text`;
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (cfg.zapi_client_token) headers["Client-Token"] = cfg.zapi_client_token;
+      const r = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ phone, message: text }),
+      });
+      return { ok: r.ok, status: r.status };
+    }
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
 
 // Retorna a data atual (YYYY-MM-DD) e timestamp em ms no fuso de São Paulo
 function nowInTz(): { dateStr: string; nowMs: number } {
@@ -44,6 +116,45 @@ Deno.serve(async (req) => {
   const supabase = createClient(supabaseUrl, serviceKey);
 
   const { dateStr, nowMs } = nowInTz();
+
+  // Config WhatsApp para o alerta 'timeclock'
+  const { data: notifCfg } = await supabase
+    .from("notification_settings")
+    .select("whatsapp_enabled, whatsapp_sender_id")
+    .eq("alert_key", "timeclock")
+    .maybeSingle();
+  const waEnabled = !!notifCfg?.whatsapp_enabled;
+  const waConfig = waEnabled ? await loadWaConfig(supabase, notifCfg?.whatsapp_sender_id ?? null) : null;
+
+  // Cache de telefones por user_id (gestores/admins)
+  const phoneCache = new Map<string, string | null>();
+  async function getManagerPhones(userIds: string[]): Promise<string[]> {
+    const missing = userIds.filter((u) => !phoneCache.has(u));
+    if (missing.length > 0) {
+      const { data: emps } = await supabase
+        .from("employees")
+        .select("user_id, phone")
+        .in("user_id", missing);
+      const found = new Map((emps ?? []).map((e: any) => [e.user_id, e.phone]));
+      for (const u of missing) phoneCache.set(u, normalizePhone(found.get(u) ?? null));
+    }
+    return userIds
+      .map((u) => phoneCache.get(u) ?? null)
+      .filter((p): p is string => !!p);
+  }
+
+  async function fanoutWhatsapp(userIds: string[], text: string) {
+    if (!waEnabled || !waConfig) return 0;
+    const phones = await getManagerPhones(userIds);
+    let ok = 0;
+    for (const p of phones) {
+      const r = await sendWhatsapp(waConfig, p, text);
+      if (r.ok) ok++;
+      else console.warn("[late-alerts] whatsapp fail", p, r);
+    }
+    return ok;
+  }
+
 
   try {
     // 1. Escalas de hoje (não folga, com shift definido)
@@ -153,6 +264,14 @@ Deno.serve(async (req) => {
         continue;
       }
 
+      const waText =
+        `⏰ *Atraso de ponto*\n` +
+        `*${emp.full_name}* ainda não bateu o ponto de entrada.\n` +
+        `Escala: ${shift.start_time.slice(0, 5)}${store ? ` · ${store.name}` : ""}\n` +
+        `Atraso: ${lateMin} min\n\n` +
+        `Abrir: ${APP_BASE_URL}/ponto`;
+      await fanoutWhatsapp(managerUserIds, waText);
+
       await supabase.from("late_punch_alerts_sent").insert({
         employee_id: sch.employee_id,
         schedule_date: dateStr,
@@ -233,6 +352,15 @@ Deno.serve(async (req) => {
           console.error("[late-alerts] freelancer notification error", insErr);
           continue;
         }
+
+        const waText =
+          `⏰ *Freelancer atrasado*\n` +
+          `*${freelancer.full_name}* ainda não fez check-in.\n` +
+          `Vaga: ${op.title} · Início: ${op.start_time.slice(0, 5)}${store ? ` · ${store.name}` : ""}\n` +
+          `Atraso: ${lateMin} min\n\n` +
+          `Abrir: ${APP_BASE_URL}/freelancers`;
+        await fanoutWhatsapp(managerUserIds, waText);
+
 
         if (payment?.id) {
           await supabase
