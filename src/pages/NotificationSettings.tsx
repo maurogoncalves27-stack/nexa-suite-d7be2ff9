@@ -423,6 +423,7 @@ export default function NotificationSettings() {
                       setting={s}
                       senders={senders}
                       smsSenders={smsSenders}
+                      groups={groups}
                       onChange={(patch) => updateSetting(s.alert_key, patch)}
                       onTestEmail={() => sendTestEmail(s)}
                       testing={testingKey === s.alert_key}
