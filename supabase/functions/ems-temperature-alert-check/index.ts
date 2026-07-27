@@ -386,9 +386,6 @@ Deno.serve(async (req: Request) => {
         notified_phones: notified,
       });
 
-      results.push({ sensor: sensor.unique_code, kind, recipients: notified.length });
-      }
-
       await pushToUsers(pushTargetsForStore(sensor.store_id), {
         title: kind === "offline"
           ? `⚠️ Sensor offline · ${sensor.label}`
@@ -398,6 +395,11 @@ Deno.serve(async (req: Request) => {
         tag: `temp-${kind}-${sensor.unique_code}-${new Date().toISOString().slice(0, 13)}`,
         category: "temperature",
       });
+
+      results.push({ sensor: sensor.unique_code, kind, recipients: notified.length });
+    }
+
+
 
     return new Response(JSON.stringify({ ok: true, results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
