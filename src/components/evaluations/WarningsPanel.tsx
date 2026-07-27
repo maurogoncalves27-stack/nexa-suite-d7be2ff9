@@ -11,7 +11,8 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Plus, Send, FileText, Save, Pencil, Trash2, ShieldAlert, CheckCircle2, XCircle, Clock, User } from "lucide-react";
+import { Loader2, Plus, Send, FileText, Save, Pencil, Trash2, ShieldAlert, CheckCircle2, XCircle, Clock, User, Download } from "lucide-react";
+import { generateWarningPdfBlob } from "@/lib/employeePdf";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
@@ -148,6 +149,46 @@ export default function WarningsPanel() {
     load();
   };
 
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const downloadWarning = async (w: Warning) => {
+    setDownloadingId(w.id);
+    try {
+      const { data: emp } = await supabase
+        .from("employees")
+        .select("id, full_name, cpf, position, store_id, stores(name, company_legal_name, company_cnpj)")
+        .eq("id", w.employee_id)
+        .maybeSingle();
+      const store: any = (emp as any)?.stores ?? {};
+      const blob = await generateWarningPdfBlob(
+        {
+          id: emp?.id,
+          full_name: emp?.full_name ?? empName(w.employee_id),
+          cpf: emp?.cpf ?? null,
+          position: (emp as any)?.position ?? null,
+          store_name: store?.name ?? null,
+          company_legal_name: store?.company_legal_name ?? null,
+          company_cnpj: store?.company_cnpj ?? null,
+        },
+        w as any,
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const dateStr = new Date(w.issued_at).toISOString().slice(0, 10);
+      const safeTitle = (w.title || "advertencia").replace(/[^\w\-]+/g, "_").slice(0, 60);
+      const statusTag = w.status === "signed" ? "ASSINADA" : w.status === "refused" ? "RECUSADA" : "PENDENTE";
+      a.href = url;
+      a.download = `${dateStr}__${statusTag}__${safeTitle}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      toast({ title: "Erro ao gerar PDF", description: e?.message ?? String(e), variant: "destructive" });
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   const empName = (id: string) => employees.find((e) => e.id === id)?.full_name ?? "Colaborador";
 
   return (
@@ -277,9 +318,14 @@ export default function WarningsPanel() {
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center justify-between gap-2">
                                         <span className="font-medium truncate">{w.title}</span>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => removeWarning(w.id)}>
-                                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                                        </Button>
+                                        <div className="flex items-center shrink-0">
+                                          <Button variant="ghost" size="icon" className="h-6 w-6" title="Baixar PDF" onClick={() => downloadWarning(w)} disabled={downloadingId === w.id}>
+                                            {downloadingId === w.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 text-primary" />}
+                                          </Button>
+                                          <Button variant="ghost" size="icon" className="h-6 w-6" title="Excluir" onClick={() => removeWarning(w.id)}>
+                                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                          </Button>
+                                        </div>
                                       </div>
                                       <div className="flex items-center gap-2 mt-0.5">
                                         <Badge variant={STATUS_VARIANT[w.status]} className="text-[10px] py-0 h-4">{STATUS_LABEL[w.status]}</Badge>

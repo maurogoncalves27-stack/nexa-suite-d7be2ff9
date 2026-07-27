@@ -416,7 +416,7 @@ interface WarningRecord {
   content_hash?: string | null;
 }
 
-async function generateWarningPdfBlob(
+export async function generateWarningPdfBlob(
   employee: EmployeePdfData,
   warning: WarningRecord,
 ): Promise<Blob> {
