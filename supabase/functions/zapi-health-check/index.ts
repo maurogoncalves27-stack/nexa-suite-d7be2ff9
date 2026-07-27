@@ -77,17 +77,21 @@ Deno.serve(async (req) => {
     let shouldAlert = false;
     let alertMessage = "";
 
-    if (currentBad) {
+    // Só alertamos em "disconnected" REAL (instância existe e respondeu como não conectada).
+    // "not_found" / "error" indicam credenciais/config erradas — logamos mas não disparamos SMS
+    // (senão o gestor recebe falso alarme quando o WhatsApp na verdade está no ar).
+    if (check.status === "not_found" || check.status === "error") {
+      console.warn(`[zapi-health] ${s.label} (${s.id}) status=${check.status} — provável credencial inválida. Detail: ${check.detail}`);
+    }
+
+    if (check.status === "disconnected") {
       const cooled = !s.last_alert_at || (now.getTime() - new Date(s.last_alert_at).getTime()) > cooldownMs;
       const statusChanged = s.last_alert_status !== check.status;
       if (cooled || statusChanged) {
         shouldAlert = true;
-        const reason = check.status === "not_found" ? "instância não encontrada"
-          : check.status === "disconnected" ? "celular offline / sessão expirada"
-          : "erro ao consultar status";
-        alertMessage = `[NEXA] WhatsApp "${s.label}" caiu: ${reason}. Reconecte o QR em Configurações → WhatsApp.`;
+        alertMessage = `[NEXA] WhatsApp "${s.label}" caiu: celular offline / sessão expirada. Reconecte o QR em Configurações → WhatsApp.`;
       }
-    } else if (check.status === "connected" && prevBad) {
+    } else if (check.status === "connected" && s.last_alert_status === "disconnected") {
       shouldAlert = true;
       alertMessage = `[NEXA] WhatsApp "${s.label}" voltou a conectar.`;
     }
