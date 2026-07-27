@@ -35,6 +35,7 @@ interface Body {
   url?: string;
   tag?: string;
   category?: string;
+  skip_in_app?: boolean;
 }
 
 const PUBLIC_SITE_URL = (Deno.env.get("PUBLIC_SITE_URL") ?? "https://nexa.aquelaparme.com.br").replace(/\/$/, "");
@@ -137,16 +138,20 @@ Deno.serve(async (req) => {
     const detectedStore = isOccurrence ? detectStore(`${body.title} ${body.message}`) : null;
     const finalTitle = titleWithStoreEmoji(body.title, detectedStore);
 
-    // 1) Sempre grava notificação in-app (fallback caso usuário não tenha push)
-    const { error: insErr } = await admin.from("user_notifications").insert({
-      user_id: body.user_id,
-      title: finalTitle,
-      message: body.message,
-      url: body.url ?? "/",
-      tag: body.tag ?? "general",
-      category: body.category ?? "general",
-    });
-    if (insErr) console.error("user_notifications insert error", insErr);
+    // 1) Grava notificação in-app (a menos que o chamador tenha inserido antes)
+    let insErr: any = null;
+    if (!body.skip_in_app) {
+      const r = await admin.from("user_notifications").insert({
+        user_id: body.user_id,
+        title: finalTitle,
+        message: body.message,
+        url: body.url ?? "/",
+        tag: body.tag ?? "general",
+        category: body.category ?? "general",
+      });
+      insErr = r.error;
+      if (insErr) console.error("user_notifications insert error", insErr);
+    }
 
     // 2) Tenta enviar push (se tiver subscriptions e categoria permitir)
     const { data: subs, error: subsErr } = pushEnabled
