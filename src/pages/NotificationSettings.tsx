@@ -444,11 +444,12 @@ export default function NotificationSettings() {
 // ================================================================
 
 function AlertCard({
-  setting, senders, smsSenders, onChange, onTestEmail, testing,
+  setting, senders, smsSenders, groups, onChange, onTestEmail, testing,
 }: {
   setting: Setting;
   senders: Sender[];
   smsSenders: SmsSender[];
+  groups: WhatsappGroup[];
   onChange: (patch: Partial<Setting>) => void;
   onTestEmail: () => void;
   testing: boolean;
@@ -458,6 +459,9 @@ function AlertCard({
   const smsSender = smsSenders.find((x) => x.id === setting.sms_sender_id);
   const wpDefault = senders.find((x) => x.is_default && x.active);
   const smsDefault = smsSenders.find((x) => x.is_default && x.active);
+  // Grupos do remetente ativo do alerta (ou do padrão) — apenas esses podem ser adicionados.
+  const activeWaSenderId = setting.whatsapp_sender_id ?? wpDefault?.id ?? null;
+  const availableGroups = groups.filter((g) => g.sender_id === activeWaSenderId);
 
   return (
     <div className={`rounded-lg border ${anyChannel ? "border-primary/30 bg-primary/[0.02]" : "bg-muted/20"} overflow-hidden`}>
@@ -504,7 +508,13 @@ function AlertCard({
             onChange={(v) => onChange({ extra_recipients: v })}
             hint="Números adicionais que recebem este alerta por WhatsApp e SMS."
           />
+          <GroupRecipients
+            value={setting.extra_recipients}
+            onChange={(v) => onChange({ extra_recipients: v })}
+            available={availableGroups}
+          />
         </ChannelRow>
+
 
         <ChannelRow
           icon={<MessageSquare className="h-4 w-4 text-warning" />} label="SMS"
