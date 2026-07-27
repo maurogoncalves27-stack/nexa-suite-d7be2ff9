@@ -206,8 +206,8 @@ const RemoteAccess = () => {
             Acesso remoto
           </h1>
           <p className="text-muted-foreground">
-            Cadastre o ID AnyDesk/RustDesk de cada PC de loja e conecte com um clique.
-            Recomendado: <b>RustDesk</b> (gratuito e open-source).
+            Cadastre o ID AnyDesk de cada PC de loja e conecte com um clique.
+            Instale o AnyDesk no PC de quem acessa e no PC da loja.
           </p>
         </div>
         <div className="flex gap-2">
@@ -226,15 +226,12 @@ const RemoteAccess = () => {
         <Card>
           <CardContent className="p-6 text-center space-y-3">
             <p className="text-sm text-muted-foreground">
-              Nenhuma máquina cadastrada ainda. Instale o RustDesk (ou AnyDesk) no PC da loja,
+              Nenhuma máquina cadastrada ainda. Instale o AnyDesk no PC da loja,
               copie o ID que aparece e cole aqui.
             </p>
             <div className="flex flex-wrap justify-center gap-2 text-xs">
-              <a href="https://rustdesk.com/" target="_blank" rel="noreferrer"
-                 className="underline text-primary">Baixar RustDesk</a>
-              <span className="text-muted-foreground">·</span>
-              <a href="https://anydesk.com/pt/downloads/windows" target="_blank" rel="noreferrer"
-                 className="underline text-primary">Baixar AnyDesk</a>
+              <a href="https://anydesk.com/pt/downloads/thank-you?dv=win_exe" target="_blank" rel="noreferrer"
+                 className="underline text-primary">Baixar AnyDesk para Windows</a>
             </div>
           </CardContent>
         </Card>
@@ -257,7 +254,7 @@ const RemoteAccess = () => {
                               {m.machine_type.toUpperCase()}
                             </Badge>
                             <Badge variant="outline" className="text-[10px]">
-                              {m.tool === "anydesk" ? "AnyDesk" : "RustDesk"}
+                              AnyDesk
                             </Badge>
                           </div>
                         </div>
@@ -314,7 +311,7 @@ const RemoteAccess = () => {
 
                       <Button onClick={() => connect(m)} className="w-full gap-2" size="sm">
                         <ExternalLink className="h-4 w-4" />
-                        Conectar via {m.tool === "anydesk" ? "AnyDesk" : "RustDesk"}
+                        Conectar via AnyDesk
                       </Button>
                     </CardContent>
                   </Card>
