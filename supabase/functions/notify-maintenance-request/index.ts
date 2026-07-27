@@ -3,6 +3,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { pushToUsers } from "../_shared/pushFanout.ts";
+import { sendAlertEmails } from "../_shared/emailFanout.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -155,6 +156,15 @@ Deno.serve(async (req) => {
       tag: `maint-${requestId}`,
       category: "maintenance_request",
     });
+
+    await sendAlertEmails("maintenance", {
+      title: `Manutenção · ${store?.name || "Loja"}`,
+      message: `Equipamento: ${reqRow.equipment_type}\nUrgência: ${urg}` +
+        (reqRow.description ? `\nDescrição: ${reqRow.description}` : "") +
+        (requester?.full_name ? `\nSolicitante: ${requester.full_name}` : ""),
+      category: "Manutenção",
+      severity: reqRow.urgency === "alta" ? "critical" : "warning",
+    }, admin);
 
     return new Response(
       JSON.stringify({ ok: true, notified: results.filter((r) => r.ok).length, results }),
