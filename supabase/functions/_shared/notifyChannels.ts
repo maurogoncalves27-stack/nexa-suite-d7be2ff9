@@ -1,11 +1,9 @@
 // Helper compartilhado: carrega config de WhatsApp (whatsapp_senders) e
 // destinatários extras (notification_settings.extra_recipients) para um
-// alert_key, e envia mensagens via o provider correto (zapi/uazapi).
+// alert_key, e envia mensagens via Z-API.
 
 export type WaConfig = {
-  provider: "zapi" | "uazapi";
-  uazapi_base_url?: string | null;
-  uazapi_token?: string | null;
+  provider: "zapi";
   zapi_instance_id?: string | null;
   zapi_token?: string | null;
   zapi_client_token?: string | null;
@@ -24,7 +22,7 @@ export async function loadWaConfig(
   senderId: string | null,
 ): Promise<WaConfig> {
   const cols =
-    "provider, uazapi_base_url, uazapi_token, zapi_instance_id, zapi_token, zapi_client_token, active";
+    "provider, zapi_instance_id, zapi_token, zapi_client_token, active";
   if (senderId) {
     const { data } = await supabase
       .from("whatsapp_senders")
@@ -40,10 +38,16 @@ export async function loadWaConfig(
     .eq("active", true)
     .maybeSingle();
   if (def) return def as WaConfig;
-  const base = (globalThis as any).Deno?.env?.get?.("UAZAPI_BASE_URL");
-  const token = (globalThis as any).Deno?.env?.get?.("UAZAPI_INSTANCE_TOKEN");
-  if (base && token) {
-    return { provider: "uazapi", uazapi_base_url: base, uazapi_token: token };
+  const instanceId = (globalThis as any).Deno?.env?.get?.("ZAPI_INSTANCE_ID");
+  const token = (globalThis as any).Deno?.env?.get?.("ZAPI_TOKEN");
+  const clientToken = (globalThis as any).Deno?.env?.get?.("ZAPI_CLIENT_TOKEN");
+  if (instanceId && token) {
+    return {
+      provider: "zapi",
+      zapi_instance_id: instanceId,
+      zapi_token: token,
+      zapi_client_token: clientToken ?? null,
+    };
   }
   return null;
 }
@@ -73,16 +77,6 @@ export async function sendWhatsapp(
 ) {
   if (!cfg) return { ok: false, error: "no_config" };
   try {
-    if (cfg.provider === "uazapi") {
-      const base = (cfg.uazapi_base_url || "").replace(/\/+$/, "");
-      if (!base || !cfg.uazapi_token) return { ok: false, error: "uazapi_missing" };
-      const r = await fetch(`${base}/send/text`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", token: cfg.uazapi_token },
-        body: JSON.stringify({ number: phone, text }),
-      });
-      return { ok: r.ok, status: r.status };
-    }
     if (!cfg.zapi_instance_id || !cfg.zapi_token) return { ok: false, error: "zapi_missing" };
     const url = `https://api.z-api.io/instances/${cfg.zapi_instance_id}/token/${cfg.zapi_token}/send-text`;
     const headers: Record<string, string> = { "Content-Type": "application/json" };
