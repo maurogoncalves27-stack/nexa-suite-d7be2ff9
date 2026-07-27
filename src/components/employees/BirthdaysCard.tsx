@@ -128,12 +128,15 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
                   title={`${emp.full_name} — Aniversariante do dia!`}
                 >
                   <span className="absolute -top-2 text-sm z-10">🎉</span>
-                  <Avatar className="h-20 w-20 rounded-lg border-2 border-accent ring-4 ring-accent/50 shadow-lg animate-pulse">
-                    {emp.photoUrl && <AvatarImage src={emp.photoUrl} alt={emp.full_name} className="rounded-lg object-cover" />}
-                    <AvatarFallback className="bg-accent/20 text-accent text-sm font-bold rounded-lg">
-                      <User className="h-6 w-6" />
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="relative">
+                    <div className="absolute -inset-1 rounded-xl border-2 border-accent opacity-75 animate-pulse" />
+                    <Avatar className="h-20 w-20 rounded-lg border-2 border-accent shadow-lg relative bg-background">
+                      {emp.photoUrl && <AvatarImage src={emp.photoUrl} alt={emp.full_name} className="rounded-lg object-cover" />}
+                      <AvatarFallback className="bg-accent/20 text-accent text-sm font-bold rounded-lg">
+                        <User className="h-6 w-6" />
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
                   <span className="text-[11px] font-bold text-accent text-center leading-tight max-w-[72px] truncate">
                     {firstName}
                   </span>
