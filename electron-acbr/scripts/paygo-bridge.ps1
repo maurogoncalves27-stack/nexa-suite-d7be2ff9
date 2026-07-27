@@ -63,6 +63,7 @@ public static class PayGoBridge
     private const short BRIDGE_ADMIN_OPERATION_SELECTED = 2;
     private const short BRIDGE_ADMIN_OPERATION_FINISHED = 3;
 
+    private const byte PWOPER_RPTTRUNC = 0x11;
     private const byte PWOPER_SALE = 0x21;
     private const byte PWOPER_INSTALL = 0x01;
     private const byte PWOPER_ADMIN = 0x20;
@@ -811,6 +812,15 @@ public static class PayGoBridge
                 EmitEvent("PINPAD", IsNoCardAdministrativeOperation(_currentOperation) ? "Finalizando operacao administrativa no pinpad" : "Remova o cartao do pinpad");
                 ret = Fn<PW_iPPRemoveCard_>("PW_iPPRemoveCard")();
                 if (ret != PWRET_OK) return ret;
+
+                // PWOPER_RPTTRUNC ainda precisa retornar ao PW_iExecTransac
+                // depois da remocao/finalizacao do pinpad para que a PGWebLib
+                // entregue o retorno terminal e os resultados do relatorio.
+                if (_currentOperation == PWOPER_RPTTRUNC)
+                {
+                    EmitEvent("INFO", "Relatorio sintetico: remocao processada; aguardando retorno final da PGWebLib");
+                    return PWRET_OK;
+                }
 
                 if (IsNoCardAdministrativeOperation(_currentOperation))
                 {
