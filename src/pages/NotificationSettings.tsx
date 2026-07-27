@@ -303,17 +303,33 @@ export default function NotificationSettings() {
                   <p className="text-xs text-muted-foreground border rounded-md p-3">Nenhum número cadastrado.</p>
                 ) : (
                   <div className="space-y-1.5">
-                    {senders.map((s) => (
-                      <SenderRow key={s.id}
-                        title={s.label}
-                        badges={[
-                          s.is_default ? <Badge key="d" variant="secondary" className="gap-1 h-5 px-1.5 text-[10px]"><Star className="h-2.5 w-2.5" />Padrão</Badge> : null,
-                          !s.active ? <Badge key="a" variant="outline" className="h-5 px-1.5 text-[10px]">Inativo</Badge> : null,
-                        ]}
-                        sub={`${s.phone_display || "sem número"} · ${(s.zapi_instance_id ?? "").slice(0, 24)}…`}
-                        onEdit={() => openEdit(s)} onDelete={() => deleteSender(s.id)}
-                      />
-                    ))}
+                    {senders.map((s) => {
+                      const gCount = groups.filter((g) => g.sender_id === s.id).length;
+                      return (
+                        <div key={s.id} className="rounded-md border">
+                          <SenderRow
+                            title={s.label}
+                            badges={[
+                              s.is_default ? <Badge key="d" variant="secondary" className="gap-1 h-5 px-1.5 text-[10px]"><Star className="h-2.5 w-2.5" />Padrão</Badge> : null,
+                              !s.active ? <Badge key="a" variant="outline" className="h-5 px-1.5 text-[10px]">Inativo</Badge> : null,
+                              gCount > 0 ? <Badge key="g" variant="outline" className="h-5 px-1.5 text-[10px] gap-1"><Users className="h-2.5 w-2.5" />{gCount} grupos</Badge> : null,
+                            ]}
+                            sub={`${s.phone_display || "sem número"} · ${(s.zapi_instance_id ?? "").slice(0, 24)}…`}
+                            onEdit={() => openEdit(s)} onDelete={() => deleteSender(s.id)}
+                          />
+                          <div className="px-3 pb-2 flex justify-end">
+                            <Button
+                              type="button" size="sm" variant="ghost" className="h-7 gap-1 text-xs"
+                              disabled={syncingSender === s.id || !s.active}
+                              onClick={() => syncGroups(s.id)}
+                            >
+                              {syncingSender === s.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Users className="h-3 w-3" />}
+                              Sincronizar grupos
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
