@@ -1,0 +1,1 @@
+UPDATE public.whatsapp_senders SET last_alert_at = NULL, last_alert_status = NULL WHERE last_status = 'not_found';
