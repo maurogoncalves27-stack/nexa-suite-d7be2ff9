@@ -9,6 +9,7 @@ import {
   normalizePhone,
   sendWhatsapp,
 } from "../_shared/notifyChannels.ts";
+import { pushToUsers } from "../_shared/pushFanout.ts";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -130,6 +131,35 @@ Deno.serve(async (req: Request) => {
     }));
     const allRecipients = [...(recipientsAll ?? []), ...extraRecipients];
 
+    // Resolve gestores/admins por loja para push
+    const { data: roleRows } = await supabase
+      .from("user_roles")
+      .select("user_id, role")
+      .in("role", ["admin", "manager"]);
+    const adminIds = new Set<string>();
+    const managerIds = new Set<string>();
+    for (const r of roleRows ?? []) {
+      if (r.role === "admin") adminIds.add(r.user_id);
+      else if (r.role === "manager") managerIds.add(r.user_id);
+    }
+    const { data: managerEmps } = managerIds.size
+      ? await supabase
+          .from("employees")
+          .select("user_id, store_id, allocated_store_id, status")
+          .in("user_id", Array.from(managerIds))
+      : { data: [] as any[] };
+    function pushTargetsForStore(storeId: string | null): string[] {
+      const set = new Set<string>(adminIds);
+      for (const e of managerEmps ?? []) {
+        if (!e.user_id) continue;
+        if (e.status && e.status !== "active") continue;
+        if (!storeId || !e.store_id || e.store_id === storeId || e.allocated_store_id === storeId) {
+          set.add(e.user_id);
+        }
+      }
+      return Array.from(set);
+    }
+
     const results: Array<Record<string, unknown>> = [];
 
     for (const sensor of sensors as Sensor[]) {
@@ -216,6 +246,17 @@ Deno.serve(async (req: Request) => {
                 error: res.ok ? undefined : (res as any).error ?? String((res as any).status ?? ""),
               });
             }
+          }
+
+          if (shouldNotifyRecovered) {
+            const shortMsg = buildMessage("recovered", sensor, storeName, last ?? null);
+            await pushToUsers(pushTargetsForStore(sensor.store_id), {
+              title: `✅ Temp normalizada · ${sensor.label}`,
+              message: shortMsg,
+              url: "/nutricontrole/sensores",
+              tag: `temp-recovered-${sensor.unique_code}`,
+              category: "temperature",
+            });
           }
 
           await supabase.from("nutri_temperature_alerts").insert({
@@ -345,8 +386,20 @@ Deno.serve(async (req: Request) => {
         notified_phones: notified,
       });
 
+      await pushToUsers(pushTargetsForStore(sensor.store_id), {
+        title: kind === "offline"
+          ? `⚠️ Sensor offline · ${sensor.label}`
+          : `🚨 Temp fora da faixa · ${sensor.label}`,
+        message,
+        url: "/nutricontrole/sensores",
+        tag: `temp-${kind}-${sensor.unique_code}-${new Date().toISOString().slice(0, 13)}`,
+        category: "temperature",
+      });
+
       results.push({ sensor: sensor.unique_code, kind, recipients: notified.length });
     }
+
+
 
     return new Response(JSON.stringify({ ok: true, results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -3,6 +3,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { loadAlertConfig, normalizePhone, sendWhatsapp, fanoutExtras } from "../_shared/notifyChannels.ts";
+import { pushToUsers } from "../_shared/pushFanout.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -120,10 +121,38 @@ Deno.serve(async (req) => {
       (summary ? `\n\n${summary}` : "") +
       `\n\nAbrir: ${APP_BASE_URL}/ocorrencias/relatorio`;
 
+    // Alvos: gestores da loja (ou todos se sem storeId)
+    const targetUserIds: string[] = [];
+    for (const m of managers || []) {
+      if (m.status && m.status !== "active") continue;
+      if (optOut.has(m.user_id)) continue;
+      if (storeId) {
+        const managesStore =
+          !m.store_id || m.store_id === storeId || m.allocated_store_id === storeId;
+        if (!managesStore) continue;
+      }
+      if (m.user_id) targetUserIds.push(m.user_id);
+    }
+
+    // Push (in-app + web push) para gestores alvo
+    const pushTitle = `🚨 ${title}${storeName ? ` · ${storeName}` : ""}`;
+    const pushMsg = [
+      orderNumber ? `Pedido #${orderNumber}` : null,
+      orderValue != null ? `R$ ${Number(orderValue).toFixed(2).replace(".", ",")}` : null,
+      summary || null,
+    ].filter(Boolean).join(" · ") || title;
+    await pushToUsers(targetUserIds, {
+      title: pushTitle,
+      message: pushMsg,
+      url: "/ocorrencias/relatorio",
+      tag: body.alert_id ? `occ-${body.alert_id}` : `occ-${Date.now()}`,
+      category: "occurrence",
+    });
+
     const { enabled, waConfig, extras } = await loadAlertConfig(admin, "occurrence");
     if (!enabled || !waConfig) {
       return new Response(
-        JSON.stringify({ ok: true, notified: 0, reason: "whatsapp_disabled" }),
+        JSON.stringify({ ok: true, notified: 0, push: targetUserIds.length, reason: "whatsapp_disabled" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }

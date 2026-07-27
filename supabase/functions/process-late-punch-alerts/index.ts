@@ -6,6 +6,7 @@ import {
   sendWhatsapp,
   fanoutExtras,
 } from "../_shared/notifyChannels.ts";
+import { pushToUsers } from "../_shared/pushFanout.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -205,6 +206,14 @@ Deno.serve(async (req) => {
         `Atraso: ${lateMin} min\n\n` +
         `Abrir: ${APP_BASE_URL}/ponto`;
       await fanoutWhatsapp(managerUserIds, waText);
+      await pushToUsers(managerUserIds, {
+        title,
+        message,
+        url: "/ponto",
+        tag: `late-${sch.employee_id}-${dateStr}`,
+        category: "timeclock",
+        skipInApp: true,
+      });
 
       await supabase.from("late_punch_alerts_sent").insert({
         employee_id: sch.employee_id,
@@ -294,6 +303,14 @@ Deno.serve(async (req) => {
           `Atraso: ${lateMin} min\n\n` +
           `Abrir: ${APP_BASE_URL}/freelancers`;
         await fanoutWhatsapp(managerUserIds, waText);
+        await pushToUsers(managerUserIds, {
+          title,
+          message,
+          url: "/freelancers",
+          tag: `late-freela-${op.id}-${dateStr}`,
+          category: "timeclock",
+          skipInApp: true,
+        });
 
 
         if (payment?.id) {

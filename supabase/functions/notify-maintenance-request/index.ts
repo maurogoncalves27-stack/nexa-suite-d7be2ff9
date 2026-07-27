@@ -2,6 +2,7 @@
 // manutenção é aberto. Usa UAZAPI (instância padrão do projeto).
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { pushToUsers } from "../_shared/pushFanout.ts";
 
 const UAZAPI_BASE = (Deno.env.get("UAZAPI_BASE_URL") || "").replace(/\/+$/, "");
 const UAZAPI_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN") || "";
@@ -124,6 +125,7 @@ Deno.serve(async (req) => {
     );
 
     const results: Array<{ user_id: string; ok: boolean }> = [];
+    const pushTargets: string[] = [];
     for (const m of managers || []) {
       if (m.status && m.status !== "active") continue;
       if (optOut.has(m.user_id)) continue;
@@ -134,6 +136,8 @@ Deno.serve(async (req) => {
         m.allocated_store_id === reqRow.store_id;
       if (!managesStore) continue;
 
+      if (m.user_id) pushTargets.push(m.user_id);
+
       const phone = normalizePhone(m.phone);
       if (!phone) {
         results.push({ user_id: m.user_id, ok: false });
@@ -142,6 +146,15 @@ Deno.serve(async (req) => {
       const r = await sendWhatsapp(phone, text);
       results.push({ user_id: m.user_id, ok: !!r.ok });
     }
+
+    // Push (in-app + web push) para os mesmos gestores
+    await pushToUsers(pushTargets, {
+      title: `🔧 Manutenção · ${store?.name || "Loja"}`,
+      message: `${reqRow.equipment_type} · ${urg}${reqRow.description ? ` · ${reqRow.description}` : ""}`,
+      url: "/area-gestor",
+      tag: `maint-${requestId}`,
+      category: "maintenance_request",
+    });
 
     return new Response(
       JSON.stringify({ ok: true, notified: results.filter((r) => r.ok).length, results }),
