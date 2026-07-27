@@ -479,6 +479,7 @@ public static class PayGoBridge
     private static short ExecuteOperation(byte operation)
     {
         _currentOperation = operation;
+        _rptTruncRemoveDone = false;
         short ret = Fn<PW_iNewTransac_>("PW_iNewTransac")(operation);
         if (ret != PWRET_OK) return ret;
 
