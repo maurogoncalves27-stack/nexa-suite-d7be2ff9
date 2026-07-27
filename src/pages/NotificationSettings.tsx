@@ -144,10 +144,9 @@ export default function NotificationSettings() {
     setEditSender(s);
     setDraft({
       label: s.label, phone_display: s.phone_display ?? "",
-      provider: s.provider ?? "zapi",
+      provider: "zapi",
       zapi_instance_id: s.zapi_instance_id ?? "", zapi_token: s.zapi_token ?? "",
       zapi_client_token: s.zapi_client_token ?? "",
-      uazapi_base_url: s.uazapi_base_url ?? "", uazapi_token: s.uazapi_token ?? "",
       is_default: s.is_default, active: s.active,
     });
   };
