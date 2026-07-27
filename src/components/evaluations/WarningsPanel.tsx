@@ -11,7 +11,8 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Plus, Send, FileText, Save, Pencil, Trash2, ShieldAlert, CheckCircle2, XCircle, Clock, User } from "lucide-react";
+import { Loader2, Plus, Send, FileText, Save, Pencil, Trash2, ShieldAlert, CheckCircle2, XCircle, Clock, User, Download } from "lucide-react";
+import { generateWarningPdfBlob } from "@/lib/employeePdf";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
