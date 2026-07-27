@@ -9,6 +9,7 @@ import {
   normalizePhone,
   sendWhatsapp,
 } from "../_shared/notifyChannels.ts";
+import { pushToUsers } from "../_shared/pushFanout.ts";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
