@@ -656,31 +656,34 @@ function SenderPicker({
 function PhoneRecipients({
   value, onChange, hint,
 }: {
-  value: PhoneRecipient[];
-  onChange: (v: PhoneRecipient[]) => void;
+  value: Recipient[];
+  onChange: (v: Recipient[]) => void;
   hint?: string;
 }) {
   const [label, setLabel] = useState("");
   const [phone, setPhone] = useState("");
+  const phones = value.filter((r): r is PhoneRecipient => !isGroupR(r));
+  const others = value.filter((r) => isGroupR(r));
   const add = () => {
     const p = phone.replace(/\D+/g, "");
     if (p.length < 10) { toast.error("Informe um telefone com DDD."); return; }
     onChange([...value, { phone: p.startsWith("55") ? p : `55${p}`, label: label.trim() || undefined }]);
     setLabel(""); setPhone("");
   };
-  const remove = (i: number) => onChange(value.filter((_, idx) => idx !== i));
+  const remove = (target: PhoneRecipient) =>
+    onChange([...others, ...phones.filter((r) => r.phone !== target.phone)]);
 
   return (
     <div className="space-y-1.5">
       {hint && <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" />{hint}</p>}
-      {value.length > 0 && (
+      {phones.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {value.map((r, i) => (
+          {phones.map((r, i) => (
             <div key={i} className="inline-flex items-center gap-1 rounded-full border bg-background pl-2 pr-1 py-0.5 text-[11px]">
               <Phone className="h-3 w-3 text-muted-foreground" />
               <span className="font-medium">{r.label || "Extra"}</span>
               <span className="text-muted-foreground">{formatBrPhone(r.phone)}</span>
-              <button type="button" onClick={() => remove(i)} className="ml-0.5 rounded-full hover:bg-destructive/10 p-0.5">
+              <button type="button" onClick={() => remove(r)} className="ml-0.5 rounded-full hover:bg-destructive/10 p-0.5">
                 <X className="h-3 w-3 text-destructive" />
               </button>
             </div>
@@ -695,6 +698,66 @@ function PhoneRecipients({
           <Plus className="h-3.5 w-3.5" />
         </Button>
       </div>
+    </div>
+  );
+}
+
+function GroupRecipients({
+  value, onChange, available,
+}: {
+  value: Recipient[];
+  onChange: (v: Recipient[]) => void;
+  available: WhatsappGroup[];
+}) {
+  const selected = value.filter((r): r is GroupRecipient => isGroupR(r));
+  const others = value.filter((r) => !isGroupR(r));
+  const notSelected = available.filter((g) => !selected.some((s) => s.group_id === g.group_id));
+  const addGroup = (g: WhatsappGroup) => {
+    onChange([...value, { group_id: g.group_id, name: g.name, sender_id: g.sender_id }]);
+  };
+  const remove = (gid: string) =>
+    onChange([...others, ...selected.filter((s) => s.group_id !== gid)]);
+
+  if (available.length === 0 && selected.length === 0) {
+    return (
+      <p className="text-[11px] text-muted-foreground flex items-center gap-1 pl-1">
+        <Users className="h-3 w-3" /> Nenhum grupo sincronizado neste remetente.
+        Use "Sincronizar grupos" na lista de remetentes acima.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+        <Users className="h-3 w-3" /> Grupos de WhatsApp que também recebem este alerta.
+      </p>
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selected.map((g) => (
+            <div key={g.group_id} className="inline-flex items-center gap-1 rounded-full border bg-success/5 border-success/30 pl-2 pr-1 py-0.5 text-[11px]">
+              <Users className="h-3 w-3 text-success" />
+              <span className="font-medium">{g.name || g.group_id}</span>
+              <button type="button" onClick={() => remove(g.group_id)} className="ml-0.5 rounded-full hover:bg-destructive/10 p-0.5">
+                <X className="h-3 w-3 text-destructive" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      {notSelected.length > 0 && (
+        <Select value="" onValueChange={(v) => {
+          const g = notSelected.find((x) => x.group_id === v);
+          if (g) addGroup(g);
+        }}>
+          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="+ Adicionar grupo…" /></SelectTrigger>
+          <SelectContent>
+            {notSelected.map((g) => (
+              <SelectItem key={g.group_id} value={g.group_id}>{g.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
     </div>
   );
 }
