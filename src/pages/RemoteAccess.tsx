@@ -327,7 +327,7 @@ const RemoteAccess = () => {
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar máquina" : "Nova máquina"}</DialogTitle>
             <DialogDescription>
-              Cadastre o ID exibido pelo cliente AnyDesk/RustDesk instalado no PC.
+              Cadastre o ID exibido pelo cliente AnyDesk instalado no PC.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -362,18 +362,10 @@ const RemoteAccess = () => {
               <Input value={form.label ?? ""} placeholder="Ex.: PDV Caixa 1"
                      onChange={(e) => setForm({ ...form, label: e.target.value })} />
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1.5">
-                <Label>Ferramenta</Label>
-                <Select value={form.tool ?? "rustdesk"}
-                        onValueChange={(v) => setForm({ ...form, tool: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="rustdesk">RustDesk</SelectItem>
-                    <SelectItem value="anydesk">AnyDesk</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-1.5">
+              <Label>ID AnyDesk *</Label>
+              <Input value={form.remote_id ?? ""} placeholder="123 456 789"
+                     onChange={(e) => setForm({ ...form, remote_id: e.target.value })} />
               <div className="space-y-1.5">
                 <Label>ID remoto *</Label>
                 <Input value={form.remote_id ?? ""} placeholder="123 456 789"
