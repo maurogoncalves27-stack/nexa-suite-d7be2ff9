@@ -366,11 +366,6 @@ const RemoteAccess = () => {
               <Label>ID AnyDesk *</Label>
               <Input value={form.remote_id ?? ""} placeholder="123 456 789"
                      onChange={(e) => setForm({ ...form, remote_id: e.target.value })} />
-              <div className="space-y-1.5">
-                <Label>ID remoto *</Label>
-                <Input value={form.remote_id ?? ""} placeholder="123 456 789"
-                       onChange={(e) => setForm({ ...form, remote_id: e.target.value })} />
-              </div>
             </div>
             <div className="space-y-1.5">
               <Label>Senha de acesso</Label>
@@ -400,7 +395,7 @@ const RemoteAccess = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Remover máquina?</AlertDialogTitle>
             <AlertDialogDescription>
-              O cadastro será excluído. O agente AnyDesk/RustDesk no PC continua funcionando normalmente.
+              O cadastro será excluído. O agente AnyDesk no PC continua funcionando normalmente.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
