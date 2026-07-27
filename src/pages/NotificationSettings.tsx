@@ -403,7 +403,7 @@ export default function NotificationSettings() {
         const activeCount = rows.filter((r) => r.push_enabled || r.whatsapp_enabled || r.sms_enabled || r.email_enabled).length;
         return (
           <Card key={group}>
-            <Collapsible defaultOpen>
+            <Collapsible>
               <CollapsibleTrigger asChild>
                 <button type="button" className="group w-full text-left">
                   <CardHeader className="flex flex-row items-center justify-between gap-2 p-4 sm:p-6 w-full">
