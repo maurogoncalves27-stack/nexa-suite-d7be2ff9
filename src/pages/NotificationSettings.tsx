@@ -206,7 +206,7 @@ export default function NotificationSettings() {
                     {!s.active && <Badge variant="outline" className="h-5 px-1.5 text-[10px]">Inativo</Badge>}
                   </div>
                   <div className="text-[11px] text-muted-foreground truncate">
-                    {s.phone_display || "sem número"} · {(s.provider === "uazapi" ? (s.uazapi_base_url ?? "") : (s.zapi_instance_id ?? "")).slice(0, 24)}…
+                    {s.phone_display || "sem número"} · {(s.zapi_instance_id ?? "").slice(0, 24)}…
                   </div>
                 </div>
                 <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => openEdit(s)}><Pencil className="h-4 w-4" /></Button>
