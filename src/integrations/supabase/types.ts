@@ -9219,6 +9219,8 @@ export type Database = {
           alert_key: string
           category_group: string
           description: string | null
+          email_enabled: boolean
+          email_recipients: Json
           extra_recipients: Json
           label: string
           push_enabled: boolean
@@ -9232,6 +9234,8 @@ export type Database = {
           alert_key: string
           category_group?: string
           description?: string | null
+          email_enabled?: boolean
+          email_recipients?: Json
           extra_recipients?: Json
           label: string
           push_enabled?: boolean
@@ -9245,6 +9249,8 @@ export type Database = {
           alert_key?: string
           category_group?: string
           description?: string | null
+          email_enabled?: boolean
+          email_recipients?: Json
           extra_recipients?: Json
           label?: string
           push_enabled?: boolean
