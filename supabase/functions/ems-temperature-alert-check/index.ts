@@ -248,6 +248,17 @@ Deno.serve(async (req: Request) => {
             }
           }
 
+          if (shouldNotifyRecovered) {
+            const shortMsg = buildMessage("recovered", sensor, storeName, last ?? null);
+            await pushToUsers(pushTargetsForStore(sensor.store_id), {
+              title: `✅ Temp normalizada · ${sensor.label}`,
+              message: shortMsg,
+              url: "/nutricontrole/sensores",
+              tag: `temp-recovered-${sensor.unique_code}`,
+              category: "temperature",
+            });
+          }
+
           await supabase.from("nutri_temperature_alerts").insert({
             sensor_code: sensor.unique_code,
             store_id: sensor.store_id,
@@ -376,7 +387,17 @@ Deno.serve(async (req: Request) => {
       });
 
       results.push({ sensor: sensor.unique_code, kind, recipients: notified.length });
-    }
+      }
+
+      await pushToUsers(pushTargetsForStore(sensor.store_id), {
+        title: kind === "offline"
+          ? `⚠️ Sensor offline · ${sensor.label}`
+          : `🚨 Temp fora da faixa · ${sensor.label}`,
+        message,
+        url: "/nutricontrole/sensores",
+        tag: `temp-${kind}-${sensor.unique_code}-${new Date().toISOString().slice(0, 13)}`,
+        category: "temperature",
+      });
 
     return new Response(JSON.stringify({ ok: true, results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
