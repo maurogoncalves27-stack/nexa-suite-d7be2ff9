@@ -36,3 +36,6 @@ verify_jwt = true
 
 [functions.backfill-aso-from-employee-docs]
 verify_jwt = true
+
+[functions.zapi-health-check]
+verify_jwt = false
