@@ -451,17 +451,6 @@ export function IntegrationsPanel() {
             docs="https://z-api.io/"
           />
           <Row
-            label="WhatsApp UAZAPI"
-            status="warn"
-            hint="Configurar token da instância"
-            secrets={[
-              { name: "UAZAPI_BASE_URL", note: "Ex.: https://free.uazapi.com" },
-              { name: "UAZAPI_INSTANCE_TOKEN", note: "Token da instância (Bearer)" },
-              { name: "UAZAPI_ADMIN_TOKEN", note: "Opcional, p/ criar/gerenciar instâncias" },
-            ]}
-            docs="https://docs.uazapi.com/"
-          />
-          <Row
             label="Reservas (banco local)"
             status="ok"
             hint="Tabela reservations"
