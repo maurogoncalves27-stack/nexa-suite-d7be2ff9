@@ -332,32 +332,20 @@ export function IntegrationsPanel() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base"><MessageCircle className="h-4 w-4 text-primary" />WhatsApp da loja</CardTitle>
           <CardDescription>
-            Número que recebe avisos de novas reservas feitas pelo chat ou formulário público
-            (envia via Z-API com as credenciais ZAPI_CUSTOMER_* configuradas no backend).
+            Os avisos de novas reservas (chat/formulário público) agora são gerenciados em
+            <b> Configurações → Alertas e notificações</b> no alerta <b>“Nova reserva (CRM)”</b>.
+            Lá você define quais números e grupos recebem, ativa/desativa canais (WhatsApp, SMS, e-mail) e escolhe o remetente Z-API.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between rounded-md border p-3">
-            <div>
-              <div className="text-sm font-medium">Notificar a loja por WhatsApp</div>
-              <div className="text-xs text-muted-foreground">Desligar pausa o envio sem apagar o número.</div>
-            </div>
-            <Switch
-              checked={reservations.notifyEnabled !== false}
-              onCheckedChange={(v) => setReservations((r) => ({ ...r, notifyEnabled: v }))}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Número (com DDI, só dígitos)</Label>
-            <Input
-              value={reservations.whatsappStorePhone ?? ""}
-              onChange={(e) => setReservations((r) => ({ ...r, whatsappStorePhone: e.target.value.replace(/\D+/g, "") }))}
-              placeholder="556199999999"
-              inputMode="numeric"
-            />
-          </div>
+        <CardContent>
+          <Button asChild variant="outline" size="sm">
+            <a href="/configuracoes/alertas" target="_blank" rel="noreferrer">
+              <ExternalLink className="h-3.5 w-3.5 mr-1" /> Abrir alertas e notificações
+            </a>
+          </Button>
         </CardContent>
       </Card>
+
 
       <Card>
         <CardHeader>
