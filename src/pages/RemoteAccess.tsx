@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Monitor, Plus, Pencil, Trash2, Copy, ExternalLink, Eye, EyeOff, RefreshCw } from "lucide-react";
+import { Monitor, Plus, Pencil, Trash2, Copy, ExternalLink, Eye, EyeOff, RefreshCw, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -38,19 +38,16 @@ const emptyForm = (): Partial<Machine> => ({
   store_id: null,
   label: "",
   machine_type: "pdv",
-  tool: "rustdesk",
+  tool: "anydesk",
   remote_id: "",
   password: "",
   hostname: "",
   notes: "",
 });
 
-const buildDeepLink = (tool: string, id: string) => {
+const buildDeepLink = (id: string) => {
   const clean = id.replace(/\s+/g, "");
-  if (tool === "anydesk") return `anydesk:${clean}`;
-  // RustDesk registra o handler `rustdesk://` — o formato aceito pelo cliente
-  // atual é simplesmente `rustdesk://<id>` (o antigo `/connect/` não abre).
-  return `rustdesk://${clean}`;
+  return `anydesk:${clean}`;
 };
 
 const RemoteAccess = () => {
@@ -114,7 +111,7 @@ const RemoteAccess = () => {
       store_id: form.store_id || null,
       label: form.label!.trim(),
       machine_type: form.machine_type || "pdv",
-      tool: form.tool || "rustdesk",
+      tool: "anydesk",
       remote_id: form.remote_id!.trim(),
       password: form.password?.trim() || null,
       hostname: form.hostname?.trim() || null,
@@ -163,8 +160,7 @@ const RemoteAccess = () => {
 
   const connect = async (m: Machine) => {
     void audit(m.id, "connect");
-    const url = buildDeepLink(m.tool, m.remote_id);
-    const toolName = m.tool === "anydesk" ? "AnyDesk" : "RustDesk";
+    const url = buildDeepLink(m.remote_id);
 
     // Copia a senha para a área de transferência para colar rapidamente no cliente.
     if (m.password) {
@@ -181,10 +177,10 @@ const RemoteAccess = () => {
     a.remove();
 
     toast({
-      title: `Abrindo ${toolName}…`,
+      title: "Abrindo AnyDesk…",
       description: m.password
-        ? "Senha copiada para colar no cliente. Se nada abrir, instale o RustDesk no seu PC."
-        : "Se nada abrir, instale o RustDesk no seu PC e tente novamente.",
+        ? "Senha copiada para colar no cliente. Se nada abrir, instale o AnyDesk no seu PC."
+        : "Se nada abrir, instale o AnyDesk no seu PC e tente novamente.",
     });
   };
 
@@ -210,8 +206,8 @@ const RemoteAccess = () => {
             Acesso remoto
           </h1>
           <p className="text-muted-foreground">
-            Cadastre o ID AnyDesk/RustDesk de cada PC de loja e conecte com um clique.
-            Recomendado: <b>RustDesk</b> (gratuito e open-source).
+            Cadastre o ID AnyDesk de cada PC de loja e conecte com um clique.
+            Instale o AnyDesk no PC de quem acessa e no PC da loja.
           </p>
         </div>
         <div className="flex gap-2">
@@ -224,21 +220,37 @@ const RemoteAccess = () => {
         </div>
       </div>
 
+      <Card>
+        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 text-sm">
+          <Info className="h-5 w-5 text-primary shrink-0" />
+          <div className="flex-1 space-y-1">
+            <p className="font-medium">Como usar</p>
+            <p className="text-muted-foreground">
+              1. Instale o AnyDesk no PC da loja e no seu PC.
+              2. No PC da loja, anote o ID do AnyDesk.
+              3. Cadastre o ID aqui e clique em <b>Conectar via AnyDesk</b>.
+            </p>
+          </div>
+          <a href="https://anydesk.com/pt/downloads/thank-you?dv=win_exe"
+             target="_blank" rel="noreferrer"
+             className="inline-flex items-center gap-1 text-primary hover:underline shrink-0">
+            <ExternalLink className="h-4 w-4" /> Baixar AnyDesk
+          </a>
+        </CardContent>
+      </Card>
+
       {loading ? (
         <p className="text-sm text-muted-foreground">Carregando…</p>
       ) : machines.length === 0 ? (
         <Card>
           <CardContent className="p-6 text-center space-y-3">
             <p className="text-sm text-muted-foreground">
-              Nenhuma máquina cadastrada ainda. Instale o RustDesk (ou AnyDesk) no PC da loja,
+              Nenhuma máquina cadastrada ainda. Instale o AnyDesk no PC da loja,
               copie o ID que aparece e cole aqui.
             </p>
             <div className="flex flex-wrap justify-center gap-2 text-xs">
-              <a href="https://rustdesk.com/" target="_blank" rel="noreferrer"
-                 className="underline text-primary">Baixar RustDesk</a>
-              <span className="text-muted-foreground">·</span>
-              <a href="https://anydesk.com/pt/downloads/windows" target="_blank" rel="noreferrer"
-                 className="underline text-primary">Baixar AnyDesk</a>
+              <a href="https://anydesk.com/pt/downloads/thank-you?dv=win_exe" target="_blank" rel="noreferrer"
+                 className="underline text-primary">Baixar AnyDesk para Windows</a>
             </div>
           </CardContent>
         </Card>
@@ -261,7 +273,7 @@ const RemoteAccess = () => {
                               {m.machine_type.toUpperCase()}
                             </Badge>
                             <Badge variant="outline" className="text-[10px]">
-                              {m.tool === "anydesk" ? "AnyDesk" : "RustDesk"}
+                              AnyDesk
                             </Badge>
                           </div>
                         </div>
@@ -318,7 +330,7 @@ const RemoteAccess = () => {
 
                       <Button onClick={() => connect(m)} className="w-full gap-2" size="sm">
                         <ExternalLink className="h-4 w-4" />
-                        Conectar via {m.tool === "anydesk" ? "AnyDesk" : "RustDesk"}
+                        Conectar via AnyDesk
                       </Button>
                     </CardContent>
                   </Card>
@@ -334,7 +346,7 @@ const RemoteAccess = () => {
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar máquina" : "Nova máquina"}</DialogTitle>
             <DialogDescription>
-              Cadastre o ID exibido pelo cliente AnyDesk/RustDesk instalado no PC.
+              Cadastre o ID exibido pelo cliente AnyDesk instalado no PC.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -369,23 +381,10 @@ const RemoteAccess = () => {
               <Input value={form.label ?? ""} placeholder="Ex.: PDV Caixa 1"
                      onChange={(e) => setForm({ ...form, label: e.target.value })} />
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1.5">
-                <Label>Ferramenta</Label>
-                <Select value={form.tool ?? "rustdesk"}
-                        onValueChange={(v) => setForm({ ...form, tool: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="rustdesk">RustDesk</SelectItem>
-                    <SelectItem value="anydesk">AnyDesk</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>ID remoto *</Label>
-                <Input value={form.remote_id ?? ""} placeholder="123 456 789"
-                       onChange={(e) => setForm({ ...form, remote_id: e.target.value })} />
-              </div>
+            <div className="space-y-1.5">
+              <Label>ID AnyDesk *</Label>
+              <Input value={form.remote_id ?? ""} placeholder="123 456 789"
+                     onChange={(e) => setForm({ ...form, remote_id: e.target.value })} />
             </div>
             <div className="space-y-1.5">
               <Label>Senha de acesso</Label>
@@ -415,7 +414,7 @@ const RemoteAccess = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Remover máquina?</AlertDialogTitle>
             <AlertDialogDescription>
-              O cadastro será excluído. O agente AnyDesk/RustDesk no PC continua funcionando normalmente.
+              O cadastro será excluído. O agente AnyDesk no PC continua funcionando normalmente.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
