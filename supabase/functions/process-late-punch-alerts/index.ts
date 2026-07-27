@@ -7,6 +7,7 @@ import {
   fanoutExtras,
 } from "../_shared/notifyChannels.ts";
 import { pushToUsers } from "../_shared/pushFanout.ts";
+import { sendAlertEmails } from "../_shared/emailFanout.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -214,6 +215,12 @@ Deno.serve(async (req) => {
         category: "timeclock",
         skipInApp: true,
       });
+      await sendAlertEmails("timeclock", {
+        title: `Atraso: ${emp.full_name}`,
+        message,
+        category: "Atraso de ponto",
+        severity: "warning",
+      }, supabase);
 
       await supabase.from("late_punch_alerts_sent").insert({
         employee_id: sch.employee_id,
@@ -311,6 +318,12 @@ Deno.serve(async (req) => {
           category: "timeclock",
           skipInApp: true,
         });
+        await sendAlertEmails("timeclock", {
+          title: `Freelancer atrasado: ${freelancer.full_name}`,
+          message,
+          category: "Atraso de ponto",
+          severity: "warning",
+        }, supabase);
 
 
         if (payment?.id) {

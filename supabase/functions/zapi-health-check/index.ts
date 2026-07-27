@@ -1,6 +1,7 @@
 // Verifica status das instâncias Z-API e envia SMS se algum WhatsApp cair.
 // Executado por cron (a cada 10 minutos).
 import { createClient } from "npm:@supabase/supabase-js@2.45.0";
+import { sendAlertEmails } from "../_shared/emailFanout.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -109,6 +110,17 @@ Deno.serve(async (req) => {
           console.error("send-sms failed", phone, e);
         }
       }
+    }
+
+    if (shouldAlert) {
+      await sendAlertEmails("whatsapp_health", {
+        title: check.status === "connected"
+          ? `WhatsApp "${s.label}" voltou a conectar`
+          : `WhatsApp "${s.label}" desconectado`,
+        message: alertMessage,
+        category: "WhatsApp",
+        severity: check.status === "connected" ? "info" : "critical",
+      }, admin);
     }
 
     await admin.from("whatsapp_senders").update({

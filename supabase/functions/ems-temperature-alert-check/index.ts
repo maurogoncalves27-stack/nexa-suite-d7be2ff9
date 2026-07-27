@@ -10,6 +10,7 @@ import {
   sendWhatsapp,
 } from "../_shared/notifyChannels.ts";
 import { pushToUsers } from "../_shared/pushFanout.ts";
+import { sendAlertEmails } from "../_shared/emailFanout.ts";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -257,6 +258,12 @@ Deno.serve(async (req: Request) => {
               tag: `temp-recovered-${sensor.unique_code}`,
               category: "temperature",
             });
+            await sendAlertEmails("temperature", {
+              title: `Temperatura normalizada · ${sensor.label}`,
+              message: shortMsg,
+              category: "Temperatura",
+              severity: "info",
+            }, supabase);
           }
 
           await supabase.from("nutri_temperature_alerts").insert({
@@ -395,6 +402,14 @@ Deno.serve(async (req: Request) => {
         tag: `temp-${kind}-${sensor.unique_code}-${new Date().toISOString().slice(0, 13)}`,
         category: "temperature",
       });
+      await sendAlertEmails("temperature", {
+        title: kind === "offline"
+          ? `Sensor offline · ${sensor.label}`
+          : `Temperatura fora da faixa · ${sensor.label}`,
+        message,
+        category: "Temperatura",
+        severity: kind === "offline" ? "warning" : "critical",
+      }, supabase);
 
       results.push({ sensor: sensor.unique_code, kind, recipients: notified.length });
     }

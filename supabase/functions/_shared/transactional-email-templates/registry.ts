@@ -14,6 +14,7 @@ import { template as applicationRejected } from './application-rejected.tsx'
 import { template as interviewApproved } from './interview-approved.tsx'
 import { template as documentsRequest } from './documents-request.tsx'
 import { template as trainingScheduled } from './training-scheduled.tsx'
+import { template as alertGeneric } from './alert-generic.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'test-email': testEmail,
@@ -21,4 +22,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'interview-approved': interviewApproved,
   'documents-request': documentsRequest,
   'training-scheduled': trainingScheduled,
+  'alert-generic': alertGeneric,
 }
