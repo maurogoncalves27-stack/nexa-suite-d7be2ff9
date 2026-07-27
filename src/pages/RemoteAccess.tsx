@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Monitor, Plus, Pencil, Trash2, Copy, ExternalLink, Eye, EyeOff, RefreshCw } from "lucide-react";
+import { Monitor, Plus, Pencil, Trash2, Copy, ExternalLink, Eye, EyeOff, RefreshCw, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -219,6 +219,25 @@ const RemoteAccess = () => {
           </Button>
         </div>
       </div>
+
+      <Card>
+        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 text-sm">
+          <Info className="h-5 w-5 text-primary shrink-0" />
+          <div className="flex-1 space-y-1">
+            <p className="font-medium">Como usar</p>
+            <p className="text-muted-foreground">
+              1. Instale o AnyDesk no PC da loja e no seu PC.
+              2. No PC da loja, anote o ID do AnyDesk.
+              3. Cadastre o ID aqui e clique em <b>Conectar via AnyDesk</b>.
+            </p>
+          </div>
+          <a href="https://anydesk.com/pt/downloads/thank-you?dv=win_exe"
+             target="_blank" rel="noreferrer"
+             className="inline-flex items-center gap-1 text-primary hover:underline shrink-0">
+            <ExternalLink className="h-4 w-4" /> Baixar AnyDesk
+          </a>
+        </CardContent>
+      </Card>
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Carregando…</p>
