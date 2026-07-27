@@ -47,7 +47,19 @@ interface SmsSender {
 }
 
 type PhoneRecipient = { phone: string; label?: string };
+type GroupRecipient = { group_id: string; name?: string; sender_id?: string };
+type Recipient = PhoneRecipient | GroupRecipient;
 type EmailRecipient = { email: string; label?: string };
+
+const isGroupR = (r: Recipient): r is GroupRecipient => !!(r as any).group_id;
+
+interface WhatsappGroup {
+  id: string;
+  sender_id: string;
+  group_id: string;
+  name: string;
+  active: boolean;
+}
 
 interface Setting {
   alert_key: string;
@@ -60,7 +72,7 @@ interface Setting {
   sms_enabled: boolean;
   sms_sender_id: string | null;
   email_enabled: boolean;
-  extra_recipients: PhoneRecipient[];
+  extra_recipients: Recipient[];
   email_recipients: EmailRecipient[];
 }
 
