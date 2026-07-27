@@ -318,9 +318,14 @@ export default function WarningsPanel() {
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center justify-between gap-2">
                                         <span className="font-medium truncate">{w.title}</span>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => removeWarning(w.id)}>
-                                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                                        </Button>
+                                        <div className="flex items-center shrink-0">
+                                          <Button variant="ghost" size="icon" className="h-6 w-6" title="Baixar PDF" onClick={() => downloadWarning(w)} disabled={downloadingId === w.id}>
+                                            {downloadingId === w.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 text-primary" />}
+                                          </Button>
+                                          <Button variant="ghost" size="icon" className="h-6 w-6" title="Excluir" onClick={() => removeWarning(w.id)}>
+                                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                          </Button>
+                                        </div>
                                       </div>
                                       <div className="flex items-center gap-2 mt-0.5">
                                         <Badge variant={STATUS_VARIANT[w.status]} className="text-[10px] py-0 h-4">{STATUS_LABEL[w.status]}</Badge>
