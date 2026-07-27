@@ -18204,6 +18204,50 @@ export type Database = {
           },
         ]
       }
+      whatsapp_groups: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          group_id: string
+          id: string
+          name: string
+          participants_count: number | null
+          sender_id: string
+          synced_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          group_id: string
+          id?: string
+          name: string
+          participants_count?: number | null
+          sender_id: string
+          synced_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          group_id?: string
+          id?: string
+          name?: string
+          participants_count?: number | null
+          sender_id?: string
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_groups_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_senders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_notifications_log: {
         Row: {
           category: string | null
