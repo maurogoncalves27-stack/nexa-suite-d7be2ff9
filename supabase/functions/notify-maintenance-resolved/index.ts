@@ -1,11 +1,9 @@
 // Notifica o colaborador que abriu o chamado quando o gestor marca como
-// resolvido. Envia WhatsApp via UAZAPI pedindo confirmação na Área do
-// Colaborador.
+// resolvido. Envia WhatsApp via send-whatsapp (Z-API) pedindo confirmação
+// na Área do Colaborador.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const UAZAPI_BASE = (Deno.env.get("UAZAPI_BASE_URL") || "").replace(/\/+$/, "");
-const UAZAPI_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN") || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const APP_BASE_URL =
@@ -20,15 +18,22 @@ function normalizePhone(raw: string | null | undefined): string | null {
 }
 
 async function sendWhatsapp(phone: string, message: string) {
-  if (!UAZAPI_BASE || !UAZAPI_TOKEN) return { ok: false, error: "UAZAPI not configured" };
-  const res = await fetch(`${UAZAPI_BASE}/send/text`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", token: UAZAPI_TOKEN },
-    body: JSON.stringify({ number: phone, text: message }),
-  });
-  const text = await res.text();
-  return { ok: res.ok, status: res.status, body: text };
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${SERVICE_ROLE}`,
+      },
+      body: JSON.stringify({ phone, message, category: "maintenance_request" }),
+    });
+    const text = await res.text();
+    return { ok: res.ok, status: res.status, body: text };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });

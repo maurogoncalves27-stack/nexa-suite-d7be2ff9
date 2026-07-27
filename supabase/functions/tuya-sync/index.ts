@@ -266,10 +266,11 @@ Deno.serve(async (req) => {
                 // Fire WhatsApp
                 for (const r of recs ?? []) {
                   try {
-                    await admin.functions.invoke('uazapi-send-text', {
+                    await admin.functions.invoke('send-whatsapp', {
                       body: {
                         phone: r.phone,
-                        text: `🚨 *Alerta de temperatura*\n\n${eq.name}\nTemperatura: *${temp}°C* (faixa ${eq.min_temp_c}~${eq.max_temp_c}°C)\nFora da faixa há ${Math.round(minsOut)} min.`,
+                        message: `🚨 *Alerta de temperatura*\n\n${eq.name}\nTemperatura: *${temp}°C* (faixa ${eq.min_temp_c}~${eq.max_temp_c}°C)\nFora da faixa há ${Math.round(minsOut)} min.`,
+                        category: 'temperature',
                       },
                     });
                   } catch (e) { report.errors.push(`whatsapp ${r.phone}: ${e}`); }

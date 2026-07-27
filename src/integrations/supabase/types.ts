@@ -18255,8 +18255,6 @@ export type Database = {
           label: string
           phone_display: string | null
           provider: string
-          uazapi_base_url: string | null
-          uazapi_token: string | null
           updated_at: string
           zapi_client_token: string | null
           zapi_instance_id: string | null
@@ -18270,8 +18268,6 @@ export type Database = {
           label: string
           phone_display?: string | null
           provider?: string
-          uazapi_base_url?: string | null
-          uazapi_token?: string | null
           updated_at?: string
           zapi_client_token?: string | null
           zapi_instance_id?: string | null
@@ -18285,8 +18281,6 @@ export type Database = {
           label?: string
           phone_display?: string | null
           provider?: string
-          uazapi_base_url?: string | null
-          uazapi_token?: string | null
           updated_at?: string
           zapi_client_token?: string | null
           zapi_instance_id?: string | null

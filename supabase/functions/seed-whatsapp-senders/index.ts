@@ -14,8 +14,6 @@ Deno.serve(async (req) => {
     const zapiCustToken = Deno.env.get("ZAPI_CUSTOMER_TOKEN");
     const zapiCustClient = Deno.env.get("ZAPI_CUSTOMER_CLIENT_TOKEN");
 
-    const uazBase = Deno.env.get("UAZAPI_BASE_URL");
-    const uazToken = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
 
     const rows: any[] = [];
 
@@ -58,16 +56,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (uazBase && uazToken) {
-      await upsert({ provider: "uazapi", uazapi_base_url: uazBase }, {
-        label: "UAZAPI (principal)",
-        provider: "uazapi",
-        uazapi_base_url: uazBase,
-        uazapi_token: uazToken,
-        active: true,
-        is_default: false,
-      });
-    }
 
     return new Response(JSON.stringify({ ok: true, rows }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

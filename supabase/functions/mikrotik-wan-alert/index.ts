@@ -7,9 +7,6 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-const UAZAPI_BASE_URL = (Deno.env.get("UAZAPI_BASE_URL") || "").replace(/\/+$/, "");
-const UAZAPI_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN") || "";
-
 function normalizePhone(raw: string): string | null {
   const d = (raw || "").replace(/\D+/g, "");
   if (!d) return null;
@@ -19,21 +16,23 @@ function normalizePhone(raw: string): string | null {
 }
 
 async function sendWhatsapp(phone: string, message: string) {
-  if (!UAZAPI_BASE_URL || !UAZAPI_TOKEN) return { ok: false, reason: "uazapi-missing" };
   const to = normalizePhone(phone);
   if (!to) return { ok: false, reason: "invalid-phone" };
   try {
-    const res = await fetch(`${UAZAPI_BASE_URL}/send/text`, {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", token: UAZAPI_TOKEN },
-      body: JSON.stringify({ number: to, text: message }),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${SERVICE_ROLE}`,
+      },
+      body: JSON.stringify({ phone: to, message, category: "network" }),
     });
-    await res.text();
     return { ok: res.ok, status: res.status };
   } catch (e) {
     return { ok: false, error: String(e) };
   }
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });

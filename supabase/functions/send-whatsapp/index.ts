@@ -17,15 +17,8 @@ const ENV_ZAPI = {
   token: Deno.env.get("ZAPI_TOKEN") ?? "",
   clientToken: Deno.env.get("ZAPI_CLIENT_TOKEN") ?? "",
 };
-// UAZAPI env fallback
-const ENV_UAZAPI = {
-  baseUrl: (Deno.env.get("UAZAPI_BASE_URL") ?? "").replace(/\/+$/, ""),
-  token: Deno.env.get("UAZAPI_INSTANCE_TOKEN") ?? "",
-};
 
-type SenderCreds =
-  | { provider: "zapi"; instanceId: string; token: string; clientToken: string; sender_id: string | null }
-  | { provider: "uazapi"; baseUrl: string; token: string; sender_id: string | null };
+type SenderCreds = { provider: "zapi"; instanceId: string; token: string; clientToken: string; sender_id: string | null };
 
 interface Body {
   user_id?: string;
@@ -41,11 +34,8 @@ interface Body {
 function normalizePhone(raw: string): string | null {
   const digits = (raw || "").replace(/\D+/g, "");
   if (!digits) return null;
-  // Já tem DDI
   if (digits.length >= 12 && digits.startsWith("55")) return digits;
-  // 10 ou 11 dígitos (DDD + número) -> prefixa 55
   if (digits.length === 10 || digits.length === 11) return "55" + digits;
-  // Caso já venha completo internacional sem 55, devolve como está se tiver tamanho razoável
   if (digits.length >= 11 && digits.length <= 15) return digits;
   return null;
 }
@@ -75,36 +65,11 @@ async function sendViaZapi(
   }
 }
 
-async function sendViaUazapi(
-  creds: { baseUrl: string; token: string },
-  phone: string,
-  message: string,
-): Promise<{ ok: boolean; id?: string; error?: string }> {
-  if (!creds.baseUrl || !creds.token) {
-    return { ok: false, error: "UAZAPI não configurada (faltam credenciais)" };
-  }
-  const url = `${creds.baseUrl.replace(/\/+$/, "")}/send/text`;
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", token: creds.token },
-      body: JSON.stringify({ number: phone, text: message }),
-    });
-    const text = await res.text();
-    let json: any = {};
-    try { json = JSON.parse(text); } catch { /* ignore */ }
-    if (!res.ok) return { ok: false, error: `UAZAPI ${res.status}: ${text.slice(0, 300)}` };
-    return { ok: true, id: json?.messageid ?? json?.id ?? json?.key?.id };
-  } catch (e: any) {
-    return { ok: false, error: e?.message ?? "fetch error" };
-  }
-}
-
 async function resolveSenderCreds(
   admin: ReturnType<typeof createClient>,
   senderId?: string,
 ): Promise<SenderCreds> {
-  const cols = "id, provider, zapi_instance_id, zapi_token, zapi_client_token, uazapi_base_url, uazapi_token, active";
+  const cols = "id, provider, zapi_instance_id, zapi_token, zapi_client_token, active";
   if (senderId) {
     const { data } = await admin.from("whatsapp_senders").select(cols).eq("id", senderId).maybeSingle();
     if (data && (data as any).active) return buildCreds(data);
@@ -112,23 +77,15 @@ async function resolveSenderCreds(
   const { data: def } = await admin
     .from("whatsapp_senders").select(cols).eq("is_default", true).eq("active", true).maybeSingle();
   if (def) return buildCreds(def);
-  // env fallback: prefer zapi if configured, else uazapi
-  if (ENV_ZAPI.instanceId) return { provider: "zapi", ...ENV_ZAPI, sender_id: null };
-  return { provider: "uazapi", baseUrl: ENV_UAZAPI.baseUrl, token: ENV_UAZAPI.token, sender_id: null };
+  return { provider: "zapi", ...ENV_ZAPI, sender_id: null };
 }
 
 function buildCreds(row: any): SenderCreds {
-  const provider = (row.provider ?? "zapi") as "zapi" | "uazapi";
-  if (provider === "uazapi") {
-    return { provider: "uazapi", baseUrl: row.uazapi_base_url ?? "", token: row.uazapi_token ?? "", sender_id: row.id };
-  }
   return { provider: "zapi", instanceId: row.zapi_instance_id ?? "", token: row.zapi_token ?? "", clientToken: row.zapi_client_token ?? "", sender_id: row.id };
 }
 
 async function sendByProvider(creds: SenderCreds, phone: string, message: string) {
-  if (creds.provider === "zapi") return await sendViaZapi(creds, phone, message);
-  if (creds.provider === "uazapi") return await sendViaUazapi(creds, phone, message);
-  return { ok: false, error: `Provider desconhecido` };
+  return await sendViaZapi(creds, phone, message);
 }
 
 Deno.serve(async (req) => {
