@@ -14,8 +14,6 @@ Deno.serve(async (req) => {
     const zapiCustToken = Deno.env.get("ZAPI_CUSTOMER_TOKEN");
     const zapiCustClient = Deno.env.get("ZAPI_CUSTOMER_CLIENT_TOKEN");
 
-    const uazBase = Deno.env.get("UAZAPI_BASE_URL");
-    const uazToken = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
 
     const rows: any[] = [];
 
