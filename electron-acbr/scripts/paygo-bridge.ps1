@@ -811,18 +811,36 @@ public static class PayGoBridge
                 ret = Fn<PW_iPPConfirmData_>("PW_iPPConfirmData")(index);
                 return ret == PWRET_OK ? PinpadLoop("confirmData") : ret;
             case PWDAT_PPREMCRD:
+                // PWOPER_RPTTRUNC: se a remocao ja foi feita numa iteracao anterior,
+                // a DLL pode reapresentar PWDAT_PPREMCRD apenas para sinalizar que
+                // o fluxo terminou. Nao chamar PW_iPPRemoveCard() de novo, encerrar.
+                if (_currentOperation == PWOPER_RPTTRUNC && _rptTruncRemoveDone)
+                {
+                    EmitEvent("INFO", "Relatorio sintetico: remocao ja concluida em iteracao anterior; encerrando fluxo administrativo");
+                    return BRIDGE_ADMIN_OPERATION_FINISHED;
+                }
+
                 EmitEvent("PINPAD", IsNoCardAdministrativeOperation(_currentOperation) ? "Finalizando operacao administrativa no pinpad" : "Remova o cartao do pinpad");
                 ret = Fn<PW_iPPRemoveCard_>("PW_iPPRemoveCard")();
                 if (ret != PWRET_OK) return ret;
 
-                // PWOPER_RPTTRUNC ainda precisa retornar ao PW_iExecTransac
-                // depois da remocao/finalizacao do pinpad para que a PGWebLib
-                // entregue o retorno terminal e os resultados do relatorio.
+                // PWOPER_RPTTRUNC precisa aguardar o termino do PinpadLoop("removeCard")
+                // e depois retornar ao PW_iExecTransac para a confirmacao interna
+                // da DLL. Marcamos que a remocao ja aconteceu para que a proxima
+                // PWDAT_PPREMCRD (se vier) nao dispare PW_iPPRemoveCard() de novo.
                 if (_currentOperation == PWOPER_RPTTRUNC)
                 {
+                    short rmRet = PinpadLoop("removeCard");
+                    _rptTruncRemoveDone = true;
+                    if (rmRet != PWRET_OK && rmRet != PWRET_TIMEOUT)
+                    {
+                        EmitEvent("INFO", "Relatorio sintetico: PinpadLoop(removeCard) ret=" + rmRet);
+                        return rmRet;
+                    }
                     EmitEvent("INFO", "Relatorio sintetico: remocao processada; aguardando retorno final da PGWebLib");
                     return PWRET_OK;
                 }
+
 
                 if (IsNoCardAdministrativeOperation(_currentOperation))
                 {
