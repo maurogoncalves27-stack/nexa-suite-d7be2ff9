@@ -64,15 +64,6 @@ const INTEGRATIONS: Integration[] = [
   },
   // ─── WhatsApp ───
   {
-    id: "uazapi",
-    name: "UAZAPI (WhatsApp interno)",
-    category: "WhatsApp",
-    description: "Canal interno de notificações WhatsApp (colaboradores, alertas, avisos).",
-    secrets: ["UAZAPI_BASE_URL", "UAZAPI_INSTANCE_TOKEN", "UAZAPI_WEBHOOK_SECRET"],
-    docsUrl: "https://uazapi.com",
-    where: "Painel UAZAPI → Instância → Token",
-  },
-  {
     id: "zapi-interno",
     name: "Z-API (interno)",
     category: "WhatsApp",
