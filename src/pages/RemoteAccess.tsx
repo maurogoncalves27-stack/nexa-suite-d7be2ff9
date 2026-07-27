@@ -38,19 +38,16 @@ const emptyForm = (): Partial<Machine> => ({
   store_id: null,
   label: "",
   machine_type: "pdv",
-  tool: "rustdesk",
+  tool: "anydesk",
   remote_id: "",
   password: "",
   hostname: "",
   notes: "",
 });
 
-const buildDeepLink = (tool: string, id: string) => {
+const buildDeepLink = (id: string) => {
   const clean = id.replace(/\s+/g, "");
-  if (tool === "anydesk") return `anydesk:${clean}`;
-  // RustDesk registra o handler `rustdesk://` — o formato aceito pelo cliente
-  // atual é simplesmente `rustdesk://<id>` (o antigo `/connect/` não abre).
-  return `rustdesk://${clean}`;
+  return `anydesk:${clean}`;
 };
 
 const RemoteAccess = () => {
@@ -114,7 +111,7 @@ const RemoteAccess = () => {
       store_id: form.store_id || null,
       label: form.label!.trim(),
       machine_type: form.machine_type || "pdv",
-      tool: form.tool || "rustdesk",
+      tool: "anydesk",
       remote_id: form.remote_id!.trim(),
       password: form.password?.trim() || null,
       hostname: form.hostname?.trim() || null,
@@ -163,8 +160,7 @@ const RemoteAccess = () => {
 
   const connect = async (m: Machine) => {
     void audit(m.id, "connect");
-    const url = buildDeepLink(m.tool, m.remote_id);
-    const toolName = m.tool === "anydesk" ? "AnyDesk" : "RustDesk";
+    const url = buildDeepLink(m.remote_id);
 
     // Copia a senha para a área de transferência para colar rapidamente no cliente.
     if (m.password) {
@@ -181,10 +177,10 @@ const RemoteAccess = () => {
     a.remove();
 
     toast({
-      title: `Abrindo ${toolName}…`,
+      title: "Abrindo AnyDesk…",
       description: m.password
-        ? "Senha copiada para colar no cliente. Se nada abrir, instale o RustDesk no seu PC."
-        : "Se nada abrir, instale o RustDesk no seu PC e tente novamente.",
+        ? "Senha copiada para colar no cliente. Se nada abrir, instale o AnyDesk no seu PC."
+        : "Se nada abrir, instale o AnyDesk no seu PC e tente novamente.",
     });
   };
 
