@@ -102,16 +102,20 @@ export default function NotificationSettings() {
   const [smsDraft, setSmsDraft] = useState<Omit<SmsSender, "id">>(emptySms);
   const [saving, setSaving] = useState(false);
   const [testingKey, setTestingKey] = useState<string | null>(null);
+  const [groups, setGroups] = useState<WhatsappGroup[]>([]);
+  const [syncingSender, setSyncingSender] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
-    const [{ data: s }, { data: sms }, { data: c }] = await Promise.all([
+    const [{ data: s }, { data: sms }, { data: c }, { data: g }] = await Promise.all([
       supabase.from("whatsapp_senders").select("*").order("is_default", { ascending: false }).order("label"),
       supabase.from("sms_senders").select("*").order("is_default", { ascending: false }).order("label"),
       supabase.from("notification_settings").select("*").order("category_group").order("label"),
+      supabase.from("whatsapp_groups").select("*").eq("active", true).order("name"),
     ]);
     setSenders((s as Sender[]) ?? []);
     setSmsSenders((sms as SmsSender[]) ?? []);
+    setGroups((g as WhatsappGroup[]) ?? []);
     setSettings(((c as any[]) ?? []).map((row) => ({
       ...row,
       extra_recipients: Array.isArray(row.extra_recipients) ? row.extra_recipients : [],
@@ -120,6 +124,19 @@ export default function NotificationSettings() {
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
+
+  const syncGroups = async (senderId: string) => {
+    setSyncingSender(senderId);
+    try {
+      const { data, error } = await supabase.functions.invoke("zapi-list-groups", { body: { sender_id: senderId } });
+      if (error) throw error;
+      const count = (data as any)?.count ?? 0;
+      toast.success(`${count} grupo(s) sincronizado(s).`);
+      load();
+    } catch (e: any) {
+      toast.error(e.message ?? "Falha ao sincronizar grupos");
+    } finally { setSyncingSender(null); }
+  };
 
   const updateSetting = async (key: string, patch: Partial<Setting>) => {
     setSettings((prev) => prev.map((x) => (x.alert_key === key ? { ...x, ...patch } : x)));
