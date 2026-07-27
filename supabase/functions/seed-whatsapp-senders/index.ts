@@ -56,16 +56,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (uazBase && uazToken) {
-      await upsert({ provider: "uazapi", uazapi_base_url: uazBase }, {
-        label: "UAZAPI (principal)",
-        provider: "uazapi",
-        uazapi_base_url: uazBase,
-        uazapi_token: uazToken,
-        active: true,
-        is_default: false,
-      });
-    }
 
     return new Response(JSON.stringify({ ok: true, rows }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
