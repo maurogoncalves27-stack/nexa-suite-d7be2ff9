@@ -48,7 +48,9 @@ const emptyForm = (): Partial<Machine> => ({
 const buildDeepLink = (tool: string, id: string) => {
   const clean = id.replace(/\s+/g, "");
   if (tool === "anydesk") return `anydesk:${clean}`;
-  return `rustdesk://connect/${clean}`;
+  // RustDesk registra o handler `rustdesk://` — o formato aceito pelo cliente
+  // atual é simplesmente `rustdesk://<id>` (o antigo `/connect/` não abre).
+  return `rustdesk://${clean}`;
 };
 
 const RemoteAccess = () => {
