@@ -100,43 +100,25 @@ Deno.serve(async (req) => {
       return j({ error: "db_error" }, 500);
     }
 
-    // Notifica loja por WhatsApp (best-effort, não bloqueia)
+    // Notifica loja por WhatsApp (best-effort, não bloqueia).
+    // Usa alerta `crm_reservation` em Configurações → Alertas e notificações.
     (async () => {
       try {
-        const { data: cfgRow } = await supabase
-          .from("parme_site_settings")
-          .select("value")
-          .eq("key", "reservations")
-          .maybeSingle();
-        const cfg = (cfgRow?.value ?? {}) as {
-          whatsappStorePhone?: string;
-          notifyEnabled?: boolean;
-        };
-        if (cfg.notifyEnabled === false || !cfg.whatsappStorePhone) return;
-        const instance = Deno.env.get("ZAPI_CUSTOMER_INSTANCE_ID");
-        const token = Deno.env.get("ZAPI_CUSTOMER_TOKEN");
-        const clientToken = Deno.env.get("ZAPI_CUSTOMER_CLIENT_TOKEN");
-        if (!instance || !token || !clientToken) return;
+        const { loadAlertConfig, fanoutExtras } = await import(
+          "../_shared/notifyChannels.ts"
+        );
+        const { enabled, waConfig, extras } = await loadAlertConfig(
+          supabase,
+          "crm_reservation",
+        );
+        if (!enabled || !waConfig || extras.length === 0) return;
         const dateBR = new Date(reservation_date + "T00:00")
           .toLocaleDateString("pt-BR");
         const msg = `🍽️ *Nova reserva (formulário)*\n\n` +
           `👤 ${name}\n📞 ${phone}\n📅 ${dateBR} às ${reservation_time}\n` +
           `👥 ${party_size} ${party_size === 1 ? "pessoa" : "pessoas"}\n` +
           (body.notes ? `📝 ${body.notes}\n` : "") + `\nConfirme com o cliente.`;
-        await fetch(
-          `https://api.z-api.io/instances/${instance}/token/${token}/send-text`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Client-Token": clientToken,
-            },
-            body: JSON.stringify({
-              phone: cfg.whatsappStorePhone.replace(/\D/g, ""),
-              message: msg,
-            }),
-          },
-        );
+        await fanoutExtras(waConfig, extras, msg);
       } catch (e) {
         console.warn("[parme-reservation-create] notify err:", e);
       }
