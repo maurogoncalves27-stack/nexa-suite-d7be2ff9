@@ -161,9 +161,31 @@ const RemoteAccess = () => {
     }
   };
 
-  const connect = (m: Machine) => {
+  const connect = async (m: Machine) => {
     void audit(m.id, "connect");
-    window.location.href = buildDeepLink(m.tool, m.remote_id);
+    const url = buildDeepLink(m.tool, m.remote_id);
+    const toolName = m.tool === "anydesk" ? "AnyDesk" : "RustDesk";
+
+    // Copia a senha para a área de transferência para colar rapidamente no cliente.
+    if (m.password) {
+      try { await navigator.clipboard.writeText(m.password); } catch { /* ignora */ }
+    }
+
+    // Dispara o deep link via <a> em vez de window.location — não navega a página
+    // e permite ao usuário ver o fallback caso o cliente não esteja instalado.
+    const a = document.createElement("a");
+    a.href = url;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    toast({
+      title: `Abrindo ${toolName}…`,
+      description: m.password
+        ? "Senha copiada para colar no cliente. Se nada abrir, instale o RustDesk no seu PC."
+        : "Se nada abrir, instale o RustDesk no seu PC e tente novamente.",
+    });
   };
 
   const toggleReveal = (m: Machine) => {
