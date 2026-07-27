@@ -151,6 +151,7 @@ public static class PayGoBridge
     private static bool _interactive = false;
     private static byte _currentOperation = 0;
     private static byte _selectedAdminOperation = 0;
+    private static bool _rptTruncRemoveDone = false;
     private static int _captureSeq = 0;
     private static Dictionary<string, string> _captureValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
