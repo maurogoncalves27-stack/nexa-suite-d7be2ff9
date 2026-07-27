@@ -149,6 +149,46 @@ export default function WarningsPanel() {
     load();
   };
 
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const downloadWarning = async (w: Warning) => {
+    setDownloadingId(w.id);
+    try {
+      const { data: emp } = await supabase
+        .from("employees")
+        .select("id, full_name, cpf, position, store_id, stores(name, company_legal_name, company_cnpj)")
+        .eq("id", w.employee_id)
+        .maybeSingle();
+      const store: any = (emp as any)?.stores ?? {};
+      const blob = await generateWarningPdfBlob(
+        {
+          id: emp?.id,
+          full_name: emp?.full_name ?? empName(w.employee_id),
+          cpf: emp?.cpf ?? null,
+          position: (emp as any)?.position ?? null,
+          store_name: store?.name ?? null,
+          company_legal_name: store?.company_legal_name ?? null,
+          company_cnpj: store?.company_cnpj ?? null,
+        },
+        w as any,
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const dateStr = new Date(w.issued_at).toISOString().slice(0, 10);
+      const safeTitle = (w.title || "advertencia").replace(/[^\w\-]+/g, "_").slice(0, 60);
+      const statusTag = w.status === "signed" ? "ASSINADA" : w.status === "refused" ? "RECUSADA" : "PENDENTE";
+      a.href = url;
+      a.download = `${dateStr}__${statusTag}__${safeTitle}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      toast({ title: "Erro ao gerar PDF", description: e?.message ?? String(e), variant: "destructive" });
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   const empName = (id: string) => employees.find((e) => e.id === id)?.full_name ?? "Colaborador";
 
   return (
