@@ -47,7 +47,19 @@ interface SmsSender {
 }
 
 type PhoneRecipient = { phone: string; label?: string };
+type GroupRecipient = { group_id: string; name?: string; sender_id?: string };
+type Recipient = PhoneRecipient | GroupRecipient;
 type EmailRecipient = { email: string; label?: string };
+
+const isGroupR = (r: Recipient): r is GroupRecipient => !!(r as any).group_id;
+
+interface WhatsappGroup {
+  id: string;
+  sender_id: string;
+  group_id: string;
+  name: string;
+  active: boolean;
+}
 
 interface Setting {
   alert_key: string;
@@ -60,7 +72,7 @@ interface Setting {
   sms_enabled: boolean;
   sms_sender_id: string | null;
   email_enabled: boolean;
-  extra_recipients: PhoneRecipient[];
+  extra_recipients: Recipient[];
   email_recipients: EmailRecipient[];
 }
 
@@ -90,16 +102,20 @@ export default function NotificationSettings() {
   const [smsDraft, setSmsDraft] = useState<Omit<SmsSender, "id">>(emptySms);
   const [saving, setSaving] = useState(false);
   const [testingKey, setTestingKey] = useState<string | null>(null);
+  const [groups, setGroups] = useState<WhatsappGroup[]>([]);
+  const [syncingSender, setSyncingSender] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
-    const [{ data: s }, { data: sms }, { data: c }] = await Promise.all([
+    const [{ data: s }, { data: sms }, { data: c }, { data: g }] = await Promise.all([
       supabase.from("whatsapp_senders").select("*").order("is_default", { ascending: false }).order("label"),
       supabase.from("sms_senders").select("*").order("is_default", { ascending: false }).order("label"),
       supabase.from("notification_settings").select("*").order("category_group").order("label"),
+      supabase.from("whatsapp_groups").select("*").eq("active", true).order("name"),
     ]);
     setSenders((s as Sender[]) ?? []);
     setSmsSenders((sms as SmsSender[]) ?? []);
+    setGroups((g as WhatsappGroup[]) ?? []);
     setSettings(((c as any[]) ?? []).map((row) => ({
       ...row,
       extra_recipients: Array.isArray(row.extra_recipients) ? row.extra_recipients : [],
@@ -108,6 +124,19 @@ export default function NotificationSettings() {
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
+
+  const syncGroups = async (senderId: string) => {
+    setSyncingSender(senderId);
+    try {
+      const { data, error } = await supabase.functions.invoke("zapi-list-groups", { body: { sender_id: senderId } });
+      if (error) throw error;
+      const count = (data as any)?.count ?? 0;
+      toast.success(`${count} grupo(s) sincronizado(s).`);
+      load();
+    } catch (e: any) {
+      toast.error(e.message ?? "Falha ao sincronizar grupos");
+    } finally { setSyncingSender(null); }
+  };
 
   const updateSetting = async (key: string, patch: Partial<Setting>) => {
     setSettings((prev) => prev.map((x) => (x.alert_key === key ? { ...x, ...patch } : x)));
@@ -274,17 +303,33 @@ export default function NotificationSettings() {
                   <p className="text-xs text-muted-foreground border rounded-md p-3">Nenhum número cadastrado.</p>
                 ) : (
                   <div className="space-y-1.5">
-                    {senders.map((s) => (
-                      <SenderRow key={s.id}
-                        title={s.label}
-                        badges={[
-                          s.is_default ? <Badge key="d" variant="secondary" className="gap-1 h-5 px-1.5 text-[10px]"><Star className="h-2.5 w-2.5" />Padrão</Badge> : null,
-                          !s.active ? <Badge key="a" variant="outline" className="h-5 px-1.5 text-[10px]">Inativo</Badge> : null,
-                        ]}
-                        sub={`${s.phone_display || "sem número"} · ${(s.zapi_instance_id ?? "").slice(0, 24)}…`}
-                        onEdit={() => openEdit(s)} onDelete={() => deleteSender(s.id)}
-                      />
-                    ))}
+                    {senders.map((s) => {
+                      const gCount = groups.filter((g) => g.sender_id === s.id).length;
+                      return (
+                        <div key={s.id} className="rounded-md border">
+                          <SenderRow
+                            title={s.label}
+                            badges={[
+                              s.is_default ? <Badge key="d" variant="secondary" className="gap-1 h-5 px-1.5 text-[10px]"><Star className="h-2.5 w-2.5" />Padrão</Badge> : null,
+                              !s.active ? <Badge key="a" variant="outline" className="h-5 px-1.5 text-[10px]">Inativo</Badge> : null,
+                              gCount > 0 ? <Badge key="g" variant="outline" className="h-5 px-1.5 text-[10px] gap-1"><Users className="h-2.5 w-2.5" />{gCount} grupos</Badge> : null,
+                            ]}
+                            sub={`${s.phone_display || "sem número"} · ${(s.zapi_instance_id ?? "").slice(0, 24)}…`}
+                            onEdit={() => openEdit(s)} onDelete={() => deleteSender(s.id)}
+                          />
+                          <div className="px-3 pb-2 flex justify-end">
+                            <Button
+                              type="button" size="sm" variant="ghost" className="h-7 gap-1 text-xs"
+                              disabled={syncingSender === s.id || !s.active}
+                              onClick={() => syncGroups(s.id)}
+                            >
+                              {syncingSender === s.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Users className="h-3 w-3" />}
+                              Sincronizar grupos
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -378,6 +423,7 @@ export default function NotificationSettings() {
                       setting={s}
                       senders={senders}
                       smsSenders={smsSenders}
+                      groups={groups}
                       onChange={(patch) => updateSetting(s.alert_key, patch)}
                       onTestEmail={() => sendTestEmail(s)}
                       testing={testingKey === s.alert_key}
@@ -398,11 +444,12 @@ export default function NotificationSettings() {
 // ================================================================
 
 function AlertCard({
-  setting, senders, smsSenders, onChange, onTestEmail, testing,
+  setting, senders, smsSenders, groups, onChange, onTestEmail, testing,
 }: {
   setting: Setting;
   senders: Sender[];
   smsSenders: SmsSender[];
+  groups: WhatsappGroup[];
   onChange: (patch: Partial<Setting>) => void;
   onTestEmail: () => void;
   testing: boolean;
@@ -412,6 +459,9 @@ function AlertCard({
   const smsSender = smsSenders.find((x) => x.id === setting.sms_sender_id);
   const wpDefault = senders.find((x) => x.is_default && x.active);
   const smsDefault = smsSenders.find((x) => x.is_default && x.active);
+  // Grupos do remetente ativo do alerta (ou do padrão) — apenas esses podem ser adicionados.
+  const activeWaSenderId = setting.whatsapp_sender_id ?? wpDefault?.id ?? null;
+  const availableGroups = groups.filter((g) => g.sender_id === activeWaSenderId);
 
   return (
     <div className={`rounded-lg border ${anyChannel ? "border-primary/30 bg-primary/[0.02]" : "bg-muted/20"} overflow-hidden`}>
@@ -458,7 +508,13 @@ function AlertCard({
             onChange={(v) => onChange({ extra_recipients: v })}
             hint="Números adicionais que recebem este alerta por WhatsApp e SMS."
           />
+          <GroupRecipients
+            value={setting.extra_recipients}
+            onChange={(v) => onChange({ extra_recipients: v })}
+            available={availableGroups}
+          />
         </ChannelRow>
+
 
         <ChannelRow
           icon={<MessageSquare className="h-4 w-4 text-warning" />} label="SMS"
@@ -600,31 +656,34 @@ function SenderPicker({
 function PhoneRecipients({
   value, onChange, hint,
 }: {
-  value: PhoneRecipient[];
-  onChange: (v: PhoneRecipient[]) => void;
+  value: Recipient[];
+  onChange: (v: Recipient[]) => void;
   hint?: string;
 }) {
   const [label, setLabel] = useState("");
   const [phone, setPhone] = useState("");
+  const phones = value.filter((r): r is PhoneRecipient => !isGroupR(r));
+  const others = value.filter((r) => isGroupR(r));
   const add = () => {
     const p = phone.replace(/\D+/g, "");
     if (p.length < 10) { toast.error("Informe um telefone com DDD."); return; }
     onChange([...value, { phone: p.startsWith("55") ? p : `55${p}`, label: label.trim() || undefined }]);
     setLabel(""); setPhone("");
   };
-  const remove = (i: number) => onChange(value.filter((_, idx) => idx !== i));
+  const remove = (target: PhoneRecipient) =>
+    onChange([...others, ...phones.filter((r) => r.phone !== target.phone)]);
 
   return (
     <div className="space-y-1.5">
       {hint && <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" />{hint}</p>}
-      {value.length > 0 && (
+      {phones.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {value.map((r, i) => (
+          {phones.map((r, i) => (
             <div key={i} className="inline-flex items-center gap-1 rounded-full border bg-background pl-2 pr-1 py-0.5 text-[11px]">
               <Phone className="h-3 w-3 text-muted-foreground" />
               <span className="font-medium">{r.label || "Extra"}</span>
               <span className="text-muted-foreground">{formatBrPhone(r.phone)}</span>
-              <button type="button" onClick={() => remove(i)} className="ml-0.5 rounded-full hover:bg-destructive/10 p-0.5">
+              <button type="button" onClick={() => remove(r)} className="ml-0.5 rounded-full hover:bg-destructive/10 p-0.5">
                 <X className="h-3 w-3 text-destructive" />
               </button>
             </div>
@@ -639,6 +698,66 @@ function PhoneRecipients({
           <Plus className="h-3.5 w-3.5" />
         </Button>
       </div>
+    </div>
+  );
+}
+
+function GroupRecipients({
+  value, onChange, available,
+}: {
+  value: Recipient[];
+  onChange: (v: Recipient[]) => void;
+  available: WhatsappGroup[];
+}) {
+  const selected = value.filter((r): r is GroupRecipient => isGroupR(r));
+  const others = value.filter((r) => !isGroupR(r));
+  const notSelected = available.filter((g) => !selected.some((s) => s.group_id === g.group_id));
+  const addGroup = (g: WhatsappGroup) => {
+    onChange([...value, { group_id: g.group_id, name: g.name, sender_id: g.sender_id }]);
+  };
+  const remove = (gid: string) =>
+    onChange([...others, ...selected.filter((s) => s.group_id !== gid)]);
+
+  if (available.length === 0 && selected.length === 0) {
+    return (
+      <p className="text-[11px] text-muted-foreground flex items-center gap-1 pl-1">
+        <Users className="h-3 w-3" /> Nenhum grupo sincronizado neste remetente.
+        Use "Sincronizar grupos" na lista de remetentes acima.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+        <Users className="h-3 w-3" /> Grupos de WhatsApp que também recebem este alerta.
+      </p>
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selected.map((g) => (
+            <div key={g.group_id} className="inline-flex items-center gap-1 rounded-full border bg-success/5 border-success/30 pl-2 pr-1 py-0.5 text-[11px]">
+              <Users className="h-3 w-3 text-success" />
+              <span className="font-medium">{g.name || g.group_id}</span>
+              <button type="button" onClick={() => remove(g.group_id)} className="ml-0.5 rounded-full hover:bg-destructive/10 p-0.5">
+                <X className="h-3 w-3 text-destructive" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      {notSelected.length > 0 && (
+        <Select value="" onValueChange={(v) => {
+          const g = notSelected.find((x) => x.group_id === v);
+          if (g) addGroup(g);
+        }}>
+          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="+ Adicionar grupo…" /></SelectTrigger>
+          <SelectContent>
+            {notSelected.map((g) => (
+              <SelectItem key={g.group_id} value={g.group_id}>{g.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
     </div>
   );
 }

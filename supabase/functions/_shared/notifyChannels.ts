@@ -62,11 +62,22 @@ export async function loadAlertConfig(supabase: any, alertKey: string) {
   const waConfig = enabled
     ? await loadWaConfig(supabase, data?.whatsapp_sender_id ?? null)
     : null;
-  const extras: string[] = Array.isArray(data?.extra_recipients)
-    ? (data!.extra_recipients as any[])
-        .map((r) => normalizePhone(typeof r === "string" ? r : r?.phone))
-        .filter((p): p is string => !!p)
-    : [];
+  const rawList: any[] = Array.isArray(data?.extra_recipients) ? data!.extra_recipients : [];
+  const extras: string[] = [];
+  for (const r of rawList) {
+    if (typeof r === "string") {
+      const p = normalizePhone(r);
+      if (p) extras.push(p);
+    } else if (r && typeof r === "object") {
+      if (r.group_id) {
+        // Z-API aceita groupId no campo `phone` — envia direto sem normalizar.
+        extras.push(String(r.group_id));
+      } else if (r.phone) {
+        const p = normalizePhone(r.phone);
+        if (p) extras.push(p);
+      }
+    }
+  }
   return { enabled, waConfig, extras };
 }
 
