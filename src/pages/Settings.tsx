@@ -65,26 +65,14 @@ const Settings = () => {
       </div>
 
       <Tabs defaultValue="stores" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-9 h-auto">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 h-auto">
           <TabsTrigger value="stores" className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5">
             <Store className="h-4 w-4" />
             <span className="text-xs sm:text-sm">Lojas</span>
           </TabsTrigger>
-          <TabsTrigger value="access" className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5">
+          <TabsTrigger value="security" className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5">
             <ShieldCheck className="h-4 w-4" />
-            <span className="text-xs sm:text-sm">Acessos</span>
-          </TabsTrigger>
-          <TabsTrigger value="links" className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5">
-            <Link2 className="h-4 w-4" />
-            <span className="text-xs sm:text-sm">Vincular login</span>
-          </TabsTrigger>
-          <TabsTrigger value="partners" className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5">
-            <Eye className="h-4 w-4" />
-            <span className="text-xs sm:text-sm">Sócios</span>
-          </TabsTrigger>
-          <TabsTrigger value="external" className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5">
-            <Handshake className="h-4 w-4" />
-            <span className="text-xs sm:text-sm">Externos</span>
+            <span className="text-xs sm:text-sm">Acesso e segurança</span>
           </TabsTrigger>
           <TabsTrigger value="integrations" className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5">
             <KeyRound className="h-4 w-4" />
@@ -105,15 +93,38 @@ const Settings = () => {
         </TabsList>
 
         <TabsContent value="stores" className="mt-4"><StoresPanel /></TabsContent>
-        <TabsContent value="access" className="mt-4"><AccessControlPanel /></TabsContent>
-        <TabsContent value="links" className="mt-4"><UserLinksPanel /></TabsContent>
-        <TabsContent value="partners" className="mt-4"><PartnersPanel /></TabsContent>
-        <TabsContent value="external" className="mt-4"><ExternalAccess /></TabsContent>
+        <TabsContent value="security" className="mt-4">
+          <Tabs defaultValue="access" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto">
+              <TabsTrigger value="access" className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5">
+                <ShieldCheck className="h-4 w-4" />
+                <span className="text-xs sm:text-sm">Perfis e permissões</span>
+              </TabsTrigger>
+              <TabsTrigger value="links" className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5">
+                <Link2 className="h-4 w-4" />
+                <span className="text-xs sm:text-sm">Vincular login</span>
+              </TabsTrigger>
+              <TabsTrigger value="partners" className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5">
+                <Eye className="h-4 w-4" />
+                <span className="text-xs sm:text-sm">Sócios</span>
+              </TabsTrigger>
+              <TabsTrigger value="external" className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5">
+                <Handshake className="h-4 w-4" />
+                <span className="text-xs sm:text-sm">Parceiros externos</span>
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="access" className="mt-4"><AccessControlPanel /></TabsContent>
+            <TabsContent value="links" className="mt-4"><UserLinksPanel /></TabsContent>
+            <TabsContent value="partners" className="mt-4"><PartnersPanel /></TabsContent>
+            <TabsContent value="external" className="mt-4"><ExternalAccess /></TabsContent>
+          </Tabs>
+        </TabsContent>
         <TabsContent value="integrations" className="mt-4"><IntegrationsPage /></TabsContent>
         <TabsContent value="alerts" className="mt-4"><NotificationSettings /></TabsContent>
         <TabsContent value="network" className="mt-4"><NetworkMonitor /></TabsContent>
         <TabsContent value="remote" className="mt-4"><RemoteAccess /></TabsContent>
       </Tabs>
+
     </div>
   );
 };
