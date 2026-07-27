@@ -18253,6 +18253,10 @@ export type Database = {
           id: string
           is_default: boolean
           label: string
+          last_alert_at: string | null
+          last_alert_status: string | null
+          last_checked_at: string | null
+          last_status: string | null
           phone_display: string | null
           provider: string
           updated_at: string
@@ -18266,6 +18270,10 @@ export type Database = {
           id?: string
           is_default?: boolean
           label: string
+          last_alert_at?: string | null
+          last_alert_status?: string | null
+          last_checked_at?: string | null
+          last_status?: string | null
           phone_display?: string | null
           provider?: string
           updated_at?: string
@@ -18279,6 +18287,10 @@ export type Database = {
           id?: string
           is_default?: boolean
           label?: string
+          last_alert_at?: string | null
+          last_alert_status?: string | null
+          last_checked_at?: string | null
+          last_status?: string | null
           phone_display?: string | null
           provider?: string
           updated_at?: string
