@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
+import { ManageGroupsDialog } from "@/components/settings/ManageGroupsDialog";
 
 // ================================================================
 // Tipos
