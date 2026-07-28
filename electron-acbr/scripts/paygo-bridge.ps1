@@ -19,7 +19,8 @@ param(
   [string] $SenhaTecnica = "",
   [string] $UsePinpad = "1",
   [string] $PinpadPort = "",
-  [string] $ManualConfirmation = "0"
+  [string] $ManualConfirmation = "0",
+  [string] $SimulatePowerFailure = "0"
 )
 
 $ErrorActionPreference = "Stop"
@@ -118,6 +119,7 @@ public static class PayGoBridge
     private const uint PWCNF_CNF_MANU_AUT = 0x00003221;
     private const uint PWCNF_REV_MANU_AUT = 0x00003231;
     private const uint PWCNF_REV_DISP_AUT = 0x00023131;
+    private const uint PWCNF_REV_PWR_AUT = 0x00083131;
 
     private const byte PWDAT_CARDINF = 3;
     private const byte PWDAT_MENU = 1;
@@ -147,6 +149,7 @@ public static class PayGoBridge
     private static string _eventId = "";
     private static string _lastQrEmitted = "";
     private static string _manualConfirmation = "0";
+    private static string _simulatePowerFailure = "0";
     private static bool _autoConfirmedInBridge = false;
     private static bool _interactive = false;
     private static byte _currentOperation = 0;
@@ -154,6 +157,88 @@ public static class PayGoBridge
     private static bool _rptTruncRemoveDone = false;
     private static int _captureSeq = 0;
     private static Dictionary<string, string> _captureValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    private static string ConfirmationJournalPath()
+    {
+        string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        string dir = Path.Combine(appData, "nexa-acbr-agent");
+        return Path.Combine(dir, "paygo-confirmation-journal.dat");
+    }
+
+    private static string EncodeJournalValue(string value)
+    {
+        return Convert.ToBase64String(Encoding.UTF8.GetBytes(value ?? ""));
+    }
+
+    private static string DecodeJournalValue(string value)
+    {
+        return Encoding.UTF8.GetString(Convert.FromBase64String(value ?? ""));
+    }
+
+    private static void SaveConfirmationJournal(string reqNum, string locRef, string extRef, string virtMerch, string authSyst)
+    {
+        if (String.IsNullOrWhiteSpace(reqNum))
+            throw new InvalidOperationException("Nao e possivel persistir confirmacao sem PWINFO_REQNUM");
+
+        string path = ConfirmationJournalPath();
+        string dir = Path.GetDirectoryName(path);
+        Directory.CreateDirectory(dir);
+        string tempPath = path + ".tmp";
+        string[] lines = new string[] {
+            "version=1",
+            "reqNum=" + EncodeJournalValue(reqNum),
+            "locRef=" + EncodeJournalValue(locRef),
+            "extRef=" + EncodeJournalValue(extRef),
+            "virtMerch=" + EncodeJournalValue(virtMerch),
+            "authSyst=" + EncodeJournalValue(authSyst),
+            "createdAt=" + DateTime.UtcNow.ToString("O")
+        };
+        using (var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough))
+        using (var writer = new StreamWriter(stream, new UTF8Encoding(false)))
+        {
+            foreach (string line in lines) writer.WriteLine(line);
+            writer.Flush();
+            stream.Flush(true);
+        }
+        if (File.Exists(path)) File.Replace(tempPath, path, null);
+        else File.Move(tempPath, path);
+        EmitEvent("INFO", "Parametros de confirmacao persistidos antes de PW_iConfirmation reqNum=" + reqNum);
+    }
+
+    private static Dictionary<string, string> LoadConfirmationJournal()
+    {
+        string path = ConfirmationJournalPath();
+        string tempPath = path + ".tmp";
+        if (!File.Exists(path) && File.Exists(tempPath)) path = tempPath;
+        if (!File.Exists(path)) return null;
+        var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string line in File.ReadAllLines(path, Encoding.UTF8))
+        {
+            int separator = line.IndexOf('=');
+            if (separator <= 0) continue;
+            string key = line.Substring(0, separator);
+            string value = line.Substring(separator + 1);
+            if (key == "reqNum" || key == "locRef" || key == "extRef" || key == "virtMerch" || key == "authSyst")
+                values[key] = DecodeJournalValue(value);
+        }
+        if (!values.ContainsKey("reqNum") || String.IsNullOrWhiteSpace(values["reqNum"]))
+            throw new InvalidDataException("Journal de confirmacao invalido: reqNum ausente");
+        return values;
+    }
+
+    private static string JournalValue(Dictionary<string, string> journal, string key)
+    {
+        string value;
+        return journal != null && journal.TryGetValue(key, out value) ? value : "";
+    }
+
+    private static void DeleteConfirmationJournal()
+    {
+        string path = ConfirmationJournalPath();
+        if (File.Exists(path)) File.Delete(path);
+        string tempPath = path + ".tmp";
+        if (File.Exists(tempPath)) File.Delete(tempPath);
+    }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
     public struct PW_GetData
@@ -256,7 +341,7 @@ public static class PayGoBridge
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
 
-    public static string Sale(string dllPath, string workingDir, string saleId, int amountInCents, string method, int installments, string paygoMenuChoice, string captureValuesBase64, string qrDisplayPreference, string manualConfirmation)
+    public static string Sale(string dllPath, string workingDir, string saleId, int amountInCents, string method, int installments, string paygoMenuChoice, string captureValuesBase64, string qrDisplayPreference, string manualConfirmation, string simulatePowerFailure)
     {
         try
         {
@@ -268,6 +353,7 @@ public static class PayGoBridge
             _captureSeq = 0;
             _currentOperation = PWOPER_SALE;
             _manualConfirmation = (manualConfirmation == "1") ? "1" : "0";
+            _simulatePowerFailure = (simulatePowerFailure == "1") ? "1" : "0";
             _autoConfirmedInBridge = false;
             EmitEvent("INFO", "Iniciando venda PayGo TEF saleId=" + saleId + " valorCentavos=" + amountInCents + " metodo=" + method);
 
@@ -293,10 +379,12 @@ public static class PayGoBridge
             // operador marca o checkbox no UI. Sem isso, a DLL pode confirmar
             // internamente a transação (fluxo offline chip) e nada fica
             // pendente no PayGo mesmo se o agente cair antes do modal.
-            if (_manualConfirmation == "1")
+            if (_manualConfirmation == "1" || _simulatePowerFailure == "1")
             {
                 Add(PWINFO_CNFREQ, "1");
-                EmitEvent("INFO", "Confirmacao manual solicitada (PWINFO_CNFREQ=1)");
+                EmitEvent("INFO", _simulatePowerFailure == "1"
+                    ? "CNFREQ=1 solicitado para teste de queda de energia"
+                    : "Confirmacao manual solicitada (PWINFO_CNFREQ=1)");
             }
 
             if (method == "CREDITO")
@@ -668,7 +756,61 @@ public static class PayGoBridge
     // Nesses casos precisamos reenviar EXATAMENTE o mesmo codigo (nunca trocar
     // por 0x3231/undo, senao a venda aprovada e desfeita) ate obter PWRET_OK
     // ou esgotar as tentativas.
+    public static string RecoverConfirmationJournal(string dllPath, string workingDir)
+    {
+        try
+        {
+            Dictionary<string, string> journal = LoadConfirmationJournal();
+            if (journal == null)
+                return "{\"ok\":true,\"status\":\"noJournal\",\"message\":\"Nenhum journal de confirmacao pendente\"}";
+
+            string reqNum = JournalValue(journal, "reqNum");
+            Load(dllPath);
+            short initRet = Init(workingDir);
+            if (initRet != PWRET_OK) return Error("PW_iInit", initRet);
+
+            EmitEvent("INFO", "Journal de confirmacao encontrado no startup; enviando PWCNF_REV_PWR_AUT reqNum=" + reqNum);
+            short ret = ConfirmWithRetryCore(
+                PWCNF_REV_PWR_AUT,
+                reqNum,
+                JournalValue(journal, "locRef"),
+                JournalValue(journal, "extRef"),
+                JournalValue(journal, "virtMerch"),
+                JournalValue(journal, "authSyst"),
+                "startup-power-failure"
+            );
+            if (ret != PWRET_OK) return Error("PW_iConfirmation(PWCNF_REV_PWR_AUT)", ret);
+
+            DeleteConfirmationJournal();
+            EmitEvent("CONFIRMED", "Desfazimento por queda de energia concluido; journal removido reqNum=" + reqNum);
+            return "{\"ok\":true,\"status\":\"powerFailureReversed\",\"message\":\"Pendencia desfeita por queda de energia\",\"ret\":0}";
+        }
+        catch (Exception ex)
+        {
+            return "{\"ok\":false,\"status\":\"error\",\"message\":\"" + Esc(ex.Message) + "\"}";
+        }
+    }
+
     private static short ConfirmWithRetry(uint confirmation, string reqNum, string locRef, string extRef, string virtMerch, string authSyst, string origin)
+    {
+        SaveConfirmationJournal(reqNum, locRef, extRef, virtMerch, authSyst);
+        if (_simulatePowerFailure == "1" && origin == "post-transac")
+        {
+            int pauseMs = Math.Max(1000, EnvInt("PAYGO_POWER_FAILURE_TEST_PAUSE_MS", 120000));
+            EmitEvent("POWER_FAILURE_ARMED", "Journal gravado. Encerre o agente agora para simular queda de energia; confirmacao sera enviada em " + pauseMs + " ms se o agente continuar ativo.");
+            System.Threading.Thread.Sleep(pauseMs);
+            EmitEvent("INFO", "Pausa de simulacao encerrada; agente permaneceu ativo, prosseguindo com PW_iConfirmation.");
+        }
+        short ret = ConfirmWithRetryCore(confirmation, reqNum, locRef, extRef, virtMerch, authSyst, origin);
+        if (ret == PWRET_OK)
+        {
+            DeleteConfirmationJournal();
+            EmitEvent("INFO", "PW_iConfirmation OK; journal de confirmacao removido reqNum=" + reqNum);
+        }
+        return ret;
+    }
+
+    private static short ConfirmWithRetryCore(uint confirmation, string reqNum, string locRef, string extRef, string virtMerch, string authSyst, string origin)
     {
         int maxAttempts = EnvInt("PAYGO_CONFIRM_MAX_ATTEMPTS", 6);
         int sleepMs = EnvInt("PAYGO_CONFIRM_RETRY_MS", 1000);
@@ -1673,7 +1815,7 @@ public static class PayGoBridge
             var display = new StringBuilder(256);
             short ret = Fn<PW_iPPEventLoop_>("PW_iPPEventLoop")(display, 256);
             if (ret == PWRET_OK) return PWRET_OK;
-            if (ret == PWRET_DISPLAY || ret == PWRET_NOTHING) 
+            if (ret == PWRET_DISPLAY || ret == PWRET_NOTHING)
             {
                 string message = NormalizeDisplay(display.ToString());
                 if (ret == PWRET_DISPLAY && !String.IsNullOrWhiteSpace(message) && message != lastDisplay)
@@ -2035,7 +2177,7 @@ function Invoke-PayGoCommand {
 
   try {
     if ($cmdAction -eq "sale") {
-      return [PayGoBridge]::Sale($DllPath, $WorkingDir, [string]$Command.saleId, [int]$Command.amountInCents, [string]$Command.method, [int]$Command.installments, [string]$Command.paygoMenuChoice, [string]$Command.captureValuesBase64, [string]$Command.qrDisplayPreference, [string]$Command.manualConfirmation)
+      return [PayGoBridge]::Sale($DllPath, $WorkingDir, [string]$Command.saleId, [int]$Command.amountInCents, [string]$Command.method, [int]$Command.installments, [string]$Command.paygoMenuChoice, [string]$Command.captureValuesBase64, [string]$Command.qrDisplayPreference, [string]$Command.manualConfirmation, [string]$Command.simulatePowerFailure)
     }
 
     if ($cmdAction -eq "commtest") {
@@ -2121,7 +2263,19 @@ if ($Action -eq "host") {
       exit 1
     }
 
-    Write-HostResponse @{ id = "__ready"; payload = @{ ok = $true; status = "ready"; message = "PayGo host inicializado" } }
+    $recoveryPayload = [PayGoBridge]::RecoverConfirmationJournal($DllPath, $WorkingDir) | ConvertFrom-Json
+    if (-not $recoveryPayload.ok) {
+      $detail = "Falha ao desfazer confirmacao pendente por queda de energia: $($recoveryPayload.message)"
+      Write-HostResponse @{ id = "__ready"; error = $detail; payload = $recoveryPayload }
+      exit 1
+    }
+
+    $readyMessage = if ($recoveryPayload.status -eq "powerFailureReversed") {
+      "PayGo host inicializado; transacao pendente desfeita por queda de energia"
+    } else {
+      "PayGo host inicializado"
+    }
+    Write-HostResponse @{ id = "__ready"; payload = @{ ok = $true; status = "ready"; message = $readyMessage } }
 
     while (($line = [Console]::In.ReadLine()) -ne $null) {
       if ([string]::IsNullOrWhiteSpace($line)) {
@@ -2149,7 +2303,7 @@ if ($Action -eq "host") {
 }
 
 if ($Action -eq "sale") {
-  [PayGoBridge]::Sale($DllPath, $WorkingDir, $SaleId, $AmountInCents, $Method, $Installments, $PaygoMenuChoice, $CaptureValuesBase64, $QrDisplayPreference, $ManualConfirmation)
+  [PayGoBridge]::Sale($DllPath, $WorkingDir, $SaleId, $AmountInCents, $Method, $Installments, $PaygoMenuChoice, $CaptureValuesBase64, $QrDisplayPreference, $ManualConfirmation, $SimulatePowerFailure)
   exit
 }
 
