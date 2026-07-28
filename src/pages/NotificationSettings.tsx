@@ -399,7 +399,8 @@ export default function NotificationSettings() {
                             sub={`${s.phone_display || "sem número"} · ${(s.zapi_instance_id ?? "").slice(0, 24)}…`}
                             onEdit={() => openEdit(s)} onDelete={() => deleteSender(s.id)}
                           />
-                          <div className="px-3 pb-2 flex justify-end">
+                          <div className="px-3 pb-2 flex justify-end gap-1">
+                            <ManageGroupsDialog senderId={s.id} senderLabel={s.label} />
                             <Button
                               type="button" size="sm" variant="ghost" className="h-7 gap-1 text-xs"
                               disabled={syncingSender === s.id || !s.active}
