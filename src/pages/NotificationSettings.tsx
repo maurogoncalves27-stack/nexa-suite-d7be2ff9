@@ -269,10 +269,13 @@ export default function NotificationSettings() {
         }
       }
       if (setting.sms_enabled) {
-        if (phones.length === 0) results.push("sms: sem números extras");
+        const smsPhones = (setting.sms_recipients && setting.sms_recipients.length > 0)
+          ? setting.sms_recipients
+          : phones;
+        if (smsPhones.length === 0) results.push("sms: sem números");
         else {
           let ok = 0, fail = 0;
-          for (const p of phones) {
+          for (const p of smsPhones) {
             const { error } = await supabase.functions.invoke("send-sms", {
               body: {
                 phone: p.phone, message: `${title}\n${message}`,
@@ -285,6 +288,7 @@ export default function NotificationSettings() {
           results.push(`sms: ${ok} ok${fail ? `, ${fail} falha` : ""}`);
         }
       }
+
       if (setting.email_enabled) {
         const emails = setting.email_recipients || [];
         if (emails.length === 0) results.push("e-mail: sem destinatários");
