@@ -9184,6 +9184,7 @@ export type Database = {
           label: string
           push_enabled: boolean
           sms_enabled: boolean
+          sms_recipients: Json
           sms_sender_id: string | null
           updated_at: string
           whatsapp_enabled: boolean
@@ -9199,6 +9200,7 @@ export type Database = {
           label: string
           push_enabled?: boolean
           sms_enabled?: boolean
+          sms_recipients?: Json
           sms_sender_id?: string | null
           updated_at?: string
           whatsapp_enabled?: boolean
@@ -9214,6 +9216,7 @@ export type Database = {
           label?: string
           push_enabled?: boolean
           sms_enabled?: boolean
+          sms_recipients?: Json
           sms_sender_id?: string | null
           updated_at?: string
           whatsapp_enabled?: boolean

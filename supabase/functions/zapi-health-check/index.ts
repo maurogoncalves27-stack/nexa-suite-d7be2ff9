@@ -55,16 +55,21 @@ Deno.serve(async (req) => {
 
   const { data: settings } = await admin
     .from("notification_settings")
-    .select("sms_enabled, sms_sender_id, extra_recipients")
+    .select("sms_enabled, sms_sender_id, extra_recipients, sms_recipients")
     .eq("alert_key", "whatsapp_health")
     .maybeSingle();
 
   const smsEnabled = settings?.sms_enabled ?? true;
   const smsSenderId = settings?.sms_sender_id ?? null;
-  const rawRecipients = Array.isArray(settings?.extra_recipients) ? settings!.extra_recipients : [];
+  // Prefere a lista específica de SMS; se vazia, cai no extra_recipients (compat).
+  const smsList = Array.isArray(settings?.sms_recipients) ? settings!.sms_recipients : [];
+  const rawRecipients = smsList.length > 0
+    ? smsList
+    : (Array.isArray(settings?.extra_recipients) ? settings!.extra_recipients : []);
   const recipients: string[] = rawRecipients
     .map((r: any) => (typeof r === "string" ? r : r?.phone))
     .filter((p: any) => typeof p === "string" && p.trim().length >= 8);
+
 
   const now = new Date();
   const cooldownMs = COOLDOWN_HOURS * 60 * 60 * 1000;

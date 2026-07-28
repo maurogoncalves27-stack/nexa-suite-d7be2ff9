@@ -74,8 +74,10 @@ interface Setting {
   sms_sender_id: string | null;
   email_enabled: boolean;
   extra_recipients: Recipient[];
+  sms_recipients: PhoneRecipient[];
   email_recipients: EmailRecipient[];
 }
+
 
 const emptySender: Omit<Sender, "id"> = {
   label: "", phone_display: "", provider: "zapi",
@@ -120,8 +122,10 @@ export default function NotificationSettings() {
     setSettings(((c as any[]) ?? []).map((row) => ({
       ...row,
       extra_recipients: Array.isArray(row.extra_recipients) ? row.extra_recipients : [],
+      sms_recipients: Array.isArray(row.sms_recipients) ? row.sms_recipients : [],
       email_recipients: Array.isArray(row.email_recipients) ? row.email_recipients : [],
     })) as Setting[]);
+
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
@@ -265,10 +269,13 @@ export default function NotificationSettings() {
         }
       }
       if (setting.sms_enabled) {
-        if (phones.length === 0) results.push("sms: sem números extras");
+        const smsPhones = (setting.sms_recipients && setting.sms_recipients.length > 0)
+          ? setting.sms_recipients
+          : phones;
+        if (smsPhones.length === 0) results.push("sms: sem números");
         else {
           let ok = 0, fail = 0;
-          for (const p of phones) {
+          for (const p of smsPhones) {
             const { error } = await supabase.functions.invoke("send-sms", {
               body: {
                 phone: p.phone, message: `${title}\n${message}`,
@@ -281,6 +288,7 @@ export default function NotificationSettings() {
           results.push(`sms: ${ok} ok${fail ? `, ${fail} falha` : ""}`);
         }
       }
+
       if (setting.email_enabled) {
         const emails = setting.email_recipients || [];
         if (emails.length === 0) results.push("e-mail: sem destinatários");
@@ -604,7 +612,7 @@ function AlertCard({
           <PhoneRecipients
             value={setting.extra_recipients}
             onChange={(v) => onChange({ extra_recipients: v })}
-            hint="Números adicionais que recebem este alerta por WhatsApp e SMS."
+            hint="Números que recebem este alerta por WhatsApp (e também por SMS, se a lista de SMS abaixo ficar vazia)."
           />
           <GroupRecipients
             value={setting.extra_recipients}
@@ -630,10 +638,13 @@ function AlertCard({
             }))}
             emptyLabel="SMS padrão"
           />
-          <p className="text-[11px] text-muted-foreground flex items-center gap-1 pl-1">
-            <Users className="h-3 w-3" /> Usa a mesma lista de números do WhatsApp acima.
-          </p>
+          <PhoneRecipients
+            value={setting.sms_recipients as Recipient[]}
+            onChange={(v) => onChange({ sms_recipients: v.filter((r): r is PhoneRecipient => !isGroupR(r)) })}
+            hint="Números que recebem este alerta por SMS. Se ficar vazio, usa os números do WhatsApp acima."
+          />
         </ChannelRow>
+
 
         <ChannelRow
           icon={<Mail className="h-4 w-4 text-primary" />} label="E-mail"
