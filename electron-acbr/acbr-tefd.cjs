@@ -977,6 +977,7 @@ async function efetuarPagamento(opts = {}) {
       captureValuesBase64: opts.captureValuesBase64 || "",
       qrDisplayPreference,
       manualConfirmation: opts.manualConfirmation ? "1" : "0",
+      simulatePowerFailure: opts.simulatePowerFailure ? "1" : "0",
     }, {
       onRequestId: (id) => { currentSaleRequestId = id; },
       onEvent: (ev) => {
@@ -1027,7 +1028,7 @@ async function efetuarPagamento(opts = {}) {
         setSaleStatus({ message: ev.message });
         emitSaleEvent({ paymentId, type: ev.type === "PINPAD" ? "PINPAD" : "INFO", message: ev.message });
       }
-      if (typeof opts.onDisplay === "function" && ev.message) opts.onDisplay(ev.message);
+      if (typeof opts.onDisplay === "function" && ev.message) opts.onDisplay(ev.message, ev.type || "INFO");
     }});
 
     // Só tratamos cnfReq=1 como "aguardando confirmação manual" quando o
