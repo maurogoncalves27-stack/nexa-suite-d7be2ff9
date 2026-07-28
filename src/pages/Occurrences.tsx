@@ -386,14 +386,22 @@ export default function Occurrences() {
         .maybeSingle();
 
       // Carrega lojas reais (para o GPS e validação de IDs)
+      // CD não é ponto de venda: englobado fisicamente pela ASA SUL (PDV + estoque central + escritório).
+      // Só as 4 unidades de atendimento entram na detecção automática.
+      const POS_STORES = ["asa sul", "asa norte", "aguas claras", "águas claras", "lago sul"];
+      const isPosStore = (name?: string | null) => {
+        const n = (name ?? "").toLowerCase();
+        return POS_STORES.some((p) => n.includes(p));
+      };
       const { data: realStoresData } = await supabase
         .from("stores")
         .select("id, name, latitude, longitude, geofence_radius_m")
         .eq("is_active", true)
         .eq("is_virtual", false);
-      const realStores = realStoresData ?? [];
+      const realStores = (realStoresData ?? []).filter((s) => isPosStore(s.name));
       const isRealStoreId = (id?: string | null) =>
         !!id && realStores.some((s) => s.id === id);
+
 
       let detectedStoreId: string | null = null;
       let detectedStoreName: string | null = null;
