@@ -511,6 +511,13 @@ async function handle(req, res) {
             return applyPendingConfirmation(payment.id, retorno);
           }
 
+          if (retorno?.status === "cancelled") {
+            const msg = retorno?.message || "Transacao cancelada na PayGo";
+            updatePayment(payment.id, { status: "CANCELADA", message: msg, paygo: paygoTuple });
+            publishTefEvent({ paymentId: payment.id, type: "CANCELLED", message: msg });
+            return paymentStore.get(payment.id);
+          }
+
           if (retorno?.ok === false) {
             const msg = retorno?.message || "Falha na transação";
             const upper = String(msg).toUpperCase();
@@ -779,8 +786,8 @@ async function handle(req, res) {
     }
 
     if (req.method === "POST" && path === "/tef/cancelar") {
-      tef.cancelarEmAndamento();
-      return send(res, 200, { ok: true });
+      const retorno = await tef.cancelarEmAndamento();
+      return send(res, retorno?.ok === false ? 504 : 200, retorno || { ok: true });
     }
 
     if (req.method === "POST" && path === "/tef/limpar-pendencia") {
