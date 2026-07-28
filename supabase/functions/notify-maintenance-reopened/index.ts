@@ -67,32 +67,6 @@ Deno.serve(async (req) => {
         .maybeSingle(),
     ]);
 
-    const { data: roleRows } = await admin
-      .from("user_roles")
-      .select("user_id")
-      .in("role", ["admin", "manager"]);
-    const managerUserIds = Array.from(
-      new Set((roleRows || []).map((r: any) => r.user_id).filter(Boolean)),
-    );
-    if (managerUserIds.length === 0) {
-      return new Response(JSON.stringify({ ok: true, notified: 0 }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { data: managers } = await admin
-      .from("employees")
-      .select("user_id, full_name, phone, store_id, allocated_store_id, status")
-      .in("user_id", managerUserIds);
-
-    const { data: prefs } = await admin
-      .from("notification_settings")
-      .select("user_id, whatsapp_enabled")
-      .eq("event_type", "maintenance_request");
-    const optOut = new Set(
-      (prefs || []).filter((p: any) => p.whatsapp_enabled === false).map((p: any) => p.user_id),
-    );
-
     const text =
       `⚠️ *Manutenção reaberta pela loja*\n\n` +
       `*Loja:* ${store?.name || "Loja"}\n` +
@@ -101,26 +75,16 @@ Deno.serve(async (req) => {
       (reqRow.reopen_reason ? `*Motivo:* ${reqRow.reopen_reason}\n` : "") +
       `\nAcesse: ${APP_BASE_URL}/area-gestor`;
 
-    const results: Array<{ user_id: string; ok: boolean }> = [];
-    for (const m of managers || []) {
-      if (m.status && m.status !== "active") continue;
-      if (optOut.has(m.user_id)) continue;
-      const managesStore =
-        !m.store_id ||
-        m.store_id === reqRow.store_id ||
-        m.allocated_store_id === reqRow.store_id;
-      if (!managesStore) continue;
-      const phone = normalizePhone(m.phone);
-      if (!phone) {
-        results.push({ user_id: m.user_id, ok: false });
-        continue;
-      }
-      const r = await sendWhatsapp(phone, text);
-      results.push({ user_id: m.user_id, ok: !!r.ok });
+    // WhatsApp: SOMENTE destinatários extras cadastrados em /configuracoes → Alertas → Manutenção
+    const { loadAlertConfig, fanoutExtras } = await import("../_shared/notifyChannels.ts");
+    const { enabled, waConfig, extras } = await loadAlertConfig(admin, "maintenance");
+    let waSent = 0;
+    if (enabled && waConfig && extras.length > 0) {
+      waSent = await fanoutExtras(waConfig, extras, text);
     }
 
     return new Response(
-      JSON.stringify({ ok: true, notified: results.filter((r) => r.ok).length, results }),
+      JSON.stringify({ ok: true, whatsapp_sent: waSent }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {

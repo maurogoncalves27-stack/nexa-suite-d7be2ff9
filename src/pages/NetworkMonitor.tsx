@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,8 +11,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Router, Plus, Copy, RefreshCw, Trash2, Phone, WifiOff, Wifi, Signal, ShieldAlert } from "lucide-react";
+import { Router, Plus, Copy, RefreshCw, Trash2, WifiOff, Wifi, Signal, ShieldAlert, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -30,7 +30,7 @@ type Event = {
   wan_active: string | null; public_ip: string | null; duration_seconds: number | null;
   suppressed: boolean; created_at: string;
 };
-type Recipient = { id: string; store_id: string | null; name: string; phone: string; is_active: boolean };
+
 
 const FUNCTIONS_URL = `${import.meta.env.VITE_SUPABASE_URL || "https://ixjgmerxxakdkfdzgumy.supabase.co"}/functions/v1/mikrotik-wan-alert`;
 
@@ -96,23 +96,20 @@ export default function NetworkMonitor() {
   const [stores, setStores] = useState<Store[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
-  const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [loading, setLoading] = useState(true);
   const [scriptDeviceId, setScriptDeviceId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [s, d, e, r] = await Promise.all([
+    const [s, d, e] = await Promise.all([
       supabase.from("stores").select("id,name").eq("is_virtual", false).order("name"),
       supabase.from("network_devices").select("*").order("name"),
       supabase.from("network_wan_events").select("*").order("created_at", { ascending: false }).limit(200),
-      supabase.from("network_alert_recipients").select("*").order("name"),
     ]);
     setStores((s.data as Store[]) || []);
     setDevices((d.data as Device[]) || []);
     setEvents((e.data as Event[]) || []);
-    setRecipients((r.data as Recipient[]) || []);
     setLoading(false);
   }, []);
 
@@ -294,7 +291,23 @@ export default function NetworkMonitor() {
         </TabsContent>
 
         <TabsContent value="recipients" className="mt-4">
-          <RecipientsPanel stores={stores} recipients={recipients} onDone={load} />
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Settings2 className="h-4 w-4" /> Quem recebe alerta no WhatsApp
+              </CardTitle>
+              <CardDescription>
+                Os destinatários agora são unificados. Cadastre e edite em <strong>Configurações → Alertas → Rede</strong>.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild variant="outline" className="gap-2">
+                <Link to="/configuracoes?tab=alerts">
+                  <Settings2 className="h-4 w-4" /> Abrir Configurações → Alertas
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
@@ -402,72 +415,3 @@ function AddDeviceDialog({ stores, devices, open, setOpen, onDone }: {
   );
 }
 
-function RecipientsPanel({ stores, recipients, onDone }: {
-  stores: Store[]; recipients: Recipient[]; onDone: () => void;
-}) {
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [storeId, setStoreId] = useState<string>("all");
-  const [saving, setSaving] = useState(false);
-
-  async function add() {
-    if (!name || !phone) return;
-    setSaving(true);
-    const { error } = await supabase.from("network_alert_recipients").insert({
-      name, phone, store_id: storeId === "all" ? null : storeId,
-    });
-    setSaving(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Adicionado");
-    setName(""); setPhone(""); setStoreId("all"); onDone();
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2"><Phone className="h-4 w-4" /> Quem recebe alerta no WhatsApp</CardTitle>
-        <CardDescription>Adicione um telefone com DDD (ex.: 61999990000). Deixe "Todas as lojas" pra receber alertas globais.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-          <Input placeholder="Nome" value={name} onChange={(e) => setName(e.target.value)} />
-          <Input placeholder="Telefone (11 dígitos)" value={phone} onChange={(e) => setPhone(e.target.value)} />
-          <Select value={storeId} onValueChange={setStoreId}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as lojas</SelectItem>
-              {stores.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Button onClick={add} disabled={saving || !name || !phone}>Adicionar</Button>
-        </div>
-        <div className="divide-y border rounded">
-          {recipients.length === 0 && <p className="p-3 text-sm text-muted-foreground">Nenhum destinatário cadastrado.</p>}
-          {recipients.map((r) => (
-            <div key={r.id} className="p-3 flex items-center justify-between text-sm gap-2">
-              <div>
-                <div className="font-medium">{r.name} <span className="text-xs text-muted-foreground font-mono">{r.phone}</span></div>
-                <div className="text-xs text-muted-foreground">
-                  {r.store_id ? (stores.find((s) => s.id === r.store_id)?.name || "—") : "Todas as lojas"}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch checked={r.is_active} onCheckedChange={async (v) => {
-                  await supabase.from("network_alert_recipients").update({ is_active: v }).eq("id", r.id);
-                  onDone();
-                }} />
-                <Button size="sm" variant="ghost" className="text-destructive" onClick={async () => {
-                  if (!confirm("Remover destinatário?")) return;
-                  await supabase.from("network_alert_recipients").delete().eq("id", r.id);
-                  onDone();
-                }}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
