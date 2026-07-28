@@ -67,10 +67,15 @@ Deno.serve(async (req) => {
             tag: `net-${d.id}-offline`, category: "network",
           })));
         }
-        const { data: recips } = await admin.from("network_alert_recipients")
-          .select("phone, store_id, is_active").eq("is_active", true);
-        const targets = (recips || []).filter((r: any) => !r.store_id || r.store_id === d.store_id);
-        await Promise.all(targets.map((t: any) => sendWhatsapp(t.phone, `${title}\n\n${message}`)));
+        try {
+          const { loadAlertConfig, fanoutExtras } = await import("../_shared/notifyChannels.ts");
+          const { enabled, waConfig, extras } = await loadAlertConfig(admin, "network");
+          if (enabled && waConfig && extras.length > 0) {
+            await fanoutExtras(waConfig, extras, `${title}\n\n${message}`);
+          }
+        } catch (err) {
+          console.error("network wa fanout error", err);
+        }
         results.push({ device: d.name, marked: "offline" });
       } else if (!silent && d.current_status === "offline") {
         // Restored via heartbeat elsewhere — the wan-alert handler already flipped it.

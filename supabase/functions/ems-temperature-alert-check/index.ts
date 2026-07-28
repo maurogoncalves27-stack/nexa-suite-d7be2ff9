@@ -116,21 +116,15 @@ Deno.serve(async (req: Request) => {
       (storesData ?? []).forEach((s: any) => (storeNames[s.id] = s.name));
     }
 
-    // Destinatários ativos (globais + por loja) + extras do notification_settings
-    const { data: recipientsAll } = await supabase
-      .from("nutri_temperature_alert_recipients")
-      .select("phone, name, store_id, active")
-      .eq("active", true);
-
+    // Destinatários: SOMENTE extras de /configuracoes → Alertas → Temperatura
     const { enabled: waEnabled, waConfig, extras: extraPhones } =
       await loadAlertConfig(supabase, "temperature");
-    const extraRecipients = extraPhones.map((p) => ({
+    const allRecipients = extraPhones.map((p) => ({
       phone: p,
       name: "Extra",
       store_id: null as string | null,
       active: true,
     }));
-    const allRecipients = [...(recipientsAll ?? []), ...extraRecipients];
 
     // Resolve gestores/admins por loja para push
     const { data: roleRows } = await supabase

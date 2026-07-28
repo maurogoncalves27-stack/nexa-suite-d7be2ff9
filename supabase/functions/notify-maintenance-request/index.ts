@@ -76,26 +76,14 @@ Deno.serve(async (req) => {
       .eq("user_id", reqRow.user_id)
       .maybeSingle();
 
+    // Push in-app: mantém para admin/manager (canal interno, sem spam externo)
     const { data: roleRows } = await admin
       .from("user_roles")
       .select("user_id, role")
       .in("role", ["admin", "manager"]);
-
-    const managerUserIds = Array.from(
+    const pushTargets = Array.from(
       new Set((roleRows || []).map((r: any) => r.user_id).filter(Boolean)),
     );
-
-    if (managerUserIds.length === 0) {
-      return new Response(
-        JSON.stringify({ ok: true, notified: 0, reason: "no managers" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    const { data: managers } = await admin
-      .from("employees")
-      .select("user_id, full_name, phone, store_id, allocated_store_id, status")
-      .in("user_id", managerUserIds);
 
     const urgencyLabel: Record<string, string> = {
       alta: "🔴 URGENTE",
@@ -113,39 +101,12 @@ Deno.serve(async (req) => {
       (requester?.full_name ? `*Solicitante:* ${requester.full_name}\n` : "") +
       `\nResolva com 1 clique em: ${APP_BASE_URL}/area-gestor`;
 
-    // Opt-out via notification_settings (evento maintenance_request, canal WhatsApp)
-    const { data: prefs } = await admin
-      .from("notification_settings")
-      .select("user_id, whatsapp_enabled, event_type")
-      .eq("event_type", "maintenance_request");
-
-    const optOut = new Set(
-      (prefs || [])
-        .filter((p: any) => p.whatsapp_enabled === false)
-        .map((p: any) => p.user_id),
-    );
-
-    const results: Array<{ user_id: string; ok: boolean }> = [];
-    const pushTargets: string[] = [];
-    for (const m of managers || []) {
-      if (m.status && m.status !== "active") continue;
-      if (optOut.has(m.user_id)) continue;
-      // Admin sem loja recebe tudo; gestor com loja só se casar com a loja do chamado.
-      const managesStore =
-        !m.store_id ||
-        m.store_id === reqRow.store_id ||
-        m.allocated_store_id === reqRow.store_id;
-      if (!managesStore) continue;
-
-      if (m.user_id) pushTargets.push(m.user_id);
-
-      const phone = normalizePhone(m.phone);
-      if (!phone) {
-        results.push({ user_id: m.user_id, ok: false });
-        continue;
-      }
-      const r = await sendWhatsapp(phone, text);
-      results.push({ user_id: m.user_id, ok: !!r.ok });
+    // WhatsApp: SOMENTE destinatários extras cadastrados em /configuracoes → Alertas → Manutenção
+    const { loadAlertConfig, fanoutExtras } = await import("../_shared/notifyChannels.ts");
+    const { enabled: waEnabled, waConfig, extras } = await loadAlertConfig(admin, "maintenance");
+    let waSent = 0;
+    if (waEnabled && waConfig && extras.length > 0) {
+      waSent = await fanoutExtras(waConfig, extras, text);
     }
 
     // Push (in-app + web push) para os mesmos gestores
@@ -167,7 +128,7 @@ Deno.serve(async (req) => {
     }, admin);
 
     return new Response(
-      JSON.stringify({ ok: true, notified: results.filter((r) => r.ok).length, results }),
+      JSON.stringify({ ok: true, whatsapp_sent: waSent, push_targets: pushTargets.length }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {

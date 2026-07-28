@@ -242,13 +242,10 @@ Deno.serve(async (req) => {
                 .gte('triggered_at', `${today}T00:00:00Z`)
                 .maybeSingle();
               if (!existing) {
-                // Fetch recipients for this store
-                const { data: recs } = await admin
-                  .from('nutri_temperature_alert_recipients')
-                  .select('phone, name')
-                  .eq('store_id', eq.store_id)
-                  .eq('active', true);
-                const phones = (recs ?? []).map((r) => r.phone);
+                // Destinatários: SOMENTE extras cadastrados em /configuracoes → Alertas → Temperatura
+                const { loadAlertConfig, fanoutExtras } = await import("../_shared/notifyChannels.ts");
+                const { enabled: waEnabled, waConfig, extras: phones } =
+                  await loadAlertConfig(admin, "temperature");
 
                 await admin.from('nutri_temperature_alerts').insert({
                   sensor_code: eq.tuya_device_id,
@@ -263,17 +260,11 @@ Deno.serve(async (req) => {
                 });
                 report.alerts++;
 
-                // Fire WhatsApp
-                for (const r of recs ?? []) {
+                const text = `🚨 *Alerta de temperatura*\n\n${eq.name}\nTemperatura: *${temp}°C* (faixa ${eq.min_temp_c}~${eq.max_temp_c}°C)\nFora da faixa há ${Math.round(minsOut)} min.`;
+                if (waEnabled && waConfig && phones.length > 0) {
                   try {
-                    await admin.functions.invoke('send-whatsapp', {
-                      body: {
-                        phone: r.phone,
-                        message: `🚨 *Alerta de temperatura*\n\n${eq.name}\nTemperatura: *${temp}°C* (faixa ${eq.min_temp_c}~${eq.max_temp_c}°C)\nFora da faixa há ${Math.round(minsOut)} min.`,
-                        category: 'temperature',
-                      },
-                    });
-                  } catch (e) { report.errors.push(`whatsapp ${r.phone}: ${e}`); }
+                    await fanoutExtras(waConfig, phones, text);
+                  } catch (e) { report.errors.push(`whatsapp fanout: ${e}`); }
                 }
               }
             }

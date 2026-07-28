@@ -8949,47 +8949,6 @@ export type Database = {
           },
         ]
       }
-      network_alert_recipients: {
-        Row: {
-          channel: string
-          created_at: string
-          id: string
-          is_active: boolean
-          name: string
-          phone: string
-          store_id: string | null
-          updated_at: string
-        }
-        Insert: {
-          channel?: string
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          name: string
-          phone: string
-          store_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          channel?: string
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          name?: string
-          phone?: string
-          store_id?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "network_alert_recipients_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       network_devices: {
         Row: {
           created_at: string
@@ -9854,47 +9813,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "nutri_pest_occurrences_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      nutri_temperature_alert_recipients: {
-        Row: {
-          active: boolean
-          created_at: string
-          created_by: string | null
-          id: string
-          name: string
-          phone: string
-          store_id: string | null
-          updated_at: string
-        }
-        Insert: {
-          active?: boolean
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          name: string
-          phone: string
-          store_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          active?: boolean
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          name?: string
-          phone?: string
-          store_id?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "nutri_temperature_alert_recipients_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
