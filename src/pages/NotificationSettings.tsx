@@ -122,8 +122,10 @@ export default function NotificationSettings() {
     setSettings(((c as any[]) ?? []).map((row) => ({
       ...row,
       extra_recipients: Array.isArray(row.extra_recipients) ? row.extra_recipients : [],
+      sms_recipients: Array.isArray(row.sms_recipients) ? row.sms_recipients : [],
       email_recipients: Array.isArray(row.email_recipients) ? row.email_recipients : [],
     })) as Setting[]);
+
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
