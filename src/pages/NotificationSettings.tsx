@@ -527,7 +527,7 @@ export default function NotificationSettings() {
 // ================================================================
 
 function AlertCard({
-  setting, senders, smsSenders, groups, onChange, onTestEmail, testing,
+  setting, senders, smsSenders, groups, onChange, onTestEmail, onTest, testing,
 }: {
   setting: Setting;
   senders: Sender[];
@@ -535,6 +535,7 @@ function AlertCard({
   groups: WhatsappGroup[];
   onChange: (patch: Partial<Setting>) => void;
   onTestEmail: () => void;
+  onTest: () => void;
   testing: boolean;
 }) {
   const anyChannel = setting.push_enabled || setting.whatsapp_enabled || setting.sms_enabled || setting.email_enabled;
