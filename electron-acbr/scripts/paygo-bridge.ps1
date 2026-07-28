@@ -151,12 +151,33 @@ public static class PayGoBridge
     private static string _manualConfirmation = "0";
     private static string _simulatePowerFailure = "0";
     private static bool _autoConfirmedInBridge = false;
+    private static bool _saleCancellationRequested = false;
     private static bool _interactive = false;
     private static byte _currentOperation = 0;
     private static byte _selectedAdminOperation = 0;
     private static bool _rptTruncRemoveDone = false;
     private static int _captureSeq = 0;
     private static Dictionary<string, string> _captureValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    private static string SaleCancelSignalPath()
+    {
+        string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        return Path.Combine(appData, "nexa-acbr-agent", "paygo-sale-cancel.signal");
+    }
+
+    private static void ClearSaleCancelSignal()
+    {
+        string path = SaleCancelSignalPath();
+        if (File.Exists(path)) File.Delete(path);
+    }
+
+    private static bool ConsumeSaleCancelSignal()
+    {
+        string path = SaleCancelSignalPath();
+        if (!File.Exists(path)) return false;
+        try { File.Delete(path); } catch { }
+        return true;
+    }
 
     private static string ConfirmationJournalPath()
     {
@@ -355,6 +376,8 @@ public static class PayGoBridge
             _manualConfirmation = (manualConfirmation == "1") ? "1" : "0";
             _simulatePowerFailure = (simulatePowerFailure == "1") ? "1" : "0";
             _autoConfirmedInBridge = false;
+            _saleCancellationRequested = false;
+            ClearSaleCancelSignal();
             EmitEvent("INFO", "Iniciando venda PayGo TEF saleId=" + saleId + " valorCentavos=" + amountInCents + " metodo=" + method);
 
             Load(dllPath);
@@ -411,6 +434,10 @@ public static class PayGoBridge
             }
 
             ret = ExecLoop();
+            if (_saleCancellationRequested)
+            {
+                return CompleteRequestedSaleCancellation(ret);
+            }
             if (ret == BRIDGE_AUTHORIZED_AFTER_REMOVE_TIMEOUT)
             {
                 EmitEvent("INFO", "Cartao removido com timeout no pinpad; aguardando retorno da transacao antes de decidir sobre PW_iConfirmation.");
@@ -839,10 +866,23 @@ public static class PayGoBridge
         short count = 0;
         PW_GetData[] data = null;
         DateTime deadline = DateTime.UtcNow.AddMilliseconds(EnvInt("PAYGO_TRANSACTION_TIMEOUT_MS", 600000));
+        DateTime? cancelDeadline = null;
 
         while (true)
         {
             if (DateTime.UtcNow > deadline) return PWRET_TIMEOUT;
+            if (!_saleCancellationRequested && ConsumeSaleCancelSignal())
+            {
+                _saleCancellationRequested = true;
+                cancelDeadline = DateTime.UtcNow.AddMilliseconds(EnvInt("PAYGO_CANCEL_DRAIN_TIMEOUT_MS", 30000));
+                EmitEvent("CANCELLING", "Cancelamento solicitado pela automacao; enviando PW_iPPAbort e aguardando retorno terminal da PayGo.");
+                AbortPinpad();
+            }
+            if (cancelDeadline.HasValue && DateTime.UtcNow > cancelDeadline.Value)
+            {
+                EmitEvent("INFO", "Timeout aguardando retorno terminal apos PW_iPPAbort.");
+                return PWRET_TIMEOUT;
+            }
 
             for (int i = 0; i < count; i++)
             {
@@ -1804,6 +1844,12 @@ public static class PayGoBridge
 
         while (true)
         {
+            if (!_saleCancellationRequested && ConsumeSaleCancelSignal())
+            {
+                _saleCancellationRequested = true;
+                EmitEvent("CANCELLING", "Cancelamento solicitado durante captura no pinpad.");
+                AbortPinpad();
+            }
             if (DateTime.UtcNow > deadline)
             {
                 // Fluxo Setis: nao chamar PW_iPPAbort no fluxo normal. Retornamos
@@ -1835,10 +1881,12 @@ public static class PayGoBridge
     {
         try
         {
-            Fn<PW_iPPAbort_>("PW_iPPAbort")();
+            short ret = Fn<PW_iPPAbort_>("PW_iPPAbort")();
+            EmitEvent("INFO", "PW_iPPAbort retornou " + ret + ".");
         }
-        catch
+        catch (Exception ex)
         {
+            EmitEvent("INFO", "Falha ao chamar PW_iPPAbort: " + ex.Message);
         }
     }
 
@@ -2011,6 +2059,47 @@ public static class PayGoBridge
     private static bool IsUndoConfirmation(uint confirmation)
     {
         return confirmation == PWCNF_REV_MANU_AUT || confirmation == PWCNF_REV_DISP_AUT;
+    }
+
+    private static string CompleteRequestedSaleCancellation(short terminalRet)
+    {
+        string resultMessage = Result(PWINFO_RESULTMSG);
+        bool authorizedLate = terminalRet == PWRET_OK || IsAuthorizedMessage(resultMessage);
+        short reverseRet = PWRET_OK;
+        bool reversed = false;
+
+        if (authorizedLate && !String.IsNullOrWhiteSpace(Result(PWINFO_REQNUM)))
+        {
+            EmitEvent("INFO", "Transacao foi autorizada durante o cancelamento; enviando PWCNF_REV_MANU_AUT.");
+            reverseRet = ConfirmCurrent(PWCNF_REV_MANU_AUT);
+            reversed = reverseRet == PWRET_OK;
+        }
+        else if (HasPendingTransaction())
+        {
+            EmitEvent("INFO", "Pendencia detectada apos cancelamento; enviando PWCNF_REV_MANU_AUT.");
+            reverseRet = ConfirmWithRetry(
+                PWCNF_REV_MANU_AUT,
+                Result(PWINFO_PNDREQNUM),
+                Result(PWINFO_PNDAUTLOCREF),
+                Result(PWINFO_PNDAUTEXTREF),
+                Result(PWINFO_PNDVIRTMERCH),
+                Result(PWINFO_PNDAUTHSYST),
+                "cancel-pending"
+            );
+            reversed = reverseRet == PWRET_OK;
+        }
+
+        if ((authorizedLate || HasPendingTransaction()) && !reversed)
+        {
+            EmitEvent("ERROR", "Falha ao desfazer transacao durante cancelamento ret=" + reverseRet);
+            return Json("pendingConfirmation", false, "Cancelamento solicitado, mas o desfazimento PayGo falhou", reverseRet, PendingResultsJson());
+        }
+
+        string message = reversed
+            ? "Transacao cancelada e desfeita na PayGo"
+            : "Transacao cancelada antes da autorizacao";
+        EmitEvent("CANCELLED", message);
+        return Json("cancelled", false, message, terminalRet, ResultsJson(true));
     }
 
     private static short ConfirmCurrent(uint confirmation)
