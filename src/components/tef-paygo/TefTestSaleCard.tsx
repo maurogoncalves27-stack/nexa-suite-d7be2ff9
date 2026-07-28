@@ -626,6 +626,17 @@ export default function TefTestSaleCard({ storeId }: Props) {
           }
         })();
       }
+      if (data?.type === "CANCELLING") {
+        setStatus("processing");
+        setStatusMsg(String(data?.message || "Cancelando transacao na PayGo..."));
+      }
+      if (data?.type === "CANCELLED") {
+        setStatus("cancelled");
+        setStatusMsg(String(data?.message || "Transacao cancelada na PayGo"));
+        setPixQrModalOpen(false);
+        setPixQrBrCode("");
+        setPixWaitMsg("");
+      }
       if (data?.type === "DENIED" || data?.type === "ERROR") setStatus("error");
       if (data?.type === "PINPAD") setStatus((prev) => (prev === "approved" ? prev : "processing"));
       if (data?.type === "QRCODE" && data?.message && data.message !== latestPixQrRef.current) {
@@ -644,7 +655,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
         }, 90000);
       }
 
-      if (data?.type === "APPROVED" || data?.type === "CONFIRMED" || data?.type === "DENIED" || data?.type === "ERROR") {
+      if (data?.type === "APPROVED" || data?.type === "CONFIRMED" || data?.type === "CANCELLED" || data?.type === "DENIED" || data?.type === "ERROR") {
         if (pixQrTimeoutRef.current != null) {
           window.clearTimeout(pixQrTimeoutRef.current);
           pixQrTimeoutRef.current = null;
@@ -1382,9 +1393,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
   };
 
   const cancelNetworkSelection = async () => {
-    setPixQrBrCode("");
-    setPixQrModalOpen(false);
-    setPixWaitMsg("");
+    setPixWaitMsg("Cancelando transacao na PayGo...");
     setSaleCaptureModalOpen(false);
     setSaleCaptures(null);
     setSaleCaptureInputs({});
@@ -1392,11 +1401,22 @@ export default function TefTestSaleCard({ storeId }: Props) {
       const cfg = await loadTefConfig(effectiveStoreId);
       const adapter = createTefAdapter(cfg);
       await adapter.cancel();
-    } catch {
-      /* ignore */
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Falha ao cancelar a transacao na PayGo";
+      setStatus("error");
+      setStatusMsg(message);
+      toast({
+        title: "Cancelamento nao concluido",
+        description: message,
+        variant: "destructive",
+      });
+      return;
     }
+    setPixQrBrCode("");
+    setPixQrModalOpen(false);
+    setPixWaitMsg("");
     setStatus("cancelled");
-    setStatusMsg("Operacao PayGo cancelada pelo operador");
+    setStatusMsg("Transacao cancelada na PayGo");
     if (pixQrTimeoutRef.current != null) {
       window.clearTimeout(pixQrTimeoutRef.current);
       pixQrTimeoutRef.current = null;
