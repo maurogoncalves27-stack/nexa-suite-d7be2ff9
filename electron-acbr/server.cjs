@@ -498,8 +498,9 @@ async function handle(req, res) {
             paygoMenuChoice: body?.paygoMenuChoice || "",
             captureValues: body?.captureValues || {},
             manualConfirmation: requiresManualConfirmation(body),
-            onDisplay: (message) => {
-              if (message) publishTefEvent({ paymentId: payment.id, type: "PINPAD", message: String(message) });
+            simulatePowerFailure: body?.simulatePowerFailure === true,
+            onDisplay: (message, eventType) => {
+              if (message) publishTefEvent({ paymentId: payment.id, type: String(eventType || "PINPAD"), message: String(message) });
             },
           });
 
