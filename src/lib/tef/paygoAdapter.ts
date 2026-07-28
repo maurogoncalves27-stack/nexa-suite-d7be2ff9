@@ -164,10 +164,10 @@ export const createPaygoAdapter = (config: TefConfig): TefAdapter => {
     },
     async cancel() {
       abortController?.abort();
-      try {
-        await fetch(joinAgentUrl(config.agentUrl, "/tef/cancelar"), { method: "POST" });
-      } catch {
-        /* ignore */
+      const response = await fetch(joinAgentUrl(config.agentUrl, "/tef/cancelar"), { method: "POST" });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || result?.ok === false) {
+        throw new Error(result?.message || `Falha ao cancelar a transacao PayGo (HTTP ${response.status})`);
       }
     },
   };
