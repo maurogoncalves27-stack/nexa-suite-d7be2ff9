@@ -240,7 +240,7 @@ export default function NotificationSettings() {
           const { data: u } = await supabase.auth.getUser();
           if (u?.user?.id) {
             const { error } = await supabase.functions.invoke("notify-user", {
-              body: { user_id: u.user.id, title, message, category: setting.category_group },
+              body: { user_id: u.user.id, title, message, category: setting.alert_key },
             });
             results.push(error ? `push: falhou` : "push: enviado");
           }
@@ -254,7 +254,7 @@ export default function NotificationSettings() {
             const { error } = await supabase.functions.invoke("send-whatsapp", {
               body: {
                 phone: p.phone, message: `*${title}*\n${message}`,
-                category: setting.category_group,
+                category: setting.alert_key,
                 sender_id: setting.whatsapp_sender_id ?? undefined,
               },
             });
@@ -271,7 +271,7 @@ export default function NotificationSettings() {
             const { error } = await supabase.functions.invoke("send-sms", {
               body: {
                 phone: p.phone, message: `${title}\n${message}`,
-                category: setting.category_group,
+                category: setting.alert_key,
                 sender_id: setting.sms_sender_id ?? undefined,
               },
             });

@@ -9,6 +9,12 @@ export type WaConfig = {
   zapi_client_token?: string | null;
 } | null;
 
+function senderCanSend(row: any): boolean {
+  if (!row?.active) return false;
+  const status = row.last_status as string | null | undefined;
+  return !status || status === "connected";
+}
+
 export function normalizePhone(raw: string | null | undefined): string | null {
   const d = (raw || "").replace(/\D+/g, "");
   if (!d) return null;
@@ -22,20 +28,21 @@ export async function loadWaConfig(
   senderId: string | null,
 ): Promise<WaConfig> {
   const cols =
-    "provider, zapi_instance_id, zapi_token, zapi_client_token, active";
+    "provider, zapi_instance_id, zapi_token, zapi_client_token, active, last_status";
   if (senderId) {
     const { data } = await supabase
       .from("whatsapp_senders")
       .select(cols)
       .eq("id", senderId)
       .maybeSingle();
-    if (data?.active) return data as WaConfig;
+    if (senderCanSend(data)) return data as WaConfig;
   }
   const { data: def } = await supabase
     .from("whatsapp_senders")
     .select(cols)
     .eq("is_default", true)
     .eq("active", true)
+    .or("last_status.is.null,last_status.eq.connected")
     .maybeSingle();
   if (def) return def as WaConfig;
   const instanceId = (globalThis as any).Deno?.env?.get?.("ZAPI_INSTANCE_ID");

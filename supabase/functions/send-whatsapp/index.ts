@@ -20,6 +20,12 @@ const ENV_ZAPI = {
 
 type SenderCreds = { provider: "zapi"; instanceId: string; token: string; clientToken: string; sender_id: string | null };
 
+function senderCanSend(row: any): boolean {
+  if (!row?.active) return false;
+  const status = row.last_status as string | null | undefined;
+  return !status || status === "connected";
+}
+
 interface Body {
   user_id?: string;
   employee_id?: string;
@@ -69,13 +75,18 @@ async function resolveSenderCreds(
   admin: ReturnType<typeof createClient>,
   senderId?: string,
 ): Promise<SenderCreds> {
-  const cols = "id, provider, zapi_instance_id, zapi_token, zapi_client_token, active";
+  const cols = "id, provider, zapi_instance_id, zapi_token, zapi_client_token, active, last_status";
   if (senderId) {
     const { data } = await admin.from("whatsapp_senders").select(cols).eq("id", senderId).maybeSingle();
-    if (data && (data as any).active) return buildCreds(data);
+    if (senderCanSend(data)) return buildCreds(data);
   }
   const { data: def } = await admin
-    .from("whatsapp_senders").select(cols).eq("is_default", true).eq("active", true).maybeSingle();
+    .from("whatsapp_senders")
+    .select(cols)
+    .eq("is_default", true)
+    .eq("active", true)
+    .or("last_status.is.null,last_status.eq.connected")
+    .maybeSingle();
   if (def) return buildCreds(def);
   return { provider: "zapi", ...ENV_ZAPI, sender_id: null };
 }
