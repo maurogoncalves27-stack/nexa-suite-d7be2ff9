@@ -508,6 +508,7 @@ export default function NotificationSettings() {
                       groups={groups}
                       onChange={(patch) => updateSetting(s.alert_key, patch)}
                       onTestEmail={() => sendTestEmail(s)}
+                      onTest={() => sendTestAlert(s)}
                       testing={testingKey === s.alert_key}
                     />
                   ))}
