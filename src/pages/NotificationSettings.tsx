@@ -224,6 +224,88 @@ export default function NotificationSettings() {
     finally { setTestingKey(null); }
   };
 
+  const sendTestAlert = async (setting: Setting) => {
+    if (!setting.push_enabled && !setting.whatsapp_enabled && !setting.sms_enabled && !setting.email_enabled) {
+      toast.error("Ative pelo menos um canal antes de testar.");
+      return;
+    }
+    setTestingKey(setting.alert_key);
+    const title = `Teste — ${setting.label}`;
+    const message = `Mensagem de teste do alerta "${setting.label}". Se você recebeu isto, o canal está funcionando.`;
+    const phones = (setting.extra_recipients || []).filter((r): r is PhoneRecipient => !isGroupR(r));
+    const results: string[] = [];
+    try {
+      if (setting.push_enabled) {
+        try {
+          const { data: u } = await supabase.auth.getUser();
+          if (u?.user?.id) {
+            const { error } = await supabase.functions.invoke("notify-user", {
+              body: { user_id: u.user.id, title, message, category: setting.category_group },
+            });
+            results.push(error ? `push: falhou` : "push: enviado");
+          }
+        } catch { results.push("push: erro"); }
+      }
+      if (setting.whatsapp_enabled) {
+        if (phones.length === 0) results.push("whatsapp: sem números extras");
+        else {
+          let ok = 0, fail = 0;
+          for (const p of phones) {
+            const { error } = await supabase.functions.invoke("send-whatsapp", {
+              body: {
+                phone: p.phone, message: `*${title}*\n${message}`,
+                category: setting.category_group,
+                sender_id: setting.whatsapp_sender_id ?? undefined,
+              },
+            });
+            if (error) fail++; else ok++;
+          }
+          results.push(`whatsapp: ${ok} ok${fail ? `, ${fail} falha` : ""}`);
+        }
+      }
+      if (setting.sms_enabled) {
+        if (phones.length === 0) results.push("sms: sem números extras");
+        else {
+          let ok = 0, fail = 0;
+          for (const p of phones) {
+            const { error } = await supabase.functions.invoke("send-sms", {
+              body: {
+                phone: p.phone, message: `${title}\n${message}`,
+                category: setting.category_group,
+                sender_id: setting.sms_sender_id ?? undefined,
+              },
+            });
+            if (error) fail++; else ok++;
+          }
+          results.push(`sms: ${ok} ok${fail ? `, ${fail} falha` : ""}`);
+        }
+      }
+      if (setting.email_enabled) {
+        const emails = setting.email_recipients || [];
+        if (emails.length === 0) results.push("e-mail: sem destinatários");
+        else {
+          let ok = 0, fail = 0;
+          for (const r of emails) {
+            const { error } = await supabase.functions.invoke("send-transactional-email", {
+              body: {
+                templateName: "alert-generic",
+                recipientEmail: r.email,
+                templateData: { title, message, category: setting.category_group, severity: "info" },
+              },
+            });
+            if (error) fail++; else ok++;
+          }
+          results.push(`e-mail: ${ok} ok${fail ? `, ${fail} falha` : ""}`);
+        }
+      }
+      toast.success("Teste disparado", { description: results.join(" · ") });
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro ao disparar teste");
+    } finally {
+      setTestingKey(null);
+    }
+  };
+
   const grouped = useMemo(() => {
     return settings.reduce<Record<string, Setting[]>>((acc, s) => {
       (acc[s.category_group] ??= []).push(s); return acc;
