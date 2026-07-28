@@ -612,7 +612,7 @@ function AlertCard({
           <PhoneRecipients
             value={setting.extra_recipients}
             onChange={(v) => onChange({ extra_recipients: v })}
-            hint="Números adicionais que recebem este alerta por WhatsApp e SMS."
+            hint="Números que recebem este alerta por WhatsApp (e também por SMS, se a lista de SMS abaixo ficar vazia)."
           />
           <GroupRecipients
             value={setting.extra_recipients}
