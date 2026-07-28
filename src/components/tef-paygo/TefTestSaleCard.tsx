@@ -189,6 +189,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
   const [saleId, setSaleId] = useState(DEFAULT_SALE_ID);
   const [manualConfirmation, setManualConfirmation] = useState(false);
   const [simulatePowerFailure, setSimulatePowerFailure] = useState(false);
+  const [powerFailureModalOpen, setPowerFailureModalOpen] = useState(false);
   const [customerReceiptPref, setCustomerReceiptPref] = useState<"short" | "holder" | "full" | "none">("short");
   const [merchantReceiptPref, setMerchantReceiptPref] = useState<"merch" | "full" | "none">("merch");
   const [receiptVariants, setReceiptVariants] = useState<{
@@ -246,10 +247,9 @@ export default function TefTestSaleCard({ storeId }: Props) {
 
   useEffect(() => {
     simulatePowerFailureRef.current = simulatePowerFailure;
-    if (simulatePowerFailure && !manualConfirmation) {
-      // Precisa de CNFREQ=1 no PayGo para deixar a transação pendente após a aprovação.
-      setManualConfirmation(true);
-    }
+    // O teste precisa seguir pelo fluxo automatico ate o ponto imediatamente
+    // anterior a PW_iConfirmation; confirmacao manual desviaria desse caminho.
+    if (simulatePowerFailure && manualConfirmation) setManualConfirmation(false);
   }, [simulatePowerFailure, manualConfirmation]);
 
   useEffect(() => {
@@ -465,56 +465,6 @@ export default function TefTestSaleCard({ storeId }: Props) {
   }, [agentUrl, effectiveStoreId]);
 
 
-  // Simulação de queda de energia: aborta o fluxo no front após aprovação da PayGo,
-  // sem confirmar nem desfazer — deixa a transação PENDENTE no host PayGo.
-  // Só deve ser chamada quando a venda foi de fato aprovada (approvedSeenRef=true
-  // ou sync com status APROVADA_NAO_CONFIRMADA). Após o abort, valida na DLL se
-  // realmente há pendência (`/api/tef/pending`) e corrige o toast caso não haja.
-  const abortForPowerFailureSim = (reason: string, opts?: { verifyAgentUrl?: string }) => {
-    try { saleEventSourceRef.current?.close(); } catch { /* ignore */ }
-    saleEventSourceRef.current = null;
-    busyRef.current = false;
-    approvedSeenRef.current = false;
-    setBusy(false);
-    setStatus("idle");
-    setStatusMsg("Simulação de queda de energia — verificando pendência na PayGo…");
-    setConfirmSaleModalOpen(false);
-    setActivePaymentId("");
-    const toastId = toast({
-      title: "Simulação de queda de energia",
-      description: reason + " Verificando se a pendência ficou registrada na PayGo…",
-    });
-    const baseUrl = opts?.verifyAgentUrl || agentUrl;
-    if (baseUrl) {
-      void (async () => {
-        try {
-          const { pending } = await fetchAgentPendingConfirmation(baseUrl);
-          if (pending?.reqNum) {
-            setStatusMsg("Pendência registrada na PayGo — trate no próximo acesso.");
-            toastId?.update?.({
-              id: toastId.id,
-              title: "Pendência criada na PayGo",
-              description: `NSU/ReqNum ${pending.reqNum}. Recarregue a página para tratar.`,
-            });
-          } else {
-            setStatusMsg("Fluxo abandonado antes da aprovação — nenhuma pendência criada.");
-            toastId?.update?.({
-              id: toastId.id,
-              variant: "destructive",
-              title: "Nenhuma pendência foi criada",
-              description:
-                "A venda não chegou a ser autorizada pela PayGo (cartão não inserido, cancelada ou erro antes da aprovação). Nada ficou pendente no host.",
-            });
-          }
-        } catch {
-          /* ignore */
-        }
-      })();
-    }
-  };
-
-
-
   useEffect(() => {
     if (!agentUrl) return;
     const streamUrl = joinAgentUrl(agentUrl, "/api/events/stream");
@@ -537,20 +487,17 @@ export default function TefTestSaleCard({ storeId }: Props) {
         approvedSeenRef.current = true;
       }
 
-      // Simulação de queda de energia: SÓ dispara quando a PayGo aprovou de fato
-      // (APPROVED). Eventos PENDING referem-se a pendência residual pré-existente
-      // e não devem ser abandonados como se fossem "nossa" transação aprovada.
-      if (
-        simulatePowerFailureRef.current
-        && busyRef.current
-        && data?.type === "APPROVED"
-      ) {
-        abortForPowerFailureSim(
-          "Transação foi aprovada na PayGo, mas o front abandonou antes da confirmação (CNF).",
-        );
+
+      if (data?.type === "POWER_FAILURE_ARMED" && simulatePowerFailureRef.current) {
+        setPowerFailureModalOpen(true);
+        setStatus("processing");
+        setStatusMsg(String(data?.message || "Journal gravado. Encerre o agente antes da confirmacao."));
+        toast({
+          title: "Ponto de queda de energia atingido",
+          description: "O journal foi gravado. Encerre o agente agora para testar o desfazimento no proximo inicio.",
+        });
         return;
       }
-
 
       const isPendingEvent =
         data?.type === "PENDING"
@@ -608,6 +555,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
       }
 
       if (data?.type === "CONFIRMED") {
+        setPowerFailureModalOpen(false);
         setStatus("approved");
         clearPendingUiState();
         const pendingSnapshot = agentPendingRef.current;
@@ -643,6 +591,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
         })();
       }
       if (data?.type === "UNDONE") {
+        setPowerFailureModalOpen(false);
         setStatus("cancelled");
         clearPendingUiState();
         const pendingSnapshot = agentPendingRef.current;
@@ -1289,24 +1238,10 @@ export default function TefTestSaleCard({ storeId }: Props) {
           saleId: saleId.trim() || DEFAULT_SALE_ID,
           amountInCents: Math.round(value * 100),
           manualConfirmation,
+          simulatePowerFailure,
         }),
       });
       const payment = (await resp.json().catch(() => ({}))) as ApiPayment;
-
-      // Simulação de queda de energia: só dispara se a venda foi REALMENTE aprovada
-      // (APROVADA_NAO_CONFIRMADA na resposta síncrona OU já vimos APPROVED via stream).
-      // PENDENTE_CONFIRMACAO sozinho pode indicar pendência residual pré-existente ou
-      // mapeamento de -2599 em cancelamentos/erros — não caracteriza aprovação nossa.
-      const syncApproved = payment?.status === "APROVADA_NAO_CONFIRMADA";
-      if (
-        simulatePowerFailureRef.current
-        && (syncApproved || approvedSeenRef.current)
-      ) {
-        abortForPowerFailureSim(
-          "Transação aprovada aguardando CNF; front abandonou antes de confirmar.",
-        );
-        return;
-      }
 
       const isBlockedPending = resp.status === 409 && payment?.status === "PENDENTE_CONFIRMACAO";
       const isTruePending = isBlockedPending || payment.status === "PENDENTE_CONFIRMACAO";
@@ -1723,7 +1658,7 @@ export default function TefTestSaleCard({ storeId }: Props) {
               id="manual-confirmation"
               checked={manualConfirmation}
               onCheckedChange={(checked) => setManualConfirmation(checked === true)}
-              disabled={busy}
+              disabled={busy || simulatePowerFailure}
             />
             <div className="space-y-1">
               <Label htmlFor="manual-confirmation" className="text-sm font-medium leading-none">
@@ -1747,10 +1682,9 @@ export default function TefTestSaleCard({ storeId }: Props) {
                 Simular queda de energia (teste)
               </Label>
               <p className="text-xs text-muted-foreground">
-                Envia a venda com <code>CNFREQ=1</code> e abandona o fluxo assim que a PayGo aprovar,
-                sem enviar CNF nem desfazimento. A transação fica <strong>pendente no host PayGo</strong>{" "}
-                e deve aparecer no modal de pendência na próxima abertura da página. Marcar automaticamente
-                ativa "Confirmação manual de venda".
+                Após a aprovação, grava <code>paygo-confirmation-journal.dat</code> e pausa o bridge antes de
+                <code>PW_iConfirmation</code>. Um modal avisará quando for seguro encerrar o agente. Se ele continuar
+                ativo, a confirmação será enviada automaticamente após 120 segundos.
               </p>
             </div>
           </div>
@@ -1860,6 +1794,39 @@ export default function TefTestSaleCard({ storeId }: Props) {
 
         </div>
       </div>
+
+      <Dialog open={powerFailureModalOpen} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md border-amber-400">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-800">
+              <FlaskConical className="h-5 w-5" />
+              Journal gravado — encerre o agente agora
+            </DialogTitle>
+            <DialogDescription>
+              Os parâmetros de confirmação já foram persistidos e o bridge está pausado antes de
+              <code> PW_iConfirmation</code>. Encerre o NEXA ACBr Agent para simular a queda de energia.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+            <p><strong>Arquivo:</strong></p>
+            <code className="block break-all rounded bg-white p-2 text-xs">
+              %APPDATA%\nexa-acbr-agent\paygo-confirmation-journal.dat
+            </code>
+            <p>
+              Ao iniciar novamente, o agente deverá encontrar esse arquivo e enviar
+              <code> PWCNF_REV_PWR_AUT (0x00083131)</code>.
+            </p>
+            <p className="text-xs">
+              Se o agente não for encerrado, a pausa termina após 120 segundos e a confirmação normal prossegue.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPowerFailureModalOpen(false)}>
+              Ocultar aviso (pausa continua)
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={pixQrModalOpen && !!pixQrDataUrl} onOpenChange={(open) => { if (!open) { void cancelNetworkSelection(); setPixQrBrCode(""); } }}>
         <DialogContent className="sm:max-w-md">
