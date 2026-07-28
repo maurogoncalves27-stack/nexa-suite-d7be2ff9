@@ -74,8 +74,10 @@ interface Setting {
   sms_sender_id: string | null;
   email_enabled: boolean;
   extra_recipients: Recipient[];
+  sms_recipients: PhoneRecipient[];
   email_recipients: EmailRecipient[];
 }
+
 
 const emptySender: Omit<Sender, "id"> = {
   label: "", phone_display: "", provider: "zapi",
