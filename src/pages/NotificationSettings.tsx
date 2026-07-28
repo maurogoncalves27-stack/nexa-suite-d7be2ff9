@@ -558,7 +558,19 @@ function AlertCard({
               <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 leading-snug">{setting.description}</p>
             )}
           </div>
-          {!anyChannel && <Badge variant="outline" className="h-5 text-[10px] shrink-0">Silenciado</Badge>}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {!anyChannel && <Badge variant="outline" className="h-5 text-[10px]">Silenciado</Badge>}
+            <Button
+              type="button" size="sm" variant="outline"
+              className="h-7 px-2 gap-1 text-[11px]"
+              disabled={testing || !anyChannel}
+              onClick={onTest}
+              title="Disparar mensagem de teste em todos os canais ativos"
+            >
+              {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+              Testar
+            </Button>
+          </div>
         </div>
       </div>
 
