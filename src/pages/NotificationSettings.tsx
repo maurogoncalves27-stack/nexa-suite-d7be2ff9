@@ -638,10 +638,13 @@ function AlertCard({
             }))}
             emptyLabel="SMS padrão"
           />
-          <p className="text-[11px] text-muted-foreground flex items-center gap-1 pl-1">
-            <Users className="h-3 w-3" /> Usa a mesma lista de números do WhatsApp acima.
-          </p>
+          <PhoneRecipients
+            value={setting.sms_recipients as Recipient[]}
+            onChange={(v) => onChange({ sms_recipients: v.filter((r): r is PhoneRecipient => !isGroupR(r)) })}
+            hint="Números que recebem este alerta por SMS. Se ficar vazio, usa os números do WhatsApp acima."
+          />
         </ChannelRow>
+
 
         <ChannelRow
           icon={<Mail className="h-4 w-4 text-primary" />} label="E-mail"
