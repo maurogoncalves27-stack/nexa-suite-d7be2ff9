@@ -167,6 +167,7 @@ const PENDING_DIR = path.join(
   "nexa-acbr-agent",
 );
 const PENDING_FILE = path.join(PENDING_DIR, "paygo-pending-confirmation.json");
+const SALE_CANCEL_FILE = path.join(PENDING_DIR, "paygo-sale-cancel.signal");
 const STARTUP_PENDING_ACTION = (process.env.PAYGO_STARTUP_PENDING_ACTION || "manual").toLowerCase();
 
 function ensurePendingDir() {
@@ -1045,6 +1046,12 @@ async function efetuarPagamento(opts = {}) {
       return finishPendingSale(paymentId, payload, pendingReason, saleMeta);
     }
 
+    if (payload?.status === "cancelled") {
+      setSaleStatus({ status: "cancelled", message: payload?.message || "Transacao cancelada na PayGo", pendingCaptures: null });
+      emitSaleEvent({ paymentId, type: "CANCELLED", message: payload?.message || "Transacao cancelada na PayGo", payload });
+      return payload;
+    }
+
     if (payload?.ok === false) {
       if (manualConfirmRequested && String(payload?.data?.cnfReq || "") === "1" && hasPayGoConfirmationTuple(payload?.data)) {
         return finishPendingSale(paymentId, payload, "cnfReq=1", saleMeta);
@@ -1187,9 +1194,41 @@ async function confirmarVenda(opts = {}) {
   return r;
 }
 
-function cancelarEmAndamento() {
-  // Mata o host atual — a próxima chamada respawn.
-  stopHost("cancelarEmAndamento");
+async function cancelarEmAndamento() {
+  if (!currentSaleRequestId) {
+    return { ok: true, status: "idle", message: "Nenhuma transacao PayGo em andamento" };
+  }
+
+  ensurePendingDir();
+  const requestId = currentSaleRequestId;
+  fs.writeFileSync(SALE_CANCEL_FILE, JSON.stringify({
+    requestId,
+    requestedAt: new Date().toISOString(),
+  }));
+  setSaleStatus({ status: "cancelling", message: "Cancelamento enviado a PGWebLib; aguardando retorno terminal" });
+  emitSaleEvent({
+    paymentId: String(currentSalePaymentId || saleStatus.saleId || "sale"),
+    type: "CANCELLING",
+    message: "Cancelamento solicitado. Aguardando PW_iExecTransac finalizar na PayGo.",
+  });
+
+  const deadline = Date.now() + Number(process.env.PAYGO_CANCEL_HTTP_TIMEOUT_MS || 40000);
+  while (currentSaleRequestId === requestId && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+
+  if (currentSaleRequestId === requestId) {
+    stopHost("cancelarEmAndamento-timeout");
+    return { ok: false, status: "timeout", message: "PayGo nao concluiu o cancelamento no prazo; host reiniciado" };
+  }
+  if (saleStatus.status !== "cancelled") {
+    return {
+      ok: false,
+      status: saleStatus.status || "error",
+      message: saleStatus.message || "PayGo finalizou o fluxo sem confirmar o cancelamento",
+    };
+  }
+  return { ok: true, status: "cancelled", message: "Fluxo de cancelamento concluido na PayGo" };
 }
 
 // ---------- ADM / instalação ----------
