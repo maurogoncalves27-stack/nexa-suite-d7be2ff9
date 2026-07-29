@@ -2320,6 +2320,7 @@ export type Database = {
           external_id: string | null
           external_url: string | null
           id: string
+          order_description: string | null
           previous_orders: number | null
           published_at: string | null
           rating: number | null
@@ -2343,6 +2344,7 @@ export type Database = {
           external_id?: string | null
           external_url?: string | null
           id?: string
+          order_description?: string | null
           previous_orders?: number | null
           published_at?: string | null
           rating?: number | null
@@ -2366,6 +2368,7 @@ export type Database = {
           external_id?: string | null
           external_url?: string | null
           id?: string
+          order_description?: string | null
           previous_orders?: number | null
           published_at?: string | null
           rating?: number | null

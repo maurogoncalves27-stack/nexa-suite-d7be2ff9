@@ -1,0 +1,1 @@
+ALTER TABLE public.customer_reviews ADD COLUMN IF NOT EXISTS order_description text;
