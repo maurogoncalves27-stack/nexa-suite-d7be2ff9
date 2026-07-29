@@ -992,7 +992,7 @@ export default function CRM() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <div className="font-medium truncate">{r.name ?? "—"}</div>
-                          <div className="text-xs text-muted-foreground">{r.phone ?? "—"}</div>
+                          <div className="text-xs"><PhoneLink phone={r.phone} /></div>
                           {r.email && (
                             <div className="text-xs text-muted-foreground truncate">{r.email}</div>
                           )}
