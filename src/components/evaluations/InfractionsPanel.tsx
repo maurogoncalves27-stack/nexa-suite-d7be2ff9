@@ -54,8 +54,15 @@ export default function InfractionsPanel({ cycles }: { cycles: Cycle[] }) {
   const [employees, setEmployees] = useState<EmployeeRow[]>([]);
   const [types, setTypes] = useState<InfractionType[]>([]);
   const [items, setItems] = useState<InfractionRow[]>([]);
-  const [filterCycle, setFilterCycle] = useState<string>("all");
+  const currentCycleId = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const cur = cycles.find((c) => (c.start_date ?? "") <= today && today <= (c.end_date ?? "9999-12-31"));
+    return cur?.id ?? "";
+  }, [cycles]);
+  const [filterCycle, setFilterCycle] = useState<string>("current");
   const [filterEmployee, setFilterEmployee] = useState<string>("all");
+  const [filterFrom, setFilterFrom] = useState<string>("");
+  const [filterTo, setFilterTo] = useState<string>("");
 
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
