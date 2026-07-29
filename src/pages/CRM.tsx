@@ -1280,10 +1280,8 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                     </TableRow>
                   ) : (
                     visibleConversations.map((c: any) => {
-                      const phone =
-                        c.client_meta?.phone ??
-                        c.client_meta?.telefone ??
-                        "—";
+                      const phoneDigits = pickClientPhone(c);
+                      const phone = phoneDigits ? fmtPhone(phoneDigits) : "—";
                       const nome = pickClientName(c);
                       const msgs = Array.isArray(c.messages) ? c.messages : [];
                       const clientMsgs = msgs.filter((m: any) => isClientMessage(m));
@@ -1293,7 +1291,12 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                             ? messageText(clientMsgs[clientMsgs.length - 1]).slice(0, 80)
                             : "—");
                       const ticketsCount = c.related_tickets?.length ?? 0;
-                      const reservPhone = onlyDigits(String(phone));
+                      // Cliente recorrente: outras conversas com o mesmo telefone
+                      const recurrentCount = phoneDigits
+                        ? conversations.filter((o: any) => o.id !== c.id && pickClientPhone(o) === phoneDigits).length
+                        : 0;
+                      const reservPhone = phoneDigits ?? "";
+
                       const reservCount = reservPhone.length >= 8
                         ? reservations.filter((r) => {
                             const rp = onlyDigits(r.phone);
