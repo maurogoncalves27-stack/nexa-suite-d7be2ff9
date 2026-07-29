@@ -220,6 +220,8 @@ export function UniformDeliveriesPanel({ items, employees }: Props) {
     setAutoLoaded(null);
     setEmployeeId("");
     loadHistory();
+    loadPending();
+
   };
 
   return (
