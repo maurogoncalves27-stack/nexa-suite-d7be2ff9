@@ -1166,6 +1166,8 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                     <TableHead className="hidden md:table-cell">Prévia</TableHead>
                     <TableHead>Msgs</TableHead>
                     <TableHead>Última mensagem</TableHead>
+                    <TableHead className="w-12"></TableHead>
+
                   </TableRow>
                 </TableHeader>
                 <TableBody>
