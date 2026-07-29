@@ -361,13 +361,44 @@ export function clientMessageCount(messages: FlatChatMessage[]) {
   }).length;
 }
 
+// Palavras que nunca fazem parte de um nome (verbos/expressões comuns em respostas).
+const NOT_NAME_WORDS = new Set([
+  "que", "de", "do", "da", "para", "pra", "com", "por", "um", "uma", "o", "a", "os", "as",
+  "aqui", "cliente", "gerente", "atendente", "sim", "nao", "não", "ok", "oi", "olá", "ola",
+  "bom", "dia", "tarde", "noite", "obrigado", "obrigada", "pedido", "pedi", "ifood", "whatsapp",
+  "já", "ja", "enviei", "mandei", "informei", "passei", "falei", "disse", "quero", "queria",
+  "preciso", "gostaria", "meu", "minha", "seu", "sua", "numero", "número", "telefone", "fone",
+  "celular", "contato", "nome", "voce", "você", "vcs", "vc", "eu", "me", "te", "ele", "ela",
+  "reembolso", "entrega", "entregue", "faltando", "errado", "atraso", "atrasado", "dúvida",
+  "duvida", "reclamação", "reclamacao", "fazer", "retirar", "valor", "preço", "preco",
+  "parmegiana", "estrogonofe", "caipira", "parmê", "parme", "box", "asa", "sul", "norte",
+  "lago", "aguas", "águas", "claras", "cd", "mesa", "reserva", "cardapio", "cardápio",
+]);
+
+// Verbos/estruturas que denunciam frase (não é um nome).
+const SENTENCE_RE =
+  /\b(enviei|mandei|informei|passei|falei|disse|quero|queria|preciso|gostaria|não|nao|foi|está|esta|tá|ta|veio|deu|tem|fiz|pedi|recebi|consigo|posso|pode)\b/i;
+
+/** Extrai nome de uma resposta curta do cliente ("Clara", "sou a Clara"). Retorna null se parecer frase. */
+function nameFromShortReply(raw: string): string | null {
+  const text = String(raw || "").trim();
+  if (!text || text.length > 40) return null;
+  if (/\d/.test(text)) return null;
+  if (SENTENCE_RE.test(text)) return null;
+  const words = text.split(/[\s,.!?]+/).filter(Boolean);
+  if (words.length > 4) return null;
+  const tokens = words.filter(
+    (t) => /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.-]*$/.test(t) && !NOT_NAME_WORDS.has(t.toLowerCase()),
+  );
+  if (!tokens.length) return null;
+  const name = tokens.slice(0, 3).join(" ");
+  if (name.replace(/\s/g, "").length < 2) return null;
+  return name.toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase());
+}
+
 export function inferClientName(flat: FlatChatMessage[]) {
-  const stop = new Set([
-    "que", "de", "do", "da", "para", "pra", "com", "por", "um", "uma", "o", "a", "os", "as",
-    "aqui", "cliente", "gerente", "atendente", "sim", "nao", "não", "ok", "oi", "olá", "ola",
-    "bom", "dia", "tarde", "noite", "obrigado", "obrigada", "pedido", "pedi", "ifood", "whatsapp",
-  ]);
-  const isNameToken = (t: string) => /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9'.-]*$/.test(t) && !stop.has(t.toLowerCase()) && !/^\d/.test(t);
+  const isNameToken = (t: string) =>
+    /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9'.-]*$/.test(t) && !NOT_NAME_WORDS.has(t.toLowerCase()) && !/^\d/.test(t);
   const cap = (s: string) => s.toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase());
   const nameAtom = "[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9'.-]*";
   const userText = flat
@@ -392,11 +423,12 @@ export function inferClientName(flat: FlatChatMessage[]) {
     const next = flat[i + 1];
     if (String(cur.role || "").toLowerCase() !== "assistant" || String(next.role || "").toLowerCase() !== "user") continue;
     if (!nameAsk.test(String(cur.content || ""))) continue;
-    const tokens = String(next.content || "").split(/[\s,.!?]+/).filter(isNameToken);
-    if (tokens.length) return cap(tokens.slice(0, 3).join(" "));
+    const name = nameFromShortReply(String(next.content || ""));
+    if (name) return name;
   }
   return null;
 }
+
 
 function inferClientPhone(flat: FlatChatMessage[]): string | null {
   for (const m of flat) {
