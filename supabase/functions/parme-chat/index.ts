@@ -554,6 +554,35 @@ export function enrichClientMeta(flat: FlatChatMessage[], current: unknown, fall
 export const mergeClientMeta = (current: unknown, fallback: unknown, flat: FlatChatMessage[]) =>
   enrichClientMeta(flat, current, fallback);
 
+/**
+ * Valida um candidato a número de pedido. Rejeita qualquer sequência que faça
+ * parte do telefone do cliente (causa do bug histórico: "99866" extraído do
+ * contato 61998662502 e gravado como número do pedido).
+ */
+export function sanitizeOrderNumber(
+  candidate: string | null | undefined,
+  contactDigits: string | null | undefined,
+): string | null {
+  const digits = String(candidate ?? "").replace(/\D/g, "");
+  if (digits.length < 3 || digits.length > 10) return null;
+  const contact = String(contactDigits ?? "").replace(/\D/g, "");
+  if (contact.length >= 8 && contact.includes(digits)) return null;
+  return digits;
+}
+
+/** Título curto derivado do texto do cliente, para não gravar ticket sem título. */
+function deriveTicketTitle(text: string): string {
+  const t = text.toLowerCase();
+  if (/n[ãa]o\s+(chegou|veio|recebi)|n[ãa]o\s+foi\s+entregue|sumiu/.test(t)) return "Pedido não entregue";
+  if (/faltou|faltando|esqueceram|pela\s+metade/.test(t)) return "Item faltando no pedido";
+  if (/errad/.test(t)) return "Pedido errado";
+  if (/fri[oa]/.test(t)) return "Pedido frio";
+  if (/atras|demor/.test(t)) return "Atraso na entrega";
+  if (/cobran[cç]a|estorno|reembolso/.test(t)) return "Problema de cobrança/reembolso";
+  if (/p[ée]ssim|horr[ií]vel|estragad|queim|cru|sem\s+sabor/.test(t)) return "Reclamação de qualidade";
+  return "Reclamação de pedido";
+}
+
 async function ensureComplaintTicket(
   supabase: ReturnType<typeof sb>,
   flat: FlatChatMessage[],
@@ -569,16 +598,17 @@ async function ensureComplaintTicket(
   if (!COMPLAINT_RE.test(userTexts)) return;
 
   const fullText = flat.map((m) => String(m.content || "")).join("\n");
-  const explicitOrder = fullText.match(/(?:pedido\s*#?\s*|n[uú]mero\s*(?:do\s+pedido)?\s*[:#]?\s*)(\d{2,10})/i);
-  const looseOrder = fullText.match(/(?:^|\D)(\d{3,6})(?:\D|$)/);
+  const explicitOrder = fullText.match(/(?:pedido\s*#?\s*|n[uú]mero\s*(?:do\s+pedido)?\s*[:#]?\s*)(\d{3,10})/i);
   const phoneMatch = userTexts.match(/(?:\(?\d{2}\)?\s?)?9?\d{4}[-\s]?\d{4}/);
-  const numeroPedido = explicitOrder?.[1] ?? looseOrder?.[1] ?? null;
   const contato = phoneMatch ? phoneMatch[0].replace(/\D/g, "") : null;
+  // Só aceita número de pedido informado EXPLICITAMENTE e que não seja parte do telefone.
+  const numeroPedido = sanitizeOrderNumber(explicitOrder?.[1] ?? null, contato);
+  const titulo = deriveTicketTitle(userTexts);
   const descricao = `Conversa ${sessionId}:\n${userTexts.slice(-900) || "Reclamação detectada na conversa."}`;
 
   const { data: bySession } = await supabase
     .from("support_tickets")
-    .select("id, order_number, contact")
+    .select("id, order_number, contact, title")
     .ilike("description", `%${sessionId}%`)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -588,6 +618,7 @@ async function ensureComplaintTicket(
     // Já existe ticket: pode atualizar com novos dados (mesmo sem contato novo).
     await supabase.from("support_tickets").update({
       order_number: bySession.order_number ?? numeroPedido,
+      title: bySession.title ?? titulo,
       contact: bySession.contact && bySession.contact !== "não informado"
         ? bySession.contact
         : (contato ?? bySession.contact),
@@ -604,6 +635,7 @@ async function ensureComplaintTicket(
 
   const { error } = await supabase.from("support_tickets").insert({
     order_number: numeroPedido,
+    title: titulo,
     description: descricao,
     contact: contato,
   });
