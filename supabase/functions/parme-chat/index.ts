@@ -430,17 +430,28 @@ export function inferClientName(flat: FlatChatMessage[]) {
 }
 
 
-function inferClientPhone(flat: FlatChatMessage[]): string | null {
-  for (const m of flat) {
-    if (String(m.role || "").toLowerCase() !== "user") continue;
-    const match = String(m.content || "").match(/(?:\(?\d{2}\)?\s?)?9?\d{4}[-\s]?\d{4}/);
-    if (match) {
-      const digits = match[0].replace(/\D/g, "");
-      if (digits.length >= 10) return digits;
-    }
+export function extractPhoneDigits(text: string): string | null {
+  const raw = String(text || "");
+  // Normaliza separadores comuns e procura sequências de 10 a 13 dígitos.
+  const candidates = raw.match(/(?:\+?55\s*)?(?:\(?\d{2}\)?[\s.-]*)?\d{4,5}[\s.-]?\d{4}/g) ?? [];
+  for (const c of candidates) {
+    let digits = c.replace(/\D/g, "");
+    if (digits.length === 13 && digits.startsWith("55")) digits = digits.slice(2);
+    if (digits.length === 12 && digits.startsWith("55")) digits = digits.slice(2);
+    if (digits.length >= 10 && digits.length <= 11) return digits;
   }
   return null;
 }
+
+function inferClientPhone(flat: FlatChatMessage[]): string | null {
+  for (const m of flat) {
+    if (String(m.role || "").toLowerCase() !== "user") continue;
+    const digits = extractPhoneDigits(String(m.content || ""));
+    if (digits) return digits;
+  }
+  return null;
+}
+
 
 const NEIGHBORHOOD_KEYWORDS = [
   "asa norte", "asa sul", "lago norte", "lago sul", "noroeste", "sudoeste",
