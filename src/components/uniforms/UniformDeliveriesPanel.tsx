@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, Trash2, Send } from "lucide-react";
+import { Loader2, Plus, Trash2, Send, Undo2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -64,9 +64,53 @@ export function UniformDeliveriesPanel({ items, employees }: Props) {
   const [history, setHistory] = useState<DeliveryRow[]>([]);
   const [loadingHist, setLoadingHist] = useState(true);
   const [hideTerminated, setHideTerminated] = useState(true);
+  const [pendingByItem, setPendingByItem] = useState<Record<string, { qty: number; store_id: string | null; uniform_item_id: string; size: string }>>({});
+  const [returning, setReturning] = useState<string | null>(null);
 
   const itemMap = Object.fromEntries(items.map((i) => [i.id, i]));
   const selectedEmp = employees.find((e) => e.id === employeeId);
+
+  const loadPending = async () => {
+    const { data } = await (supabase as any).from("uniform_pending_returns").select("*");
+    const map: Record<string, { qty: number; store_id: string | null; uniform_item_id: string; size: string }> = {};
+    for (const r of (data ?? []) as any[]) {
+      map[r.delivery_item_id] = { qty: Number(r.pending_qty ?? 0), store_id: r.store_id ?? null, uniform_item_id: r.uniform_item_id, size: r.size };
+    }
+    setPendingByItem(map);
+  };
+
+  const registerReturn = async (deliveryItemId: string, employeeId: string) => {
+    const p = pendingByItem[deliveryItemId];
+    if (!p || p.qty <= 0) return;
+    setReturning(deliveryItemId);
+    try {
+      const { data: ret, error: rErr } = await supabase.from("uniform_returns").insert({
+        employee_id: employeeId,
+        store_id: p.store_id,
+        returned_on: new Date().toISOString().slice(0, 10),
+        return_reason: "troca",
+        notes: "Devolvida pela tela de entregas",
+        created_by: user?.id,
+      } as any).select().single();
+      if (rErr || !ret) throw rErr ?? new Error("erro");
+      const { error: iErr } = await supabase.from("uniform_return_items").insert({
+        return_id: (ret as any).id,
+        delivery_item_id: deliveryItemId,
+        uniform_item_id: p.uniform_item_id,
+        size: p.size,
+        quantity: p.qty,
+        condition: "bom",
+        back_to_stock: true,
+      } as any);
+      if (iErr) throw iErr;
+      toast({ title: "Devolução registrada", description: "Peça voltou ao estoque como usada." });
+      await Promise.all([loadHistory(), loadPending()]);
+    } catch (e: any) {
+      toast({ title: "Falha ao registrar devolução", description: e?.message ?? String(e), variant: "destructive" });
+    } finally {
+      setReturning(null);
+    }
+  };
 
   const loadHistory = async () => {
     setLoadingHist(true);
@@ -80,7 +124,8 @@ export function UniformDeliveriesPanel({ items, employees }: Props) {
   };
 
 
-  useEffect(() => { loadHistory(); }, []);
+  useEffect(() => { loadHistory(); loadPending(); }, []);
+
 
   // Auto-reset lines quando muda colaborador
   useEffect(() => {
@@ -175,6 +220,8 @@ export function UniformDeliveriesPanel({ items, employees }: Props) {
     setAutoLoaded(null);
     setEmployeeId("");
     loadHistory();
+    loadPending();
+
   };
 
   return (
@@ -398,10 +445,26 @@ export function UniformDeliveriesPanel({ items, employees }: Props) {
                                           {it.condition_at_delivery === "usada" ? "Usada" : "Nova"}
                                         </Badge>
                                         {it.expected_return && (
-                                          <Badge variant="outline" className="text-[9px] py-0 px-1 h-4 border-primary/40 text-primary">
-                                            devolver
-                                          </Badge>
+                                          pendingByItem[it.id]?.qty > 0 ? (
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="h-5 px-1.5 text-[10px] gap-1 border-primary/40 text-primary"
+                                              disabled={returning === it.id}
+                                              onClick={() => registerReturn(it.id, h.employee_id)}
+                                            >
+                                              {returning === it.id
+                                                ? <Loader2 className="h-3 w-3 animate-spin" />
+                                                : <Undo2 className="h-3 w-3" />}
+                                              Devolver ({pendingByItem[it.id].qty})
+                                            </Button>
+                                          ) : (
+                                            <Badge variant="secondary" className="text-[9px] py-0 px-1 h-4">
+                                              devolvida
+                                            </Badge>
+                                          )
                                         )}
+
                                         <span className="ml-auto text-muted-foreground">R$ {(Number(it.unit_cost) * it.quantity).toFixed(2)}</span>
                                       </li>
                                     );
