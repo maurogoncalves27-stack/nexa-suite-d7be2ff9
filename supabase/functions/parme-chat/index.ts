@@ -361,13 +361,44 @@ export function clientMessageCount(messages: FlatChatMessage[]) {
   }).length;
 }
 
+// Palavras que nunca fazem parte de um nome (verbos/expressões comuns em respostas).
+const NOT_NAME_WORDS = new Set([
+  "que", "de", "do", "da", "para", "pra", "com", "por", "um", "uma", "o", "a", "os", "as",
+  "aqui", "cliente", "gerente", "atendente", "sim", "nao", "não", "ok", "oi", "olá", "ola",
+  "bom", "dia", "tarde", "noite", "obrigado", "obrigada", "pedido", "pedi", "ifood", "whatsapp",
+  "já", "ja", "enviei", "mandei", "informei", "passei", "falei", "disse", "quero", "queria",
+  "preciso", "gostaria", "meu", "minha", "seu", "sua", "numero", "número", "telefone", "fone",
+  "celular", "contato", "nome", "voce", "você", "vcs", "vc", "eu", "me", "te", "ele", "ela",
+  "reembolso", "entrega", "entregue", "faltando", "errado", "atraso", "atrasado", "dúvida",
+  "duvida", "reclamação", "reclamacao", "fazer", "retirar", "valor", "preço", "preco",
+  "parmegiana", "estrogonofe", "caipira", "parmê", "parme", "box", "asa", "sul", "norte",
+  "lago", "aguas", "águas", "claras", "cd", "mesa", "reserva", "cardapio", "cardápio",
+]);
+
+// Verbos/estruturas que denunciam frase (não é um nome).
+const SENTENCE_RE =
+  /\b(enviei|mandei|informei|passei|falei|disse|quero|queria|preciso|gostaria|não|nao|foi|está|esta|tá|ta|veio|deu|tem|fiz|pedi|recebi|consigo|posso|pode)\b/i;
+
+/** Extrai nome de uma resposta curta do cliente ("Clara", "sou a Clara"). Retorna null se parecer frase. */
+function nameFromShortReply(raw: string): string | null {
+  const text = String(raw || "").trim();
+  if (!text || text.length > 40) return null;
+  if (/\d/.test(text)) return null;
+  if (SENTENCE_RE.test(text)) return null;
+  const words = text.split(/[\s,.!?]+/).filter(Boolean);
+  if (words.length > 4) return null;
+  const tokens = words.filter(
+    (t) => /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.-]*$/.test(t) && !NOT_NAME_WORDS.has(t.toLowerCase()),
+  );
+  if (!tokens.length) return null;
+  const name = tokens.slice(0, 3).join(" ");
+  if (name.replace(/\s/g, "").length < 2) return null;
+  return name.toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase());
+}
+
 export function inferClientName(flat: FlatChatMessage[]) {
-  const stop = new Set([
-    "que", "de", "do", "da", "para", "pra", "com", "por", "um", "uma", "o", "a", "os", "as",
-    "aqui", "cliente", "gerente", "atendente", "sim", "nao", "não", "ok", "oi", "olá", "ola",
-    "bom", "dia", "tarde", "noite", "obrigado", "obrigada", "pedido", "pedi", "ifood", "whatsapp",
-  ]);
-  const isNameToken = (t: string) => /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9'.-]*$/.test(t) && !stop.has(t.toLowerCase()) && !/^\d/.test(t);
+  const isNameToken = (t: string) =>
+    /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9'.-]*$/.test(t) && !NOT_NAME_WORDS.has(t.toLowerCase()) && !/^\d/.test(t);
   const cap = (s: string) => s.toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase());
   const nameAtom = "[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9'.-]*";
   const userText = flat
@@ -392,8 +423,22 @@ export function inferClientName(flat: FlatChatMessage[]) {
     const next = flat[i + 1];
     if (String(cur.role || "").toLowerCase() !== "assistant" || String(next.role || "").toLowerCase() !== "user") continue;
     if (!nameAsk.test(String(cur.content || ""))) continue;
-    const tokens = String(next.content || "").split(/[\s,.!?]+/).filter(isNameToken);
-    if (tokens.length) return cap(tokens.slice(0, 3).join(" "));
+    const name = nameFromShortReply(String(next.content || ""));
+    if (name) return name;
+  }
+  return null;
+}
+
+
+export function extractPhoneDigits(text: string): string | null {
+  const raw = String(text || "");
+  // Normaliza separadores comuns e procura sequências de 10 a 13 dígitos.
+  const candidates = raw.match(/(?:\+?55\s*)?(?:\(?\d{2}\)?[\s.-]*)?\d{4,5}[\s.-]?\d{4}/g) ?? [];
+  for (const c of candidates) {
+    let digits = c.replace(/\D/g, "");
+    if (digits.length === 13 && digits.startsWith("55")) digits = digits.slice(2);
+    if (digits.length === 12 && digits.startsWith("55")) digits = digits.slice(2);
+    if (digits.length >= 10 && digits.length <= 11) return digits;
   }
   return null;
 }
@@ -401,14 +446,12 @@ export function inferClientName(flat: FlatChatMessage[]) {
 function inferClientPhone(flat: FlatChatMessage[]): string | null {
   for (const m of flat) {
     if (String(m.role || "").toLowerCase() !== "user") continue;
-    const match = String(m.content || "").match(/(?:\(?\d{2}\)?\s?)?9?\d{4}[-\s]?\d{4}/);
-    if (match) {
-      const digits = match[0].replace(/\D/g, "");
-      if (digits.length >= 10) return digits;
-    }
+    const digits = extractPhoneDigits(String(m.content || ""));
+    if (digits) return digits;
   }
   return null;
 }
+
 
 const NEIGHBORHOOD_KEYWORDS = [
   "asa norte", "asa sul", "lago norte", "lago sul", "noroeste", "sudoeste",
@@ -549,6 +592,66 @@ async function ensureComplaintTicket(
   if (error) console.error("[parme-chat safety-net] ticket err:", error);
   else console.log("[parme-chat safety-net] ticket garantido para sessão:", sessionId);
 }
+
+/**
+ * Identifica cliente recorrente pelo telefone: procura conversas anteriores
+ * (client_meta.phone) e chamados abertos com o mesmo contato.
+ */
+async function lookupReturningCustomer(
+  phone: string,
+  currentSessionId: string | null,
+): Promise<string | null> {
+  try {
+    const supabase = sb();
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 10) return null;
+    const tail = digits.slice(-8);
+
+    const [{ data: convs }, { data: tickets }] = await Promise.all([
+      supabase
+        .from("chat_conversations")
+        .select("session_id, client_meta, last_message_at, triage")
+        .filter("client_meta->>phone", "like", `%${tail}`)
+        .order("last_message_at", { ascending: false })
+        .limit(6),
+      supabase
+        .from("support_tickets")
+        .select("title, order_number, created_at, contact")
+        .like("contact", `%${tail}`)
+        .order("created_at", { ascending: false })
+        .limit(3),
+    ]);
+
+    const previous = (convs ?? []).filter((c: any) => c.session_id !== currentSessionId);
+    if (!previous.length && !(tickets ?? []).length) return null;
+
+    const knownName = previous
+      .map((c: any) => c?.client_meta?.name)
+      .find((n: unknown) => typeof n === "string" && n.trim().length > 1);
+    const lastAt = previous[0]?.last_message_at
+      ? new Date(previous[0].last_message_at).toLocaleDateString("pt-BR")
+      : null;
+    const ticketList = (tickets ?? [])
+      .map((t: any) => `${t.title ?? "chamado"}${t.order_number ? ` (pedido ${t.order_number})` : ""}`)
+      .join("; ");
+
+    const parts: string[] = [
+      `- CLIENTE RECORRENTE: este telefone já falou com a gente ${previous.length || (tickets ?? []).length}x antes${lastAt ? ` (última vez em ${lastAt})` : ""}.`,
+    ];
+    if (knownName) {
+      parts.push(`- Nome já cadastrado para este telefone: ${knownName}. Cumprimente pelo nome e NÃO peça o nome de novo.`);
+    }
+    if (ticketList) {
+      parts.push(`- Chamados anteriores deste contato: ${ticketList}. Se ele voltar sobre o mesmo assunto, trate como continuidade, não como caso novo.`);
+    }
+    return parts.join("\n");
+  } catch (e) {
+    console.error("[parme-chat] lookupReturningCustomer err:", e);
+    return null;
+  }
+}
+
+
 
 async function notifyStoreReservation(
   nome: string,
@@ -1104,10 +1207,15 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
       const lines: string[] = [];
       if (knownName) lines.push(`- Nome do cliente: ${knownName}. Use sempre que se dirigir a ele.`);
       if (knownPhone) lines.push(`- WhatsApp/telefone do cliente: ${knownPhone}. JÁ TEMOS — NÃO peça de novo em hipótese alguma. Use diretamente para registrar_problema_pedido / criar_reserva.`);
+      if (knownPhone) {
+        const history = await lookupReturningCustomer(knownPhone, sessionId);
+        if (history) lines.push(history);
+      }
       if (lines.length) {
         systemPrompt += `\n\nCONTEXTO DO CLIENTE (já conhecido nesta conversa):\n${lines.join("\n")}`;
       }
     } catch { /* contexto é opcional */ }
+
 
     const result = streamText({
       model,

@@ -264,8 +264,62 @@ function translateStatus(s?: string | null) {
   return map[s.toLowerCase()] ?? s;
 }
 
+// Palavras que nunca compõem um nome próprio (evita "nomes" como "Já Enviei Meu").
+const NOT_NAME_WORDS = new Set([
+  "que","de","do","da","para","pra","com","por","um","uma","o","a","os","as",
+  "aqui","cliente","gerente","atendente","sim","nao","não","ok","oi","olá","ola",
+  "bom","dia","tarde","noite","obrigado","obrigada","blz","beleza",
+  "pedido","pedi","quero","comprar","ifood","whatsapp","asa","sul","norte",
+  "lago","aguas","águas","claras","fabrica","cd","parme","parmê","box","caipira",
+  "estrogonofe","retirada","delivery","entrega","mesa","reserva","cardapio","cardápio",
+  "já","ja","enviei","mandei","informei","passei","falei","disse","queria","preciso",
+  "gostaria","meu","minha","seu","sua","numero","número","telefone","fone","celular",
+  "contato","nome","voce","você","vcs","vc","eu","me","te","ele","ela","reembolso",
+  "entregue","faltando","errado","atraso","atrasado","duvida","dúvida","fazer","retirar",
+  "valor","preco","preço","parmegiana",
+]);
+
+const SENTENCE_RE =
+  /\b(enviei|mandei|informei|passei|falei|disse|quero|queria|preciso|gostaria|não|nao|foi|está|esta|tá|ta|veio|deu|tem|fiz|pedi|recebi|consigo|posso|pode)\b/i;
+
+/** Nome a partir de uma resposta curta do cliente. Null se parecer frase. */
+function nameFromShortReply(raw: string): string | null {
+  const text = String(raw || "").trim();
+  if (!text || text.length > 40) return null;
+  if (/\d/.test(text)) return null;
+  if (SENTENCE_RE.test(text)) return null;
+  const words = text.split(/[\s,.!?]+/).filter(Boolean);
+  if (words.length > 4) return null;
+  const tokens = words.filter(
+    (t) => /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.-]*$/.test(t) && !NOT_NAME_WORDS.has(t.toLowerCase()),
+  );
+  if (!tokens.length) return null;
+  const name = tokens.slice(0, 3).join(" ");
+  if (name.replace(/\s/g, "").length < 2) return null;
+  return name.toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase());
+}
+
+/** Telefone brasileiro (10-11 dígitos) em texto livre. */
+function extractPhoneDigits(text: string): string | null {
+  const candidates = String(text || "").match(/(?:\+?55\s*)?(?:\(?\d{2}\)?[\s.-]*)?\d{4,5}[\s.-]?\d{4}/g) ?? [];
+  for (const c of candidates) {
+    let digits = c.replace(/\D/g, "");
+    if (digits.length > 11 && digits.startsWith("55")) digits = digits.slice(2);
+    if (digits.length >= 10 && digits.length <= 11) return digits;
+  }
+  return null;
+}
+
+function fmtPhone(digits: string): string {
+  const d = digits.replace(/\D/g, "");
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return digits;
+}
+
 // Heurística: extrai informações do cliente a partir de client_meta + mensagens da conversa,
 // inferindo dados que ele não disse explicitamente (telefone digitado, loja mencionada, canal, etc).
+
 function extractClientInfo(conv: any, msgs: any[] | null): Record<string, string> {
   const info: Record<string, string> = {};
   const meta = conv?.client_meta ?? {};
@@ -330,10 +384,9 @@ function extractClientInfo(conv: any, msgs: any[] | null): Record<string, string
         if (!isAssistantMessage(cur) || !isClientMessage(next)) continue;
         const curText = messageText(cur);
         if (!nameAsk.test(curText)) continue;
-        const reply = messageText(next);
-        const tok = reply.split(/[\s,.!?]+/).filter(isNameToken);
-        if (tok.length >= 1) {
-          info["Nome (inferido)"] = cap(tok.slice(0, 3).join(" "));
+        const inferred = nameFromShortReply(messageText(next));
+        if (inferred) {
+          info["Nome (inferido)"] = inferred;
           break;
         }
       }
@@ -346,9 +399,10 @@ function extractClientInfo(conv: any, msgs: any[] | null): Record<string, string
   }
   // Telefone
   if (!info["Telefone"]) {
-    const m = userText.match(/(?:\(?\d{2}\)?\s?)?9?\d{4}[-\s]?\d{4}/);
-    if (m) info["Telefone (inferido)"] = m[0].trim();
+    const digits = extractPhoneDigits(userText);
+    if (digits) info["Telefone (inferido)"] = fmtPhone(digits);
   }
+
   // E-mail
   if (!info["E-mail"]) {
     const m = userText.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
@@ -394,7 +448,8 @@ function pickClientName(c: any): string {
     c?.client_meta?.nome ??
     c?.extracted?.name ??
     c?.extracted?.nome;
-  if (direct) return String(direct);
+  // Ignora nomes "sujos" gravados por heurísticas antigas (ex.: "Já Enviei Meu").
+  if (direct && !SENTENCE_RE.test(String(direct))) return String(direct);
   // fallback: tenta inferir a partir das mensagens já gravadas no banco
   const msgs = Array.isArray(c?.messages) ? c.messages : null;
   if (msgs && msgs.length) {
@@ -405,6 +460,27 @@ function pickClientName(c: any): string {
   }
   return "—";
 }
+
+/** Telefone da conversa: client_meta/extracted e, se faltar, o que o cliente digitou nas mensagens. */
+function pickClientPhone(c: any): string | null {
+  const direct =
+    c?.client_meta?.phone ??
+    c?.client_meta?.telefone ??
+    c?.client_meta?.whatsapp ??
+    c?.client_meta?.contact ??
+    c?.extracted?.phone ??
+    c?.extracted?.telefone;
+  const digitsDirect = onlyDigits(String(direct ?? ""));
+  if (digitsDirect.length >= 10) return digitsDirect;
+  const msgs = Array.isArray(c?.messages) ? c.messages : [];
+  for (const m of msgs) {
+    if (!isClientMessage(m)) continue;
+    const d = extractPhoneDigits(messageText(m));
+    if (d) return d;
+  }
+  return null;
+}
+
 
 export default function CRM() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -1204,10 +1280,8 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                     </TableRow>
                   ) : (
                     visibleConversations.map((c: any) => {
-                      const phone =
-                        c.client_meta?.phone ??
-                        c.client_meta?.telefone ??
-                        "—";
+                      const phoneDigits = pickClientPhone(c);
+                      const phone = phoneDigits ? fmtPhone(phoneDigits) : "—";
                       const nome = pickClientName(c);
                       const msgs = Array.isArray(c.messages) ? c.messages : [];
                       const clientMsgs = msgs.filter((m: any) => isClientMessage(m));
@@ -1217,7 +1291,12 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                             ? messageText(clientMsgs[clientMsgs.length - 1]).slice(0, 80)
                             : "—");
                       const ticketsCount = c.related_tickets?.length ?? 0;
-                      const reservPhone = onlyDigits(String(phone));
+                      // Cliente recorrente: outras conversas com o mesmo telefone
+                      const recurrentCount = phoneDigits
+                        ? conversations.filter((o: any) => o.id !== c.id && pickClientPhone(o) === phoneDigits).length
+                        : 0;
+                      const reservPhone = phoneDigits ?? "";
+
                       const reservCount = reservPhone.length >= 8
                         ? reservations.filter((r) => {
                             const rp = onlyDigits(r.phone);
@@ -1244,9 +1323,15 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                                   <Calendar className="h-3 w-3 mr-1" />{reservCount}
                                 </Badge>
                               )}
+                              {recurrentCount > 0 && (
+                                <Badge variant="secondary" className="text-[10px] h-5">
+                                  recorrente · {recurrentCount + 1}x
+                                </Badge>
+                              )}
                               {clientMsgs.length === 1 && (
                                 <Badge variant="secondary" className="text-[10px] h-5">curta</Badge>
                               )}
+
                               {c.archived_at && (
                                 <Badge variant="outline" className="text-[10px] h-5">
                                   <CheckCheck className="h-3 w-3 mr-1" />revisada
@@ -1309,11 +1394,9 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
               {(() => {
                 const c = conversations.find((x) => x.id === expandedConvId) as any;
                 if (!c) return null;
-                const phone =
-                  c.client_meta?.phone ??
-                  c.client_meta?.telefone ??
-                  c.client_meta?.name ??
-                  "—";
+                const phoneDigits = pickClientPhone(c);
+                const phone = phoneDigits ? fmtPhone(phoneDigits) : "—";
+
                 const nome = pickClientName(c);
                 const msgsForInfo = (convMsgs && convMsgs.length > 0)
                   ? convMsgs
