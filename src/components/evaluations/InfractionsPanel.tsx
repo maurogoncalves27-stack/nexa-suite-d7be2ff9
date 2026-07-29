@@ -225,6 +225,9 @@ export default function InfractionsPanel({ cycles }: { cycles: Cycle[] }) {
             <Select value={filterCycle} onValueChange={setFilterCycle}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
+                <SelectItem value="current" disabled={!currentCycleId}>
+                  Ciclo atual{currentCycleId ? ` (${cycleMap[currentCycleId]?.name ?? ""})` : " (nenhum)"}
+                </SelectItem>
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="none">Sem ciclo</SelectItem>
                 {cycles.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
@@ -240,6 +243,14 @@ export default function InfractionsPanel({ cycles }: { cycles: Cycle[] }) {
                 {employees.map((e) => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>De</Label>
+            <Input type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} className="w-[160px]" />
+          </div>
+          <div className="space-y-2">
+            <Label>Até</Label>
+            <Input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} className="w-[160px]" />
           </div>
         </div>
 
