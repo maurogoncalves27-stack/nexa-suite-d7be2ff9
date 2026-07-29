@@ -167,6 +167,41 @@ export function UniformDeliveriesPanel({ items, employees }: Props) {
     }
     if (!selectedEmp) return;
     setSaving(true);
+
+    // Bloqueia entrega sem saldo em estoque na sede
+    const { data: stockRows, error: stErr } = await supabase
+      .from("uniform_stock")
+      .select("uniform_item_id, size, condition, quantity")
+      .eq("store_id", UNIFORM_CENTRAL_STORE_ID);
+    if (stErr) {
+      setSaving(false);
+      toast({ title: "Erro ao consultar estoque", description: stErr.message, variant: "destructive" });
+      return;
+    }
+    const avail = new Map<string, number>();
+    for (const r of (stockRows ?? []) as any[]) {
+      const key = `${r.uniform_item_id}|${r.size}|${r.condition ?? "nova"}`;
+      avail.set(key, (avail.get(key) ?? 0) + Number(r.quantity ?? 0));
+    }
+    const needed = new Map<string, number>();
+    for (const l of lines) {
+      const key = `${l.uniform_item_id}|${l.size}|${l.condition_at_delivery}`;
+      needed.set(key, (needed.get(key) ?? 0) + l.quantity);
+    }
+    const faltas: string[] = [];
+    for (const [key, qty] of needed) {
+      const [itemId, size, cond] = key.split("|");
+      const have = avail.get(key) ?? 0;
+      if (qty > have) {
+        faltas.push(`${itemMap[itemId]?.name ?? "Peça"} (${size}, ${cond === "usada" ? "usada" : "nova"}): disponível ${have}, solicitado ${qty}`);
+      }
+    }
+    if (faltas.length > 0) {
+      setSaving(false);
+      toast({ title: "Estoque insuficiente na sede", description: faltas.join(" · "), variant: "destructive" });
+      return;
+    }
+
     const { data: del, error } = await supabase.from("uniform_deliveries").insert({
       employee_id: employeeId,
       store_id: selectedEmp.store_id,
