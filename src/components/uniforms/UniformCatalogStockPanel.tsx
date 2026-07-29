@@ -190,19 +190,38 @@ export function UniformCatalogStockPanel({ items, onChanged }: Props) {
       toast({ title: "Preencha todos os campos", variant: "destructive" });
       return;
     }
+    const quantity = Math.max(1, Number(movForm.quantity) || 1);
+    const available = stockKey(movForm.uniform_item_id, movForm.size, movForm.condition)?.quantity ?? 0;
+    const isOutgoing = movForm.movement_type === "saida" || movForm.movement_type === "perda";
+    if (isOutgoing && quantity > available) {
+      toast({
+        title: "Estoque insuficiente",
+        description: `Disponível: ${available}. Não é possível registrar saída/perda de ${quantity}.`,
+        variant: "destructive",
+      });
+      return;
+    }
     setSavingMov(true);
     const { error } = await supabase.from("uniform_stock_movements").insert({
       store_id: UNIFORM_CENTRAL_STORE_ID,
       uniform_item_id: movForm.uniform_item_id,
       size: movForm.size,
       movement_type: movForm.movement_type,
-      quantity: Math.max(1, Number(movForm.quantity) || 1),
+      quantity,
       reason: movForm.reason || null,
       created_by: user?.id,
       condition: movForm.condition,
     } as any);
     setSavingMov(false);
-    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+    if (error) {
+      const insufficient = error.message.includes("uniform_stock_quantity_check") || error.message.toLowerCase().includes("estoque insuficiente");
+      toast({
+        title: insufficient ? "Estoque insuficiente" : "Erro",
+        description: insufficient ? "A movimentação deixaria o estoque negativo. Confira o saldo atual e tente novamente." : error.message,
+        variant: "destructive",
+      });
+      return;
+    }
     toast({ title: "Movimentação registrada" });
     setMovOpen(false);
     load();
@@ -230,6 +249,12 @@ export function UniformCatalogStockPanel({ items, onChanged }: Props) {
 
   const movItem = items.find((i) => i.id === movForm.uniform_item_id);
   const movSizes = movItem ? sizesFor(movItem.size_type) : [];
+  const movQuantity = Math.max(1, Number(movForm.quantity) || 1);
+  const movAvailable = movForm.uniform_item_id && movForm.size
+    ? stockKey(movForm.uniform_item_id, movForm.size, movForm.condition)?.quantity ?? 0
+    : 0;
+  const movIsOutgoing = movForm.movement_type === "saida" || movForm.movement_type === "perda";
+  const movInsufficient = movIsOutgoing && !!movForm.uniform_item_id && !!movForm.size && movQuantity > movAvailable;
 
   return (
     <div className="space-y-4">
@@ -557,6 +582,11 @@ export function UniformCatalogStockPanel({ items, onChanged }: Props) {
             <div className="space-y-2">
               <Label>Quantidade</Label>
               <Input type="number" min={1} value={movForm.quantity} onChange={(e) => setMovForm({ ...movForm, quantity: e.target.value })} />
+              {movIsOutgoing && movForm.uniform_item_id && movForm.size && (
+                <p className={movInsufficient ? "text-xs text-destructive" : "text-xs text-muted-foreground"}>
+                  Disponível: {movAvailable}
+                </p>
+              )}
             </div>
             <div className="space-y-2 col-span-2">
               <Label>Observação</Label>
@@ -565,7 +595,7 @@ export function UniformCatalogStockPanel({ items, onChanged }: Props) {
           </div>
           <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setMovOpen(false)} className="w-full sm:w-auto">Cancelar</Button>
-            <Button onClick={submitMov} disabled={savingMov} className="w-full sm:w-auto gap-2">
+            <Button onClick={submitMov} disabled={savingMov || movInsufficient} className="w-full sm:w-auto gap-2">
               {savingMov ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               Registrar
             </Button>
