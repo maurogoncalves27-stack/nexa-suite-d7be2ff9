@@ -581,8 +581,20 @@ export default function CRM() {
     setConvMsgs(Array.isArray(msgs) ? msgs : []);
   }, [expandedConvId, conversations]);
 
+  async function handleDeleteConversation(convId: string) {
+    const tid = toast.loading("Excluindo conversa…");
+    const { error } = await supabase.from("chat_conversations").delete().eq("id", convId);
+    if (error) {
+      toast.error("Não foi possível excluir", { id: tid, description: error.message });
+      return;
+    }
+    setConversations((prev) => prev.filter((c) => c.id !== convId));
+    setExpandedConvId((cur) => (cur === convId ? null : cur));
+    toast.success("Conversa excluída", { id: tid });
+  }
 
   async function handleDeleteReservation(parmeId: string) {
+
     setDeletingId(parmeId);
     const tid = toast.loading("Excluindo reserva no Parmê…");
     try {
@@ -1154,18 +1166,20 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                     <TableHead className="hidden md:table-cell">Prévia</TableHead>
                     <TableHead>Msgs</TableHead>
                     <TableHead>Última mensagem</TableHead>
+                    <TableHead className="w-12"></TableHead>
+
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                         Carregando…
                       </TableCell>
                     </TableRow>
                   ) : visibleConversations.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                         Nenhuma conversa.
                       </TableCell>
                     </TableRow>
@@ -1222,7 +1236,39 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                           </TableCell>
                           <TableCell>{c.message_count ?? "—"}</TableCell>
                           <TableCell>{fmtDateTime(c.last_message_at)}</TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Excluir conversa?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    A conversa de <strong>{String(nome)}</strong> e todo o histórico
+                                    de mensagens serão removidos. Esta ação não pode ser desfeita.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteConversation(c.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Excluir
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </TableCell>
                         </TableRow>
+
                       );
                     })
                   )}
