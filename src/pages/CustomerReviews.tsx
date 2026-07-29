@@ -801,13 +801,14 @@ function NewReviewDialog({
       setRating(r);
       setRatingStr(Number(r).toFixed(1).replace(".", ","));
       setName(editing.customer_name ?? "");
+      setPrevOrders(editing.previous_orders != null ? String(editing.previous_orders) : "");
       setComment(editing.comment ?? "");
       setUrl(editing.external_url ?? "");
       setBrandId(editing.brand_id ?? "none");
       setStoreId(editing.store_id ?? "none");
     } else {
       setSource("google"); setRating(5); setRatingStr("5,0");
-      setName(""); setComment(""); setUrl(""); setBrandId("none"); setStoreId("none");
+      setName(""); setPrevOrders(""); setComment(""); setUrl(""); setBrandId("none"); setStoreId("none");
     }
   }, [open, editing]);
 
@@ -819,6 +820,7 @@ function NewReviewDialog({
     setSaving(true);
     const payload = {
       source, rating, comment, customer_name: name || null, external_url: url || null,
+      previous_orders: prevOrders.trim() === "" ? null : Math.max(0, parseInt(prevOrders, 10) || 0),
       brand_id: brandId === "none" ? null : brandId,
       store_id: storeId === "none" ? null : storeId,
     };
