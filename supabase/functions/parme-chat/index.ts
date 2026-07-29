@@ -946,9 +946,17 @@ Deno.serve(async (req) => {
         },
       }),
       criar_reserva: tool({
-        description: "Cria uma reserva de mesa após confirmar dados com o cliente.",
+        description: "Cria uma reserva de mesa (salão só existe na Asa Norte) após confirmar nome, telefone, data, horário e nº de pessoas. NUNCA diga ao cliente que a reserva está feita sem que este tool retorne sucesso=true.",
         inputSchema: reservaSchema,
         execute: async ({ nome, telefone, data, horario, pessoas, observacao }) => {
+          const hoje = new Date().toISOString().slice(0, 10);
+          if (data < hoje) {
+            return {
+              sucesso: false,
+              erro: "data_passada",
+              mensagem: "Essa data já passou. Confirme com o cliente o dia correto antes de registrar.",
+            };
+          }
           const supabase = sb();
           const { data: row, error } = await supabase
             .from("reservations")
@@ -964,13 +972,29 @@ Deno.serve(async (req) => {
             .single();
           if (error || !row) {
             console.error("[parme-chat] reserva err:", error);
-            return { sucesso: false, erro: "Não foi possível concluir a operação." };
+            // Não perde o cliente: abre chamado para a equipe tratar manualmente.
+            const contato = String(telefone ?? "").replace(/\D/g, "");
+            await supabase.from("support_tickets").insert({
+              title: "Falha ao registrar reserva (chat)",
+              description:
+                `${sessionId ? `Conversa ${sessionId}:\n` : ""}Reserva NÃO gravada por falha técnica.\n` +
+                `Cliente: ${nome}\nTelefone: ${contato}\nData: ${data} ${horario}\nPessoas: ${pessoas}\n` +
+                `Obs: ${observacao ?? "-"}\nErro: ${error?.message ?? "desconhecido"}`,
+              contact: contato || "não informado",
+            });
+            return {
+              sucesso: false,
+              erro: "falha_tecnica",
+              mensagem:
+                "Não consegui registrar a reserva agora. Diga ao cliente com honestidade que houve falha no sistema, que a equipe da Asa Norte já foi acionada e vai retornar pelo telefone informado.",
+            };
           }
           notifyStoreReservation(nome, telefone, data, horario, pessoas, observacao);
           return {
             sucesso: true,
             id: row.id,
             status: row.status,
+            protocolo: String(row.id).slice(0, 8).toUpperCase(),
             mensagem: "Reserva registrada. Aguarde confirmação por telefone.",
           };
         },
