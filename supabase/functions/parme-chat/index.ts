@@ -1016,7 +1016,8 @@ Deno.serve(async (req) => {
               mensagem: "Preciso do seu telefone com DDD antes de abrir o chamado — sem contato não conseguimos retornar.",
             };
           }
-          const tituloLimpo = (titulo ?? "").trim().slice(0, 80) || "Ocorrência";
+          const tituloLimpo = (titulo ?? "").trim().slice(0, 80) || deriveTicketTitle(descricao ?? "");
+          const pedidoLimpo = sanitizeOrderNumber(numero_pedido, contatoLimpo);
           const supabase = sb();
           const descricaoFinal = sessionId ? `Conversa ${sessionId}:\n${descricao}` : descricao;
           if (sessionId) {
