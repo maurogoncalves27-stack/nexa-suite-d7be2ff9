@@ -197,23 +197,23 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
     });
   }, [reviews, nutriVisits]);
 
-  // Métricas de recorrência (pedidos anteriores informados nas avaliações)
+  // Métricas de recorrência (qtde de pedidos do cliente informada nas avaliações)
   const loyalty = useMemo(() => {
     const withData = reviews.filter((r) => r.previous_orders != null);
     const total = withData.length;
-    const novos = withData.filter((r) => (r.previous_orders as number) === 0).length;
-    const recorrentes = withData.filter((r) => (r.previous_orders as number) >= 1 && (r.previous_orders as number) <= 4).length;
-    const fieis = withData.filter((r) => (r.previous_orders as number) >= 5).length;
+    const novos = withData.filter((r) => (r.previous_orders as number) <= 1).length;
+    const recorrentes = withData.filter((r) => (r.previous_orders as number) >= 2 && (r.previous_orders as number) <= 5).length;
+    const fieis = withData.filter((r) => (r.previous_orders as number) >= 6).length;
     const media = total ? withData.reduce((a, r) => a + (r.previous_orders as number), 0) / total : 0;
     const avgOf = (rows: Review[]) => {
       const rt = rows.filter((r) => r.rating != null).map((r) => r.rating as number);
       return rt.length ? rt.reduce((a, b) => a + b, 0) / rt.length : null;
     };
     const buckets = [
-      { key: "0", label: "1º pedido", rows: withData.filter((r) => r.previous_orders === 0) },
-      { key: "1-4", label: "1 a 4 pedidos", rows: withData.filter((r) => (r.previous_orders as number) >= 1 && (r.previous_orders as number) <= 4) },
-      { key: "5-9", label: "5 a 9 pedidos", rows: withData.filter((r) => (r.previous_orders as number) >= 5 && (r.previous_orders as number) <= 9) },
-      { key: "10+", label: "10+ pedidos", rows: withData.filter((r) => (r.previous_orders as number) >= 10) },
+      { key: "1", label: "1 pedido", rows: withData.filter((r) => (r.previous_orders as number) <= 1) },
+      { key: "2-5", label: "2 a 5 pedidos", rows: withData.filter((r) => (r.previous_orders as number) >= 2 && (r.previous_orders as number) <= 5) },
+      { key: "6-10", label: "6 a 10 pedidos", rows: withData.filter((r) => (r.previous_orders as number) >= 6 && (r.previous_orders as number) <= 10) },
+      { key: "11+", label: "11+ pedidos", rows: withData.filter((r) => (r.previous_orders as number) >= 11) },
     ].map((b) => ({ label: b.label, count: b.rows.length, avg: avgOf(b.rows) }));
     return { total, novos, recorrentes, fieis, media, buckets };
   }, [reviews]);
@@ -403,17 +403,17 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
         <CardContent className="space-y-3">
           {loyalty.total === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Informe o campo “Pedidos anteriores” ao cadastrar avaliações para gerar estas métricas.
+              Informe o campo “Qtde de pedidos do cliente” ao cadastrar avaliações para gerar estas métricas.
             </p>
           ) : (
             <>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
                 <div className="rounded-lg border p-3">
-                  <div className="text-[10px] text-muted-foreground">Média de pedidos anteriores</div>
+                  <div className="text-[10px] text-muted-foreground">Média de pedidos por cliente</div>
                   <div className="text-lg font-semibold">{loyalty.media.toFixed(1)}</div>
                 </div>
                 <div className="rounded-lg border p-3">
-                  <div className="text-[10px] text-muted-foreground">Clientes de 1º pedido</div>
+                  <div className="text-[10px] text-muted-foreground">Clientes de 1º pedido (1)</div>
                   <div className="text-lg font-semibold">
                     {loyalty.novos}
                     <span className="text-xs text-muted-foreground ml-1">
@@ -422,7 +422,7 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                   </div>
                 </div>
                 <div className="rounded-lg border p-3">
-                  <div className="text-[10px] text-muted-foreground">Recorrentes (1–4)</div>
+                  <div className="text-[10px] text-muted-foreground">Recorrentes (2–5)</div>
                   <div className="text-lg font-semibold">
                     {loyalty.recorrentes}
                     <span className="text-xs text-muted-foreground ml-1">
@@ -431,7 +431,7 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                   </div>
                 </div>
                 <div className="rounded-lg border p-3">
-                  <div className="text-[10px] text-muted-foreground">Fiéis (5+)</div>
+                  <div className="text-[10px] text-muted-foreground">Fiéis (6+)</div>
                   <div className="text-lg font-semibold">
                     {loyalty.fieis}
                     <span className="text-xs text-muted-foreground ml-1">
@@ -811,9 +811,9 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                     <span className="text-sm font-medium truncate">{r.customer_name ?? "Cliente"}</span>
                     {r.previous_orders != null && (
                       <Badge variant="outline" className="text-[10px]">
-                        {r.previous_orders === 0
+                        {(r.previous_orders as number) <= 1
                           ? "1º pedido"
-                          : `${r.previous_orders} ${r.previous_orders === 1 ? "pedido anterior" : "pedidos anteriores"}`}
+                          : `${r.previous_orders} pedidos`}
                       </Badge>
                     )}
                     {r.order_number && (
@@ -909,7 +909,7 @@ function NewReviewDialog({
   const [rating, setRating] = useState<number>(5);
   const [ratingStr, setRatingStr] = useState<string>("5,0");
   const [name, setName] = useState("");
-  const [prevOrders, setPrevOrders] = useState<string>("");
+  const [prevOrders, setPrevOrders] = useState<string>("1");
   const [orderDesc, setOrderDesc] = useState("");
   const [orderNumber, setOrderNumber] = useState("");
   const [comment, setComment] = useState("");
@@ -926,7 +926,7 @@ function NewReviewDialog({
       setRating(r);
       setRatingStr(Number(r).toFixed(1).replace(".", ","));
       setName(editing.customer_name ?? "");
-      setPrevOrders(editing.previous_orders != null ? String(editing.previous_orders) : "");
+      setPrevOrders(editing.previous_orders != null ? String(editing.previous_orders) : "1");
       setOrderDesc(editing.order_description ?? "");
       setOrderNumber(editing.order_number ?? "");
       setComment(editing.comment ?? "");
@@ -935,7 +935,7 @@ function NewReviewDialog({
       setStoreId(editing.store_id ?? "none");
     } else {
       setSource("google"); setRating(5); setRatingStr("5,0");
-      setName(""); setPrevOrders(""); setOrderDesc(""); setOrderNumber(""); setComment(""); setUrl(""); setBrandId("none"); setStoreId("none");
+      setName(""); setPrevOrders("1"); setOrderDesc(""); setOrderNumber(""); setComment(""); setUrl(""); setBrandId("none"); setStoreId("none");
     }
   }, [open, editing]);
 
@@ -947,7 +947,7 @@ function NewReviewDialog({
     setSaving(true);
     const payload = {
       source, rating, comment, customer_name: name || null, external_url: url || null,
-      previous_orders: prevOrders.trim() === "" ? null : Math.max(0, parseInt(prevOrders, 10) || 0),
+      previous_orders: prevOrders.trim() === "" ? null : Math.max(1, parseInt(prevOrders, 10) || 1),
       order_description: orderDesc.trim() || null,
       order_number: orderNumber.trim() || null,
       brand_id: brandId === "none" ? null : brandId,
@@ -1018,10 +1018,10 @@ function NewReviewDialog({
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do cliente" />
             </div>
             <div>
-              <Label>Pedidos anteriores</Label>
+              <Label>Qtde de pedidos do cliente</Label>
               <Input
                 type="number"
-                min={0}
+                min={1}
                 inputMode="numeric"
                 value={prevOrders}
                 onChange={(e) => setPrevOrders(e.target.value)}
