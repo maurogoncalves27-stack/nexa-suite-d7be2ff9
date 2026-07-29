@@ -533,6 +533,7 @@ export default function CRM() {
   const [threadError, setThreadError] = useState<string | null>(null);
   const [reservationSettingsOpen, setReservationSettingsOpen] = useState(false);
   const [expandedConvId, setExpandedConvId] = useState<string | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [convMsgsLoading, setConvMsgsLoading] = useState(false);
   const [convMsgs, setConvMsgs] = useState<any[] | null>(null);
   const [convMsgsError, setConvMsgsError] = useState<string | null>(null);
@@ -908,6 +909,52 @@ export default function CRM() {
       return tb - ta;
     });
   }, [filteredConversations, convIssueFilter]);
+
+  /** Agrupa conversas pelo mesmo cliente (telefone → nome → conversa isolada). */
+  const groupedConversations = useMemo(() => {
+    const normName = (s: string) =>
+      s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    const groups: { key: string; phone: string | null; name: string; items: any[] }[] = [];
+    const byKey = new Map<string, { key: string; phone: string | null; name: string; items: any[] }>();
+
+    for (const c of visibleConversations as any[]) {
+      const phone = pickClientPhone(c);
+      const name = pickClientName(c);
+      let key: string | null = null;
+      if (phone && phone.length >= 8) {
+        const tail = phone.slice(-8);
+        // reaproveita grupo existente cujo telefone case por sufixo
+        const existing = groups.find(
+          (g) => g.phone && (g.phone.endsWith(tail) || phone.endsWith(g.phone.slice(-8)))
+        );
+        key = existing ? existing.key : `tel:${tail}`;
+      } else if (name && name !== "—") {
+        key = `nome:${normName(name)}`;
+      } else {
+        key = `conv:${c.id}`;
+      }
+      let g = byKey.get(key);
+      if (!g) {
+        g = { key, phone: phone ?? null, name, items: [] };
+        byKey.set(key, g);
+        groups.push(g);
+      }
+      if (!g.phone && phone) g.phone = phone;
+      if ((!g.name || g.name === "—") && name && name !== "—") g.name = name;
+      else if (name && name !== "—" && name.length > g.name.length) g.name = name;
+      g.items.push(c);
+    }
+
+    for (const g of groups) {
+      g.items.sort(
+        (a, b) =>
+          new Date(b.last_message_at ?? 0).getTime() - new Date(a.last_message_at ?? 0).getTime()
+      );
+    }
+    return groups;
+  }, [visibleConversations]);
+
+
 
 
   return (
@@ -1316,24 +1363,36 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    visibleConversations.map((c: any) => {
-                      const phoneDigits = pickClientPhone(c);
-                      const phone = phoneDigits ? fmtPhone(phoneDigits) : "—";
-                      const nome = pickClientName(c);
-                      const msgs = Array.isArray(c.messages) ? c.messages : [];
+                    groupedConversations.map((g) => {
+                      const main = g.items[0];
+                      const phoneDigits = g.phone;
+                      const nome = g.name || "—";
+                      const isGroup = g.items.length > 1;
+                      const open = expandedGroups.has(g.key);
+                      const msgs = Array.isArray(main.messages) ? main.messages : [];
                       const clientMsgs = msgs.filter((m: any) => isClientMessage(m));
-                      const preview = c.triage?.summary
-                        ? c.triage.summary
+                      const preview = main.triage?.summary
+                        ? main.triage.summary
                         : (clientMsgs.length
                             ? messageText(clientMsgs[clientMsgs.length - 1]).slice(0, 80)
                             : "—");
-                      const ticketsCount = c.related_tickets?.length ?? 0;
-                      // Cliente recorrente: outras conversas com o mesmo telefone
-                      const recurrentCount = phoneDigits
-                        ? conversations.filter((o: any) => o.id !== c.id && pickClientPhone(o) === phoneDigits).length
-                        : 0;
+                      const ticketsCount = g.items.reduce(
+                        (s: number, it: any) => s + (it.related_tickets?.length ?? 0),
+                        0
+                      );
+                      const totalMsgs = g.items.reduce(
+                        (s: number, it: any) => s + (it.message_count ?? 0),
+                        0
+                      );
+                      const topTriage = g.items
+                        .slice()
+                        .sort(
+                          (a: any, b: any) =>
+                            (SEVERITY_RANK[b.triage?.severity ?? "none"] ?? 0) -
+                            (SEVERITY_RANK[a.triage?.severity ?? "none"] ?? 0)
+                        )[0]?.triage;
+                      const allArchived = g.items.every((it: any) => !!it.archived_at);
                       const reservPhone = phoneDigits ?? "";
-
                       const reservCount = reservPhone.length >= 8
                         ? reservations.filter((r) => {
                             const rp = onlyDigits(r.phone);
@@ -1341,15 +1400,30 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                           }).length
                         : 0;
                       return (
+                        <Fragment key={g.key}>
                         <TableRow
-                          key={c.id}
                           className="cursor-pointer hover:bg-muted/50"
-                          onClick={() => setExpandedConvId(c.id)}
+                          onClick={() => {
+                            if (isGroup) {
+                              setExpandedGroups((prev) => {
+                                const next = new Set(prev);
+                                next.has(g.key) ? next.delete(g.key) : next.add(g.key);
+                                return next;
+                              });
+                            } else {
+                              setExpandedConvId(main.id);
+                            }
+                          }}
                         >
                           <TableCell className="text-sm font-medium">
                             <div className="flex items-center gap-2 flex-wrap">
+                              {isGroup && (
+                                open
+                                  ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+                                  : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                              )}
                               <span>{String(nome)}</span>
-                              <SeverityBadge triage={c.triage} />
+                              <SeverityBadge triage={topTriage} />
                               {ticketsCount > 0 && (
                                 <Badge variant="outline" className="text-[10px] h-5">
                                   <Ticket className="h-3 w-3 mr-1" />{ticketsCount}
@@ -1360,16 +1434,15 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                                   <Calendar className="h-3 w-3 mr-1" />{reservCount}
                                 </Badge>
                               )}
-                              {recurrentCount > 0 && (
+                              {isGroup && (
                                 <Badge variant="secondary" className="text-[10px] h-5">
-                                  recorrente · {recurrentCount + 1}x
+                                  {g.items.length}x conversas
                                 </Badge>
                               )}
-                              {clientMsgs.length === 1 && (
+                              {!isGroup && clientMsgs.length === 1 && (
                                 <Badge variant="secondary" className="text-[10px] h-5">curta</Badge>
                               )}
-
-                              {c.archived_at && (
+                              {allArchived && (
                                 <Badge variant="outline" className="text-[10px] h-5">
                                   <CheckCheck className="h-3 w-3 mr-1" />revisada
                                 </Badge>
@@ -1382,10 +1455,11 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                           <TableCell className="hidden md:table-cell text-xs text-muted-foreground max-w-xs truncate">
                             {preview}
                           </TableCell>
-                          <TableCell>{c.message_count ?? "—"}</TableCell>
-                          <TableCell>{fmtDateTime(c.last_message_at)}</TableCell>
+                          <TableCell>{totalMsgs || "—"}</TableCell>
+                          <TableCell>{fmtDateTime(main.last_message_at)}</TableCell>
                           <TableCell onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center gap-1">
+                            {!isGroup && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button
@@ -1407,7 +1481,7 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Cancelar</AlertDialogCancel>
                                   <AlertDialogAction
-                                    onClick={() => handleDeleteConversation(c.id)}
+                                    onClick={() => handleDeleteConversation(main.id)}
                                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                   >
                                     Excluir
@@ -1415,14 +1489,89 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
+                            )}
                             </div>
                           </TableCell>
                         </TableRow>
-
+                        {isGroup && open && g.items.map((c: any) => {
+                          const cMsgs = Array.isArray(c.messages) ? c.messages : [];
+                          const cClient = cMsgs.filter((m: any) => isClientMessage(m));
+                          const cPreview = c.triage?.summary
+                            ? c.triage.summary
+                            : (cClient.length
+                                ? messageText(cClient[cClient.length - 1]).slice(0, 80)
+                                : "—");
+                          return (
+                            <TableRow
+                              key={c.id}
+                              className="cursor-pointer bg-muted/20 hover:bg-muted/50"
+                              onClick={() => setExpandedConvId(c.id)}
+                            >
+                              <TableCell className="text-sm pl-8">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <MessageSquare className="h-3 w-3 text-muted-foreground" />
+                                  <span className="text-xs text-muted-foreground">
+                                    {fmtDateTime(c.last_message_at)}
+                                  </span>
+                                  <SeverityBadge triage={c.triage} />
+                                  {(c.related_tickets?.length ?? 0) > 0 && (
+                                    <Badge variant="outline" className="text-[10px] h-5">
+                                      <Ticket className="h-3 w-3 mr-1" />{c.related_tickets.length}
+                                    </Badge>
+                                  )}
+                                  {c.archived_at && (
+                                    <Badge variant="outline" className="text-[10px] h-5">
+                                      <CheckCheck className="h-3 w-3 mr-1" />revisada
+                                    </Badge>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground">—</TableCell>
+                              <TableCell className="hidden md:table-cell text-xs text-muted-foreground max-w-xs truncate">
+                                {cPreview}
+                              </TableCell>
+                              <TableCell>{c.message_count ?? "—"}</TableCell>
+                              <TableCell>{fmtDateTime(c.last_message_at)}</TableCell>
+                              <TableCell onClick={(e) => e.stopPropagation()}>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-destructive hover:text-destructive"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Excluir conversa?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        A conversa de <strong>{String(nome)}</strong> e todo o histórico
+                                        de mensagens serão removidos. Esta ação não pode ser desfeita.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => handleDeleteConversation(c.id)}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      >
+                                        Excluir
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                        </Fragment>
                       );
                     })
                   )}
                 </TableBody>
+
               </Table>
             </CardContent>
           </Card>
