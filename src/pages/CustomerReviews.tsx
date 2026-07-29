@@ -115,6 +115,7 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
   const [openReply, setOpenReply] = useState<Review | null>(null);
 
   const [syncingGoogle, setSyncingGoogle] = useState(false);
+  const [nutriVisits, setNutriVisits] = useState<Array<{ store_id: string; nutritionist_rating: number }>>([]);
 
   async function load() {
     setLoading(true);
@@ -126,6 +127,15 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
       supabase.from("stores").select("id,name").eq("is_virtual", false).order("name"),
       supabase.from("store_brand_google").select("store_id,brand_id,avg_rating,total_ratings"),
     ]);
+    const nv = await supabase
+      .from("nutri_visit_reports")
+      .select("store_id,nutritionist_rating")
+      .not("nutritionist_rating", "is", null);
+    setNutriVisits(
+      ((nv.data ?? []) as Array<{ store_id: string; nutritionist_rating: number | null }>)
+        .filter((x) => x.store_id && x.nutritionist_rating != null)
+        .map((x) => ({ store_id: x.store_id, nutritionist_rating: Number(x.nutritionist_rating) }))
+    );
     if (r.data) setReviews(r.data as Review[]);
     if (b.data) setBrands((b.data as Brand[]).filter((x) => ALLOWED_BRANDS.includes(x.name.trim().toUpperCase())));
     if (s.data) setStores((s.data as Store[]).filter((x) => ALLOWED_STORES.includes(x.name.trim().toUpperCase())));
@@ -175,12 +185,16 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
     const sources: Source[] = ["google", "ifood", "nutri"];
     return sources.map((src) => {
       const rows = reviews.filter((r) => r.source === src);
-      const ratings = rows.filter((r) => r.rating).map((r) => r.rating as number);
+      const ratings =
+        src === "nutri"
+          ? [...rows.filter((r) => r.rating).map((r) => r.rating as number), ...nutriVisits.map((v) => v.nutritionist_rating)]
+          : rows.filter((r) => r.rating).map((r) => r.rating as number);
       const avg = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
       const novos = rows.filter((r) => r.status === "novo").length;
-      return { source: src, total: rows.length, novos, avg, hasRatings: ratings.length > 0 };
+      const total = src === "nutri" ? rows.length + nutriVisits.length : rows.length;
+      return { source: src, total, novos, avg, hasRatings: ratings.length > 0 };
     });
-  }, [reviews]);
+  }, [reviews, nutriVisits]);
 
   // Métricas de recorrência (pedidos anteriores informados nas avaliações)
   const loyalty = useMemo(() => {
@@ -640,8 +654,11 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
             const googleData = buildData(googleByStore);
 
             const nutriData = stores.map((s) => {
-              const rows = reviews.filter((r) => r.source === "nutri" && r.store_id === s.id && r.rating != null);
-              const avg = rows.length ? rows.reduce((a, b) => a + (b.rating as number), 0) / rows.length : 0;
+              const vals = [
+                ...reviews.filter((r) => r.source === "nutri" && r.store_id === s.id && r.rating != null).map((r) => r.rating as number),
+                ...nutriVisits.filter((v) => v.store_id === s.id).map((v) => v.nutritionist_rating),
+              ];
+              const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
               return { loja: s.name.replace(/^loja\s+/i, ""), N: avg > 0 ? Number(avg.toFixed(2)) : null };
             });
 
