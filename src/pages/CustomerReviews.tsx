@@ -883,9 +883,22 @@ function NewReviewDialog({
               />
             </div>
           </div>
-          <div>
-            <Label>Cliente</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do cliente" />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label>Cliente</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do cliente" />
+            </div>
+            <div>
+              <Label>Pedidos anteriores</Label>
+              <Input
+                type="number"
+                min={0}
+                inputMode="numeric"
+                value={prevOrders}
+                onChange={(e) => setPrevOrders(e.target.value)}
+                placeholder="Ex: 3"
+              />
+            </div>
           </div>
           <div>
             <Label>Comentário</Label>
