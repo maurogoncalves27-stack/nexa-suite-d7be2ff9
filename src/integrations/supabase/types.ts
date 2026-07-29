@@ -1373,6 +1373,7 @@ export type Database = {
           archived_by: string | null
           client_meta: Json | null
           created_at: string
+          critical_alert_sent_at: string | null
           feedback_rating: string | null
           feedback_requested_at: string | null
           id: string
@@ -1389,6 +1390,7 @@ export type Database = {
           archived_by?: string | null
           client_meta?: Json | null
           created_at?: string
+          critical_alert_sent_at?: string | null
           feedback_rating?: string | null
           feedback_requested_at?: string | null
           id?: string
@@ -1405,6 +1407,7 @@ export type Database = {
           archived_by?: string | null
           client_meta?: Json | null
           created_at?: string
+          critical_alert_sent_at?: string | null
           feedback_rating?: string | null
           feedback_requested_at?: string | null
           id?: string
