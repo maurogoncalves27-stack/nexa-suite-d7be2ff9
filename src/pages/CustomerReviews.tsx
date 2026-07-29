@@ -53,6 +53,7 @@ interface Review {
   title: string | null;
   comment: string | null;
   customer_name: string | null;
+  previous_orders: number | null;
   brand_id: string | null;
   store_id: string | null;
   status: Status;
@@ -179,6 +180,29 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
       return { source: src, total: rows.length, novos, avg, hasRatings: ratings.length > 0 };
     });
   }, [reviews]);
+
+  // Métricas de recorrência (pedidos anteriores informados nas avaliações)
+  const loyalty = useMemo(() => {
+    const withData = reviews.filter((r) => r.previous_orders != null);
+    const total = withData.length;
+    const novos = withData.filter((r) => (r.previous_orders as number) === 0).length;
+    const recorrentes = withData.filter((r) => (r.previous_orders as number) >= 1 && (r.previous_orders as number) <= 4).length;
+    const fieis = withData.filter((r) => (r.previous_orders as number) >= 5).length;
+    const media = total ? withData.reduce((a, r) => a + (r.previous_orders as number), 0) / total : 0;
+    const avgOf = (rows: Review[]) => {
+      const rt = rows.filter((r) => r.rating != null).map((r) => r.rating as number);
+      return rt.length ? rt.reduce((a, b) => a + b, 0) / rt.length : null;
+    };
+    const buckets = [
+      { key: "0", label: "1º pedido", rows: withData.filter((r) => r.previous_orders === 0) },
+      { key: "1-4", label: "1 a 4 pedidos", rows: withData.filter((r) => (r.previous_orders as number) >= 1 && (r.previous_orders as number) <= 4) },
+      { key: "5-9", label: "5 a 9 pedidos", rows: withData.filter((r) => (r.previous_orders as number) >= 5 && (r.previous_orders as number) <= 9) },
+      { key: "10+", label: "10+ pedidos", rows: withData.filter((r) => (r.previous_orders as number) >= 10) },
+    ].map((b) => ({ label: b.label, count: b.rows.length, avg: avgOf(b.rows) }));
+    return { total, novos, recorrentes, fieis, media, buckets };
+  }, [reviews]);
+
+
 
   // Média manual do iFood por loja+marca (CD não vende no iFood)
   const IFOOD_STORES_KEY = "crm.ifood.manual_by_store_brand";
@@ -354,6 +378,77 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
         })}
 
       </div>
+
+      {/* Recorrência do cliente */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Recorrência dos clientes avaliadores</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {loyalty.total === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Informe o campo “Pedidos anteriores” ao cadastrar avaliações para gerar estas métricas.
+            </p>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+                <div className="rounded-lg border p-3">
+                  <div className="text-[10px] text-muted-foreground">Média de pedidos anteriores</div>
+                  <div className="text-lg font-semibold">{loyalty.media.toFixed(1)}</div>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <div className="text-[10px] text-muted-foreground">Clientes de 1º pedido</div>
+                  <div className="text-lg font-semibold">
+                    {loyalty.novos}
+                    <span className="text-xs text-muted-foreground ml-1">
+                      ({Math.round((loyalty.novos / loyalty.total) * 100)}%)
+                    </span>
+                  </div>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <div className="text-[10px] text-muted-foreground">Recorrentes (1–4)</div>
+                  <div className="text-lg font-semibold">
+                    {loyalty.recorrentes}
+                    <span className="text-xs text-muted-foreground ml-1">
+                      ({Math.round((loyalty.recorrentes / loyalty.total) * 100)}%)
+                    </span>
+                  </div>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <div className="text-[10px] text-muted-foreground">Fiéis (5+)</div>
+                  <div className="text-lg font-semibold">
+                    {loyalty.fieis}
+                    <span className="text-xs text-muted-foreground ml-1">
+                      ({Math.round((loyalty.fieis / loyalty.total) * 100)}%)
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                {loyalty.buckets.map((b) => (
+                  <div key={b.label} className="flex items-center gap-2 text-xs">
+                    <span className="w-24 shrink-0 text-muted-foreground">{b.label}</span>
+                    <div className="flex-1 h-2 rounded bg-muted overflow-hidden">
+                      <div
+                        className="h-full bg-primary"
+                        style={{ width: `${loyalty.total ? (b.count / loyalty.total) * 100 : 0}%` }}
+                      />
+                    </div>
+                    <span className="w-8 text-right">{b.count}</span>
+                    <span className="w-16 text-right text-muted-foreground">
+                      {b.avg != null ? `${b.avg.toFixed(1)} ★` : "—"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Base: {loyalty.total} avaliações com pedidos anteriores informados. “★” = nota média do grupo.
+              </p>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
 
       {/* Dialog iFood por loja */}
       <Dialog open={openIfoodDialog} onOpenChange={setOpenIfoodDialog}>
@@ -695,6 +790,13 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                     </Badge>
                     <Stars n={r.rating} />
                     <span className="text-sm font-medium truncate">{r.customer_name ?? "Cliente"}</span>
+                    {r.previous_orders != null && (
+                      <Badge variant="outline" className="text-[10px]">
+                        {r.previous_orders === 0
+                          ? "1º pedido"
+                          : `${r.previous_orders} ${r.previous_orders === 1 ? "pedido anterior" : "pedidos anteriores"}`}
+                      </Badge>
+                    )}
                     {r.status === "respondido" && <Badge variant="default">Respondido</Badge>}
                     {r.status === "ignorado" && <Badge variant="outline">Ignorado</Badge>}
                     <span className="text-xs text-muted-foreground ml-auto">
@@ -778,6 +880,7 @@ function NewReviewDialog({
   const [rating, setRating] = useState<number>(5);
   const [ratingStr, setRatingStr] = useState<string>("5,0");
   const [name, setName] = useState("");
+  const [prevOrders, setPrevOrders] = useState<string>("");
   const [comment, setComment] = useState("");
   const [url, setUrl] = useState("");
   const [brandId, setBrandId] = useState<string>("none");
@@ -792,13 +895,14 @@ function NewReviewDialog({
       setRating(r);
       setRatingStr(Number(r).toFixed(1).replace(".", ","));
       setName(editing.customer_name ?? "");
+      setPrevOrders(editing.previous_orders != null ? String(editing.previous_orders) : "");
       setComment(editing.comment ?? "");
       setUrl(editing.external_url ?? "");
       setBrandId(editing.brand_id ?? "none");
       setStoreId(editing.store_id ?? "none");
     } else {
       setSource("google"); setRating(5); setRatingStr("5,0");
-      setName(""); setComment(""); setUrl(""); setBrandId("none"); setStoreId("none");
+      setName(""); setPrevOrders(""); setComment(""); setUrl(""); setBrandId("none"); setStoreId("none");
     }
   }, [open, editing]);
 
@@ -810,6 +914,7 @@ function NewReviewDialog({
     setSaving(true);
     const payload = {
       source, rating, comment, customer_name: name || null, external_url: url || null,
+      previous_orders: prevOrders.trim() === "" ? null : Math.max(0, parseInt(prevOrders, 10) || 0),
       brand_id: brandId === "none" ? null : brandId,
       store_id: storeId === "none" ? null : storeId,
     };
@@ -872,9 +977,22 @@ function NewReviewDialog({
               />
             </div>
           </div>
-          <div>
-            <Label>Cliente</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do cliente" />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label>Cliente</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do cliente" />
+            </div>
+            <div>
+              <Label>Pedidos anteriores</Label>
+              <Input
+                type="number"
+                min={0}
+                inputMode="numeric"
+                value={prevOrders}
+                onChange={(e) => setPrevOrders(e.target.value)}
+                placeholder="Ex: 3"
+              />
+            </div>
           </div>
           <div>
             <Label>Comentário</Label>

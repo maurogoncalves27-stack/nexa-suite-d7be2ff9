@@ -1,0 +1,2 @@
+ALTER TABLE public.customer_reviews ADD COLUMN IF NOT EXISTS previous_orders integer;
+ALTER TABLE public.customer_reviews ADD CONSTRAINT customer_reviews_previous_orders_check CHECK (previous_orders IS NULL OR previous_orders >= 0);
