@@ -1138,7 +1138,7 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                       <TableRow key={r.id}>
                         <TableCell className="font-medium">{r.name ?? "—"}</TableCell>
                         <TableCell>
-                          <div className="text-sm">{r.phone ?? "—"}</div>
+                          <div className="text-sm"><PhoneLink phone={r.phone} /></div>
                           {r.email && (
                             <div className="text-xs text-muted-foreground">{r.email}</div>
                           )}
