@@ -1147,10 +1147,15 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
       const lines: string[] = [];
       if (knownName) lines.push(`- Nome do cliente: ${knownName}. Use sempre que se dirigir a ele.`);
       if (knownPhone) lines.push(`- WhatsApp/telefone do cliente: ${knownPhone}. JÁ TEMOS — NÃO peça de novo em hipótese alguma. Use diretamente para registrar_problema_pedido / criar_reserva.`);
+      if (knownPhone) {
+        const history = await lookupReturningCustomer(knownPhone, sessionId);
+        if (history) lines.push(history);
+      }
       if (lines.length) {
         systemPrompt += `\n\nCONTEXTO DO CLIENTE (já conhecido nesta conversa):\n${lines.join("\n")}`;
       }
     } catch { /* contexto é opcional */ }
+
 
     const result = streamText({
       model,
