@@ -17,9 +17,12 @@ const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 type Msg = { role?: string; content?: unknown; text?: unknown; message?: unknown; sender?: string };
 type ConvRow = {
   id: string;
+  session_id?: string | null;
+  client_meta?: Record<string, unknown> | null;
   messages: Msg[] | null;
   last_message_at: string | null;
   triaged_at: string | null;
+  critical_alert_sent_at?: string | null;
 };
 
 const NON_CLIENT_ROLES = new Set([
