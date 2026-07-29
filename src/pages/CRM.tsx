@@ -1394,11 +1394,9 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
               {(() => {
                 const c = conversations.find((x) => x.id === expandedConvId) as any;
                 if (!c) return null;
-                const phone =
-                  c.client_meta?.phone ??
-                  c.client_meta?.telefone ??
-                  c.client_meta?.name ??
-                  "—";
+                const phoneDigits = pickClientPhone(c);
+                const phone = phoneDigits ? fmtPhone(phoneDigits) : "—";
+
                 const nome = pickClientName(c);
                 const msgsForInfo = (convMsgs && convMsgs.length > 0)
                   ? convMsgs
