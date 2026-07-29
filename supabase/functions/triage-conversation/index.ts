@@ -192,8 +192,45 @@ async function triageOne(supabase: ReturnType<typeof createClient>, conv: ConvRo
     .update({ triage: final, triaged_at: new Date().toISOString() })
     .eq("id", conv.id);
 
+  await maybeAlertCritical(supabase, conv, final);
+
   return { id: conv.id, has_issue: !!final.has_issue, severity: final.severity, source: final.source };
 }
+
+/** Chamado crítico/alto → alerta imediato no WhatsApp dos gestores (uma vez por conversa). */
+async function maybeAlertCritical(supabase: any, conv: ConvRow, triage: any) {
+  try {
+    const sev = String(triage?.severity ?? "none");
+    if (!triage?.has_issue || (sev !== "critical" && sev !== "high")) return;
+    if (conv.critical_alert_sent_at) return;
+
+    const { loadAlertConfig, fanoutExtras } = await import("../_shared/notifyChannels.ts");
+    const { enabled, waConfig, extras } = await loadAlertConfig(supabase, "crm_ticket_critico");
+    if (!enabled || !waConfig || extras.length === 0) return;
+
+    const meta: any = conv.client_meta ?? {};
+    const nome = meta.name ?? meta.nome ?? "Cliente não identificado";
+    const fone = meta.phone ?? meta.telefone ?? meta.whatsapp ?? "não informado";
+    const icone = sev === "critical" ? "🚨" : "⚠️";
+    const msg =
+      `${icone} *Chamado ${sev === "critical" ? "CRÍTICO" : "de alta prioridade"} — Giana (CRM)*\n\n` +
+      `👤 ${nome}\n📞 ${fone}\n` +
+      `🏷️ ${triage?.category ?? "outro"}\n` +
+      `📝 ${String(triage?.summary ?? "").slice(0, 240)}\n\n` +
+      `Abra o CRM para assumir o atendimento.`;
+
+    const sent = await fanoutExtras(waConfig, extras, msg);
+    if (sent > 0) {
+      await supabase
+        .from("chat_conversations")
+        .update({ critical_alert_sent_at: new Date().toISOString() })
+        .eq("id", conv.id);
+    }
+  } catch (e) {
+    console.warn("[triage] alerta crítico err:", (e as Error).message);
+  }
+}
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
