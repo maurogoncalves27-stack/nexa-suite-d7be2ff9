@@ -95,11 +95,17 @@ export default function InfractionsPanel({ cycles }: { cycles: Cycle[] }) {
 
   const filtered = useMemo(() => {
     return items.filter((i) => {
-      if (filterCycle !== "all" && (i.cycle_id ?? "none") !== filterCycle) return false;
+      if (filterCycle === "current") {
+        if (!currentCycleId || i.cycle_id !== currentCycleId) return false;
+      } else if (filterCycle !== "all" && (i.cycle_id ?? "none") !== filterCycle) {
+        return false;
+      }
       if (filterEmployee !== "all" && i.employee_id !== filterEmployee) return false;
+      if (filterFrom && i.occurred_on < filterFrom) return false;
+      if (filterTo && i.occurred_on > filterTo) return false;
       return true;
     });
-  }, [items, filterCycle, filterEmployee]);
+  }, [items, filterCycle, filterEmployee, filterFrom, filterTo, currentCycleId]);
 
   const summary = useMemo(() => {
     const map = new Map<string, { employeeId: string; count: number; totalWeight: number; lastDate: string }>();
