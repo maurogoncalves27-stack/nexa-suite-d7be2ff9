@@ -256,11 +256,11 @@ Deno.serve(async (req) => {
                   max_value: eq.max_temp_c,
                   measured_at: now,
                   notified_phones: phones,
-                  notes: `${eq.name}: ${temp}°C fora da faixa (${eq.min_temp_c}~${eq.max_temp_c}°C) há ${Math.round(minsOut)} min`,
+                  notes: `${eq.name}: ${temp.toFixed(1)}°C fora da faixa (${eq.min_temp_c}~${eq.max_temp_c}°C) há ${Math.round(minsOut)} min`,
                 });
                 report.alerts++;
 
-                const text = `🚨 *Alerta de temperatura*\n\n${eq.name}\nTemperatura: *${temp}°C* (faixa ${eq.min_temp_c}~${eq.max_temp_c}°C)\nFora da faixa há ${Math.round(minsOut)} min.`;
+                const text = `🚨 *Alerta de temperatura*\n\n${eq.name}\nTemperatura: *${temp.toFixed(1)}°C* (faixa ${eq.min_temp_c}~${eq.max_temp_c}°C)\nFora da faixa há ${Math.round(minsOut)} min.`;
                 if (waEnabled && waConfig && phones.length > 0) {
                   try {
                     await fanoutExtras(waConfig, phones, text);
