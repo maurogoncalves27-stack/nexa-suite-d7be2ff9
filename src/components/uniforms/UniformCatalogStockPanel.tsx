@@ -130,19 +130,27 @@ export function UniformCatalogStockPanel({ items, onChanged }: Props) {
       replacement_months: Number(itemForm.replacement_months) || 12,
       is_active: !!itemForm.is_active,
     };
-    const { error } = editing
-      ? await supabase.from("uniform_items").update(payload).eq("id", editing)
-      : await supabase.from("uniform_items").insert(payload);
+    const { data, error } = editing
+      ? await supabase.from("uniform_items").update(payload).eq("id", editing).select("id")
+      : await supabase.from("uniform_items").insert(payload).select("id");
     setSavingItem(false);
     if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+    if (!data || data.length === 0) {
+      toast({ title: "Sem permissão", description: "Você não tem permissão para alterar itens de uniforme.", variant: "destructive" });
+      return;
+    }
     toast({ title: editing ? "Item atualizado" : "Item criado" });
     setItemOpen(false); setEditing(null); setItemForm(emptyItem);
     onChanged();
   };
   const removeItem = async (id: string, name: string) => {
     if (!confirm(`Excluir item "${name}"?`)) return;
-    const { error } = await supabase.from("uniform_items").delete().eq("id", id);
+    const { data, error } = await supabase.from("uniform_items").delete().eq("id", id).select("id");
     if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+    if (!data || data.length === 0) {
+      toast({ title: "Não foi possível excluir", description: "Item sem permissão de exclusão ou já removido.", variant: "destructive" });
+      return;
+    }
     toast({ title: "Item excluído" });
     onChanged();
   };
