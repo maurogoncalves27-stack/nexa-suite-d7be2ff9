@@ -54,8 +54,15 @@ export default function InfractionsPanel({ cycles }: { cycles: Cycle[] }) {
   const [employees, setEmployees] = useState<EmployeeRow[]>([]);
   const [types, setTypes] = useState<InfractionType[]>([]);
   const [items, setItems] = useState<InfractionRow[]>([]);
-  const [filterCycle, setFilterCycle] = useState<string>("all");
+  const currentCycleId = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const cur = cycles.find((c) => (c.start_date ?? "") <= today && today <= (c.end_date ?? "9999-12-31"));
+    return cur?.id ?? "";
+  }, [cycles]);
+  const [filterCycle, setFilterCycle] = useState<string>("current");
   const [filterEmployee, setFilterEmployee] = useState<string>("all");
+  const [filterFrom, setFilterFrom] = useState<string>("");
+  const [filterTo, setFilterTo] = useState<string>("");
 
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -88,11 +95,17 @@ export default function InfractionsPanel({ cycles }: { cycles: Cycle[] }) {
 
   const filtered = useMemo(() => {
     return items.filter((i) => {
-      if (filterCycle !== "all" && (i.cycle_id ?? "none") !== filterCycle) return false;
+      if (filterCycle === "current") {
+        if (!currentCycleId || i.cycle_id !== currentCycleId) return false;
+      } else if (filterCycle !== "all" && (i.cycle_id ?? "none") !== filterCycle) {
+        return false;
+      }
       if (filterEmployee !== "all" && i.employee_id !== filterEmployee) return false;
+      if (filterFrom && i.occurred_on < filterFrom) return false;
+      if (filterTo && i.occurred_on > filterTo) return false;
       return true;
     });
-  }, [items, filterCycle, filterEmployee]);
+  }, [items, filterCycle, filterEmployee, filterFrom, filterTo, currentCycleId]);
 
   const summary = useMemo(() => {
     const map = new Map<string, { employeeId: string; count: number; totalWeight: number; lastDate: string }>();
@@ -212,6 +225,9 @@ export default function InfractionsPanel({ cycles }: { cycles: Cycle[] }) {
             <Select value={filterCycle} onValueChange={setFilterCycle}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
+                <SelectItem value="current" disabled={!currentCycleId}>
+                  Ciclo atual{currentCycleId ? ` (${cycleMap[currentCycleId]?.name ?? ""})` : " (nenhum)"}
+                </SelectItem>
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="none">Sem ciclo</SelectItem>
                 {cycles.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
@@ -227,6 +243,14 @@ export default function InfractionsPanel({ cycles }: { cycles: Cycle[] }) {
                 {employees.map((e) => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>De</Label>
+            <Input type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} className="w-[160px]" />
+          </div>
+          <div className="space-y-2">
+            <Label>Até</Label>
+            <Input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} className="w-[160px]" />
           </div>
         </div>
 
