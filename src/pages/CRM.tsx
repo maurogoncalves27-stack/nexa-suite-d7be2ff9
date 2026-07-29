@@ -763,6 +763,8 @@ export default function CRM() {
 
   const visibleConversations = useMemo(() => {
     let list = filteredConversations;
+    if (convIssueFilter === "archived") list = list.filter((c: any) => !!c.archived_at);
+    else list = list.filter((c: any) => !c.archived_at);
     if (convIssueFilter === "issues") list = list.filter((c) => c.triage?.has_issue);
     else if (convIssueFilter === "critical") list = list.filter((c) => c.triage?.has_issue && (c.triage?.severity === "critical" || c.triage?.severity === "high"));
     else if (convIssueFilter === "waiting") list = list.filter((c) => c.triage?.has_issue && !(c.related_tickets?.length));
