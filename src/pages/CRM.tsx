@@ -1262,15 +1262,6 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                           <TableCell>{fmtDateTime(c.last_message_at)}</TableCell>
                           <TableCell onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              title={c.archived_at ? "Reabrir conversa" : "Marcar como revisado e arquivar"}
-                              className={c.archived_at ? "h-8 w-8 text-muted-foreground" : "h-8 w-8 text-success hover:text-success"}
-                              onClick={() => handleArchiveConversation(c.id, !c.archived_at)}
-                            >
-                              <CheckCheck className="h-4 w-4" />
-                            </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button
@@ -1340,17 +1331,6 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                           {c.message_count ?? 0} mensagens · {fmtDateTime(c.last_message_at)}
                           {nome !== "—" && phone !== "—" ? ` · ${String(phone)}` : ""}
                         </span>
-                        <span className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={c.archived_at ? "outline" : "default"}
-                          onClick={() => handleArchiveConversation(c.id, !c.archived_at)}
-                          className="h-7 text-xs gap-1"
-                        >
-                          <CheckCheck className="h-3.5 w-3.5" />
-                          {c.archived_at ? "Reabrir" : "Revisado"}
-                        </Button>
                         <Button
                           type="button"
                           size="sm"
@@ -1360,7 +1340,6 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                         >
                           {showClientInfo ? "Ocultar dados do cliente" : "Ver dados do cliente"}
                         </Button>
-                        </span>
                       </DialogDescription>
                     </DialogHeader>
 
@@ -1442,6 +1421,24 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                           })}
                         </div>
                       ) : null}
+                    </div>
+
+                    <div className="border-t pt-3 mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {c.archived_at
+                          ? `Revisada em ${fmtDateTime(c.archived_at)}`
+                          : "Leia a conversa completa antes de marcar como revisada."}
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={c.archived_at ? "outline" : "default"}
+                        onClick={() => handleArchiveConversation(c.id, !c.archived_at)}
+                        className="gap-1.5"
+                      >
+                        <CheckCheck className="h-4 w-4" />
+                        {c.archived_at ? "Reabrir conversa" : "Revisado — arquivar"}
+                      </Button>
                     </div>
                   </>
                 );
