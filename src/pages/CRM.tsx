@@ -384,10 +384,9 @@ function extractClientInfo(conv: any, msgs: any[] | null): Record<string, string
         if (!isAssistantMessage(cur) || !isClientMessage(next)) continue;
         const curText = messageText(cur);
         if (!nameAsk.test(curText)) continue;
-        const reply = messageText(next);
-        const tok = reply.split(/[\s,.!?]+/).filter(isNameToken);
-        if (tok.length >= 1) {
-          info["Nome (inferido)"] = cap(tok.slice(0, 3).join(" "));
+        const inferred = nameFromShortReply(messageText(next));
+        if (inferred) {
+          info["Nome (inferido)"] = inferred;
           break;
         }
       }
@@ -400,9 +399,10 @@ function extractClientInfo(conv: any, msgs: any[] | null): Record<string, string
   }
   // Telefone
   if (!info["Telefone"]) {
-    const m = userText.match(/(?:\(?\d{2}\)?\s?)?9?\d{4}[-\s]?\d{4}/);
-    if (m) info["Telefone (inferido)"] = m[0].trim();
+    const digits = extractPhoneDigits(userText);
+    if (digits) info["Telefone (inferido)"] = fmtPhone(digits);
   }
+
   // E-mail
   if (!info["E-mail"]) {
     const m = userText.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
