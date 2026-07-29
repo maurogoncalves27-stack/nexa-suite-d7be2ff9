@@ -581,8 +581,20 @@ export default function CRM() {
     setConvMsgs(Array.isArray(msgs) ? msgs : []);
   }, [expandedConvId, conversations]);
 
+  async function handleDeleteConversation(convId: string) {
+    const tid = toast.loading("Excluindo conversa…");
+    const { error } = await supabase.from("chat_conversations").delete().eq("id", convId);
+    if (error) {
+      toast.error("Não foi possível excluir", { id: tid, description: error.message });
+      return;
+    }
+    setConversations((prev) => prev.filter((c) => c.id !== convId));
+    setExpandedConvId((cur) => (cur === convId ? null : cur));
+    toast.success("Conversa excluída", { id: tid });
+  }
 
   async function handleDeleteReservation(parmeId: string) {
+
     setDeletingId(parmeId);
     const tid = toast.loading("Excluindo reserva no Parmê…");
     try {
