@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Headset, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, Clock, Bot, Globe, Star, ArrowRight, Settings, AlertCircle, AlertTriangle, CheckCircle, Users, Sparkles, RefreshCw } from "lucide-react";
+import { Headset, CheckCheck, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, Clock, Bot, Globe, Star, ArrowRight, Settings, AlertCircle, AlertTriangle, CheckCircle, Users, Sparkles, RefreshCw } from "lucide-react";
 import { AgentPanel } from "@/components/crm/ParmeSettingsPanels";
 import { GianaAnalyticsPanel } from "@/components/crm/GianaAnalyticsPanel";
 import { CrmAiInsightsButton } from "@/components/crm/CrmAiInsightsButton";
@@ -425,7 +425,7 @@ export default function CRM() {
   const [convMsgsError, setConvMsgsError] = useState<string | null>(null);
   const [showClientInfo, setShowClientInfo] = useState(false);
   const [search, setSearch] = useState("");
-  const [convIssueFilter, setConvIssueFilter] = useState<"all" | "issues" | "critical" | "waiting" | "praise">("all");
+  const [convIssueFilter, setConvIssueFilter] = useState<"all" | "issues" | "critical" | "waiting" | "praise" | "archived">("all");
 
   async function load() {
     setLoading(true);
@@ -580,6 +580,22 @@ export default function CRM() {
     const msgs = (conv as any).messages;
     setConvMsgs(Array.isArray(msgs) ? msgs : []);
   }, [expandedConvId, conversations]);
+
+  async function handleArchiveConversation(convId: string, archive = true) {
+    const tid = toast.loading(archive ? "Arquivando conversa…" : "Reabrindo conversa…");
+    const { data: userData } = await supabase.auth.getUser();
+    const patch = archive
+      ? { archived_at: new Date().toISOString(), archived_by: userData?.user?.id ?? null }
+      : { archived_at: null, archived_by: null };
+    const { error } = await supabase.from("chat_conversations").update(patch as any).eq("id", convId);
+    if (error) {
+      toast.error("Não foi possível atualizar", { id: tid, description: error.message });
+      return;
+    }
+    setConversations((prev) => prev.map((c: any) => (c.id === convId ? { ...c, ...patch } : c)) as any);
+    if (archive) setExpandedConvId((cur) => (cur === convId ? null : cur));
+    toast.success(archive ? "Conversa revisada e arquivada" : "Conversa reaberta", { id: tid });
+  }
 
   async function handleDeleteConversation(convId: string) {
     const tid = toast.loading("Excluindo conversa…");
@@ -763,6 +779,8 @@ export default function CRM() {
 
   const visibleConversations = useMemo(() => {
     let list = filteredConversations;
+    if (convIssueFilter === "archived") list = list.filter((c: any) => !!c.archived_at);
+    else list = list.filter((c: any) => !c.archived_at);
     if (convIssueFilter === "issues") list = list.filter((c) => c.triage?.has_issue);
     else if (convIssueFilter === "critical") list = list.filter((c) => c.triage?.has_issue && (c.triage?.severity === "critical" || c.triage?.severity === "high"));
     else if (convIssueFilter === "waiting") list = list.filter((c) => c.triage?.has_issue && !(c.related_tickets?.length));
@@ -1140,6 +1158,7 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
               { key: "critical", label: "Críticos" },
               { key: "waiting", label: "Sem ticket" },
               { key: "praise", label: "Elogios" },
+              { key: "archived", label: "Arquivadas" },
             ] as const).map((f) => {
               const active = convIssueFilter === f.key;
               return (
@@ -1228,6 +1247,11 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                               {clientMsgs.length === 1 && (
                                 <Badge variant="secondary" className="text-[10px] h-5">curta</Badge>
                               )}
+                              {c.archived_at && (
+                                <Badge variant="outline" className="text-[10px] h-5">
+                                  <CheckCheck className="h-3 w-3 mr-1" />revisada
+                                </Badge>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell className="text-sm">{String(phone)}</TableCell>
@@ -1237,6 +1261,16 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                           <TableCell>{c.message_count ?? "—"}</TableCell>
                           <TableCell>{fmtDateTime(c.last_message_at)}</TableCell>
                           <TableCell onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title={c.archived_at ? "Reabrir conversa" : "Marcar como revisado e arquivar"}
+                              className={c.archived_at ? "h-8 w-8 text-muted-foreground" : "h-8 w-8 text-success hover:text-success"}
+                              onClick={() => handleArchiveConversation(c.id, !c.archived_at)}
+                            >
+                              <CheckCheck className="h-4 w-4" />
+                            </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button
@@ -1266,6 +1300,7 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
+                            </div>
                           </TableCell>
                         </TableRow>
 
@@ -1305,6 +1340,17 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                           {c.message_count ?? 0} mensagens · {fmtDateTime(c.last_message_at)}
                           {nome !== "—" && phone !== "—" ? ` · ${String(phone)}` : ""}
                         </span>
+                        <span className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={c.archived_at ? "outline" : "default"}
+                          onClick={() => handleArchiveConversation(c.id, !c.archived_at)}
+                          className="h-7 text-xs gap-1"
+                        >
+                          <CheckCheck className="h-3.5 w-3.5" />
+                          {c.archived_at ? "Reabrir" : "Revisado"}
+                        </Button>
                         <Button
                           type="button"
                           size="sm"
@@ -1314,6 +1360,7 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                         >
                           {showClientInfo ? "Ocultar dados do cliente" : "Ver dados do cliente"}
                         </Button>
+                        </span>
                       </DialogDescription>
                     </DialogHeader>
 
