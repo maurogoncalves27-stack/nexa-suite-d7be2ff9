@@ -42,9 +42,11 @@ REGRA #1 — SÓ RESPONDA COM O QUE VEIO DE UMA TOOL (NÃO NEGOCIÁVEL):
 - Se a tool não trouxer o dado, você NÃO responde de memória. Diga com simpatia: "Deixa eu confirmar isso certinho com a equipe e já te retorno 😊".
 - NUNCA invente, deduza, estime, arredonde ou "achismo". Sem tool → sem resposta factual.
 
-REGRA #2 — NOME DO CLIENTE:
-- Na primeira interação, pergunte o nome de forma simpática ("Oi! Aqui é a Giana 😊 Como posso te chamar?").
-- Assim que souber, use o nome ao longo da conversa. Só depois siga pra dúvida/reserva/reclamação.
+REGRA #2 — NOME DO CLIENTE (RESPONDA PRIMEIRO):
+- NUNCA condicione uma resposta ao nome. Se o cliente já fez uma pergunta na primeira mensagem, RESPONDA a pergunta e, no mesmo balão, pergunte o nome UMA ÚNICA VEZ ("...aliás, como posso te chamar? 😊").
+- Se ele não responder o nome, siga o atendimento normalmente SEM nome. É PROIBIDO pedir o nome duas vezes na mesma conversa.
+- Se a primeira mensagem for só um cumprimento ("oi", "boa tarde"), aí sim cumprimente e pergunte o nome + como pode ajudar.
+- Só peça TELEFONE quando for abrir chamado (registrar_problema_pedido) ou criar reserva — explicando o motivo.
 
 O QUE VOCÊ FAZ:
 - Cardápio/pratos → consultar_cardapio, consultar_prato.
@@ -54,6 +56,9 @@ O QUE VOCÊ FAZ:
 - Reclamações/problemas de pedido → registrar_problema_pedido (exige telefone).
 - Delivery → sugerir_ifood (pergunte só bairro + marca; não peça CEP).
 
+VAGAS / TRABALHAR CONOSCO:
+- Se perguntarem sobre vaga, emprego, currículo, "trabalhar com vocês" ou tiverem problema para enviar currículo, responda de imediato (sem pedir nome antes) que as vagas e o cadastro ficam em: https://nexasuite.aquelaparme.com.br/vagas
+
 PARMEGIANA — TAMANHOS FIXOS (a tool consultar_prato confirma):
 - Individual: 1 pessoa / 600g total / 150g de proteína.
 - Casal: 2 pessoas / 1200g total / 300g de proteína.
@@ -61,19 +66,32 @@ PARMEGIANA — TAMANHOS FIXOS (a tool consultar_prato confirma):
 - NUNCA diga "3 pessoas", "até 3", "500g", "peso varia conforme o preparo".
 
 PREÇOS (CRÍTICO):
-- NUNCA informe preço em R$. Se perguntarem, responda que o preço atualizado fica no iFood e ofereça o link (sugerir_ifood).
+- NUNCA informe preço em R$, nem faixa/estimativa ("entre R$ 35 e R$ 60", "por volta de", "a partir de"). Isso é proibido mesmo se o cliente insistir.
+- Resposta padrão: o valor atualizado fica no iFood → ofereça o link (sugerir_ifood).
 - Não temos checkout/pagamento próprio. Todo pedido é pelo iFood.
+
+RETIRADA NO BALCÃO (RESPOSTA ÚNICA E PADRONIZADA):
+- Todas as 4 unidades (Asa Norte, Asa Sul, Águas Claras e Lago Sul) aceitam retirada.
+- O pedido é feito pelo iFood escolhendo a opção "Retirada" — assim não há taxa de entrega.
+- Não temos pedido por telefone nem por WhatsApp.
+- O preço do prato é o mesmo do iFood; a economia é só na taxa de entrega.
+- Salão para comer no local: SOMENTE Asa Norte.
+- NUNCA diga que dá pra "pedir direto no balcão" fora dessa regra.
 
 DELIVERY (FLUXO CURTO):
 - 1) "Em qual bairro você está?" 2) "Vai querer Parmê 🍝, Box Caipira 🍱 ou Estrogonofe 🥩?" → chame sugerir_ifood.
 
 RESERVAS:
 - Converta internamente data/hora para AAAA-MM-DD e HH:MM. Não exija formato do cliente.
+- É PROIBIDO dizer "reserva registrada", "está reservado" ou "a equipe confirma" antes de criar_reserva retornar sucesso=true.
+
+PROMESSAS:
+- Só diga "vou confirmar com a equipe e te retorno" se houver telefone e um chamado aberto (registrar_problema_pedido com sucesso=true). Sem contato, diga que precisa do telefone com DDD para conseguir retornar.
 
 DESPEDIDA:
 - NUNCA se despeça só por ter respondido uma dúvida. Pergunte de forma leve e variada se precisa de algo mais.
 - Só se despeça quando o cliente sinalizar fim ("valeu", "tchau", "só isso") ou não responder após você perguntar.
-- NÃO peça telefone/WhatsApp na despedida. Se já tem contato, use.
+- NÃO peça telefone/WhatsApp na despedida, nunca, por nenhum motivo. Se já tem contato, use.
 
 Se algo estiver fora do cardápio/lojas/tools → "vou confirmar com a equipe". Sem exceção.`;
 
@@ -536,6 +554,35 @@ export function enrichClientMeta(flat: FlatChatMessage[], current: unknown, fall
 export const mergeClientMeta = (current: unknown, fallback: unknown, flat: FlatChatMessage[]) =>
   enrichClientMeta(flat, current, fallback);
 
+/**
+ * Valida um candidato a número de pedido. Rejeita qualquer sequência que faça
+ * parte do telefone do cliente (causa do bug histórico: "99866" extraído do
+ * contato 61998662502 e gravado como número do pedido).
+ */
+export function sanitizeOrderNumber(
+  candidate: string | null | undefined,
+  contactDigits: string | null | undefined,
+): string | null {
+  const digits = String(candidate ?? "").replace(/\D/g, "");
+  if (digits.length < 3 || digits.length > 10) return null;
+  const contact = String(contactDigits ?? "").replace(/\D/g, "");
+  if (contact.length >= 8 && contact.includes(digits)) return null;
+  return digits;
+}
+
+/** Título curto derivado do texto do cliente, para não gravar ticket sem título. */
+function deriveTicketTitle(text: string): string {
+  const t = text.toLowerCase();
+  if (/n[ãa]o\s+(chegou|veio|recebi)|n[ãa]o\s+foi\s+entregue|sumiu/.test(t)) return "Pedido não entregue";
+  if (/faltou|faltando|esqueceram|pela\s+metade/.test(t)) return "Item faltando no pedido";
+  if (/errad/.test(t)) return "Pedido errado";
+  if (/fri[oa]/.test(t)) return "Pedido frio";
+  if (/atras|demor/.test(t)) return "Atraso na entrega";
+  if (/cobran[cç]a|estorno|reembolso/.test(t)) return "Problema de cobrança/reembolso";
+  if (/p[ée]ssim|horr[ií]vel|estragad|queim|cru|sem\s+sabor/.test(t)) return "Reclamação de qualidade";
+  return "Reclamação de pedido";
+}
+
 async function ensureComplaintTicket(
   supabase: ReturnType<typeof sb>,
   flat: FlatChatMessage[],
@@ -551,16 +598,17 @@ async function ensureComplaintTicket(
   if (!COMPLAINT_RE.test(userTexts)) return;
 
   const fullText = flat.map((m) => String(m.content || "")).join("\n");
-  const explicitOrder = fullText.match(/(?:pedido\s*#?\s*|n[uú]mero\s*(?:do\s+pedido)?\s*[:#]?\s*)(\d{2,10})/i);
-  const looseOrder = fullText.match(/(?:^|\D)(\d{3,6})(?:\D|$)/);
+  const explicitOrder = fullText.match(/(?:pedido\s*#?\s*|n[uú]mero\s*(?:do\s+pedido)?\s*[:#]?\s*)(\d{3,10})/i);
   const phoneMatch = userTexts.match(/(?:\(?\d{2}\)?\s?)?9?\d{4}[-\s]?\d{4}/);
-  const numeroPedido = explicitOrder?.[1] ?? looseOrder?.[1] ?? null;
   const contato = phoneMatch ? phoneMatch[0].replace(/\D/g, "") : null;
+  // Só aceita número de pedido informado EXPLICITAMENTE e que não seja parte do telefone.
+  const numeroPedido = sanitizeOrderNumber(explicitOrder?.[1] ?? null, contato);
+  const titulo = deriveTicketTitle(userTexts);
   const descricao = `Conversa ${sessionId}:\n${userTexts.slice(-900) || "Reclamação detectada na conversa."}`;
 
   const { data: bySession } = await supabase
     .from("support_tickets")
-    .select("id, order_number, contact")
+    .select("id, order_number, contact, title")
     .ilike("description", `%${sessionId}%`)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -570,6 +618,7 @@ async function ensureComplaintTicket(
     // Já existe ticket: pode atualizar com novos dados (mesmo sem contato novo).
     await supabase.from("support_tickets").update({
       order_number: bySession.order_number ?? numeroPedido,
+      title: bySession.title ?? titulo,
       contact: bySession.contact && bySession.contact !== "não informado"
         ? bySession.contact
         : (contato ?? bySession.contact),
@@ -586,6 +635,7 @@ async function ensureComplaintTicket(
 
   const { error } = await supabase.from("support_tickets").insert({
     order_number: numeroPedido,
+    title: titulo,
     description: descricao,
     contact: contato,
   });
@@ -896,9 +946,17 @@ Deno.serve(async (req) => {
         },
       }),
       criar_reserva: tool({
-        description: "Cria uma reserva de mesa após confirmar dados com o cliente.",
+        description: "Cria uma reserva de mesa (salão só existe na Asa Norte) após confirmar nome, telefone, data, horário e nº de pessoas. NUNCA diga ao cliente que a reserva está feita sem que este tool retorne sucesso=true.",
         inputSchema: reservaSchema,
         execute: async ({ nome, telefone, data, horario, pessoas, observacao }) => {
+          const hoje = new Date().toISOString().slice(0, 10);
+          if (data < hoje) {
+            return {
+              sucesso: false,
+              erro: "data_passada",
+              mensagem: "Essa data já passou. Confirme com o cliente o dia correto antes de registrar.",
+            };
+          }
           const supabase = sb();
           const { data: row, error } = await supabase
             .from("reservations")
@@ -914,19 +972,35 @@ Deno.serve(async (req) => {
             .single();
           if (error || !row) {
             console.error("[parme-chat] reserva err:", error);
-            return { sucesso: false, erro: "Não foi possível concluir a operação." };
+            // Não perde o cliente: abre chamado para a equipe tratar manualmente.
+            const contato = String(telefone ?? "").replace(/\D/g, "");
+            await supabase.from("support_tickets").insert({
+              title: "Falha ao registrar reserva (chat)",
+              description:
+                `${sessionId ? `Conversa ${sessionId}:\n` : ""}Reserva NÃO gravada por falha técnica.\n` +
+                `Cliente: ${nome}\nTelefone: ${contato}\nData: ${data} ${horario}\nPessoas: ${pessoas}\n` +
+                `Obs: ${observacao ?? "-"}\nErro: ${error?.message ?? "desconhecido"}`,
+              contact: contato || "não informado",
+            });
+            return {
+              sucesso: false,
+              erro: "falha_tecnica",
+              mensagem:
+                "Não consegui registrar a reserva agora. Diga ao cliente com honestidade que houve falha no sistema, que a equipe da Asa Norte já foi acionada e vai retornar pelo telefone informado.",
+            };
           }
           notifyStoreReservation(nome, telefone, data, horario, pessoas, observacao);
           return {
             sucesso: true,
             id: row.id,
             status: row.status,
+            protocolo: String(row.id).slice(0, 8).toUpperCase(),
             mensagem: "Reserva registrada. Aguarde confirmação por telefone.",
           };
         },
       }),
       registrar_problema_pedido: tool({
-        description: "Registra um problema/reclamação de pedido. EXIGE telefone/contato do cliente — sem contato NÃO é possível registrar (peça antes de chamar). Inclua SEMPRE um 'titulo' curto (até 60 caracteres) resumindo a ocorrência (ex.: 'Pedido frio', 'Faltou refrigerante', 'Atraso na entrega').",
+        description: "Registra um problema/reclamação de pedido. EXIGE telefone/contato do cliente — sem contato NÃO é possível registrar (peça antes de chamar). Inclua SEMPRE um 'titulo' curto (até 60 caracteres) resumindo a ocorrência (ex.: 'Pedido frio', 'Faltou refrigerante', 'Atraso na entrega'). 'numero_pedido' SÓ deve ser preenchido com o número que o cliente informou explicitamente como pedido — NUNCA com pedaços do telefone.",
         inputSchema: z.object({
           titulo: z.string().min(3).max(80),
           numero_pedido: z.string().min(2).max(20).optional(),
@@ -942,7 +1016,8 @@ Deno.serve(async (req) => {
               mensagem: "Preciso do seu telefone com DDD antes de abrir o chamado — sem contato não conseguimos retornar.",
             };
           }
-          const tituloLimpo = (titulo ?? "").trim().slice(0, 80) || "Ocorrência";
+          const tituloLimpo = (titulo ?? "").trim().slice(0, 80) || deriveTicketTitle(descricao ?? "");
+          const pedidoLimpo = sanitizeOrderNumber(numero_pedido, contatoLimpo);
           const supabase = sb();
           const descricaoFinal = sessionId ? `Conversa ${sessionId}:\n${descricao}` : descricao;
           if (sessionId) {
@@ -957,7 +1032,7 @@ Deno.serve(async (req) => {
               const { error } = await supabase
                 .from("support_tickets")
                 .update({
-                  order_number: existing.order_number ?? numero_pedido ?? null,
+                  order_number: existing.order_number ?? pedidoLimpo,
                   description: descricaoFinal,
                   title: existing.title ?? tituloLimpo,
                   contact: existing.contact && existing.contact !== "não informado"
@@ -973,14 +1048,15 @@ Deno.serve(async (req) => {
               return {
                 sucesso: true,
                 id: existing.id,
-                mensagem: "Problema registrado. Vamos entrar em contato.",
+                protocolo: String(existing.id).slice(0, 8).toUpperCase(),
+                mensagem: "Problema registrado. Informe o protocolo ao cliente e diga que a equipe retorna pelo telefone informado.",
               };
             }
           }
           const { data: row, error } = await supabase
             .from("support_tickets")
             .insert({
-              order_number: numero_pedido ?? null,
+              order_number: pedidoLimpo,
               title: tituloLimpo,
               description: descricaoFinal,
               contact: contatoLimpo,
@@ -995,7 +1071,8 @@ Deno.serve(async (req) => {
           return {
             sucesso: true,
             id: row.id,
-            mensagem: "Problema registrado. Vamos entrar em contato.",
+            protocolo: String(row.id).slice(0, 8).toUpperCase(),
+            mensagem: "Problema registrado. Informe o protocolo ao cliente e diga que a equipe retorna pelo telefone informado.",
           };
         },
       }),
@@ -1196,7 +1273,13 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
 - Se a ferramenta retornar sucesso=false, diga claramente que houve falha técnica e que vai tentar de novo.
 - Para reservas, SEMPRE chamar criar_reserva quando tiver nome+telefone+data+horário+quantidade.
 - Se o cliente JÁ informou telefone/contato em QUALQUER mensagem anterior da conversa (mesmo no meio do texto, ex: "meu fone é 61 99999-9999"), NÃO peça telefone de novo. Use o que ele já deu e passe como "contato" para registrar_problema_pedido.
-- Ao encerrar um atendimento de problema, NÃO peça telefone se ele já apareceu na conversa. Apenas confirme o registro.`;
+- Ao encerrar um atendimento de problema, NÃO peça telefone se ele já apareceu na conversa. Apenas confirme o registro e informe o protocolo devolvido pelo tool.
+- NUNCA condicione uma resposta ao nome do cliente. Responda primeiro; peça o nome no máximo UMA vez na conversa inteira e nunca repita o pedido.
+- NUNCA informe preço em R$, nem faixa/estimativa ("de R$ X a R$ Y", "em torno de"). Sempre remeta ao iFood com o link.
+- Retirada: em todas as 4 unidades, sempre pelo iFood na opção "Retirada" (sem taxa de entrega). Não há pedido por telefone/WhatsApp/balcão. Salão para consumo só na Asa Norte.
+- Vaga/emprego/currículo/"trabalhar com vocês" → responda de imediato com https://nexasuite.aquelaparme.com.br/vagas
+- NUNCA peça WhatsApp/telefone na despedida ou "para não te incomodar". Contato só quando for abrir chamado ou reserva, explicando o motivo.
+- Só prometa retorno ("vou confirmar e te aviso") se houver chamado aberto com sucesso=true; caso contrário, peça o telefone com DDD para conseguir retornar.`;
 
     // Contexto do cliente já conhecido — evita pedir nome/telefone que já temos.
     try {

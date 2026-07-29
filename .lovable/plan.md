@@ -1,54 +1,67 @@
-## Objetivo
 
-Depois que o gestor resolve o chamado, a loja (colaborador que abriu) precisa ser avisada e **confirmar se a manutenção foi realmente concluída**. Se confirmar, encerra. Se recusar, o chamado volta pra fila do gestor com o motivo.
+# Revisão das conversas da Giana — falhas encontradas e plano de correção
 
-## Fluxo novo
+Base: 56 conversas (20/06 a 24/07), `supabase/functions/parme-chat/index.ts`, tabelas `support_tickets` (6 linhas, **todas com status `open`**) e `reservations` (**0 linhas**).
 
-1. Gestor clica **Resolver** no banner (como já é hoje) → grava histórico e muda status.
-2. Em vez de ir direto para `completed`, o chamado passa por um novo status intermediário **`awaiting_confirmation`**.
-3. Colaborador que abriu recebe:
-   - **WhatsApp** com resumo do que foi feito + pergunta "foi resolvido? responda pela Área do Colaborador".
-   - **Card na Área do Colaborador** (mesmo estilo do banner do gestor) com dois botões: **Confirmar** / **Ainda com problema**.
-4. Ações:
-   - **Confirmar** → status vira `completed`. Fim.
-   - **Ainda com problema** → abre `Textarea` obrigatória, status volta para `pending`, `approved_by`/`approved_at`/`maintenance_record_id` são limpos, o registro em `nutri_maintenance_records` é apagado (ou marcado como revertido), e o gestor recebe novo WhatsApp + o chamado reaparece no banner com uma tag "Reaberto".
+## Falhas confirmadas
 
-## Mudanças
+### 1. Gate do nome bloqueia a resposta (maior perda de conversão)
+O prompt (linhas 46-47) manda perguntar o nome e "só depois" tratar a dúvida. Efeito observado:
+- Yara pediu preço 3x seguidas e a Giana repetiu "me diz seu nome" antes de responder ("Ih, quase esqueci de perguntar seu nome de novo!").
+- "Não consegui enviar o currículo" → resposta foi só "assim que você me disser seu nome eu verifico". Cliente sumiu.
+- Fernanda pediu link 2x e só recebeu depois de dar o nome.
+- Dezenas de conversas morrem em 2 mensagens ("oi" → "Como posso te chamar?" → fim).
 
-### 1. Banco — migração
-- Ampliar o CHECK de `status` em `nutri_maintenance_requests` para incluir `awaiting_confirmation`.
-- Adicionar colunas:
-  - `resolved_note text` — nota do gestor (já digitada no banner).
-  - `confirmed_at timestamptz`, `confirmed_by uuid`.
-  - `reopened_at timestamptz`, `reopen_reason text`, `reopen_count int default 0`.
+### 2. Reservas não são gravadas
+`reservations` está **vazia**, mas há conversas de reserva (Nelson, entre outras) onde a Giana coleta/encaminha dados. Ou o tool `criar_reserva` nunca é chamado, ou o insert falha em silêncio (o erro só vai para `console.error`, e a IA às vezes responde "a equipe confirma por telefone" sem tool). Cliente acredita que reservou e não reservou.
 
-### 2. `MaintenanceRequestsAlert.tsx` (gestor)
-- Ao clicar Resolver:
-  - Continua criando o `nutri_maintenance_records` (histórico como hoje).
-  - Muda status para `awaiting_confirmation` (não mais `completed`), grava `resolved_note`.
-  - Dispara nova edge function `notify-maintenance-resolved` para o colaborador que abriu.
-- Passa a mostrar também os chamados com status `pending` **reabertos** (com badge "Reaberto" quando `reopen_count > 0`, mostrando `reopen_reason`).
+### 3. Tickets com dados sujos e sem ciclo de vida
+- `order_number` errado: nos tickets da Nadia gravou **99866** (pedaço do telefone) em vez do pedido **7207**.
+- `title` nulo em 4 dos 6 tickets.
+- `description` é um despejo cru das mensagens do cliente, não um resumo.
+- Todos os 6 tickets seguem `open` — não há fila, responsável, prazo nem retorno ao cliente. A Nadia (caso mais grave, cliente fidelizada perdida) nunca recebeu retorno.
 
-### 3. Novo componente `MaintenanceConfirmAlert.tsx` (colaborador)
-- Lista os chamados **do próprio user** com status `awaiting_confirmation`.
-- Cada card mostra equipamento, loja, nota do gestor, data.
-- Botões:
-  - **Confirmar conclusão** → `UPDATE` status=`completed`, `confirmed_at`, `confirmed_by`.
-  - **Ainda com problema** → abre input; ao enviar, `UPDATE` status=`pending`, seta `reopen_reason`, `reopened_at`, incrementa `reopen_count`, apaga o record de histórico atrelado, e dispara `notify-maintenance-reopened` para os gestores da loja.
-- Realtime igual ao alert de gestor.
+### 4. Preço: ora recusa, ora responde
+Mesma pergunta gera respostas diferentes: "confira no iFood", "entre R$ 35 e R$ 60", "R$ 39,90 em Águas Claras". A faixa "R$ 35 a 60" é estimativa — exatamente o que a regra anti-alucinação proíbe.
 
-### 4. Montagem
-- `EmployeeArea.tsx`: quando **não** for `managerView`, montar `MaintenanceConfirmAlert` no topo (mesmo slot do banner atual do gestor).
+### 5. Retirada/balcão com informação divergente
+Em uma conversa: "pode pedir direto no balcão"; em outra: "pedidos exclusivamente pelo iFood, não temos telefone". Fernanda ficou sem saber se retira pagando taxa ou não.
 
-### 5. Edge functions
-- `supabase/functions/notify-maintenance-resolved/index.ts` — WhatsApp para o `user_id` que abriu, com nome do equipamento, loja, nota do gestor e CTA "confirme na Área do Colaborador".
-- `supabase/functions/notify-maintenance-reopened/index.ts` — WhatsApp para gestores/admins da loja (mesma lógica de segmentação já usada em `notify-maintenance-request`), avisando que o chamado foi reaberto com o motivo.
-- Ambas respeitam `notification_settings` (event_type `maintenance_request`).
+### 6. Promessas sem dono
+"Vou confirmar com a equipe e te retorno" é dito sem abrir ticket e sem canal de retorno (chat web anônimo). Vira promessa vazia.
 
-### 6. Card resumo / dashboard
-- `MaintenanceSummaryCard` continua contando `pending` como "aguardando aprovação"; adicionar chip menor "aguardando confirmação da loja" com count de `awaiting_confirmation` para o gestor ter visibilidade.
+### 7. Vagas
+Não há nenhuma referência a `https://nexasuite.aquelaparme.com.br/vagas` na `parme-chat` — a regra de vagas só existe no fluxo de WhatsApp.
 
-## Fora de escopo
+### 8. Pedido de WhatsApp no fim ("me passa seu WhatsApp? Prometo não te incomodar")
+Coleta sem finalidade declarada nem opt-in — risco LGPD e tom que destoa.
 
-- Não mexer no fluxo antigo de aprovar-com-técnico dentro de `/nutricontrol`.
-- Sem prazo automático (ex.: auto-confirmar em X dias) — pode entrar num passo seguinte se quiser.
+## Plano de correção
+
+**A. Responder primeiro, perguntar o nome depois**
+- Reescrever as regras 46-47: responder imediatamente a qualquer pergunta objetiva; pedir o nome no máximo **uma vez**, junto da resposta, nunca como pré-requisito.
+- Proibir repetir o pedido de nome. Se o cliente ignorar duas vezes, seguir sem nome.
+- Manter a exigência de telefone só onde é funcional: abrir ticket e criar reserva.
+
+**B. Consertar reservas**
+- Tornar `criar_reserva` obrigatório antes de qualquer frase de confirmação; a Giana não pode dizer "reserva registrada/a equipe confirma" sem `sucesso: true`.
+- Em caso de erro do insert, responder honestamente ("não consegui registrar agora, vou passar pra equipe") e abrir ticket de reserva.
+- Validar dia/horário contra o funcionamento do salão da Asa Norte e recusar data passada.
+- Verificar por que a tabela está zerada (logs da função + teste ponta a ponta criando uma reserva real).
+
+**C. Qualidade dos tickets**
+- Nunca deduzir `numero_pedido` de dígitos do telefone: aceitar só número informado explicitamente como pedido (4-8 dígitos, distinto do contato).
+- `titulo` obrigatório e `descricao` como resumo estruturado (o que houve, item, pedido, o que o cliente quer), com o transcript anexado à parte.
+- Adicionar tratativa: campos de status/responsável/prazo já existentes ganham fila visível no CRM e alerta de ticket aberto > 2h.
+- Devolver ao cliente um número de protocolo curto.
+
+**D. Preço e retirada: uma única fonte**
+- Bloquear no prompt qualquer faixa/estimativa de preço; sem dado da tool, responder só com o link do iFood.
+- Padronizar a resposta de retirada (uma regra única: como pede, se paga taxa, endereço) na FAQ oficial usada por `consultar_info`.
+
+**E. Vagas e WhatsApp**
+- Adicionar ao prompt da `parme-chat`: pergunta sobre vaga/currículo/trabalhar → responder com `https://nexasuite.aquelaparme.com.br/vagas`.
+- Remover o pedido espontâneo de WhatsApp no encerramento; só pedir contato quando houver ticket ou reserva, explicando o motivo.
+
+## Detalhes técnicos
+Arquivos envolvidos: `supabase/functions/parme-chat/index.ts` (SYSTEM prompt, `criar_reserva`, `registrar_problema_pedido`, sanitização de `numero_pedido`), FAQ/knowledge da Giana, e a tela de CRM para a fila de tickets. Nenhuma alteração de schema é necessária além de possíveis colunas de tratativa em `support_tickets`, a confirmar após o teste de reserva.

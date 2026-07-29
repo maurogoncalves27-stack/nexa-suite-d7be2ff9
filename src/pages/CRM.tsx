@@ -1615,21 +1615,35 @@ function ReservationsKPIs({ reservations }: { reservations: Reservation[] }) {
 function TicketsKPIs({ tickets }: { tickets: Ticket[] }) {
   const stats = useMemo(() => {
     const todayStr = new Date().toISOString().slice(0, 10);
-    let abertos = 0, andamento = 0, resolvHoje = 0, total = tickets.length;
+    const limite = Date.now() - 2 * 60 * 60 * 1000; // SLA de retorno: 2h
+    let abertos = 0, andamento = 0, resolvHoje = 0, atrasados = 0;
+    const total = tickets.length;
     tickets.forEach((t) => {
       const st = (t.status ?? "").toLowerCase();
+      const emAberto = st === "open" || st === "in_progress" || st === "in-progress";
       if (st === "open") abertos++;
       else if (st === "in_progress" || st === "in-progress") andamento++;
       if ((st === "resolved" || st === "closed") && ((t.created_at ?? "").slice(0, 10) === todayStr)) resolvHoje++;
+      if (emAberto && t.created_at && new Date(t.created_at).getTime() < limite) atrasados++;
     });
-    return { abertos, andamento, resolvHoje, total };
+    return { abertos, andamento, resolvHoje, atrasados, total };
   }, [tickets]);
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-      <StatCard icon={AlertCircle} label="Abertos" value={stats.abertos} tone="destructive" />
-      <StatCard icon={Loader2} label="Em andamento" value={stats.andamento} tone="warning" />
-      <StatCard icon={CheckCircle2} label="Resolvidos hoje" value={stats.resolvHoje} tone="success" />
-      <StatCard icon={Ticket} label="Total" value={stats.total} />
+    <div className="space-y-2">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <StatCard icon={AlertCircle} label="Abertos" value={stats.abertos} tone="destructive" />
+        <StatCard icon={Loader2} label="Em andamento" value={stats.andamento} tone="warning" />
+        <StatCard icon={CheckCircle2} label="Resolvidos hoje" value={stats.resolvHoje} tone="success" />
+        <StatCard icon={Ticket} label="Total" value={stats.total} />
+      </div>
+      {stats.atrasados > 0 && (
+        <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>
+            {stats.atrasados} chamado{stats.atrasados > 1 ? "s" : ""} sem tratativa há mais de 2h — o cliente ainda não teve retorno.
+          </span>
+        </div>
+      )}
     </div>
   );
 }
