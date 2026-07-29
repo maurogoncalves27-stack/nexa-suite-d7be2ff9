@@ -80,8 +80,16 @@ export function UniformDeliveriesPanel({ items, employees }: Props) {
     setPendingByItem(map);
   };
 
-  const registerReturn = async (deliveryItemId: string, employeeId: string) => {
-    const p = pendingByItem[deliveryItemId];
+  const registerReturn = async (it: DeliveryItemRow, delivery: DeliveryRow) => {
+    const deliveryItemId = it.id;
+    const employeeId = delivery.employee_id;
+    const fallbackQty = Math.max(0, Number(it.quantity ?? 0) - Number(it.returned_quantity ?? 0));
+    const p = pendingByItem[deliveryItemId] ?? {
+      qty: fallbackQty,
+      store_id: delivery.store_id ?? null,
+      uniform_item_id: it.uniform_item_id,
+      size: it.size,
+    };
     if (!p || p.qty <= 0) return;
     setReturning(deliveryItemId);
     try {
