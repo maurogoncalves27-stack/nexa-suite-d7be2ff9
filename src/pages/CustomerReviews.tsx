@@ -726,8 +726,12 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                       className="text-destructive hover:text-destructive"
                       onClick={async () => {
                         if (!confirm("Excluir esta avaliação?")) return;
-                        const { error } = await supabase.from("customer_reviews").delete().eq("id", r.id);
+                        const { error, count } = await supabase
+                          .from("customer_reviews")
+                          .delete({ count: "exact" })
+                          .eq("id", r.id);
                         if (error) return toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+                        if (!count) return toast({ title: "Não foi possível excluir", description: "Você não tem permissão para excluir esta avaliação.", variant: "destructive" });
                         toast({ title: "Avaliação excluída" });
                         load();
                       }}
