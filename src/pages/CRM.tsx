@@ -481,6 +481,43 @@ function pickClientPhone(c: any): string | null {
   return null;
 }
 
+/** Monta o link wa.me a partir de um telefone (com ou sem DDI). */
+function waLink(raw?: string | null): string | null {
+  const d = onlyDigits(String(raw ?? ""));
+  if (d.length < 10) return null;
+  const full = d.length <= 11 ? `55${d}` : d;
+  return `https://wa.me/${full}`;
+}
+
+/** Telefone clicável que abre a conversa no WhatsApp. */
+function PhoneLink({
+  phone,
+  className,
+}: {
+  phone?: string | null;
+  className?: string;
+}) {
+  const digits = onlyDigits(String(phone ?? ""));
+  const href = waLink(phone);
+  const label = digits.length >= 10 ? fmtPhone(digits) : (phone ? String(phone) : "—");
+  if (!href) return <span className={className}>{label}</span>;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      title="Abrir conversa no WhatsApp"
+      className={`inline-flex items-center gap-1 text-primary hover:underline ${className ?? ""}`}
+    >
+      <MessageCircle className="h-3.5 w-3.5" />
+      {label}
+    </a>
+  );
+}
+
+
+
 
 export default function CRM() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
