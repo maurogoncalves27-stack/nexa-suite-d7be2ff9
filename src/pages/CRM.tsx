@@ -542,7 +542,7 @@ export default function CRM() {
   const [convMsgsError, setConvMsgsError] = useState<string | null>(null);
   const [showClientInfo, setShowClientInfo] = useState(false);
   const [search, setSearch] = useState("");
-  const [convIssueFilter, setConvIssueFilter] = useState<"all" | "issues" | "critical" | "waiting" | "praise" | "archived">("all");
+  const [convIssueFilter, setConvIssueFilter] = useState<"all" | "issues" | "praise" | "duvidas" | "archived">("all");
 
   async function load() {
     setLoading(true);
@@ -899,9 +899,9 @@ export default function CRM() {
     if (convIssueFilter === "archived") list = list.filter((c: any) => !!c.archived_at);
     else list = list.filter((c: any) => !c.archived_at);
     if (convIssueFilter === "issues") list = list.filter((c) => c.triage?.has_issue);
-    else if (convIssueFilter === "critical") list = list.filter((c) => c.triage?.has_issue && (c.triage?.severity === "critical" || c.triage?.severity === "high"));
-    else if (convIssueFilter === "waiting") list = list.filter((c) => c.triage?.has_issue && !(c.related_tickets?.length));
     else if (convIssueFilter === "praise") list = list.filter((c) => c.triage?.category === "elogio");
+    else if (convIssueFilter === "duvidas") list = list.filter((c) => !c.triage?.has_issue && c.triage?.category !== "elogio");
+
     // Ordenação: severidade desc, depois última msg desc
     return [...list].sort((a, b) => {
       const sa = SEVERITY_RANK[a.triage?.severity ?? "none"] ?? 0;
@@ -1318,11 +1318,11 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
             {([
               { key: "all", label: "Todos" },
               { key: "issues", label: "Problemas" },
-              { key: "critical", label: "Críticos" },
-              { key: "waiting", label: "Sem ticket" },
               { key: "praise", label: "Elogios" },
+              { key: "duvidas", label: "Dúvidas" },
               { key: "archived", label: "Arquivadas" },
             ] as const).map((f) => {
+
               const active = convIssueFilter === f.key;
               return (
                 <Button
