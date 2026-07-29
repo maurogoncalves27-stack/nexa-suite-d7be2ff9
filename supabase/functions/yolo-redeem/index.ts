@@ -1,11 +1,12 @@
-// Confirma o consumo do voucher Yolo após o pedido ser fechado/pago. Idempotente por order_id+voucher_id.
+// Confirma/ativa o voucher Yolo após o pedido ser fechado/pago. Idempotente por order_id+code.
+// Segundo endpoint do modelo Yolo: "ativação mesmo, o status de confirmação dele".
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
-import { createClient } from 'npm:@supabase/supabase-js@2';
 import { z } from 'npm:zod@3';
+import { loadYoloContext, serviceClient, yoloHeaders, yoloUrl, jsonResponse } from '../_shared/yolo.ts';
 
 const BodySchema = z.object({
-  voucher_id: z.string().min(1),
-  code: z.string().min(3).max(64),
+  voucher_id: z.string().min(1).optional(),
+  code: z.string().trim().min(3).max(64),
   store_id: z.string().uuid(),
   channel: z.enum(['totem', 'garcom', 'online', 'pdv']),
   order_id: z.string().min(1).max(128),
@@ -23,57 +24,45 @@ Deno.serve(async (req) => {
     }
     const p = parsed.data;
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    );
+    const supabase = serviceClient();
 
-    // Idempotência local: já resgatamos esse voucher pra esse pedido?
+    // Idempotência local: já confirmamos esse código pra esse pedido?
     const { data: existing } = await supabase
       .from('yolo_vouchers_used')
-      .select('id, status')
+      .select('id')
       .eq('order_id', p.order_id)
-      .eq('voucher_id', p.voucher_id)
+      .eq('code', p.code)
       .eq('status', 'redeemed')
       .maybeSingle();
 
     if (existing) {
-      return json({ redeemed: true, already: true, voucher_id: p.voucher_id }, 200);
+      return json({ redeemed: true, already: true, voucher_id: p.voucher_id ?? null }, 200);
     }
 
-    const { data: config } = await supabase
-      .from('yolo_config')
-      .select('*')
-      .eq('enabled', true)
-      .maybeSingle();
+    const { ctx, error } = await loadYoloContext(supabase, p.store_id);
+    if (!ctx) return json({ redeemed: false, reason: error!.reason, message: error!.message }, error!.status);
 
-    if (!config) return json({ redeemed: false, reason: 'integration_disabled' }, 503);
-    const apiKey = Deno.env.get('YOLO_API_KEY');
-    if (!apiKey) return json({ redeemed: false, reason: 'missing_credentials' }, 500);
-
-    const yoloStoreId = (config.store_mapping as Record<string, string>)?.[p.store_id] ?? p.store_id;
-
-    const upstream = await fetch(`${config.base_url}/vouchers/redeem`, {
+    const upstream = await fetch(yoloUrl(ctx, ctx.config.confirm_path), {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      headers: yoloHeaders(ctx, p.code),
       body: JSON.stringify({
-        voucher_id: p.voucher_id,
         code: p.code,
-        partner_id: config.partner_id,
-        store_id: yoloStoreId,
+        voucher_id: p.voucher_id ?? null,
+        partner_id: ctx.config.partner_id,
+        branch_id: ctx.branchId,
         order_id: p.order_id,
-        order_total_cents: p.order_total_cents,
-        discount_applied_cents: p.discount_applied_cents,
-        redeemed_at: new Date().toISOString(),
+        cart_total_cents: p.order_total_cents,
+        discount_cents: p.discount_applied_cents,
+        confirmed_at: new Date().toISOString(),
       }),
     });
 
     const body = await upstream.json().catch(() => ({}));
-    const ok = upstream.ok && (body?.redeemed === true || upstream.status === 200);
+    const ok = upstream.ok && body?.confirmed !== false && body?.redeemed !== false;
 
     await supabase.from('yolo_vouchers_used').insert({
       code: p.code,
-      voucher_id: p.voucher_id,
+      voucher_id: p.voucher_id ?? body?.voucher_id ?? null,
       order_id: p.order_id,
       store_id: p.store_id,
       channel: p.channel,
@@ -92,8 +81,5 @@ Deno.serve(async (req) => {
 });
 
 function json(data: unknown, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+  return jsonResponse(data, status, corsHeaders);
 }

@@ -136,6 +136,7 @@ const Quotations = lazy(() => import("./pages/Quotations.tsx"));
 const PdvNovo = lazy(() => import("./pages/PdvNovo.tsx"));
 
 const TefPaygoSetup = lazy(() => import("./pages/TefPaygoSetup.tsx"));
+const YoloIntegration = lazy(() => import("./pages/YoloIntegration.tsx"));
 
 const TefPayerSetup = lazy(() => import("./pages/TefPayerSetup.tsx"));
 const RemoteAccess = lazy(() => import("./pages/RemoteAccess.tsx"));
@@ -427,6 +428,7 @@ const App = () => (
               <Route path="/configuracoes/totem" element={<Guarded staff><TotemConfig /></Guarded>} />
               <Route path="/configuracoes/nfce-tester" element={<Guarded staff><NfceTester /></Guarded>} />
               <Route path="/configuracoes/tef-paygo" element={<Guarded staff><TefPaygoSetup /></Guarded>} />
+              <Route path="/configuracoes/yolo" element={<Guarded staff><YoloIntegration /></Guarded>} />
               
               <Route path="/configuracoes/tef-payer" element={<Guarded staff><TefPayerSetup /></Guarded>} />
               <Route path="/configuracoes/acesso-remoto" element={<Guarded staff><RemoteAccess /></Guarded>} />

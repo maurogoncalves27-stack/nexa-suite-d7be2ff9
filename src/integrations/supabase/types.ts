@@ -18414,6 +18414,8 @@ export type Database = {
       yolo_config: {
         Row: {
           base_url: string
+          code_header_name: string
+          confirm_path: string
           created_at: string
           enabled: boolean
           environment: string
@@ -18422,9 +18424,12 @@ export type Database = {
           partner_id: string | null
           store_mapping: Json
           updated_at: string
+          validate_path: string
         }
         Insert: {
           base_url?: string
+          code_header_name?: string
+          confirm_path?: string
           created_at?: string
           enabled?: boolean
           environment?: string
@@ -18433,9 +18438,12 @@ export type Database = {
           partner_id?: string | null
           store_mapping?: Json
           updated_at?: string
+          validate_path?: string
         }
         Update: {
           base_url?: string
+          code_header_name?: string
+          confirm_path?: string
           created_at?: string
           enabled?: boolean
           environment?: string
@@ -18444,8 +18452,50 @@ export type Database = {
           partner_id?: string | null
           store_mapping?: Json
           updated_at?: string
+          validate_path?: string
         }
         Relationships: []
+      }
+      yolo_store_tokens: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          notes: string | null
+          store_id: string
+          token: string
+          updated_at: string
+          yolo_branch_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          notes?: string | null
+          store_id: string
+          token: string
+          updated_at?: string
+          yolo_branch_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          notes?: string | null
+          store_id?: string
+          token?: string
+          updated_at?: string
+          yolo_branch_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "yolo_store_tokens_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       yolo_vouchers_used: {
         Row: {

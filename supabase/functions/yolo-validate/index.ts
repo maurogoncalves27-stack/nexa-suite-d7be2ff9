@@ -1,13 +1,16 @@
 // Valida um código Yolo Club sem consumir (chamado antes de aplicar desconto no carrinho).
+// Modelo Yolo: token POR FILIAL no header + code do usuário no header.
+// Já enviamos aqui o valor economizado (desconto) e o total da comanda, conforme pedido pelo dev da Yolo.
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
-import { createClient } from 'npm:@supabase/supabase-js@2';
 import { z } from 'npm:zod@3';
+import { loadYoloContext, serviceClient, yoloHeaders, yoloUrl, jsonResponse } from '../_shared/yolo.ts';
 
 const BodySchema = z.object({
   code: z.string().trim().min(3).max(64),
   store_id: z.string().uuid(),
   channel: z.enum(['totem', 'garcom', 'online', 'pdv']),
   cart_total_cents: z.number().int().nonnegative().optional(),
+  discount_cents: z.number().int().nonnegative().optional(),
 });
 
 Deno.serve(async (req) => {
@@ -18,42 +21,23 @@ Deno.serve(async (req) => {
     if (!parsed.success) {
       return json({ valid: false, reason: 'invalid_request', errors: parsed.error.flatten().fieldErrors }, 400);
     }
-    const { code, store_id, channel, cart_total_cents } = parsed.data;
+    const { code, store_id, channel, cart_total_cents, discount_cents } = parsed.data;
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    );
+    const supabase = serviceClient();
+    const { ctx, error } = await loadYoloContext(supabase, store_id);
+    if (!ctx) return json({ valid: false, reason: error!.reason, message: error!.message }, error!.status);
 
-    const { data: config } = await supabase
-      .from('yolo_config')
-      .select('*')
-      .eq('enabled', true)
-      .maybeSingle();
-
-    if (!config) {
-      return json({ valid: false, reason: 'integration_disabled', message: 'Integração Yolo desabilitada' }, 503);
-    }
-
-    const apiKey = Deno.env.get('YOLO_API_KEY');
-    if (!apiKey) {
-      return json({ valid: false, reason: 'missing_credentials', message: 'YOLO_API_KEY não configurada' }, 500);
-    }
-
-    const yoloStoreId = (config.store_mapping as Record<string, string>)?.[store_id] ?? store_id;
-
-    const upstream = await fetch(`${config.base_url}/vouchers/validate`, {
+    const upstream = await fetch(yoloUrl(ctx, ctx.config.validate_path), {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers: yoloHeaders(ctx, code),
       body: JSON.stringify({
         code,
-        partner_id: config.partner_id,
-        store_id: yoloStoreId,
+        partner_id: ctx.config.partner_id,
+        branch_id: ctx.branchId,
         channel,
-        cart_total_cents,
+        cart_total_cents: cart_total_cents ?? 0,
+        // "valor economizado pelo cliente" + "total da comanda" já na validação
+        discount_cents: discount_cents ?? 0,
       }),
     });
 
@@ -65,9 +49,11 @@ Deno.serve(async (req) => {
       voucher_id: body?.voucher_id ?? null,
       store_id,
       channel,
-      status: upstream.ok && body?.valid ? 'validated' : 'failed',
+      status: upstream.ok && body?.valid !== false ? 'validated' : 'failed',
       benefit_snapshot: body?.benefit ?? null,
-      failure_reason: !upstream.ok || !body?.valid ? (body?.reason ?? `http_${upstream.status}`) : null,
+      order_total_cents: cart_total_cents ?? null,
+      discount_applied_cents: discount_cents ?? null,
+      failure_reason: !upstream.ok || body?.valid === false ? (body?.reason ?? `http_${upstream.status}`) : null,
       raw_response: body,
     }).then(() => {});
 
@@ -79,8 +65,5 @@ Deno.serve(async (req) => {
 });
 
 function json(data: unknown, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+  return jsonResponse(data, status, corsHeaders);
 }
