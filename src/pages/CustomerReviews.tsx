@@ -379,6 +379,77 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
 
       </div>
 
+      {/* Recorrência do cliente */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Recorrência dos clientes avaliadores</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {loyalty.total === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Informe o campo “Pedidos anteriores” ao cadastrar avaliações para gerar estas métricas.
+            </p>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+                <div className="rounded-lg border p-3">
+                  <div className="text-[10px] text-muted-foreground">Média de pedidos anteriores</div>
+                  <div className="text-lg font-semibold">{loyalty.media.toFixed(1)}</div>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <div className="text-[10px] text-muted-foreground">Clientes de 1º pedido</div>
+                  <div className="text-lg font-semibold">
+                    {loyalty.novos}
+                    <span className="text-xs text-muted-foreground ml-1">
+                      ({Math.round((loyalty.novos / loyalty.total) * 100)}%)
+                    </span>
+                  </div>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <div className="text-[10px] text-muted-foreground">Recorrentes (1–4)</div>
+                  <div className="text-lg font-semibold">
+                    {loyalty.recorrentes}
+                    <span className="text-xs text-muted-foreground ml-1">
+                      ({Math.round((loyalty.recorrentes / loyalty.total) * 100)}%)
+                    </span>
+                  </div>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <div className="text-[10px] text-muted-foreground">Fiéis (5+)</div>
+                  <div className="text-lg font-semibold">
+                    {loyalty.fieis}
+                    <span className="text-xs text-muted-foreground ml-1">
+                      ({Math.round((loyalty.fieis / loyalty.total) * 100)}%)
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                {loyalty.buckets.map((b) => (
+                  <div key={b.label} className="flex items-center gap-2 text-xs">
+                    <span className="w-24 shrink-0 text-muted-foreground">{b.label}</span>
+                    <div className="flex-1 h-2 rounded bg-muted overflow-hidden">
+                      <div
+                        className="h-full bg-primary"
+                        style={{ width: `${loyalty.total ? (b.count / loyalty.total) * 100 : 0}%` }}
+                      />
+                    </div>
+                    <span className="w-8 text-right">{b.count}</span>
+                    <span className="w-16 text-right text-muted-foreground">
+                      {b.avg != null ? `${b.avg.toFixed(1)} ★` : "—"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Base: {loyalty.total} avaliações com pedidos anteriores informados. “★” = nota média do grupo.
+              </p>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+
       {/* Dialog iFood por loja */}
       <Dialog open={openIfoodDialog} onOpenChange={setOpenIfoodDialog}>
         <DialogContent className="max-w-lg">
