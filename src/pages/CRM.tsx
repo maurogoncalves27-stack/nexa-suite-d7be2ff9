@@ -1449,9 +1449,9 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                         {nome !== "—" ? nome : String(phone)}
                       </DialogTitle>
                       <DialogDescription className="flex items-center justify-between gap-2 flex-wrap">
-                        <span>
+                        <span className="inline-flex items-center gap-1 flex-wrap">
                           {c.message_count ?? 0} mensagens · {fmtDateTime(c.last_message_at)}
-                          {nome !== "—" && phone !== "—" ? ` · ${String(phone)}` : ""}
+                          {phoneDigits ? <> · <PhoneLink phone={phoneDigits} /></> : null}
                         </span>
                         <Button
                           type="button"
