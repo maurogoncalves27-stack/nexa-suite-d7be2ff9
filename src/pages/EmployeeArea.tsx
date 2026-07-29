@@ -325,7 +325,7 @@ export default function EmployeeArea({ impersonateUserId, managerView = false }:
 
   const isManagerPosition = (employee.position ?? "").toUpperCase().includes("GERENTE");
   const ownScore = evaluations[0]?.final_score;
-  const lastScore = isManagerPosition ? (teamAvgScore ?? ownScore) : ownScore;
+  const lastScore = ownScore;
 
   return (
     <div className={`space-y-3 md:space-y-6 ${managerView ? "pb-6" : "pb-28 md:pb-6"}`}>
@@ -356,11 +356,24 @@ export default function EmployeeArea({ impersonateUserId, managerView = false }:
                 type="button"
                 onClick={() => isStaff ? navigate("/avaliacoes") : setEvaluationsOpen(true)}
                 className="flex items-center gap-1.5 shrink-0 text-warning rounded-md px-1.5 py-1 -mx-1.5 -my-1 transition-colors hover:bg-warning/10 active:bg-warning/15 focus:outline-none focus:ring-2 focus:ring-warning/40"
-                aria-label="Ver avaliações"
+                aria-label="Ver minhas avaliações"
               >
                 <Award className="h-5 w-5" />
                 <span className={`font-bold leading-none transition-all ${headerCompact ? "text-base md:text-xl" : "text-xl"}`}>
                   {Number(lastScore).toFixed(1)}
+                </span>
+              </button>
+            )}
+            {isManagerPosition && teamAvgScore != null && (
+              <button
+                type="button"
+                onClick={() => navigate("/avaliacoes")}
+                className="flex flex-col items-center shrink-0 text-muted-foreground rounded-md px-1.5 py-1 transition-colors hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-muted"
+                aria-label="Ver avaliações da equipe"
+              >
+                <span className="text-[10px] uppercase leading-none">Equipe</span>
+                <span className={`font-bold leading-none ${headerCompact ? "text-sm md:text-base" : "text-base"}`}>
+                  {teamAvgScore.toFixed(1)}
                 </span>
               </button>
             )}
