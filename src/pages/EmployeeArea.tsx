@@ -364,19 +364,6 @@ export default function EmployeeArea({ impersonateUserId, managerView = false }:
                 </span>
               </button>
             )}
-            {isManagerPosition && teamAvgScore != null && (
-              <button
-                type="button"
-                onClick={() => navigate("/avaliacoes")}
-                className="flex flex-col items-center shrink-0 text-muted-foreground rounded-md px-1.5 py-1 transition-colors hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-muted"
-                aria-label="Ver avaliações da equipe"
-              >
-                <span className="text-[10px] uppercase leading-none">Equipe</span>
-                <span className={`font-bold leading-none ${headerCompact ? "text-sm md:text-base" : "text-base"}`}>
-                  {teamAvgScore.toFixed(1)}
-                </span>
-              </button>
-            )}
           </div>
         </CardContent>
       </Card>
