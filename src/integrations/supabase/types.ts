@@ -1369,6 +1369,8 @@ export type Database = {
       }
       chat_conversations: {
         Row: {
+          archived_at: string | null
+          archived_by: string | null
           client_meta: Json | null
           created_at: string
           feedback_rating: string | null
@@ -1383,6 +1385,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
           client_meta?: Json | null
           created_at?: string
           feedback_rating?: string | null
@@ -1397,6 +1401,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
+          archived_by?: string | null
           client_meta?: Json | null
           created_at?: string
           feedback_rating?: string | null
