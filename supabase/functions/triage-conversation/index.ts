@@ -241,7 +241,7 @@ Deno.serve(async (req) => {
     if (body?.conversation_id) {
       const { data, error } = await supabase
         .from("chat_conversations")
-        .select("id, messages, last_message_at, triaged_at")
+        .select("id, session_id, client_meta, messages, last_message_at, triaged_at, critical_alert_sent_at")
         .eq("id", body.conversation_id)
         .maybeSingle();
       if (error) throw error;
@@ -255,7 +255,7 @@ Deno.serve(async (req) => {
     // Prioriza não-triadas; se restar espaço, reprocessa as mais antigas (mensagens novas depois da triagem tratamos aqui).
     const { data: pending, error } = await supabase
       .from("chat_conversations")
-      .select("id, messages, last_message_at, triaged_at")
+      .select("id, session_id, client_meta, messages, last_message_at, triaged_at, critical_alert_sent_at")
       .is("triaged_at", null)
       .order("last_message_at", { ascending: false, nullsFirst: false })
       .limit(limit);
@@ -266,7 +266,7 @@ Deno.serve(async (req) => {
       // Busca conversas com mensagem nova depois da última triagem
       const { data: stale } = await supabase
         .from("chat_conversations")
-        .select("id, messages, last_message_at, triaged_at")
+        .select("id, session_id, client_meta, messages, last_message_at, triaged_at, critical_alert_sent_at")
         .not("triaged_at", "is", null)
         .not("last_message_at", "is", null)
         .order("triaged_at", { ascending: true })
