@@ -481,13 +481,16 @@ function pickClientPhone(c: any): string | null {
   return null;
 }
 
-/** Monta o link wa.me a partir de um telefone (com ou sem DDI). */
+/** Monta o link https://wa.me/55DDDNUMERO a partir de um telefone. */
 function waLink(raw?: string | null): string | null {
-  const d = onlyDigits(String(raw ?? ""));
-  if (d.length < 10) return null;
-  const full = d.length <= 11 ? `55${d}` : d;
-  return `https://wa.me/${full}`;
+  let d = onlyDigits(String(raw ?? ""));
+  // remove DDI 55 e zeros à esquerda para normalizar em DDD+numero
+  if (d.startsWith("0")) d = d.replace(/^0+/, "");
+  if (d.length > 11 && d.startsWith("55")) d = d.slice(2);
+  if (d.length < 10 || d.length > 11) return null;
+  return `https://wa.me/55${d}`;
 }
+
 
 /** Telefone clicável que abre a conversa no WhatsApp. */
 function PhoneLink({
