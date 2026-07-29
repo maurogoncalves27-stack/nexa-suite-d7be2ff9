@@ -146,7 +146,32 @@ export function UniformCatalogStockPanel({ items, onChanged }: Props) {
   const removeItem = async (id: string, name: string) => {
     if (!confirm(`Excluir item "${name}"?`)) return;
     const { data, error } = await supabase.from("uniform_items").delete().eq("id", id).select("id");
-    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+    if (error) {
+      const hasHistory = error.code === "23503" || error.message.toLowerCase().includes("foreign key");
+      if (hasHistory) {
+        const { data: inactiveData, error: inactiveError } = await supabase
+          .from("uniform_items")
+          .update({ is_active: false })
+          .eq("id", id)
+          .select("id");
+
+        if (inactiveError) {
+          toast({ title: "Erro", description: inactiveError.message, variant: "destructive" });
+          return;
+        }
+        if (!inactiveData || inactiveData.length === 0) {
+          toast({ title: "Sem permissão", description: "Você não tem permissão para inativar este item.", variant: "destructive" });
+          return;
+        }
+
+        toast({ title: "Item inativado", description: "Ele possui histórico de estoque/entregas e foi mantido para preservar os registros." });
+        onChanged();
+        return;
+      }
+
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      return;
+    }
     if (!data || data.length === 0) {
       toast({ title: "Não foi possível excluir", description: "Item sem permissão de exclusão ou já removido.", variant: "destructive" });
       return;
