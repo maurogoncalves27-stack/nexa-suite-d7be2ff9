@@ -1032,7 +1032,7 @@ Deno.serve(async (req) => {
               const { error } = await supabase
                 .from("support_tickets")
                 .update({
-                  order_number: existing.order_number ?? numero_pedido ?? null,
+                  order_number: existing.order_number ?? pedidoLimpo,
                   description: descricaoFinal,
                   title: existing.title ?? tituloLimpo,
                   contact: existing.contact && existing.contact !== "não informado"
@@ -1048,14 +1048,15 @@ Deno.serve(async (req) => {
               return {
                 sucesso: true,
                 id: existing.id,
-                mensagem: "Problema registrado. Vamos entrar em contato.",
+                protocolo: String(existing.id).slice(0, 8).toUpperCase(),
+                mensagem: "Problema registrado. Informe o protocolo ao cliente e diga que a equipe retorna pelo telefone informado.",
               };
             }
           }
           const { data: row, error } = await supabase
             .from("support_tickets")
             .insert({
-              order_number: numero_pedido ?? null,
+              order_number: pedidoLimpo,
               title: tituloLimpo,
               description: descricaoFinal,
               contact: contatoLimpo,
@@ -1070,7 +1071,8 @@ Deno.serve(async (req) => {
           return {
             sucesso: true,
             id: row.id,
-            mensagem: "Problema registrado. Vamos entrar em contato.",
+            protocolo: String(row.id).slice(0, 8).toUpperCase(),
+            mensagem: "Problema registrado. Informe o protocolo ao cliente e diga que a equipe retorna pelo telefone informado.",
           };
         },
       }),
