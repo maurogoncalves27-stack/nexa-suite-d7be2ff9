@@ -264,8 +264,62 @@ function translateStatus(s?: string | null) {
   return map[s.toLowerCase()] ?? s;
 }
 
+// Palavras que nunca compõem um nome próprio (evita "nomes" como "Já Enviei Meu").
+const NOT_NAME_WORDS = new Set([
+  "que","de","do","da","para","pra","com","por","um","uma","o","a","os","as",
+  "aqui","cliente","gerente","atendente","sim","nao","não","ok","oi","olá","ola",
+  "bom","dia","tarde","noite","obrigado","obrigada","blz","beleza",
+  "pedido","pedi","quero","comprar","ifood","whatsapp","asa","sul","norte",
+  "lago","aguas","águas","claras","fabrica","cd","parme","parmê","box","caipira",
+  "estrogonofe","retirada","delivery","entrega","mesa","reserva","cardapio","cardápio",
+  "já","ja","enviei","mandei","informei","passei","falei","disse","queria","preciso",
+  "gostaria","meu","minha","seu","sua","numero","número","telefone","fone","celular",
+  "contato","nome","voce","você","vcs","vc","eu","me","te","ele","ela","reembolso",
+  "entregue","faltando","errado","atraso","atrasado","duvida","dúvida","fazer","retirar",
+  "valor","preco","preço","parmegiana",
+]);
+
+const SENTENCE_RE =
+  /\b(enviei|mandei|informei|passei|falei|disse|quero|queria|preciso|gostaria|não|nao|foi|está|esta|tá|ta|veio|deu|tem|fiz|pedi|recebi|consigo|posso|pode)\b/i;
+
+/** Nome a partir de uma resposta curta do cliente. Null se parecer frase. */
+function nameFromShortReply(raw: string): string | null {
+  const text = String(raw || "").trim();
+  if (!text || text.length > 40) return null;
+  if (/\d/.test(text)) return null;
+  if (SENTENCE_RE.test(text)) return null;
+  const words = text.split(/[\s,.!?]+/).filter(Boolean);
+  if (words.length > 4) return null;
+  const tokens = words.filter(
+    (t) => /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.-]*$/.test(t) && !NOT_NAME_WORDS.has(t.toLowerCase()),
+  );
+  if (!tokens.length) return null;
+  const name = tokens.slice(0, 3).join(" ");
+  if (name.replace(/\s/g, "").length < 2) return null;
+  return name.toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase());
+}
+
+/** Telefone brasileiro (10-11 dígitos) em texto livre. */
+function extractPhoneDigits(text: string): string | null {
+  const candidates = String(text || "").match(/(?:\+?55\s*)?(?:\(?\d{2}\)?[\s.-]*)?\d{4,5}[\s.-]?\d{4}/g) ?? [];
+  for (const c of candidates) {
+    let digits = c.replace(/\D/g, "");
+    if (digits.length > 11 && digits.startsWith("55")) digits = digits.slice(2);
+    if (digits.length >= 10 && digits.length <= 11) return digits;
+  }
+  return null;
+}
+
+function fmtPhone(digits: string): string {
+  const d = digits.replace(/\D/g, "");
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return digits;
+}
+
 // Heurística: extrai informações do cliente a partir de client_meta + mensagens da conversa,
 // inferindo dados que ele não disse explicitamente (telefone digitado, loja mencionada, canal, etc).
+
 function extractClientInfo(conv: any, msgs: any[] | null): Record<string, string> {
   const info: Record<string, string> = {};
   const meta = conv?.client_meta ?? {};
