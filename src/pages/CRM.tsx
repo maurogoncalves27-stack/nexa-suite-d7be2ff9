@@ -1318,11 +1318,11 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
             {([
               { key: "all", label: "Todos" },
               { key: "issues", label: "Problemas" },
-              { key: "critical", label: "Críticos" },
-              { key: "waiting", label: "Sem ticket" },
               { key: "praise", label: "Elogios" },
+              { key: "duvidas", label: "Dúvidas" },
               { key: "archived", label: "Arquivadas" },
             ] as const).map((f) => {
+
               const active = convIssueFilter === f.key;
               return (
                 <Button
