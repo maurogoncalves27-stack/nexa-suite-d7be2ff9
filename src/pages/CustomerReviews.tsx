@@ -54,6 +54,7 @@ interface Review {
   comment: string | null;
   customer_name: string | null;
   previous_orders: number | null;
+  order_description: string | null;
   brand_id: string | null;
   store_id: string | null;
   status: Status;
@@ -797,6 +798,11 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                           : `${r.previous_orders} ${r.previous_orders === 1 ? "pedido anterior" : "pedidos anteriores"}`}
                       </Badge>
                     )}
+                    {r.order_description && (
+                      <Badge variant="secondary" className="text-[10px] max-w-[240px] truncate">
+                        {r.order_description}
+                      </Badge>
+                    )}
                     {r.status === "respondido" && <Badge variant="default">Respondido</Badge>}
                     {r.status === "ignorado" && <Badge variant="outline">Ignorado</Badge>}
                     <span className="text-xs text-muted-foreground ml-auto">
@@ -881,6 +887,7 @@ function NewReviewDialog({
   const [ratingStr, setRatingStr] = useState<string>("5,0");
   const [name, setName] = useState("");
   const [prevOrders, setPrevOrders] = useState<string>("");
+  const [orderDesc, setOrderDesc] = useState("");
   const [comment, setComment] = useState("");
   const [url, setUrl] = useState("");
   const [brandId, setBrandId] = useState<string>("none");
