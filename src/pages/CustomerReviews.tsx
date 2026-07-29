@@ -55,6 +55,7 @@ interface Review {
   customer_name: string | null;
   previous_orders: number | null;
   order_description: string | null;
+  order_number: string | null;
   brand_id: string | null;
   store_id: string | null;
   status: Status;
@@ -815,6 +816,11 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                           : `${r.previous_orders} ${r.previous_orders === 1 ? "pedido anterior" : "pedidos anteriores"}`}
                       </Badge>
                     )}
+                    {r.order_number && (
+                      <Badge variant="outline" className="text-[10px]">
+                        Pedido #{r.order_number}
+                      </Badge>
+                    )}
                     {r.order_description && (
                       <Badge variant="secondary" className="text-[10px] max-w-[240px] truncate">
                         {r.order_description}
@@ -905,6 +911,7 @@ function NewReviewDialog({
   const [name, setName] = useState("");
   const [prevOrders, setPrevOrders] = useState<string>("");
   const [orderDesc, setOrderDesc] = useState("");
+  const [orderNumber, setOrderNumber] = useState("");
   const [comment, setComment] = useState("");
   const [url, setUrl] = useState("");
   const [brandId, setBrandId] = useState<string>("none");
@@ -921,13 +928,14 @@ function NewReviewDialog({
       setName(editing.customer_name ?? "");
       setPrevOrders(editing.previous_orders != null ? String(editing.previous_orders) : "");
       setOrderDesc(editing.order_description ?? "");
+      setOrderNumber(editing.order_number ?? "");
       setComment(editing.comment ?? "");
       setUrl(editing.external_url ?? "");
       setBrandId(editing.brand_id ?? "none");
       setStoreId(editing.store_id ?? "none");
     } else {
       setSource("google"); setRating(5); setRatingStr("5,0");
-      setName(""); setPrevOrders(""); setOrderDesc(""); setComment(""); setUrl(""); setBrandId("none"); setStoreId("none");
+      setName(""); setPrevOrders(""); setOrderDesc(""); setOrderNumber(""); setComment(""); setUrl(""); setBrandId("none"); setStoreId("none");
     }
   }, [open, editing]);
 
@@ -941,6 +949,7 @@ function NewReviewDialog({
       source, rating, comment, customer_name: name || null, external_url: url || null,
       previous_orders: prevOrders.trim() === "" ? null : Math.max(0, parseInt(prevOrders, 10) || 0),
       order_description: orderDesc.trim() || null,
+      order_number: orderNumber.trim() || null,
       brand_id: brandId === "none" ? null : brandId,
       store_id: storeId === "none" ? null : storeId,
     };
@@ -1019,6 +1028,14 @@ function NewReviewDialog({
                 placeholder="Ex: 3"
               />
             </div>
+          </div>
+          <div>
+            <Label>Número do pedido</Label>
+            <Input
+              value={orderNumber}
+              onChange={(e) => setOrderNumber(e.target.value)}
+              placeholder="Ex: 4435"
+            />
           </div>
           <div>
             <Label>Descrição do pedido</Label>
