@@ -17,9 +17,12 @@ const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 type Msg = { role?: string; content?: unknown; text?: unknown; message?: unknown; sender?: string };
 type ConvRow = {
   id: string;
+  session_id?: string | null;
+  client_meta?: Record<string, unknown> | null;
   messages: Msg[] | null;
   last_message_at: string | null;
   triaged_at: string | null;
+  critical_alert_sent_at?: string | null;
 };
 
 const NON_CLIENT_ROLES = new Set([
@@ -189,8 +192,45 @@ async function triageOne(supabase: ReturnType<typeof createClient>, conv: ConvRo
     .update({ triage: final, triaged_at: new Date().toISOString() })
     .eq("id", conv.id);
 
+  await maybeAlertCritical(supabase, conv, final);
+
   return { id: conv.id, has_issue: !!final.has_issue, severity: final.severity, source: final.source };
 }
+
+/** Chamado crítico/alto → alerta imediato no WhatsApp dos gestores (uma vez por conversa). */
+async function maybeAlertCritical(supabase: any, conv: ConvRow, triage: any) {
+  try {
+    const sev = String(triage?.severity ?? "none");
+    if (!triage?.has_issue || (sev !== "critical" && sev !== "high")) return;
+    if (conv.critical_alert_sent_at) return;
+
+    const { loadAlertConfig, fanoutExtras } = await import("../_shared/notifyChannels.ts");
+    const { enabled, waConfig, extras } = await loadAlertConfig(supabase, "crm_ticket_critico");
+    if (!enabled || !waConfig || extras.length === 0) return;
+
+    const meta: any = conv.client_meta ?? {};
+    const nome = meta.name ?? meta.nome ?? "Cliente não identificado";
+    const fone = meta.phone ?? meta.telefone ?? meta.whatsapp ?? "não informado";
+    const icone = sev === "critical" ? "🚨" : "⚠️";
+    const msg =
+      `${icone} *Chamado ${sev === "critical" ? "CRÍTICO" : "de alta prioridade"} — Giana (CRM)*\n\n` +
+      `👤 ${nome}\n📞 ${fone}\n` +
+      `🏷️ ${triage?.category ?? "outro"}\n` +
+      `📝 ${String(triage?.summary ?? "").slice(0, 240)}\n\n` +
+      `Abra o CRM para assumir o atendimento.`;
+
+    const sent = await fanoutExtras(waConfig, extras, msg);
+    if (sent > 0) {
+      await supabase
+        .from("chat_conversations")
+        .update({ critical_alert_sent_at: new Date().toISOString() })
+        .eq("id", conv.id);
+    }
+  } catch (e) {
+    console.warn("[triage] alerta crítico err:", (e as Error).message);
+  }
+}
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -201,7 +241,7 @@ Deno.serve(async (req) => {
     if (body?.conversation_id) {
       const { data, error } = await supabase
         .from("chat_conversations")
-        .select("id, messages, last_message_at, triaged_at")
+        .select("id, session_id, client_meta, messages, last_message_at, triaged_at, critical_alert_sent_at")
         .eq("id", body.conversation_id)
         .maybeSingle();
       if (error) throw error;
@@ -215,7 +255,7 @@ Deno.serve(async (req) => {
     // Prioriza não-triadas; se restar espaço, reprocessa as mais antigas (mensagens novas depois da triagem tratamos aqui).
     const { data: pending, error } = await supabase
       .from("chat_conversations")
-      .select("id, messages, last_message_at, triaged_at")
+      .select("id, session_id, client_meta, messages, last_message_at, triaged_at, critical_alert_sent_at")
       .is("triaged_at", null)
       .order("last_message_at", { ascending: false, nullsFirst: false })
       .limit(limit);
@@ -226,7 +266,7 @@ Deno.serve(async (req) => {
       // Busca conversas com mensagem nova depois da última triagem
       const { data: stale } = await supabase
         .from("chat_conversations")
-        .select("id, messages, last_message_at, triaged_at")
+        .select("id, session_id, client_meta, messages, last_message_at, triaged_at, critical_alert_sent_at")
         .not("triaged_at", "is", null)
         .not("last_message_at", "is", null)
         .order("triaged_at", { ascending: true })
