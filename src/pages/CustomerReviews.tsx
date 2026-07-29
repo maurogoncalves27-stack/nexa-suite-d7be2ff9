@@ -181,6 +181,29 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
     });
   }, [reviews]);
 
+  // Métricas de recorrência (pedidos anteriores informados nas avaliações)
+  const loyalty = useMemo(() => {
+    const withData = reviews.filter((r) => r.previous_orders != null);
+    const total = withData.length;
+    const novos = withData.filter((r) => (r.previous_orders as number) === 0).length;
+    const recorrentes = withData.filter((r) => (r.previous_orders as number) >= 1 && (r.previous_orders as number) <= 4).length;
+    const fieis = withData.filter((r) => (r.previous_orders as number) >= 5).length;
+    const media = total ? withData.reduce((a, r) => a + (r.previous_orders as number), 0) / total : 0;
+    const avgOf = (rows: Review[]) => {
+      const rt = rows.filter((r) => r.rating != null).map((r) => r.rating as number);
+      return rt.length ? rt.reduce((a, b) => a + b, 0) / rt.length : null;
+    };
+    const buckets = [
+      { key: "0", label: "1º pedido", rows: withData.filter((r) => r.previous_orders === 0) },
+      { key: "1-4", label: "1 a 4 pedidos", rows: withData.filter((r) => (r.previous_orders as number) >= 1 && (r.previous_orders as number) <= 4) },
+      { key: "5-9", label: "5 a 9 pedidos", rows: withData.filter((r) => (r.previous_orders as number) >= 5 && (r.previous_orders as number) <= 9) },
+      { key: "10+", label: "10+ pedidos", rows: withData.filter((r) => (r.previous_orders as number) >= 10) },
+    ].map((b) => ({ label: b.label, count: b.rows.length, avg: avgOf(b.rows) }));
+    return { total, novos, recorrentes, fieis, media, buckets };
+  }, [reviews]);
+
+
+
   // Média manual do iFood por loja+marca (CD não vende no iFood)
   const IFOOD_STORES_KEY = "crm.ifood.manual_by_store_brand";
   // Média manual do Google por loja+marca (CD não tem Google público)
