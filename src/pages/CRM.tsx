@@ -909,6 +909,52 @@ export default function CRM() {
     });
   }, [filteredConversations, convIssueFilter]);
 
+  /** Agrupa conversas pelo mesmo cliente (telefone → nome → conversa isolada). */
+  const groupedConversations = useMemo(() => {
+    const normName = (s: string) =>
+      s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    const groups: { key: string; phone: string | null; name: string; items: any[] }[] = [];
+    const byKey = new Map<string, { key: string; phone: string | null; name: string; items: any[] }>();
+
+    for (const c of visibleConversations as any[]) {
+      const phone = pickClientPhone(c);
+      const name = pickClientName(c);
+      let key: string | null = null;
+      if (phone && phone.length >= 8) {
+        const tail = phone.slice(-8);
+        // reaproveita grupo existente cujo telefone case por sufixo
+        const existing = groups.find(
+          (g) => g.phone && (g.phone.endsWith(tail) || phone.endsWith(g.phone.slice(-8)))
+        );
+        key = existing ? existing.key : `tel:${tail}`;
+      } else if (name && name !== "—") {
+        key = `nome:${normName(name)}`;
+      } else {
+        key = `conv:${c.id}`;
+      }
+      let g = byKey.get(key);
+      if (!g) {
+        g = { key, phone: phone ?? null, name, items: [] };
+        byKey.set(key, g);
+        groups.push(g);
+      }
+      if (!g.phone && phone) g.phone = phone;
+      if ((!g.name || g.name === "—") && name && name !== "—") g.name = name;
+      else if (name && name !== "—" && name.length > g.name.length) g.name = name;
+      g.items.push(c);
+    }
+
+    for (const g of groups) {
+      g.items.sort(
+        (a, b) =>
+          new Date(b.last_message_at ?? 0).getTime() - new Date(a.last_message_at ?? 0).getTime()
+      );
+    }
+    return groups;
+  }, [visibleConversations]);
+
+
+
 
   return (
     <div className="space-y-6 p-4 md:p-6">
