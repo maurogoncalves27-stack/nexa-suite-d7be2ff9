@@ -1376,7 +1376,9 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-sm">{String(phone)}</TableCell>
+                          <TableCell className="text-sm" onClick={(e) => e.stopPropagation()}>
+                            <PhoneLink phone={phoneDigits} />
+                          </TableCell>
                           <TableCell className="hidden md:table-cell text-xs text-muted-foreground max-w-xs truncate">
                             {preview}
                           </TableCell>
