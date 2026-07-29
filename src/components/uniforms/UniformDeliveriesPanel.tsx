@@ -453,26 +453,28 @@ export function UniformDeliveriesPanel({ items, employees }: Props) {
                                         <Badge variant="outline" className="text-[9px] py-0 px-1 h-4">
                                           {it.condition_at_delivery === "usada" ? "Usada" : "Nova"}
                                         </Badge>
-                                        {it.expected_return && (
-                                          pendingByItem[it.id]?.qty > 0 ? (
+                                        {(() => {
+                                          const pend = pendingByItem[it.id]?.qty
+                                            ?? Math.max(0, Number(it.quantity ?? 0) - Number(it.returned_quantity ?? 0));
+                                          return pend > 0 ? (
                                             <Button
                                               size="sm"
                                               variant="outline"
                                               className="h-5 px-1.5 text-[10px] gap-1 border-primary/40 text-primary"
                                               disabled={returning === it.id}
-                                              onClick={() => registerReturn(it.id, h.employee_id)}
+                                              onClick={() => registerReturn(it, h)}
                                             >
                                               {returning === it.id
                                                 ? <Loader2 className="h-3 w-3 animate-spin" />
                                                 : <Undo2 className="h-3 w-3" />}
-                                              Devolver ({pendingByItem[it.id].qty})
+                                              Devolver ({pend})
                                             </Button>
                                           ) : (
                                             <Badge variant="secondary" className="text-[9px] py-0 px-1 h-4">
                                               devolvida
                                             </Badge>
-                                          )
-                                        )}
+                                          );
+                                        })()}
 
                                         <span className="ml-auto text-muted-foreground">R$ {(Number(it.unit_cost) * it.quantity).toFixed(2)}</span>
                                       </li>
