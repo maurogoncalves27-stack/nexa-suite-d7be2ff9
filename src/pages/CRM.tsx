@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Headset, CheckCheck, Search, Calendar, Ticket, MessageSquare, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, Clock, Bot, Globe, Star, ArrowRight, Settings, AlertCircle, AlertTriangle, CheckCircle, Users, Sparkles, RefreshCw } from "lucide-react";
+import { Headset, CheckCheck, Search, Calendar, Ticket, MessageSquare, MessageCircle, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, Clock, Bot, Globe, Star, ArrowRight, Settings, AlertCircle, AlertTriangle, CheckCircle, Users, Sparkles, RefreshCw } from "lucide-react";
 import { AgentPanel } from "@/components/crm/ParmeSettingsPanels";
 import { GianaAnalyticsPanel } from "@/components/crm/GianaAnalyticsPanel";
 import { CrmAiInsightsButton } from "@/components/crm/CrmAiInsightsButton";
@@ -481,6 +481,43 @@ function pickClientPhone(c: any): string | null {
   return null;
 }
 
+/** Monta o link wa.me a partir de um telefone (com ou sem DDI). */
+function waLink(raw?: string | null): string | null {
+  const d = onlyDigits(String(raw ?? ""));
+  if (d.length < 10) return null;
+  const full = d.length <= 11 ? `55${d}` : d;
+  return `https://wa.me/${full}`;
+}
+
+/** Telefone clicável que abre a conversa no WhatsApp. */
+function PhoneLink({
+  phone,
+  className,
+}: {
+  phone?: string | null;
+  className?: string;
+}) {
+  const digits = onlyDigits(String(phone ?? ""));
+  const href = waLink(phone);
+  const label = digits.length >= 10 ? fmtPhone(digits) : (phone ? String(phone) : "—");
+  if (!href) return <span className={className}>{label}</span>;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      title="Abrir conversa no WhatsApp"
+      className={`inline-flex items-center gap-1 text-primary hover:underline ${className ?? ""}`}
+    >
+      <MessageCircle className="h-3.5 w-3.5" />
+      {label}
+    </a>
+  );
+}
+
+
+
 
 export default function CRM() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -955,7 +992,7 @@ export default function CRM() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <div className="font-medium truncate">{r.name ?? "—"}</div>
-                          <div className="text-xs text-muted-foreground">{r.phone ?? "—"}</div>
+                          <div className="text-xs"><PhoneLink phone={r.phone} /></div>
                           {r.email && (
                             <div className="text-xs text-muted-foreground truncate">{r.email}</div>
                           )}
@@ -1101,7 +1138,7 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                       <TableRow key={r.id}>
                         <TableCell className="font-medium">{r.name ?? "—"}</TableCell>
                         <TableCell>
-                          <div className="text-sm">{r.phone ?? "—"}</div>
+                          <div className="text-sm"><PhoneLink phone={r.phone} /></div>
                           {r.email && (
                             <div className="text-xs text-muted-foreground">{r.email}</div>
                           )}
@@ -1339,7 +1376,9 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-sm">{String(phone)}</TableCell>
+                          <TableCell className="text-sm" onClick={(e) => e.stopPropagation()}>
+                            <PhoneLink phone={phoneDigits} />
+                          </TableCell>
                           <TableCell className="hidden md:table-cell text-xs text-muted-foreground max-w-xs truncate">
                             {preview}
                           </TableCell>
@@ -1410,9 +1449,9 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                         {nome !== "—" ? nome : String(phone)}
                       </DialogTitle>
                       <DialogDescription className="flex items-center justify-between gap-2 flex-wrap">
-                        <span>
+                        <span className="inline-flex items-center gap-1 flex-wrap">
                           {c.message_count ?? 0} mensagens · {fmtDateTime(c.last_message_at)}
-                          {nome !== "—" && phone !== "—" ? ` · ${String(phone)}` : ""}
+                          {phoneDigits ? <> · <PhoneLink phone={phoneDigits} /></> : null}
                         </span>
                         <Button
                           type="button"
