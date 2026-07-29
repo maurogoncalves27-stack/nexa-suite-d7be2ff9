@@ -448,7 +448,8 @@ function pickClientName(c: any): string {
     c?.client_meta?.nome ??
     c?.extracted?.name ??
     c?.extracted?.nome;
-  if (direct) return String(direct);
+  // Ignora nomes "sujos" gravados por heurísticas antigas (ex.: "Já Enviei Meu").
+  if (direct && !SENTENCE_RE.test(String(direct))) return String(direct);
   // fallback: tenta inferir a partir das mensagens já gravadas no banco
   const msgs = Array.isArray(c?.messages) ? c.messages : null;
   if (msgs && msgs.length) {
@@ -459,6 +460,27 @@ function pickClientName(c: any): string {
   }
   return "—";
 }
+
+/** Telefone da conversa: client_meta/extracted e, se faltar, o que o cliente digitou nas mensagens. */
+function pickClientPhone(c: any): string | null {
+  const direct =
+    c?.client_meta?.phone ??
+    c?.client_meta?.telefone ??
+    c?.client_meta?.whatsapp ??
+    c?.client_meta?.contact ??
+    c?.extracted?.phone ??
+    c?.extracted?.telefone;
+  const digitsDirect = onlyDigits(String(direct ?? ""));
+  if (digitsDirect.length >= 10) return digitsDirect;
+  const msgs = Array.isArray(c?.messages) ? c.messages : [];
+  for (const m of msgs) {
+    if (!isClientMessage(m)) continue;
+    const d = extractPhoneDigits(messageText(m));
+    if (d) return d;
+  }
+  return null;
+}
+
 
 export default function CRM() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
