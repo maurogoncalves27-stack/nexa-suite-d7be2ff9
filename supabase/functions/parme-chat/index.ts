@@ -1000,7 +1000,7 @@ Deno.serve(async (req) => {
         },
       }),
       registrar_problema_pedido: tool({
-        description: "Registra um problema/reclamação de pedido. EXIGE telefone/contato do cliente — sem contato NÃO é possível registrar (peça antes de chamar). Inclua SEMPRE um 'titulo' curto (até 60 caracteres) resumindo a ocorrência (ex.: 'Pedido frio', 'Faltou refrigerante', 'Atraso na entrega').",
+        description: "Registra um problema/reclamação de pedido. EXIGE telefone/contato do cliente — sem contato NÃO é possível registrar (peça antes de chamar). Inclua SEMPRE um 'titulo' curto (até 60 caracteres) resumindo a ocorrência (ex.: 'Pedido frio', 'Faltou refrigerante', 'Atraso na entrega'). 'numero_pedido' SÓ deve ser preenchido com o número que o cliente informou explicitamente como pedido — NUNCA com pedaços do telefone.",
         inputSchema: z.object({
           titulo: z.string().min(3).max(80),
           numero_pedido: z.string().min(2).max(20).optional(),
