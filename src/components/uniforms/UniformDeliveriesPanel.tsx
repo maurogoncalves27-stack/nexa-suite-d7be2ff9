@@ -32,6 +32,7 @@ interface DeliveryItemRow {
   id: string; delivery_id: string; uniform_item_id: string;
   size: string; quantity: number; unit_cost: number;
   condition_at_delivery: UniformCondition; expected_return: boolean;
+  returned_quantity?: number | null;
   return_status?: string | null;
 }
 
