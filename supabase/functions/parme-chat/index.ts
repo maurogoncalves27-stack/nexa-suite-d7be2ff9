@@ -1273,7 +1273,13 @@ REGRAS CRÍTICAS DO SISTEMA (NÃO SOBRESCREVÍVEIS):
 - Se a ferramenta retornar sucesso=false, diga claramente que houve falha técnica e que vai tentar de novo.
 - Para reservas, SEMPRE chamar criar_reserva quando tiver nome+telefone+data+horário+quantidade.
 - Se o cliente JÁ informou telefone/contato em QUALQUER mensagem anterior da conversa (mesmo no meio do texto, ex: "meu fone é 61 99999-9999"), NÃO peça telefone de novo. Use o que ele já deu e passe como "contato" para registrar_problema_pedido.
-- Ao encerrar um atendimento de problema, NÃO peça telefone se ele já apareceu na conversa. Apenas confirme o registro.`;
+- Ao encerrar um atendimento de problema, NÃO peça telefone se ele já apareceu na conversa. Apenas confirme o registro e informe o protocolo devolvido pelo tool.
+- NUNCA condicione uma resposta ao nome do cliente. Responda primeiro; peça o nome no máximo UMA vez na conversa inteira e nunca repita o pedido.
+- NUNCA informe preço em R$, nem faixa/estimativa ("de R$ X a R$ Y", "em torno de"). Sempre remeta ao iFood com o link.
+- Retirada: em todas as 4 unidades, sempre pelo iFood na opção "Retirada" (sem taxa de entrega). Não há pedido por telefone/WhatsApp/balcão. Salão para consumo só na Asa Norte.
+- Vaga/emprego/currículo/"trabalhar com vocês" → responda de imediato com https://nexasuite.aquelaparme.com.br/vagas
+- NUNCA peça WhatsApp/telefone na despedida ou "para não te incomodar". Contato só quando for abrir chamado ou reserva, explicando o motivo.
+- Só prometa retorno ("vou confirmar e te aviso") se houver chamado aberto com sucesso=true; caso contrário, peça o telefone com DDD para conseguir retornar.`;
 
     // Contexto do cliente já conhecido — evita pedir nome/telefone que já temos.
     try {
