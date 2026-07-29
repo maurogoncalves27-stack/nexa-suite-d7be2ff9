@@ -593,6 +593,66 @@ async function ensureComplaintTicket(
   else console.log("[parme-chat safety-net] ticket garantido para sessão:", sessionId);
 }
 
+/**
+ * Identifica cliente recorrente pelo telefone: procura conversas anteriores
+ * (client_meta.phone) e chamados abertos com o mesmo contato.
+ */
+async function lookupReturningCustomer(
+  phone: string,
+  currentSessionId: string | null,
+): Promise<string | null> {
+  try {
+    const supabase = sb();
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 10) return null;
+    const tail = digits.slice(-8);
+
+    const [{ data: convs }, { data: tickets }] = await Promise.all([
+      supabase
+        .from("chat_conversations")
+        .select("session_id, client_meta, last_message_at, triage")
+        .filter("client_meta->>phone", "like", `%${tail}`)
+        .order("last_message_at", { ascending: false })
+        .limit(6),
+      supabase
+        .from("support_tickets")
+        .select("title, order_number, created_at, contact")
+        .like("contact", `%${tail}`)
+        .order("created_at", { ascending: false })
+        .limit(3),
+    ]);
+
+    const previous = (convs ?? []).filter((c: any) => c.session_id !== currentSessionId);
+    if (!previous.length && !(tickets ?? []).length) return null;
+
+    const knownName = previous
+      .map((c: any) => c?.client_meta?.name)
+      .find((n: unknown) => typeof n === "string" && n.trim().length > 1);
+    const lastAt = previous[0]?.last_message_at
+      ? new Date(previous[0].last_message_at).toLocaleDateString("pt-BR")
+      : null;
+    const ticketList = (tickets ?? [])
+      .map((t: any) => `${t.title ?? "chamado"}${t.order_number ? ` (pedido ${t.order_number})` : ""}`)
+      .join("; ");
+
+    const parts: string[] = [
+      `- CLIENTE RECORRENTE: este telefone já falou com a gente ${previous.length || (tickets ?? []).length}x antes${lastAt ? ` (última vez em ${lastAt})` : ""}.`,
+    ];
+    if (knownName) {
+      parts.push(`- Nome já cadastrado para este telefone: ${knownName}. Cumprimente pelo nome e NÃO peça o nome de novo.`);
+    }
+    if (ticketList) {
+      parts.push(`- Chamados anteriores deste contato: ${ticketList}. Se ele voltar sobre o mesmo assunto, trate como continuidade, não como caso novo.`);
+    }
+    return parts.join("\n");
+  } catch (e) {
+    console.error("[parme-chat] lookupReturningCustomer err:", e);
+    return null;
+  }
+}
+
+
+
 async function notifyStoreReservation(
   nome: string,
   telefone: string,
