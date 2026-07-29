@@ -1236,7 +1236,39 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                           </TableCell>
                           <TableCell>{c.message_count ?? "—"}</TableCell>
                           <TableCell>{fmtDateTime(c.last_message_at)}</TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Excluir conversa?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    A conversa de <strong>{String(nome)}</strong> e todo o histórico
+                                    de mensagens serão removidos. Esta ação não pode ser desfeita.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteConversation(c.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Excluir
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </TableCell>
                         </TableRow>
+
                       );
                     })
                   )}
