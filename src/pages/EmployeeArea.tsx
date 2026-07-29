@@ -325,7 +325,7 @@ export default function EmployeeArea({ impersonateUserId, managerView = false }:
 
   const isManagerPosition = (employee.position ?? "").toUpperCase().includes("GERENTE");
   const ownScore = evaluations[0]?.final_score;
-  const lastScore = isManagerPosition ? (teamAvgScore ?? ownScore) : ownScore;
+  const lastScore = ownScore;
 
   return (
     <div className={`space-y-3 md:space-y-6 ${managerView ? "pb-6" : "pb-28 md:pb-6"}`}>
