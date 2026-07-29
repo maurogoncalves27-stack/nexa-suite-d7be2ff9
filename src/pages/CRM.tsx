@@ -1323,9 +1323,15 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
                                   <Calendar className="h-3 w-3 mr-1" />{reservCount}
                                 </Badge>
                               )}
+                              {recurrentCount > 0 && (
+                                <Badge variant="secondary" className="text-[10px] h-5">
+                                  recorrente · {recurrentCount + 1}x
+                                </Badge>
+                              )}
                               {clientMsgs.length === 1 && (
                                 <Badge variant="secondary" className="text-[10px] h-5">curta</Badge>
                               )}
+
                               {c.archived_at && (
                                 <Badge variant="outline" className="text-[10px] h-5">
                                   <CheckCheck className="h-3 w-3 mr-1" />revisada
