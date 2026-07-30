@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Bot, Plus, Pencil, Trash2, Loader2, Store, HelpCircle, Utensils, Tag } from "lucide-react";
+import { Bot, Plus, Pencil, Trash2, Loader2, Store, HelpCircle, Utensils, Tag, Settings2 } from "lucide-react";
+import { AgentPanel } from "@/components/crm/ParmeSettingsPanels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -85,6 +86,7 @@ export default function GianaKnowledge({ embedded = false }: { embedded?: boolea
   const [stores, setStores] = useState<GianaStore[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [brandDraft, setBrandDraft] = useState<Brand | null>(null);
+  const [behaviorOpen, setBehaviorOpen] = useState(false);
 
   const [faqDraft, setFaqDraft] = useState<Faq | null>(null);
   const [storeDraft, setStoreDraft] = useState<GianaStore | null>(null);
@@ -245,6 +247,27 @@ export default function GianaKnowledge({ embedded = false }: { embedded?: boolea
       )}
 
 
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
+        <div>
+          <h2 className="text-base font-semibold flex items-center gap-2">
+            <Bot className="h-4 w-4 text-primary" />Base de conhecimento
+          </h2>
+          <p className="text-sm text-muted-foreground">Cardápio, marcas, perguntas e lojas que a Giana usa para responder.</p>
+        </div>
+        <Button variant="outline" onClick={() => setBehaviorOpen(true)} className="gap-2 shrink-0">
+          <Settings2 className="h-4 w-4" />Comportamento da Giana
+        </Button>
+      </div>
+
+      <Dialog open={behaviorOpen} onOpenChange={setBehaviorOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Settings2 className="h-4 w-4 text-primary" />Comportamento da Giana</DialogTitle>
+          </DialogHeader>
+          <AgentPanel />
+        </DialogContent>
+      </Dialog>
+
       {pendentes > 0 && (
         <Card className="border-warning/40 bg-warning/5">
           <CardContent className="pt-4 text-sm">
@@ -252,6 +275,7 @@ export default function GianaKnowledge({ embedded = false }: { embedded?: boolea
           </CardContent>
         </Card>
       )}
+
 
       {loading ? (
         <div className="flex items-center gap-2 text-muted-foreground">
