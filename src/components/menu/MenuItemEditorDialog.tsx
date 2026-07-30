@@ -355,6 +355,27 @@ export default function MenuItemEditorDialog({
                 <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Opcional" rows={2} />
               </div>
               <div className="space-y-1.5">
+                <Label>Serve quantas pessoas</Label>
+                <Input type="number" min="0" step="0.5" value={servesPeople}
+                  onChange={(e) => setServesPeople(e.target.value)} placeholder="Ex: 2" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Peso total (g)</Label>
+                <Input type="number" min="0" step="1" value={totalWeight}
+                  onChange={(e) => setTotalWeight(e.target.value)} placeholder="Ex: 1200" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Peso da proteína (g)</Label>
+                <Input type="number" min="0" step="1" value={proteinWeight}
+                  onChange={(e) => setProteinWeight(e.target.value)} placeholder="Ex: 400" />
+              </div>
+              <div className="space-y-1.5 flex items-end">
+                <p className="text-xs text-muted-foreground">
+                  Estes campos alimentam a Giana nas respostas sobre porção e peso.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
                 <Label>Categoria</Label>
                 <Select value={categoryId} onValueChange={setCategoryId}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
