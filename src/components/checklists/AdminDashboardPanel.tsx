@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { loadChecklistAudience, isExpectedForTemplate, type AudienceData } from "@/lib/checklistAudience";
+import { fetchDisplayNames } from "@/lib/displayNames";
+
 import {
   Users, CheckCircle2, ClipboardList, Calendar, AlertTriangle,
   Clock, XCircle, ChevronDown, ChevronUp,
@@ -92,10 +94,8 @@ export default function AdminDashboardPanel() {
       setUsersByGroup({});
       return;
     }
-    const { data: profiles } = await supabase
-      .from("profiles").select("user_id, full_name").in("user_id", userIds);
-    const nameMap: Record<string, string> = {};
-    if (profiles) profiles.forEach((p: any) => (nameMap[p.user_id] = p.full_name));
+    const nameMap = await fetchDisplayNames(userIds);
+
     const grouped: Record<string, UserInGroup[]> = {};
     for (const g of groups) grouped[g.id] = [];
     for (const row of data as any[]) {
@@ -115,11 +115,8 @@ export default function AdminDashboardPanel() {
       .order("submitted_at", { ascending: false });
     if (data) {
       const userIds = [...new Set(data.map((s: any) => s.user_id))];
-      const { data: profiles } = await supabase
-        .from("profiles").select("user_id, full_name")
-        .in("user_id", userIds.length > 0 ? userIds : ["__none__"]);
-      const nameMap: Record<string, string> = {};
-      if (profiles) profiles.forEach((p: any) => (nameMap[p.user_id] = p.full_name));
+      const nameMap = await fetchDisplayNames(userIds as string[]);
+
       setSubmissions(
         (data as unknown as Submission[]).map((s) => ({
           ...s,

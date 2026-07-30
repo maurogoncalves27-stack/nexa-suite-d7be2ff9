@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchDisplayNames } from "@/lib/displayNames";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -64,11 +66,8 @@ export default function AdminHistoryPanel() {
 
     if (data) {
       const userIds = [...new Set(data.map((s: any) => s.user_id))];
-      const { data: profiles } = await supabase
-        .from("profiles").select("user_id, full_name")
-        .in("user_id", userIds.length > 0 ? userIds : ["__none__"]);
-      const nameMap: Record<string, string> = {};
-      if (profiles) profiles.forEach((p: any) => (nameMap[p.user_id] = p.full_name));
+      const nameMap = await fetchDisplayNames(userIds as string[]);
+
       setSubmissions(
         (data as unknown as Submission[]).map((s) => ({
           ...s, user_name: nameMap[s.user_id] || "(sem nome)",

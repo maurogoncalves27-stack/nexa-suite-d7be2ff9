@@ -39,9 +39,12 @@ export default function ChecklistAudienceAudit() {
       audience.invalidMemberships.map((m) => ({
         ...m,
         group_name: groupName[m.group_id] ?? "Grupo",
-        full_name: profName[m.user_id] ?? m.full_name,
+        // nome do cadastro tem prioridade; perfil só quando não é colaborador
+        full_name:
+          m.reason === "nao_colaborador" ? (profName[m.user_id] ?? m.full_name) : m.full_name,
       })),
     );
+
     setLoading(false);
   };
 
