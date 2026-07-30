@@ -378,15 +378,16 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
           updated_by: auth?.user?.id ?? null,
         };
       });
-    if (rows.length === 0) return;
+    if (rows.length === 0) return true;
     const { error } = await supabase
       .from("review_manual_ratings")
       .upsert(rows, { onConflict: "source,store_id,brand_id,week_key" });
     if (error) {
-      toast({ title: "Não foi possível salvar o histórico", description: error.message, variant: "destructive" });
-      return;
+      toast({ title: "Não foi possível salvar", description: error.message, variant: "destructive" });
+      return false;
     }
     await loadHistory();
+    return true;
   };
 
   const previousAvg = (source: "ifood" | "google", key: string): number | null => {
