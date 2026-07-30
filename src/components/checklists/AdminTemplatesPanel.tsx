@@ -18,7 +18,7 @@ import {
 import { toast } from "sonner";
 import ChecklistAudienceAudit from "./ChecklistAudienceAudit";
 import {
-  Plus, Trash2, Pencil, Siren, Camera, Copy, ChevronUp, ChevronDown, Users, CalendarCheck,
+  Plus, Trash2, Pencil, Siren, Camera, Copy, ChevronUp, ChevronDown, Users, CalendarCheck, UserPlus,
 } from "lucide-react";
 
 interface Group { id: string; name: string; sort_order: number }
