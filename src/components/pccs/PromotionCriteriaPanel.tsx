@@ -70,11 +70,7 @@ export default function PromotionCriteriaPanel() {
   };
   const openNew = () => {
     setEditing(null);
-    setForm({
-      position_id: "", promotion_type: "level",
-      min_months_in_role: 12, min_evaluation_score: 80, min_attendance_pct: 95,
-      no_warnings_months: 6, require_training_completion: true, require_pdi_completion: false, notes: null,
-    });
+    setForm({ ...DEFAULT_FORM });
     setOpen(true);
   };
 
