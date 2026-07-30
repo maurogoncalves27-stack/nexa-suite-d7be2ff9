@@ -37,6 +37,7 @@ import {
   Copy,
   Pencil,
   Trash2,
+  AlertTriangle,
 } from "lucide-react";
 
 import { format, parseISO } from "date-fns";
