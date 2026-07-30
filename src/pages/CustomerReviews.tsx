@@ -357,6 +357,18 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
         </TabsList>
 
         <TabsContent value="graficos" className="space-y-6 mt-4">
+      {ifoodReminderDue && (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3">
+          <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
+          <div className="text-xs sm:text-sm flex-1">
+            <b>Atualização semanal pendente:</b> as notas do iFood devem ser atualizadas toda terça-feira às 10h.
+            {ifoodLastUpdate && (
+              <span className="text-muted-foreground"> Última atualização: {format(new Date(ifoodLastUpdate), "dd/MM/yyyy HH:mm", { locale: ptBR })}.</span>
+            )}
+          </div>
+          <Button size="sm" onClick={() => setOpenIfoodDialog(true)}>Atualizar agora</Button>
+        </div>
+      )}
       {/* Cards por fonte */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
         {perSource.map(({ source, total, novos, avg, hasRatings }) => {
