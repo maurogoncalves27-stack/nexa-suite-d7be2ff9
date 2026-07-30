@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { Headset, CheckCheck, Search, Calendar, Ticket, MessageSquare, MessageCircle, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, Clock, Bot, Globe, Star, ArrowRight, Settings, AlertCircle, AlertTriangle, CheckCircle, Users, Sparkles, RefreshCw } from "lucide-react";
 import { AgentPanel } from "@/components/crm/ParmeSettingsPanels";
 import { GianaAnalyticsPanel } from "@/components/crm/GianaAnalyticsPanel";
+import GianaKnowledge from "@/pages/GianaKnowledge";
 import { CrmAiInsightsButton } from "@/components/crm/CrmAiInsightsButton";
 import { ReservationSettingsDialog } from "@/components/crm/ReservationSettingsDialog";
 import CustomerReviews from "@/pages/CustomerReviews";
