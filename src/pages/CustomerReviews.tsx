@@ -456,9 +456,10 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                 </div>
                 <div className="text-[10px] text-muted-foreground">
                   {isManual
-                    ? `${displayCount} avaliações (manual)`
+                    ? `${displayCount} avaliações · ${isGoogle ? "sincronizado por loja/marca" : "manual por loja/marca"}`
                     : `${total} ${total === 1 ? "avaliação" : "avaliações"}${novos ? ` · ${novos} novas` : ""}`}
                 </div>
+
               </CardContent>
             </Card>
           );
