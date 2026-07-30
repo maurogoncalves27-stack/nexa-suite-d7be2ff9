@@ -37,6 +37,8 @@ export interface AudienceData {
   storesByTemplate: Map<string, Set<string>>;
   /** lojas em que o colaborador está escalado na data (sem folga) */
   scheduledStoresByUser: Map<string, Set<string>>;
+  /** colaboradores atribuídos individualmente (user_id) por template */
+  assignedUsersByTemplate: Map<string, Set<string>>;
   /** vínculos de grupo inválidos (não colaborador / desligado) */
   invalidMemberships: {
     user_id: string;
@@ -45,6 +47,7 @@ export interface AudienceData {
     reason: "nao_colaborador" | "desligado";
   }[];
 }
+
 
 export async function loadChecklistAudience(date: string): Promise<AudienceData> {
   const [{ data: emps }, { data: ug }, { data: cts }, { data: sched }] = await Promise.all([
