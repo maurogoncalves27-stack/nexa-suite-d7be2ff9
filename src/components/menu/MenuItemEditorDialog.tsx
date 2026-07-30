@@ -143,6 +143,8 @@ export default function MenuItemEditorDialog({
         setName(""); setDescription(""); setCategoryId("__none__"); setRecipeId("__none__");
         setPrice("0"); setIsCombo(!!defaultIsCombo); setIsActive(true);
         setComponents([]); setLinkedGroupIds([]);
+        setServesPeople(""); setTotalWeight(""); setProteinWeight("");
+
         setSelectedBrands(defaultBrandId ? [defaultBrandId] : []);
         // Por padrão, novos itens ficam disponíveis em todas as 4 lojas
         setSelectedStores(stores.map((s) => s.id));
