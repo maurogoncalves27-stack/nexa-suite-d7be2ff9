@@ -18846,6 +18846,19 @@ export type Database = {
           },
         ]
       }
+      giana_menu_dishes: {
+        Row: {
+          categoria: string | null
+          descricao: string | null
+          id: string | null
+          marca: string | null
+          marca_nome: string | null
+          nome: string | null
+          sort_order: number | null
+          tamanhos: Json | null
+        }
+        Relationships: []
+      }
       hour_bank_balances: {
         Row: {
           available_minutes: number | null
