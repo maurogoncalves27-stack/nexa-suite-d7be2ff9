@@ -23,7 +23,16 @@ type Criteria = {
   no_warnings_months: number;
   require_training_completion: boolean;
   require_pdi_completion: boolean;
+  min_competency_avg: number;
+  min_required_competency_score: number;
   notes: string | null;
+};
+
+const DEFAULT_FORM: Omit<Criteria, "id"> = {
+  position_id: "", promotion_type: "level",
+  min_months_in_role: 12, min_evaluation_score: 80, min_attendance_pct: 95,
+  no_warnings_months: 6, require_training_completion: true, require_pdi_completion: false,
+  min_competency_avg: 3, min_required_competency_score: 3, notes: null,
 };
 
 export default function PromotionCriteriaPanel() {
@@ -32,11 +41,7 @@ export default function PromotionCriteriaPanel() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Criteria | null>(null);
-  const [form, setForm] = useState<Omit<Criteria, "id">>({
-    position_id: "", promotion_type: "level",
-    min_months_in_role: 12, min_evaluation_score: 80, min_attendance_pct: 95,
-    no_warnings_months: 6, require_training_completion: true, require_pdi_completion: false, notes: null,
-  });
+  const [form, setForm] = useState<Omit<Criteria, "id">>({ ...DEFAULT_FORM });
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
