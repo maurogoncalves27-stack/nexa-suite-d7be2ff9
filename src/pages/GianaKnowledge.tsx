@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Bot, Plus, Pencil, Trash2, Loader2, Store, HelpCircle, Utensils } from "lucide-react";
