@@ -234,45 +234,38 @@ export default function GianaKnowledge({ embedded = false }: { embedded?: boolea
             </TabsTrigger>
           </TabsList>
 
-          {/* -------- Pratos -------- */}
+          {/* -------- Pratos (espelho do Cardápio) -------- */}
           <TabsContent value="dishes" className="mt-4 space-y-3">
-            <div className="flex justify-end">
-              <Button size="sm" onClick={() => setDishDraft({
-                id: "", marca: "aquela-parme", nome: "", descricao: "",
-                tamanhos: [], is_active: true, sort_order: nextOrder(dishes),
-              })}>
-                <Plus className="h-4 w-4 mr-1" /> Novo prato
+            <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
+              <span>
+                Os pratos vêm automaticamente do <strong>Cardápio</strong> (itens ativos). Para
+                incluir, editar ou remover, altere o cardápio.
+              </span>
+              <Button size="sm" variant="outline" asChild className="shrink-0">
+                <Link to="/cardapio"><Utensils className="h-4 w-4 mr-1" /> Abrir cardápio</Link>
               </Button>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               {dishes.map((d) => (
-                <Card key={d.id} className={d.is_active ? "" : "opacity-60"}>
+                <Card key={d.id}>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-start justify-between gap-2">
-                      <span>{d.nome}</span>
-                      <span className="flex gap-1 shrink-0">
-                        <Button size="icon" variant="ghost" onClick={() => setDishDraft(d)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost"
-                          onClick={() => setConfirmDelete({ table: "giana_dishes", id: d.id, nome: d.nome })}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </span>
-                    </CardTitle>
+                    <CardTitle className="text-base">{d.nome}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
-                    <p className="text-muted-foreground">{d.descricao}</p>
+                    <p className="text-muted-foreground whitespace-pre-line line-clamp-4">{d.descricao}</p>
                     <div className="flex flex-wrap gap-1">
                       <Badge variant="secondary">{MARCAS[d.marca] ?? d.marca}</Badge>
                       {d.tamanhos.map((t) => <Badge key={t} variant="outline">{t}</Badge>)}
-                      {!d.is_active && <Badge variant="destructive">inativo</Badge>}
                     </div>
                   </CardContent>
                 </Card>
               ))}
+              {!dishes.length && (
+                <p className="text-sm text-muted-foreground">Nenhum item ativo no cardápio.</p>
+              )}
             </div>
           </TabsContent>
+
 
           {/* -------- FAQ -------- */}
           <TabsContent value="faq" className="mt-4 space-y-3">
