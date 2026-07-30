@@ -266,6 +266,7 @@ export default function EligibilityPanel() {
         if (warns > 0) gaps.push(`${warns} advertência(s) recentes`);
         if (score == null) gaps.push(`Sem avaliação registrada`);
         else if (score < minScore) gaps.push(`Avaliação ${score.toFixed(1)}% < ${minScore}%`);
+        gaps.push(...competencyGaps(emp.id, Number(cAny?.min_competency_avg ?? 3), Number(cAny?.min_required_competency_score ?? 3)));
         if (promotedThisYear.has(emp.id)) gaps.push(`Já promovido em ${today.getFullYear()}`);
 
         vout.push({
