@@ -25,6 +25,14 @@ import {
   tamanhosParmegianaResumo,
   type MarcaKey,
 } from "./knowledge.ts";
+import {
+  getDishes,
+  getStores,
+  searchDish,
+  searchFaq,
+  localFaq,
+} from "./db-knowledge.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
