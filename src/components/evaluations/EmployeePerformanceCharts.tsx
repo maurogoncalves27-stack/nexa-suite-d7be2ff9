@@ -38,17 +38,26 @@ export default function EmployeePerformanceCharts({
       // Avaliações deste colaborador em todos os ciclos
       const { data: evals } = await supabase
         .from("evaluations")
-        .select("id, cycle_id, final_score")
+        .select("id, cycle_id, final_score, competency_avg")
         .eq("employee_id", employeeId);
       const evalIds = (evals ?? []).map((e: any) => e.id);
 
-      // Notas por critério (para o radar do ciclo mais recente)
+      // Notas por critério legado (fallback para o radar)
       const { data: scores } = evalIds.length
         ? await supabase
             .from("evaluation_scores")
             .select("evaluation_id, criterion_id, score")
             .in("evaluation_id", evalIds)
         : { data: [] as any[] };
+
+      // Notas por competência (escala 1-5) — sistema atual
+      const { data: compScores } = evalIds.length
+        ? await supabase
+            .from("evaluation_competency_scores")
+            .select("evaluation_id, score, not_applicable, position_competency:position_competencies(name)")
+            .in("evaluation_id", evalIds)
+        : { data: [] as any[] };
+
 
       // Infrações por ciclo (para Disciplina e penalidade)
       const { data: infs } = await supabase
