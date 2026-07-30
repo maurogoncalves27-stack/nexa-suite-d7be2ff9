@@ -1514,6 +1514,36 @@ export type Database = {
           },
         ]
       }
+      checklist_expired_alerts_sent: {
+        Row: {
+          created_at: string
+          id: string
+          notified_count: number
+          shift_date: string
+          store_id: string | null
+          template_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notified_count?: number
+          shift_date: string
+          store_id?: string | null
+          template_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notified_count?: number
+          shift_date?: string
+          store_id?: string | null
+          template_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       checklist_items: {
         Row: {
           category: string | null
