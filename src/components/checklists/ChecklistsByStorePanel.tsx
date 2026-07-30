@@ -23,6 +23,7 @@ interface SubmissionRow {
   checklist_answers: { checked: boolean; observation: string | null }[];
 }
 interface EmployeeRow {
+  id: string;
   user_id: string | null;
   store_id: string;
   allocated_store_id: string | null;
@@ -45,6 +46,7 @@ export default function ChecklistsByStorePanel() {
   const [employees, setEmployees] = useState<EmployeeRow[]>([]);
   const [userGroups, setUserGroups] = useState<UserGroupRow[]>([]);
   const [itemCounts, setItemCounts] = useState<Record<string, number>>({});
+  const [scheduled, setScheduled] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
 
   const today = new Date().toISOString().split("T")[0];
@@ -52,7 +54,7 @@ export default function ChecklistsByStorePanel() {
 
   useEffect(() => {
     const load = async () => {
-      const [{ data: sto }, { data: tpl }, { data: subs }, { data: emps }, { data: ug }, { data: items }] =
+      const [{ data: sto }, { data: tpl }, { data: subs }, { data: emps }, { data: ug }, { data: items }, { data: sched }] =
         await Promise.all([
           supabase.from("stores").select("id, name, store_type").eq("is_active", true).eq("is_virtual", false).order("name"),
           supabase
@@ -65,10 +67,14 @@ export default function ChecklistsByStorePanel() {
             .eq("shift_date", today),
           supabase
             .from("employees")
-            .select("user_id, store_id, allocated_store_id")
+            .select("id, user_id, store_id, allocated_store_id")
             .eq("status", "active"),
           supabase.from("user_access_groups").select("user_id, group_id"),
           supabase.from("checklist_items").select("template_id"),
+          supabase
+            .from("work_schedules")
+            .select("employee_id, store_id, is_day_off")
+            .eq("schedule_date", today),
         ]);
       setStores(sortStores((sto ?? [])) as Store[]);
       setTemplates((tpl ?? []) as unknown as TemplateRow[]);
@@ -80,6 +86,12 @@ export default function ChecklistsByStorePanel() {
         counts[it.template_id] = (counts[it.template_id] || 0) + 1;
       });
       setItemCounts(counts);
+      const schedMap: Record<string, string[]> = {};
+      (sched ?? []).forEach((r: any) => {
+        if (r.is_day_off) return;
+        (schedMap[r.employee_id] ||= []).push(r.store_id);
+      });
+      setScheduled(schedMap);
       setLoading(false);
     };
     load();
@@ -120,7 +132,9 @@ export default function ChecklistsByStorePanel() {
         const gids = userGroupMap.get(emp.user_id!) ?? new Set();
         storeTemplates.forEach((t) => {
           const matches = t.template_access_groups.some((g) => gids.has(g.group_id));
-          if (matches) {
+          const scheduledOk =
+            !t.require_scheduled || (scheduled[emp.id] ?? []).includes(store.id);
+          if (matches && scheduledOk) {
             expectedSubs += 1;
             expectedItems += itemCounts[t.id] || 0;
           }
@@ -154,7 +168,7 @@ export default function ChecklistsByStorePanel() {
         hasWork: expectedSubs > 0,
       };
     });
-  }, [stores, templates, submissions, employees, userGroups, itemCounts, dow]);
+  }, [stores, templates, submissions, employees, userGroups, itemCounts, dow, scheduled]);
 
   const visibleRows = rows.filter((r) => r.hasWork);
 
