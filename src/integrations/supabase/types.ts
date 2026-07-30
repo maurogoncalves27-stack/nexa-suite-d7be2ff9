@@ -5610,6 +5610,75 @@ export type Database = {
           },
         ]
       }
+      giana_dishes: {
+        Row: {
+          created_at: string
+          descricao: string
+          id: string
+          is_active: boolean
+          marca: string
+          nome: string
+          sort_order: number
+          tamanhos: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          descricao: string
+          id: string
+          is_active?: boolean
+          marca: string
+          nome: string
+          sort_order?: number
+          tamanhos?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string
+          id?: string
+          is_active?: boolean
+          marca?: string
+          nome?: string
+          sort_order?: number
+          tamanhos?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      giana_faq: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          resposta: string
+          sort_order: number
+          termos: string[]
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          resposta: string
+          sort_order?: number
+          termos?: string[]
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          resposta?: string
+          sort_order?: number
+          termos?: string[]
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       giana_feedback: {
         Row: {
           answered_at: string | null
@@ -5672,6 +5741,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      giana_stores: {
+        Row: {
+          aceita_retirada: boolean
+          created_at: string
+          endereco: string | null
+          horario: string | null
+          id: string
+          is_active: boolean
+          nome: string
+          observacao: string | null
+          sort_order: number
+          tem_salao: boolean
+          updated_at: string
+        }
+        Insert: {
+          aceita_retirada?: boolean
+          created_at?: string
+          endereco?: string | null
+          horario?: string | null
+          id: string
+          is_active?: boolean
+          nome: string
+          observacao?: string | null
+          sort_order?: number
+          tem_salao?: boolean
+          updated_at?: string
+        }
+        Update: {
+          aceita_retirada?: boolean
+          created_at?: string
+          endereco?: string | null
+          horario?: string | null
+          id?: string
+          is_active?: boolean
+          nome?: string
+          observacao?: string | null
+          sort_order?: number
+          tem_salao?: boolean
+          updated_at?: string
+        }
+        Relationships: []
       }
       giana_weekly_reports: {
         Row: {
@@ -19167,6 +19278,27 @@ export type Database = {
         }[]
       }
       get_user_store: { Args: { _user_id: string }; Returns: string }
+      giana_norm: { Args: { _t: string }; Returns: string }
+      giana_search_dish: {
+        Args: { _termo: string }
+        Returns: {
+          descricao: string
+          id: string
+          marca: string
+          nome: string
+          score: number
+          tamanhos: Json
+        }[]
+      }
+      giana_search_faq: {
+        Args: { _pergunta: string }
+        Returns: {
+          id: string
+          resposta: string
+          score: number
+          titulo: string
+        }[]
+      }
       has_geofence_bypass: { Args: { _user_id: string }; Returns: boolean }
       has_module_permission: {
         Args: { _module: string; _user_id: string }
