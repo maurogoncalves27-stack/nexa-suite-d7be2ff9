@@ -124,6 +124,8 @@ export default function AdminTemplatesPanel() {
         })),
     );
     setSelectedGroups(tp.template_access_groups.map((tag) => tag.group_id));
+    setSelectedEmployees((tp.checklist_template_assignments ?? []).map((a) => a.employee_id));
+    setEmployeeSearch("");
     setSelectedWeekdays(tp.weekdays || []);
     setRequireScheduled(!!tp.require_scheduled);
     setDialogOpen(true);
@@ -136,8 +138,8 @@ export default function AdminTemplatesPanel() {
     if (validItems.length === 0) {
       toast.error("Adicione ao menos um item"); setSaving(false); return;
     }
-    if (selectedGroups.length === 0) {
-      toast.error("Selecione ao menos um grupo de acesso"); setSaving(false); return;
+    if (selectedGroups.length === 0 && selectedEmployees.length === 0) {
+      toast.error("Selecione ao menos um grupo de acesso ou um colaborador"); setSaving(false); return;
     }
 
     if (editingId) {
@@ -156,9 +158,19 @@ export default function AdminTemplatesPanel() {
         is_priority: item.is_priority, requires_photo: item.requires_photo,
       })));
       await supabase.from("template_access_groups").delete().eq("template_id", editingId);
-      await supabase.from("template_access_groups").insert(
-        selectedGroups.map((gid) => ({ template_id: editingId, group_id: gid })),
-      );
+      if (selectedGroups.length > 0) {
+        await supabase.from("template_access_groups").insert(
+          selectedGroups.map((gid) => ({ template_id: editingId, group_id: gid })),
+        );
+      }
+      await supabase.from("checklist_template_assignments").delete().eq("template_id", editingId);
+      if (selectedEmployees.length > 0) {
+        await supabase.from("checklist_template_assignments").insert(
+          selectedEmployees.map((eid) => ({
+            template_id: editingId, employee_id: eid, assigned_by: user.id,
+          })),
+        );
+      }
       toast.success("Template atualizado");
     } else {
       const { data: tmpl, error } = await supabase.from("checklist_templates").insert({
@@ -176,13 +188,23 @@ export default function AdminTemplatesPanel() {
         description: item.description.trim() || null, sort_order: i,
         is_priority: item.is_priority, requires_photo: item.requires_photo,
       })));
-      await supabase.from("template_access_groups").insert(
-        selectedGroups.map((gid) => ({ template_id: tmpl.id, group_id: gid })),
-      );
+      if (selectedGroups.length > 0) {
+        await supabase.from("template_access_groups").insert(
+          selectedGroups.map((gid) => ({ template_id: tmpl.id, group_id: gid })),
+        );
+      }
+      if (selectedEmployees.length > 0) {
+        await supabase.from("checklist_template_assignments").insert(
+          selectedEmployees.map((eid) => ({
+            template_id: tmpl.id, employee_id: eid, assigned_by: user.id,
+          })),
+        );
+      }
       toast.success("Template criado");
     }
     setDialogOpen(false); resetForm(); loadTemplates(); setSaving(false);
   };
+
 
   const toggleActive = async (id: string, current: boolean) => {
     await supabase.from("checklist_templates").update({ is_active: !current }).eq("id", id);
