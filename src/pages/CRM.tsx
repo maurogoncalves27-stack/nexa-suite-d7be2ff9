@@ -1732,9 +1732,21 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
 
 
         <TabsContent value="agent" className="mt-4 space-y-6">
-          <GianaAnalyticsPanel />
-          <AgentPanel />
+          <Tabs defaultValue="desempenho">
+            <TabsList className="grid w-full grid-cols-2 h-auto">
+              <TabsTrigger value="desempenho" className="py-2">Desempenho</TabsTrigger>
+              <TabsTrigger value="base" className="py-2">Base de conhecimento</TabsTrigger>
+            </TabsList>
+            <TabsContent value="desempenho" className="mt-4 space-y-6">
+              <GianaAnalyticsPanel />
+              <AgentPanel />
+            </TabsContent>
+            <TabsContent value="base" className="mt-4">
+              <GianaKnowledge embedded />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
+
 
       </Tabs>
       <ReservationSettingsDialog
