@@ -76,11 +76,11 @@ export default function EligibilityPanel() {
       const [empRes, levelsRes, critRes, warnRes, storesRes, schedRes, evalRes, tracksRes, posRes, promRes] = await Promise.all([
         supabase.from("employees").select("id, full_name, position, position_id, hire_date, status, store_id, current_level, level_updated_at").eq("status", "active"),
         supabase.from("position_salary_levels").select("position_id, level, salary, order_index").order("order_index"),
-        supabase.from("promotion_criteria").select("position_id, promotion_type, min_months_in_role, min_evaluation_score, no_warnings_months"),
+        supabase.from("promotion_criteria").select("position_id, promotion_type, min_months_in_role, min_evaluation_score, no_warnings_months, min_competency_avg, min_required_competency_score"),
         supabase.from("employee_warnings").select("employee_id, issued_at").gte("issued_at", cutoffWarn),
         supabase.from("stores").select("id, name"),
         supabase.from("work_schedules").select("employee_id, store_id, schedule_date").gte("schedule_date", cutoffSched).eq("is_day_off", false),
-        supabase.from("evaluations").select("employee_id, final_score, updated_at").in("status", ["finalized", "completed"]).not("final_score", "is", null),
+        supabase.from("evaluations").select("id, employee_id, final_score, competency_avg, updated_at").in("status", ["finalized", "completed"]).not("final_score", "is", null),
         supabase.from("career_track_steps").select("from_position_id, to_position_id, order_index").order("order_index"),
         supabase.from("positions").select("id, name"),
         supabase.from("promotion_history").select("employee_id, created_at, effective_date").gte("created_at", yearStart),
