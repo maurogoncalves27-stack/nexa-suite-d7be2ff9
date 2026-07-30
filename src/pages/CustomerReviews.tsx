@@ -314,9 +314,46 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
     });
     const list = [...byWeek.values()].sort((a, b) => a.weekKey.localeCompare(b.weekKey));
     setHistory(list);
+    // Hidrata os valores atuais a partir do banco (compartilhado entre usuários),
+    // usando o valor mais recente de cada loja::marca em cada canal.
+    const latest: { ifood: SnapMap; google: SnapMap } = { ifood: {}, google: {} };
+    list.forEach((snap) => {
+      Object.entries(snap.ifood).forEach(([k, v]) => { latest.ifood[k] = v; });
+      Object.entries(snap.google).forEach(([k, v]) => { latest.google[k] = v; });
+    });
+    if (Object.keys(latest.ifood).length) {
+      setIfoodByStore((prev) => {
+        const merged = { ...prev, ...latest.ifood };
+        localStorage.setItem(IFOOD_STORES_KEY, JSON.stringify(merged));
+        return merged;
+      });
+    }
+    if (Object.keys(latest.google).length) {
+      setGoogleByStore((prev) => {
+        const merged = { ...prev, ...latest.google };
+        localStorage.setItem(GOOGLE_STORES_KEY, JSON.stringify(merged));
+        return merged;
+      });
+    }
     return list;
   }
   useEffect(() => { loadHistory(); }, []);
+
+  // Se existirem notas manuais só no navegador (antes da persistência no banco),
+  // sobe para o banco na primeira carga para todos passarem a enxergar.
+  const migratedLocalRef = useRef(false);
+  useEffect(() => {
+    if (migratedLocalRef.current) return;
+    const hasLocal = Object.keys(ifoodByStore).length > 0 || Object.keys(googleByStore).length > 0;
+    if (!hasLocal) return;
+    migratedLocalRef.current = true;
+    (async () => {
+      if (Object.keys(ifoodByStore).length) await persistHistory("ifood", ifoodByStore);
+      if (Object.keys(googleByStore).length) await persistHistory("google", googleByStore);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   const persistHistory = async (source: "ifood" | "google", map: Record<string, ManualEntry>) => {
     const weekKey = getWeekKey();
