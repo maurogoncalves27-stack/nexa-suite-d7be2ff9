@@ -115,7 +115,25 @@ export async function loadChecklistAudience(date: string): Promise<AudienceData>
     scheduledStoresByUser.get(uid)!.add(row.store_id);
   }
 
-  return { people, groupsByUser, storesByTemplate, scheduledStoresByUser, invalidMemberships };
+  const assignedUsersByTemplate = new Map<string, Set<string>>();
+  for (const row of (assigns ?? []) as any[]) {
+    const uid = employeeIdToUser.get(row.employee_id);
+    if (!uid) continue;
+    if (!assignedUsersByTemplate.has(row.template_id)) {
+      assignedUsersByTemplate.set(row.template_id, new Set());
+    }
+    assignedUsersByTemplate.get(row.template_id)!.add(uid);
+  }
+
+  return {
+    people,
+    groupsByUser,
+    storesByTemplate,
+    scheduledStoresByUser,
+    assignedUsersByTemplate,
+    invalidMemberships,
+  };
+
 }
 
 /** O template roda nesse dia da semana? */
