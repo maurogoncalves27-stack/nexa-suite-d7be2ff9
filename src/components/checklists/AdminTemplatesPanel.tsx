@@ -450,7 +450,13 @@ export default function AdminTemplatesPanel() {
                 placeholder="Instruções gerais (opcional)" rows={2} />
             </div>
             <div className="space-y-2">
-              <Label>Grupos de acesso</Label>
+              <Label>Público-alvo</Label>
+              <p className="text-xs text-muted-foreground">
+                Grupos e/ou colaboradores específicos. Quem estiver em qualquer um dos dois é cobrado.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm">Grupos de acesso</Label>
               {groups.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   Nenhum grupo cadastrado. Crie grupos na aba Grupos.
@@ -473,6 +479,64 @@ export default function AdminTemplatesPanel() {
                 </div>
               )}
             </div>
+            <div className="space-y-2">
+              <Label className="text-sm">
+                Colaboradores específicos
+                {selectedEmployees.length > 0 && (
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    {selectedEmployees.length} selecionado(s)
+                  </span>
+                )}
+              </Label>
+              <Input
+                value={employeeSearch}
+                onChange={(e) => setEmployeeSearch(e.target.value)}
+                placeholder="Buscar colaborador..."
+              />
+              {selectedEmployees.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {selectedEmployees.map((eid) => {
+                    const emp = employees.find((e) => e.id === eid);
+                    return (
+                      <Badge
+                        key={eid}
+                        variant="secondary"
+                        className="text-xs cursor-pointer"
+                        onClick={() =>
+                          setSelectedEmployees((prev) => prev.filter((id) => id !== eid))
+                        }
+                      >
+                        {emp?.full_name ?? "Colaborador"} ×
+                      </Badge>
+                    );
+                  })}
+                </div>
+              )}
+              <div className="max-h-44 overflow-y-auto rounded-md border p-2 space-y-1">
+                {employees
+                  .filter((e) =>
+                    e.full_name.toLowerCase().includes(employeeSearch.trim().toLowerCase()),
+                  )
+                  .slice(0, 100)
+                  .map((e) => (
+                    <div key={e.id} className="flex items-center gap-2">
+                      <Checkbox
+                        checked={selectedEmployees.includes(e.id)}
+                        onCheckedChange={() =>
+                          setSelectedEmployees((prev) =>
+                            prev.includes(e.id) ? prev.filter((id) => id !== e.id) : [...prev, e.id],
+                          )
+                        }
+                      />
+                      <span className="text-sm break-words">{e.full_name}</span>
+                    </div>
+                  ))}
+                {employees.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Nenhum colaborador ativo.</p>
+                )}
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label>Itens do checklist</Label>
               {items.map((item, i) => (
