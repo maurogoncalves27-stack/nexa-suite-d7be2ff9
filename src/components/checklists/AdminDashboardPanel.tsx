@@ -325,8 +325,11 @@ export default function AdminDashboardPanel() {
                           <p className="font-medium">{m.user.full_name}</p>
                           <p className="text-xs text-muted-foreground">{m.template.title}</p>
                         </div>
-                        <Badge variant="destructive" className="text-xs gap-1">
-                          <Clock className="h-3 w-3" />{m.template.deadline_time?.slice(0, 5)}
+                        <Badge variant="destructive" className="text-xs gap-1 whitespace-nowrap">
+                          <Clock className="h-3 w-3" />
+                          {new Date(filterDate + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                          {" · "}
+                          {m.template.deadline_time?.slice(0, 5)}
                         </Badge>
                       </div>
                     ))}
