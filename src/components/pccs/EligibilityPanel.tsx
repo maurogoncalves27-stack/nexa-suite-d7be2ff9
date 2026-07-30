@@ -76,7 +76,7 @@ export default function EligibilityPanel() {
 
       const yearStart = new Date(today.getFullYear(), 0, 1).toISOString();
       const [empRes, levelsRes, critRes, warnRes, storesRes, schedRes, evalRes, tracksRes, posRes, promRes] = await Promise.all([
-        supabase.from("employees").select("id, full_name, position, position_id, hire_date, status, store_id, current_level, level_updated_at").eq("status", "active"),
+        supabase.from("employees").select("id, full_name, position, position_id, hire_date, status, store_id, current_level, level_updated_at").eq("status", "active").not("hire_date", "is", null),
         supabase.from("position_salary_levels").select("position_id, level, salary, order_index").order("order_index"),
         supabase.from("promotion_criteria").select("position_id, promotion_type, min_months_in_role, min_evaluation_score, no_warnings_months, min_competency_avg, min_required_competency_score"),
         supabase.from("employee_warnings").select("employee_id, issued_at").gte("issued_at", cutoffWarn),
