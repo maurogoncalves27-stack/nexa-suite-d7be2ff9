@@ -401,19 +401,32 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
     return null;
   };
 
-  const saveIfoodStores = (next: Record<string, IfoodEntry>) => {
+  const saveIfoodStores = async (next: Record<string, IfoodEntry>) => {
+    setSavingManual(true);
     setIfoodByStore(next);
     localStorage.setItem(IFOOD_STORES_KEY, JSON.stringify(next));
     const now = Date.now();
     localStorage.setItem(IFOOD_LAST_UPDATE_KEY, String(now));
     setIfoodLastUpdate(now);
-    void persistHistory("ifood", next);
+    const ok = await persistHistory("ifood", next);
+    setSavingManual(false);
+    if (ok) {
+      toast({ title: "Notas do iFood salvas", description: "Histórico da semana atualizado." });
+      setOpenIfoodDialog(false);
+    }
   };
-  const saveGoogleStores = (next: Record<string, ManualEntry>) => {
+  const saveGoogleStores = async (next: Record<string, ManualEntry>) => {
+    setSavingManual(true);
     setGoogleByStore(next);
     localStorage.setItem(GOOGLE_STORES_KEY, JSON.stringify(next));
-    void persistHistory("google", next);
+    const ok = await persistHistory("google", next);
+    setSavingManual(false);
+    if (ok) {
+      toast({ title: "Notas do Google salvas", description: "Histórico da semana atualizado." });
+      setOpenGoogleDialog(false);
+    }
   };
+
 
 
 
