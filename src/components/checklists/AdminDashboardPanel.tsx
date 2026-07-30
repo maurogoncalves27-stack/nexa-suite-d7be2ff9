@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { loadChecklistAudience, isExpectedForTemplate, type AudienceData } from "@/lib/checklistAudience";
+import { fetchDisplayNames } from "@/lib/displayNames";
+
 import {
   Users, CheckCircle2, ClipboardList, Calendar, AlertTriangle,
   Clock, XCircle, ChevronDown, ChevronUp,
