@@ -255,8 +255,27 @@ export default function EmployeeChecklists() {
   const selectTemplate = async (templateId: string) => {
     setSelectedTemplate(templateId);
     setIsCompleted(false);
-    // Verifica se já tem submissão (rascunho ou completo)
-    const existingSub = todaySubmissions.find((s) => s.template_id === templateId);
+    // Busca a submissão direto no banco (não depende do estado local, que pode
+    // estar desatualizado e fazia o check-list já preenchido abrir desmarcado).
+    let existingSub: TodaySubmission | undefined;
+    if (user) {
+      const { data: subRow } = await supabase
+        .from("checklist_submissions")
+        .select("id, template_id, notes, status")
+        .eq("user_id", user.id)
+        .eq("template_id", templateId)
+        .eq("shift_date", today)
+        .maybeSingle();
+      if (subRow) {
+        existingSub = subRow as TodaySubmission;
+        setTodaySubmissions((prev) =>
+          prev.some((s) => s.id === subRow.id)
+            ? prev.map((s) => (s.id === subRow.id ? (subRow as TodaySubmission) : s))
+            : [...prev, subRow as TodaySubmission],
+        );
+      }
+    }
+    if (!existingSub) existingSub = todaySubmissions.find((s) => s.template_id === templateId);
     let submissionId = existingSub?.id ?? null;
     setActiveSubmissionId(submissionId);
     setIsCompleted(existingSub?.status === "completed");
