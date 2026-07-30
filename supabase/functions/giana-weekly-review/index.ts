@@ -45,7 +45,7 @@ async function fetchConversationsWindow(supabase: any, startIso: string, endIsoE
 
   const { data: widget } = await supabase
     .from('chat_conversations')
-    .select('id, session_id, feedback_rating, message_count, last_message_at, triage')
+    .select('id, session_id, feedback_rating, message_count, last_message_at, triage, messages')
     .gte('last_message_at', startIso).lt('last_message_at', endIsoExcl);
 
   return { wa: wa ?? [], widget: widget ?? [] };
