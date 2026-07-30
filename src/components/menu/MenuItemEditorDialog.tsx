@@ -121,6 +121,10 @@ export default function MenuItemEditorDialog({
           setPrice(String(it.price));
           setIsCombo(!!it.is_combo);
           setIsActive(!!it.is_active);
+          setServesPeople((it as any).serves_people != null ? String((it as any).serves_people) : "");
+          setTotalWeight((it as any).total_weight_g != null ? String((it as any).total_weight_g) : "");
+          setProteinWeight((it as any).protein_weight_g != null ? String((it as any).protein_weight_g) : "");
+
         }
         const [compRes, brRes, linksRes, stRes] = await Promise.all([
           supabase.from("menu_item_components").select("*").eq("parent_item_id", itemId).order("sort_order"),
