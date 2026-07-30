@@ -50,18 +50,21 @@ export interface AudienceData {
 
 
 export async function loadChecklistAudience(date: string): Promise<AudienceData> {
-  const [{ data: emps }, { data: ug }, { data: cts }, { data: sched }] = await Promise.all([
-    supabase
-      .from("employees")
-      .select("id, user_id, full_name, status, store_id, allocated_store_id")
-      .not("user_id", "is", null),
-    supabase.from("user_access_groups").select("user_id, group_id"),
-    supabase.from("checklist_template_stores").select("template_id, store_id"),
-    supabase
-      .from("work_schedules")
-      .select("employee_id, store_id, is_day_off")
-      .eq("schedule_date", date),
-  ]);
+  const [{ data: emps }, { data: ug }, { data: cts }, { data: sched }, { data: assigns }] =
+    await Promise.all([
+      supabase
+        .from("employees")
+        .select("id, user_id, full_name, status, store_id, allocated_store_id")
+        .not("user_id", "is", null),
+      supabase.from("user_access_groups").select("user_id, group_id"),
+      supabase.from("checklist_template_stores").select("template_id, store_id"),
+      supabase
+        .from("work_schedules")
+        .select("employee_id, store_id, is_day_off")
+        .eq("schedule_date", date),
+      supabase.from("checklist_template_assignments").select("template_id, employee_id"),
+    ]);
+
 
   const people = new Map<string, AudiencePerson>();
   const inactiveByUser = new Map<string, string>();
