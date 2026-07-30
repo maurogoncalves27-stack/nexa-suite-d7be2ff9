@@ -328,6 +328,13 @@ export default function AdminTemplatesPanel() {
                                 {tag.access_groups?.name}
                               </Badge>
                             ))}
+                            {tp.checklist_template_assignments?.length > 0 && (
+                              <Badge variant="secondary" className="text-xs gap-1">
+                                <UserPlus className="h-3 w-3" />
+                                {tp.checklist_template_assignments.length} pessoa(s)
+                              </Badge>
+                            )}
+
                           </div>
                           <p className="text-xs text-muted-foreground">
                             {tp.checklist_items.length} itens
