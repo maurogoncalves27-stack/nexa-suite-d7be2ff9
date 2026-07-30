@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Bot, Plus, Pencil, Trash2, Loader2, Store, HelpCircle, Utensils } from "lucide-react";
@@ -69,18 +70,17 @@ export default function GianaKnowledge({ embedded = false }: { embedded?: boolea
   const [faqs, setFaqs] = useState<Faq[]>([]);
   const [stores, setStores] = useState<GianaStore[]>([]);
 
-  const [dishDraft, setDishDraft] = useState<Dish | null>(null);
   const [faqDraft, setFaqDraft] = useState<Faq | null>(null);
   const [storeDraft, setStoreDraft] = useState<GianaStore | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<
-    { table: "giana_dishes" | "giana_faq" | "giana_stores"; id: string; nome: string } | null
+    { table: "giana_faq" | "giana_stores"; id: string; nome: string } | null
   >(null);
 
   const load = async () => {
     setLoading(true);
     const [d, f, s] = await Promise.all([
-      supabase.from("giana_dishes").select("*").order("sort_order"),
+      supabase.from("giana_menu_dishes").select("*").order("sort_order"),
       supabase.from("giana_faq").select("*").order("sort_order"),
       supabase.from("giana_stores").select("*").order("sort_order"),
     ]);
@@ -106,29 +106,7 @@ export default function GianaKnowledge({ embedded = false }: { embedded?: boolea
   const nextOrder = (arr: { sort_order: number }[]) =>
     arr.reduce((m, x) => Math.max(m, x.sort_order), 0) + 1;
 
-  const saveDish = async () => {
-    if (!dishDraft) return;
-    if (!dishDraft.nome.trim() || !dishDraft.descricao.trim()) {
-      toast({ title: "Preencha nome e descrição", variant: "destructive" });
-      return;
-    }
-    setSaving(true);
-    const payload = {
-      id: dishDraft.id || slugify(dishDraft.nome),
-      marca: dishDraft.marca,
-      nome: dishDraft.nome.trim(),
-      descricao: dishDraft.descricao.trim(),
-      tamanhos: dishDraft.tamanhos,
-      is_active: dishDraft.is_active,
-      sort_order: dishDraft.sort_order,
-    };
-    const { error } = await supabase.from("giana_dishes").upsert(payload);
-    setSaving(false);
-    if (error) return toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
-    toast({ title: "Prato salvo" });
-    setDishDraft(null);
-    load();
-  };
+
 
   const saveFaq = async () => {
     if (!faqDraft) return;
@@ -234,45 +212,38 @@ export default function GianaKnowledge({ embedded = false }: { embedded?: boolea
             </TabsTrigger>
           </TabsList>
 
-          {/* -------- Pratos -------- */}
+          {/* -------- Pratos (espelho do Cardápio) -------- */}
           <TabsContent value="dishes" className="mt-4 space-y-3">
-            <div className="flex justify-end">
-              <Button size="sm" onClick={() => setDishDraft({
-                id: "", marca: "aquela-parme", nome: "", descricao: "",
-                tamanhos: [], is_active: true, sort_order: nextOrder(dishes),
-              })}>
-                <Plus className="h-4 w-4 mr-1" /> Novo prato
+            <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
+              <span>
+                Os pratos vêm automaticamente do <strong>Cardápio</strong> (itens ativos). Para
+                incluir, editar ou remover, altere o cardápio.
+              </span>
+              <Button size="sm" variant="outline" asChild className="shrink-0">
+                <Link to="/cardapio"><Utensils className="h-4 w-4 mr-1" /> Abrir cardápio</Link>
               </Button>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               {dishes.map((d) => (
-                <Card key={d.id} className={d.is_active ? "" : "opacity-60"}>
+                <Card key={d.id}>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-start justify-between gap-2">
-                      <span>{d.nome}</span>
-                      <span className="flex gap-1 shrink-0">
-                        <Button size="icon" variant="ghost" onClick={() => setDishDraft(d)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost"
-                          onClick={() => setConfirmDelete({ table: "giana_dishes", id: d.id, nome: d.nome })}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </span>
-                    </CardTitle>
+                    <CardTitle className="text-base">{d.nome}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
-                    <p className="text-muted-foreground">{d.descricao}</p>
+                    <p className="text-muted-foreground whitespace-pre-line line-clamp-4">{d.descricao}</p>
                     <div className="flex flex-wrap gap-1">
                       <Badge variant="secondary">{MARCAS[d.marca] ?? d.marca}</Badge>
                       {d.tamanhos.map((t) => <Badge key={t} variant="outline">{t}</Badge>)}
-                      {!d.is_active && <Badge variant="destructive">inativo</Badge>}
                     </div>
                   </CardContent>
                 </Card>
               ))}
+              {!dishes.length && (
+                <p className="text-sm text-muted-foreground">Nenhum item ativo no cardápio.</p>
+              )}
             </div>
           </TabsContent>
+
 
           {/* -------- FAQ -------- */}
           <TabsContent value="faq" className="mt-4 space-y-3">
@@ -361,69 +332,6 @@ export default function GianaKnowledge({ embedded = false }: { embedded?: boolea
         </Tabs>
       )}
 
-      {/* -------- Dialog prato -------- */}
-      <Dialog open={!!dishDraft} onOpenChange={(o) => !o && setDishDraft(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{dishDraft?.id ? "Editar prato" : "Novo prato"}</DialogTitle></DialogHeader>
-          {dishDraft && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Marca</Label>
-                <Select value={dishDraft.marca} onValueChange={(v) => setDishDraft({ ...dishDraft, marca: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(MARCAS).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Nome</Label>
-                <Input value={dishDraft.nome} onChange={(e) => setDishDraft({ ...dishDraft, nome: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Descrição</Label>
-                <Textarea value={dishDraft.descricao}
-                  onChange={(e) => setDishDraft({ ...dishDraft, descricao: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Tamanhos de parmegiana</Label>
-                <div className="flex flex-wrap gap-3">
-                  {["individual", "casal", "familia"].map((t) => (
-                    <label key={t} className="flex items-center gap-2 text-sm">
-                      <Switch
-                        checked={dishDraft.tamanhos.includes(t)}
-                        onCheckedChange={(c) => setDishDraft({
-                          ...dishDraft,
-                          tamanhos: c
-                            ? [...dishDraft.tamanhos, t]
-                            : dishDraft.tamanhos.filter((x) => x !== t),
-                        })}
-                      />
-                      {t}
-                    </label>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Os pesos (600g / 1200g / 2400g) são fixos no sistema e não mudam por aqui.
-                </p>
-              </div>
-              <label className="flex items-center gap-2 text-sm">
-                <Switch checked={dishDraft.is_active}
-                  onCheckedChange={(c) => setDishDraft({ ...dishDraft, is_active: c })} />
-                Ativo
-              </label>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDishDraft(null)}>Cancelar</Button>
-            <Button onClick={saveDish} disabled={saving}>
-              {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Salvar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* -------- Dialog FAQ -------- */}
       <Dialog open={!!faqDraft} onOpenChange={(o) => !o && setFaqDraft(null)}>
