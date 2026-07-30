@@ -128,6 +128,10 @@ async function computeMetrics(supabase: any, startIso: string, endIsoExcl: strin
     .from('whatsapp_customer_conversations')
     .select('id, status, feedback_rating')
     .gte('last_message_at', startIso).lt('last_message_at', endIsoExcl);
+  const { data: widget } = await supabase
+    .from('chat_conversations')
+    .select('id, feedback_rating, triage')
+    .gte('last_message_at', startIso).lt('last_message_at', endIsoExcl);
   const { data: fb } = await supabase
     .from('giana_feedback')
     .select('rating, sentiment')
@@ -137,17 +141,27 @@ async function computeMetrics(supabase: any, startIso: string, endIsoExcl: strin
     .select('id, status')
     .gte('created_at', startIso).lt('created_at', endIsoExcl);
 
-  const total = (wa ?? []).length;
-  const escaladas = (wa ?? []).filter((c: any) => c.status === 'escalated').length;
-  const respostas = (fb ?? []).length;
-  const positivas = (fb ?? []).filter((f: any) => f.rating === 'positive' || f.sentiment === 'positive').length;
-  const negativas = (fb ?? []).filter((f: any) => f.rating === 'negative' || f.sentiment === 'negative').length;
+  const waList = wa ?? [];
+  const widgetList = widget ?? [];
+  const total = waList.length + widgetList.length;
+  const escaladas = waList.filter((c: any) => c.status === 'escalated').length
+    + widgetList.filter((c: any) => (c.triage as any)?.severity === 'alta' || (c.triage as any)?.escalate).length;
+
+  const ratings = [
+    ...(fb ?? []).map((f: any) => f.rating ?? f.sentiment),
+    ...waList.map((c: any) => c.feedback_rating),
+    ...widgetList.map((c: any) => c.feedback_rating),
+  ].filter(Boolean);
+  const respostas = ratings.length;
+  const positivas = ratings.filter((r: string) => r === 'positive').length;
+  const negativas = ratings.filter((r: string) => r === 'negative').length;
   const csat = respostas > 0 ? +(positivas / respostas * 100).toFixed(1) : null;
-  const feedbackPedido = (wa ?? []).filter((c: any) => c.feedback_rating).length;
-  const taxaResposta = total > 0 ? +(feedbackPedido / total * 100).toFixed(1) : 0;
+  const taxaResposta = total > 0 ? +(respostas / total * 100).toFixed(1) : 0;
 
   return {
     total_conversas: total,
+    conversas_whatsapp: waList.length,
+    conversas_widget: widgetList.length,
     respostas_feedback: respostas,
     csat_pct: csat,
     feedback_positivo: positivas,
@@ -157,6 +171,7 @@ async function computeMetrics(supabase: any, startIso: string, endIsoExcl: strin
     reclamacoes_registradas: (complaints ?? []).length,
   };
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
