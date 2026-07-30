@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Bot, Plus, Pencil, Trash2, Loader2, Store, HelpCircle, Utensils } from "lucide-react";
+import { Bot, Plus, Pencil, Trash2, Loader2, Store, HelpCircle, Utensils, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +34,16 @@ type Dish = {
   total_weight_g?: number | null;
   protein_weight_g?: number | null;
 
+};
+
+type Brand = {
+  id: string;
+  nome: string;
+  slogan: string | null;
+  descricao: string | null;
+  historia: string | null;
+  is_active: boolean;
+  sort_order: number;
 };
 
 type Faq = {
@@ -73,28 +83,32 @@ export default function GianaKnowledge({ embedded = false }: { embedded?: boolea
   const [dishes, setDishes] = useState<Dish[]>([]);
   const [faqs, setFaqs] = useState<Faq[]>([]);
   const [stores, setStores] = useState<GianaStore[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [brandDraft, setBrandDraft] = useState<Brand | null>(null);
 
   const [faqDraft, setFaqDraft] = useState<Faq | null>(null);
   const [storeDraft, setStoreDraft] = useState<GianaStore | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<
-    { table: "giana_faq" | "giana_stores"; id: string; nome: string } | null
+    { table: "giana_faq" | "giana_stores" | "giana_brands"; id: string; nome: string } | null
   >(null);
 
   const load = async () => {
     setLoading(true);
-    const [d, f, s] = await Promise.all([
+    const [d, f, s, b] = await Promise.all([
       supabase.from("giana_menu_dishes").select("*").order("sort_order"),
       supabase.from("giana_faq").select("*").order("sort_order"),
       supabase.from("giana_stores").select("*").order("sort_order"),
+      supabase.from("giana_brands").select("*").order("sort_order"),
     ]);
-    if (d.error || f.error || s.error) {
+    if (d.error || f.error || s.error || b.error) {
       toast({
         title: "Erro ao carregar",
-        description: (d.error ?? f.error ?? s.error)?.message,
+        description: (d.error ?? f.error ?? s.error ?? b.error)?.message,
         variant: "destructive",
       });
     }
+    setBrands((b.data ?? []) as unknown as Brand[]);
     setDishes(((d.data ?? []) as unknown as Dish[]).map((x) => ({
       ...x, tamanhos: Array.isArray(x.tamanhos) ? x.tamanhos : [],
     })));
@@ -111,6 +125,29 @@ export default function GianaKnowledge({ embedded = false }: { embedded?: boolea
     arr.reduce((m, x) => Math.max(m, x.sort_order), 0) + 1;
 
 
+
+  const saveBrand = async () => {
+    if (!brandDraft) return;
+    if (!brandDraft.nome.trim()) {
+      toast({ title: "Informe o nome da marca", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase.from("giana_brands").upsert({
+      id: brandDraft.id || slugify(brandDraft.nome),
+      nome: brandDraft.nome.trim(),
+      slogan: brandDraft.slogan?.trim() || null,
+      descricao: brandDraft.descricao?.trim() || null,
+      historia: brandDraft.historia?.trim() || null,
+      is_active: brandDraft.is_active,
+      sort_order: brandDraft.sort_order,
+    });
+    setSaving(false);
+    if (error) return toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+    toast({ title: "Marca salva" });
+    setBrandDraft(null);
+    load();
+  };
 
   const saveFaq = async () => {
     if (!faqDraft) return;
@@ -170,6 +207,24 @@ export default function GianaKnowledge({ embedded = false }: { embedded?: boolea
     load();
   };
 
+  const dishesByBrand = useMemo(() => {
+    const order = brands.length
+      ? brands.map((b) => b.id)
+      : Object.keys(MARCAS);
+    const groups = new Map<string, Dish[]>();
+    for (const d of dishes) {
+      const k = d.marca || "outros";
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k)!.push(d);
+    }
+    return Array.from(groups.entries()).sort(
+      (a, b) => (order.indexOf(a[0]) + 1 || 99) - (order.indexOf(b[0]) + 1 || 99),
+    );
+  }, [dishes, brands]);
+
+  const brandLabel = (id: string) =>
+    brands.find((b) => b.id === id)?.nome ?? MARCAS[id] ?? id;
+
   const pendentes = useMemo(
     () => stores.filter((s) => s.is_active && (!s.endereco || !s.horario)).length,
     [stores],
@@ -204,9 +259,12 @@ export default function GianaKnowledge({ embedded = false }: { embedded?: boolea
         </div>
       ) : (
         <Tabs defaultValue="dishes">
-          <TabsList className="grid w-full grid-cols-3 h-auto">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto">
             <TabsTrigger value="dishes" className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5">
               <Utensils className="h-4 w-4" /><span className="text-xs sm:text-sm">Pratos</span>
+            </TabsTrigger>
+            <TabsTrigger value="brands" className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5">
+              <Tag className="h-4 w-4" /><span className="text-xs sm:text-sm">Marcas</span>
             </TabsTrigger>
             <TabsTrigger value="faq" className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5">
               <HelpCircle className="h-4 w-4" /><span className="text-xs sm:text-sm">Perguntas</span>
@@ -227,39 +285,101 @@ export default function GianaKnowledge({ embedded = false }: { embedded?: boolea
                 <Link to="/cardapio"><Utensils className="h-4 w-4 mr-1" /> Abrir cardápio</Link>
               </Button>
             </div>
+            {dishesByBrand.map(([marca, list]) => (
+              <div key={marca} className="space-y-2">
+                <div className="flex items-center gap-2 pt-2">
+                  <Tag className="h-4 w-4 text-primary" />
+                  <h3 className="font-semibold">{brandLabel(marca)}</h3>
+                  <Badge variant="secondary">{list.length}</Badge>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {list.map((d) => (
+                    <Card key={d.id}>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base">{d.nome}</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2 text-sm">
+                        <p className="text-muted-foreground whitespace-pre-line line-clamp-4">{d.descricao}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {d.tamanhos.map((t) => <Badge key={t} variant="outline">{t}</Badge>)}
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {d.serves_people != null && (
+                            <Badge variant="outline">Serve {d.serves_people} pessoa(s)</Badge>
+                          )}
+                          {d.total_weight_g != null && (
+                            <Badge variant="outline">Total {d.total_weight_g}g</Badge>
+                          )}
+                          {d.protein_weight_g != null && (
+                            <Badge variant="outline">Proteína {d.protein_weight_g}g</Badge>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {!dishes.length && (
+              <p className="text-sm text-muted-foreground">Nenhum item ativo no cardápio.</p>
+            )}
+          </TabsContent>
+
+
+          {/* -------- Marcas -------- */}
+          <TabsContent value="brands" className="mt-4 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
+              <p className="text-sm text-muted-foreground">
+                Conte a história e o posicionamento de cada marca. A Giana usa esse texto quando o
+                cliente pergunta "o que é a Aquela Parmê?" ou pede recomendação de marca.
+              </p>
+              <Button size="sm" className="shrink-0" onClick={() => setBrandDraft({
+                id: "", nome: "", slogan: "", descricao: "", historia: "",
+                is_active: true, sort_order: nextOrder(brands),
+              })}>
+                <Plus className="h-4 w-4 mr-1" /> Nova marca
+              </Button>
+            </div>
             <div className="grid gap-3 md:grid-cols-2">
-              {dishes.map((d) => (
-                <Card key={d.id}>
+              {brands.map((b) => (
+                <Card key={b.id} className={b.is_active ? "" : "opacity-60"}>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base">{d.nome}</CardTitle>
+                    <CardTitle className="text-base flex items-start justify-between gap-2">
+                      <span>{b.nome}</span>
+                      <span className="flex gap-1 shrink-0">
+                        <Button size="icon" variant="ghost" onClick={() => setBrandDraft(b)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost"
+                          onClick={() => setConfirmDelete({ table: "giana_brands", id: b.id, nome: b.nome })}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </span>
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
-                    <p className="text-muted-foreground whitespace-pre-line line-clamp-4">{d.descricao}</p>
+                    {b.slogan && <p className="italic text-muted-foreground">"{b.slogan}"</p>}
+                    <p className={b.descricao ? "whitespace-pre-wrap" : "text-muted-foreground italic"}>
+                      {b.descricao || "Sem descrição cadastrada"}
+                    </p>
+                    {b.historia && (
+                      <p className="text-muted-foreground whitespace-pre-wrap line-clamp-6">{b.historia}</p>
+                    )}
                     <div className="flex flex-wrap gap-1">
-                      <Badge variant="secondary">{MARCAS[d.marca] ?? d.marca}</Badge>
-                      {d.tamanhos.map((t) => <Badge key={t} variant="outline">{t}</Badge>)}
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {d.serves_people != null && (
-                        <Badge variant="outline">Serve {d.serves_people} pessoa(s)</Badge>
-                      )}
-                      {d.total_weight_g != null && (
-                        <Badge variant="outline">Total {d.total_weight_g}g</Badge>
-                      )}
-                      {d.protein_weight_g != null && (
-                        <Badge variant="outline">Proteína {d.protein_weight_g}g</Badge>
-                      )}
+                      <Badge variant="outline">
+                        {dishes.filter((d) => d.marca === b.id).length} prato(s)
+                      </Badge>
+                      {!b.is_active && <Badge variant="destructive">inativa</Badge>}
                     </div>
                   </CardContent>
                 </Card>
               ))}
-
-              {!dishes.length && (
-                <p className="text-sm text-muted-foreground">Nenhum item ativo no cardápio.</p>
+              {!brands.length && (
+                <p className="text-sm text-muted-foreground">Nenhuma marca cadastrada.</p>
               )}
             </div>
           </TabsContent>
-
 
           {/* -------- FAQ -------- */}
           <TabsContent value="faq" className="mt-4 space-y-3">
@@ -348,6 +468,50 @@ export default function GianaKnowledge({ embedded = false }: { embedded?: boolea
         </Tabs>
       )}
 
+
+      {/* -------- Dialog marca -------- */}
+      <Dialog open={!!brandDraft} onOpenChange={(o) => !o && setBrandDraft(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{brandDraft?.id ? "Editar marca" : "Nova marca"}</DialogTitle></DialogHeader>
+          {brandDraft && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Nome</Label>
+                <Input value={brandDraft.nome}
+                  onChange={(e) => setBrandDraft({ ...brandDraft, nome: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Slogan (opcional)</Label>
+                <Input value={brandDraft.slogan ?? ""}
+                  onChange={(e) => setBrandDraft({ ...brandDraft, slogan: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Descrição / posicionamento</Label>
+                <Textarea rows={4} value={brandDraft.descricao ?? ""}
+                  placeholder="O que a marca vende, para quem, o que a diferencia."
+                  onChange={(e) => setBrandDraft({ ...brandDraft, descricao: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>História da marca</Label>
+                <Textarea rows={6} value={brandDraft.historia ?? ""}
+                  placeholder="Como surgiu, marcos importantes, curiosidades que a Giana pode contar."
+                  onChange={(e) => setBrandDraft({ ...brandDraft, historia: e.target.value })} />
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <Switch checked={brandDraft.is_active}
+                  onCheckedChange={(c) => setBrandDraft({ ...brandDraft, is_active: c })} />
+                Ativa
+              </label>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBrandDraft(null)}>Cancelar</Button>
+            <Button onClick={saveBrand} disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* -------- Dialog FAQ -------- */}
       <Dialog open={!!faqDraft} onOpenChange={(o) => !o && setFaqDraft(null)}>
