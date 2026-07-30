@@ -270,7 +270,7 @@ export default function GianaKnowledge({ embedded = false }: { embedded?: boolea
         </div>
       ) : (
         <Tabs defaultValue="dishes">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto">
+          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 h-auto">
             <TabsTrigger value="dishes" className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5">
               <Utensils className="h-4 w-4" /><span className="text-xs sm:text-sm">Pratos</span>
             </TabsTrigger>
@@ -283,7 +283,15 @@ export default function GianaKnowledge({ embedded = false }: { embedded?: boolea
             <TabsTrigger value="stores" className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5">
               <Store className="h-4 w-4" /><span className="text-xs sm:text-sm">Lojas</span>
             </TabsTrigger>
+            <TabsTrigger value="behavior" className="flex flex-col sm:flex-row gap-1 sm:gap-2 py-2.5">
+              <Settings2 className="h-4 w-4" /><span className="text-xs sm:text-sm">Comportamento</span>
+            </TabsTrigger>
           </TabsList>
+
+          {/* -------- Comportamento -------- */}
+          <TabsContent value="behavior" className="mt-4">
+            <AgentPanel />
+          </TabsContent>
 
           {/* -------- Pratos (espelho do Cardápio) -------- */}
           <TabsContent value="dishes" className="mt-4 space-y-3">
@@ -296,41 +304,48 @@ export default function GianaKnowledge({ embedded = false }: { embedded?: boolea
                 <Link to="/cardapio"><Utensils className="h-4 w-4 mr-1" /> Abrir cardápio</Link>
               </Button>
             </div>
-            {dishesByBrand.map(([marca, list]) => (
-              <div key={marca} className="space-y-2">
-                <div className="flex items-center gap-2 pt-2">
-                  <Tag className="h-4 w-4 text-primary" />
-                  <h3 className="font-semibold">{brandLabel(marca)}</h3>
-                  <Badge variant="secondary">{list.length}</Badge>
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  {list.map((d) => (
-                    <Card key={d.id}>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-base">{d.nome}</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2 text-sm">
-                        <p className="text-muted-foreground whitespace-pre-line line-clamp-4">{d.descricao}</p>
-                        <div className="flex flex-wrap gap-1">
-                          {d.tamanhos.map((t) => <Badge key={t} variant="outline">{t}</Badge>)}
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {d.serves_people != null && (
-                            <Badge variant="outline">Serve {d.serves_people} pessoa(s)</Badge>
-                          )}
-                          {d.total_weight_g != null && (
-                            <Badge variant="outline">Total {d.total_weight_g}g</Badge>
-                          )}
-                          {d.protein_weight_g != null && (
-                            <Badge variant="outline">Proteína {d.protein_weight_g}g</Badge>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            ))}
+            <Accordion type="multiple" className="space-y-2">
+              {dishesByBrand.map(([marca, list]) => (
+                <AccordionItem key={marca} value={marca} className="border rounded-md px-3">
+                  <AccordionTrigger className="hover:no-underline">
+                    <span className="flex items-center gap-2">
+                      <Tag className="h-4 w-4 text-primary" />
+                      <span className="font-semibold">{brandLabel(marca)}</span>
+                      <Badge variant="secondary">{list.length}</Badge>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="grid gap-3 md:grid-cols-2 pb-2">
+                      {list.map((d) => (
+                        <Card key={d.id}>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-base">{d.nome}</CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-2 text-sm">
+                            <p className="text-muted-foreground whitespace-pre-line line-clamp-4">{d.descricao}</p>
+                            <div className="flex flex-wrap gap-1">
+                              {d.tamanhos.map((t) => <Badge key={t} variant="outline">{t}</Badge>)}
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {d.serves_people != null && (
+                                <Badge variant="outline">Serve {d.serves_people} pessoa(s)</Badge>
+                              )}
+                              {d.total_weight_g != null && (
+                                <Badge variant="outline">Total {d.total_weight_g}g</Badge>
+                              )}
+                              {d.protein_weight_g != null && (
+                                <Badge variant="outline">Proteína {d.protein_weight_g}g</Badge>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+
 
             {!dishes.length && (
               <p className="text-sm text-muted-foreground">Nenhum item ativo no cardápio.</p>
