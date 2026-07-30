@@ -8,6 +8,7 @@ import MonthlyEvaluationReminder from "@/components/evaluations/MonthlyEvaluatio
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
+import { DEFAULT_SCALE, scaleColorClass } from "@/lib/competencyEvaluation";
 
 export interface Cycle {
   id: string;
