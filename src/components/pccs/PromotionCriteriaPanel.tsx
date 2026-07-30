@@ -178,7 +178,22 @@ export default function PromotionCriteriaPanel() {
                 <Label>Meses sem advertência</Label>
                 <Input type="number" value={form.no_warnings_months} onChange={(e) => setForm({ ...form, no_warnings_months: Number(e.target.value) })} />
               </div>
+              <div>
+                <Label>Média mín. competências (1-5)</Label>
+                <Input
+                  type="number" min={1} max={5} step={0.1} value={form.min_competency_avg}
+                  onChange={(e) => setForm({ ...form, min_competency_avg: Number(e.target.value) })}
+                />
+              </div>
+              <div>
+                <Label>Nota mín. por obrigatória</Label>
+                <Input
+                  type="number" min={1} max={5} step={1} value={form.min_required_competency_score}
+                  onChange={(e) => setForm({ ...form, min_required_competency_score: Number(e.target.value) })}
+                />
+              </div>
             </div>
+
             <div className="flex items-center gap-2">
               <Switch checked={form.require_training_completion} onCheckedChange={(v) => setForm({ ...form, require_training_completion: v })} />
               <Label>Exige treinamentos concluídos</Label>
