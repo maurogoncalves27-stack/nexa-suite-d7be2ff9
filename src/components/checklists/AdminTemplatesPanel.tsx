@@ -71,7 +71,7 @@ export default function AdminTemplatesPanel() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deadlineTime, setDeadlineTime] = useState("");
   const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([]);
-  const [requireScheduled, setRequireScheduled] = useState(false);
+  const [requireScheduled, setRequireScheduled] = useState(true);
 
   useEffect(() => { loadTemplates(); loadGroups(); loadEmployees(); }, []);
 
