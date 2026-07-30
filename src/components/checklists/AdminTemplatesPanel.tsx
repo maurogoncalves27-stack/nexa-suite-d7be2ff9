@@ -16,6 +16,7 @@ import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
 import { toast } from "sonner";
+import ChecklistAudienceAudit from "./ChecklistAudienceAudit";
 import {
   Plus, Trash2, Pencil, Siren, Camera, Copy, ChevronUp, ChevronDown, Users, CalendarCheck,
 } from "lucide-react";
@@ -228,9 +229,12 @@ export default function AdminTemplatesPanel() {
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold">Check-list</h2>
-        <Button className="gap-2" onClick={openCreate}>
-          <Plus className="h-4 w-4" /> Novo
-        </Button>
+        <div className="flex items-center gap-2">
+          <ChecklistAudienceAudit />
+          <Button className="gap-2" onClick={openCreate}>
+            <Plus className="h-4 w-4" /> Novo
+          </Button>
+        </div>
       </div>
 
       {templates.length === 0 ? (
