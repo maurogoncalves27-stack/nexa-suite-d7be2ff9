@@ -86,6 +86,7 @@ export default function GianaKnowledge({ embedded = false }: { embedded?: boolea
   const [stores, setStores] = useState<GianaStore[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [brandDraft, setBrandDraft] = useState<Brand | null>(null);
+  const [behaviorOpen, setBehaviorOpen] = useState(false);
 
   const [faqDraft, setFaqDraft] = useState<Faq | null>(null);
   const [storeDraft, setStoreDraft] = useState<GianaStore | null>(null);
