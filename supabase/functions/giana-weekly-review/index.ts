@@ -193,24 +193,40 @@ Deno.serve(async (req) => {
 
     const metrics = await computeMetrics(supabase, range.startIso, range.endIsoExcl);
 
-    // Amostragem WhatsApp
-    const { wa } = await fetchConversationsWindow(supabase, range.startIso, range.endIsoExcl);
+    // Amostragem WhatsApp + widget (chat da Giana no site)
+    const { wa, widget } = await fetchConversationsWindow(supabase, range.startIso, range.endIsoExcl);
     const enriched: ConvSample[] = [];
     for (const c of wa) {
       const { text, userMsgs } = await buildTranscript(supabase, c.id);
-      if (userMsgs < 3) continue;
+      if (userMsgs < 2) continue;
       enriched.push({
         id: c.id, source: 'whatsapp', transcript: text, msgs: userMsgs,
         rating: c.feedback_rating ?? null,
       });
     }
+    for (const c of widget as any[]) {
+      const msgs: any[] = Array.isArray(c.messages) ? c.messages : [];
+      const userMsgs = msgs.filter((m) => m?.role === 'user').length;
+      if (userMsgs < 2) continue;
+      const text = msgs
+        .filter((m) => m?.content)
+        .map((m) => `${m.role === 'user' ? 'CLIENTE' : 'GIANA'}: ${String(m.content).slice(0, 500)}`)
+        .join('\n');
+      enriched.push({
+        id: c.id, source: 'widget', transcript: text, msgs: userMsgs,
+        rating: c.feedback_rating ?? null,
+        triageSummary: (c.triage as any)?.summary ?? null,
+        triageSeverity: (c.triage as any)?.severity ?? null,
+      });
+    }
 
     const sampled = sampleConversations(
       enriched,
-      (c) => c.rating === 'negative',
-      0.2,
-      Math.min(40, Math.max(10, Math.ceil(enriched.length * 0.3))),
+      (c) => c.rating === 'negative' || c.triageSeverity === 'alta',
+      0.5,
+      Math.min(40, Math.max(10, Math.ceil(enriched.length * 0.6))),
     );
+
 
     let analysis: any = { skipped: 'no_conversations' };
     if (sampled.length >= 1) {
