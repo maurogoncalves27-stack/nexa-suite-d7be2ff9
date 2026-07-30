@@ -26,6 +26,7 @@ import ColdChamberStatusCard from "@/components/dashboard/ColdChamberStatusCard"
 const AnalyticsCharts = lazy(() => import("@/components/dashboard/AnalyticsCharts"));
 import MaintenanceSummaryCard from "@/components/dashboard/MaintenanceSummaryCard";
 import CrmReservationsCard from "@/components/dashboard/CrmReservationsCard";
+import MonthlyEvaluationReminder from "@/components/evaluations/MonthlyEvaluationReminder";
 import { useDashboardPrefs } from "@/hooks/useDashboardPrefs";
 import { useDashboardMetrics } from "@/components/dashboard/useDashboardMetrics";
 import { useSegmentMetrics } from "@/components/dashboard/useSegmentMetrics";
@@ -507,6 +508,9 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Avaliação mensal obrigatória do gestor */}
+      {isStaff && <MonthlyEvaluationReminder />}
 
       {/* 1) Alertas críticos — só se houver algo que precise de atenção */}
       {isStaff && hasCriticalAlerts && !prefs.hidden.includes("critical-alerts") && (

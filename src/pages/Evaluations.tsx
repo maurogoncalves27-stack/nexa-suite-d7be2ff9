@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { DEFAULT_SCALE, scaleColorClass } from "@/lib/competencyEvaluation";
+import { ensureCurrentMonthlyCycle } from "@/lib/monthlyCycle";
 
 export interface Cycle {
   id: string;
@@ -38,6 +39,8 @@ export default function Evaluations() {
 
   const load = async () => {
     setLoading(true);
+    // Avaliação é mensal: garante o ciclo do mês corrente
+    const current = await ensureCurrentMonthlyCycle();
     const [{ data: c, error: ce }, { data: cr, error: cre }] = await Promise.all([
       supabase.from("evaluation_cycles").select("*").order("start_date", { ascending: false }),
       supabase.from("evaluation_criteria").select("*").order("name"),
@@ -47,9 +50,11 @@ export default function Evaluations() {
     const cs = (c ?? []) as Cycle[];
     setCycles(cs);
     setCriteria((cr ?? []) as Criterion[]);
-    if (cs.length && !selectedCycleId) setSelectedCycleId(cs[0].id);
+    if (current && !selectedCycleId) setSelectedCycleId(current.id);
+    else if (cs.length && !selectedCycleId) setSelectedCycleId(cs[0].id);
     setLoading(false);
   };
+
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
@@ -63,7 +68,7 @@ export default function Evaluations() {
             <Award className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Avaliação de Desempenho
           </h1>
           <p className="text-muted-foreground text-sm sm:text-base">
-            Avaliação por competência do cargo, na escala 1 a 5. As infrações registradas entram automaticamente como "Disciplina" e o resultado alimenta o Plano de Carreira (PCCS).
+            Ciclo <strong>mensal e obrigatório</strong>: todo gestor deve avaliar sua equipe até o último dia de cada mês. Avaliação por competência do cargo, na escala 1 a 5. As infrações registradas entram automaticamente como "Disciplina" e o resultado alimenta o Plano de Carreira (PCCS).
           </p>
         </div>
         <Button variant="outline" onClick={() => setCriteriaOpen(true)} className="w-full sm:w-auto">
