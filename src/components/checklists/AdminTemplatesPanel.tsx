@@ -41,7 +41,14 @@ interface Template {
   sort_order: number;
   checklist_items: Item[];
   template_access_groups: { group_id: string; access_groups: { name: string } | null }[];
+  checklist_template_assignments: { employee_id: string }[];
 }
+
+interface EmployeeOption {
+  id: string;
+  full_name: string;
+}
+
 
 const WEEKDAY_KEYS = ["D", "S", "T", "Q", "Q", "S", "S"];
 const WEEKDAY_FULL = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
