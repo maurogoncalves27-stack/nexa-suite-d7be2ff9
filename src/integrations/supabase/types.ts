@@ -15338,6 +15338,60 @@ export type Database = {
         }
         Relationships: []
       }
+      review_manual_ratings: {
+        Row: {
+          avg: number
+          brand_id: string | null
+          count: number
+          created_at: string
+          id: string
+          source: string
+          store_id: string
+          updated_at: string
+          updated_by: string | null
+          week_key: string
+        }
+        Insert: {
+          avg?: number
+          brand_id?: string | null
+          count?: number
+          created_at?: string
+          id?: string
+          source: string
+          store_id: string
+          updated_at?: string
+          updated_by?: string | null
+          week_key: string
+        }
+        Update: {
+          avg?: number
+          brand_id?: string | null
+          count?: number
+          created_at?: string
+          id?: string
+          source?: string
+          store_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          week_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_manual_ratings_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_manual_ratings_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shift_swap_requests: {
         Row: {
           created_at: string

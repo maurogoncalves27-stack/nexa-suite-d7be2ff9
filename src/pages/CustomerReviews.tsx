@@ -280,13 +280,11 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
     return { avg: totalCount > 0 ? weighted / totalCount : 0, totalCount };
   };
 
-  // Histórico semanal de médias manuais (para setinhas de tendência)
-  // { weekKey: "YYYY-Www", ts, ifood: {key: avg}, google: {key: avg} }
-  const HISTORY_KEY = "crm.reviews.weekly_history";
-  type WeekSnap = { weekKey: string; ts: number; ifood: Record<string, number>; google: Record<string, number> };
-  const [history, setHistory] = useState<WeekSnap[]>(() => {
-    try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); } catch { return []; }
-  });
+  // Histórico semanal das médias manuais — persistido no banco (review_manual_ratings)
+  // Snapshot por semana ISO: { weekKey, ifood: {`store::brand`: {avg,count}}, google: {...} }
+  type SnapMap = Record<string, ManualEntry>;
+  type WeekSnap = { weekKey: string; ifood: SnapMap; google: SnapMap };
+  const [history, setHistory] = useState<WeekSnap[]>([]);
   const getWeekKey = (d = new Date()) => {
     const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
     const dayNum = date.getUTCDay() || 7;
@@ -295,28 +293,61 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
     const weekNo = Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
     return `${date.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
   };
-  const snapshotOf = (map: Record<string, ManualEntry>): Record<string, number> => {
-    const out: Record<string, number> = {};
-    Object.entries(map).forEach(([k, v]) => { if (v && v.avg > 0) out[k] = v.avg; });
-    return out;
-  };
-  const persistHistory = (ifoodMap: Record<string, ManualEntry>, googleMap: Record<string, ManualEntry>) => {
-    const wk = getWeekKey();
-    const snap: WeekSnap = { weekKey: wk, ts: Date.now(), ifood: snapshotOf(ifoodMap), google: snapshotOf(googleMap) };
-    setHistory((prev) => {
-      const others = prev.filter((s) => s.weekKey !== wk);
-      const next = [...others, snap].sort((a, b) => a.weekKey.localeCompare(b.weekKey));
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
-      return next;
+
+  async function loadHistory() {
+    const { data } = await supabase
+      .from("review_manual_ratings")
+      .select("source,store_id,brand_id,week_key,avg,count")
+      .order("week_key", { ascending: true });
+    const byWeek = new Map<string, WeekSnap>();
+    ((data ?? []) as Array<{ source: string; store_id: string; brand_id: string | null; week_key: string; avg: number | null; count: number | null }>).forEach((row) => {
+      if (!byWeek.has(row.week_key)) byWeek.set(row.week_key, { weekKey: row.week_key, ifood: {}, google: {} });
+      const snap = byWeek.get(row.week_key)!;
+      const key = `${row.store_id}::${row.brand_id ?? ""}`;
+      const entry = { avg: Number(row.avg ?? 0), count: Number(row.count ?? 0) };
+      if (entry.avg > 0) (row.source === "ifood" ? snap.ifood : snap.google)[key] = entry;
     });
+    const list = [...byWeek.values()].sort((a, b) => a.weekKey.localeCompare(b.weekKey));
+    setHistory(list);
+    return list;
+  }
+  useEffect(() => { loadHistory(); }, []);
+
+  const persistHistory = async (source: "ifood" | "google", map: Record<string, ManualEntry>) => {
+    const weekKey = getWeekKey();
+    const { data: auth } = await supabase.auth.getUser();
+    const rows = Object.entries(map)
+      .filter(([, v]) => v && Number(v.avg) > 0)
+      .map(([k, v]) => {
+        const [store_id, brand_id] = k.split("::");
+        return {
+          source,
+          store_id,
+          brand_id: brand_id || null,
+          week_key: weekKey,
+          avg: Number(Number(v.avg).toFixed(2)),
+          count: Number(v.count || 0),
+          updated_by: auth?.user?.id ?? null,
+        };
+      });
+    if (rows.length === 0) return;
+    const { error } = await supabase
+      .from("review_manual_ratings")
+      .upsert(rows, { onConflict: "source,store_id,brand_id,week_key" });
+    if (error) {
+      toast({ title: "Não foi possível salvar o histórico", description: error.message, variant: "destructive" });
+      return;
+    }
+    await loadHistory();
   };
+
   const previousAvg = (source: "ifood" | "google", key: string): number | null => {
     // Última semana anterior à corrente que tenha valor
     const wk = getWeekKey();
     for (let i = history.length - 1; i >= 0; i--) {
       const s = history[i];
       if (s.weekKey >= wk) continue;
-      const v = s[source]?.[key];
+      const v = s[source]?.[key]?.avg;
       if (typeof v === "number" && v > 0) return v;
     }
     return null;
@@ -328,13 +359,14 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
     const now = Date.now();
     localStorage.setItem(IFOOD_LAST_UPDATE_KEY, String(now));
     setIfoodLastUpdate(now);
-    persistHistory(next, googleByStore);
+    void persistHistory("ifood", next);
   };
   const saveGoogleStores = (next: Record<string, ManualEntry>) => {
     setGoogleByStore(next);
     localStorage.setItem(GOOGLE_STORES_KEY, JSON.stringify(next));
-    persistHistory(ifoodByStore, next);
+    void persistHistory("google", next);
   };
+
 
 
 
@@ -697,23 +729,64 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
               return { loja: s.name.replace(/^loja\s+/i, ""), N: avg > 0 ? Number(avg.toFixed(2)) : null };
             });
 
-            // Evolução semanal (média ponderada global) — usa history + snapshotOf
-            const weeklyPoints = history.map((h) => {
-              const wAvg = (snap: Record<string, number>, counts: Record<string, ManualEntry>) => {
-                const keys = Object.keys(snap);
-                let sum = 0, n = 0;
-                keys.forEach((k) => {
-                  const c = counts[k]?.count || 1;
-                  sum += snap[k] * c; n += c;
+            // Evolução semanal (média ponderada global) — histórico do banco
+            const wAvgSnap = (snap: SnapMap, filter?: (key: string) => boolean) => {
+              let sum = 0, n = 0;
+              Object.entries(snap).forEach(([k, v]) => {
+                if (filter && !filter(k)) return;
+                const c = Number(v.count) || 1;
+                sum += Number(v.avg) * c; n += c;
+              });
+              return n ? Number((sum / n).toFixed(2)) : null;
+            };
+            const weeklyPoints = history.map((h) => ({
+              semana: h.weekKey.replace(/^\d{4}-/, ""),
+              iFood: wAvgSnap(h.ifood),
+              Google: wAvgSnap(h.google),
+            }));
+
+            // Comparativo semana atual × semana anterior, por loja e por marca
+            const lastTwo = history.slice(-2);
+            const curSnap = lastTwo[lastTwo.length - 1];
+            const prevSnap = lastTwo.length > 1 ? lastTwo[0] : null;
+            const deltaRows: Array<{ label: string; ifood: number | null; ifoodPrev: number | null; google: number | null; googlePrev: number | null }> = [];
+            if (curSnap) {
+              nonFabrica.forEach((s) => {
+                const f = (k: string) => k.startsWith(`${s.id}::`);
+                deltaRows.push({
+                  label: s.name.replace(/^loja\s+/i, ""),
+                  ifood: wAvgSnap(curSnap.ifood, f),
+                  ifoodPrev: prevSnap ? wAvgSnap(prevSnap.ifood, f) : null,
+                  google: wAvgSnap(curSnap.google, f),
+                  googlePrev: prevSnap ? wAvgSnap(prevSnap.google, f) : null,
                 });
-                return n ? Number((sum / n).toFixed(2)) : null;
-              };
-              return {
-                semana: h.weekKey.replace(/^\d{4}-/, ""),
-                iFood: wAvg(h.ifood, ifoodByStore),
-                Google: wAvg(h.google, googleByStore),
-              };
-            });
+              });
+              brandCols.forEach((c) => {
+                if (!c.id) return;
+                const f = (k: string) => k.endsWith(`::${c.id}`);
+                deltaRows.push({
+                  label: c.label,
+                  ifood: wAvgSnap(curSnap.ifood, f),
+                  ifoodPrev: prevSnap ? wAvgSnap(prevSnap.ifood, f) : null,
+                  google: wAvgSnap(curSnap.google, f),
+                  googlePrev: prevSnap ? wAvgSnap(prevSnap.google, f) : null,
+                });
+              });
+            }
+            const Delta = ({ cur, prev }: { cur: number | null; prev: number | null }) => {
+              if (cur == null) return <span className="text-muted-foreground">—</span>;
+              if (prev == null) return <span>{cur.toFixed(2)}</span>;
+              const d = cur - prev;
+              const cls = d > 0.004 ? "text-success" : d < -0.004 ? "text-destructive" : "text-muted-foreground";
+              const sign = d > 0.004 ? "▲" : d < -0.004 ? "▼" : "=";
+              return (
+                <span className="inline-flex items-center gap-1">
+                  {cur.toFixed(2)}
+                  <span className={`text-[10px] ${cls}`}>{sign} {Math.abs(d).toFixed(2)}</span>
+                </span>
+              );
+            };
+
 
             const ChartCard = ({ title, data, source }: { title: string; data: any[]; source: "brand" | "nutri" }) => (
               <Card>
@@ -772,7 +845,49 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                       )}
                     </CardContent>
                   </Card>
+                  <Card className="lg:col-span-2">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm">
+                        Comparativo semanal — {curSnap ? curSnap.weekKey : "sem dados"}
+                        {prevSnap ? ` vs ${prevSnap.weekKey}` : ""}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-2 sm:p-3">
+                      {deltaRows.length === 0 ? (
+                        <div className="text-xs text-muted-foreground text-center py-6">
+                          Ainda sem histórico. Atualize as notas do iFood/Google para gravar a primeira semana.
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="text-muted-foreground border-b">
+                                <th className="text-left py-1.5 pr-2 font-medium">Ponto de venda / Marca</th>
+                                <th className="text-right py-1.5 px-2 font-medium">iFood</th>
+                                <th className="text-right py-1.5 pl-2 font-medium">Google</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {deltaRows.map((r, i) => (
+                                <tr key={`${r.label}-${i}`} className="border-b last:border-0">
+                                  <td className="py-1.5 pr-2">{r.label}</td>
+                                  <td className="py-1.5 px-2 text-right tabular-nums"><Delta cur={r.ifood} prev={r.ifoodPrev} /></td>
+                                  <td className="py-1.5 pl-2 text-right tabular-nums"><Delta cur={r.google} prev={r.googlePrev} /></td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          {!prevSnap && (
+                            <div className="text-[11px] text-muted-foreground pt-2">
+                              Primeira semana registrada — as setas de comparação aparecem a partir da próxima atualização.
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 </div>
+
               </>
             );
           })()}
