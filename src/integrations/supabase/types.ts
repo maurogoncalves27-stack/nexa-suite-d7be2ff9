@@ -8993,8 +8993,11 @@ export type Database = {
           name: string
           photo_path: string | null
           price: number
+          protein_weight_g: number | null
           recipe_id: string | null
+          serves_people: number | null
           sort_order: number
+          total_weight_g: number | null
           updated_at: string
         }
         Insert: {
@@ -9008,8 +9011,11 @@ export type Database = {
           name: string
           photo_path?: string | null
           price?: number
+          protein_weight_g?: number | null
           recipe_id?: string | null
+          serves_people?: number | null
           sort_order?: number
+          total_weight_g?: number | null
           updated_at?: string
         }
         Update: {
@@ -9023,8 +9029,11 @@ export type Database = {
           name?: string
           photo_path?: string | null
           price?: number
+          protein_weight_g?: number | null
           recipe_id?: string | null
+          serves_people?: number | null
           sort_order?: number
+          total_weight_g?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -18854,8 +18863,11 @@ export type Database = {
           marca: string | null
           marca_nome: string | null
           nome: string | null
+          protein_weight_g: number | null
+          serves_people: number | null
           sort_order: number | null
           tamanhos: Json | null
+          total_weight_g: number | null
         }
         Relationships: []
       }

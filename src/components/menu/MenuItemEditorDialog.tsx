@@ -74,6 +74,11 @@ export default function MenuItemEditorDialog({
   const [price, setPrice] = useState<string>("0");
   const [isCombo, setIsCombo] = useState(false);
   const [isActive, setIsActive] = useState(true);
+  const [servesPeople, setServesPeople] = useState<string>("");
+  const [totalWeight, setTotalWeight] = useState<string>("");
+  const [proteinWeight, setProteinWeight] = useState<string>("");
+
+
 
   const [components, setComponents] = useState<Component[]>([]);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
@@ -116,6 +121,10 @@ export default function MenuItemEditorDialog({
           setPrice(String(it.price));
           setIsCombo(!!it.is_combo);
           setIsActive(!!it.is_active);
+          setServesPeople((it as any).serves_people != null ? String((it as any).serves_people) : "");
+          setTotalWeight((it as any).total_weight_g != null ? String((it as any).total_weight_g) : "");
+          setProteinWeight((it as any).protein_weight_g != null ? String((it as any).protein_weight_g) : "");
+
         }
         const [compRes, brRes, linksRes, stRes] = await Promise.all([
           supabase.from("menu_item_components").select("*").eq("parent_item_id", itemId).order("sort_order"),
@@ -134,6 +143,8 @@ export default function MenuItemEditorDialog({
         setName(""); setDescription(""); setCategoryId("__none__"); setRecipeId("__none__");
         setPrice("0"); setIsCombo(!!defaultIsCombo); setIsActive(true);
         setComponents([]); setLinkedGroupIds([]);
+        setServesPeople(""); setTotalWeight(""); setProteinWeight("");
+
         setSelectedBrands(defaultBrandId ? [defaultBrandId] : []);
         // Por padrão, novos itens ficam disponíveis em todas as 4 lojas
         setSelectedStores(stores.map((s) => s.id));
@@ -186,6 +197,10 @@ export default function MenuItemEditorDialog({
         price: Number(price) || 0,
         is_combo: isCombo,
         is_active: isActive,
+        serves_people: servesPeople.trim() === "" ? null : Number(servesPeople),
+        total_weight_g: totalWeight.trim() === "" ? null : Number(totalWeight),
+        protein_weight_g: proteinWeight.trim() === "" ? null : Number(proteinWeight),
+
       };
 
       let id = itemId;
@@ -354,6 +369,27 @@ export default function MenuItemEditorDialog({
                 <Label>Descrição</Label>
                 <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Opcional" rows={2} />
               </div>
+              <div className="space-y-1.5">
+                <Label>Serve quantas pessoas</Label>
+                <Input type="number" min="0" step="0.5" value={servesPeople}
+                  onChange={(e) => setServesPeople(e.target.value)} placeholder="Ex: 2" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Peso total (g)</Label>
+                <Input type="number" min="0" step="1" value={totalWeight}
+                  onChange={(e) => setTotalWeight(e.target.value)} placeholder="Ex: 1200" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Peso da proteína (g)</Label>
+                <Input type="number" min="0" step="1" value={proteinWeight}
+                  onChange={(e) => setProteinWeight(e.target.value)} placeholder="Ex: 400" />
+              </div>
+              <div className="space-y-1.5 flex items-end">
+                <p className="text-xs text-muted-foreground">
+                  Estes campos alimentam a Giana nas respostas sobre porção e peso.
+                </p>
+              </div>
+
               <div className="space-y-1.5">
                 <Label>Categoria</Label>
                 <Select value={categoryId} onValueChange={setCategoryId}>

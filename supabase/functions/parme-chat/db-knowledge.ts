@@ -54,7 +54,7 @@ export async function getDishes(): Promise<Prato[]> {
   try {
     const { data, error } = await client()
       .from("giana_menu_dishes")
-      .select("id, marca, nome, descricao, tamanhos")
+      .select("id, marca, nome, descricao, tamanhos, serves_people, total_weight_g, protein_weight_g")
       .order("sort_order");
     if (error) throw error;
     if (!data?.length) return PRATOS;
@@ -62,14 +62,21 @@ export async function getDishes(): Promise<Prato[]> {
       const tamanhos = Array.isArray(d.tamanhos)
         ? (d.tamanhos as TamanhoParmegiana[])
         : [];
+      const extras: string[] = [];
+      if (d.serves_people != null) extras.push(`Serve: ${d.serves_people} pessoa(s)`);
+      if (d.total_weight_g != null) extras.push(`Peso total: ${d.total_weight_g}g`);
+      if (d.protein_weight_g != null) extras.push(`Proteína: ${d.protein_weight_g}g`);
       return {
         id: String(d.id),
         marca: String(d.marca) as MarcaKey,
         nome: String(d.nome),
-        descricao: String(d.descricao),
+        descricao: extras.length
+          ? `${String(d.descricao)} | ${extras.join(" | ")}`
+          : String(d.descricao),
         ...(tamanhos.length ? { tamanhos } : {}),
       };
     });
+
     dishesCache = { value: mapped, at: Date.now() };
     return mapped;
   } catch (e) {

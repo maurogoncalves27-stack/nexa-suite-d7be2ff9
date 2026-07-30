@@ -30,6 +30,10 @@ type Dish = {
   tamanhos: string[];
   is_active: boolean;
   sort_order: number;
+  serves_people?: number | null;
+  total_weight_g?: number | null;
+  protein_weight_g?: number | null;
+
 };
 
 type Faq = {
@@ -235,9 +239,21 @@ export default function GianaKnowledge({ embedded = false }: { embedded?: boolea
                       <Badge variant="secondary">{MARCAS[d.marca] ?? d.marca}</Badge>
                       {d.tamanhos.map((t) => <Badge key={t} variant="outline">{t}</Badge>)}
                     </div>
+                    <div className="flex flex-wrap gap-1">
+                      {d.serves_people != null && (
+                        <Badge variant="outline">Serve {d.serves_people} pessoa(s)</Badge>
+                      )}
+                      {d.total_weight_g != null && (
+                        <Badge variant="outline">Total {d.total_weight_g}g</Badge>
+                      )}
+                      {d.protein_weight_g != null && (
+                        <Badge variant="outline">Proteína {d.protein_weight_g}g</Badge>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               ))}
+
               {!dishes.length && (
                 <p className="text-sm text-muted-foreground">Nenhum item ativo no cardápio.</p>
               )}
