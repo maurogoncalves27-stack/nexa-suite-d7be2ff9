@@ -144,17 +144,12 @@ export default function CyclesPanel({ cycles, onChange }: Props) {
                 <Select value={periodicity} onValueChange={(v) => onPeriodicityChange(v as Periodicity)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="weekly">Semanal (7 dias)</SelectItem>
                     <SelectItem value="monthly">Mensal</SelectItem>
-                    <SelectItem value="biannual">Semestral (6 meses)</SelectItem>
-                    <SelectItem value="custom">Personalizado</SelectItem>
                   </SelectContent>
                 </Select>
-                {periodicity !== "custom" && (
-                  <p className="text-xs text-muted-foreground">
-                    A data de fim será calculada automaticamente a partir da data de início.
-                  </p>
-                )}
+                <p className="text-xs text-muted-foreground">
+                  A avaliação de desempenho é mensal e obrigatória — a data de fim é calculada automaticamente.
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
