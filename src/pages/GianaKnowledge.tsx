@@ -332,69 +332,6 @@ export default function GianaKnowledge({ embedded = false }: { embedded?: boolea
         </Tabs>
       )}
 
-      {/* -------- Dialog prato -------- */}
-      <Dialog open={!!dishDraft} onOpenChange={(o) => !o && setDishDraft(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{dishDraft?.id ? "Editar prato" : "Novo prato"}</DialogTitle></DialogHeader>
-          {dishDraft && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Marca</Label>
-                <Select value={dishDraft.marca} onValueChange={(v) => setDishDraft({ ...dishDraft, marca: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(MARCAS).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Nome</Label>
-                <Input value={dishDraft.nome} onChange={(e) => setDishDraft({ ...dishDraft, nome: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Descrição</Label>
-                <Textarea value={dishDraft.descricao}
-                  onChange={(e) => setDishDraft({ ...dishDraft, descricao: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Tamanhos de parmegiana</Label>
-                <div className="flex flex-wrap gap-3">
-                  {["individual", "casal", "familia"].map((t) => (
-                    <label key={t} className="flex items-center gap-2 text-sm">
-                      <Switch
-                        checked={dishDraft.tamanhos.includes(t)}
-                        onCheckedChange={(c) => setDishDraft({
-                          ...dishDraft,
-                          tamanhos: c
-                            ? [...dishDraft.tamanhos, t]
-                            : dishDraft.tamanhos.filter((x) => x !== t),
-                        })}
-                      />
-                      {t}
-                    </label>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Os pesos (600g / 1200g / 2400g) são fixos no sistema e não mudam por aqui.
-                </p>
-              </div>
-              <label className="flex items-center gap-2 text-sm">
-                <Switch checked={dishDraft.is_active}
-                  onCheckedChange={(c) => setDishDraft({ ...dishDraft, is_active: c })} />
-                Ativo
-              </label>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDishDraft(null)}>Cancelar</Button>
-            <Button onClick={saveDish} disabled={saving}>
-              {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Salvar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* -------- Dialog FAQ -------- */}
       <Dialog open={!!faqDraft} onOpenChange={(o) => !o && setFaqDraft(null)}>
