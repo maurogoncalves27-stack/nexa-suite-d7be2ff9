@@ -18,7 +18,7 @@ import {
 import { toast } from "sonner";
 import ChecklistAudienceAudit from "./ChecklistAudienceAudit";
 import {
-  Plus, Trash2, Pencil, Siren, Camera, Copy, ChevronUp, ChevronDown, Users, CalendarCheck,
+  Plus, Trash2, Pencil, Siren, Camera, Copy, ChevronUp, ChevronDown, Users, CalendarCheck, UserPlus,
 } from "lucide-react";
 
 interface Group { id: string; name: string; sort_order: number }
@@ -41,7 +41,14 @@ interface Template {
   sort_order: number;
   checklist_items: Item[];
   template_access_groups: { group_id: string; access_groups: { name: string } | null }[];
+  checklist_template_assignments: { employee_id: string }[];
 }
+
+interface EmployeeOption {
+  id: string;
+  full_name: string;
+}
+
 
 const WEEKDAY_KEYS = ["D", "S", "T", "Q", "Q", "S", "S"];
 const WEEKDAY_FULL = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
@@ -57,13 +64,16 @@ export default function AdminTemplatesPanel() {
     { label: "", description: "", is_priority: false, requires_photo: false },
   ]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
+  const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
+  const [employeeSearch, setEmployeeSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deadlineTime, setDeadlineTime] = useState("");
   const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([]);
   const [requireScheduled, setRequireScheduled] = useState(false);
 
-  useEffect(() => { loadTemplates(); loadGroups(); }, []);
+  useEffect(() => { loadTemplates(); loadGroups(); loadEmployees(); }, []);
 
   const loadGroups = async () => {
     const { data } = await supabase
@@ -73,11 +83,21 @@ export default function AdminTemplatesPanel() {
     if (data) setGroups(data as Group[]);
   };
 
+  const loadEmployees = async () => {
+    const { data } = await supabase
+      .from("employees")
+      .select("id, full_name")
+      .eq("status", "active")
+      .not("user_id", "is", null)
+      .order("full_name");
+    if (data) setEmployees(data as EmployeeOption[]);
+  };
+
   const loadTemplates = async () => {
     const { data } = await supabase
       .from("checklist_templates")
       .select(
-        "id, title, description, is_active, deadline_time, weekdays, require_scheduled, sort_order, checklist_items(id, label, description, sort_order, is_priority, requires_photo), template_access_groups(group_id, access_groups(name))",
+        "id, title, description, is_active, deadline_time, weekdays, require_scheduled, sort_order, checklist_items(id, label, description, sort_order, is_priority, requires_photo), template_access_groups(group_id, access_groups(name)), checklist_template_assignments(employee_id)",
       )
       .order("sort_order");
     if (data) setTemplates(data as unknown as Template[]);
@@ -86,8 +106,10 @@ export default function AdminTemplatesPanel() {
   const resetForm = () => {
     setTitle(""); setDescription("");
     setItems([{ label: "", description: "", is_priority: false, requires_photo: false }]);
-    setSelectedGroups([]); setEditingId(null); setDeadlineTime(""); setSelectedWeekdays([]); setRequireScheduled(false);
+    setSelectedGroups([]); setSelectedEmployees([]); setEmployeeSearch("");
+    setEditingId(null); setDeadlineTime(""); setSelectedWeekdays([]); setRequireScheduled(false);
   };
+
 
   const openCreate = () => { resetForm(); setDialogOpen(true); };
   const openEdit = (tp: Template) => {
@@ -102,6 +124,8 @@ export default function AdminTemplatesPanel() {
         })),
     );
     setSelectedGroups(tp.template_access_groups.map((tag) => tag.group_id));
+    setSelectedEmployees((tp.checklist_template_assignments ?? []).map((a) => a.employee_id));
+    setEmployeeSearch("");
     setSelectedWeekdays(tp.weekdays || []);
     setRequireScheduled(!!tp.require_scheduled);
     setDialogOpen(true);
@@ -114,8 +138,8 @@ export default function AdminTemplatesPanel() {
     if (validItems.length === 0) {
       toast.error("Adicione ao menos um item"); setSaving(false); return;
     }
-    if (selectedGroups.length === 0) {
-      toast.error("Selecione ao menos um grupo de acesso"); setSaving(false); return;
+    if (selectedGroups.length === 0 && selectedEmployees.length === 0) {
+      toast.error("Selecione ao menos um grupo de acesso ou um colaborador"); setSaving(false); return;
     }
 
     if (editingId) {
@@ -134,9 +158,19 @@ export default function AdminTemplatesPanel() {
         is_priority: item.is_priority, requires_photo: item.requires_photo,
       })));
       await supabase.from("template_access_groups").delete().eq("template_id", editingId);
-      await supabase.from("template_access_groups").insert(
-        selectedGroups.map((gid) => ({ template_id: editingId, group_id: gid })),
-      );
+      if (selectedGroups.length > 0) {
+        await supabase.from("template_access_groups").insert(
+          selectedGroups.map((gid) => ({ template_id: editingId, group_id: gid })),
+        );
+      }
+      await supabase.from("checklist_template_assignments").delete().eq("template_id", editingId);
+      if (selectedEmployees.length > 0) {
+        await supabase.from("checklist_template_assignments").insert(
+          selectedEmployees.map((eid) => ({
+            template_id: editingId, employee_id: eid, assigned_by: user.id,
+          })),
+        );
+      }
       toast.success("Template atualizado");
     } else {
       const { data: tmpl, error } = await supabase.from("checklist_templates").insert({
@@ -154,13 +188,23 @@ export default function AdminTemplatesPanel() {
         description: item.description.trim() || null, sort_order: i,
         is_priority: item.is_priority, requires_photo: item.requires_photo,
       })));
-      await supabase.from("template_access_groups").insert(
-        selectedGroups.map((gid) => ({ template_id: tmpl.id, group_id: gid })),
-      );
+      if (selectedGroups.length > 0) {
+        await supabase.from("template_access_groups").insert(
+          selectedGroups.map((gid) => ({ template_id: tmpl.id, group_id: gid })),
+        );
+      }
+      if (selectedEmployees.length > 0) {
+        await supabase.from("checklist_template_assignments").insert(
+          selectedEmployees.map((eid) => ({
+            template_id: tmpl.id, employee_id: eid, assigned_by: user.id,
+          })),
+        );
+      }
       toast.success("Template criado");
     }
     setDialogOpen(false); resetForm(); loadTemplates(); setSaving(false);
   };
+
 
   const toggleActive = async (id: string, current: boolean) => {
     await supabase.from("checklist_templates").update({ is_active: !current }).eq("id", id);
@@ -195,6 +239,12 @@ export default function AdminTemplatesPanel() {
         groupIds.map((gid) => ({ template_id: tmpl.id, group_id: gid })),
       );
     }
+    const assignedIds = (tp.checklist_template_assignments ?? []).map((a) => a.employee_id);
+    if (assignedIds.length > 0) {
+      await supabase.from("checklist_template_assignments").insert(
+        assignedIds.map((eid) => ({ template_id: tmpl.id, employee_id: eid, assigned_by: user.id })),
+      );
+    }
     loadTemplates(); toast.success("Duplicado");
   };
 
@@ -203,9 +253,16 @@ export default function AdminTemplatesPanel() {
     const map = new Map<string, { groupId: string | null; groupName: string; sortOrder: number; templates: Template[] }>();
     for (const tp of templates) {
       if (!tp.template_access_groups || tp.template_access_groups.length === 0) {
-        const key = "__none__";
-        if (!map.has(key)) map.set(key, { groupId: null, groupName: "Sem grupo", sortOrder: 99999, templates: [] });
+        const individual = (tp.checklist_template_assignments?.length ?? 0) > 0;
+        const key = individual ? "__individual__" : "__none__";
+        if (!map.has(key)) map.set(key, {
+          groupId: null,
+          groupName: individual ? "Atribuição individual" : "Sem grupo",
+          sortOrder: individual ? 99998 : 99999,
+          templates: [],
+        });
         map.get(key)!.templates.push(tp);
+
       } else {
         for (const tag of tp.template_access_groups) {
           const key = tag.group_id;
@@ -284,6 +341,13 @@ export default function AdminTemplatesPanel() {
                                 {tag.access_groups?.name}
                               </Badge>
                             ))}
+                            {tp.checklist_template_assignments?.length > 0 && (
+                              <Badge variant="secondary" className="text-xs gap-1">
+                                <UserPlus className="h-3 w-3" />
+                                {tp.checklist_template_assignments.length} pessoa(s)
+                              </Badge>
+                            )}
+
                           </div>
                           <p className="text-xs text-muted-foreground">
                             {tp.checklist_items.length} itens
@@ -406,7 +470,13 @@ export default function AdminTemplatesPanel() {
                 placeholder="Instruções gerais (opcional)" rows={2} />
             </div>
             <div className="space-y-2">
-              <Label>Grupos de acesso</Label>
+              <Label>Público-alvo</Label>
+              <p className="text-xs text-muted-foreground">
+                Grupos e/ou colaboradores específicos. Quem estiver em qualquer um dos dois é cobrado.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm">Grupos de acesso</Label>
               {groups.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   Nenhum grupo cadastrado. Crie grupos na aba Grupos.
@@ -429,6 +499,64 @@ export default function AdminTemplatesPanel() {
                 </div>
               )}
             </div>
+            <div className="space-y-2">
+              <Label className="text-sm">
+                Colaboradores específicos
+                {selectedEmployees.length > 0 && (
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    {selectedEmployees.length} selecionado(s)
+                  </span>
+                )}
+              </Label>
+              <Input
+                value={employeeSearch}
+                onChange={(e) => setEmployeeSearch(e.target.value)}
+                placeholder="Buscar colaborador..."
+              />
+              {selectedEmployees.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {selectedEmployees.map((eid) => {
+                    const emp = employees.find((e) => e.id === eid);
+                    return (
+                      <Badge
+                        key={eid}
+                        variant="secondary"
+                        className="text-xs cursor-pointer"
+                        onClick={() =>
+                          setSelectedEmployees((prev) => prev.filter((id) => id !== eid))
+                        }
+                      >
+                        {emp?.full_name ?? "Colaborador"} ×
+                      </Badge>
+                    );
+                  })}
+                </div>
+              )}
+              <div className="max-h-44 overflow-y-auto rounded-md border p-2 space-y-1">
+                {employees
+                  .filter((e) =>
+                    e.full_name.toLowerCase().includes(employeeSearch.trim().toLowerCase()),
+                  )
+                  .slice(0, 100)
+                  .map((e) => (
+                    <div key={e.id} className="flex items-center gap-2">
+                      <Checkbox
+                        checked={selectedEmployees.includes(e.id)}
+                        onCheckedChange={() =>
+                          setSelectedEmployees((prev) =>
+                            prev.includes(e.id) ? prev.filter((id) => id !== e.id) : [...prev, e.id],
+                          )
+                        }
+                      />
+                      <span className="text-sm break-words">{e.full_name}</span>
+                    </div>
+                  ))}
+                {employees.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Nenhum colaborador ativo.</p>
+                )}
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label>Itens do checklist</Label>
               {items.map((item, i) => (

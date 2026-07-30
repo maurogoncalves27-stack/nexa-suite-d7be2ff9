@@ -37,6 +37,8 @@ export interface AudienceData {
   storesByTemplate: Map<string, Set<string>>;
   /** lojas em que o colaborador está escalado na data (sem folga) */
   scheduledStoresByUser: Map<string, Set<string>>;
+  /** colaboradores atribuídos individualmente (user_id) por template */
+  assignedUsersByTemplate: Map<string, Set<string>>;
   /** vínculos de grupo inválidos (não colaborador / desligado) */
   invalidMemberships: {
     user_id: string;
@@ -46,19 +48,23 @@ export interface AudienceData {
   }[];
 }
 
+
 export async function loadChecklistAudience(date: string): Promise<AudienceData> {
-  const [{ data: emps }, { data: ug }, { data: cts }, { data: sched }] = await Promise.all([
-    supabase
-      .from("employees")
-      .select("id, user_id, full_name, status, store_id, allocated_store_id")
-      .not("user_id", "is", null),
-    supabase.from("user_access_groups").select("user_id, group_id"),
-    supabase.from("checklist_template_stores").select("template_id, store_id"),
-    supabase
-      .from("work_schedules")
-      .select("employee_id, store_id, is_day_off")
-      .eq("schedule_date", date),
-  ]);
+  const [{ data: emps }, { data: ug }, { data: cts }, { data: sched }, { data: assigns }] =
+    await Promise.all([
+      supabase
+        .from("employees")
+        .select("id, user_id, full_name, status, store_id, allocated_store_id")
+        .not("user_id", "is", null),
+      supabase.from("user_access_groups").select("user_id, group_id"),
+      supabase.from("checklist_template_stores").select("template_id, store_id"),
+      supabase
+        .from("work_schedules")
+        .select("employee_id, store_id, is_day_off")
+        .eq("schedule_date", date),
+      supabase.from("checklist_template_assignments").select("template_id, employee_id"),
+    ]);
+
 
   const people = new Map<string, AudiencePerson>();
   const inactiveByUser = new Map<string, string>();
@@ -109,7 +115,25 @@ export async function loadChecklistAudience(date: string): Promise<AudienceData>
     scheduledStoresByUser.get(uid)!.add(row.store_id);
   }
 
-  return { people, groupsByUser, storesByTemplate, scheduledStoresByUser, invalidMemberships };
+  const assignedUsersByTemplate = new Map<string, Set<string>>();
+  for (const row of (assigns ?? []) as any[]) {
+    const uid = employeeIdToUser.get(row.employee_id);
+    if (!uid) continue;
+    if (!assignedUsersByTemplate.has(row.template_id)) {
+      assignedUsersByTemplate.set(row.template_id, new Set());
+    }
+    assignedUsersByTemplate.get(row.template_id)!.add(uid);
+  }
+
+  return {
+    people,
+    groupsByUser,
+    storesByTemplate,
+    scheduledStoresByUser,
+    assignedUsersByTemplate,
+    invalidMemberships,
+  };
+
 }
 
 /** O template roda nesse dia da semana? */
@@ -126,26 +150,35 @@ export function isExpectedForTemplate(
   const person = audience.people.get(userId);
   if (!person) return false; // não é colaborador ativo
 
-  const userGroups = audience.groupsByUser.get(userId);
-  if (!userGroups || !tpl.template_access_groups.some((g) => userGroups.has(g.group_id))) return false;
+  // Atribuição individual: entra mesmo sem grupo e ignora o filtro de loja
+  const assignedIndividually = audience.assignedUsersByTemplate.get(tpl.id)?.has(userId) ?? false;
 
   const tplStores = audience.storesByTemplate.get(tpl.id);
-  if (tplStores && tplStores.size > 0) {
-    const belongs =
-      (person.store_id && tplStores.has(person.store_id)) ||
-      (person.allocated_store_id && tplStores.has(person.allocated_store_id));
-    if (!belongs) return false;
+
+  if (!assignedIndividually) {
+    const userGroups = audience.groupsByUser.get(userId);
+    if (!userGroups || !tpl.template_access_groups.some((g) => userGroups.has(g.group_id))) {
+      return false;
+    }
+
+    if (tplStores && tplStores.size > 0) {
+      const belongs =
+        (person.store_id && tplStores.has(person.store_id)) ||
+        (person.allocated_store_id && tplStores.has(person.allocated_store_id));
+      if (!belongs) return false;
+    }
   }
 
   if (tpl.require_scheduled) {
     const scheduled = audience.scheduledStoresByUser.get(userId);
     if (!scheduled || scheduled.size === 0) return false;
-    if (tplStores && tplStores.size > 0) {
+    if (!assignedIndividually && tplStores && tplStores.size > 0) {
       let ok = false;
       scheduled.forEach((s) => { if (tplStores.has(s)) ok = true; });
       if (!ok) return false;
     }
   }
+
 
   return true;
 }

@@ -132,14 +132,40 @@ export default function AdminDashboardPanel() {
     [templates, dayOfWeek],
   );
 
+  const INDIVIDUAL_GROUP_ID = "__individual__";
+
   const groupStats = useMemo(() => {
-    const filtered = filterGroup === "all" ? groups : groups.filter((g) => g.id === filterGroup);
+    const baseGroups = filterGroup === "all" ? groups : groups.filter((g) => g.id === filterGroup);
+    // Pseudo-grupo com os templates atribuídos individualmente
+    const individualTemplates = activeTemplatesForDay.filter(
+      (tp) => (audience?.assignedUsersByTemplate.get(tp.id)?.size ?? 0) > 0,
+    );
+    const filtered: Group[] =
+      individualTemplates.length > 0 && (filterGroup === "all" || filterGroup === INDIVIDUAL_GROUP_ID)
+        ? [...baseGroups, { id: INDIVIDUAL_GROUP_ID, name: "Atribuições individuais" }]
+        : baseGroups;
+
     return filtered.map((group) => {
-      const groupTemplates = activeTemplatesForDay.filter((tp) =>
-        tp.template_access_groups.some((tag) => tag.group_id === group.id),
-      );
+      const isIndividual = group.id === INDIVIDUAL_GROUP_ID;
+      const groupTemplates = isIndividual
+        ? individualTemplates
+        : activeTemplatesForDay.filter((tp) =>
+            tp.template_access_groups.some((tag) => tag.group_id === group.id),
+          );
       // Público bruto do grupo (usado só para exibição/fallback enquanto carrega)
-      const rawUsers = usersByGroup[group.id] || [];
+      const rawUsers: UserInGroup[] = isIndividual
+        ? Array.from(
+            new Set(
+              groupTemplates.flatMap((tp) =>
+                Array.from(audience?.assignedUsersByTemplate.get(tp.id) ?? []),
+              ),
+            ),
+          ).map((uid) => ({
+            user_id: uid,
+            full_name: audience?.people.get(uid)?.full_name ?? "Colaborador",
+          }))
+        : usersByGroup[group.id] || [];
+
       const now = new Date();
       const isToday = filterDate === new Date().toISOString().split("T")[0];
       const expiredTemplates = groupTemplates.filter((tp) => {
