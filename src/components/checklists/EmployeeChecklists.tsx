@@ -121,31 +121,55 @@ export default function EmployeeChecklists() {
   const loadTemplates = async () => {
     if (!user) return;
 
-    // Visibilidade do checklist é definida exclusivamente pelos GRUPOS DE ACESSO
-    // do colaborador. Cada template é atribuído a um ou mais grupos (que
-    // representam, por exemplo, as lojas/equipes). O colaborador vê apenas os
-    // templates dos grupos a que pertence.
+    // Visibilidade: grupos de acesso do colaborador OU atribuição individual
+    // (checklist_template_assignments). Basta um dos dois para o template aparecer.
     const { data: userGroups } = await supabase
       .from("user_access_groups")
       .select("group_id")
       .eq("user_id", user.id);
     const groupIds = (userGroups ?? []).map((g: any) => g.group_id);
 
-    if (groupIds.length === 0) {
+    const { data: myEmp } = await supabase
+      .from("employees").select("id").eq("user_id", user.id).maybeSingle();
+
+    let assignedTemplateIds: string[] = [];
+    if (myEmp?.id) {
+      const { data: assigns } = await supabase
+        .from("checklist_template_assignments")
+        .select("template_id")
+        .eq("employee_id", myEmp.id);
+      assignedTemplateIds = (assigns ?? []).map((a: any) => a.template_id);
+    }
+
+    if (groupIds.length === 0 && assignedTemplateIds.length === 0) {
       setTemplates([]);
       return;
     }
 
-    const { data } = await supabase
-      .from("checklist_templates")
-      .select("id, title, description, deadline_time, weekdays, require_scheduled, template_access_groups!inner(group_id)")
-      .eq("is_active", true)
-      .in("template_access_groups.group_id", groupIds)
-      .order("sort_order");
+    const select = "id, title, description, deadline_time, weekdays, require_scheduled, sort_order";
+    const [byGroup, byAssign] = await Promise.all([
+      groupIds.length > 0
+        ? supabase
+            .from("checklist_templates")
+            .select(`${select}, template_access_groups!inner(group_id)`)
+            .eq("is_active", true)
+            .in("template_access_groups.group_id", groupIds)
+            .order("sort_order")
+        : Promise.resolve({ data: [] as any[] }),
+      assignedTemplateIds.length > 0
+        ? supabase
+            .from("checklist_templates")
+            .select(select)
+            .eq("is_active", true)
+            .in("id", assignedTemplateIds)
+            .order("sort_order")
+        : Promise.resolve({ data: [] as any[] }),
+    ]);
+
+    const data = [...((byGroup as any).data ?? []), ...((byAssign as any).data ?? [])];
+    const assignedSet = new Set(assignedTemplateIds);
 
     // Lojas em que o colaborador está escalado hoje (para templates que exigem escala)
-    const { data: myEmp } = await supabase
-      .from("employees").select("id").eq("user_id", user.id).maybeSingle();
     let scheduledStores: string[] = [];
     if (myEmp?.id) {
       const { data: sc } = await supabase
@@ -160,24 +184,28 @@ export default function EmployeeChecklists() {
     const storesByTemplate: Record<string, string[]> = {};
     (tplStores ?? []).forEach((r: any) => { (storesByTemplate[r.template_id] ||= []).push(r.store_id); });
 
-    if (data) {
-      // Deduplica (caso o template esteja em múltiplos grupos do usuário)
-      const seen = new Set<string>();
-      const filtered = (data as any[]).filter((t) => {
-        if (seen.has(t.id)) return false;
-        seen.add(t.id);
-        const dayOk = !t.weekdays || t.weekdays.length === 0 || t.weekdays.includes(currentWeekday);
-        if (!dayOk) return false;
-        if (t.require_scheduled) {
-          if (scheduledStores.length === 0) return false;
-          const tplSt = storesByTemplate[t.id];
-          if (tplSt && tplSt.length > 0 && !tplSt.some((sid) => scheduledStores.includes(sid))) return false;
-        }
-        return true;
-      });
-      setTemplates(filtered as Template[]);
-    }
+    // Deduplica (caso o template esteja em múltiplos grupos do usuário)
+    const seen = new Set<string>();
+    const filtered = (data as any[]).filter((t) => {
+      if (seen.has(t.id)) return false;
+      seen.add(t.id);
+      const dayOk = !t.weekdays || t.weekdays.length === 0 || t.weekdays.includes(currentWeekday);
+      if (!dayOk) return false;
+      if (t.require_scheduled) {
+        if (scheduledStores.length === 0) return false;
+        const tplSt = storesByTemplate[t.id];
+        if (
+          !assignedSet.has(t.id) &&
+          tplSt && tplSt.length > 0 &&
+          !tplSt.some((sid) => scheduledStores.includes(sid))
+        ) return false;
+      }
+      return true;
+    });
+    filtered.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    setTemplates(filtered as Template[]);
   };
+
 
 
   const loadTodaySubmissions = async () => {
