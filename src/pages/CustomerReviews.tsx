@@ -281,6 +281,25 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
   const ifoodAggregate = useMemo(() => aggregateByStoreMap(ifoodByStore), [ifoodByStore, salesStoreIds]);
   const googleAggregate = useMemo(() => aggregateByStoreMap(googleByStore), [googleByStore, salesStoreIds]);
 
+  // Alerta: nota do iFood abaixo de 4,7 = atenção
+  const IFOOD_MIN_OK = 4.7;
+  const isLowRating = (avg?: number) => typeof avg === "number" && avg > 0 && avg < IFOOD_MIN_OK;
+  const ifoodAlerts = useMemo(() => {
+    const out: { key: string; store: string; brand: string; avg: number; count: number }[] = [];
+    Object.entries(ifoodByStore).forEach(([key, e]) => {
+      if (!e || !isLowRating(Number(e.avg))) return;
+      const [sid, bid] = key.split("::");
+      if (!salesStoreIds.has(sid)) return;
+      const store = ifoodStores.find((s) => s.id === sid)?.name;
+      const brand = brands.find((b) => b.id === bid)?.name;
+      if (!store || !brand) return;
+      out.push({ key, store, brand, avg: Number(e.avg), count: Number(e.count || 0) });
+    });
+    return out.sort((a, b) => a.avg - b.avg);
+  }, [ifoodByStore, salesStoreIds, ifoodStores, brands]);
+
+
+
 
   const storeAggregate = (storeId: string, map: Record<string, ManualEntry> = ifoodByStore) => {
     const entries = brands
@@ -463,7 +482,28 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
           <Button size="sm" onClick={() => setOpenIfoodDialog(true)}>Atualizar agora</Button>
         </div>
       )}
+      {ifoodAlerts.length > 0 && (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+            <div className="text-xs sm:text-sm font-semibold text-destructive">
+              Atenção: {ifoodAlerts.length} {ifoodAlerts.length === 1 ? "loja/marca está" : "lojas/marcas estão"} abaixo de 4,7 no iFood
+            </div>
+            <Button size="sm" variant="outline" className="ml-auto" onClick={() => setOpenIfoodDialog(true)}>
+              Ver notas
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {ifoodAlerts.map((a) => (
+              <Badge key={a.key} variant="destructive" className="text-[11px] font-medium">
+                {a.store} · {a.brand} — {a.avg.toFixed(1)} ★ ({a.count})
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
       {/* Cards por fonte */}
+
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
         {perSource.map(({ source, total, novos, avg, hasRatings }) => {
           const meta = SOURCE_META[source];
@@ -475,8 +515,9 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
           const displayAvg = manualAgg ? manualAgg.avg : avg;
           const displayHasAvg = manualAgg ? manualAgg.hasData : hasRatings;
           const displayCount = manualAgg ? manualAgg.totalCount : total;
+          const cardLow = isIfood && (isLowRating(displayAvg) || ifoodAlerts.length > 0);
           return (
-            <Card key={source}>
+            <Card key={source} className={cardLow ? "border-destructive/60 bg-destructive/5" : undefined}>
               <CardContent className="p-3 space-y-1">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -507,10 +548,12 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                     </div>
                   )}
                 </div>
-                <div className="text-lg font-semibold flex items-center gap-1">
+                <div className={`text-lg font-semibold flex items-center gap-1 ${isIfood && isLowRating(displayAvg) ? "text-destructive" : ""}`}>
                   {displayHasAvg ? displayAvg.toFixed(1) : "—"}
                   {displayHasAvg && <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />}
+                  {cardLow && <AlertTriangle className="h-4 w-4 text-destructive" />}
                 </div>
+
                 <div className="text-[10px] text-muted-foreground">
                   {isManual
                     ? `${displayCount} avaliações · ${isGoogle ? "sincronizado por loja/marca" : "manual por loja/marca"}`
@@ -615,8 +658,11 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                   <AccordionItem key={s.id} value={s.id}>
                     <AccordionTrigger className="py-2 hover:no-underline">
                       <div className="flex items-center justify-between w-full pr-2">
-                        <span className="text-sm font-medium">{s.name}</span>
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <span className="text-sm font-medium flex items-center gap-1.5">
+                          {s.name}
+                          {isLowRating(agg.avg) && <AlertTriangle className="h-3.5 w-3.5 text-destructive" />}
+                        </span>
+                        <span className={`text-xs flex items-center gap-1 ${isLowRating(agg.avg) ? "text-destructive font-semibold" : "text-muted-foreground"}`}>
                           {agg.totalCount > 0 ? (
                             <>
                               {agg.avg.toFixed(1)}
@@ -631,9 +677,13 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                       {brands.map((b) => {
                         const key = `${s.id}::${b.id}`;
                         const entry = ifoodDraft[key] || { avg: 0, count: 0 };
+                        const low = isLowRating(Number(entry.avg));
                         return (
-                          <div key={b.id} className="grid grid-cols-[1fr_90px_110px] items-center gap-2 border rounded-md p-2">
-                            <div className="text-xs font-medium truncate">{b.name}</div>
+                          <div key={b.id} className={`grid grid-cols-[1fr_90px_110px] items-center gap-2 border rounded-md p-2 ${low ? "border-destructive/60 bg-destructive/10" : ""}`}>
+                            <div className="text-xs font-medium truncate flex items-center gap-1.5">
+                              {b.name}
+                              {low && <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />}
+                            </div>
                             <Input
                               type="number" step="0.1" min="0" max="5"
                               placeholder="Média"
@@ -642,8 +692,9 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                                 const v = parseFloat(e.target.value.replace(",", ".")) || 0;
                                 setIfoodDraft((d) => ({ ...d, [key]: { ...entry, avg: v } }));
                               }}
-                              className="h-8 text-sm"
+                              className={`h-8 text-sm ${low ? "border-destructive text-destructive font-semibold" : ""}`}
                             />
+
                             <Input
                               type="number" min="0"
                               placeholder="Nº aval."
