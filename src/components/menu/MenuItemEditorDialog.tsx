@@ -74,6 +74,11 @@ export default function MenuItemEditorDialog({
   const [price, setPrice] = useState<string>("0");
   const [isCombo, setIsCombo] = useState(false);
   const [isActive, setIsActive] = useState(true);
+  const [servesPeople, setServesPeople] = useState<string>("");
+  const [totalWeight, setTotalWeight] = useState<string>("");
+  const [proteinWeight, setProteinWeight] = useState<string>("");
+
+
 
   const [components, setComponents] = useState<Component[]>([]);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
