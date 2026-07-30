@@ -31,6 +31,15 @@ export type DbStore = {
 
 type CacheEntry<T> = { value: T; at: number };
 
+export type DbBrand = {
+  id: string;
+  nome: string;
+  slogan: string | null;
+  descricao: string | null;
+  historia: string | null;
+};
+
+let brandsCache: CacheEntry<DbBrand[]> | null = null;
 let dishesCache: CacheEntry<Prato[]> | null = null;
 let storesCache: CacheEntry<DbStore[]> | null = null;
 
@@ -45,6 +54,26 @@ function client(): SupabaseClient {
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
+}
+
+/** Marcas ativas com descrição/história editáveis pela UI. */
+export async function getBrands(): Promise<DbBrand[]> {
+  const cached = fresh(brandsCache);
+  if (cached) return cached;
+  try {
+    const { data, error } = await client()
+      .from("giana_brands")
+      .select("id, nome, slogan, descricao, historia")
+      .eq("is_active", true)
+      .order("sort_order");
+    if (error) throw error;
+    const mapped = (data ?? []) as unknown as DbBrand[];
+    brandsCache = { value: mapped, at: Date.now() };
+    return mapped;
+  } catch (e) {
+    console.error("[giana-knowledge] getBrands fallback:", e);
+    return [];
+  }
 }
 
 /** Pratos ativos vindos do CARDÁPIO (view giana_menu_dishes); fallback hardcoded. */
@@ -179,4 +208,5 @@ export function localFaq(pergunta: string): string | null {
 export function resetKnowledgeCache() {
   dishesCache = null;
   storesCache = null;
+  brandsCache = null;
 }

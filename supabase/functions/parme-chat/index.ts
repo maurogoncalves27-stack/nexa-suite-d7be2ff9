@@ -25,6 +25,7 @@ import {
   type MarcaKey,
 } from "./knowledge.ts";
 import {
+  getBrands,
   getDishes,
   getStores,
   searchDish,
@@ -873,14 +874,25 @@ Deno.serve(async (req) => {
         }),
         execute: async ({ marca }) => {
           const pratos = await getDishes();
+          const brands = await getBrands();
           const marcasOut = marca === "todos"
             ? MARCAS
             : { [marca]: MARCAS[marca as MarcaKey] };
           const pratosOut = marca === "todos"
             ? pratos
             : pratos.filter((p) => p.marca === marca);
+          const sobreMarcas = brands
+            .filter((b) => marca === "todos" || b.id === marca)
+            .map((b) => ({
+              id: b.id,
+              nome: b.nome,
+              slogan: b.slogan,
+              descricao: b.descricao,
+              historia: b.historia,
+            }));
           return {
             marcas: marcasOut,
+            sobre_marcas: sobreMarcas,
             pratos: pratosOut,
             regras_parmegiana: {
               proteina_por_pessoa_g: PARMEGIANA_REGRAS.proteinaPorPessoaG,
