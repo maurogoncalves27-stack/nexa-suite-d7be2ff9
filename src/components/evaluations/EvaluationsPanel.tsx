@@ -136,6 +136,7 @@ export default function EvaluationsPanel({ cycles, criteria, selectedCycleId, on
         .from("employees")
         .select("id, full_name, position, store_id, contracting_store:stores!employees_store_id_fkey(name)")
         .eq("status", "active")
+        .not("hire_date", "is", null)
         .order("full_name"),
       supabase
         .from("evaluations")

@@ -107,6 +107,8 @@ export default function PerformancePanel({ cycles, criteria, selectedCycleId, on
         .from("employees")
         .select("id, full_name, position, position_id, contracting_store:stores!employees_store_id_fkey(name)")
         .eq("status", "active")
+        // Contas administrativas (acesso ao sistema, sem vínculo) não têm admissão e não são avaliadas
+        .not("hire_date", "is", null)
         .order("full_name"),
       supabase
         .from("evaluations")
