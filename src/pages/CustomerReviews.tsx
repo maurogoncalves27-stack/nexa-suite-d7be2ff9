@@ -845,7 +845,49 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                       )}
                     </CardContent>
                   </Card>
+                  <Card className="lg:col-span-2">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm">
+                        Comparativo semanal — {curSnap ? curSnap.weekKey : "sem dados"}
+                        {prevSnap ? ` vs ${prevSnap.weekKey}` : ""}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-2 sm:p-3">
+                      {deltaRows.length === 0 ? (
+                        <div className="text-xs text-muted-foreground text-center py-6">
+                          Ainda sem histórico. Atualize as notas do iFood/Google para gravar a primeira semana.
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="text-muted-foreground border-b">
+                                <th className="text-left py-1.5 pr-2 font-medium">Ponto de venda / Marca</th>
+                                <th className="text-right py-1.5 px-2 font-medium">iFood</th>
+                                <th className="text-right py-1.5 pl-2 font-medium">Google</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {deltaRows.map((r, i) => (
+                                <tr key={`${r.label}-${i}`} className="border-b last:border-0">
+                                  <td className="py-1.5 pr-2">{r.label}</td>
+                                  <td className="py-1.5 px-2 text-right tabular-nums"><Delta cur={r.ifood} prev={r.ifoodPrev} /></td>
+                                  <td className="py-1.5 pl-2 text-right tabular-nums"><Delta cur={r.google} prev={r.googlePrev} /></td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          {!prevSnap && (
+                            <div className="text-[11px] text-muted-foreground pt-2">
+                              Primeira semana registrada — as setas de comparação aparecem a partir da próxima atualização.
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 </div>
+
               </>
             );
           })()}
