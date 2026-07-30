@@ -697,7 +697,7 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
           <div className="max-h-[55vh] overflow-y-auto pr-1">
             <Accordion type="multiple" className="w-full">
               {googleStores.map((s) => {
-                const agg = storeAggregate(s.id, googleByStore);
+                const agg = storeAggregate(s.id, googleDraft);
                 return (
                   <AccordionItem key={s.id} value={s.id}>
                     <AccordionTrigger className="py-2 hover:no-underline">
@@ -717,7 +717,7 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                     <AccordionContent className="space-y-2 pt-1">
                       {brands.map((b) => {
                         const key = `${s.id}::${b.id}`;
-                        const entry = googleByStore[key] || { avg: 0, count: 0 };
+                        const entry = googleDraft[key] || { avg: 0, count: 0 };
                         return (
                           <div key={b.id} className="grid grid-cols-[1fr_90px_110px] items-center gap-2 border rounded-md p-2">
                             <div className="text-xs font-medium truncate">{b.name}</div>
@@ -727,7 +727,7 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                               value={entry.avg || ""}
                               onChange={(e) => {
                                 const v = parseFloat(e.target.value.replace(",", ".")) || 0;
-                                saveGoogleStores({ ...googleByStore, [key]: { ...entry, avg: v } });
+                                setGoogleDraft((d) => ({ ...d, [key]: { ...entry, avg: v } }));
                               }}
                               className="h-8 text-sm"
                             />
@@ -737,7 +737,7 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                               value={entry.count || ""}
                               onChange={(e) => {
                                 const v = parseInt(e.target.value, 10) || 0;
-                                saveGoogleStores({ ...googleByStore, [key]: { ...entry, count: v } });
+                                setGoogleDraft((d) => ({ ...d, [key]: { ...entry, count: v } }));
                               }}
                               className="h-8 text-sm"
                             />
@@ -754,7 +754,10 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
             <div className="text-xs text-muted-foreground mr-auto">
               Média ponderada: <b>{googleAggregate.hasData ? googleAggregate.avg.toFixed(2) : "—"}</b> em {googleAggregate.totalCount} avaliações
             </div>
-            <Button onClick={() => setOpenGoogleDialog(false)}>Fechar</Button>
+            <Button variant="ghost" onClick={() => setOpenGoogleDialog(false)} disabled={savingManual}>Cancelar</Button>
+            <Button onClick={() => saveGoogleStores(googleDraft)} disabled={savingManual}>
+              {savingManual ? "Salvando..." : "Salvar"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
