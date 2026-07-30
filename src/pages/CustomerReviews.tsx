@@ -327,16 +327,26 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
   async function loadHistory() {
     const { data } = await supabase
       .from("review_manual_ratings")
-      .select("source,store_id,brand_id,week_key,avg,count")
+      .select("source,store_id,brand_id,week_key,avg,count,updated_at")
       .order("week_key", { ascending: true });
     const byWeek = new Map<string, WeekSnap>();
-    ((data ?? []) as Array<{ source: string; store_id: string; brand_id: string | null; week_key: string; avg: number | null; count: number | null }>).forEach((row) => {
+    let lastIfoodUpdate = 0;
+    ((data ?? []) as Array<{ source: string; store_id: string; brand_id: string | null; week_key: string; avg: number | null; count: number | null; updated_at?: string | null }>).forEach((row) => {
       if (!byWeek.has(row.week_key)) byWeek.set(row.week_key, { weekKey: row.week_key, ifood: {}, google: {} });
       const snap = byWeek.get(row.week_key)!;
       const key = `${row.store_id}::${row.brand_id ?? ""}`;
       const entry = { avg: Number(row.avg ?? 0), count: Number(row.count ?? 0) };
       if (entry.avg > 0) (row.source === "ifood" ? snap.ifood : snap.google)[key] = entry;
+      if (row.source === "ifood" && row.updated_at) {
+        const t = new Date(row.updated_at).getTime();
+        if (t > lastIfoodUpdate) lastIfoodUpdate = t;
+      }
     });
+    if (lastIfoodUpdate > 0) {
+      setIfoodLastUpdate((prev) => (prev && prev > lastIfoodUpdate ? prev : lastIfoodUpdate));
+      try { localStorage.setItem(IFOOD_LAST_UPDATE_KEY, String(lastIfoodUpdate)); } catch { /* ignore */ }
+    }
+
     const list = [...byWeek.values()].sort((a, b) => a.weekKey.localeCompare(b.weekKey));
     setHistory(list);
     // Hidrata os valores atuais a partir do banco (compartilhado entre usuários),
