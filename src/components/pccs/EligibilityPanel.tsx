@@ -92,7 +92,7 @@ export default function EligibilityPanel() {
       const warnings = (warnRes.data ?? []) as { employee_id: string; issued_at: string }[];
       const stores = (storesRes.data ?? []) as { id: string; name: string }[];
       const schedules = (schedRes.data ?? []) as { employee_id: string; store_id: string | null }[];
-      const evaluations = (evalRes.data ?? []) as { employee_id: string; final_score: number | null; updated_at: string }[];
+      const evaluations = (evalRes.data ?? []) as { id: string; employee_id: string; final_score: number | null; competency_avg: number | null; updated_at: string }[];
       const tracks = (tracksRes.data ?? []) as { from_position_id: string | null; to_position_id: string; order_index: number }[];
       const positions = (posRes.data ?? []) as { id: string; name: string }[];
       const posName = new Map(positions.map((p) => [p.id, p.name]));
