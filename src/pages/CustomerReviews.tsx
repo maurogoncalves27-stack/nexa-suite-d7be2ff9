@@ -610,7 +610,7 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
           <div className="max-h-[55vh] overflow-y-auto pr-1">
             <Accordion type="multiple" className="w-full">
               {ifoodStores.map((s) => {
-                const agg = storeAggregate(s.id);
+                const agg = storeAggregate(s.id, ifoodDraft);
                 return (
                   <AccordionItem key={s.id} value={s.id}>
                     <AccordionTrigger className="py-2 hover:no-underline">
@@ -630,7 +630,7 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                     <AccordionContent className="space-y-2 pt-1">
                       {brands.map((b) => {
                         const key = `${s.id}::${b.id}`;
-                        const entry = ifoodByStore[key] || { avg: 0, count: 0 };
+                        const entry = ifoodDraft[key] || { avg: 0, count: 0 };
                         return (
                           <div key={b.id} className="grid grid-cols-[1fr_90px_110px] items-center gap-2 border rounded-md p-2">
                             <div className="text-xs font-medium truncate">{b.name}</div>
@@ -640,7 +640,7 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                               value={entry.avg || ""}
                               onChange={(e) => {
                                 const v = parseFloat(e.target.value.replace(",", ".")) || 0;
-                                saveIfoodStores({ ...ifoodByStore, [key]: { ...entry, avg: v } });
+                                setIfoodDraft((d) => ({ ...d, [key]: { ...entry, avg: v } }));
                               }}
                               className="h-8 text-sm"
                             />
@@ -650,7 +650,7 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                               value={entry.count || ""}
                               onChange={(e) => {
                                 const v = parseInt(e.target.value, 10) || 0;
-                                saveIfoodStores({ ...ifoodByStore, [key]: { ...entry, count: v } });
+                                setIfoodDraft((d) => ({ ...d, [key]: { ...entry, count: v } }));
                               }}
                               className="h-8 text-sm"
                             />
@@ -673,7 +673,10 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
             <div className="text-xs text-muted-foreground mr-auto">
               Média ponderada: <b>{ifoodAggregate.hasData ? ifoodAggregate.avg.toFixed(2) : "—"}</b> em {ifoodAggregate.totalCount} avaliações
             </div>
-            <Button onClick={() => setOpenIfoodDialog(false)}>Fechar</Button>
+            <Button variant="ghost" onClick={() => setOpenIfoodDialog(false)} disabled={savingManual}>Cancelar</Button>
+            <Button onClick={() => saveIfoodStores(ifoodDraft)} disabled={savingManual}>
+              {savingManual ? "Salvando..." : "Salvar"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
