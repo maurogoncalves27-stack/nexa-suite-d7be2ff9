@@ -13,6 +13,7 @@ interface TemplateRow {
   id: string;
   weekdays: number[] | null;
   is_active: boolean;
+  require_scheduled?: boolean | null;
   template_access_groups: { group_id: string }[];
 }
 interface SubmissionRow {
@@ -56,7 +57,7 @@ export default function ChecklistsByStorePanel() {
           supabase.from("stores").select("id, name, store_type").eq("is_active", true).eq("is_virtual", false).order("name"),
           supabase
             .from("checklist_templates")
-            .select("id, weekdays, is_active, template_access_groups(group_id)")
+            .select("id, weekdays, require_scheduled, is_active, template_access_groups(group_id)")
             .eq("is_active", true),
           supabase
             .from("checklist_submissions")
