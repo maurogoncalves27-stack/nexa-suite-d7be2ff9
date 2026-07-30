@@ -5694,6 +5694,42 @@ export type Database = {
           },
         ]
       }
+      giana_brands: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          historia: string | null
+          id: string
+          is_active: boolean
+          nome: string
+          slogan: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          historia?: string | null
+          id: string
+          is_active?: boolean
+          nome: string
+          slogan?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          historia?: string | null
+          id?: string
+          is_active?: boolean
+          nome?: string
+          slogan?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       giana_dishes: {
         Row: {
           created_at: string
