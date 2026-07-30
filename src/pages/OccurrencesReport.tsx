@@ -135,13 +135,18 @@ export default function OccurrencesReport() {
 
 
   const loadRealStores = async () => {
+    // Apenas pontos de venda: CD, Escritório e Estoque Central não recebem ocorrências.
+    const POS_STORES = ["asa sul", "asa norte", "aguas claras", "águas claras", "lago sul"];
     const { data } = await supabase
       .from("stores")
       .select("id, name")
       .eq("is_active", true)
       .eq("is_virtual", false)
       .order("name");
-    setRealStores((data ?? []) as { id: string; name: string }[]);
+    const onlyPos = (data ?? []).filter((s) =>
+      POS_STORES.some((p) => (s.name ?? "").toLowerCase().includes(p)),
+    );
+    setRealStores(onlyPos as { id: string; name: string }[]);
   };
 
   const assignStore = async (alertId: string, storeId: string) => {
