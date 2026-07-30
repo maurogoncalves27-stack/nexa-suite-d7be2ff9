@@ -25,6 +25,7 @@ import {
   type MarcaKey,
 } from "./knowledge.ts";
 import {
+  getBrands,
   getDishes,
   getStores,
   searchDish,
