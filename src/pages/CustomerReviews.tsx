@@ -236,11 +236,29 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
   const [openIfoodDialog, setOpenIfoodDialog] = useState(false);
   const [openGoogleDialog, setOpenGoogleDialog] = useState(false);
 
+  // Apenas pontos de venda: CD / Fábrica / Estoque Central não vendem no iFood
   const ifoodStores = useMemo(
-    () => stores.filter((s) => !/f[aá]brica/i.test(s.name)),
+    () => stores.filter((s) => !/f[aá]brica|estoque\s*central|^\s*cd\s*$|centro\s*de\s*distribui/i.test(s.name)),
     [stores]
   );
   const googleStores = ifoodStores;
+
+  // Lembrete: atualizar as notas do iFood toda terça-feira às 10h
+  const IFOOD_LAST_UPDATE_KEY = "crm.ifood.last_manual_update";
+  const [ifoodLastUpdate, setIfoodLastUpdate] = useState<number | null>(() => {
+    const v = Number(localStorage.getItem(IFOOD_LAST_UPDATE_KEY));
+    return v > 0 ? v : null;
+  });
+  const ifoodReminderDue = useMemo(() => {
+    const now = new Date();
+    // última terça-feira 10h (ou a desta semana, se já passou)
+    const due = new Date(now);
+    const diff = (now.getDay() - 2 + 7) % 7;
+    due.setDate(now.getDate() - diff);
+    due.setHours(10, 0, 0, 0);
+    if (due.getTime() > now.getTime()) due.setDate(due.getDate() - 7);
+    return !ifoodLastUpdate || ifoodLastUpdate < due.getTime();
+  }, [ifoodLastUpdate]);
 
   const aggregateByStoreMap = (map: Record<string, ManualEntry>) => {
     const entries = Object.values(map).filter((e) => e && e.count > 0 && e.avg > 0);
