@@ -70,18 +70,17 @@ export default function GianaKnowledge({ embedded = false }: { embedded?: boolea
   const [faqs, setFaqs] = useState<Faq[]>([]);
   const [stores, setStores] = useState<GianaStore[]>([]);
 
-  const [dishDraft, setDishDraft] = useState<Dish | null>(null);
   const [faqDraft, setFaqDraft] = useState<Faq | null>(null);
   const [storeDraft, setStoreDraft] = useState<GianaStore | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<
-    { table: "giana_dishes" | "giana_faq" | "giana_stores"; id: string; nome: string } | null
+    { table: "giana_faq" | "giana_stores"; id: string; nome: string } | null
   >(null);
 
   const load = async () => {
     setLoading(true);
     const [d, f, s] = await Promise.all([
-      supabase.from("giana_dishes").select("*").order("sort_order"),
+      supabase.from("giana_menu_dishes").select("*").order("sort_order"),
       supabase.from("giana_faq").select("*").order("sort_order"),
       supabase.from("giana_stores").select("*").order("sort_order"),
     ]);
@@ -107,29 +106,7 @@ export default function GianaKnowledge({ embedded = false }: { embedded?: boolea
   const nextOrder = (arr: { sort_order: number }[]) =>
     arr.reduce((m, x) => Math.max(m, x.sort_order), 0) + 1;
 
-  const saveDish = async () => {
-    if (!dishDraft) return;
-    if (!dishDraft.nome.trim() || !dishDraft.descricao.trim()) {
-      toast({ title: "Preencha nome e descrição", variant: "destructive" });
-      return;
-    }
-    setSaving(true);
-    const payload = {
-      id: dishDraft.id || slugify(dishDraft.nome),
-      marca: dishDraft.marca,
-      nome: dishDraft.nome.trim(),
-      descricao: dishDraft.descricao.trim(),
-      tamanhos: dishDraft.tamanhos,
-      is_active: dishDraft.is_active,
-      sort_order: dishDraft.sort_order,
-    };
-    const { error } = await supabase.from("giana_dishes").upsert(payload);
-    setSaving(false);
-    if (error) return toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
-    toast({ title: "Prato salvo" });
-    setDishDraft(null);
-    load();
-  };
+
 
   const saveFaq = async () => {
     if (!faqDraft) return;
