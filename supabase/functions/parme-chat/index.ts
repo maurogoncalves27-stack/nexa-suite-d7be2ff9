@@ -19,9 +19,8 @@ import {
   PRATOS,
   PARMEGIANA_REGRAS,
   INFO,
-  FAQ,
   findPrato,
-  findFaq,
+
   tamanhosParmegianaResumo,
   type MarcaKey,
 } from "./knowledge.ts";
