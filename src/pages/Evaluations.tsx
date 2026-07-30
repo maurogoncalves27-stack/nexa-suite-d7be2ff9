@@ -68,7 +68,7 @@ export default function Evaluations() {
             <Award className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Avaliação de Desempenho
           </h1>
           <p className="text-muted-foreground text-sm sm:text-base">
-            Avaliação por competência do cargo, na escala 1 a 5. As infrações registradas entram automaticamente como "Disciplina" e o resultado alimenta o Plano de Carreira (PCCS).
+            Ciclo <strong>mensal e obrigatório</strong>: todo gestor deve avaliar sua equipe até o último dia de cada mês. Avaliação por competência do cargo, na escala 1 a 5. As infrações registradas entram automaticamente como "Disciplina" e o resultado alimenta o Plano de Carreira (PCCS).
           </p>
         </div>
         <Button variant="outline" onClick={() => setCriteriaOpen(true)} className="w-full sm:w-auto">
