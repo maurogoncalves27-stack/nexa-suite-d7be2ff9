@@ -729,23 +729,64 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
               return { loja: s.name.replace(/^loja\s+/i, ""), N: avg > 0 ? Number(avg.toFixed(2)) : null };
             });
 
-            // Evolução semanal (média ponderada global) — usa history + snapshotOf
-            const weeklyPoints = history.map((h) => {
-              const wAvg = (snap: Record<string, number>, counts: Record<string, ManualEntry>) => {
-                const keys = Object.keys(snap);
-                let sum = 0, n = 0;
-                keys.forEach((k) => {
-                  const c = counts[k]?.count || 1;
-                  sum += snap[k] * c; n += c;
+            // Evolução semanal (média ponderada global) — histórico do banco
+            const wAvgSnap = (snap: SnapMap, filter?: (key: string) => boolean) => {
+              let sum = 0, n = 0;
+              Object.entries(snap).forEach(([k, v]) => {
+                if (filter && !filter(k)) return;
+                const c = Number(v.count) || 1;
+                sum += Number(v.avg) * c; n += c;
+              });
+              return n ? Number((sum / n).toFixed(2)) : null;
+            };
+            const weeklyPoints = history.map((h) => ({
+              semana: h.weekKey.replace(/^\d{4}-/, ""),
+              iFood: wAvgSnap(h.ifood),
+              Google: wAvgSnap(h.google),
+            }));
+
+            // Comparativo semana atual × semana anterior, por loja e por marca
+            const lastTwo = history.slice(-2);
+            const curSnap = lastTwo[lastTwo.length - 1];
+            const prevSnap = lastTwo.length > 1 ? lastTwo[0] : null;
+            const deltaRows: Array<{ label: string; ifood: number | null; ifoodPrev: number | null; google: number | null; googlePrev: number | null }> = [];
+            if (curSnap) {
+              nonFabrica.forEach((s) => {
+                const f = (k: string) => k.startsWith(`${s.id}::`);
+                deltaRows.push({
+                  label: s.name.replace(/^loja\s+/i, ""),
+                  ifood: wAvgSnap(curSnap.ifood, f),
+                  ifoodPrev: prevSnap ? wAvgSnap(prevSnap.ifood, f) : null,
+                  google: wAvgSnap(curSnap.google, f),
+                  googlePrev: prevSnap ? wAvgSnap(prevSnap.google, f) : null,
                 });
-                return n ? Number((sum / n).toFixed(2)) : null;
-              };
-              return {
-                semana: h.weekKey.replace(/^\d{4}-/, ""),
-                iFood: wAvg(h.ifood, ifoodByStore),
-                Google: wAvg(h.google, googleByStore),
-              };
-            });
+              });
+              brandCols.forEach((c) => {
+                if (!c.id) return;
+                const f = (k: string) => k.endsWith(`::${c.id}`);
+                deltaRows.push({
+                  label: c.label,
+                  ifood: wAvgSnap(curSnap.ifood, f),
+                  ifoodPrev: prevSnap ? wAvgSnap(prevSnap.ifood, f) : null,
+                  google: wAvgSnap(curSnap.google, f),
+                  googlePrev: prevSnap ? wAvgSnap(prevSnap.google, f) : null,
+                });
+              });
+            }
+            const Delta = ({ cur, prev }: { cur: number | null; prev: number | null }) => {
+              if (cur == null) return <span className="text-muted-foreground">—</span>;
+              if (prev == null) return <span>{cur.toFixed(2)}</span>;
+              const d = cur - prev;
+              const cls = d > 0.004 ? "text-success" : d < -0.004 ? "text-destructive" : "text-muted-foreground";
+              const sign = d > 0.004 ? "▲" : d < -0.004 ? "▼" : "=";
+              return (
+                <span className="inline-flex items-center gap-1">
+                  {cur.toFixed(2)}
+                  <span className={`text-[10px] ${cls}`}>{sign} {Math.abs(d).toFixed(2)}</span>
+                </span>
+              );
+            };
+
 
             const ChartCard = ({ title, data, source }: { title: string; data: any[]; source: "brand" | "nutri" }) => (
               <Card>
