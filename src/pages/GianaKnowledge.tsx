@@ -62,7 +62,7 @@ const slugify = (s: string) =>
   s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
 
-export default function GianaKnowledge() {
+export default function GianaKnowledge({ embedded = false }: { embedded?: boolean } = {}) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [dishes, setDishes] = useState<Dish[]>([]);
@@ -195,15 +195,18 @@ export default function GianaKnowledge() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-          <Bot className="h-6 w-6 md:h-7 md:w-7 text-primary" />
-          Base da Giana
-        </h1>
-        <p className="text-muted-foreground">
-          Cardápio, perguntas frequentes e dados das lojas que a Giana usa para responder. O que não estiver aqui, ela não inventa — diz que vai confirmar com a equipe.
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+            <Bot className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+            Base da Giana
+          </h1>
+          <p className="text-muted-foreground">
+            Cardápio, perguntas frequentes e dados das lojas que a Giana usa para responder. O que não estiver aqui, ela não inventa — diz que vai confirmar com a equipe.
+          </p>
+        </div>
+      )}
+
 
       {pendentes > 0 && (
         <Card className="border-warning/40 bg-warning/5">

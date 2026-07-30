@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { Headset, CheckCheck, Search, Calendar, Ticket, MessageSquare, MessageCircle, Trash2, CheckCircle2, Loader2, Download, ChevronDown, ChevronUp, Clock, Bot, Globe, Star, ArrowRight, Settings, AlertCircle, AlertTriangle, CheckCircle, Users, Sparkles, RefreshCw } from "lucide-react";
 import { AgentPanel } from "@/components/crm/ParmeSettingsPanels";
 import { GianaAnalyticsPanel } from "@/components/crm/GianaAnalyticsPanel";
+import GianaKnowledge from "@/pages/GianaKnowledge";
 import { CrmAiInsightsButton } from "@/components/crm/CrmAiInsightsButton";
 import { ReservationSettingsDialog } from "@/components/crm/ReservationSettingsDialog";
 import CustomerReviews from "@/pages/CustomerReviews";
@@ -1732,9 +1733,21 @@ Qualquer alteração é só responder por aqui. Até logo! 🍝`}
 
 
         <TabsContent value="agent" className="mt-4 space-y-6">
-          <GianaAnalyticsPanel />
-          <AgentPanel />
+          <Tabs defaultValue="desempenho">
+            <TabsList className="grid w-full grid-cols-2 h-auto">
+              <TabsTrigger value="desempenho" className="py-2">Desempenho</TabsTrigger>
+              <TabsTrigger value="base" className="py-2">Base de conhecimento</TabsTrigger>
+            </TabsList>
+            <TabsContent value="desempenho" className="mt-4 space-y-6">
+              <GianaAnalyticsPanel />
+              <AgentPanel />
+            </TabsContent>
+            <TabsContent value="base" className="mt-4">
+              <GianaKnowledge embedded />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
+
 
       </Tabs>
       <ReservationSettingsDialog
