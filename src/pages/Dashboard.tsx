@@ -508,6 +508,9 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Avaliação mensal obrigatória do gestor */}
+      {isStaff && <MonthlyEvaluationReminder />}
+
       {/* 1) Alertas críticos — só se houver algo que precise de atenção */}
       {isStaff && hasCriticalAlerts && !prefs.hidden.includes("critical-alerts") && (
         <Card className="border-destructive/40 bg-destructive/5">
