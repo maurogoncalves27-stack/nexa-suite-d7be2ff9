@@ -18863,8 +18863,11 @@ export type Database = {
           marca: string | null
           marca_nome: string | null
           nome: string | null
+          protein_weight_g: number | null
+          serves_people: number | null
           sort_order: number | null
           tamanhos: Json | null
+          total_weight_g: number | null
         }
         Relationships: []
       }
