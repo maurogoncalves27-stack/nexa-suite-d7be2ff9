@@ -62,7 +62,7 @@ const slugify = (s: string) =>
   s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
 
-export default function GianaKnowledge() {
+export default function GianaKnowledge({ embedded = false }: { embedded?: boolean } = {}) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [dishes, setDishes] = useState<Dish[]>([]);
