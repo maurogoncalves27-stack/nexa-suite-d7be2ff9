@@ -19,12 +19,19 @@ import {
   PRATOS,
   PARMEGIANA_REGRAS,
   INFO,
-  FAQ,
   findPrato,
-  findFaq,
+
   tamanhosParmegianaResumo,
   type MarcaKey,
 } from "./knowledge.ts";
+import {
+  getDishes,
+  getStores,
+  searchDish,
+  searchFaq,
+  localFaq,
+} from "./db-knowledge.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -864,13 +871,14 @@ Deno.serve(async (req) => {
         inputSchema: z.object({
           marca: z.enum(["aquela-parme", "aquele-estrogonofe", "box-caipira", "todos"]).default("todos"),
         }),
-        execute: ({ marca }) => {
+        execute: async ({ marca }) => {
+          const pratos = await getDishes();
           const marcasOut = marca === "todos"
             ? MARCAS
             : { [marca]: MARCAS[marca as MarcaKey] };
           const pratosOut = marca === "todos"
-            ? PRATOS
-            : PRATOS.filter((p) => p.marca === marca);
+            ? pratos
+            : pratos.filter((p) => p.marca === marca);
           return {
             marcas: marcasOut,
             pratos: pratosOut,
@@ -885,8 +893,9 @@ Deno.serve(async (req) => {
         description:
           "Busca um prato específico pelo nome/palavra-chave e devolve dados canônicos (tamanhos oficiais de parmegiana se aplicável). Use SEMPRE que o cliente perguntar peso, porção, tamanho, ingrediente ou quantas pessoas serve.",
         inputSchema: z.object({ termo: z.string().min(2).max(120) }),
-        execute: ({ termo }) => {
-          const p = findPrato(termo);
+        execute: async ({ termo }) => {
+          // busca no banco (tolerante a typo/acento) e cai para o hardcoded
+          const p = (await searchDish(termo)) ?? findPrato(termo);
           if (!p) {
             return {
               encontrado: false,
@@ -914,12 +923,21 @@ Deno.serve(async (req) => {
           topico: z.enum(["horarios", "enderecos", "pagamento", "delivery", "reservas"]),
           loja: z.enum(["asa-sul", "asa-norte", "aguas-claras", "lago-sul"]).optional(),
         }),
-        execute: ({ topico, loja }) => {
+        execute: async ({ topico, loja }) => {
           if (topico === "delivery") return { texto: INFO.delivery };
           if (topico === "pagamento") return { texto: INFO.pagamento_salao };
           if (topico === "reservas") return { texto: INFO.reservas };
           if (topico === "horarios" || topico === "enderecos") {
-            const lojas = loja ? { [loja]: INFO.lojas[loja] } : INFO.lojas;
+            const all = await getStores();
+            const lojas = (loja ? all.filter((l) => l.id === loja) : all).map((l) => ({
+              id: l.id,
+              nome: l.nome,
+              endereco: l.endereco,
+              horario: l.horario,
+              tem_salao: l.tem_salao,
+              aceita_retirada: l.aceita_retirada,
+              observacao: l.observacao,
+            }));
             return {
               lojas,
               instrucao:
@@ -933,18 +951,19 @@ Deno.serve(async (req) => {
         description:
           "Consulta perguntas comuns (sem glúten, vegano, pix, entrega própria, estacionamento, menu infantil, calorias). Use SEMPRE antes de responder esses temas.",
         inputSchema: z.object({ pergunta: z.string().min(2).max(300) }),
-        execute: ({ pergunta }) => {
-          const f = findFaq(pergunta);
-          if (!f) {
+        execute: async ({ pergunta }) => {
+          const resposta = (await searchFaq(pergunta)) ?? localFaq(pergunta);
+          if (!resposta) {
             return {
               encontrado: false,
               instrucao:
                 "Pergunta fora da FAQ oficial. Responda ao cliente que vai confirmar com a equipe — NÃO invente resposta.",
             };
           }
-          return { encontrado: true, resposta: f.resposta };
+          return { encontrado: true, resposta };
         },
       }),
+
       criar_reserva: tool({
         description: "Cria uma reserva de mesa (salão só existe na Asa Norte) após confirmar nome, telefone, data, horário e nº de pessoas. NUNCA diga ao cliente que a reserva está feita sem que este tool retorne sucesso=true.",
         inputSchema: reservaSchema,

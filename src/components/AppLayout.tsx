@@ -183,6 +183,7 @@ const PAGE_TITLES: PageMeta[] = [
   // Sistema
   { match: (p) => p.startsWith("/lojas"), title: "Lojas" },
   { match: (p) => p.startsWith("/configuracoes/acessos-externos"), title: "Acessos externos", group: "Configurações" },
+  { match: (p) => p.startsWith("/configuracoes/giana"), title: "Base da Giana", group: "Configurações" },
   { match: (p) => p.startsWith("/configuracoes/whatsapp-cliente"), title: "WhatsApp Cliente", group: "Configurações" },
   { match: (p) => p.startsWith("/configuracoes/entregas"), title: "Entregas (Motoboy)", group: "Configurações" },
   { match: (p) => p.startsWith("/configuracoes/whatsapp"), title: "Notificações WhatsApp", group: "Configurações" },

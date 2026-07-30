@@ -83,6 +83,7 @@ const Recruitment = lazy(() => import("./pages/Recruitment.tsx"));
 const Settings = lazy(() => import("./pages/Settings.tsx"));
 const WhatsAppAdmin = lazy(() => import("./pages/WhatsAppAdmin.tsx"));
 const WhatsAppCustomerAdmin = lazy(() => import("./pages/WhatsAppCustomerAdmin.tsx"));
+const GianaKnowledge = lazy(() => import("./pages/GianaKnowledge.tsx"));
 const WhatsApp = lazy(() => import("./pages/WhatsApp.tsx"));
 const DeliverySettings = lazy(() => import("./pages/DeliverySettings.tsx"));
 const CRM = lazy(() => import("./pages/CRM.tsx"));
@@ -421,6 +422,7 @@ const App = () => (
               <Route path="/configuracoes/acessos-externos" element={<Guarded staff><ExternalAccess /></Guarded>} />
               <Route path="/configuracoes/whatsapp-cliente" element={<Guarded staff><WhatsAppCustomerAdmin /></Guarded>} />
               <Route path="/configuracoes/entregas" element={<Guarded staff><DeliverySettings /></Guarded>} />
+              <Route path="/configuracoes/giana" element={<Guarded staff><GianaKnowledge /></Guarded>} />
               <Route path="/crm" element={<Guarded staff><CRM /></Guarded>} />
               
               <Route path="/configuracoes/whatsapp" element={<Guarded staff><WhatsAppAdmin /></Guarded>} />
