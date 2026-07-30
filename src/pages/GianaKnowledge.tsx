@@ -30,6 +30,10 @@ type Dish = {
   tamanhos: string[];
   is_active: boolean;
   sort_order: number;
+  serves_people?: number | null;
+  total_weight_g?: number | null;
+  protein_weight_g?: number | null;
+
 };
 
 type Faq = {
