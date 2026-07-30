@@ -65,7 +65,8 @@ export default function MonthlyEvaluationReminder({ hideLink = false }: { hideLi
         supabase
           .from("employees")
           .select("id", { count: "exact", head: true })
-          .eq("status", "active"),
+          .eq("status", "active")
+          .not("hire_date", "is", null),
         supabase
           .from("evaluations")
           .select("employee_id")
