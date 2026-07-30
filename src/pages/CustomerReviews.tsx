@@ -281,6 +281,25 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
   const ifoodAggregate = useMemo(() => aggregateByStoreMap(ifoodByStore), [ifoodByStore, salesStoreIds]);
   const googleAggregate = useMemo(() => aggregateByStoreMap(googleByStore), [googleByStore, salesStoreIds]);
 
+  // Alerta: nota do iFood abaixo de 4,7 = atenção
+  const IFOOD_MIN_OK = 4.7;
+  const isLowRating = (avg?: number) => typeof avg === "number" && avg > 0 && avg < IFOOD_MIN_OK;
+  const ifoodAlerts = useMemo(() => {
+    const out: { key: string; store: string; brand: string; avg: number; count: number }[] = [];
+    Object.entries(ifoodByStore).forEach(([key, e]) => {
+      if (!e || !isLowRating(Number(e.avg))) return;
+      const [sid, bid] = key.split("::");
+      if (!salesStoreIds.has(sid)) return;
+      const store = ifoodStores.find((s) => s.id === sid)?.name;
+      const brand = brands.find((b) => b.id === bid)?.name;
+      if (!store || !brand) return;
+      out.push({ key, store, brand, avg: Number(e.avg), count: Number(e.count || 0) });
+    });
+    return out.sort((a, b) => a.avg - b.avg);
+  }, [ifoodByStore, salesStoreIds, ifoodStores, brands]);
+
+
+
 
   const storeAggregate = (storeId: string, map: Record<string, ManualEntry> = ifoodByStore) => {
     const entries = brands
