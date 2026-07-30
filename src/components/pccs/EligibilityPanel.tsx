@@ -25,6 +25,8 @@ type Criteria = {
   min_months_in_role: number;
   min_evaluation_score: number;
   no_warnings_months: number;
+  min_competency_avg?: number | null;
+  min_required_competency_score?: number | null;
 };
 
 type Result = {
