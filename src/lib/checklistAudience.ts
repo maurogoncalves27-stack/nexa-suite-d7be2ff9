@@ -150,26 +150,35 @@ export function isExpectedForTemplate(
   const person = audience.people.get(userId);
   if (!person) return false; // não é colaborador ativo
 
-  const userGroups = audience.groupsByUser.get(userId);
-  if (!userGroups || !tpl.template_access_groups.some((g) => userGroups.has(g.group_id))) return false;
+  // Atribuição individual: entra mesmo sem grupo e ignora o filtro de loja
+  const assignedIndividually = audience.assignedUsersByTemplate.get(tpl.id)?.has(userId) ?? false;
 
   const tplStores = audience.storesByTemplate.get(tpl.id);
-  if (tplStores && tplStores.size > 0) {
-    const belongs =
-      (person.store_id && tplStores.has(person.store_id)) ||
-      (person.allocated_store_id && tplStores.has(person.allocated_store_id));
-    if (!belongs) return false;
+
+  if (!assignedIndividually) {
+    const userGroups = audience.groupsByUser.get(userId);
+    if (!userGroups || !tpl.template_access_groups.some((g) => userGroups.has(g.group_id))) {
+      return false;
+    }
+
+    if (tplStores && tplStores.size > 0) {
+      const belongs =
+        (person.store_id && tplStores.has(person.store_id)) ||
+        (person.allocated_store_id && tplStores.has(person.allocated_store_id));
+      if (!belongs) return false;
+    }
   }
 
   if (tpl.require_scheduled) {
     const scheduled = audience.scheduledStoresByUser.get(userId);
     if (!scheduled || scheduled.size === 0) return false;
-    if (tplStores && tplStores.size > 0) {
+    if (!assignedIndividually && tplStores && tplStores.size > 0) {
       let ok = false;
       scheduled.forEach((s) => { if (tplStores.has(s)) ok = true; });
       if (!ok) return false;
     }
   }
+
 
   return true;
 }
