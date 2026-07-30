@@ -1972,6 +1972,36 @@ export type Database = {
         }
         Relationships: []
       }
+      competency_scale_levels: {
+        Row: {
+          color_token: string
+          created_at: string
+          description: string | null
+          id: string
+          label: string
+          score: number
+          updated_at: string
+        }
+        Insert: {
+          color_token?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          label: string
+          score: number
+          updated_at?: string
+        }
+        Update: {
+          color_token?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          label?: string
+          score?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       complement_groups: {
         Row: {
           created_at: string
@@ -4721,6 +4751,54 @@ export type Database = {
           },
         ]
       }
+      evaluation_competency_scores: {
+        Row: {
+          comment: string | null
+          created_at: string
+          evaluation_id: string
+          id: string
+          not_applicable: boolean
+          position_competency_id: string
+          score: number | null
+          updated_at: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          evaluation_id: string
+          id?: string
+          not_applicable?: boolean
+          position_competency_id: string
+          score?: number | null
+          updated_at?: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          evaluation_id?: string
+          id?: string
+          not_applicable?: boolean
+          position_competency_id?: string
+          score?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluation_competency_scores_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "evaluations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evaluation_competency_scores_position_competency_id_fkey"
+            columns: ["position_competency_id"]
+            isOneToOne: false
+            referencedRelation: "position_competencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evaluation_criteria: {
         Row: {
           created_at: string
@@ -4839,6 +4917,8 @@ export type Database = {
         Row: {
           bonus_amount: number | null
           bonus_notes: string | null
+          competency_avg: number | null
+          competency_count: number
           created_at: string
           created_by: string | null
           cycle_id: string
@@ -4852,6 +4932,8 @@ export type Database = {
         Insert: {
           bonus_amount?: number | null
           bonus_notes?: string | null
+          competency_avg?: number | null
+          competency_count?: number
           created_at?: string
           created_by?: string | null
           cycle_id: string
@@ -4865,6 +4947,8 @@ export type Database = {
         Update: {
           bonus_amount?: number | null
           bonus_notes?: string | null
+          competency_avg?: number | null
+          competency_count?: number
           created_at?: string
           created_by?: string | null
           cycle_id?: string
@@ -13315,32 +13399,41 @@ export type Database = {
         Row: {
           competency_type: string
           created_at: string
+          description: string | null
           id: string
           is_required: boolean
+          level_descriptors: Json
           name: string
           order_index: number
           position_id: string
           updated_at: string
+          weight: number
         }
         Insert: {
           competency_type: string
           created_at?: string
+          description?: string | null
           id?: string
           is_required?: boolean
+          level_descriptors?: Json
           name: string
           order_index?: number
           position_id: string
           updated_at?: string
+          weight?: number
         }
         Update: {
           competency_type?: string
           created_at?: string
+          description?: string | null
           id?: string
           is_required?: boolean
+          level_descriptors?: Json
           name?: string
           order_index?: number
           position_id?: string
           updated_at?: string
+          weight?: number
         }
         Relationships: [
           {
@@ -13742,8 +13835,10 @@ export type Database = {
           created_at: string
           id: string
           min_attendance_pct: number
+          min_competency_avg: number
           min_evaluation_score: number
           min_months_in_role: number
+          min_required_competency_score: number
           no_warnings_months: number
           notes: string | null
           position_id: string
@@ -13756,8 +13851,10 @@ export type Database = {
           created_at?: string
           id?: string
           min_attendance_pct?: number
+          min_competency_avg?: number
           min_evaluation_score?: number
           min_months_in_role?: number
+          min_required_competency_score?: number
           no_warnings_months?: number
           notes?: string | null
           position_id: string
@@ -13770,8 +13867,10 @@ export type Database = {
           created_at?: string
           id?: string
           min_attendance_pct?: number
+          min_competency_avg?: number
           min_evaluation_score?: number
           min_months_in_role?: number
+          min_required_competency_score?: number
           no_warnings_months?: number
           notes?: string | null
           position_id?: string
