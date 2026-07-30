@@ -197,6 +197,10 @@ export default function MenuItemEditorDialog({
         price: Number(price) || 0,
         is_combo: isCombo,
         is_active: isActive,
+        serves_people: servesPeople.trim() === "" ? null : Number(servesPeople),
+        total_weight_g: totalWeight.trim() === "" ? null : Number(totalWeight),
+        protein_weight_g: proteinWeight.trim() === "" ? null : Number(proteinWeight),
+
       };
 
       let id = itemId;
