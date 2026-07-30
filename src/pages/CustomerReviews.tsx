@@ -515,8 +515,9 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
           const displayAvg = manualAgg ? manualAgg.avg : avg;
           const displayHasAvg = manualAgg ? manualAgg.hasData : hasRatings;
           const displayCount = manualAgg ? manualAgg.totalCount : total;
+          const cardLow = isIfood && (isLowRating(displayAvg) || ifoodAlerts.length > 0);
           return (
-            <Card key={source}>
+            <Card key={source} className={cardLow ? "border-destructive/60 bg-destructive/5" : undefined}>
               <CardContent className="p-3 space-y-1">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -547,10 +548,12 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                     </div>
                   )}
                 </div>
-                <div className="text-lg font-semibold flex items-center gap-1">
+                <div className={`text-lg font-semibold flex items-center gap-1 ${isIfood && isLowRating(displayAvg) ? "text-destructive" : ""}`}>
                   {displayHasAvg ? displayAvg.toFixed(1) : "—"}
                   {displayHasAvg && <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />}
+                  {cardLow && <AlertTriangle className="h-4 w-4 text-destructive" />}
                 </div>
+
                 <div className="text-[10px] text-muted-foreground">
                   {isManual
                     ? `${displayCount} avaliações · ${isGoogle ? "sincronizado por loja/marca" : "manual por loja/marca"}`
