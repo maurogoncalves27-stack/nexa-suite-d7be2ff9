@@ -236,6 +236,12 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
   });
   const [openIfoodDialog, setOpenIfoodDialog] = useState(false);
   const [openGoogleDialog, setOpenGoogleDialog] = useState(false);
+  // Rascunhos editados no modal — só vão para o banco ao clicar em "Salvar"
+  const [ifoodDraft, setIfoodDraft] = useState<Record<string, IfoodEntry>>({});
+  const [googleDraft, setGoogleDraft] = useState<Record<string, ManualEntry>>({});
+  const [savingManual, setSavingManual] = useState(false);
+  useEffect(() => { if (openIfoodDialog) setIfoodDraft({ ...ifoodByStore }); }, [openIfoodDialog]);
+  useEffect(() => { if (openGoogleDialog) setGoogleDraft({ ...googleByStore }); }, [openGoogleDialog]);
 
   // Apenas pontos de venda: CD / Fábrica / Estoque Central não vendem no iFood
   const ifoodStores = useMemo(
