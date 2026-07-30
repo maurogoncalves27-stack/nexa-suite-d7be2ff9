@@ -212,7 +212,9 @@ export default function Dashboard() {
     { label: "Colaboradores", value: metrics.active, icon: Users, to: "/colaboradores", hint: "Ativos" },
     { label: "Em treinamento", value: metrics.inTraining, icon: BookOpen, color: "text-warning", to: "/treinamentos" },
     { label: "Estagiários", value: metrics.trainees, icon: GraduationCap, to: "/estagio" },
-    { label: "Aniversariantes", value: metrics.birthdaysMonth, icon: Cake, color: "text-pink-500", hint: "Este mês" },
+    ...(metrics.birthdaysMonth > 0
+      ? [{ label: "Aniversariantes", value: metrics.birthdaysMonth, icon: Cake, color: "text-pink-500", hint: "Este mês" }]
+      : []),
     { label: "Avaliações pend.", value: metrics.pendingEvaluations, icon: Award, color: "text-warning", to: "/avaliacoes" },
     { label: "Advert./mês", value: metrics.warningsMonth, icon: ShieldAlert, color: "text-destructive", to: "/avaliacoes" },
     { label: "Infrações/mês", value: metrics.infractionsMonth, icon: ShieldAlert, color: "text-destructive", to: "/infracoes" },
