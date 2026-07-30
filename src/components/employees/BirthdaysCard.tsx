@@ -89,8 +89,6 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
     return () => { clearTimeout(fadeTimer); clearTimeout(hideTimer); };
   }, [loading, items.length]);
 
-  if (loading || items.length === 0 || !visible) return null;
-
   const monthLabel = format(new Date(), "MMMM", { locale: ptBR });
   const today = new Date();
   const todayDay = today.getDate();
@@ -100,6 +98,8 @@ export default function BirthdaysCard({ storeId, allocatedStoreId }: Props) {
     const m = parseInt(e.birth_date.slice(5, 7), 10);
     return m === todayMonth && e.day > todayDay;
   });
+
+  if (loading || !visible || todays.length + others.length === 0) return null;
 
   return (
     <div
