@@ -64,11 +64,8 @@ export default function AdminHistoryPanel() {
 
     if (data) {
       const userIds = [...new Set(data.map((s: any) => s.user_id))];
-      const { data: profiles } = await supabase
-        .from("profiles").select("user_id, full_name")
-        .in("user_id", userIds.length > 0 ? userIds : ["__none__"]);
-      const nameMap: Record<string, string> = {};
-      if (profiles) profiles.forEach((p: any) => (nameMap[p.user_id] = p.full_name));
+      const nameMap = await fetchDisplayNames(userIds as string[]);
+
       setSubmissions(
         (data as unknown as Submission[]).map((s) => ({
           ...s, user_name: nameMap[s.user_id] || "(sem nome)",
