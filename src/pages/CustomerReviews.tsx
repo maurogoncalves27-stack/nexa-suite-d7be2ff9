@@ -482,7 +482,28 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
           <Button size="sm" onClick={() => setOpenIfoodDialog(true)}>Atualizar agora</Button>
         </div>
       )}
+      {ifoodAlerts.length > 0 && (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 space-y-2 animate-pulse-none">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+            <div className="text-xs sm:text-sm font-semibold text-destructive">
+              Atenção: {ifoodAlerts.length} {ifoodAlerts.length === 1 ? "loja/marca está" : "lojas/marcas estão"} abaixo de 4,7 no iFood
+            </div>
+            <Button size="sm" variant="outline" className="ml-auto" onClick={() => setOpenIfoodDialog(true)}>
+              Ver notas
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {ifoodAlerts.map((a) => (
+              <Badge key={a.key} variant="destructive" className="text-[11px] font-medium">
+                {a.store} · {a.brand} — {a.avg.toFixed(1)} ★ ({a.count})
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
       {/* Cards por fonte */}
+
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
         {perSource.map(({ source, total, novos, avg, hasRatings }) => {
           const meta = SOURCE_META[source];
