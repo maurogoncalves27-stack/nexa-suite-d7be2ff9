@@ -324,6 +324,9 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
   const saveIfoodStores = (next: Record<string, IfoodEntry>) => {
     setIfoodByStore(next);
     localStorage.setItem(IFOOD_STORES_KEY, JSON.stringify(next));
+    const now = Date.now();
+    localStorage.setItem(IFOOD_LAST_UPDATE_KEY, String(now));
+    setIfoodLastUpdate(now);
     persistHistory(next, googleByStore);
   };
   const saveGoogleStores = (next: Record<string, ManualEntry>) => {
