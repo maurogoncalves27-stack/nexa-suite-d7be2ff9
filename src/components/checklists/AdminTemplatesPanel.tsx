@@ -64,13 +64,16 @@ export default function AdminTemplatesPanel() {
     { label: "", description: "", is_priority: false, requires_photo: false },
   ]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
+  const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
+  const [employeeSearch, setEmployeeSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deadlineTime, setDeadlineTime] = useState("");
   const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([]);
   const [requireScheduled, setRequireScheduled] = useState(false);
 
-  useEffect(() => { loadTemplates(); loadGroups(); }, []);
+  useEffect(() => { loadTemplates(); loadGroups(); loadEmployees(); }, []);
 
   const loadGroups = async () => {
     const { data } = await supabase
@@ -80,11 +83,21 @@ export default function AdminTemplatesPanel() {
     if (data) setGroups(data as Group[]);
   };
 
+  const loadEmployees = async () => {
+    const { data } = await supabase
+      .from("employees")
+      .select("id, full_name")
+      .eq("status", "active")
+      .not("user_id", "is", null)
+      .order("full_name");
+    if (data) setEmployees(data as EmployeeOption[]);
+  };
+
   const loadTemplates = async () => {
     const { data } = await supabase
       .from("checklist_templates")
       .select(
-        "id, title, description, is_active, deadline_time, weekdays, require_scheduled, sort_order, checklist_items(id, label, description, sort_order, is_priority, requires_photo), template_access_groups(group_id, access_groups(name))",
+        "id, title, description, is_active, deadline_time, weekdays, require_scheduled, sort_order, checklist_items(id, label, description, sort_order, is_priority, requires_photo), template_access_groups(group_id, access_groups(name)), checklist_template_assignments(employee_id)",
       )
       .order("sort_order");
     if (data) setTemplates(data as unknown as Template[]);
@@ -93,8 +106,10 @@ export default function AdminTemplatesPanel() {
   const resetForm = () => {
     setTitle(""); setDescription("");
     setItems([{ label: "", description: "", is_priority: false, requires_photo: false }]);
-    setSelectedGroups([]); setEditingId(null); setDeadlineTime(""); setSelectedWeekdays([]); setRequireScheduled(false);
+    setSelectedGroups([]); setSelectedEmployees([]); setEmployeeSearch("");
+    setEditingId(null); setDeadlineTime(""); setSelectedWeekdays([]); setRequireScheduled(false);
   };
+
 
   const openCreate = () => { resetForm(); setDialogOpen(true); };
   const openEdit = (tp: Template) => {
