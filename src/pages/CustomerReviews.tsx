@@ -280,13 +280,11 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
     return { avg: totalCount > 0 ? weighted / totalCount : 0, totalCount };
   };
 
-  // Histórico semanal de médias manuais (para setinhas de tendência)
-  // { weekKey: "YYYY-Www", ts, ifood: {key: avg}, google: {key: avg} }
-  const HISTORY_KEY = "crm.reviews.weekly_history";
-  type WeekSnap = { weekKey: string; ts: number; ifood: Record<string, number>; google: Record<string, number> };
-  const [history, setHistory] = useState<WeekSnap[]>(() => {
-    try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); } catch { return []; }
-  });
+  // Histórico semanal das médias manuais — persistido no banco (review_manual_ratings)
+  // Snapshot por semana ISO: { weekKey, ifood: {`store::brand`: {avg,count}}, google: {...} }
+  type SnapMap = Record<string, ManualEntry>;
+  type WeekSnap = { weekKey: string; ifood: SnapMap; google: SnapMap };
+  const [history, setHistory] = useState<WeekSnap[]>([]);
   const getWeekKey = (d = new Date()) => {
     const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
     const dayNum = date.getUTCDay() || 7;
@@ -295,28 +293,61 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
     const weekNo = Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
     return `${date.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
   };
-  const snapshotOf = (map: Record<string, ManualEntry>): Record<string, number> => {
-    const out: Record<string, number> = {};
-    Object.entries(map).forEach(([k, v]) => { if (v && v.avg > 0) out[k] = v.avg; });
-    return out;
-  };
-  const persistHistory = (ifoodMap: Record<string, ManualEntry>, googleMap: Record<string, ManualEntry>) => {
-    const wk = getWeekKey();
-    const snap: WeekSnap = { weekKey: wk, ts: Date.now(), ifood: snapshotOf(ifoodMap), google: snapshotOf(googleMap) };
-    setHistory((prev) => {
-      const others = prev.filter((s) => s.weekKey !== wk);
-      const next = [...others, snap].sort((a, b) => a.weekKey.localeCompare(b.weekKey));
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
-      return next;
+
+  async function loadHistory() {
+    const { data } = await supabase
+      .from("review_manual_ratings")
+      .select("source,store_id,brand_id,week_key,avg,count")
+      .order("week_key", { ascending: true });
+    const byWeek = new Map<string, WeekSnap>();
+    ((data ?? []) as Array<{ source: string; store_id: string; brand_id: string | null; week_key: string; avg: number | null; count: number | null }>).forEach((row) => {
+      if (!byWeek.has(row.week_key)) byWeek.set(row.week_key, { weekKey: row.week_key, ifood: {}, google: {} });
+      const snap = byWeek.get(row.week_key)!;
+      const key = `${row.store_id}::${row.brand_id ?? ""}`;
+      const entry = { avg: Number(row.avg ?? 0), count: Number(row.count ?? 0) };
+      if (entry.avg > 0) (row.source === "ifood" ? snap.ifood : snap.google)[key] = entry;
     });
+    const list = [...byWeek.values()].sort((a, b) => a.weekKey.localeCompare(b.weekKey));
+    setHistory(list);
+    return list;
+  }
+  useEffect(() => { loadHistory(); }, []);
+
+  const persistHistory = async (source: "ifood" | "google", map: Record<string, ManualEntry>) => {
+    const weekKey = getWeekKey();
+    const { data: auth } = await supabase.auth.getUser();
+    const rows = Object.entries(map)
+      .filter(([, v]) => v && Number(v.avg) > 0)
+      .map(([k, v]) => {
+        const [store_id, brand_id] = k.split("::");
+        return {
+          source,
+          store_id,
+          brand_id: brand_id || null,
+          week_key: weekKey,
+          avg: Number(Number(v.avg).toFixed(2)),
+          count: Number(v.count || 0),
+          updated_by: auth?.user?.id ?? null,
+        };
+      });
+    if (rows.length === 0) return;
+    const { error } = await supabase
+      .from("review_manual_ratings")
+      .upsert(rows, { onConflict: "source,store_id,brand_id,week_key" });
+    if (error) {
+      toast({ title: "Não foi possível salvar o histórico", description: error.message, variant: "destructive" });
+      return;
+    }
+    await loadHistory();
   };
+
   const previousAvg = (source: "ifood" | "google", key: string): number | null => {
     // Última semana anterior à corrente que tenha valor
     const wk = getWeekKey();
     for (let i = history.length - 1; i >= 0; i--) {
       const s = history[i];
       if (s.weekKey >= wk) continue;
-      const v = s[source]?.[key];
+      const v = s[source]?.[key]?.avg;
       if (typeof v === "number" && v > 0) return v;
     }
     return null;
@@ -328,13 +359,14 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
     const now = Date.now();
     localStorage.setItem(IFOOD_LAST_UPDATE_KEY, String(now));
     setIfoodLastUpdate(now);
-    persistHistory(next, googleByStore);
+    void persistHistory("ifood", next);
   };
   const saveGoogleStores = (next: Record<string, ManualEntry>) => {
     setGoogleByStore(next);
     localStorage.setItem(GOOGLE_STORES_KEY, JSON.stringify(next));
-    persistHistory(ifoodByStore, next);
+    void persistHistory("google", next);
   };
+
 
 
 
