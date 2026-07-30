@@ -130,6 +130,8 @@ export default function EligibilityPanel() {
 
       // Última avaliação por colaborador (normaliza escala 0-10 → 0-100)
       const evalByEmp = new Map<string, number>();
+      const compAvgByEmp = new Map<string, number>();
+      const lastEvalIdByEmp = new Map<string, string>();
       evaluations
         .sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1))
         .forEach((e) => {
@@ -137,8 +139,41 @@ export default function EligibilityPanel() {
             const raw = Number(e.final_score);
             const normalized = raw <= 10 ? raw * 10 : raw;
             evalByEmp.set(e.employee_id, normalized);
+            lastEvalIdByEmp.set(e.employee_id, e.id);
+            if (e.competency_avg != null) compAvgByEmp.set(e.employee_id, Number(e.competency_avg));
           }
         });
+
+      // Competências obrigatórias com nota baixa na última avaliação
+      const lowCompsByEmp = new Map<string, { name: string; score: number }[]>();
+      const lastEvalIds = Array.from(lastEvalIdByEmp.values());
+      if (lastEvalIds.length) {
+        const evalOwner = new Map(Array.from(lastEvalIdByEmp.entries()).map(([emp, id]) => [id, emp]));
+        const { data: compScores } = await supabase
+          .from("evaluation_competency_scores")
+          .select("evaluation_id, score, not_applicable, position_competency:position_competencies(name, is_required)")
+          .in("evaluation_id", lastEvalIds);
+        (compScores ?? []).forEach((s: any) => {
+          if (s.not_applicable || s.score == null) return;
+          if (!s.position_competency?.is_required) return;
+          const empId = evalOwner.get(s.evaluation_id);
+          if (!empId) return;
+          const arr = lowCompsByEmp.get(empId) ?? [];
+          arr.push({ name: s.position_competency.name, score: Number(s.score) });
+          lowCompsByEmp.set(empId, arr);
+        });
+      }
+
+      const competencyGaps = (empId: string, minAvg: number, minRequired: number): string[] => {
+        const gaps: string[] = [];
+        const avg = compAvgByEmp.get(empId);
+        if (avg != null && avg < minAvg) gaps.push(`Média de competências ${avg.toFixed(2)} < ${minAvg}`);
+        const low = (lowCompsByEmp.get(empId) ?? []).filter((c) => c.score < minRequired);
+        low.slice(0, 3).forEach((c) => gaps.push(`${c.name}: ${c.score} < ${minRequired}`));
+        if (low.length > 3) gaps.push(`+${low.length - 3} competência(s) obrigatória(s) abaixo de ${minRequired}`);
+        return gaps;
+      };
+
 
       const out: Result[] = [];
 
