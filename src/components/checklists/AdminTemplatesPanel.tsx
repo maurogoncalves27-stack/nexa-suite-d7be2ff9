@@ -239,6 +239,12 @@ export default function AdminTemplatesPanel() {
         groupIds.map((gid) => ({ template_id: tmpl.id, group_id: gid })),
       );
     }
+    const assignedIds = (tp.checklist_template_assignments ?? []).map((a) => a.employee_id);
+    if (assignedIds.length > 0) {
+      await supabase.from("checklist_template_assignments").insert(
+        assignedIds.map((eid) => ({ template_id: tmpl.id, employee_id: eid, assigned_by: user.id })),
+      );
+    }
     loadTemplates(); toast.success("Duplicado");
   };
 
@@ -247,9 +253,16 @@ export default function AdminTemplatesPanel() {
     const map = new Map<string, { groupId: string | null; groupName: string; sortOrder: number; templates: Template[] }>();
     for (const tp of templates) {
       if (!tp.template_access_groups || tp.template_access_groups.length === 0) {
-        const key = "__none__";
-        if (!map.has(key)) map.set(key, { groupId: null, groupName: "Sem grupo", sortOrder: 99999, templates: [] });
+        const individual = (tp.checklist_template_assignments?.length ?? 0) > 0;
+        const key = individual ? "__individual__" : "__none__";
+        if (!map.has(key)) map.set(key, {
+          groupId: null,
+          groupName: individual ? "Atribuição individual" : "Sem grupo",
+          sortOrder: individual ? 99998 : 99999,
+          templates: [],
+        });
         map.get(key)!.templates.push(tp);
+
       } else {
         for (const tag of tp.template_access_groups) {
           const key = tag.group_id;
