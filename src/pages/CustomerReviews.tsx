@@ -261,15 +261,20 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
     return !ifoodLastUpdate || ifoodLastUpdate < due.getTime();
   }, [ifoodLastUpdate]);
 
+  // Agrega só pontos de venda (CD / Fábrica / Estoque Central ficam de fora)
+  const salesStoreIds = useMemo(() => new Set(ifoodStores.map((s) => s.id)), [ifoodStores]);
   const aggregateByStoreMap = (map: Record<string, ManualEntry>) => {
-    const entries = Object.values(map).filter((e) => e && e.count > 0 && e.avg > 0);
+    const entries = Object.entries(map)
+      .filter(([k, e]) => e && e.count > 0 && e.avg > 0 && salesStoreIds.has(k.split("::")[0]))
+      .map(([, e]) => e);
     const totalCount = entries.reduce((s, e) => s + Number(e.count || 0), 0);
     const weighted = entries.reduce((s, e) => s + Number(e.avg) * Number(e.count), 0);
     const avg = totalCount > 0 ? weighted / totalCount : 0;
     return { avg, totalCount, hasData: totalCount > 0 };
   };
-  const ifoodAggregate = useMemo(() => aggregateByStoreMap(ifoodByStore), [ifoodByStore]);
-  const googleAggregate = useMemo(() => aggregateByStoreMap(googleByStore), [googleByStore]);
+  const ifoodAggregate = useMemo(() => aggregateByStoreMap(ifoodByStore), [ifoodByStore, salesStoreIds]);
+  const googleAggregate = useMemo(() => aggregateByStoreMap(googleByStore), [googleByStore, salesStoreIds]);
+
 
   const storeAggregate = (storeId: string, map: Record<string, ManualEntry> = ifoodByStore) => {
     const entries = brands
