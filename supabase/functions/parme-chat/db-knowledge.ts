@@ -47,15 +47,14 @@ function client(): SupabaseClient {
   );
 }
 
-/** Pratos ativos do banco; cai para o hardcoded se o banco falhar/estiver vazio. */
+/** Pratos ativos vindos do CARDÁPIO (view giana_menu_dishes); fallback hardcoded. */
 export async function getDishes(): Promise<Prato[]> {
   const cached = fresh(dishesCache);
   if (cached) return cached;
   try {
     const { data, error } = await client()
-      .from("giana_dishes")
+      .from("giana_menu_dishes")
       .select("id, marca, nome, descricao, tamanhos")
-      .eq("is_active", true)
       .order("sort_order");
     if (error) throw error;
     if (!data?.length) return PRATOS;
