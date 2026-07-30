@@ -1,0 +1,1 @@
+ALTER TABLE public.checklist_templates ADD COLUMN IF NOT EXISTS require_scheduled boolean NOT NULL DEFAULT false;

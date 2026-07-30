@@ -1753,6 +1753,7 @@ export type Database = {
           observations: string | null
           observations_legacy: string | null
           priority: string
+          require_scheduled: boolean
           sort_order: number
           title: string
           updated_at: string
@@ -1768,6 +1769,7 @@ export type Database = {
           observations?: string | null
           observations_legacy?: string | null
           priority?: string
+          require_scheduled?: boolean
           sort_order?: number
           title: string
           updated_at?: string
@@ -1783,6 +1785,7 @@ export type Database = {
           observations?: string | null
           observations_legacy?: string | null
           priority?: string
+          require_scheduled?: boolean
           sort_order?: number
           title?: string
           updated_at?: string
