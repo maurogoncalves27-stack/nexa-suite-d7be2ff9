@@ -38,17 +38,26 @@ export default function EmployeePerformanceCharts({
       // Avaliações deste colaborador em todos os ciclos
       const { data: evals } = await supabase
         .from("evaluations")
-        .select("id, cycle_id, final_score")
+        .select("id, cycle_id, final_score, competency_avg")
         .eq("employee_id", employeeId);
       const evalIds = (evals ?? []).map((e: any) => e.id);
 
-      // Notas por critério (para o radar do ciclo mais recente)
+      // Notas por critério legado (fallback para o radar)
       const { data: scores } = evalIds.length
         ? await supabase
             .from("evaluation_scores")
             .select("evaluation_id, criterion_id, score")
             .in("evaluation_id", evalIds)
         : { data: [] as any[] };
+
+      // Notas por competência (escala 1-5) — sistema atual
+      const { data: compScores } = evalIds.length
+        ? await supabase
+            .from("evaluation_competency_scores")
+            .select("evaluation_id, score, not_applicable, position_competency:position_competencies(name)")
+            .in("evaluation_id", evalIds)
+        : { data: [] as any[] };
+
 
       // Infrações por ciclo (para Disciplina e penalidade)
       const { data: infs } = await supabase
@@ -66,15 +75,21 @@ export default function EmployeePerformanceCharts({
       const evalByCycle = Object.fromEntries((evals ?? []).map((e: any) => [e.cycle_id, e]));
       const totalCriteriaWeight = criteria.reduce((acc, c) => acc + Number(c.weight), 0);
 
-      // Linha de evolução
+      // Linha de evolução (usa média de competências 1-5 quando existir)
       const points = cycles
         .filter((c) => evalByCycle[c.id] || infByCycle[c.id])
         .sort((a, b) => a.start_date.localeCompare(b.start_date))
         .map((c) => {
           const ev = evalByCycle[c.id];
-          const baseFinal = ev?.final_score != null ? Number(ev.final_score) : null;
           const w = infByCycle[c.id] ?? 0;
           const disc = Math.max(0, 10 - w * 1); // 1 ponto na escala 10 = 0.5 estrela
+          if (ev?.competency_avg != null) {
+            // competency_avg já é 1-5; disciplina entra com 20%
+            const disc5 = disc / 2;
+            const stars = Number(ev.competency_avg) * 0.8 + disc5 * 0.2;
+            return { cycle: c.name, estrelas: Math.round(stars * 10) / 10 };
+          }
+          const baseFinal = ev?.final_score != null ? Number(ev.final_score) : null;
           const baseW = totalCriteriaWeight;
           const baseSum = (baseFinal ?? 0) * baseW;
           const total = baseSum + disc * 1;
@@ -95,24 +110,34 @@ export default function EmployeePerformanceCharts({
         );
       const latest = sortedEvals[0];
       if (latest) {
-        const scoreMap: Record<string, number> = {};
-        for (const s of scores ?? []) {
-          if (s.evaluation_id === latest.id) scoreMap[s.criterion_id] = Number(s.score);
-        }
         const w = infByCycle[latest.cycle_id] ?? 0;
         const disciplina10 = Math.max(0, 10 - w);
-        const radarData = [
-          ...criteria.map((c) => ({
-            criterio: c.name,
-            nota: Math.round(((scoreMap[c.id] ?? 0) / 2) * 10) / 10,
-            fullMark: 5 as const,
-          })),
-          {
-            criterio: "Disciplina",
-            nota: Math.round((disciplina10 / 2) * 10) / 10,
-            fullMark: 5 as const,
-          },
-        ];
+        const latestComps = (compScores ?? []).filter(
+          (s: any) => s.evaluation_id === latest.id && !s.not_applicable && s.score != null,
+        );
+        const radarData = latestComps.length
+          ? [
+              ...latestComps.map((s: any) => ({
+                criterio: s.position_competency?.name ?? "Competência",
+                nota: Math.round(Number(s.score) * 10) / 10,
+                fullMark: 5 as const,
+              })),
+              { criterio: "Disciplina", nota: Math.round((disciplina10 / 2) * 10) / 10, fullMark: 5 as const },
+            ]
+          : (() => {
+              const scoreMap: Record<string, number> = {};
+              for (const s of scores ?? []) {
+                if (s.evaluation_id === latest.id) scoreMap[s.criterion_id] = Number(s.score);
+              }
+              return [
+                ...criteria.map((c) => ({
+                  criterio: c.name,
+                  nota: Math.round(((scoreMap[c.id] ?? 0) / 2) * 10) / 10,
+                  fullMark: 5 as const,
+                })),
+                { criterio: "Disciplina", nota: Math.round((disciplina10 / 2) * 10) / 10, fullMark: 5 as const },
+              ];
+            })();
         setRadar(radarData);
         setLatestStars(points[points.length - 1]?.estrelas ?? null);
       } else {

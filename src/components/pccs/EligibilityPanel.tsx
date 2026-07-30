@@ -25,6 +25,8 @@ type Criteria = {
   min_months_in_role: number;
   min_evaluation_score: number;
   no_warnings_months: number;
+  min_competency_avg?: number | null;
+  min_required_competency_score?: number | null;
 };
 
 type Result = {
@@ -76,11 +78,11 @@ export default function EligibilityPanel() {
       const [empRes, levelsRes, critRes, warnRes, storesRes, schedRes, evalRes, tracksRes, posRes, promRes] = await Promise.all([
         supabase.from("employees").select("id, full_name, position, position_id, hire_date, status, store_id, current_level, level_updated_at").eq("status", "active"),
         supabase.from("position_salary_levels").select("position_id, level, salary, order_index").order("order_index"),
-        supabase.from("promotion_criteria").select("position_id, promotion_type, min_months_in_role, min_evaluation_score, no_warnings_months"),
+        supabase.from("promotion_criteria").select("position_id, promotion_type, min_months_in_role, min_evaluation_score, no_warnings_months, min_competency_avg, min_required_competency_score"),
         supabase.from("employee_warnings").select("employee_id, issued_at").gte("issued_at", cutoffWarn),
         supabase.from("stores").select("id, name"),
         supabase.from("work_schedules").select("employee_id, store_id, schedule_date").gte("schedule_date", cutoffSched).eq("is_day_off", false),
-        supabase.from("evaluations").select("employee_id, final_score, updated_at").in("status", ["finalized", "completed"]).not("final_score", "is", null),
+        supabase.from("evaluations").select("id, employee_id, final_score, competency_avg, updated_at").in("status", ["finalized", "completed"]).not("final_score", "is", null),
         supabase.from("career_track_steps").select("from_position_id, to_position_id, order_index").order("order_index"),
         supabase.from("positions").select("id, name"),
         supabase.from("promotion_history").select("employee_id, created_at, effective_date").gte("created_at", yearStart),
@@ -92,7 +94,7 @@ export default function EligibilityPanel() {
       const warnings = (warnRes.data ?? []) as { employee_id: string; issued_at: string }[];
       const stores = (storesRes.data ?? []) as { id: string; name: string }[];
       const schedules = (schedRes.data ?? []) as { employee_id: string; store_id: string | null }[];
-      const evaluations = (evalRes.data ?? []) as { employee_id: string; final_score: number | null; updated_at: string }[];
+      const evaluations = (evalRes.data ?? []) as { id: string; employee_id: string; final_score: number | null; competency_avg: number | null; updated_at: string }[];
       const tracks = (tracksRes.data ?? []) as { from_position_id: string | null; to_position_id: string; order_index: number }[];
       const positions = (posRes.data ?? []) as { id: string; name: string }[];
       const posName = new Map(positions.map((p) => [p.id, p.name]));
@@ -130,6 +132,8 @@ export default function EligibilityPanel() {
 
       // Última avaliação por colaborador (normaliza escala 0-10 → 0-100)
       const evalByEmp = new Map<string, number>();
+      const compAvgByEmp = new Map<string, number>();
+      const lastEvalIdByEmp = new Map<string, string>();
       evaluations
         .sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1))
         .forEach((e) => {
@@ -137,8 +141,41 @@ export default function EligibilityPanel() {
             const raw = Number(e.final_score);
             const normalized = raw <= 10 ? raw * 10 : raw;
             evalByEmp.set(e.employee_id, normalized);
+            lastEvalIdByEmp.set(e.employee_id, e.id);
+            if (e.competency_avg != null) compAvgByEmp.set(e.employee_id, Number(e.competency_avg));
           }
         });
+
+      // Competências obrigatórias com nota baixa na última avaliação
+      const lowCompsByEmp = new Map<string, { name: string; score: number }[]>();
+      const lastEvalIds = Array.from(lastEvalIdByEmp.values());
+      if (lastEvalIds.length) {
+        const evalOwner = new Map(Array.from(lastEvalIdByEmp.entries()).map(([emp, id]) => [id, emp]));
+        const { data: compScores } = await supabase
+          .from("evaluation_competency_scores")
+          .select("evaluation_id, score, not_applicable, position_competency:position_competencies(name, is_required)")
+          .in("evaluation_id", lastEvalIds);
+        (compScores ?? []).forEach((s: any) => {
+          if (s.not_applicable || s.score == null) return;
+          if (!s.position_competency?.is_required) return;
+          const empId = evalOwner.get(s.evaluation_id);
+          if (!empId) return;
+          const arr = lowCompsByEmp.get(empId) ?? [];
+          arr.push({ name: s.position_competency.name, score: Number(s.score) });
+          lowCompsByEmp.set(empId, arr);
+        });
+      }
+
+      const competencyGaps = (empId: string, minAvg: number, minRequired: number): string[] => {
+        const gaps: string[] = [];
+        const avg = compAvgByEmp.get(empId);
+        if (avg != null && avg < minAvg) gaps.push(`Média de competências ${avg.toFixed(2)} < ${minAvg}`);
+        const low = (lowCompsByEmp.get(empId) ?? []).filter((c) => c.score < minRequired);
+        low.slice(0, 3).forEach((c) => gaps.push(`${c.name}: ${c.score} < ${minRequired}`));
+        if (low.length > 3) gaps.push(`+${low.length - 3} competência(s) obrigatória(s) abaixo de ${minRequired}`);
+        return gaps;
+      };
+
 
       const out: Result[] = [];
 
@@ -169,6 +206,7 @@ export default function EligibilityPanel() {
         if (warns > 0) gaps.push(`${warns} advertência(s) recentes`);
         if (score == null) gaps.push(`Sem avaliação registrada`);
         else if (score < minScore) gaps.push(`Avaliação ${score.toFixed(1)}% < ${minScore}%`);
+        gaps.push(...competencyGaps(emp.id, Number(c?.min_competency_avg ?? 3), Number(c?.min_required_competency_score ?? 3)));
         if (promotedThisYear.has(emp.id)) gaps.push(`Já promovido em ${today.getFullYear()}`);
 
         out.push({
@@ -228,6 +266,7 @@ export default function EligibilityPanel() {
         if (warns > 0) gaps.push(`${warns} advertência(s) recentes`);
         if (score == null) gaps.push(`Sem avaliação registrada`);
         else if (score < minScore) gaps.push(`Avaliação ${score.toFixed(1)}% < ${minScore}%`);
+        gaps.push(...competencyGaps(emp.id, Number(cAny?.min_competency_avg ?? 3), Number(cAny?.min_required_competency_score ?? 3)));
         if (promotedThisYear.has(emp.id)) gaps.push(`Já promovido em ${today.getFullYear()}`);
 
         vout.push({

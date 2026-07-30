@@ -23,7 +23,16 @@ type Criteria = {
   no_warnings_months: number;
   require_training_completion: boolean;
   require_pdi_completion: boolean;
+  min_competency_avg: number;
+  min_required_competency_score: number;
   notes: string | null;
+};
+
+const DEFAULT_FORM: Omit<Criteria, "id"> = {
+  position_id: "", promotion_type: "level",
+  min_months_in_role: 12, min_evaluation_score: 80, min_attendance_pct: 95,
+  no_warnings_months: 6, require_training_completion: true, require_pdi_completion: false,
+  min_competency_avg: 3, min_required_competency_score: 3, notes: null,
 };
 
 export default function PromotionCriteriaPanel() {
@@ -32,11 +41,7 @@ export default function PromotionCriteriaPanel() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Criteria | null>(null);
-  const [form, setForm] = useState<Omit<Criteria, "id">>({
-    position_id: "", promotion_type: "level",
-    min_months_in_role: 12, min_evaluation_score: 80, min_attendance_pct: 95,
-    no_warnings_months: 6, require_training_completion: true, require_pdi_completion: false, notes: null,
-  });
+  const [form, setForm] = useState<Omit<Criteria, "id">>({ ...DEFAULT_FORM });
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
@@ -65,11 +70,7 @@ export default function PromotionCriteriaPanel() {
   };
   const openNew = () => {
     setEditing(null);
-    setForm({
-      position_id: "", promotion_type: "level",
-      min_months_in_role: 12, min_evaluation_score: 80, min_attendance_pct: 95,
-      no_warnings_months: 6, require_training_completion: true, require_pdi_completion: false, notes: null,
-    });
+    setForm({ ...DEFAULT_FORM });
     setOpen(true);
   };
 
@@ -128,6 +129,8 @@ export default function PromotionCriteriaPanel() {
                   <ul className="text-xs text-muted-foreground space-y-0.5">
                     <li>≥ {c.min_months_in_role} meses no nível atual</li>
                     <li>Avaliação ≥ {c.min_evaluation_score}%</li>
+                    <li>Média das competências ≥ {Number(c.min_competency_avg ?? 3)} (escala 1-5)</li>
+                    <li>Nenhuma competência obrigatória abaixo de {c.min_required_competency_score ?? 3}</li>
                     <li>Frequência ≥ {c.min_attendance_pct}%</li>
                     <li>Sem advertência há {c.no_warnings_months} meses</li>
                     {c.require_training_completion && <li>Treinamentos obrigatórios concluídos</li>}
@@ -175,7 +178,22 @@ export default function PromotionCriteriaPanel() {
                 <Label>Meses sem advertência</Label>
                 <Input type="number" value={form.no_warnings_months} onChange={(e) => setForm({ ...form, no_warnings_months: Number(e.target.value) })} />
               </div>
+              <div>
+                <Label>Média mín. competências (1-5)</Label>
+                <Input
+                  type="number" min={1} max={5} step={0.1} value={form.min_competency_avg}
+                  onChange={(e) => setForm({ ...form, min_competency_avg: Number(e.target.value) })}
+                />
+              </div>
+              <div>
+                <Label>Nota mín. por obrigatória</Label>
+                <Input
+                  type="number" min={1} max={5} step={1} value={form.min_required_competency_score}
+                  onChange={(e) => setForm({ ...form, min_required_competency_score: Number(e.target.value) })}
+                />
+              </div>
             </div>
+
             <div className="flex items-center gap-2">
               <Switch checked={form.require_training_completion} onCheckedChange={(v) => setForm({ ...form, require_training_completion: v })} />
               <Label>Exige treinamentos concluídos</Label>

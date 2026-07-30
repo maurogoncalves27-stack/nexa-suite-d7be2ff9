@@ -8,6 +8,7 @@ import MonthlyEvaluationReminder from "@/components/evaluations/MonthlyEvaluatio
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
+import { DEFAULT_SCALE, scaleColorClass } from "@/lib/competencyEvaluation";
 
 export interface Cycle {
   id: string;
@@ -62,15 +63,30 @@ export default function Evaluations() {
             <Award className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Avaliação de Desempenho
           </h1>
           <p className="text-muted-foreground text-sm sm:text-base">
-            Avalie colaboradores por critérios ponderados. As infrações registradas impactam automaticamente a nota através do critério "Disciplina".
+            Avaliação por competência do cargo, na escala 1 a 5. As infrações registradas entram automaticamente como "Disciplina" e o resultado alimenta o Plano de Carreira (PCCS).
           </p>
         </div>
         <Button variant="outline" onClick={() => setCriteriaOpen(true)} className="w-full sm:w-auto">
-          <Settings2 className="h-4 w-4" /> Gerenciar critérios
+          <Settings2 className="h-4 w-4" /> Critérios (legado)
         </Button>
       </div>
 
       <MonthlyEvaluationReminder hideLink />
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Escala de proficiência</CardTitle>
+          <CardDescription>Mesma régua para todos os cargos — o que muda são as competências avaliadas.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+          {DEFAULT_SCALE.map((l) => (
+            <div key={l.score} className={`rounded-md border p-2 ${scaleColorClass(l.score)}`}>
+              <div className="text-sm font-bold">{l.score} · {l.label}</div>
+              <div className="text-[11px] opacity-80 leading-tight mt-0.5">{l.description}</div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       {loading ? (
         <div className="p-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
@@ -79,7 +95,7 @@ export default function Evaluations() {
           <CardHeader>
             <CardTitle>Avaliações do ciclo</CardTitle>
             <CardDescription>
-              Lance notas por critério. A nota final é a média ponderada e inclui o critério automático "Disciplina" (10 menos pontos perdidos por infrações).
+              Lance a nota de 1 a 5 em cada competência do cargo. A nota final (0-10) é a média ponderada — competências obrigatórias pesam o dobro — somada à Disciplina (20%).
             </CardDescription>
           </CardHeader>
           <CardContent>
