@@ -92,10 +92,8 @@ export default function AdminDashboardPanel() {
       setUsersByGroup({});
       return;
     }
-    const { data: profiles } = await supabase
-      .from("profiles").select("user_id, full_name").in("user_id", userIds);
-    const nameMap: Record<string, string> = {};
-    if (profiles) profiles.forEach((p: any) => (nameMap[p.user_id] = p.full_name));
+    const nameMap = await fetchDisplayNames(userIds);
+
     const grouped: Record<string, UserInGroup[]> = {};
     for (const g of groups) grouped[g.id] = [];
     for (const row of data as any[]) {
