@@ -38,6 +38,8 @@ export default function Evaluations() {
 
   const load = async () => {
     setLoading(true);
+    // Avaliação é mensal: garante o ciclo do mês corrente
+    const current = await ensureCurrentMonthlyCycle();
     const [{ data: c, error: ce }, { data: cr, error: cre }] = await Promise.all([
       supabase.from("evaluation_cycles").select("*").order("start_date", { ascending: false }),
       supabase.from("evaluation_criteria").select("*").order("name"),
@@ -47,9 +49,11 @@ export default function Evaluations() {
     const cs = (c ?? []) as Cycle[];
     setCycles(cs);
     setCriteria((cr ?? []) as Criterion[]);
-    if (cs.length && !selectedCycleId) setSelectedCycleId(cs[0].id);
+    if (current && !selectedCycleId) setSelectedCycleId(current.id);
+    else if (cs.length && !selectedCycleId) setSelectedCycleId(cs[0].id);
     setLoading(false);
   };
+
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
