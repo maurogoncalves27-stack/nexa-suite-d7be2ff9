@@ -37,6 +37,7 @@ import {
   Copy,
   Pencil,
   Trash2,
+  AlertTriangle,
 } from "lucide-react";
 
 import { format, parseISO } from "date-fns";
@@ -236,11 +237,29 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
   const [openIfoodDialog, setOpenIfoodDialog] = useState(false);
   const [openGoogleDialog, setOpenGoogleDialog] = useState(false);
 
+  // Apenas pontos de venda: CD / Fábrica / Estoque Central não vendem no iFood
   const ifoodStores = useMemo(
-    () => stores.filter((s) => !/f[aá]brica/i.test(s.name)),
+    () => stores.filter((s) => !/f[aá]brica|estoque\s*central|^\s*cd\s*$|centro\s*de\s*distribui/i.test(s.name)),
     [stores]
   );
   const googleStores = ifoodStores;
+
+  // Lembrete: atualizar as notas do iFood toda terça-feira às 10h
+  const IFOOD_LAST_UPDATE_KEY = "crm.ifood.last_manual_update";
+  const [ifoodLastUpdate, setIfoodLastUpdate] = useState<number | null>(() => {
+    const v = Number(localStorage.getItem(IFOOD_LAST_UPDATE_KEY));
+    return v > 0 ? v : null;
+  });
+  const ifoodReminderDue = useMemo(() => {
+    const now = new Date();
+    // última terça-feira 10h (ou a desta semana, se já passou)
+    const due = new Date(now);
+    const diff = (now.getDay() - 2 + 7) % 7;
+    due.setDate(now.getDate() - diff);
+    due.setHours(10, 0, 0, 0);
+    if (due.getTime() > now.getTime()) due.setDate(due.getDate() - 7);
+    return !ifoodLastUpdate || ifoodLastUpdate < due.getTime();
+  }, [ifoodLastUpdate]);
 
   const aggregateByStoreMap = (map: Record<string, ManualEntry>) => {
     const entries = Object.values(map).filter((e) => e && e.count > 0 && e.avg > 0);
@@ -306,6 +325,9 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
   const saveIfoodStores = (next: Record<string, IfoodEntry>) => {
     setIfoodByStore(next);
     localStorage.setItem(IFOOD_STORES_KEY, JSON.stringify(next));
+    const now = Date.now();
+    localStorage.setItem(IFOOD_LAST_UPDATE_KEY, String(now));
+    setIfoodLastUpdate(now);
     persistHistory(next, googleByStore);
   };
   const saveGoogleStores = (next: Record<string, ManualEntry>) => {
@@ -335,6 +357,18 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
         </TabsList>
 
         <TabsContent value="graficos" className="space-y-6 mt-4">
+      {ifoodReminderDue && (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3">
+          <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
+          <div className="text-xs sm:text-sm flex-1">
+            <b>Atualização semanal pendente:</b> as notas do iFood devem ser atualizadas toda terça-feira às 10h.
+            {ifoodLastUpdate && (
+              <span className="text-muted-foreground"> Última atualização: {format(new Date(ifoodLastUpdate), "dd/MM/yyyy HH:mm", { locale: ptBR })}.</span>
+            )}
+          </div>
+          <Button size="sm" onClick={() => setOpenIfoodDialog(true)}>Atualizar agora</Button>
+        </div>
+      )}
       {/* Cards por fonte */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
         {perSource.map(({ source, total, novos, avg, hasRatings }) => {
