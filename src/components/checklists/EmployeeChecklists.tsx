@@ -138,10 +138,27 @@ export default function EmployeeChecklists() {
 
     const { data } = await supabase
       .from("checklist_templates")
-      .select("id, title, description, deadline_time, weekdays, template_access_groups!inner(group_id)")
+      .select("id, title, description, deadline_time, weekdays, require_scheduled, template_access_groups!inner(group_id)")
       .eq("is_active", true)
       .in("template_access_groups.group_id", groupIds)
       .order("sort_order");
+
+    // Lojas em que o colaborador está escalado hoje (para templates que exigem escala)
+    const { data: myEmp } = await supabase
+      .from("employees").select("id").eq("user_id", user.id).maybeSingle();
+    let scheduledStores: string[] = [];
+    if (myEmp?.id) {
+      const { data: sc } = await supabase
+        .from("work_schedules")
+        .select("store_id, is_day_off")
+        .eq("employee_id", myEmp.id)
+        .eq("schedule_date", today);
+      scheduledStores = (sc ?? []).filter((r: any) => !r.is_day_off).map((r: any) => r.store_id);
+    }
+    const { data: tplStores } = await supabase
+      .from("checklist_template_stores").select("template_id, store_id");
+    const storesByTemplate: Record<string, string[]> = {};
+    (tplStores ?? []).forEach((r: any) => { (storesByTemplate[r.template_id] ||= []).push(r.store_id); });
 
     if (data) {
       // Deduplica (caso o template esteja em múltiplos grupos do usuário)
@@ -150,7 +167,13 @@ export default function EmployeeChecklists() {
         if (seen.has(t.id)) return false;
         seen.add(t.id);
         const dayOk = !t.weekdays || t.weekdays.length === 0 || t.weekdays.includes(currentWeekday);
-        return dayOk;
+        if (!dayOk) return false;
+        if (t.require_scheduled) {
+          if (scheduledStores.length === 0) return false;
+          const tplSt = storesByTemplate[t.id];
+          if (tplSt && tplSt.length > 0 && !tplSt.some((sid) => scheduledStores.includes(sid))) return false;
+        }
+        return true;
       });
       setTemplates(filtered as Template[]);
     }

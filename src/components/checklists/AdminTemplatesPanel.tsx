@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -15,8 +16,9 @@ import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
 import { toast } from "sonner";
+import ChecklistAudienceAudit from "./ChecklistAudienceAudit";
 import {
-  Plus, Trash2, Pencil, Siren, Camera, Copy, ChevronUp, ChevronDown, Users,
+  Plus, Trash2, Pencil, Siren, Camera, Copy, ChevronUp, ChevronDown, Users, CalendarCheck,
 } from "lucide-react";
 
 interface Group { id: string; name: string; sort_order: number }
@@ -35,6 +37,7 @@ interface Template {
   is_active: boolean;
   deadline_time: string | null;
   weekdays: number[] | null;
+  require_scheduled: boolean;
   sort_order: number;
   checklist_items: Item[];
   template_access_groups: { group_id: string; access_groups: { name: string } | null }[];
@@ -58,6 +61,7 @@ export default function AdminTemplatesPanel() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deadlineTime, setDeadlineTime] = useState("");
   const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([]);
+  const [requireScheduled, setRequireScheduled] = useState(false);
 
   useEffect(() => { loadTemplates(); loadGroups(); }, []);
 
@@ -73,7 +77,7 @@ export default function AdminTemplatesPanel() {
     const { data } = await supabase
       .from("checklist_templates")
       .select(
-        "id, title, description, is_active, deadline_time, weekdays, sort_order, checklist_items(id, label, description, sort_order, is_priority, requires_photo), template_access_groups(group_id, access_groups(name))",
+        "id, title, description, is_active, deadline_time, weekdays, require_scheduled, sort_order, checklist_items(id, label, description, sort_order, is_priority, requires_photo), template_access_groups(group_id, access_groups(name))",
       )
       .order("sort_order");
     if (data) setTemplates(data as unknown as Template[]);
@@ -82,7 +86,7 @@ export default function AdminTemplatesPanel() {
   const resetForm = () => {
     setTitle(""); setDescription("");
     setItems([{ label: "", description: "", is_priority: false, requires_photo: false }]);
-    setSelectedGroups([]); setEditingId(null); setDeadlineTime(""); setSelectedWeekdays([]);
+    setSelectedGroups([]); setEditingId(null); setDeadlineTime(""); setSelectedWeekdays([]); setRequireScheduled(false);
   };
 
   const openCreate = () => { resetForm(); setDialogOpen(true); };
@@ -99,6 +103,7 @@ export default function AdminTemplatesPanel() {
     );
     setSelectedGroups(tp.template_access_groups.map((tag) => tag.group_id));
     setSelectedWeekdays(tp.weekdays || []);
+    setRequireScheduled(!!tp.require_scheduled);
     setDialogOpen(true);
   };
 
@@ -119,6 +124,7 @@ export default function AdminTemplatesPanel() {
         description: description.trim() || null,
         deadline_time: deadlineTime || null,
         weekdays: selectedWeekdays.length > 0 ? selectedWeekdays : null,
+        require_scheduled: requireScheduled,
       }).eq("id", editingId);
       if (error) { toast.error(error.message); setSaving(false); return; }
       await supabase.from("checklist_items").delete().eq("template_id", editingId);
@@ -139,6 +145,7 @@ export default function AdminTemplatesPanel() {
         created_by: user.id,
         deadline_time: deadlineTime || null,
         weekdays: selectedWeekdays.length > 0 ? selectedWeekdays : null,
+        require_scheduled: requireScheduled,
       }).select("id").single();
       if (error) { toast.error(error.message); setSaving(false); return; }
 
@@ -170,6 +177,7 @@ export default function AdminTemplatesPanel() {
     const { data: tmpl, error } = await supabase.from("checklist_templates").insert({
       title: `${tp.title} (cópia)`, description: tp.description, created_by: user.id,
       deadline_time: tp.deadline_time, weekdays: tp.weekdays,
+      require_scheduled: tp.require_scheduled,
     }).select("id").single();
     if (error) { toast.error(error.message); return; }
     const sortedItems = [...tp.checklist_items].sort(
@@ -221,9 +229,12 @@ export default function AdminTemplatesPanel() {
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold">Check-list</h2>
-        <Button className="gap-2" onClick={openCreate}>
-          <Plus className="h-4 w-4" /> Novo
-        </Button>
+        <div className="flex items-center gap-2">
+          <ChecklistAudienceAudit />
+          <Button className="gap-2" onClick={openCreate}>
+            <Plus className="h-4 w-4" /> Novo
+          </Button>
+        </div>
       </div>
 
       {templates.length === 0 ? (
@@ -263,6 +274,11 @@ export default function AdminTemplatesPanel() {
                             </p>
                           )}
                           <div className="flex flex-wrap gap-1">
+                            {tp.require_scheduled && (
+                              <Badge variant="secondary" className="text-xs gap-1">
+                                <CalendarCheck className="h-3 w-3" /> Só escalados
+                              </Badge>
+                            )}
                             {tp.template_access_groups?.map((tag) => (
                               <Badge key={tag.group_id} variant="outline" className="text-xs">
                                 {tag.access_groups?.name}
@@ -370,6 +386,19 @@ export default function AdminTemplatesPanel() {
               <p className="text-xs text-muted-foreground">
                 Vazio = todos os dias.
               </p>
+            </div>
+            <div className="flex items-start justify-between gap-3 rounded-lg border p-3">
+              <div className="space-y-1">
+                <Label className="flex items-center gap-2">
+                  <CalendarCheck className="h-4 w-4 text-primary" />
+                  Cobrar somente de quem está escalado na loja no dia
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Quando ligado, o colaborador só é cobrado se estiver na escala daquela
+                  loja no dia. Sem escala cadastrada, não é cobrado.
+                </p>
+              </div>
+              <Switch checked={requireScheduled} onCheckedChange={setRequireScheduled} />
             </div>
             <div className="space-y-2">
               <Label>Descrição</Label>

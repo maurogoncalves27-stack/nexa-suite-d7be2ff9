@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { loadChecklistAudience, isExpectedForTemplate, type AudienceData } from "@/lib/checklistAudience";
 import {
   Users, CheckCircle2, ClipboardList, Calendar, AlertTriangle,
   Clock, XCircle, ChevronDown, ChevronUp,
@@ -17,6 +18,7 @@ interface TemplateWithGroups {
   title: string;
   deadline_time: string | null;
   weekdays: number[] | null;
+  require_scheduled: boolean | null;
   is_active: boolean;
   template_access_groups: { group_id: string }[];
 }
@@ -52,9 +54,10 @@ export default function AdminDashboardPanel() {
   const [filterGroup, setFilterGroup] = useState("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [audience, setAudience] = useState<AudienceData | null>(null);
 
   useEffect(() => { loadGroups(); loadTemplates(); loadTemplateItemCounts(); }, []);
-  useEffect(() => { loadSubmissions(); }, [filterDate]);
+  useEffect(() => { loadSubmissions(); loadAudience(); }, [filterDate]);
   useEffect(() => { loadUsersByGroup(); }, [groups.length]);
 
   const loadGroups = async () => {
@@ -64,10 +67,13 @@ export default function AdminDashboardPanel() {
   const loadTemplates = async () => {
     const { data } = await supabase
       .from("checklist_templates")
-      .select("id, title, deadline_time, weekdays, is_active, template_access_groups(group_id)")
+      .select("id, title, deadline_time, weekdays, require_scheduled, is_active, template_access_groups(group_id)")
       .eq("is_active", true)
       .order("title");
     if (data) setTemplates(data as unknown as TemplateWithGroups[]);
+  };
+  const loadAudience = async () => {
+    setAudience(await loadChecklistAudience(filterDate));
   };
   const loadTemplateItemCounts = async () => {
     const { data } = await supabase.from("checklist_items").select("template_id");
@@ -135,11 +141,8 @@ export default function AdminDashboardPanel() {
       const groupTemplates = activeTemplatesForDay.filter((tp) =>
         tp.template_access_groups.some((tag) => tag.group_id === group.id),
       );
-      const groupUsers = usersByGroup[group.id] || [];
-      const expected = groupTemplates.length * groupUsers.length;
-      const tIds = new Set(groupTemplates.map((tp) => tp.id));
-      const uIds = new Set(groupUsers.map((u) => u.user_id));
-      const groupSubs = submissions.filter((s) => tIds.has(s.template_id) && uIds.has(s.user_id));
+      // Público bruto do grupo (usado só para exibição/fallback enquanto carrega)
+      const rawUsers = usersByGroup[group.id] || [];
       const now = new Date();
       const isToday = filterDate === new Date().toISOString().split("T")[0];
       const expiredTemplates = groupTemplates.filter((tp) => {
@@ -147,10 +150,25 @@ export default function AdminDashboardPanel() {
         const [h, m] = tp.deadline_time.split(":").map(Number);
         const d = new Date(); d.setHours(h, m, 0, 0); return now > d;
       });
+
+      // Público cobrado por template, aplicando as regras de audiência
+      const expectedByTemplate = new Map<string, UserInGroup[]>();
+      const allExpected = new Set<string>();
+      for (const tmpl of groupTemplates) {
+        const list = audience
+          ? rawUsers.filter((u) => isExpectedForTemplate(audience, tmpl as any, u.user_id))
+          : [];
+        expectedByTemplate.set(tmpl.id, list);
+        list.forEach((u) => allExpected.add(u.user_id));
+      }
+      const expected = Array.from(expectedByTemplate.values()).reduce((a, l) => a + l.length, 0);
+      const tIds = new Set(groupTemplates.map((tp) => tp.id));
+      const groupSubs = submissions.filter((s) => tIds.has(s.template_id) && allExpected.has(s.user_id));
+
       const missing: { user: UserInGroup; template: TemplateWithGroups; expired: boolean }[] = [];
       for (const tmpl of groupTemplates) {
         const isExp = expiredTemplates.some((e) => e.id === tmpl.id);
-        for (const usr of groupUsers) {
+        for (const usr of expectedByTemplate.get(tmpl.id) || []) {
           if (!groupSubs.some((s) => s.template_id === tmpl.id && s.user_id === usr.user_id)) {
             missing.push({ user: usr, template: tmpl, expired: isExp });
           }
@@ -161,23 +179,28 @@ export default function AdminDashboardPanel() {
       );
       const completionRate = expected > 0 ? Math.round((groupSubs.length / expected) * 100) : 0;
       return {
-        group, groupTemplates, groupUsers, groupSubs, expectedSubmissions: expected,
+        group, groupTemplates, groupUsers: Array.from(allExpected).map(
+          (id) => rawUsers.find((u) => u.user_id === id)!,
+        ).filter(Boolean),
+        expectedByTemplate, groupSubs, expectedSubmissions: expected,
         missing, expiredMissing: missing.filter((m) => m.expired), incomplete, completionRate,
       };
     });
-  }, [groups, filterGroup, activeTemplatesForDay, usersByGroup, submissions, filterDate]);
+  }, [groups, filterGroup, activeTemplatesForDay, usersByGroup, submissions, filterDate, audience]);
 
   const totalSubmissions = submissions.length;
   const totalExpectedItems = groupStats.reduce((sum, gs) => {
     let items = 0;
     for (const tmpl of gs.groupTemplates) {
       const c = templateItemCounts[tmpl.id] || 0;
-      items += c * gs.groupUsers.length;
+      items += c * (gs.expectedByTemplate.get(tmpl.id)?.length || 0);
     }
     return sum + items;
   }, 0);
-  const checkedItems = submissions.reduce(
-    (sum, s) => sum + s.checklist_answers.filter(isAnswerComplete).length, 0,
+  const checkedItems = groupStats.reduce(
+    (sum, gs) => sum + gs.groupSubs.reduce(
+      (a, s) => a + s.checklist_answers.filter(isAnswerComplete).length, 0,
+    ), 0,
   );
   const conformity = totalExpectedItems > 0 ? Math.round((checkedItems / totalExpectedItems) * 100) : 0;
   const totalExpiredMissing = groupStats.reduce((s, g) => s + g.expiredMissing.length, 0);
