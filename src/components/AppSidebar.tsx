@@ -165,7 +165,7 @@ const operacaoSections: Section[] = [
   ]},
   { label: "Atendimento", items: [
     { title: "CRM", url: "/crm", icon: Headset, staffOnly: true },
-    { title: "Base da Giana", url: "/configuracoes/giana", icon: Bot, staffOnly: true },
+    
     { title: "Central de Ocorrências", url: "/ocorrencias", icon: Siren },
   ]},
   { label: "Cardápio", items: [
