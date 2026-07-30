@@ -658,8 +658,11 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                   <AccordionItem key={s.id} value={s.id}>
                     <AccordionTrigger className="py-2 hover:no-underline">
                       <div className="flex items-center justify-between w-full pr-2">
-                        <span className="text-sm font-medium">{s.name}</span>
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <span className="text-sm font-medium flex items-center gap-1.5">
+                          {s.name}
+                          {isLowRating(agg.avg) && <AlertTriangle className="h-3.5 w-3.5 text-destructive" />}
+                        </span>
+                        <span className={`text-xs flex items-center gap-1 ${isLowRating(agg.avg) ? "text-destructive font-semibold" : "text-muted-foreground"}`}>
                           {agg.totalCount > 0 ? (
                             <>
                               {agg.avg.toFixed(1)}
@@ -674,9 +677,13 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                       {brands.map((b) => {
                         const key = `${s.id}::${b.id}`;
                         const entry = ifoodDraft[key] || { avg: 0, count: 0 };
+                        const low = isLowRating(Number(entry.avg));
                         return (
-                          <div key={b.id} className="grid grid-cols-[1fr_90px_110px] items-center gap-2 border rounded-md p-2">
-                            <div className="text-xs font-medium truncate">{b.name}</div>
+                          <div key={b.id} className={`grid grid-cols-[1fr_90px_110px] items-center gap-2 border rounded-md p-2 ${low ? "border-destructive/60 bg-destructive/10" : ""}`}>
+                            <div className="text-xs font-medium truncate flex items-center gap-1.5">
+                              {b.name}
+                              {low && <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />}
+                            </div>
                             <Input
                               type="number" step="0.1" min="0" max="5"
                               placeholder="Média"
@@ -685,8 +692,9 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
                                 const v = parseFloat(e.target.value.replace(",", ".")) || 0;
                                 setIfoodDraft((d) => ({ ...d, [key]: { ...entry, avg: v } }));
                               }}
-                              className="h-8 text-sm"
+                              className={`h-8 text-sm ${low ? "border-destructive text-destructive font-semibold" : ""}`}
                             />
+
                             <Input
                               type="number" min="0"
                               placeholder="Nº aval."
