@@ -130,23 +130,20 @@ function canUseWorkingDir(dir) {
 function resolveWorkingDir(dllPath) {
   const dllDir = dllPath ? path.dirname(dllPath) : null;
 
-  // Com a PGWebLib instalada em Program Files, usa SEMPRE a pasta da DLL
-  // (mesmo comportamento da demo de referencia). Ignora PAYGO_WORKING_DIR
-  // apontando para AppData/NexaACBr, que gera config/certificados divergentes.
-  if (dllPath && dllDir && path.normalize(dllPath).toLowerCase() === path.normalize(FORCED_PAYGO_DLL_PATH).toLowerCase()) {
-    return dllDir;
-  }
+  // Usa SEMPRE a pasta da DLL (mesmo comportamento da demo de referencia).
+  // PAYGO_WORKING_DIR só vale quando a pasta da DLL não pôde ser resolvida —
+  // apontar para AppData/NexaACBr gera config/certificados divergentes.
+  if (dllDir) return dllDir;
 
   const forcedDir = process.env.PAYGO_WORKING_DIR;
   if (forcedDir && canUseWorkingDir(forcedDir)) return forcedDir;
-
-  if (dllDir) return dllDir;
 
   for (const dir of workDirCandidates(dllPath)) {
     if (canUseWorkingDir(dir)) return dir;
   }
   return null;
 }
+
 
 function preparePayGoWorkingDir(dir) {
   if (!dir) return { ok: false, error: "workingDir vazio" };
