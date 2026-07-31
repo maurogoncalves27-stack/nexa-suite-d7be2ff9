@@ -1,162 +1,54 @@
-# Plano executivo revisado — NEXA Suite
+# Totem com PayGo e Payer chaveáveis (nunca simultâneos)
 
-## Diagnóstico corrigido
+## Respostas às dúvidas (verificado no código)
 
-O **estoque ainda não funciona de ponta a ponta** e não deve ser tratado como módulo concluído ou em produção.
+**1. Dá para ter os dois sem conflito?** Sim, desde que **só um tenha o pinpad aberto por vez**. Instalados juntos não brigam; o que é exclusivo é a **posse da porta do pinpad** e a **porta de rede do agente local**.
 
-O código já possui partes do fluxo:
-- entrada de notas e recebimento de itens (`InventoryReceivingPanel` → `receive_invoice_item`);
-- fichas técnicas com ingredientes;
-- registro de produção do CD (`produce_recipe`);
-- distribuição do CD para lojas (`distribute_factory_production`);
-- transferências entre estoques;
-- baixa de ingredientes por pedido (`consume_pdv_order_stock`), com proteção básica contra baixa duplicada.
+Dois pontos de choque hoje:
+- `electron-acbr/server.cjs` já serve **as duas famílias de rotas no mesmo agente** (PayGo via `acbr-tefd.cjs` e `/payer/*` via `payer/routes.cjs`), em HTTP 3030 / HTTPS 3031.
+- `electron-totem/payer/agent.cjs` sobe **outro** agente Payer também na **3031**. Ele cede quando a porta já está ocupada (`portInUse`), mas isso depende da ordem de boot — não é regra explícita.
 
-Porém, essas partes ainda não foram validadas como um ciclo operacional único. A cobertura encontrada é pontual; não há teste ponta a ponta cobrindo compra → entrada → produção → distribuição → venda → baixa → contagem.
+**2. Número lógico fica no pinpad ou no sistema?** **No sistema, nos dois casos.**
+- **PayGo:** o ponto de captura (PdC) fica gravado na instalação do PayGo na máquina, não no pinpad. O pinpad guarda só tabelas e chaves das adquirentes. Trocar pinpad não perde o PdC; formatar/reinstalar o totem perde.
+- **Payer:** idem — o cadastro/login de terminal vive no Checkout Payer local (:6060).
+- Consequência: os dois números lógicos convivem no mesmo totem sem se sobrescrever. O que não convive é o pinpad aberto pelos dois ao mesmo tempo — e, ao chavear, o novo TEF baixa suas tabelas na primeira transação (primeira venda depois da troca é mais lenta).
 
-Consequências:
-- o sistema de compras ainda não pode ser considerado testado;
-- a sugestão de compras depende de saldos que ainda não são confiáveis;
-- vendas ainda não entram todas no sistema nem baixam estoque de forma uniforme;
-- produção e entrada do CD ainda precisam ser testadas integralmente;
-- não é possível validar CMV, necessidade de compra ou divergência de estoque antes de fechar esse ciclo.
+**3. DLL PayGo em produção no totem.** Confirmado e é um problema hoje: `electron-acbr/acbr-tefd.cjs:43` tem `FORCED_PAYGO_DLL_PATH` apontando para o caminho de desenvolvimento `C:\ProjetoMauro\...\x64\PGWebLib.dll`. O caminho de produção `C:\Program Files (x86)\PayGo\PGWebLib\x64\PGWebLib.dll` existe na lista de candidatos (linha 46) e já é o default do bridge (`paygo-bridge.ps1:6-7`), mas o forçado tem precedência. No totem de produção, o forçado precisa sair do caminho.
 
----
+**4. Recomendação assertiva:** chaveamento **por configuração de loja no banco**, com **encerramento explícito da sessão do provider anterior** antes de abrir a do novo. Nunca decidir por tentativa/erro em runtime.
 
-## Prioridade 0 — Colocar o estoque em funcionamento real
+## O que será feito
 
-### 1. Preparar a base de produtos e fichas técnicas
-- Auditar todos os itens vendáveis do cardápio e seus vínculos com `menu_items`, fichas técnicas e produtos de estoque.
-- Identificar pratos, adicionais, combos, bebidas e embalagens sem ficha ou mapeamento.
-- Validar unidade de compra, unidade de estoque, fatores de conversão, rendimento e perdas.
-- Bloquear ou alertar claramente quando uma venda não puder gerar baixa por falta de vínculo.
-- Preservar a separação entre ficha técnica e receituário.
+### 1. Um agente só, duas famílias de rotas
+- `electron-totem/payer/agent.cjs`: se a 3031 já responde `/health` de um agente NEXA, não sobe nada e registra quem é o dono; se responde algo que não é NEXA, falha com erro claro no diagnóstico em vez de seguir silencioso.
+- `/health` passa a informar qual provider está **ativo** e quais estão **instalados**.
 
-### 2. Unificar a entrada de todas as vendas
-Toda venda deverá gerar um pedido no mesmo núcleo transacional, com origem identificada:
-- NEXA PDV;
-- NEXA Totem;
-- App Garçom;
-- iFood;
-- WhatsApp;
-- chat do site;
-- cardápio do site.
+### 2. Resolução da DLL PayGo pronta para produção
+- `FORCED_PAYGO_DLL_PATH` deixa de ser constante fixa: vira opt-in por variável de ambiente (`PAYGO_DLL_PATH`), usada só na máquina de desenvolvimento.
+- Sem essa variável, vale a ordem de candidatos, com `C:\Program Files (x86)\PayGo\PGWebLib\x64\PGWebLib.dll` em primeiro lugar, e `WorkingDir` sempre na pasta da DLL (comportamento já esperado pela PGWebLib).
+- O diagnóstico mostra **qual DLL foi carregada** e de onde, para conferir no totem em 2 segundos.
+- Isso toca `electron-acbr/**`, que está congelado: é só **resolução de caminho**, sem mexer no fluxo transacional homologado — peço sua confirmação expressa antes de aplicar.
 
-A confirmação do pedido será o único evento responsável por iniciar a baixa de estoque conforme a ficha técnica. Cancelamentos deverão estornar exatamente os movimentos gerados pelo pedido original.
+### 3. Provider ativo é decisão do banco
+`pdv_tef_config.provider` (já lido por `src/lib/tef/index.ts`) segue como fonte única. Troca sem reinstalar nada:
+- Tela de TEF do totem/loja com seletor **PayGo / Payer / Mock**, badge do provider em uso e último diagnóstico.
+- Ao salvar, o front manda o agente **encerrar a sessão do provider anterior** (logoff Payer / finalizar sessão PayGo) e só então marca o novo como ativo.
 
-### 3. Tornar a baixa de estoque segura e auditável
-- Garantir idempotência: um pedido nunca pode baixar duas vezes.
-- Registrar pedido, item vendido, ficha usada, ingrediente, quantidade e loja em cada movimento.
-- Tratar combos, adicionais, substituições e itens vendidos diretamente como produto de estoque.
-- Não permitir saldo negativo silencioso; gerar pendência operacional quando faltar saldo ou mapeamento.
-- Criar reprocessamento controlado para pedidos que falharam.
+### 4. Trava de exclusividade no agente
+Estado `activeProvider` persistido em disco:
+- Pagamento com provider diferente do ativo → o agente desliga o anterior, assume o novo e responde (troca serializada, uma por vez).
+- Duas requisições concorrentes de providers diferentes → a segunda recebe erro explícito "pinpad em uso por PayGo/Payer" em vez de travar o equipamento.
 
-### 4. Validar o ciclo completo do CD
-Executar e documentar o fluxo real:
-1. entrada de insumos no estoque do CD;
-2. conferência de quantidade, lote, validade, custo e conversão;
-3. consumo dos insumos pela produção;
-4. entrada do produto acabado no estoque do CD;
-5. criação da transferência para a loja;
-6. saída do CD;
-7. recebimento e entrada no estoque da loja;
-8. venda na loja;
-9. baixa dos ingredientes ou produtos correspondentes;
-10. cancelamento e estorno controlado.
+### 5. Diagnóstico antes de vender
+Um botão por provider mostrando: agente respondendo, DLL PayGo encontrada (caminho) + PdC ativado, Payer respondendo em :6060 e logado, pinpad detectado e de quem é a posse agora.
 
-A produção real deve consumir insumos e gerar produto acabado de acordo com rendimento e multiplicador da ficha técnica.
+### 6. Procedimento operacional de troca (documentado)
+Seção nova em `electron-totem/INSTALL-PAYER.md`: fechar venda em aberto → trocar provider na tela → rodar diagnóstico → fazer **uma venda de teste de R$ 0,01 e cancelar** (força o download de tabelas do novo TEF fora do pico).
 
-### 5. Testar compras somente sobre saldos confiáveis
-Depois de vendas, produção e transferências estarem fechando:
-- validar estoque mínimo e contingência por loja;
-- validar plano semanal do CD;
-- validar consolidação da necessidade do CD com a necessidade das lojas;
-- gerar cotação;
-- registrar pedido ao fornecedor;
-- receber nota e produtos;
-- atualizar custo e saldo;
-- conferir se quantidades já cotadas/compradas não são solicitadas novamente.
+## Restrições respeitadas
+Nada que altere o **fluxo de transação** homologado de PayGo ou Payer. As mudanças ficam em: orquestração do agente (start/stop, porta, provider ativo), resolução do caminho da DLL, UI de configuração/diagnóstico e documentação. Qualquer necessidade de tocar no fluxo homologado, eu paro e peço confirmação expressa.
 
-O sistema de compras só será marcado como funcional após esse cenário completo passar com dados reais.
-
-### 6. Criar testes robustos de estoque
-- Testes automatizados das funções críticas de entrada, produção, transferência, venda e estorno.
-- Cenários com item simples, combo, adicional, embalagem, produto sem ficha, conversão de unidade, perda e estoque insuficiente.
-- Teste ponta a ponta controlado em uma loja piloto.
-- Relatório de reconciliação: saldo inicial + entradas + produção recebida − vendas − perdas − transferências = saldo final.
-- Contagem física ao final do piloto para comparar sistema × realidade.
-
-**Critério para concluir a Prioridade 0:** uma compra real entra no CD, vira produção, é transferida para uma loja, é vendida por um canal integrado e baixa corretamente até a contagem física, com rastreabilidade e sem ajuste manual oculto.
-
----
-
-## Prioridade 1 — Vendas próprias integradas
-
-### 7. Cardápio, WhatsApp e chat como o mesmo sistema
-- Criar carrinho e checkout único para cardápio do site.
-- Permitir entrega própria ou retirada.
-- WhatsApp e chat usam o mesmo agente, catálogo, carrinho, cliente e pedido; são apenas canais diferentes.
-- A IA monta o carrinho e encaminha para o mesmo checkout, sem criar um segundo sistema de vendas.
-- Todos os pedidos entram no núcleo unificado e baixam estoque pelas mesmas regras.
-
-### 8. Operação da entrega própria e retirada
-- Pedido cai na fila da loja com aceitar, recusar, preparar, pronto, saiu para entrega e concluído.
-- Entrega própria com entregador, endereço, taxa e acompanhamento.
-- Retirada com aviso automático ao cliente.
-- Impressão de comanda e emissão fiscal pelo fluxo comum.
-
----
-
-## Prioridade 2 — Atendimento virtual unificado
-
-### 9. Um único cérebro para WhatsApp e chat
-- Unificar prompt, ferramentas, base da Giana, regras comerciais e memória do cliente.
-- Manter apenas adaptadores de entrada e saída por canal.
-- Agrupar o mesmo cliente pelo telefone e preservar histórico entre WhatsApp e site.
-- Integrar atendimento, carrinho, pedido e CRM.
-
-### 10. Testes de qualidade do atendimento
-- Cardápio, preços, pesos, composição, horários, unidades, entrega, retirada, pedido, alteração e cancelamento.
-- Reclamações, elogios, dúvidas e transferência para humano.
-- Regressão anti-alucinação usando somente dados oficiais do cardápio e da base da Giana.
-- Rodadas automáticas nos dois canais contra o mesmo núcleo, com nota de qualidade e alerta de regressão.
-
----
-
-## Prioridade 3 — App Garçom no Gertec GPOS780
-
-### 11. Colocar o Garçom em operação no SmartPOS comprado
-- Adaptar `/garcom` para o GPOS780, com interface adequada à tela e operação rápida por mesa/comanda.
-- Integrar pagamento no SmartPOS usando a solução homologada aplicável ao equipamento, sem alterar os códigos TEF congelados sem confirmação expressa.
-- Integrar impressora embarcada, fila offline e retomada segura.
-- Toda venda do Garçom entra no mesmo núcleo de pedidos e baixa estoque.
-- Executar piloto real em uma loja antes da expansão.
-
----
-
-## Prioridade 4 — Homologações e integrações externas
-
-Após estabilizar o núcleo operacional, ou em paralelo quando depender apenas de terceiros:
-1. refazer testes oficiais do iFood e finalizar merchant;
-2. Lalamove;
-3. Uber Direct;
-4. C6 Bank API;
-5. avaliações e respostas integradas iFood + Google;
-6. Meta WhatsApp Cloud API;
-7. demais itens da fila oficial de homologações.
-
-PayGo e Payer permanecem homologados e congelados. O iFood em produção deve ser preservado durante a integração dos pedidos ao estoque.
-
-## Ordem prática de execução
-
-1. Auditoria de produtos, fichas e conversões.
-2. Núcleo único de pedidos e movimentos de estoque.
-3. Venda do PDV/iFood baixando estoque e cancelamento estornando.
-4. Entrada de nota e insumos do CD.
-5. Produção do CD e produto acabado.
-6. Transferência e recebimento pela loja.
-7. Compras e reposição baseadas nos saldos validados.
-8. Cardápio/WhatsApp/chat com entrega própria e retirada.
-9. Atendimento virtual unificado e testes de regressão.
-10. App Garçom no GPOS780.
-11. Homologações externas conforme a fila oficial.
+## Detalhes técnicos
+- Arquivos previstos: `electron-totem/payer/agent.cjs`, `electron-totem/main.cjs`, `electron-acbr/acbr-tefd.cjs` (só a resolução de DLL, linhas 43-49), UI de chaveamento reaproveitando `src/pages/TefPayerSetup.tsx`, `electron-totem/INSTALL-PAYER.md`.
+- Sem migração de schema: `pdv_tef_config.provider` já aceita `paygo` / `payer` / `mock`.
+- Bitness: com o bridge PowerShell + C# (`paygo-bridge.ps1`), a PGWebLib x64 é carregada pelo host C#, então o empacotamento do Electron não precisa acompanhar a arquitetura da DLL.
