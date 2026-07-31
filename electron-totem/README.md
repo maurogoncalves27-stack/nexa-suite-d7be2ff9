@@ -1,6 +1,6 @@
 # Nexa Totem (Electron / kiosk)
 
-Wrapper desktop do **Nexa Totem** (autoatendimento). Gera um instalador `.exe` que abre o app em **kiosk fullscreen** apontando para `https://rhplus.lovable.app/totem`, com:
+Wrapper desktop do **Nexa Totem** (autoatendimento). Gera um instalador `.exe` que abre o app em **kiosk fullscreen** apontando para `https://nexasuite.aquelaparme.com.br/totem`, com:
 
 - Impressão ESC/POS direto na **Gertec G250W** (USB, via `node-thermal-printer`).
 - Agente local **SiTef** (`http://127.0.0.1:60906` e `http://localhost:60906`) para pagamento no **pinpad Gertec PPC930**.
