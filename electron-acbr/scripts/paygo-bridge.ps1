@@ -388,9 +388,9 @@ public static class PayGoBridge
             ret = Fn<PW_iNewTransac_>("PW_iNewTransac")(PWOPER_SALE);
             if (ret != PWRET_OK) return Error("PW_iNewTransac", ret);
 
-            Add(PWINFO_AUTNAME, "PDV");
+            Add(PWINFO_AUTNAME, "NEXA Suite");
             Add(PWINFO_AUTVER, "1.0.0");
-            Add(PWINFO_AUTDEV, "PayGo");
+            Add(PWINFO_AUTDEV, "NEXA Gestao Inteligente");
             Add(PWINFO_AUTCAP, "512"); // Homologacao PayGo: fixo em 512 (0x24). Em producao dependera das funcionalidades utilizadas.
             Add(PWINFO_DSPQRPREF, QrDisplayPreference());
             EmitEvent("INFO", "Preferencia QR PayGo=" + QrDisplayPreference() + " (1=pinpad, 2=checkout/PC)");
@@ -602,9 +602,9 @@ public static class PayGoBridge
         // Espelha demo oficial Setis (MainWindow.NewTransacExecute): para ADMIN/SALE
         // apenas estes 5 params sao adicionados. CPFCNPJ/PontoDeCaptura/Ambiente
         // sao lidos pela DLL via env vars setadas durante a instalacao do PdC.
-        Add(PWINFO_AUTNAME, "PDV");
+        Add(PWINFO_AUTNAME, "NEXA Suite");
         Add(PWINFO_AUTVER, "1.0.0");
-        Add(PWINFO_AUTDEV, "PayGo");
+        Add(PWINFO_AUTDEV, "NEXA Gestao Inteligente");
         Add(PWINFO_AUTCAP, "512"); // Homologacao PayGo: fixo em 512 (0x24)
         // PWINFO_DSPQRPREF (0x7F50) NAO deve ser enviado em ADMIN — refere-se a QR Code de venda PIX.
 
