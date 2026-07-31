@@ -152,6 +152,21 @@ async function ensureFreshSitefAgentPort() {
 }
 
 app.whenReady().then(async () => {
+  // Aceita o certificado auto-assinado do agente Payer local (apenas loopback).
+  app.on("certificate-error", (event, _webContents, url, _error, _cert, callback) => {
+    try {
+      const u = new URL(url);
+      const isLocalAgent =
+        (u.hostname === "127.0.0.1" || u.hostname === "localhost") &&
+        String(u.port) === String(PAYER_AGENT_PORT);
+      if (isLocalAgent) {
+        event.preventDefault();
+        return callback(true);
+      }
+    } catch { /* ignora */ }
+    callback(false);
+  });
+
   // Auto-start com o Windows: registra o app pra abrir junto com o login do usuário
   if (process.platform === "win32" && app.isPackaged) {
     try {
@@ -169,24 +184,31 @@ app.whenReady().then(async () => {
   try { startSitefAgent(); }
   catch (e) { console.error("[totem] falha ao iniciar agente SiTef", e); }
 
+  try { await startPayerAgent(); }
+  catch (e) { console.error("[totem] falha ao iniciar agente Payer", e); }
+
   createWindow();
 
   // Atalho secreto para sair do kiosk: Ctrl+Shift+Alt+Q
   globalShortcut.register("Control+Shift+Alt+Q", () => {
     stopSitefAgent();
+    stopPayerAgent();
     app.quit();
   });
 });
 
 app.on("window-all-closed", () => {
   stopSitefAgent();
+  stopPayerAgent();
   if (process.platform !== "darwin") app.quit();
 });
 
 app.on("before-quit", () => {
   stopSitefAgent();
+  stopPayerAgent();
   globalShortcut.unregisterAll();
 });
+
 
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
