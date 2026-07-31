@@ -1,46 +1,52 @@
 ## Objetivo
 
-Hoje um check-list só pode ser direcionado a **grupos de acesso** (+ lojas). Você quer poder marcar **grupo(s)**, **pessoa(s)** específicas, ou os dois ao mesmo tempo.
+Gerar um instalador **Nexa Totem (Payer)** pronto para produção: um único `.exe` que já sobe o agente local do Payer, conversa com o Checkout Payer (`:6060`) que já está instalado nos totens, imprime na **Epson TM-T20X** e emite NFC-e pela Focus NFe (nuvem).
 
-## Melhor caminho
-
-Já existe no banco a tabela `checklist_template_assignments` (template + colaborador), criada no passado e hoje **vazia e sem regras de acesso**. É o encaixe natural: reaproveitamos ela como "atribuição individual", em vez de criar estrutura nova.
-
-Regra de público passa a ser **união (OU)**:
-
-```text
-cobrado = (está em algum grupo do template)  OU  (está atribuído individualmente)
-                         ↓ e então
-        filtro de loja do template + filtro "só escalados" (se ligado)
-```
-
-Detalhes das regras:
-- Pessoa atribuída individualmente **não precisa** estar em nenhum grupo.
-- Filtro de loja do template **não se aplica** a pessoas nomeadas (se você escolheu a pessoa, é porque quer dela) — o filtro de loja continua valendo para o público vindo por grupo.
-- O switch "Cobrar somente de quem está escalado" continua valendo para todos, inclusive nomeados.
-- Colaborador desligado deixa de ser cobrado automaticamente (já é o comportamento atual).
+**Regra dura:** nada em `electron-acbr/` (PayGo/ACBr) é tocado. O Payer vive só em `electron-totem/`. Os dois instaladores continuam independentes — instala-se um OU outro na máquina.
 
 ## O que muda
 
-1. **Banco (migração)**
-   - Ativar segurança em `checklist_template_assignments` com permissões: leitura para autenticados, gestão para admin/gestor; conceder acessos necessários.
-   - Ajustar a política de visualização de `checklist_templates` para também liberar o template a quem tem atribuição individual (senão a pessoa nomeada não enxerga o check-list).
+### 1. Agente Payer dentro do Totem (`electron-totem/`)
+- Novo `payer/localhost.cjs` — cópia isolada do adaptador da API Localhost do Payer (status/login, `payment`, `response`, `abort`, `diagnostics`) apontando para `http://127.0.0.1:6060`. Cópia, não import do `electron-acbr` (mantém os projetos desacoplados).
+- Novo `payer/agent.cjs` — servidor HTTPS local em `127.0.0.1:3031` (certificado autoassinado gerado no primeiro boot, via `selfsigned`) expondo `/health` e `/payer/*`, exatamente o contrato que o app já consome em `src/lib/tef/payer/`.
+- Se a porta 3031 já estiver ocupada, o Totem detecta, não sobe o próprio agente e usa o que já responde. Porta configurável por `NEXA_PAYER_PORT`.
+- Sem credenciais no instalador: o Checkout Payer da máquina já fica logado. `diagnostics` só reporta se o Checkout responde; `login` fica como fallback manual.
 
-2. **Editor de template** (`AdminTemplatesPanel.tsx`)
-   - Nova seção "Público-alvo": bloco de grupos (existente) + novo bloco "Colaboradores específicos" com busca e seleção múltipla (apenas colaboradores ativos, nome do cadastro).
-   - Badge no card do template: "N pessoa(s)" quando houver atribuição individual.
-   - Salvar/remover atribuições junto com o template.
+### 2. Certificado local (`electron-totem/main.cjs`)
+- Handler `certificate-error` restrito a `127.0.0.1:3031` — sem isso o `fetch` do renderer para o agente falha pelo certificado autoassinado.
+- Iniciar/parar o agente Payer no ciclo de vida do app (junto de `startSitefAgent`, que fica intacto e sem uso quando a loja usa provider `payer`).
 
-3. **Regra de público** (`src/lib/checklistAudience.ts`)
-   - Carregar as atribuições individuais e aplicar a lógica de união descrita acima em `isExpectedForTemplate` / `expectedUsersForTemplate`.
+### 3. Impressão — Epson TM-T20X
+- Ajustar a escolha automática de impressora em `printer:silentPrint` e `printer:printUrl` para priorizar **`TM-T20`/`TM-T20X`**, depois Epson genérica, depois G250/POS, depois a padrão do Windows.
+- ESC/POS: a TM-T20X é Epson nativa, então `PrinterTypes.EPSON` e largura 48 colunas (80 mm) já estão corretos em `printer:print` — sem mudança de protocolo.
+- CSS do DANFE NFC-e (`printer:printUrl`) permanece **inalterado** (config validada v1.0.17).
+- Cadastro em `pdv_printers` de cada loja: `connection_type = usb`, `usb_device_name` = o nome exato da fila do Windows (ex.: `EPSON TM-T20X Receipt`), `printer_model` Epson, `print_role = 'totem'`.
 
-4. **Telas que consomem a regra** — passam a refletir automaticamente:
-   - Dashboard de check-lists (pendentes/conformidade)
-   - Check-lists por loja
-   - Área do colaborador (`EmployeeChecklists.tsx`): passa a mostrar o check-list também para quem foi nomeado individualmente.
+### 4. Empacotamento
+- `package.json` do totem: bump para `1.1.0`, `payer/**` em `build.files`, dependência `selfsigned`, mesmo `appId`/`productName` (atualiza a instalação existente sem duplicar).
+- Garantir `build/icon.ico` + `build/icon.png` a partir de `icones/nexa_icone.png`.
 
-5. **Auditoria de público**: continuar listando vínculos de grupo inválidos, mas sem marcar como inválida a pessoa que está apenas por atribuição individual.
+### 5. Configuração por loja (banco)
+- Em `pdv_tef_config`, para as lojas com totem (Asa Sul, Asa Norte, Águas Claras, Lago Sul): `provider = 'payer'`, `agent_url = 'https://127.0.0.1:3031'`, `is_active = true`.
+- Fluxo de venda do Totem não muda — ele já roteia pelo `provider`.
 
-## Observação
+### 6. NFC-e
+- Nada a fazer: lojas com `nfce_emission_provider = 'focus_nfe'`; o cupom sai da nuvem e é impresso na TM-T20X via `printer:printUrl`.
 
-Nada é removido: templates que hoje usam só grupos continuam funcionando igual.
+## Passos para você (build e produção)
+
+1. Eu implemento os itens 1–5 aqui.
+2. `git pull` em `C:\Users\Mauro\Documents\GitHub\nexa-suite`.
+3. `cd electron-totem && npm install && npm run dist:win` → `release/Nexa Totem Setup 1.1.0.exe`.
+4. No totem: desinstalar a versão antiga, instalar a nova como administrador.
+5. Validar antes de abrir pro cliente:
+   - Checkout Payer aberto e logado; `https://127.0.0.1:3031/health` responde e `/payer/diagnostics` mostra `checkoutReachable: true`.
+   - Teste de impressão pela tela de Impressoras (deve sair na TM-T20X).
+   - Venda de teste R$ 1,00 no crédito → pinpad → aprovação → senha + cupom fiscal impressos → linha em `pdv_tef_transactions`.
+   - Teste de cancelamento/abort no meio da transação.
+
+## Detalhes técnicos
+
+- Contrato do agente (já implementado no front): `GET /health`, `GET /payer/diagnostics`, `POST /payer/login`, `POST /payer/payment` (`wait:false`), `GET /payer/response` (polling 400 ms, timeout 10 min), `POST /payer/abort`.
+- Nenhum arquivo de `src/lib/tef/paygo*`, `electron-acbr/**` ou dos scripts PayGo é modificado.
+- O agente escuta só em loopback; nada exposto na rede da loja.
