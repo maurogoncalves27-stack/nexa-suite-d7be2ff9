@@ -1,8 +1,8 @@
 {
   "name": "nexa-totem",
   "productName": "Nexa Totem",
-  "version": "1.0.33",
-  "description": "Nexa Totem — Autoatendimento (Gertec G250 + pinpad PPC930 via SiTef)",
+  "version": "1.1.0",
+  "description": "Nexa Totem — Autoatendimento (impressora Epson TM-T20X + TEF Payer Checkout local)",
   "main": "main.cjs",
   "author": {
     "name": "Aquela Parme",
@@ -17,7 +17,8 @@
   },
   "dependencies": {
     "koffi": "^2.10.0",
-    "node-thermal-printer": "^4.4.4"
+    "node-thermal-printer": "^4.4.4",
+    "selfsigned": "^2.4.1"
   },
   "devDependencies": {
     "@electron/packager": "^20.0.0",
@@ -31,6 +32,7 @@
       "main.cjs",
       "preload.cjs",
       "sitef-agent.cjs",
+      "payer/**",
       "sitef-real.cjs",
       "build/**"
     ],
@@ -43,11 +45,15 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["ia32"]
+          "arch": [
+            "ia32"
+          ]
         }
       ],
       "publisherName": "Aquela Parme"
