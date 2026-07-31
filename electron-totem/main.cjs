@@ -184,8 +184,15 @@ app.whenReady().then(async () => {
   try { startSitefAgent(); }
   catch (e) { console.error("[totem] falha ao iniciar agente SiTef", e); }
 
-  try { await startPayerAgent(); }
-  catch (e) { console.error("[totem] falha ao iniciar agente Payer", e); }
+  try {
+    const payerStart = await startPayerAgent();
+    if (!payerStart?.ok) {
+      console.error(`[totem] agente TEF local indisponível: ${payerStart?.error || "erro desconhecido"}`);
+    } else if (payerStart.external) {
+      console.log(`[totem] usando agente TEF externo "${payerStart.agent}" na porta ${PAYER_AGENT_PORT}`);
+    }
+  } catch (e) { console.error("[totem] falha ao iniciar agente Payer", e); }
+
 
   createWindow();
 

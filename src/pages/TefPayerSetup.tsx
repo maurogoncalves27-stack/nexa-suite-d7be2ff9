@@ -22,6 +22,8 @@ import {
 import PayerTestSaleCard from "@/components/tef-payer/PayerTestSaleCard";
 import PayerHomologationChecklist from "@/components/tef-payer/PayerHomologationChecklist";
 import PayerHomologationCard from "@/components/tef-payer/PayerHomologationCard";
+import TefProviderSwitchCard from "@/components/tef/TefProviderSwitchCard";
+
 
 const PAYER_DOCS = "https://docs.payer.com.br/docs/integrations/api-localhost.html";
 
@@ -117,7 +119,10 @@ export default function TefPayerSetup() {
         </Card>
       )}
 
+      <TefProviderSwitchCard agentUrl={agentUrl} storeId={storeId || undefined} />
+
       <PayerHomologationChecklist agentUrl={agentUrl} />
+
 
       <Card className="p-4 space-y-3">
         <h2 className="font-semibold">Status</h2>

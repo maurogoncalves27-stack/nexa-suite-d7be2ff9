@@ -66,3 +66,59 @@ Se o campo ficar vazio, o app escolhe automaticamente: TM-T20X → Epson → Ger
 ## Observação
 
 Nada em `electron-acbr/` (PayGo/ACBr) é usado por este instalador. Os dois agentes são independentes; se a porta 3031 já estiver ocupada por outro agente, o Totem reutiliza o que estiver respondendo.
+
+---
+
+## Chaveamento PayGo ⇄ Payer (nunca simultâneos)
+
+Os dois TEFs podem ficar **instalados juntos** na mesma máquina. O que **não** pode
+é os dois abrirem o pinpad ao mesmo tempo — a porta do pinpad é exclusiva.
+
+### Onde fica o número lógico
+
+| TEF | Número lógico | Guardado em |
+| --- | --- | --- |
+| PayGo | Ponto de Captura (PdC) | Instalação do PayGo na máquina (`C:\Program Files (x86)\PayGo\`) |
+| Payer | Terminal / login | Instalação do Checkout Payer local (`:6060`) |
+
+**Nunca no pinpad.** O pinpad guarda apenas tabelas e chaves das adquirentes.
+Trocar o pinpad não perde o número lógico; formatar/reinstalar o totem perde.
+
+### DLL PayGo em produção
+
+O agente resolve a DLL nesta ordem:
+
+1. `PAYGO_DLL_PATH` (env — usar só na máquina de desenvolvimento)
+2. `C:\Program Files (x86)\PayGo\PGWebLib\x64\PGWebLib.dll` ← **produção, instalada pelo SetupPayGo**
+3. `C:\Program Files (x86)\PayGo\PGWebLib\PGWebLib.dll`
+4. `C:\PayGo\PGWebLib\x64\PGWebLib.dll` / `C:\PayGo\PGWebLib\PGWebLib.dll`
+5. caminho de desenvolvimento (`C:\ProjetoMauro\...`) — último recurso
+
+O diretório de trabalho é sempre a pasta da DLL (a PGWebLib grava `comms_*.log` ali).
+O caminho realmente carregado aparece no card **Chaveamento de TEF** em
+`/configuracoes/tef-payer`.
+
+### Como trocar de provider
+
+1. Fechar qualquer venda em aberto no totem.
+2. Em `/configuracoes/tef-payer`, card **Chaveamento de TEF**: selecionar a loja,
+   escolher `PayGo` ou `Payer` e clicar em **Aplicar chaveamento**.
+   O agente encerra a sessão do provider anterior **antes** de assumir o novo e só
+   depois `pdv_tef_config.provider` é gravado.
+3. Clicar em **Atualizar** e conferir: agente online, provider ativo = o escolhido,
+   DLL PayGo encontrada (se PayGo) ou Checkout acessível (se Payer).
+4. Fazer **uma venda de teste de R$ 0,01 e cancelar**. Isso força o download das
+   tabelas do novo TEF fora do horário de pico — a primeira transação após a troca
+   é sempre mais lenta.
+
+### Exclusividade no agente
+
+- O agente guarda o provider ativo em `%APPDATA%\nexa-totem\tef-active-provider.json`.
+- Requisição de outro provider → o agente libera o anterior e assume o novo (troca serializada).
+- Duas trocas concorrentes → a segunda recebe HTTP `409` com "pinpad em uso", em vez de travar o equipamento.
+- Endpoints: `GET/POST /tef/active-provider`, `POST /tef/release`, e `GET /health` (mostra provider ativo + o que está instalado).
+
+### Porta 3031
+
+- Se a porta já responde `/health` de um agente **NEXA** (ACBr ou Totem), o Totem cede e reutiliza.
+- Se responde algo que **não** é NEXA, o agente falha com erro explícito no log em vez de seguir em silêncio.
