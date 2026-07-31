@@ -300,10 +300,8 @@ ipcMain.handle("printer:silentPrint", async (_evt, { html, deviceName } = {}) =>
 ipcMain.handle("printer:printUrl", async (_evt, { url, deviceName } = {}) => {
   try {
     const printers = mainWindow ? await mainWindow.webContents.getPrintersAsync() : [];
-    const targetDevice =
-      deviceName ||
-      printers.find((p) => /G250|Gertec|POS|EPSON/i.test(`${p.name} ${p.displayName || ""}`))?.name ||
-      printers.find((p) => p.isDefault)?.name;
+    const targetDevice = deviceName || pickReceiptPrinter(printers);
+
 
     if (!targetDevice) return { ok: false, error: "Nenhuma impressora instalada encontrada" };
     if (!url) return { ok: false, error: "URL fiscal ausente" };
