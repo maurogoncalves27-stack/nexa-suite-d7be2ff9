@@ -336,6 +336,7 @@ export default function Totem() {
 
   const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
   const cartTotal = cart.reduce((s, c) => s + c.unit_price * c.quantity, 0);
+  const tefStoreId = selectedStore?.parent_store_id ?? selectedStore?.id;
 
   const addItem = (it: MenuItem, note?: string, qty: number = 1) => {
     beep(880, 80);
@@ -379,7 +380,7 @@ export default function Totem() {
 
     setBusy(true);
     try {
-      const cfg = await loadTefConfig(selectedStore.id);
+      const cfg = await loadTefConfig(selectedStore.parent_store_id ?? selectedStore.id);
       const result = await createTotemOrderAndClose({
         storeId: selectedStore.id,
         storeName: selectedStore.name,
@@ -903,7 +904,7 @@ export default function Totem() {
         open={tefOpen}
         request={tefOpen ? {
           amount: cartTotal,
-          storeId: selectedStore?.id,
+          storeId: tefStoreId,
         } : null}
         onClose={() => setTefOpen(false)}
         onResult={finalizeOrder}
