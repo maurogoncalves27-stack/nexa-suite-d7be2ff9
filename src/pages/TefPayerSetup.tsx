@@ -22,6 +22,8 @@ import {
 import PayerTestSaleCard from "@/components/tef-payer/PayerTestSaleCard";
 import PayerHomologationChecklist from "@/components/tef-payer/PayerHomologationChecklist";
 import PayerHomologationCard from "@/components/tef-payer/PayerHomologationCard";
+import TefProviderSwitchCard from "@/components/tef/TefProviderSwitchCard";
+
 
 const PAYER_DOCS = "https://docs.payer.com.br/docs/integrations/api-localhost.html";
 
