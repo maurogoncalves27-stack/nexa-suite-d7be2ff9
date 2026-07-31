@@ -1412,4 +1412,6 @@ module.exports = {
   // exports usados em testes/diagnóstico
   _NEXA_DEFAULTS: NEXA_DEFAULTS,
   _findDllPath: findDllPath,
+  dllResolution,
+
 };
