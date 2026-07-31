@@ -36,7 +36,7 @@ try {
 const APP_URL =
   process.env.NEXA_URL ||
   (app.isPackaged
-    ? "https://rhplus.lovable.app/totem"
+    ? "https://nexasuite.aquelaparme.com.br/totem"
     : "http://localhost:8080/totem");
 
 const KIOSK = process.env.NEXA_KIOSK !== "false"; // padrão: kiosk
