@@ -9,6 +9,20 @@ const path = require("path");
 const { execFile } = require("child_process");
 const packageJson = require("./package.json");
 const { startSitefAgent, stopSitefAgent } = require("./sitef-agent.cjs");
+const { startPayerAgent, stopPayerAgent, PAYER_AGENT_PORT } = require("./payer/agent.cjs");
+
+// Escolhe a impressora de recibo: prioriza Epson TM-T20X (padrão em produção),
+// depois Epson genérica, depois Gertec/POS, por fim a padrão do Windows.
+function pickReceiptPrinter(printers = []) {
+  const label = (p) => `${p.name} ${p.displayName || ""}`;
+  return (
+    printers.find((p) => /TM[-\s]?T20/i.test(label(p)))?.name ||
+    printers.find((p) => /EPSON/i.test(label(p)))?.name ||
+    printers.find((p) => /G250|Gertec|POS/i.test(label(p)))?.name ||
+    printers.find((p) => p.isDefault)?.name
+  );
+}
+
 
 let ThermalPrinter, PrinterTypes;
 try {
@@ -138,6 +152,21 @@ async function ensureFreshSitefAgentPort() {
 }
 
 app.whenReady().then(async () => {
+  // Aceita o certificado auto-assinado do agente Payer local (apenas loopback).
+  app.on("certificate-error", (event, _webContents, url, _error, _cert, callback) => {
+    try {
+      const u = new URL(url);
+      const isLocalAgent =
+        (u.hostname === "127.0.0.1" || u.hostname === "localhost") &&
+        String(u.port) === String(PAYER_AGENT_PORT);
+      if (isLocalAgent) {
+        event.preventDefault();
+        return callback(true);
+      }
+    } catch { /* ignora */ }
+    callback(false);
+  });
+
   // Auto-start com o Windows: registra o app pra abrir junto com o login do usuário
   if (process.platform === "win32" && app.isPackaged) {
     try {
@@ -155,24 +184,31 @@ app.whenReady().then(async () => {
   try { startSitefAgent(); }
   catch (e) { console.error("[totem] falha ao iniciar agente SiTef", e); }
 
+  try { await startPayerAgent(); }
+  catch (e) { console.error("[totem] falha ao iniciar agente Payer", e); }
+
   createWindow();
 
   // Atalho secreto para sair do kiosk: Ctrl+Shift+Alt+Q
   globalShortcut.register("Control+Shift+Alt+Q", () => {
     stopSitefAgent();
+    stopPayerAgent();
     app.quit();
   });
 });
 
 app.on("window-all-closed", () => {
   stopSitefAgent();
+  stopPayerAgent();
   if (process.platform !== "darwin") app.quit();
 });
 
 app.on("before-quit", () => {
   stopSitefAgent();
+  stopPayerAgent();
   globalShortcut.unregisterAll();
 });
+
 
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -248,10 +284,8 @@ ipcMain.handle("printers:list", async () => {
 ipcMain.handle("printer:silentPrint", async (_evt, { html, deviceName } = {}) => {
   try {
     const printers = mainWindow ? await mainWindow.webContents.getPrintersAsync() : [];
-    const targetDevice =
-      deviceName ||
-      printers.find((p) => /G250|Gertec|POS|EPSON/i.test(`${p.name} ${p.displayName || ""}`))?.name ||
-      printers.find((p) => p.isDefault)?.name;
+    const targetDevice = deviceName || pickReceiptPrinter(printers);
+
 
     if (!targetDevice) {
       console.warn("[totem] nenhuma impressora instalada encontrada; diálogo do Windows suprimido");
@@ -288,10 +322,8 @@ ipcMain.handle("printer:silentPrint", async (_evt, { html, deviceName } = {}) =>
 ipcMain.handle("printer:printUrl", async (_evt, { url, deviceName } = {}) => {
   try {
     const printers = mainWindow ? await mainWindow.webContents.getPrintersAsync() : [];
-    const targetDevice =
-      deviceName ||
-      printers.find((p) => /G250|Gertec|POS|EPSON/i.test(`${p.name} ${p.displayName || ""}`))?.name ||
-      printers.find((p) => p.isDefault)?.name;
+    const targetDevice = deviceName || pickReceiptPrinter(printers);
+
 
     if (!targetDevice) return { ok: false, error: "Nenhuma impressora instalada encontrada" };
     if (!url) return { ok: false, error: "URL fiscal ausente" };
