@@ -262,10 +262,8 @@ ipcMain.handle("printers:list", async () => {
 ipcMain.handle("printer:silentPrint", async (_evt, { html, deviceName } = {}) => {
   try {
     const printers = mainWindow ? await mainWindow.webContents.getPrintersAsync() : [];
-    const targetDevice =
-      deviceName ||
-      printers.find((p) => /G250|Gertec|POS|EPSON/i.test(`${p.name} ${p.displayName || ""}`))?.name ||
-      printers.find((p) => p.isDefault)?.name;
+    const targetDevice = deviceName || pickReceiptPrinter(printers);
+
 
     if (!targetDevice) {
       console.warn("[totem] nenhuma impressora instalada encontrada; diálogo do Windows suprimido");
