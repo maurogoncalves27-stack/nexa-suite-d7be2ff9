@@ -119,7 +119,10 @@ export default function TefPayerSetup() {
         </Card>
       )}
 
+      <TefProviderSwitchCard agentUrl={agentUrl} storeId={storeId || undefined} />
+
       <PayerHomologationChecklist agentUrl={agentUrl} />
+
 
       <Card className="p-4 space-y-3">
         <h2 className="font-semibold">Status</h2>
