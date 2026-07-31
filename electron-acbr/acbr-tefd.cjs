@@ -40,31 +40,53 @@ const path = require("path");
 const { EventEmitter } = require("events");
 
 // ---------- caminhos de DLL e diretório de trabalho ----------
-const FORCED_PAYGO_DLL_PATH = "C:\\ProjetoMauro\\20260715-Integracao-PGWebLib_v4.1.50.924\\x64\\PGWebLib.dll";
+// Produção (totem): a PGWebLib é instalada pelo SetupPayGo em
+//   C:\Program Files (x86)\PayGo\PGWebLib\x64\PGWebLib.dll
+// Desenvolvimento: apontar para outra cópia via env PAYGO_DLL_PATH.
+const DEV_PAYGO_DLL_PATH = "C:\\ProjetoMauro\\20260715-Integracao-PGWebLib_v4.1.50.924\\x64\\PGWebLib.dll";
 const DEFAULT_DLL_PATHS = [
-  "C:\\ProjetoMauro\\20260715-Integracao-PGWebLib_v4.1.50.924\\x64\\PGWebLib.dll",
   "C:\\Program Files (x86)\\PayGo\\PGWebLib\\x64\\PGWebLib.dll",
   "C:\\Program Files (x86)\\PayGo\\PGWebLib\\PGWebLib.dll",
   "C:\\PayGo\\PGWebLib\\x64\\PGWebLib.dll",
   "C:\\PayGo\\PGWebLib\\PGWebLib.dll",
+  DEV_PAYGO_DLL_PATH,
 ];
 
+let lastResolvedDllPath = null;
+let lastResolvedDllSource = null;
+
 function findDllPath() {
-  // Override manual sempre vence — útil para apontar para builds locais da
-  // PGWebLib (ex.: C:\ProjetoMauro\...\x64\PGWebLib.dll) sem precisar mexer
-  // na instalação oficial do PayGo Integrado.
+  // Override manual sempre vence — usado na máquina de desenvolvimento para
+  // apontar para uma cópia local da PGWebLib sem mexer na instalação oficial.
   if (process.env.PAYGO_DLL_PATH && fs.existsSync(process.env.PAYGO_DLL_PATH)) {
-    return process.env.PAYGO_DLL_PATH;
+    lastResolvedDllPath = process.env.PAYGO_DLL_PATH;
+    lastResolvedDllSource = "env:PAYGO_DLL_PATH";
+    return lastResolvedDllPath;
   }
-  // Regra do projeto: priorizar a DLL oficial em x64.
-  if (fs.existsSync(FORCED_PAYGO_DLL_PATH)) {
-    return FORCED_PAYGO_DLL_PATH;
-  }
+  // Sem override: instalação oficial do PayGo Integrado tem precedência.
   for (const p of DEFAULT_DLL_PATHS) {
-    if (fs.existsSync(p)) return p;
+    if (fs.existsSync(p)) {
+      lastResolvedDllPath = p;
+      lastResolvedDllSource = p === DEV_PAYGO_DLL_PATH ? "dev-fallback" : "instalacao-oficial";
+      return p;
+    }
   }
+  lastResolvedDllPath = null;
+  lastResolvedDllSource = null;
   return null;
 }
+
+/** Diagnóstico: qual DLL foi resolvida e de onde. */
+function dllResolution() {
+  const dllPath = findDllPath();
+  return {
+    dllPath,
+    source: lastResolvedDllSource,
+    found: !!dllPath,
+    candidates: DEFAULT_DLL_PATHS.map((p) => ({ path: p, exists: fs.existsSync(p) })),
+  };
+}
+
 
 function bridgeScriptPath() {
   // PowerShell não consegue ler arquivos dentro do app.asar.
