@@ -9,6 +9,20 @@ const path = require("path");
 const { execFile } = require("child_process");
 const packageJson = require("./package.json");
 const { startSitefAgent, stopSitefAgent } = require("./sitef-agent.cjs");
+const { startPayerAgent, stopPayerAgent, PAYER_AGENT_PORT } = require("./payer/agent.cjs");
+
+// Escolhe a impressora de recibo: prioriza Epson TM-T20X (padrão em produção),
+// depois Epson genérica, depois Gertec/POS, por fim a padrão do Windows.
+function pickReceiptPrinter(printers = []) {
+  const label = (p) => `${p.name} ${p.displayName || ""}`;
+  return (
+    printers.find((p) => /TM[-\s]?T20/i.test(label(p)))?.name ||
+    printers.find((p) => /EPSON/i.test(label(p)))?.name ||
+    printers.find((p) => /G250|Gertec|POS/i.test(label(p)))?.name ||
+    printers.find((p) => p.isDefault)?.name
+  );
+}
+
 
 let ThermalPrinter, PrinterTypes;
 try {
