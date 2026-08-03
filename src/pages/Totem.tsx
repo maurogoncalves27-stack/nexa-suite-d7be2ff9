@@ -538,8 +538,18 @@ export default function Totem() {
             onClick={() => setStep("store")}
             className="absolute inset-0 w-full h-full overflow-hidden text-left"
           >
-            {/* slideshow de fundo (usa imagens do banco se configuradas, senão fallback) */}
-            {(() => {
+            {/* vídeo de apresentação, se configurado; senão slideshow de imagens */}
+            {customVideo ? (
+              <video
+                src={customVideo}
+                autoPlay
+                loop
+                muted
+                playsInline
+                aria-hidden
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            ) : (() => {
               const slides = customBackgrounds.length > 0 ? customBackgrounds : [fakeParme, fakeBox, fakeEstrogonofe];
               return slides.map((src, i) => (
                 <img
@@ -553,6 +563,7 @@ export default function Totem() {
                 />
               ));
             })()}
+
             <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/90" />
             <div className="relative h-full flex flex-col items-center justify-center text-white px-8 gap-12">
               <div className="text-center">
