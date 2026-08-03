@@ -834,6 +834,78 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     await printNewOrder(orderId, orderStoreId, target, true);
   }, [printNewOrder]);
 
+  const openPrinterPicker = useCallback(async (order: Order, target: "customer" | "kitchen" | "both") => {
+    setPrinterPickerTarget(target);
+    setSelectedOrder(order);
+    setPrinterPickerOpen(true);
+    setLoadingPrinters(true);
+    const { data } = await supabase
+      .from("pdv_printers")
+      .select("id,name,print_role")
+      .eq("store_id", order.store_id)
+      .eq("is_active", true)
+      .order("name");
+    setStorePrinters((data ?? []) as any[]);
+    setLoadingPrinters(false);
+  }, []);
+
+  const printToSpecificPrinter = useCallback(async (
+    order: Order,
+    printerId: string,
+    target: "customer" | "kitchen" | "both",
+  ) => {
+    setPrinterPickerOpen(false);
+    const label = target === "customer" ? "cupom do cliente"
+      : target === "kitchen" ? "comanda da cozinha"
+      : "cupom e comanda";
+    toast({ title: `Enviando ${label} para impressora selecionada` });
+    try {
+      const [ordRes, itemsRes, chRes, stRes] = await Promise.all([
+        supabase.from("pdv_orders")
+          .select("id,order_number,external_display_id,customer_name,customer_phone,delivery_address,notes,total,opened_at,order_type,channel_id")
+          .eq("id", order.id).maybeSingle(),
+        supabase.from("pdv_order_items")
+          .select("name,quantity,unit_price,total_price,notes")
+          .eq("order_id", order.id).order("created_at"),
+        supabase.from("pdv_channels").select("id,name").eq("store_id", order.store_id),
+        supabase.from("stores").select("name").eq("id", order.store_id).maybeSingle(),
+      ]);
+      const ord = ordRes.data as any;
+      if (!ord) return;
+      const chName = (chRes.data ?? []).find((c: any) => c.id === ord.channel_id)?.name ?? "";
+      const sName = (stRes.data as any)?.name ?? "";
+      await routePrintOrder({
+        storeId: order.store_id,
+        storeName: sName,
+        target,
+        manual: true,
+        printerId,
+        order: {
+          id: ord.id,
+          order_number: ord.external_display_id ?? ord.order_number,
+          channel_name: chName,
+          order_type: ord.order_type,
+          customer_name: ord.customer_name,
+          customer_phone: ord.customer_phone,
+          delivery_address: ord.delivery_address,
+          notes: ord.notes,
+          total: Number(ord.total ?? 0),
+          opened_at: ord.opened_at,
+          items: (itemsRes.data ?? []).map((it: any) => ({
+            name: it.name,
+            quantity: Number(it.quantity ?? 1),
+            unit_price: Number(it.unit_price ?? 0),
+            total: Number(it.total_price ?? 0),
+            notes: it.notes,
+          })),
+        },
+      });
+    } catch (e) {
+      console.warn("[pdv-novo] falha ao imprimir em impressora específica", e);
+      toast({ title: "Falha na impressão", description: String(e), variant: "destructive" });
+    }
+  }, []);
+
   useEffect(() => {
     if (!storeId) return;
     const t = setInterval(() => {
