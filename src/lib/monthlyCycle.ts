@@ -26,6 +26,7 @@ export interface MonthlyCycle {
   name: string;
   start_date: string;
   end_date: string;
+  status?: string;
 }
 
 /** Busca (ou cria) o ciclo mensal aberto do mês corrente. Retorna null se não for possível criar. */
@@ -90,7 +91,7 @@ export async function ensureEvaluationCycle(ref: Date = new Date()): Promise<Mon
   const { start, end, label } = previousMonthBounds(ref);
   const { data: existing } = await supabase
     .from("evaluation_cycles")
-    .select("id, name, start_date, end_date")
+    .select("id, name, start_date, end_date, status")
     .eq("start_date", start)
     .eq("end_date", end)
     .limit(1);
@@ -106,7 +107,7 @@ export async function ensureEvaluationCycle(ref: Date = new Date()): Promise<Mon
       periodicity: "monthly",
       bonus_value_per_point: 0,
     })
-    .select("id, name, start_date, end_date")
+    .select("id, name, start_date, end_date, status")
     .maybeSingle();
   if (error) return null;
   return (created as MonthlyCycle) ?? null;
