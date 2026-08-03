@@ -181,6 +181,44 @@ const RecipeBookEditorDialog = ({ open, onOpenChange, recipeBookId, onSaved, sco
               />
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-md border p-3 bg-muted/30">
+              <div>
+                <Label>Ficha técnica vinculada</Label>
+                <Select
+                  value={data.recipe_id ?? "none"}
+                  onValueChange={(v) => setData({ ...data, recipe_id: v === "none" ? null : v })}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
+                  <SelectContent className="max-h-64">
+                    <SelectItem value="none">Sem vínculo</SelectItem>
+                    {recipes.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Item do cardápio vinculado</Label>
+                <Select
+                  value={data.menu_item_id ?? "none"}
+                  onValueChange={(v) => setData({ ...data, menu_item_id: v === "none" ? null : v })}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
+                  <SelectContent className="max-h-64">
+                    <SelectItem value="none">Sem vínculo</SelectItem>
+                    {menuItems.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="sm:col-span-2 text-xs text-muted-foreground">
+                O vínculo é apenas informativo: editar o receituário nunca altera a ficha técnica nem o cardápio.
+              </p>
+            </div>
+
+
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label>Rendimento (texto)</Label>
