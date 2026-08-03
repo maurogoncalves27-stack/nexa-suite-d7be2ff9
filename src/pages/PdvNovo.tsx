@@ -313,6 +313,24 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     [stores, storeId]
   );
 
+  const ensureDefaultChannels = useCallback(async (sid: string, existing: Channel[]) => {
+    const defaults = [
+      { name: "Balcão", code: "counter", sort_order: 10 },
+      { name: "iFood", code: "ifood", sort_order: 20 },
+      { name: "WhatsApp / Site", code: "whatsapp", sort_order: 30 },
+      { name: "Totem", code: "totem", sort_order: 40 },
+    ];
+    const missing = defaults.filter((d) => !existing.some((c) => c.store_id === sid && (c.code === d.code || new RegExp(d.code, "i").test(c.name))));
+    if (missing.length === 0) return;
+    const { data: created } = await supabase
+      .from("pdv_channels")
+      .insert(missing.map((d) => ({ ...d, store_id: sid, is_active: true })))
+      .select("id,store_id,code,name,is_active,sort_order");
+    if (created) {
+      setChannels((prev) => [...prev, ...(created as Channel[])]);
+    }
+  }, []);
+
   // Calcula IDs agregados a partir de um storeId raiz (loja física = inclui marcas virtuais filhas)
   // "ALL" = todas as lojas físicas + suas filhas virtuais
   const computeAggregatedIds = useCallback(
