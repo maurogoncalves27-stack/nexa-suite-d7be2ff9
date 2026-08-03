@@ -137,7 +137,10 @@ const RecipeBookEditorDialog = ({ open, onOpenChange, recipeBookId, onSaved, sco
       preparation_method: data.preparation_method?.trim() || null,
       yield_text: data.yield_text?.trim() || null,
       prep_time_minutes: data.prep_time_minutes,
+      recipe_id: data.recipe_id,
+      menu_item_id: data.menu_item_id,
     };
+
     const { error } = await supabase.from("recipe_books").update(payload).eq("id", data.id);
     setSaving(false);
     if (error) {
