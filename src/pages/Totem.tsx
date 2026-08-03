@@ -10,11 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Plus, Minus, Trash2, ShoppingCart, ArrowLeft, Printer, Check, X, Timer, Hand } from "lucide-react";
+import { Loader2, Plus, Minus, Trash2, ShoppingCart, ArrowLeft, Printer, Check, X, Timer, Hand, CreditCard, QrCode } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { TefPaymentDialog } from "@/components/tef/TefPaymentDialog";
 import { VirtualKeyboard } from "@/components/totem/VirtualKeyboard";
-import type { TefPaymentResult } from "@/lib/tef";
+import type { TefPaymentResult, TefPaymentMethod } from "@/lib/tef";
 import { loadTefConfig } from "@/lib/tef";
 import { closeOrder, createTotemOrderAndClose } from "@/lib/order";
 import logoAquelaParme from "@/assets/logo-aquela-parme.png";
@@ -169,6 +169,7 @@ export default function Totem() {
   const [cpf, setCpf] = useState("");
   const [noteDialog, setNoteDialog] = useState<{ item: MenuItem; note: string; qty: number } | null>(null);
   const [tefOpen, setTefOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<TefPaymentMethod | null>(null);
   const [showNoteKb, setShowNoteKb] = useState(false);
   const [showCpfKb, setShowCpfKb] = useState(false);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -358,6 +359,10 @@ export default function Totem() {
     if (!selectedStore || !selectedBrand || !orderType || cart.length === 0) return;
     if (cpf && !isValidCpf(cpf)) {
       toast({ title: "CPF inválido", description: "Confira ou deixe em branco.", variant: "destructive" });
+      return;
+    }
+    if (!paymentMethod) {
+      toast({ title: "Escolha a forma de pagamento", variant: "destructive" });
       return;
     }
     // Abre o pinpad. A persistência só acontece se TEF aprovar.
@@ -765,12 +770,33 @@ export default function Totem() {
               )}
             </Card>
 
-            <Card className="p-6 mb-6 bg-muted">
-              <p className="text-lg">
-                💳 <strong>Pagamento na maquininha</strong> — siga as instruções no pinpad.
-              </p>
+            <Card className="p-6 mb-6">
+              <label className="text-lg font-semibold block mb-4">Forma de pagamento</label>
+              <div className="grid grid-cols-3 gap-4">
+                {([
+                  { method: "credit" as TefPaymentMethod, label: "Crédito", icon: CreditCard },
+                  { method: "debit" as TefPaymentMethod, label: "Débito", icon: CreditCard },
+                  { method: "pix" as TefPaymentMethod, label: "PIX", icon: QrCode },
+                ]).map(({ method, label, icon: Icon }) => {
+                  const active = paymentMethod === method;
+                  return (
+                    <button
+                      key={method}
+                      onClick={() => setPaymentMethod(method)}
+                      className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 p-5 transition-all ${
+                        active
+                          ? "border-primary bg-primary text-primary-foreground shadow-lg scale-105"
+                          : "border-muted bg-muted hover:border-primary/50 hover:bg-accent"
+                      }`}
+                    >
+                      <Icon className="h-10 w-10" />
+                      <span className="text-xl font-bold">{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </Card>
-            <Button size="lg" className="w-full h-24 text-3xl font-black" onClick={handleConfirmOrder} disabled={busy || cart.length === 0}>
+            <Button size="lg" className="w-full h-24 text-3xl font-black" onClick={handleConfirmOrder} disabled={busy || cart.length === 0 || !paymentMethod}>
               {busy ? <Loader2 className="animate-spin mr-3 h-8 w-8" /> : <Check className="mr-3 h-8 w-8" />}
               Confirmar e pagar {fmt(cartTotal)}
             </Button>
@@ -905,6 +931,7 @@ export default function Totem() {
         request={tefOpen ? {
           amount: cartTotal,
           storeId: tefStoreId,
+          method: paymentMethod!,
         } : null}
         onClose={() => setTefOpen(false)}
         onResult={finalizeOrder}
