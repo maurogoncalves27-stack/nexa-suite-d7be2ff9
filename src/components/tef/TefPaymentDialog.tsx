@@ -57,6 +57,7 @@ export function TefPaymentDialog({ open, request, onClose, onResult, configOverr
   const { status, message, result, pay, cancel, reset } = useTefPayment();
   const [networkPromptOpen, setNetworkPromptOpen] = useState(false);
   const [qrImage, setQrImage] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
   const startedRef = useRef(false);
 
   const isPix = request?.method === "pix";
