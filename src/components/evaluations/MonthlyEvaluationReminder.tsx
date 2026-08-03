@@ -46,7 +46,8 @@ export default function MonthlyEvaluationReminder({ hideLink = false }: { hideLi
 
       const cycle = await ensureEvaluationCycle();
       if (cancelled) return;
-      if (!cycle) {
+      if (!cycle || cycle.status === "closed") {
+        // Ciclo encerrado = avaliações do mês já concluídas: não cobra o gestor
         setLoading(false);
         return;
       }
