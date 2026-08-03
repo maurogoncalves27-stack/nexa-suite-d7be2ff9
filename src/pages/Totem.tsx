@@ -14,7 +14,7 @@ import { Loader2, Plus, Minus, Trash2, ShoppingCart, ArrowLeft, Printer, Check, 
 import { toast } from "@/hooks/use-toast";
 import { TefPaymentDialog } from "@/components/tef/TefPaymentDialog";
 import { VirtualKeyboard } from "@/components/totem/VirtualKeyboard";
-import type { TefPaymentResult } from "@/lib/tef";
+import type { TefPaymentResult, TefPaymentMethod } from "@/lib/tef";
 import { loadTefConfig } from "@/lib/tef";
 import { closeOrder, createTotemOrderAndClose } from "@/lib/order";
 import logoAquelaParme from "@/assets/logo-aquela-parme.png";
