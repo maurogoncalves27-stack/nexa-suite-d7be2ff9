@@ -11,6 +11,7 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
 interface Brand { id: string; name: string; slug: string }
+interface PhysicalStore { id: string; name: string; totem_allow_order_type: boolean | null }
 interface TotemAsset {
   id: string;
   kind: "background" | "logo";
