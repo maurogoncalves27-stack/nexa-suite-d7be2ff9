@@ -67,7 +67,25 @@ function createWindow() {
     },
   });
 
+  if (KIOSK) {
+    // Mantém o totem sempre à frente: o Checkout Payer roda oculto atrás
+    // (a interação do cliente é no pinpad + na nossa tela).
+    mainWindow.setAlwaysOnTop(true, "screen-saver");
+    mainWindow.setVisibleOnAllWorkspaces?.(true);
+    mainWindow.on("blur", () => {
+      setTimeout(() => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.setAlwaysOnTop(true, "screen-saver");
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      }, 150);
+    });
+  }
+
   mainWindow.loadURL(APP_URL);
+
+
 
   mainWindow.webContents.on("dom-ready", () => {
     mainWindow.webContents.executeJavaScript(`
