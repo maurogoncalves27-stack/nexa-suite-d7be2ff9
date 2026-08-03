@@ -129,6 +129,7 @@ Deno.serve(async (req) => {
         total,
         brand_breakdown,
         pickup_eta,
+        closure_channel: "whatsapp",
       })
       .select("id, order_number")
       .single();

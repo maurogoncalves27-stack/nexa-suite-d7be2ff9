@@ -237,6 +237,7 @@ async function runTool(name: string, args: any, ctx: { supabase: any; conversati
         customer_name: cart.customer_name,
         customer_phone: conversation.phone,
         subtotal, total: subtotal,
+        closure_channel: 'whatsapp',
         source_payload: {
           source: 'whatsapp',
           cart_id: cart.id,
