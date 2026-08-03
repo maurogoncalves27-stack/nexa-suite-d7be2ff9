@@ -684,6 +684,7 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
                 companies={companies}
                 storeName={showStoreName ? storeNameMap[r.store_id] : undefined}
                 actions={
+                  readOnly ? null : (
                   <>
                     <Button size="sm" variant="default" className="h-7 text-xs gap-1" onClick={() => setCompleteDialog(r)}>
                       <ClipboardList className="h-3.5 w-3.5" /> Registrar concluída
@@ -692,6 +693,7 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
                       <RotateCcw className="h-3.5 w-3.5" /> Reabrir
                     </Button>
                   </>
+                  )
                 }
               />
             ))}
