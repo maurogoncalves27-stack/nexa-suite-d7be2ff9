@@ -10,7 +10,6 @@ const TEF_THEME_STYLE = {
 } as CSSProperties;
 import { Button } from "@/components/ui/button";
 import { CreditCard, CheckCircle2, XCircle, Loader2, WifiOff, X, QrCode } from "lucide-react";
-import QRCode from "qrcode";
 import { useTefPayment } from "@/hooks/useTefPayment";
 import type { TefConfig, TefPaymentRequest, TefPaymentResult } from "@/lib/tef";
 
@@ -28,29 +27,6 @@ const fmt = (n: number) =>
 const isPaygoNetworkMenuRequest = (result: TefPaymentResult) => {
   const text = `${result.message ?? ""} ${JSON.stringify(result.raw ?? {})}`.toUpperCase();
   return result.status === "error" && text.includes("DEMO") && text.includes("REDE");
-};
-
-/** Procura, em profundidade, um payload PIX (EMV / copia e cola) no retorno do TEF. */
-const findPixPayload = (value: unknown, depth = 0): string | null => {
-  if (depth > 6 || value == null) return null;
-  if (typeof value === "string") {
-    const v = value.trim();
-    return v.startsWith("000201") && v.length > 40 ? v : null;
-  }
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const found = findPixPayload(item, depth + 1);
-      if (found) return found;
-    }
-    return null;
-  }
-  if (typeof value === "object") {
-    for (const item of Object.values(value as Record<string, unknown>)) {
-      const found = findPixPayload(item, depth + 1);
-      if (found) return found;
-    }
-  }
-  return null;
 };
 
 export function TefPaymentDialog({ open, request, onClose, onResult, configOverride }: Props) {
