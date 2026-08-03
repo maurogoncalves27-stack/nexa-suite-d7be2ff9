@@ -65,8 +65,35 @@ Deno.serve(async (req) => {
     const token = env === "producao" ? FOCUS_TOKEN_PROD : FOCUS_TOKEN_HOMOLOG;
     if (!token) throw new Error(`Token Focus NFe (${env}) não configurado`);
 
+    // 2a. IDEMPOTÊNCIA: se o pedido já tem cupom autorizado/em processamento, devolve o existente
+    const { data: existing } = await sb
+      .from("pdv_fiscal_invoices")
+      .select("*")
+      .eq("order_id", order_id)
+      .in("status", ["authorized", "processing", "contingency"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existing) {
+      console.log("NFC-e já existente para o pedido, retornando:", existing.id, existing.status);
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          invoice_id: existing.id,
+          status: existing.status,
+          duplicate: true,
+          contingency: existing.status === "contingency",
+          danfe_url: existing.danfe_url,
+          xml_url: existing.xml_url,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     // 2. Cria registro pendente (tem unique no focus_ref)
     const focusRef = `pedido-${order_id.slice(0, 8)}-${Date.now()}`;
+
     const { data: invoice, error: invErr } = await sb
       .from("pdv_fiscal_invoices")
       .insert({
