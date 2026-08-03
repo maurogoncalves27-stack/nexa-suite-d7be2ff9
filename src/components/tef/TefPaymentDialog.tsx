@@ -190,7 +190,9 @@ export function TefPaymentDialog({ open, request, onClose, onResult, configOverr
             </p>
           )}
 
-          {!isSelectingNetwork && message && <p className="text-muted-foreground">{message}</p>}
+          {!isSelectingNetwork && message && isFinal && (
+            <p className="text-muted-foreground">{message}</p>
+          )}
 
           {isSelectingNetwork && (
             <div className="grid w-full gap-3">
