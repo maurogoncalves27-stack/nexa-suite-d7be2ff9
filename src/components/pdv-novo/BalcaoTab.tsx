@@ -19,6 +19,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Minus, Trash2, ShoppingCart, Loader2, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { closeOrder } from "@/lib/order";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
