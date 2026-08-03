@@ -98,6 +98,7 @@ export function TefPaymentDialog({ open, request, onClose, onResult, configOverr
     status === "approved" || status === "declined" ||
     status === "cancelled" || status === "error" || status === "timeout";
   const isSelectingNetwork = Boolean(open && request && networkPromptOpen);
+  const isAwaitingPayment = !isFinal && (status === "waiting_card" || status === "processing");
 
   const handleClose = async () => {
     if (isSelectingNetwork || !isFinal) await cancel();
