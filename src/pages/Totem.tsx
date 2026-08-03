@@ -288,6 +288,22 @@ export default function Totem() {
     };
   }, [resetIdle]);
 
+  // Após o cupom ser emitido, volta sozinho para a tela inicial em 60s
+  useEffect(() => {
+    if (step !== "done" || !nfceEmitted) { setDoneCountdown(null); return; }
+    setDoneCountdown(60);
+    const id = window.setInterval(() => {
+      setDoneCountdown((s) => {
+        if (s === null) return null;
+        if (s <= 1) { window.clearInterval(id); handleReset(); return null; }
+        return s - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [step, nfceEmitted, handleReset]);
+
+
+
   useEffect(() => {
     if (step !== "checkout") setShowCpfKb(false);
     if (!noteDialog) setShowNoteKb(false);
