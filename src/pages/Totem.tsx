@@ -878,6 +878,11 @@ export default function Totem() {
                   {nfceEmitted ? "Novo pedido" : "Não, obrigado"}
                 </Button>
               </div>
+              {doneCountdown !== null && (
+                <p className="text-xl text-muted-foreground">
+                  Voltando à tela inicial em {doneCountdown}s
+                </p>
+              )}
             </div>
 
           </div>
