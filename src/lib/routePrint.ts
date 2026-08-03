@@ -146,6 +146,8 @@ export async function routePrintOrder(opts: {
 
   const orderNumber = order.order_number ?? order.id.slice(0, 6);
   const channelOrType =
+    (order.order_type === "dine_in" ? "COMER NO LOCAL" :
+     order.order_type === "takeout" ? "PARA LEVAR" : "") ||
     order.channel_name ||
     (order.order_type === "delivery" ? "DELIVERY" :
      order.order_type === "pickup" ? "RETIRADA" :

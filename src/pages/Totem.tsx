@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Plus, Minus, Trash2, ShoppingCart, ArrowLeft, Printer, Check, X, Timer, Hand, CreditCard, QrCode } from "lucide-react";
+import { Loader2, Plus, Minus, Trash2, ShoppingCart, ArrowLeft, Printer, Check, X, Timer, Hand, CreditCard, QrCode, Utensils, ShoppingBag } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { TefPaymentDialog } from "@/components/tef/TefPaymentDialog";
 import { VirtualKeyboard } from "@/components/totem/VirtualKeyboard";
@@ -52,7 +52,11 @@ type Step = "idle" | "store" | "type" | "menu" | "checkout" | "done";
 type OrderType = "eat_in" | "takeout";
 
 interface Brand { id: string; name: string; slug?: string }
-interface Store { id: string; name: string; brand_id: string | null; parent_store_id?: string | null; parent_store?: { name: string } | null }
+interface Store {
+  id: string; name: string; brand_id: string | null; parent_store_id?: string | null;
+  totem_allow_order_type?: boolean | null;
+  parent_store?: { name: string; totem_allow_order_type?: boolean | null } | null;
+}
 interface Category { id: string; name: string; sort_order: number; brand_id: string | null }
 interface MenuItem {
   id: string; name: string; description: string | null; price: number;
@@ -182,7 +186,7 @@ export default function Totem() {
     void (async () => {
       const [b, s, ta] = await Promise.all([
         supabase.from("brands").select("id,name,slug").eq("is_active", true).not("name", "ilike", "%CD%").not("name", "ilike", "%fabrica%").order("sort_order"),
-        supabase.from("stores").select("id,name,brand_id,parent_store_id,parent_store:parent_store_id(name)").order("name"),
+        supabase.from("stores").select("id,name,brand_id,parent_store_id,totem_allow_order_type,parent_store:parent_store_id(name,totem_allow_order_type)").order("name"),
         (supabase as any).from("totem_assets").select("kind,brand_slug,image_url,sort_order,is_active").eq("is_active", true).order("sort_order"),
       ]);
       setBrands(((b.data ?? []) as Brand[]).filter(x => !/f[áa]brica/i.test(x.name)));
@@ -346,6 +350,12 @@ export default function Totem() {
     );
   }, [stores, currentTotemStore]);
 
+  /** A loja permite o cliente escolher entre comer no local e retirar? (config em Configurações → Totem) */
+  const storeAllowsOrderType = useCallback((store: Store) =>
+    Boolean(store.totem_allow_order_type ?? store.parent_store?.totem_allow_order_type ?? false),
+  []);
+
+
   const filteredItems = useMemo(() => items.filter(it => {
     if (activeCat !== "all" && it.category_id !== activeCat) return false;
     if (search && !it.name.toLowerCase().includes(search.toLowerCase())) return false;
@@ -471,7 +481,8 @@ export default function Totem() {
           <div className="flex items-center gap-3">
               {step !== "done" && (
               <Button variant="ghost" size="icon" className="h-12 w-12" onClick={() => {
-                if (step === "menu") setStep("store");
+                if (step === "type") setStep("store");
+                else if (step === "menu") setStep(selectedStore && storeAllowsOrderType(selectedStore) ? "type" : "store");
                 else if (step === "checkout") setStep("menu");
               }}>
                 <ArrowLeft className="h-6 w-6" />
@@ -581,8 +592,13 @@ export default function Totem() {
                       const store = pickStoreForBrand(b);
                       if (store) {
                         setSelectedStore(store);
-                        setOrderType("takeout");
-                        setStep("menu");
+                        if (storeAllowsOrderType(store)) {
+                          setOrderType(null);
+                          setStep("type");
+                        } else {
+                          setOrderType("takeout");
+                          setStep("menu");
+                        }
                       } else {
                         toast({
                           title: "Marca sem loja vinculada",
@@ -607,6 +623,29 @@ export default function Totem() {
                   </button>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* STEP 2: comer no local ou levar (somente lojas configuradas) */}
+        {!loading && step === "type" && (
+          <div className="h-full flex flex-col items-center justify-center gap-12 p-8 animate-fade-in">
+            <h2 className="text-5xl font-bold text-center">Onde você vai comer?</h2>
+            <div className="grid grid-cols-2 gap-10 w-full max-w-4xl">
+              {([
+                { type: "eat_in" as OrderType, label: "Comer no local", icon: Utensils },
+                { type: "takeout" as OrderType, label: "Para levar", icon: ShoppingBag },
+              ]).map(({ type, label, icon: Icon }) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => { setOrderType(type); setStep("menu"); }}
+                  className="flex flex-col items-center justify-center gap-6 rounded-3xl border-4 border-primary/30 bg-card p-12 transition-transform hover:scale-105 active:scale-95"
+                >
+                  <Icon className="h-28 w-28 text-primary" />
+                  <span className="text-4xl font-bold">{label}</span>
+                </button>
+              ))}
             </div>
           </div>
         )}
