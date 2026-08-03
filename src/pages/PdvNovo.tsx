@@ -1786,6 +1786,45 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
         </DialogContent>
       </Dialog>
 
+      {/* ===== Dialog: selecionar impressora manualmente ===== */}
+      <Dialog open={printerPickerOpen} onOpenChange={setPrinterPickerOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Selecionar impressora</DialogTitle>
+            <DialogDescription>
+              Escolha para qual impressora enviar o {printerPickerTarget === "kitchen" ? "comanda da cozinha" : printerPickerTarget === "customer" ? "cupom do cliente" : "cupom e comanda"}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            {loadingPrinters ? (
+              <div className="flex items-center justify-center py-6 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />Carregando impressoras...
+              </div>
+            ) : storePrinters.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Nenhuma impressora ativa para esta loja.</p>
+            ) : (
+              storePrinters.map((p) => (
+                <Button
+                  key={p.id}
+                  variant="outline"
+                  className="w-full justify-start text-left h-auto py-3"
+                  onClick={() => selectedOrder && void printToSpecificPrinter(selectedOrder, p.id, printerPickerTarget)}
+                >
+                  <Printer className="h-4 w-4 mr-3 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{p.name}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{p.print_role === "customer" ? "Cupom" : p.print_role === "kitchen" ? "Cozinha" : "Cupom + Cozinha"}</p>
+                  </div>
+                </Button>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPrinterPickerOpen(false)}>Cancelar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* ===== Dialog: motivo do cancelamento ===== */}
       <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
         <DialogContent className="max-w-sm">
