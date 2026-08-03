@@ -9,7 +9,8 @@ const TEF_THEME_STYLE = {
   "--accent-foreground": "0 0% 100%",
 } as CSSProperties;
 import { Button } from "@/components/ui/button";
-import { CreditCard, CheckCircle2, XCircle, Loader2, WifiOff, X } from "lucide-react";
+import { CreditCard, CheckCircle2, XCircle, Loader2, WifiOff, X, QrCode } from "lucide-react";
+import QRCode from "qrcode";
 import { useTefPayment } from "@/hooks/useTefPayment";
 import type { TefConfig, TefPaymentRequest, TefPaymentResult } from "@/lib/tef";
 
