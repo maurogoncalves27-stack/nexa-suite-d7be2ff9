@@ -424,8 +424,16 @@ export default function Totem() {
         printTargets: ["nfce", "kitchen"],
       });
       if (result.status === "failed_at_step") throw new Error(result.error ?? "Falha no fechamento");
+      if (!result.danfeUrl) {
+        toast({
+          title: "Cupom em processamento",
+          description: "A SEFAZ ainda não autorizou a NFC-e. Peça o cupom no balcão.",
+          variant: "destructive",
+        });
+        return;
+      }
       setNfceEmitted(true);
-      toast({ title: "Cupom fiscal emitido", description: "NFC-e enviada à SEFAZ. Será impressa em instantes." });
+      toast({ title: "Cupom fiscal emitido", description: "Retire o cupom na impressora." });
     } catch (e: any) {
       toast({ title: "Erro ao emitir cupom fiscal", description: e.message, variant: "destructive" });
     } finally {
@@ -433,15 +441,6 @@ export default function Totem() {
     }
   };
 
-  // Emite/imprime o cupom fiscal automaticamente assim que o pedido é fechado.
-  const autoNfceRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (step !== "done" || !orderId || nfceEmitted || emittingNfce) return;
-    if (autoNfceRef.current === orderId) return;
-    autoNfceRef.current = orderId;
-    void handleEmitNfce();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, orderId]);
 
 
 
