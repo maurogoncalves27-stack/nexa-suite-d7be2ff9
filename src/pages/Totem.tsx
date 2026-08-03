@@ -770,12 +770,33 @@ export default function Totem() {
               )}
             </Card>
 
-            <Card className="p-6 mb-6 bg-muted">
-              <p className="text-lg">
-                💳 <strong>Pagamento na maquininha</strong> — siga as instruções no pinpad.
-              </p>
+            <Card className="p-6 mb-6">
+              <label className="text-lg font-semibold block mb-4">Forma de pagamento</label>
+              <div className="grid grid-cols-3 gap-4">
+                {([
+                  { method: "credit" as TefPaymentMethod, label: "Crédito", icon: CreditCard },
+                  { method: "debit" as TefPaymentMethod, label: "Débito", icon: CreditCard },
+                  { method: "pix" as TefPaymentMethod, label: "PIX", icon: QrCode },
+                ]).map(({ method, label, icon: Icon }) => {
+                  const active = paymentMethod === method;
+                  return (
+                    <button
+                      key={method}
+                      onClick={() => setPaymentMethod(method)}
+                      className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 p-5 transition-all ${
+                        active
+                          ? "border-primary bg-primary text-primary-foreground shadow-lg scale-105"
+                          : "border-muted bg-muted hover:border-primary/50 hover:bg-accent"
+                      }`}
+                    >
+                      <Icon className="h-10 w-10" />
+                      <span className="text-xl font-bold">{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </Card>
-            <Button size="lg" className="w-full h-24 text-3xl font-black" onClick={handleConfirmOrder} disabled={busy || cart.length === 0}>
+            <Button size="lg" className="w-full h-24 text-3xl font-black" onClick={handleConfirmOrder} disabled={busy || cart.length === 0 || !paymentMethod}>
               {busy ? <Loader2 className="animate-spin mr-3 h-8 w-8" /> : <Check className="mr-3 h-8 w-8" />}
               Confirmar e pagar {fmt(cartTotal)}
             </Button>
