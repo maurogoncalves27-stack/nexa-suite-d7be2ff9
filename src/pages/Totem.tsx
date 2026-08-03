@@ -52,7 +52,11 @@ type Step = "idle" | "store" | "type" | "menu" | "checkout" | "done";
 type OrderType = "eat_in" | "takeout";
 
 interface Brand { id: string; name: string; slug?: string }
-interface Store { id: string; name: string; brand_id: string | null; parent_store_id?: string | null; parent_store?: { name: string } | null }
+interface Store {
+  id: string; name: string; brand_id: string | null; parent_store_id?: string | null;
+  totem_allow_order_type?: boolean | null;
+  parent_store?: { name: string; totem_allow_order_type?: boolean | null } | null;
+}
 interface Category { id: string; name: string; sort_order: number; brand_id: string | null }
 interface MenuItem {
   id: string; name: string; description: string | null; price: number;
