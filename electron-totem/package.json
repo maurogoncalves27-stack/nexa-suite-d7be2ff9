@@ -63,9 +63,9 @@
       "artifactName": "Nexa-Totem-${version}-${arch}.${ext}"
     },
     "nsis": {
-      "oneClick": false,
+      "oneClick": true,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
+      "allowElevation": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Nexa Totem",
@@ -73,7 +73,6 @@
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
       "installerHeaderIcon": "build/icon.ico",
-      "allowElevation": true,
       "runAfterFinish": true,
       "differentialPackage": false
     }
