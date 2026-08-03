@@ -227,9 +227,15 @@ export function TefPaymentDialog({ open, request, onClose, onResult, configOverr
             </div>
           )}
 
+          {cancelling && (
+            <p className="text-sm text-muted-foreground">
+              Cancelando no pinpad… aguarde a liberação antes de escolher outra forma de pagamento.
+            </p>
+          )}
+
           {!isFinal && !isSelectingNetwork && (
-            <Button variant="outline" size="lg" className="mt-4" onClick={handleClose}>
-              Cancelar
+            <Button variant="outline" size="lg" className="mt-4" onClick={handleClose} disabled={cancelling}>
+              {cancelling ? "Cancelando…" : "Cancelar"}
             </Button>
           )}
 
