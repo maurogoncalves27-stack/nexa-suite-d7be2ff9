@@ -26,11 +26,12 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAuth } from "@/hooks/useAuth";
 import { useViewMode } from "@/hooks/useViewMode";
+import { useInventoryPermission } from "@/hooks/useInventoryPermission";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import BiometricSettings from "@/components/auth/BiometricSettings";
 
-type Item = { title: string; url: string; icon: any; staffOnly?: boolean; disabled?: boolean; requiredForPayroll?: boolean };
+type Item = { title: string; url: string; icon: any; staffOnly?: boolean; disabled?: boolean; requiredForPayroll?: boolean; inventoryAccess?: boolean };
 type Group = { label: string; icon: any; items: Item[]; disabled?: boolean };
 
 // Dashboard fica fixo no topo (acima dos botões de módulo)
@@ -160,7 +161,7 @@ const operacaoSections: Section[] = [
     { title: "Sensores de temperatura", url: "/nutricontrol/sensores", icon: Thermometer, staffOnly: true },
     { title: "Visita técnica", url: "/nutri-visita", icon: ClipboardCheck, staffOnly: true },
     { title: "Relatórios NutriControle", url: "/nutri-relatorios", icon: FileBarChart, staffOnly: true },
-    { title: "Manutenções", url: "/nutricontrol?tab=manutencao", icon: Wrench, staffOnly: true },
+    { title: "Manutenções", url: "/nutricontrol?tab=manutencao", icon: Wrench, staffOnly: true, inventoryAccess: true },
     { title: "Vale Gás", url: "/financeiro/vale-gas", icon: Flame, staffOnly: false },
   ]},
   { label: "Atendimento", items: [
@@ -268,6 +269,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { isAdmin: isAdminRaw, isManager: isManagerRaw, isContabilidade, isPartner: isPartnerRaw, isSuperUser, signOut, user } = useAuth();
   const { mode: viewMode } = useViewMode();
+  const { canReceive: inventoryCanReceive } = useInventoryPermission();
   // O modo escolhido em /selecionar-acesso vira o perfil efetivo da sessão.
   const suppressStaff = viewMode === "socio" || viewMode === "colaborador";
   const suppressPartner = viewMode === "colaborador";
@@ -288,6 +290,7 @@ export function AppSidebar() {
   const canSeeItem = (item: Item) => {
     if (!item.staffOnly) return true;
     if (isStaff) return true;
+    if (item.inventoryAccess && inventoryCanReceive) return true;
     if (isContabilidade && ACCOUNTANT_URLS.has(item.url.split("?")[0])) return true;
     return false;
   };

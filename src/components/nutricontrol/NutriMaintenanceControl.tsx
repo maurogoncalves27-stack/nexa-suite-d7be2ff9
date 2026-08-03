@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
+import { useInventoryPermission } from "@/hooks/useInventoryPermission";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { compressImage } from "@/lib/imageCompression";
@@ -80,6 +81,8 @@ const MAINTENANCE_DRAFT_STORAGE_KEY = "nutricontrol:maintenance-request-draft";
 
 export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
   const { user, isAdmin, isManager } = useAuth();
+  const { canReceive: inventoryCanReceive } = useInventoryPermission();
+  const readOnly = inventoryCanReceive && !isAdmin && !isManager;
   const [records, setRecords] = useState<MaintRecord[]>([]);
   const [requests, setRequests] = useState<MaintRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -504,15 +507,27 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
           </span>
         </div>
 
-        <Tabs defaultValue="solicitar" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto gap-2 p-2">
-            <TabsTrigger
-              value="solicitar"
-              className="flex-col sm:flex-row gap-1 sm:gap-2 text-sm sm:text-base font-medium py-3 sm:py-3 min-h-[64px] sm:min-h-[56px]"
-            >
-              <Plus className="h-5 w-5 sm:h-4 sm:w-4" />
-              <span>Solicitar</span>
-            </TabsTrigger>
+        {readOnly && (
+          <div className="rounded-md border border-primary/30 bg-primary/5 p-2.5 text-xs flex items-start gap-2 mb-3">
+            <AlertCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+            <div>
+              <p className="font-semibold text-primary">Visualização apenas</p>
+              <p className="text-muted-foreground">Seu perfil de estoquista permite acompanhar as manutenções, mas não criar ou alterar solicitações.</p>
+            </div>
+          </div>
+        )}
+
+        <Tabs defaultValue={readOnly ? "pendentes" : "solicitar"} className="w-full">
+          <TabsList className={`grid w-full h-auto gap-2 p-2 ${readOnly ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4"}`}>
+            {!readOnly && (
+              <TabsTrigger
+                value="solicitar"
+                className="flex-col sm:flex-row gap-1 sm:gap-2 text-sm sm:text-base font-medium py-3 sm:py-3 min-h-[64px] sm:min-h-[56px]"
+              >
+                <Plus className="h-5 w-5 sm:h-4 sm:w-4" />
+                <span>Solicitar</span>
+              </TabsTrigger>
+            )}
             <TabsTrigger
               value="pendentes"
               className="flex-col sm:flex-row gap-1 sm:gap-2 text-sm sm:text-base font-medium py-3 sm:py-3 min-h-[64px] sm:min-h-[56px]"
@@ -547,6 +562,7 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
           </TabsList>
 
           {/* SOLICITAR */}
+          {!readOnly && (
           <TabsContent value="solicitar" className="mt-3 space-y-2">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Loja</label>
@@ -618,6 +634,7 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
               {submitting ? "Enviando..." : "Enviar solicitação"}
             </Button>
           </TabsContent>
+          )}
 
           {/* PENDENTES (aguardando aprovação) */}
           <TabsContent value="pendentes" className="mt-3 space-y-2">
@@ -634,6 +651,7 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
                 companies={companies}
                 storeName={showStoreName ? storeNameMap[r.store_id] : undefined}
                 actions={
+                  readOnly ? null : (
                   <>
                     <Button size="sm" variant="default" className="h-7 text-xs gap-1" onClick={() => setApproveDialog(r)}>
                       <Check className="h-3.5 w-3.5" /> Aprovar
@@ -645,6 +663,7 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
                       <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>
                   </>
+                  )
                 }
               />
             ))}
@@ -665,6 +684,7 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
                 companies={companies}
                 storeName={showStoreName ? storeNameMap[r.store_id] : undefined}
                 actions={
+                  readOnly ? null : (
                   <>
                     <Button size="sm" variant="default" className="h-7 text-xs gap-1" onClick={() => setCompleteDialog(r)}>
                       <ClipboardList className="h-3.5 w-3.5" /> Registrar concluída
@@ -673,6 +693,7 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
                       <RotateCcw className="h-3.5 w-3.5" /> Reabrir
                     </Button>
                   </>
+                  )
                 }
               />
             ))}
@@ -702,7 +723,7 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
                   <span className="text-xs text-muted-foreground ml-auto">
                     {format(new Date(r.recorded_at), "HH:mm")}
                   </span>
-                  {requestByRecordId[r.id] && (
+                  {requestByRecordId[r.id] && !readOnly && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -712,9 +733,11 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
                       <RotateCcw className="h-3 w-3" /> Reabrir
                     </Button>
                   )}
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeRecord(r.id)}>
-                    <Trash2 className="h-3 w-3 text-destructive" />
-                  </Button>
+                  {!readOnly && (
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeRecord(r.id)}>
+                      <Trash2 className="h-3 w-3 text-destructive" />
+                    </Button>
+                  )}
                 </div>
               );
             })}
@@ -730,14 +753,16 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
                       {r.rejection_reason && (
                         <span className="text-xs text-muted-foreground truncate">— {r.rejection_reason}</span>
                       )}
-                      <div className="ml-auto flex items-center gap-1">
-                        <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => reopenRequest(r.id)}>
-                          <RotateCcw className="h-3 w-3" /> Reabrir
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeRequest(r.id)}>
-                          <Trash2 className="h-3 w-3 text-destructive" />
-                        </Button>
-                      </div>
+                      {!readOnly && (
+                        <div className="ml-auto flex items-center gap-1">
+                          <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => reopenRequest(r.id)}>
+                            <RotateCcw className="h-3 w-3" /> Reabrir
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeRequest(r.id)}>
+                            <Trash2 className="h-3 w-3 text-destructive" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
