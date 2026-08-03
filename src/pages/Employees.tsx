@@ -5,15 +5,19 @@ import OutsourcedCompaniesPanel from "@/components/outsourced/OutsourcedCompanie
 import OutsourcedProfessionalsPanel from "@/components/outsourced/OutsourcedProfessionalsPanel";
 import FreelancersPanel from "@/components/freelancers/FreelancersPanel";
 import PositionResponsibilitiesPanel from "@/components/announcements/PositionResponsibilitiesPanel";
+import ExportEmployeeRolesButton from "@/components/employees/ExportEmployeeRolesButton";
 
 export default function Employees() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-          <Users className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Cadastros
-        </h1>
-        <p className="text-muted-foreground">Cadastro e gestão de pessoas (CLT, terceirizados e freelancers)</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+            <Users className="h-6 w-6 md:h-7 md:w-7 text-primary" /> Cadastros
+          </h1>
+          <p className="text-muted-foreground">Cadastro e gestão de pessoas (CLT, terceirizados e freelancers)</p>
+        </div>
+        <ExportEmployeeRolesButton />
       </div>
 
       <Tabs defaultValue="employees" className="space-y-4">
