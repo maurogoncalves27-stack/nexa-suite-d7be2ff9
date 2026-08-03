@@ -14744,9 +14744,11 @@ export type Database = {
           description: string | null
           id: string
           ingredients: string | null
+          menu_item_id: string | null
           photo_path: string | null
           prep_time_minutes: number | null
           preparation_method: string | null
+          recipe_id: string | null
           scope: string
           source_recipe_name: string | null
           title: string
@@ -14759,9 +14761,11 @@ export type Database = {
           description?: string | null
           id?: string
           ingredients?: string | null
+          menu_item_id?: string | null
           photo_path?: string | null
           prep_time_minutes?: number | null
           preparation_method?: string | null
+          recipe_id?: string | null
           scope?: string
           source_recipe_name?: string | null
           title: string
@@ -14774,16 +14778,33 @@ export type Database = {
           description?: string | null
           id?: string
           ingredients?: string | null
+          menu_item_id?: string | null
           photo_path?: string | null
           prep_time_minutes?: number | null
           preparation_method?: string | null
+          recipe_id?: string | null
           scope?: string
           source_recipe_name?: string | null
           title?: string
           updated_at?: string
           yield_text?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "recipe_books_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_books_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       recipe_brands: {
         Row: {
