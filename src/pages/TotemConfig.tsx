@@ -1,20 +1,25 @@
-// Configuração visual do Totem: fundos do atrai + logos por marca.
-import { useEffect, useMemo, useRef, useState } from "react";
+// Configuração central do Totem: visual, vídeo, fiscal (NFC-e) e TEF.
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Monitor, Trash2, Upload, ImageIcon, ExternalLink } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Loader2, Monitor, Trash2, Upload, ImageIcon, ExternalLink, Video, FileCheck, CreditCard } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+
+const NfceTester = lazy(() => import("./NfceTester"));
+const TefPaygoSetup = lazy(() => import("./TefPaygoSetup"));
+const TefPayerSetup = lazy(() => import("./TefPayerSetup"));
 
 interface Brand { id: string; name: string; slug: string }
 interface PhysicalStore { id: string; name: string; totem_allow_order_type: boolean | null }
 interface TotemAsset {
   id: string;
-  kind: "background" | "logo";
+  kind: "background" | "logo" | "video";
   brand_slug: string | null;
   image_url: string;
   storage_path: string | null;
@@ -24,16 +29,24 @@ interface TotemAsset {
 
 const BUCKET = "totem-backgrounds";
 
+const TabFallback = () => (
+  <div className="flex items-center justify-center py-16">
+    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+  </div>
+);
+
 export default function TotemConfig() {
   const { user } = useAuth();
   const [brands, setBrands] = useState<Brand[]>([]);
   const [assets, setAssets] = useState<TotemAsset[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploadingKind, setUploadingKind] = useState<"background" | "logo" | null>(null);
+  const [uploadingKind, setUploadingKind] = useState<"background" | "logo" | "video" | null>(null);
   const [selectedBrand, setSelectedBrand] = useState<string>("");
   const bgInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const [physicalStores, setPhysicalStores] = useState<PhysicalStore[]>([]);
+
 
   const load = async () => {
     setLoading(true);
