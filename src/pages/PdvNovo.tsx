@@ -385,6 +385,10 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
           if (created) sess = created as CashSession;
         }
         setSession(sess);
+        // Garante canais padrão para a loja física selecionada
+        if (chRes.data) {
+          await ensureDefaultChannels(sid, chRes.data);
+        }
       }
       setOrders((ordRes.data ?? []) as Order[]);
       setLoading(false);
