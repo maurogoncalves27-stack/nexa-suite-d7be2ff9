@@ -57,6 +57,7 @@ export function TefPaymentDialog({ open, request, onClose, onResult, configOverr
   const { status, message, result, pay, cancel, reset } = useTefPayment();
   const [networkPromptOpen, setNetworkPromptOpen] = useState(false);
   const [qrImage, setQrImage] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
   const startedRef = useRef(false);
 
   const isPix = request?.method === "pix";
@@ -101,7 +102,17 @@ export function TefPaymentDialog({ open, request, onClose, onResult, configOverr
   const isAwaitingPayment = !isFinal && (status === "waiting_card" || status === "processing");
 
   const handleClose = async () => {
-    if (isSelectingNetwork || !isFinal) await cancel();
+    if (cancelling) return;
+    if (isSelectingNetwork || !isFinal) {
+      setCancelling(true);
+      try {
+        await cancel();
+        // dá tempo do pinpad/checkout liberar antes de permitir nova transação
+        await new Promise((r) => setTimeout(r, 2500));
+      } finally {
+        setCancelling(false);
+      }
+    }
     onClose();
   };
 
@@ -216,9 +227,15 @@ export function TefPaymentDialog({ open, request, onClose, onResult, configOverr
             </div>
           )}
 
+          {cancelling && (
+            <p className="text-sm text-muted-foreground">
+              Cancelando no pinpad… aguarde a liberação antes de escolher outra forma de pagamento.
+            </p>
+          )}
+
           {!isFinal && !isSelectingNetwork && (
-            <Button variant="outline" size="lg" className="mt-4" onClick={handleClose}>
-              Cancelar
+            <Button variant="outline" size="lg" className="mt-4" onClick={handleClose} disabled={cancelling}>
+              {cancelling ? "Cancelando…" : "Cancelar"}
             </Button>
           )}
 
