@@ -585,8 +585,13 @@ export default function Totem() {
                       const store = pickStoreForBrand(b);
                       if (store) {
                         setSelectedStore(store);
-                        setOrderType("takeout");
-                        setStep("menu");
+                        if (storeAllowsOrderType(store)) {
+                          setOrderType(null);
+                          setStep("type");
+                        } else {
+                          setOrderType("takeout");
+                          setStep("menu");
+                        }
                       } else {
                         toast({
                           title: "Marca sem loja vinculada",
