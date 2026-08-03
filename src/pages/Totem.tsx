@@ -481,7 +481,8 @@ export default function Totem() {
           <div className="flex items-center gap-3">
               {step !== "done" && (
               <Button variant="ghost" size="icon" className="h-12 w-12" onClick={() => {
-                if (step === "menu") setStep("store");
+                if (step === "type") setStep("store");
+                else if (step === "menu") setStep(selectedStore && storeAllowsOrderType(selectedStore) ? "type" : "store");
                 else if (step === "checkout") setStep("menu");
               }}>
                 <ArrowLeft className="h-6 w-6" />
