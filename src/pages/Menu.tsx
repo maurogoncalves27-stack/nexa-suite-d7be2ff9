@@ -513,7 +513,7 @@ export default function Menu() {
                     {list.map((it) => {
                       const itemBrandIds = itemBrands[it.id] ?? [];
                       const isExclusive = itemBrandIds.length === 1;
-                      const photo = it.recipe_id ? recipePhotos[it.recipe_id] : null;
+                      const photo = (it.recipe_id ? recipePhotos[it.recipe_id] : null) ?? bookPhotos[it.id] ?? null;
                       const storesAvail = itemStores[it.id] ?? [];
                       const availableHere = storesAvail.includes(activeStore);
                       const pausedCount = Math.max(0, stores.length - storesAvail.length);
