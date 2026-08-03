@@ -81,16 +81,17 @@ export async function closeOrder(params: CloseOrderParams): Promise<CloseOrderRe
       targets: printTargets,
     });
 
+    const finalStatus = resolveFinalStatus(channel);
     await updateClosure(orderId, {
       closure_status: "closed",
       closed_at: new Date().toISOString(),
-      status: "closed",
+      status: finalStatus,
     });
 
     return {
       closureId,
       orderId,
-      status: "closed",
+      status: finalStatus as ClosureStatus,
       danfeUrl: fiscal.danfeUrl,
       invoiceId: fiscal.invoiceId,
     };
