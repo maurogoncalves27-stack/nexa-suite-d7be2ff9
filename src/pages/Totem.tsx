@@ -195,6 +195,8 @@ export default function Totem() {
       setStores((s.data ?? []) as Store[]);
       const assets = (ta.data ?? []) as Array<{ kind: string; brand_slug: string | null; image_url: string }>;
       setCustomBackgrounds(assets.filter(a => a.kind === "background").map(a => a.image_url));
+      setCustomVideo(assets.find(a => a.kind === "video")?.image_url ?? null);
+
       const logoMap: Record<string, string> = {};
       assets.filter(a => a.kind === "logo" && a.brand_slug).forEach(a => { logoMap[a.brand_slug!] = a.image_url; });
       setCustomLogos(logoMap);
