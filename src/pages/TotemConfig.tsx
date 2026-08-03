@@ -132,13 +132,7 @@ export default function TotemConfig() {
     }
   };
 
-      await load();
-    } catch (e: any) {
-      toast({ title: "Erro ao enviar", description: e?.message ?? String(e), variant: "destructive" });
-    } finally {
-      setUploadingKind(null);
-    }
-  };
+
 
   const toggleActive = async (a: TotemAsset) => {
     const { error } = await (supabase as any)
