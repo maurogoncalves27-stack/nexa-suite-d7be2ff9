@@ -634,6 +634,7 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
               {submitting ? "Enviando..." : "Enviar solicitação"}
             </Button>
           </TabsContent>
+          )}
 
           {/* PENDENTES (aguardando aprovação) */}
           <TabsContent value="pendentes" className="mt-3 space-y-2">
