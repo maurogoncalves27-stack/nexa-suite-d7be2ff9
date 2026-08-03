@@ -134,7 +134,10 @@ export default function Auth() {
       return;
     }
     rememberEmail(ep.data);
-    navigate(computeRedirect(signInData.user?.id, signInData.user?.user_metadata as Record<string, unknown> | null), { replace: true });
+    const meta = signInData.user?.user_metadata as Record<string, unknown> | null;
+    if (isKioskMetadata(meta)) saveKioskCredentials(ep.data, pp.data);
+    else clearKioskCredentials();
+    navigate(computeRedirect(signInData.user?.id, meta), { replace: true });
   };
 
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
