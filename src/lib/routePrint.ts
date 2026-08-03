@@ -124,6 +124,8 @@ export async function routePrintOrder(opts: {
   order: OrderForPrint;
   target?: "customer" | "kitchen" | "both";
   manual?: boolean;
+  /** Se informado, imprime APENAS nesta impressora específica (sobrescreve o roteamento por função). */
+  printerId?: string;
 }) {
   const { storeId, storeName, order, target = "both", manual = false } = opts;
 
