@@ -699,23 +699,23 @@ export default function Totem() {
 
             {/* Barra fixa do carrinho — bem visível */}
             {cart.length > 0 && (
-              <div className="absolute bottom-0 left-0 right-0 bg-primary text-primary-foreground shadow-2xl border-t-4 border-primary-foreground/20 z-20 animate-fade-in">
+              <div className="absolute bottom-0 left-0 right-0 bg-primary text-primary-foreground shadow-2xl border-t-8 border-primary-foreground/20 z-20 animate-fade-in">
                 <button
                   onClick={() => setStep("checkout")}
-                  className="w-full px-8 py-6 flex items-center justify-between gap-6 text-2xl font-bold hover:bg-primary/90 transition-colors"
+                  className="w-full px-8 py-10 flex items-center justify-between gap-6 text-3xl font-bold hover:bg-primary/90 transition-colors"
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-5">
                     <div className="relative">
-                      <ShoppingCart className="h-10 w-10" />
-                      <span className="absolute -top-2 -right-3 bg-destructive text-destructive-foreground rounded-full h-7 min-w-7 px-2 text-sm flex items-center justify-center font-bold">
+                      <ShoppingCart className="h-12 w-12" />
+                      <span className="absolute -top-2 -right-3 bg-destructive text-destructive-foreground rounded-full h-8 min-w-8 px-2 text-base flex items-center justify-center font-bold">
                         {cartCount}
                       </span>
                     </div>
-                    <span className="text-xl">{cartCount} {cartCount === 1 ? "item" : "itens"} no carrinho</span>
+                    <span className="text-2xl">{cartCount} {cartCount === 1 ? "item" : "itens"} no carrinho</span>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-3xl">{fmt(cartTotal)}</span>
-                    <span className="bg-primary-foreground text-primary rounded-xl px-6 py-3 text-xl">
+                  <div className="flex items-center gap-5">
+                    <span className="text-4xl">{fmt(cartTotal)}</span>
+                    <span className="bg-primary-foreground text-primary rounded-xl px-8 py-4 text-2xl">
                       Finalizar →
                     </span>
                   </div>
