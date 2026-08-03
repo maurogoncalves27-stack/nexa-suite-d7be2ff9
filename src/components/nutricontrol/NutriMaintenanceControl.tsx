@@ -753,14 +753,16 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
                       {r.rejection_reason && (
                         <span className="text-xs text-muted-foreground truncate">— {r.rejection_reason}</span>
                       )}
-                      <div className="ml-auto flex items-center gap-1">
-                        <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => reopenRequest(r.id)}>
-                          <RotateCcw className="h-3 w-3" /> Reabrir
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeRequest(r.id)}>
-                          <Trash2 className="h-3 w-3 text-destructive" />
-                        </Button>
-                      </div>
+                      {!readOnly && (
+                        <div className="ml-auto flex items-center gap-1">
+                          <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => reopenRequest(r.id)}>
+                            <RotateCcw className="h-3 w-3" /> Reabrir
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeRequest(r.id)}>
+                            <Trash2 className="h-3 w-3 text-destructive" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
