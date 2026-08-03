@@ -627,6 +627,29 @@ export default function Totem() {
           </div>
         )}
 
+        {/* STEP 2: comer no local ou levar (somente lojas configuradas) */}
+        {!loading && step === "type" && (
+          <div className="h-full flex flex-col items-center justify-center gap-12 p-8 animate-fade-in">
+            <h2 className="text-5xl font-bold text-center">Onde você vai comer?</h2>
+            <div className="grid grid-cols-2 gap-10 w-full max-w-4xl">
+              {([
+                { type: "eat_in" as OrderType, label: "Comer no local", icon: Utensils },
+                { type: "takeout" as OrderType, label: "Para levar", icon: ShoppingBag },
+              ]).map(({ type, label, icon: Icon }) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => { setOrderType(type); setStep("menu"); }}
+                  className="flex flex-col items-center justify-center gap-6 rounded-3xl border-4 border-primary/30 bg-card p-12 transition-transform hover:scale-105 active:scale-95"
+                >
+                  <Icon className="h-28 w-28 text-primary" />
+                  <span className="text-4xl font-bold">{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* STEP 3: cardápio */}
         {!loading && step === "menu" && (
           <div className="h-full flex flex-col overflow-hidden relative">
