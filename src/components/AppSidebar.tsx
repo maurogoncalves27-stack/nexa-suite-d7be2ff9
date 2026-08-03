@@ -268,6 +268,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { isAdmin: isAdminRaw, isManager: isManagerRaw, isContabilidade, isPartner: isPartnerRaw, isSuperUser, signOut, user } = useAuth();
   const { mode: viewMode } = useViewMode();
+  const { canReceive: inventoryCanReceive, loading: inventoryLoading } = useInventoryPermission();
   // O modo escolhido em /selecionar-acesso vira o perfil efetivo da sessão.
   const suppressStaff = viewMode === "socio" || viewMode === "colaborador";
   const suppressPartner = viewMode === "colaborador";
@@ -288,6 +289,7 @@ export function AppSidebar() {
   const canSeeItem = (item: Item) => {
     if (!item.staffOnly) return true;
     if (isStaff) return true;
+    if (item.inventoryAccess && inventoryCanReceive) return true;
     if (isContabilidade && ACCOUNTANT_URLS.has(item.url.split("?")[0])) return true;
     return false;
   };
