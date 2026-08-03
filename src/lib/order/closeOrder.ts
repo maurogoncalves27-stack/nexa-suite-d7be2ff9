@@ -20,6 +20,11 @@ const updateClosure = async (
   await supabase.from("pdv_orders").update(patch).eq("id", orderId);
 };
 
+function resolveFinalStatus(channel: ClosureChannel): string {
+  // pdv_orders.status não aceita 'closed' (só placed/confirmed/preparing/ready/dispatched/concluded/cancelled/dispute)
+  return channel === "totem" ? "concluded" : "concluded";
+}
+
 export async function closeOrder(params: CloseOrderParams): Promise<CloseOrderResult> {
   const { orderId, storeId, channel, storeName, printTargets } = params;
 
