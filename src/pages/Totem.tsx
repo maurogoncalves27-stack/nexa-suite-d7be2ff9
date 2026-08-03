@@ -179,7 +179,9 @@ export default function Totem() {
   const [showCpfKb, setShowCpfKb] = useState(false);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const [customBackgrounds, setCustomBackgrounds] = useState<string[]>([]);
+  const [customVideo, setCustomVideo] = useState<string | null>(null);
   const [customLogos, setCustomLogos] = useState<Record<string, string>>({});
+
 
   // ----- carregar marcas/lojas + assets do totem
   useEffect(() => {
