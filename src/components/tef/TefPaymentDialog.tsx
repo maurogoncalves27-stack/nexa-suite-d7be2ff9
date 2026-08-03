@@ -127,10 +127,10 @@ export function TefPaymentDialog({ open, request, onClose, onResult, configOverr
           {isSelectingNetwork && (
             <CreditCard className="h-20 w-20 text-primary" />
           )}
-          {!isSelectingNetwork && (status === "connecting" || status === "processing") && (
+          {!isSelectingNetwork && status === "connecting" && (
             <Loader2 className="h-20 w-20 text-primary animate-spin" />
           )}
-          {!isSelectingNetwork && status === "waiting_card" && (
+          {!isSelectingNetwork && isAwaitingPayment && (
             isPix
               ? <QrCode className="h-20 w-20 text-primary animate-pulse" />
               : <CreditCard className="h-20 w-20 text-primary animate-pulse" />
@@ -151,8 +151,7 @@ export function TefPaymentDialog({ open, request, onClose, onResult, configOverr
           <h2 className="text-2xl font-bold">
             {isSelectingNetwork && "Selecione a rede"}
             {!isSelectingNetwork && status === "connecting" && "Conectando..."}
-            {!isSelectingNetwork && status === "waiting_card" && (isPix ? "Escaneie o QR Code para pagar" : "Aproxime, insira ou passe o cartão")}
-            {!isSelectingNetwork && status === "processing" && "Processando..."}
+            {!isSelectingNetwork && isAwaitingPayment && (isPix ? "Escaneie o QR Code para pagar" : "Aproxime, insira ou passe o cartão")}
             {!isSelectingNetwork && status === "approved" && "Pagamento aprovado!"}
             {!isSelectingNetwork && status === "declined" && "Pagamento negado"}
             {!isSelectingNetwork && status === "cancelled" && "Pagamento cancelado"}
@@ -160,7 +159,7 @@ export function TefPaymentDialog({ open, request, onClose, onResult, configOverr
             {!isSelectingNetwork && status === "timeout" && "Tempo esgotado"}
           </h2>
 
-          {!isSelectingNetwork && status === "waiting_card" && (
+          {!isSelectingNetwork && isAwaitingPayment && (
             <div className="w-full rounded-xl border-2 border-primary/40 bg-primary/5 p-4">
               {isPix ? (
                 qrImage ? (
