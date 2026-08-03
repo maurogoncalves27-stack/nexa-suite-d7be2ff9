@@ -30,7 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import BiometricSettings from "@/components/auth/BiometricSettings";
 
-type Item = { title: string; url: string; icon: any; staffOnly?: boolean; disabled?: boolean; requiredForPayroll?: boolean };
+type Item = { title: string; url: string; icon: any; staffOnly?: boolean; disabled?: boolean; requiredForPayroll?: boolean; inventoryAccess?: boolean };
 type Group = { label: string; icon: any; items: Item[]; disabled?: boolean };
 
 // Dashboard fica fixo no topo (acima dos botões de módulo)
@@ -160,7 +160,7 @@ const operacaoSections: Section[] = [
     { title: "Sensores de temperatura", url: "/nutricontrol/sensores", icon: Thermometer, staffOnly: true },
     { title: "Visita técnica", url: "/nutri-visita", icon: ClipboardCheck, staffOnly: true },
     { title: "Relatórios NutriControle", url: "/nutri-relatorios", icon: FileBarChart, staffOnly: true },
-    { title: "Manutenções", url: "/nutricontrol?tab=manutencao", icon: Wrench, staffOnly: true },
+    { title: "Manutenções", url: "/nutricontrol?tab=manutencao", icon: Wrench, staffOnly: true, inventoryAccess: true },
     { title: "Vale Gás", url: "/financeiro/vale-gas", icon: Flame, staffOnly: false },
   ]},
   { label: "Atendimento", items: [
