@@ -247,7 +247,7 @@ export function ChatWidget() {
             ? {
                 ...x,
                 content:
-                  "Oi! Tive um soluço aqui 😅 tenta de novo daqui a pouquinho?",
+                  "Peço desculpas, mas estamos com problemas técnicos. Para qualquer tipo de problema, entre em contato conosco pelo WhatsApp.",
               }
             : x
         ))
