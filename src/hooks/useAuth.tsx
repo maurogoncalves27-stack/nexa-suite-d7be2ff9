@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { clearKioskCredentials } from "@/lib/kioskSession";
 
 export type AppRole = "admin" | "manager" | "employee" | "trainee" | "supplier" | "outsourced" | "nutritionist" | "hr" | "contabilidade" | "partner" | "waiter" | "mental_health";
 
@@ -183,6 +184,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (typeof window !== "undefined") {
       sessionStorage.removeItem("rh:viewMode");
     }
+    clearKioskCredentials();
     await supabase.auth.signOut();
     setRoles([]);
   };

@@ -1,4 +1,5 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
+import { startKioskSessionKeeper } from "@/lib/kioskSession";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Loader2 } from "lucide-react";
@@ -195,6 +196,7 @@ const STAFF = ["admin", "manager"] as const;
 
 const InactivityWatcher = () => {
   useInactivityLogout();
+  useEffect(() => { startKioskSessionKeeper(); }, []);
   return null;
 };
 

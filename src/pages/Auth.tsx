@@ -21,6 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import LgpdTermsDialog from "@/components/auth/LgpdTermsDialog";
 import SignatureSetupDialog from "@/components/auth/SignatureSetupDialog";
 import { registerUserSignature } from "@/lib/userSignature";
+import { isKioskMetadata, saveKioskCredentials, clearKioskCredentials } from "@/lib/kioskSession";
 
 const emailSchema = z.string().trim().email("E-mail inválido").max(255);
 const passwordSchema = z.string().min(6, "Senha deve ter ao menos 6 caracteres").max(72);
@@ -134,7 +135,10 @@ export default function Auth() {
       return;
     }
     rememberEmail(ep.data);
-    navigate(computeRedirect(signInData.user?.id, signInData.user?.user_metadata as Record<string, unknown> | null), { replace: true });
+    const meta = signInData.user?.user_metadata as Record<string, unknown> | null;
+    if (isKioskMetadata(meta)) saveKioskCredentials(ep.data, pp.data);
+    else clearKioskCredentials();
+    navigate(computeRedirect(signInData.user?.id, meta), { replace: true });
   };
 
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {

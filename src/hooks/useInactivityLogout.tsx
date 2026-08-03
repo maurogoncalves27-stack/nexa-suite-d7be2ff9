@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { isStoreLoginId } from "@/lib/storeLogins";
+import { isKioskMetadata } from "@/lib/kioskSession";
 
 const INACTIVITY_MS = 10 * 60 * 1000; // 10 minutos
 const ACTIVITY_EVENTS = [
@@ -30,8 +31,9 @@ export function useInactivityLogout() {
     if (!user) return;
     // Admin e gestor não são deslogados por inatividade
     if (isAdmin || isManager) return;
-    // Logins fixos de PC de loja não deslogam por inatividade
+    // Logins fixos de PC de loja / TOTEM nunca deslogam por inatividade
     if (isStoreLoginId(user.id)) return;
+    if (isKioskMetadata(user.user_metadata as Record<string, unknown> | null)) return;
 
     const clearTimer = () => {
       if (timerRef.current !== null) {
