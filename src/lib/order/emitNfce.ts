@@ -71,10 +71,26 @@ async function emitNfceFocus(orderId: string, closureId?: string): Promise<EmitN
   };
 }
 
+// Evita emissão duplicada por cliques/chamadas concorrentes no mesmo pedido
+const inFlight = new Map<string, Promise<EmitNfceResult>>();
+
 export async function emitNfce(orderId: string, closureId?: string): Promise<EmitNfceResult> {
-  const provider = await resolveEmissionProvider(orderId);
-  if (provider === "acbr_local") {
-    return emitNfceAcbr(orderId, closureId);
+  const running = inFlight.get(orderId);
+  if (running) return running;
+
+  const task = (async () => {
+    const provider = await resolveEmissionProvider(orderId);
+    if (provider === "acbr_local") {
+      return emitNfceAcbr(orderId, closureId);
+    }
+    return emitNfceFocus(orderId, closureId);
+  })();
+
+  inFlight.set(orderId, task);
+  try {
+    return await task;
+  } finally {
+    inFlight.delete(orderId);
   }
-  return emitNfceFocus(orderId, closureId);
 }
+
