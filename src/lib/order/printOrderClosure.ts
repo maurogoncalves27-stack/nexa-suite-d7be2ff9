@@ -18,8 +18,22 @@ export async function printOrderClosure(opts: {
   const wantKitchen = targets.includes("kitchen");
   const wantCustomer = targets.includes("customer");
 
-  if (wantNfce && opts.danfeUrl && isElectron() && window.electron?.printUrl) {
-    await window.electron.printUrl({ url: opts.danfeUrl });
+  if (wantNfce) {
+    if (!opts.danfeUrl) {
+      throw new Error("NFC-e sem DANFE disponível para impressão (SEFAZ ainda processando).");
+    }
+    if (!isElectron() || !window.electron?.printUrl) {
+      throw new Error("App desktop não detectado — impressão do cupom indisponível neste dispositivo.");
+    }
+    let res = await window.electron.printUrl({ url: opts.danfeUrl });
+    if (!res?.ok) {
+      // uma nova tentativa: impressora pode estar ocupada com a comanda anterior
+      await new Promise((r) => setTimeout(r, 1500));
+      res = await window.electron.printUrl({ url: opts.danfeUrl });
+    }
+    if (!res?.ok) {
+      throw new Error(`Falha ao imprimir o cupom fiscal: ${res?.error ?? "erro desconhecido na impressora"}`);
+    }
   }
 
   if (!wantKitchen && !wantCustomer) return;

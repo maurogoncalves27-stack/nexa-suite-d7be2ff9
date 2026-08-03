@@ -73,20 +73,38 @@ export async function closeOrder(params: CloseOrderParams): Promise<CloseOrderRe
     await updateClosure(orderId, { closure_status: "fiscal_ok" });
     await updateClosure(orderId, { closure_status: "print_pending" });
 
-    await printOrderClosure({
-      orderId,
-      storeId,
-      storeName: resolvedStoreName,
-      danfeUrl: fiscal.danfeUrl,
-      targets: printTargets,
-    });
+    let printError: string | undefined;
+    try {
+      await printOrderClosure({
+        orderId,
+        storeId,
+        storeName: resolvedStoreName,
+        danfeUrl: fiscal.danfeUrl,
+        targets: printTargets,
+      });
+    } catch (pe: unknown) {
+      printError = pe instanceof Error ? pe.message : String(pe);
+      console.error("[order] falha na impressão", printError);
+    }
 
     const finalStatus = resolveFinalStatus(channel);
     await updateClosure(orderId, {
       closure_status: "closed",
       closed_at: new Date().toISOString(),
+      closure_error: printError ?? null,
       status: finalStatus,
     });
+
+    if (printError) {
+      return {
+        closureId,
+        orderId,
+        status: "failed_at_step",
+        error: printError,
+        danfeUrl: fiscal.danfeUrl,
+        invoiceId: fiscal.invoiceId,
+      };
+    }
 
     return {
       closureId,
@@ -219,12 +237,13 @@ export async function createTotemOrderAndClose(
     closureId,
   });
 
+  // Comanda da cozinha sai automaticamente; o cupom fiscal só sai se o cliente pedir na tela.
   void closeOrder({
     orderId: order.id,
     storeId: params.storeId,
     channel: "totem",
     storeName: params.storeName,
-    printTargets: ["nfce", "kitchen"],
+    printTargets: ["kitchen"],
   }).catch((e) => console.warn("[order] closeOrder falhou", e));
 
   return {
