@@ -7,13 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Award, ArrowRight, AlertTriangle } from "lucide-react";
-import { ensureCurrentMonthlyCycle, monthBounds } from "@/lib/monthlyCycle";
+import { ensureEvaluationCycle, evaluationWindow } from "@/lib/monthlyCycle";
 
 /**
  * Banner de obrigatoriedade da avaliação MENSAL.
- * Exibido para gestores/admin/RH enquanto houver colaborador da equipe sem
- * avaliação finalizada no ciclo do mês corrente. Fica em estado de atraso
- * nos últimos dias do mês.
+ * A avaliação refere-se ao mês ANTERIOR e deve ser feita do dia 1 ao dia 3.
+ * No dia 3 (último dia do prazo) o alerta fica vermelho e mais intenso.
  */
 export default function MonthlyEvaluationReminder({ hideLink = false }: { hideLink?: boolean }) {
   const { user, isAdmin, isManager } = useAuth();
@@ -45,7 +44,7 @@ export default function MonthlyEvaluationReminder({ hideLink = false }: { hideLi
         return;
       }
 
-      const cycle = await ensureCurrentMonthlyCycle();
+      const cycle = await ensureEvaluationCycle();
       if (cancelled) return;
       if (!cycle) {
         setLoading(false);
@@ -86,16 +85,17 @@ export default function MonthlyEvaluationReminder({ hideLink = false }: { hideLi
     };
   }, [user, isAdmin, isManager]);
 
-  if (loading || !allowed || pending === null || pending === 0) return null;
+  const win = evaluationWindow();
+
+  if (loading || !allowed || !win.open || pending === null || pending === 0) return null;
 
   const done = total - pending;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-  const { end } = monthBounds();
-  const daysLeft = Math.ceil((new Date(`${end}T23:59:59`).getTime() - Date.now()) / 86_400_000);
-  const late = daysLeft <= 5;
+  const daysLeft = win.daysLeft;
+  const late = win.critical;
 
   return (
-    <Card className={late ? "border-destructive/50 bg-destructive/5" : "border-warning/40 bg-warning/5"}>
+    <Card className={late ? "border-2 border-destructive bg-destructive/10 animate-pulse" : "border-warning/40 bg-warning/5"}>
       <CardContent className="p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <div className={`rounded-full p-2 shrink-0 ${late ? "bg-destructive/20" : "bg-warning/20"}`}>
@@ -103,16 +103,16 @@ export default function MonthlyEvaluationReminder({ hideLink = false }: { hideLi
           </div>
           <div className="min-w-0 space-y-1 w-full">
             <div className="font-semibold text-foreground flex items-center gap-2 flex-wrap">
-              Avaliação mensal obrigatória
+              {late ? "ÚLTIMO DIA para avaliar a equipe" : "Avaliação mensal obrigatória"}
               <Badge variant={late ? "destructive" : "outline"} className={late ? "" : "border-warning/50 text-foreground"}>
                 {pending} pendente(s)
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className={`text-sm ${late ? "text-destructive font-medium" : "text-muted-foreground"}`}>
               Ciclo <span className="font-medium text-foreground">{cycleName}</span> · {done} de {total} concluída(s) ({pct}%).{" "}
-              {daysLeft > 0
-                ? `Prazo: até o último dia do mês (${daysLeft} dia(s) restante(s)).`
-                : "Prazo encerrado — conclua imediatamente."}
+              {late
+                ? `Prazo final HOJE (dia ${win.deadlineDay}). Conclua as avaliações agora.`
+                : `Prazo: até o dia ${win.deadlineDay} (${daysLeft} dia(s) restante(s)).`}
             </p>
             <Progress value={pct} className="h-1.5" />
           </div>
