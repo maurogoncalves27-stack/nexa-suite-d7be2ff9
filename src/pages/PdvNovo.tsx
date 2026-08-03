@@ -1746,6 +1746,14 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                       onClick={() => void reprintOrder(selectedOrder.id, selectedOrder.store_id, "customer")}>
                       <Printer className="h-3.5 w-3.5 mr-1.5" />Reimprimir cupom
                     </Button>
+                    <Button size="sm" variant="outline" className="h-8 px-3 text-xs" disabled={busy}
+                      onClick={() => void openPrinterPicker(selectedOrder, "kitchen")}>
+                      <Printer className="h-3.5 w-3.5 mr-1.5" />Imprimir comanda em...
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-8 px-3 text-xs" disabled={busy}
+                      onClick={() => void openPrinterPicker(selectedOrder, "customer")}>
+                      <Printer className="h-3.5 w-3.5 mr-1.5" />Imprimir cupom em...
+                    </Button>
                     {!["concluded", "cancelled"].includes(selectedOrder.status) && (
                       <Button size="sm" variant="outline" className="text-destructive border-destructive/40 hover:bg-destructive/10 h-8 px-3 text-xs" disabled={busy} onClick={() => setCancelOpen(true)}>
                         <AlertCircle className="h-3.5 w-3.5 mr-1.5" />Cancelar pedido
