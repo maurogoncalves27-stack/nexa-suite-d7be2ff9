@@ -554,6 +554,30 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cancelOpen, selectedOrder?.id]);
 
+  const maybeAutoCloseOrder = useCallback(async (order: Order, newStatus: PdvStatus) => {
+    if (newStatus !== "ready" && newStatus !== "dispatched") return;
+    const channel = order.closure_channel as ClosureChannel | undefined;
+    const autoCloseChannels: ClosureChannel[] = ["ifood", "whatsapp", "balcao"];
+    if (!channel || !autoCloseChannels.includes(channel)) return;
+    try {
+      const storeName = stores.find((s) => s.id === order.store_id)?.name ?? "";
+      const result = await closeOrder({
+        orderId: order.id,
+        storeId: order.store_id,
+        storeName,
+        channel,
+        printTargets: [{ type: "customer" }, { type: "kitchen" }],
+      });
+      if (result.error) {
+        toast({ title: "Fechamento fiscal pendente", description: result.error, variant: "destructive" });
+      } else if (result.danfeUrl) {
+        toast({ title: "NFC-e emitida", description: `Cupom disponível em ${result.danfeUrl}` });
+      }
+    } catch (e) {
+      console.warn("[pdv-novo] auto closeOrder falhou", e);
+    }
+  }, [stores]);
+
   const advanceStatus = async (order: Order, newStatus: PdvStatus, eventCode?: string) => {
     setBusy(true);
     const ifoodAction = STATUS_TO_IFOOD_ACTION[newStatus];
@@ -600,13 +624,18 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
           description: "Avançado localmente para não travar a operação.",
         });
         if (localData && typeof localData === "object" && "id" in localData) {
-          setSelectedOrder(localData as Order);
+          const updated = localData as Order;
+          setSelectedOrder(updated);
+          await maybeAutoCloseOrder(updated, newStatus);
         }
         void loadForStore(storeId);
         return;
       }
       setBusy(false);
       toast({ title: `Pedido ${STATUS_LABEL[newStatus].label.toLowerCase()} (iFood)` });
+      const updated = { ...order, status: newStatus };
+      setSelectedOrder(updated);
+      await maybeAutoCloseOrder(updated, newStatus);
       void loadForStore(storeId);
       return;
     }
@@ -628,7 +657,11 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     }
     toast({ title: `Pedido ${STATUS_LABEL[newStatus].label.toLowerCase()}` });
     if (data && typeof data === "object" && "id" in data) {
-      setSelectedOrder(data as Order);
+      const updated = data as Order;
+      setSelectedOrder(updated);
+      await maybeAutoCloseOrder(updated, newStatus);
+    } else {
+      await maybeAutoCloseOrder({ ...order, status: newStatus }, newStatus);
     }
     void loadForStore(storeId);
   };
