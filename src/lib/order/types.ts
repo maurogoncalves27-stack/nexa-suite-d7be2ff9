@@ -9,6 +9,7 @@ export type ClosureStatus =
   | "fiscal_ok"
   | "print_pending"
   | "closed"
+  | "concluded"
   | "failed_at_step";
 
 export type ClosureChannel = "totem" | "pdv" | "whatsapp" | "ifood" | "delivery";
