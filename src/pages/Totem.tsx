@@ -169,6 +169,7 @@ export default function Totem() {
   const [cpf, setCpf] = useState("");
   const [noteDialog, setNoteDialog] = useState<{ item: MenuItem; note: string; qty: number } | null>(null);
   const [tefOpen, setTefOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<TefPaymentMethod | null>(null);
   const [showNoteKb, setShowNoteKb] = useState(false);
   const [showCpfKb, setShowCpfKb] = useState(false);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
