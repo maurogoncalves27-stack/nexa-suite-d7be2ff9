@@ -350,6 +350,12 @@ export default function Totem() {
     );
   }, [stores, currentTotemStore]);
 
+  /** A loja permite o cliente escolher entre comer no local e retirar? (config em Configurações → Totem) */
+  const storeAllowsOrderType = useCallback((store: Store) =>
+    Boolean(store.totem_allow_order_type ?? store.parent_store?.totem_allow_order_type ?? false),
+  []);
+
+
   const filteredItems = useMemo(() => items.filter(it => {
     if (activeCat !== "all" && it.category_id !== activeCat) return false;
     if (search && !it.name.toLowerCase().includes(search.toLowerCase())) return false;
