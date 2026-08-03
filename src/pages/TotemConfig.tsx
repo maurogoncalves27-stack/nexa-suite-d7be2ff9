@@ -147,6 +147,33 @@ export default function TotemConfig() {
 
       </div>
 
+      {/* MODO DE CONSUMO POR LOJA */}
+      <Card className="p-4 space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">Comer no local / Para levar</h2>
+          <p className="text-sm text-muted-foreground">
+            Quando ativado, o totem da loja pergunta ao cliente se ele vai comer no local ou levar,
+            e a escolha sai impressa na comanda. Desativado, todos os pedidos saem como "Para levar".
+          </p>
+        </div>
+        {physicalStores.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhuma loja encontrada.</p>
+        ) : (
+          <div className="space-y-2">
+            {physicalStores.map((s) => (
+              <div key={s.id} className="flex items-center justify-between gap-3 border rounded-md p-3">
+                <span className="font-medium">{s.name}</span>
+                <Switch
+                  checked={!!s.totem_allow_order_type}
+                  onCheckedChange={(v) => void toggleStoreOrderType(s, v)}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+
       {/* FUNDOS */}
       <Card className="p-4 space-y-4">
         <div className="flex items-center justify-between gap-2 flex-wrap">
