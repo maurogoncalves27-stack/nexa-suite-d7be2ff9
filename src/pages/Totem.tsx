@@ -166,6 +166,7 @@ export default function Totem() {
   const [orderId, setOrderId] = useState<string>("");
   const [emittingNfce, setEmittingNfce] = useState(false);
   const [nfceEmitted, setNfceEmitted] = useState(false);
+  const [doneCountdown, setDoneCountdown] = useState<number | null>(null);
   const [cpf, setCpf] = useState("");
   const [noteDialog, setNoteDialog] = useState<{ item: MenuItem; note: string; qty: number } | null>(null);
   const [tefOpen, setTefOpen] = useState(false);
