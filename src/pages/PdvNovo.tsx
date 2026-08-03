@@ -63,6 +63,8 @@ import StockShortagesPanel from "@/components/pdv-novo/StockShortagesPanel";
 import { PrintersPanel } from "@/components/pdv-novo/PrintersPanel";
 import { PrintLayoutPanel } from "@/components/pdv-novo/PrintLayoutPanel";
 import { routePrintOrder } from "@/lib/routePrint";
+import { closeOrder } from "@/lib/order";
+import type { ClosureChannel } from "@/lib/order/types";
 
 
 
