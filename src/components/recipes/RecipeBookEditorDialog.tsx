@@ -18,7 +18,10 @@ interface RecipeBookRow {
   yield_text: string | null;
   prep_time_minutes: number | null;
   source_recipe_name: string | null;
+  recipe_id: string | null;
+  menu_item_id: string | null;
 }
+
 
 interface Props {
   open: boolean;
