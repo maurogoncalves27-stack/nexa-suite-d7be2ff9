@@ -56,22 +56,12 @@ const findPixPayload = (value: unknown, depth = 0): string | null => {
 export function TefPaymentDialog({ open, request, onClose, onResult, configOverride }: Props) {
   const { status, message, result, pay, cancel, reset } = useTefPayment();
   const [networkPromptOpen, setNetworkPromptOpen] = useState(false);
-  const [qrImage, setQrImage] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const startedRef = useRef(false);
 
   const isPix = request?.method === "pix";
 
-  useEffect(() => {
-    if (!open) { setQrImage(null); return; }
-    const payload = findPixPayload(result?.raw) ?? findPixPayload(message);
-    if (!payload) return;
-    let active = true;
-    void QRCode.toDataURL(payload, { width: 512, margin: 1 }).then((url) => {
-      if (active) setQrImage(url);
-    }).catch(() => undefined);
-    return () => { active = false; };
-  }, [open, result, message]);
+
 
 
   useEffect(() => {
