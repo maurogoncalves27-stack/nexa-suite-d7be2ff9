@@ -124,7 +124,8 @@ interface Order {
   delivery_by?: string | null;
   packed_at?: string | null;
   has_unread_chat?: boolean | null;
-
+  closure_channel?: string | null;
+  closure_status?: string | null;
 }
 
 
