@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
+import { useInventoryPermission } from "@/hooks/useInventoryPermission";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { compressImage } from "@/lib/imageCompression";
@@ -80,6 +81,8 @@ const MAINTENANCE_DRAFT_STORAGE_KEY = "nutricontrol:maintenance-request-draft";
 
 export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
   const { user, isAdmin, isManager } = useAuth();
+  const { canReceive: inventoryCanReceive } = useInventoryPermission();
+  const readOnly = inventoryCanReceive && !isAdmin && !isManager;
   const [records, setRecords] = useState<MaintRecord[]>([]);
   const [requests, setRequests] = useState<MaintRequest[]>([]);
   const [loading, setLoading] = useState(true);
