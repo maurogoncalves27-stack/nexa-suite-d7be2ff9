@@ -166,6 +166,7 @@ export default function Totem() {
   const [orderId, setOrderId] = useState<string>("");
   const [emittingNfce, setEmittingNfce] = useState(false);
   const [nfceEmitted, setNfceEmitted] = useState(false);
+  const [doneCountdown, setDoneCountdown] = useState<number | null>(null);
   const [cpf, setCpf] = useState("");
   const [noteDialog, setNoteDialog] = useState<{ item: MenuItem; note: string; qty: number } | null>(null);
   const [tefOpen, setTefOpen] = useState(false);
@@ -286,6 +287,22 @@ export default function Totem() {
       events.forEach(e => window.removeEventListener(e, resetIdle));
     };
   }, [resetIdle]);
+
+  // Após o cupom ser emitido, volta sozinho para a tela inicial em 60s
+  useEffect(() => {
+    if (step !== "done" || !nfceEmitted) { setDoneCountdown(null); return; }
+    setDoneCountdown(60);
+    const id = window.setInterval(() => {
+      setDoneCountdown((s) => {
+        if (s === null) return null;
+        if (s <= 1) { window.clearInterval(id); handleReset(); return null; }
+        return s - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [step, nfceEmitted, handleReset]);
+
+
 
   useEffect(() => {
     if (step !== "checkout") setShowCpfKb(false);
@@ -861,6 +878,11 @@ export default function Totem() {
                   {nfceEmitted ? "Novo pedido" : "Não, obrigado"}
                 </Button>
               </div>
+              {doneCountdown !== null && (
+                <p className="text-xl text-muted-foreground">
+                  Voltando à tela inicial em {doneCountdown}s
+                </p>
+              )}
             </div>
 
           </div>
