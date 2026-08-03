@@ -146,18 +146,35 @@ export default function Menu() {
     setItems(loadedItems);
 
     const recipeIds = Array.from(new Set(loadedItems.map((i) => i.recipe_id).filter(Boolean) as string[]));
+    const photoMap: Record<string, string> = {};
     if (recipeIds.length > 0) {
       const { data: recs } = await supabase.from("recipes").select("id, photo_path").in("id", recipeIds);
-      const photoMap: Record<string, string> = {};
       for (const r of (recs ?? []) as any[]) {
         if (r.photo_path) {
           photoMap[r.id] = supabase.storage.from("recipe-photos").getPublicUrl(r.photo_path).data.publicUrl;
         }
       }
-      setRecipePhotos(photoMap);
-    } else {
-      setRecipePhotos({});
     }
+    setRecipePhotos(photoMap);
+
+    // Fallback: foto do receituário (recipe_books), vinculado por item de cardápio ou por ficha técnica
+    const bookMap: Record<string, string> = {};
+    const { data: books } = await (supabase as any)
+      .from("recipe_books")
+      .select("menu_item_id, recipe_id, photo_path")
+      .not("photo_path", "is", null)
+      .or(`menu_item_id.in.(${itemIds.join(",")})${recipeIds.length ? `,recipe_id.in.(${recipeIds.join(",")})` : ""}`);
+    const byRecipe: Record<string, string> = {};
+    for (const b of (books ?? []) as any[]) {
+      const url = supabase.storage.from("recipe-book-photos").getPublicUrl(b.photo_path).data.publicUrl;
+      if (b.menu_item_id) bookMap[b.menu_item_id] = url;
+      if (b.recipe_id) byRecipe[b.recipe_id] = url;
+    }
+    for (const it of loadedItems) {
+      if (!bookMap[it.id] && it.recipe_id && byRecipe[it.recipe_id]) bookMap[it.id] = byRecipe[it.recipe_id];
+    }
+    setBookPhotos(bookMap);
+
     setLoading(false);
   }
 
