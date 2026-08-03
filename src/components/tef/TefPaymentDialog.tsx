@@ -92,7 +92,9 @@ export function TefPaymentDialog({ open, request, onClose, onResult, configOverr
             <Loader2 className="h-20 w-20 text-primary animate-spin" />
           )}
           {!isSelectingNetwork && status === "waiting_card" && (
-            <CreditCard className="h-20 w-20 text-primary animate-pulse" />
+            isPix
+              ? <QrCode className="h-20 w-20 text-primary animate-pulse" />
+              : <CreditCard className="h-20 w-20 text-primary animate-pulse" />
           )}
           {!isSelectingNetwork && status === "approved" && (
             <CheckCircle2 className="h-20 w-20 text-green-600" />
@@ -110,7 +112,7 @@ export function TefPaymentDialog({ open, request, onClose, onResult, configOverr
           <h2 className="text-2xl font-bold">
             {isSelectingNetwork && "Selecione a rede"}
             {!isSelectingNetwork && status === "connecting" && "Conectando..."}
-            {!isSelectingNetwork && status === "waiting_card" && "Aproxime, insira ou passe o cartao"}
+            {!isSelectingNetwork && status === "waiting_card" && (isPix ? "Escaneie o QR Code para pagar" : "Aproxime, insira ou passe o cartão")}
             {!isSelectingNetwork && status === "processing" && "Processando..."}
             {!isSelectingNetwork && status === "approved" && "Pagamento aprovado!"}
             {!isSelectingNetwork && status === "declined" && "Pagamento negado"}
@@ -119,9 +121,29 @@ export function TefPaymentDialog({ open, request, onClose, onResult, configOverr
             {!isSelectingNetwork && status === "timeout" && "Tempo esgotado"}
           </h2>
 
+          {!isSelectingNetwork && status === "waiting_card" && (
+            <div className="w-full rounded-xl border-2 border-primary/40 bg-primary/5 p-4">
+              {isPix ? (
+                qrImage ? (
+                  <img src={qrImage} alt="QR Code PIX para pagamento" className="mx-auto h-56 w-56 rounded-lg bg-white p-2" />
+                ) : (
+                  <p className="text-lg font-semibold text-primary">
+                    Use o QR Code exibido no pinpad para pagar com PIX
+                  </p>
+                )
+              ) : (
+                <p className="text-lg font-semibold text-primary">
+                  Aguardando o cartão no pinpad — aproxime, insira ou passe
+                </p>
+              )}
+            </div>
+          )}
+
           {request && (
             <div className="text-3xl font-bold text-primary">{fmt(request.amount)}</div>
           )}
+
+
 
           {isSelectingNetwork && (
             <p className="text-muted-foreground">
