@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -18,7 +20,10 @@ interface RecipeBookRow {
   yield_text: string | null;
   prep_time_minutes: number | null;
   source_recipe_name: string | null;
+  recipe_id: string | null;
+  menu_item_id: string | null;
 }
+
 
 interface Props {
   open: boolean;
@@ -43,7 +48,12 @@ const RecipeBookEditorDialog = ({ open, onOpenChange, recipeBookId, onSaved, sco
     yield_text: "",
     prep_time_minutes: null,
     source_recipe_name: null,
+    recipe_id: null,
+    menu_item_id: null,
   });
+  const [recipes, setRecipes] = useState<{ id: string; name: string }[]>([]);
+  const [menuItems, setMenuItems] = useState<{ id: string; name: string }[]>([]);
+
 
   useEffect(() => {
     if (!open || !recipeBookId) return;
@@ -59,6 +69,20 @@ const RecipeBookEditorDialog = ({ open, onOpenChange, recipeBookId, onSaved, sco
         setLoading(false);
       });
   }, [open, recipeBookId]);
+
+  useEffect(() => {
+    if (!open) return;
+    void (async () => {
+      const [{ data: rs }, { data: mis }] = await Promise.all([
+        supabase.from("recipes").select("id, name").eq("is_active", true).order("name"),
+        supabase.from("menu_items").select("id, name").order("name"),
+      ]);
+      setRecipes(rs ?? []);
+      setMenuItems(mis ?? []);
+    })();
+  }, [open]);
+
+
 
   const photoUrl = data.photo_path
     ? supabase.storage.from("recipe-book-photos").getPublicUrl(data.photo_path).data.publicUrl
@@ -115,7 +139,10 @@ const RecipeBookEditorDialog = ({ open, onOpenChange, recipeBookId, onSaved, sco
       preparation_method: data.preparation_method?.trim() || null,
       yield_text: data.yield_text?.trim() || null,
       prep_time_minutes: data.prep_time_minutes,
+      recipe_id: data.recipe_id,
+      menu_item_id: data.menu_item_id,
     };
+
     const { error } = await supabase.from("recipe_books").update(payload).eq("id", data.id);
     setSaving(false);
     if (error) {
@@ -155,6 +182,44 @@ const RecipeBookEditorDialog = ({ open, onOpenChange, recipeBookId, onSaved, sco
                 onChange={(e) => setData({ ...data, description: e.target.value })}
               />
             </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-md border p-3 bg-muted/30">
+              <div>
+                <Label>Ficha técnica vinculada</Label>
+                <Select
+                  value={data.recipe_id ?? "none"}
+                  onValueChange={(v) => setData({ ...data, recipe_id: v === "none" ? null : v })}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
+                  <SelectContent className="max-h-64">
+                    <SelectItem value="none">Sem vínculo</SelectItem>
+                    {recipes.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Item do cardápio vinculado</Label>
+                <Select
+                  value={data.menu_item_id ?? "none"}
+                  onValueChange={(v) => setData({ ...data, menu_item_id: v === "none" ? null : v })}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
+                  <SelectContent className="max-h-64">
+                    <SelectItem value="none">Sem vínculo</SelectItem>
+                    {menuItems.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="sm:col-span-2 text-xs text-muted-foreground">
+                O vínculo é apenas informativo: editar o receituário nunca altera a ficha técnica nem o cardápio.
+              </p>
+            </div>
+
+
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
