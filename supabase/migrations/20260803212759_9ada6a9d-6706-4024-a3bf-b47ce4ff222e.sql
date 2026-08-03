@@ -1,0 +1,2 @@
+ALTER TABLE public.totem_assets DROP CONSTRAINT IF EXISTS totem_assets_kind_check;
+ALTER TABLE public.totem_assets ADD CONSTRAINT totem_assets_kind_check CHECK (kind = ANY (ARRAY['background'::text,'logo'::text,'video'::text]));
