@@ -1,54 +1,74 @@
-# Totem com PayGo e Payer chaveáveis (nunca simultâneos)
+# Plano: Fluxo unificado de pedidos, comandas e NFC-e
 
-## Respostas às dúvidas (verificado no código)
+## Objetivo
+Garantir que o fluxo de vendas funcione exatamente assim:
 
-**1. Dá para ter os dois sem conflito?** Sim, desde que **só um tenha o pinpad aberto por vez**. Instalados juntos não brigam; o que é exclusivo é a **posse da porta do pinpad** e a **porta de rede do agente local**.
+- Cliente pode pedir por: **Totem**, **iFood**, **Site/WhatsApp**.
+- **NFC-e** de pedidos iFood / Site / WhatsApp: **impressa no PDV** da loja.
+- **NFC-e** de pedidos no Totem: **impressa no próprio Totem**.
+- **Todas as comandas** (cozinha + cupom cliente) vão para o **PDV da loja**.
+- No PDV, o operador pode **escolher em qual impressora** sairá cada impressão.
 
-Dois pontos de choque hoje:
-- `electron-acbr/server.cjs` já serve **as duas famílias de rotas no mesmo agente** (PayGo via `acbr-tefd.cjs` e `/payer/*` via `payer/routes.cjs`), em HTTP 3030 / HTTPS 3031.
-- `electron-totem/payer/agent.cjs` sobe **outro** agente Payer também na **3031**. Ele cede quando a porta já está ocupada (`portInUse`), mas isso depende da ordem de boot — não é regra explícita.
+```text
+Canal        Emite NFC-e onde?     Comanda/cupom onde?   Quem seleciona impressora?
+Totem        Totem (DANFE)         PDV da loja           PDV (automático por função)
+iFood        PDV (DANFE)           PDV da loja           PDV (manual ou por função)
+Site/Zap     PDV (DANFE)           PDV da loja           PDV (manual ou por função)
+Balcão PDV   PDV (DANFE)           PDV da loja           PDV (manual ou por função)
+```
 
-**2. Número lógico fica no pinpad ou no sistema?** **No sistema, nos dois casos.**
-- **PayGo:** o ponto de captura (PdC) fica gravado na instalação do PayGo na máquina, não no pinpad. O pinpad guarda só tabelas e chaves das adquirentes. Trocar pinpad não perde o PdC; formatar/reinstalar o totem perde.
-- **Payer:** idem — o cadastro/login de terminal vive no Checkout Payer local (:6060).
-- Consequência: os dois números lógicos convivem no mesmo totem sem se sobrescrever. O que não convive é o pinpad aberto pelos dois ao mesmo tempo — e, ao chavear, o novo TEF baixa suas tabelas na primeira transação (primeira venda depois da troca é mais lenta).
+## Estado atual verificado
 
-**3. DLL PayGo em produção no totem.** Confirmado e é um problema hoje: `electron-acbr/acbr-tefd.cjs:43` tem `FORCED_PAYGO_DLL_PATH` apontando para o caminho de desenvolvimento `C:\ProjetoMauro\...\x64\PGWebLib.dll`. O caminho de produção `C:\Program Files (x86)\PayGo\PGWebLib\x64\PGWebLib.dll` existe na lista de candidatos (linha 46) e já é o default do bridge (`paygo-bridge.ps1:6-7`), mas o forçado tem precedência. No totem de produção, o forçado precisa sair do caminho.
+- **Totem**: já cria `pdv_orders` com `closure_channel = 'totem'` e chama `closeOrder({ printTargets: ['nfce','kitchen'] })`. A NFC-e é emitida pela Focus NFe e a DANFE imprime no Totem via `window.electron.printUrl`; a comanda da cozinha é roteada para as impressoras `kitchen/both` da loja física (`routePrintOrder`).
+- **iFood / Site / WhatsApp**: pedidos aparecem no `/pdv-novo`, mas **não disparam fechamento fiscal automático** nem impressão de cupom cliente. Só a comanda pode ser reimpressa manualmente via `printNewOrder`.
+- **Balcão (`BalcaoTab`)**: cria pedido com `status = 'concluded'`, mas **não emite NFC-e nem imprime nada**.
+- **Seleção de impressora**: o roteamento é automático por `print_role` (`customer`, `kitchen`, `both`, `totem`). Não há escolha manual de impressora no momento da ação.
 
-**4. Recomendação assertiva:** chaveamento **por configuração de loja no banco**, com **encerramento explícito da sessão do provider anterior** antes de abrir a do novo. Nunca decidir por tentativa/erro em runtime.
+## Entregáveis
 
-## O que será feito
+### 1. Fechamento fiscal automático para iFood / Site / WhatsApp
 
-### 1. Um agente só, duas famílias de rotas
-- `electron-totem/payer/agent.cjs`: se a 3031 já responde `/health` de um agente NEXA, não sobe nada e registra quem é o dono; se responde algo que não é NEXA, falha com erro claro no diagnóstico em vez de seguir silencioso.
-- `/health` passa a informar qual provider está **ativo** e quais estão **instalados**.
+- No `/pdv-novo`, ao avançar o pedido para `ready` (pronto para retirada) ou `dispatched` (despachado), disparar `closeOrder` com o `channel` correto (`ifood` ou `whatsapp`).
+- `closeOrder` já emite a NFC-e via Focus NFe e, se houver DANFE, imprime no PDV via `window.electron.printUrl`.
+- Após a NFC-e, imprimir cupom do cliente + comanda da cozinha no PDV (`printTargets: ['nfce','customer','kitchen']`).
+- Garantir que a impressão só ocorra uma vez por pedido (usar `closure_status` e `closure_id` já existentes em `pdv_orders`).
 
-### 2. Resolução da DLL PayGo pronta para produção
-- `FORCED_PAYGO_DLL_PATH` deixa de ser constante fixa: vira opt-in por variável de ambiente (`PAYGO_DLL_PATH`), usada só na máquina de desenvolvimento.
-- Sem essa variável, vale a ordem de candidatos, com `C:\Program Files (x86)\PayGo\PGWebLib\x64\PGWebLib.dll` em primeiro lugar, e `WorkingDir` sempre na pasta da DLL (comportamento já esperado pela PGWebLib).
-- O diagnóstico mostra **qual DLL foi carregada** e de onde, para conferir no totem em 2 segundos.
-- Isso toca `electron-acbr/**`, que está congelado: é só **resolução de caminho**, sem mexer no fluxo transacional homologado — peço sua confirmação expressa antes de aplicar.
+### 2. Integrar Balcão com fechamento fiscal
 
-### 3. Provider ativo é decisão do banco
-`pdv_tef_config.provider` (já lido por `src/lib/tef/index.ts`) segue como fonte única. Troca sem reinstalar nada:
-- Tela de TEF do totem/loja com seletor **PayGo / Payer / Mock**, badge do provider em uso e último diagnóstico.
-- Ao salvar, o front manda o agente **encerrar a sessão do provider anterior** (logoff Payer / finalizar sessão PayGo) e só então marca o novo como ativo.
+- Substituir a finalização direta de `BalcaoTab` por uma chamada a `closeOrder` (ou função equivalente).
+- Inserir o pagamento em `pdv_payments` e depois chamar `closeOrder` com `channel: 'pdv'`.
+- Suportar pagamento em dinheiro, cartão (TEF) e PIX no balcão, quando aplicável.
 
-### 4. Trava de exclusividade no agente
-Estado `activeProvider` persistido em disco:
-- Pagamento com provider diferente do ativo → o agente desliga o anterior, assume o novo e responde (troca serializada, uma por vez).
-- Duas requisições concorrentes de providers diferentes → a segunda recebe erro explícito "pinpad em uso por PayGo/Payer" em vez de travar o equipamento.
+### 3. Seleção manual de impressora no PDV
 
-### 5. Diagnóstico antes de vender
-Um botão por provider mostrando: agente respondendo, DLL PayGo encontrada (caminho) + PdC ativado, Payer respondendo em :6060 e logado, pinpad detectado e de quem é a posse agora.
+- Adicionar, no modal de ações do pedido do `/pdv-novo`, uma opção "Imprimir em..." que lista as impressoras ativas da loja.
+- Permitir escolher: **Comanda da cozinha**, **Cupom do cliente** ou **Ambos**.
+- Ao confirmar, chamar `routePrintOrder` com `manual: true` e enviar apenas para a impressora selecionada (sobrescrevendo o roteamento por `print_role`).
+- Manter o atalho rápido "Imprimir comanda" / "Imprimir cupom" usando o roteamento automático por função.
 
-### 6. Procedimento operacional de troca (documentado)
-Seção nova em `electron-totem/INSTALL-PAYER.md`: fechar venda em aberto → trocar provider na tela → rodar diagnóstico → fazer **uma venda de teste de R$ 0,01 e cancelar** (força o download de tabelas do novo TEF fora do pico).
+### 4. Garantir canais por loja
 
-## Restrições respeitadas
-Nada que altere o **fluxo de transação** homologado de PayGo ou Payer. As mudanças ficam em: orquestração do agente (start/stop, porta, provider ativo), resolução do caminho da DLL, UI de configuração/diagnóstico e documentação. Qualquer necessidade de tocar no fluxo homologado, eu paro e peço confirmação expressa.
+- Assegurar que toda loja física tenha os canais: `balcao`, `ifood`, `whatsapp`, `totem`, `salao`.
+- O `ensureBalcaoChannel` já existe; criar função similar ou migration para criar os demais canais padrão, se ausentes.
 
-## Detalhes técnicos
-- Arquivos previstos: `electron-totem/payer/agent.cjs`, `electron-totem/main.cjs`, `electron-acbr/acbr-tefd.cjs` (só a resolução de DLL, linhas 43-49), UI de chaveamento reaproveitando `src/pages/TefPayerSetup.tsx`, `electron-totem/INSTALL-PAYER.md`.
-- Sem migração de schema: `pdv_tef_config.provider` já aceita `paygo` / `payer` / `mock`.
-- Bitness: com o bridge PowerShell + C# (`paygo-bridge.ps1`), a PGWebLib x64 é carregada pelo host C#, então o empacotamento do Electron não precisa acompanhar a arquitetura da DLL.
+### 5. Configuração de impressoras por papel
+
+- **Totem**: impressora com `print_role = 'totem'` (usada apenas para DANFE/senha do Totem).
+- **PDV**: impressoras com `print_role = 'customer'`, `kitchen` ou `both`.
+- Documentar no painel de impressoras que a função `totem` é exclusiva do Totem e não imprime comandas do PDV.
+
+## O que não muda
+
+- **TEF**: continua chaveado PayGo/Payer conforme configuração de loja (`pdv_tef_config`).
+- **Focus NFe**: mesmo token por CNPJ/ambiente, compartilhado entre Totem e PDV da mesma loja.
+- **Cardápio**: continua vindo de `menu_items` para todos os canais.
+- **iFood Homologação**: não será usada para testes de PDV/Totem.
+
+## Critérios de aceitação
+
+1. Pedido feito no Totem emite NFC-e no Totem e imprime comanda na cozinha do PDV.
+2. Pedido iFood concluído emite NFC-e no PDV e imprime cupom + comanda no PDV.
+3. Pedido Site/WhatsApp concluído emite NFC-e no PDV e imprime cupom + comanda no PDV.
+4. Venda do Balcão emite NFC-e e imprime cupom + comanda no PDV.
+5. Operador do PDV pode escolher a impressora específica antes de imprimir.
+6. Nenhuma impressão duplicada ocorre para o mesmo pedido.
