@@ -237,12 +237,13 @@ export async function createTotemOrderAndClose(
     closureId,
   });
 
+  // Comanda da cozinha sai automaticamente; o cupom fiscal só sai se o cliente pedir na tela.
   void closeOrder({
     orderId: order.id,
     storeId: params.storeId,
     channel: "totem",
     storeName: params.storeName,
-    printTargets: ["nfce", "kitchen"],
+    printTargets: ["kitchen"],
   }).catch((e) => console.warn("[order] closeOrder falhou", e));
 
   return {
