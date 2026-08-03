@@ -1415,6 +1415,24 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
 
         </TabsContent>
 
+        <TabsContent value="balcao" className="mt-4 space-y-3">
+          {storeId && storeId !== "ALL" ? (
+            <BalcaoTab
+              storeId={storeId}
+              channelId={balcaoChannelId}
+              cashSessionId={session?.id ?? null}
+              onOrderCreated={() => storeId && loadForStore(storeId)}
+            />
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Balcão</CardTitle>
+                <CardDescription>Selecione uma loja específica para atendimento manual.</CardDescription>
+              </CardHeader>
+            </Card>
+          )}
+        </TabsContent>
+
         <TabsContent value="historico" className="mt-4 space-y-3">
           <Card>
             <CardHeader className="pb-3">
