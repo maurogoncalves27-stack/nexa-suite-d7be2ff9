@@ -178,7 +178,7 @@ export default function TotemConfig() {
             Configuração do Totem
           </h1>
           <p className="text-muted-foreground">
-            Personalize as imagens de fundo da tela de atrair e as logos das marcas exibidas no totem.
+            Tudo do totem em um só lugar: visual, vídeo de apresentação, emissão fiscal (NFC-e) e TEF.
           </p>
         </div>
         <Button asChild variant="outline" size="sm">
@@ -189,7 +189,17 @@ export default function TotemConfig() {
 
       </div>
 
+      <Tabs defaultValue="visual" className="space-y-4">
+        <TabsList className="w-full flex overflow-x-auto justify-start">
+          <TabsTrigger value="visual" className="gap-1"><ImageIcon className="h-4 w-4" />Visual</TabsTrigger>
+          <TabsTrigger value="video" className="gap-1"><Video className="h-4 w-4" />Vídeo</TabsTrigger>
+          <TabsTrigger value="fiscal" className="gap-1"><FileCheck className="h-4 w-4" />Fiscal/NFC-e</TabsTrigger>
+          <TabsTrigger value="tef" className="gap-1"><CreditCard className="h-4 w-4" />TEF</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="visual" className="space-y-6 mt-0">
       {/* MODO DE CONSUMO POR LOJA */}
+
       <Card className="p-4 space-y-4">
         <div>
           <h2 className="text-lg font-semibold">Comer no local / Para levar</h2>
