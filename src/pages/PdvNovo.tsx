@@ -356,7 +356,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
               .maybeSingle(),
         supabase
           .from("pdv_orders")
-          .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by,packed_at,has_unread_chat")
+          .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by,packed_at,has_unread_chat,closure_channel,closure_status")
 
           .in("store_id", ids)
           .neq("status", "awaiting_payment")
