@@ -15980,6 +15980,7 @@ export type Database = {
           regime_tributario: number | null
           state: string | null
           store_type: Database["public"]["Enums"]["store_type"]
+          totem_allow_order_type: boolean
           updated_at: string
           zip_code: string | null
         }
@@ -16020,6 +16021,7 @@ export type Database = {
           regime_tributario?: number | null
           state?: string | null
           store_type?: Database["public"]["Enums"]["store_type"]
+          totem_allow_order_type?: boolean
           updated_at?: string
           zip_code?: string | null
         }
@@ -16060,6 +16062,7 @@ export type Database = {
           regime_tributario?: number | null
           state?: string | null
           store_type?: Database["public"]["Enums"]["store_type"]
+          totem_allow_order_type?: boolean
           updated_at?: string
           zip_code?: string | null
         }
