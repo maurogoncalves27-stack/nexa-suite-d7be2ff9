@@ -558,7 +558,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   const maybeAutoCloseOrder = useCallback(async (order: Order, newStatus: PdvStatus) => {
     if (newStatus !== "ready" && newStatus !== "dispatched") return;
     const channel = order.closure_channel as ClosureChannel | undefined;
-    const autoCloseChannels: ClosureChannel[] = ["ifood", "whatsapp", "balcao"];
+    const autoCloseChannels: ClosureChannel[] = ["ifood", "whatsapp", "pdv"];
     if (!channel || !autoCloseChannels.includes(channel)) return;
     try {
       const storeName = stores.find((s) => s.id === order.store_id)?.name ?? "";
@@ -567,7 +567,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
         storeId: order.store_id,
         storeName,
         channel,
-        printTargets: [{ type: "customer" }, { type: "kitchen" }],
+        printTargets: ["customer", "kitchen"],
       });
       if (result.error) {
         toast({ title: "Fechamento fiscal pendente", description: result.error, variant: "destructive" });
