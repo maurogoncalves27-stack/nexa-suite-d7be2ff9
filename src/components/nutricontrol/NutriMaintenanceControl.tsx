@@ -651,6 +651,7 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
                 companies={companies}
                 storeName={showStoreName ? storeNameMap[r.store_id] : undefined}
                 actions={
+                  readOnly ? null : (
                   <>
                     <Button size="sm" variant="default" className="h-7 text-xs gap-1" onClick={() => setApproveDialog(r)}>
                       <Check className="h-3.5 w-3.5" /> Aprovar
@@ -662,6 +663,7 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
                       <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>
                   </>
+                  )
                 }
               />
             ))}
