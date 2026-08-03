@@ -173,19 +173,11 @@ export function TefPaymentDialog({ open, request, onClose, onResult, configOverr
 
           {!isSelectingNetwork && isAwaitingPayment && (
             <div className="w-full rounded-xl border-2 border-primary/40 bg-primary/5 p-4">
-              {isPix ? (
-                qrImage ? (
-                  <img src={qrImage} alt="QR Code PIX para pagamento" className="mx-auto h-56 w-56 rounded-lg bg-white p-2" />
-                ) : (
-                  <p className="text-lg font-semibold text-primary">
-                    Use o QR Code exibido no pinpad para pagar com PIX
-                  </p>
-                )
-              ) : (
-                <p className="text-lg font-semibold text-primary">
-                  Aguardando o cartão no pinpad — aproxime, insira ou passe
-                </p>
-              )}
+              <p className="text-lg font-semibold text-primary">
+                {isPix
+                  ? "Use o QR Code exibido no pinpad para pagar com PIX"
+                  : "Aguardando o cartão no pinpad — aproxime, insira ou passe"}
+              </p>
             </div>
           )}
 
