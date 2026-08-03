@@ -263,6 +263,12 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     [channels, aggregatedStoreIds]
   );
 
+  const balcaoChannelId = useMemo(() => {
+    const sid = storeId === "ALL" ? undefined : storeId;
+    if (!sid) return null;
+    return channelsByStore.find((c) => c.store_id === sid && /balcão|balcao|counter/i.test(c.name))?.id ?? null;
+  }, [channelsByStore, storeId]);
+
 
   const loadStores = useCallback(async () => {
     // Descobre se o usuário logado é um terminal de loja travado
