@@ -9,7 +9,8 @@ const TEF_THEME_STYLE = {
   "--accent-foreground": "0 0% 100%",
 } as CSSProperties;
 import { Button } from "@/components/ui/button";
-import { CreditCard, CheckCircle2, XCircle, Loader2, WifiOff, X } from "lucide-react";
+import { CreditCard, CheckCircle2, XCircle, Loader2, WifiOff, X, QrCode } from "lucide-react";
+import QRCode from "qrcode";
 import { useTefPayment } from "@/hooks/useTefPayment";
 import type { TefConfig, TefPaymentRequest, TefPaymentResult } from "@/lib/tef";
 
@@ -29,10 +30,48 @@ const isPaygoNetworkMenuRequest = (result: TefPaymentResult) => {
   return result.status === "error" && text.includes("DEMO") && text.includes("REDE");
 };
 
+/** Procura, em profundidade, um payload PIX (EMV / copia e cola) no retorno do TEF. */
+const findPixPayload = (value: unknown, depth = 0): string | null => {
+  if (depth > 6 || value == null) return null;
+  if (typeof value === "string") {
+    const v = value.trim();
+    return v.startsWith("000201") && v.length > 40 ? v : null;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findPixPayload(item, depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (typeof value === "object") {
+    for (const item of Object.values(value as Record<string, unknown>)) {
+      const found = findPixPayload(item, depth + 1);
+      if (found) return found;
+    }
+  }
+  return null;
+};
+
 export function TefPaymentDialog({ open, request, onClose, onResult, configOverride }: Props) {
   const { status, message, result, pay, cancel, reset } = useTefPayment();
   const [networkPromptOpen, setNetworkPromptOpen] = useState(false);
+  const [qrImage, setQrImage] = useState<string | null>(null);
   const startedRef = useRef(false);
+
+  const isPix = request?.method === "pix";
+
+  useEffect(() => {
+    if (!open) { setQrImage(null); return; }
+    const payload = findPixPayload(result?.raw) ?? findPixPayload(message);
+    if (!payload) return;
+    let active = true;
+    void QRCode.toDataURL(payload, { width: 512, margin: 1 }).then((url) => {
+      if (active) setQrImage(url);
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [open, result, message]);
+
 
   useEffect(() => {
     if (!open) {
@@ -92,7 +131,9 @@ export function TefPaymentDialog({ open, request, onClose, onResult, configOverr
             <Loader2 className="h-20 w-20 text-primary animate-spin" />
           )}
           {!isSelectingNetwork && status === "waiting_card" && (
-            <CreditCard className="h-20 w-20 text-primary animate-pulse" />
+            isPix
+              ? <QrCode className="h-20 w-20 text-primary animate-pulse" />
+              : <CreditCard className="h-20 w-20 text-primary animate-pulse" />
           )}
           {!isSelectingNetwork && status === "approved" && (
             <CheckCircle2 className="h-20 w-20 text-green-600" />
@@ -110,7 +151,7 @@ export function TefPaymentDialog({ open, request, onClose, onResult, configOverr
           <h2 className="text-2xl font-bold">
             {isSelectingNetwork && "Selecione a rede"}
             {!isSelectingNetwork && status === "connecting" && "Conectando..."}
-            {!isSelectingNetwork && status === "waiting_card" && "Aproxime, insira ou passe o cartao"}
+            {!isSelectingNetwork && status === "waiting_card" && (isPix ? "Escaneie o QR Code para pagar" : "Aproxime, insira ou passe o cartão")}
             {!isSelectingNetwork && status === "processing" && "Processando..."}
             {!isSelectingNetwork && status === "approved" && "Pagamento aprovado!"}
             {!isSelectingNetwork && status === "declined" && "Pagamento negado"}
@@ -119,9 +160,29 @@ export function TefPaymentDialog({ open, request, onClose, onResult, configOverr
             {!isSelectingNetwork && status === "timeout" && "Tempo esgotado"}
           </h2>
 
+          {!isSelectingNetwork && status === "waiting_card" && (
+            <div className="w-full rounded-xl border-2 border-primary/40 bg-primary/5 p-4">
+              {isPix ? (
+                qrImage ? (
+                  <img src={qrImage} alt="QR Code PIX para pagamento" className="mx-auto h-56 w-56 rounded-lg bg-white p-2" />
+                ) : (
+                  <p className="text-lg font-semibold text-primary">
+                    Use o QR Code exibido no pinpad para pagar com PIX
+                  </p>
+                )
+              ) : (
+                <p className="text-lg font-semibold text-primary">
+                  Aguardando o cartão no pinpad — aproxime, insira ou passe
+                </p>
+              )}
+            </div>
+          )}
+
           {request && (
             <div className="text-3xl font-bold text-primary">{fmt(request.amount)}</div>
           )}
+
+
 
           {isSelectingNetwork && (
             <p className="text-muted-foreground">
