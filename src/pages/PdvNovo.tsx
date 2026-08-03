@@ -211,6 +211,12 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   const [readyChecklistOrder, setReadyChecklistOrder] = useState<Order | null>(null);
   const [checklistMode, setChecklistMode] = useState<"ready" | "pack">("ready");
 
+  // Seleção manual de impressora no modal de detalhes do pedido
+  const [printerPickerOpen, setPrinterPickerOpen] = useState(false);
+  const [printerPickerTarget, setPrinterPickerTarget] = useState<"customer" | "kitchen" | "both">("both");
+  const [storePrinters, setStorePrinters] = useState<Array<{ id: string; name: string; print_role: string }>>([]);
+  const [loadingPrinters, setLoadingPrinters] = useState(false);
+
   const [readyChecks, setReadyChecks] = useState<Record<string, boolean>>({});
   const [checkedByName, setCheckedByName] = useState("");
   const [readyItems, setReadyItems] = useState<Array<{ id: string; name: string; quantity: number; notes: string | null; complements: any }> | null>(null);
