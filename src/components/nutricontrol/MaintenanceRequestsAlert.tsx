@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { AlertTriangle, Wrench, Loader2, CheckCircle2, Store } from "lucide-react";
+import { AlertTriangle, Wrench, Loader2, CheckCircle2, Store, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { useInventoryPermission } from "@/hooks/useInventoryPermission";
 
 interface PendingRequest {
   id: string;
@@ -18,6 +19,7 @@ interface PendingRequest {
   urgency: "baixa" | "media" | "alta";
   requested_at: string;
   photo_path: string | null;
+  seen_at: string | null;
   store_name?: string | null;
   requester_name?: string | null;
 }
@@ -38,6 +40,10 @@ const URGENCY: Record<string, { label: string; className: string }> = {
  */
 export default function MaintenanceRequestsAlert() {
   const { user, isAdmin, isManager } = useAuth();
+  const { canReceive: isInventory } = useInventoryPermission();
+  // Estoquista: vê os chamados como o gestor, mas só pode marcar como visto.
+  const canResolve = isAdmin || isManager;
+  const canView = canResolve || isInventory;
   const [items, setItems] = useState<PendingRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -46,7 +52,7 @@ export default function MaintenanceRequestsAlert() {
   const refresh = async () => {
     const { data, error } = await supabase
       .from("nutri_maintenance_requests")
-      .select("id, store_id, equipment_type, description, urgency, requested_at, photo_path, user_id")
+      .select("id, store_id, equipment_type, description, urgency, requested_at, photo_path, user_id, seen_at")
       .eq("status", "pending")
       .order("requested_at", { ascending: true });
 
@@ -82,6 +88,7 @@ export default function MaintenanceRequestsAlert() {
         urgency: r.urgency,
         requested_at: r.requested_at,
         photo_path: r.photo_path,
+        seen_at: r.seen_at,
         store_name: storeMap.get(r.store_id) ?? null,
         requester_name: empMap.get(r.user_id) ?? null,
       })),
@@ -90,7 +97,7 @@ export default function MaintenanceRequestsAlert() {
   };
 
   useEffect(() => {
-    if (!user || (!isAdmin && !isManager)) {
+    if (!user || !canView) {
       setLoading(false);
       return;
     }
@@ -109,7 +116,7 @@ export default function MaintenanceRequestsAlert() {
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, isAdmin, isManager]);
+  }, [user?.id, canView]);
 
   const resolveOne = async (req: PendingRequest) => {
     if (!user) return;
@@ -165,21 +172,42 @@ export default function MaintenanceRequestsAlert() {
     refresh();
   };
 
+  const markSeen = async (req: PendingRequest) => {
+    if (!user) return;
+    setResolving(req.id);
+    const { error } = await supabase
+      .from("nutri_maintenance_requests")
+      .update({ seen_by: user.id, seen_at: new Date().toISOString() })
+      .eq("id", req.id);
+    setResolving(null);
+    if (error) {
+      toast.error("Erro ao marcar como visto");
+      return;
+    }
+    toast.success("Chamado marcado como visto");
+    refresh();
+  };
+
+  const visibleItems = useMemo(
+    () => (canResolve ? items : items.filter((i) => !i.seen_at)),
+    [items, canResolve],
+  );
+
   const byStore = useMemo(() => {
     const map = new Map<string, PendingRequest[]>();
-    for (const item of items) {
+    for (const item of visibleItems) {
       const key = item.store_name ?? "Loja";
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(item);
     }
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [items]);
+  }, [visibleItems]);
 
-  if (!user || (!isAdmin && !isManager)) return null;
+  if (!user || !canView) return null;
   if (loading) return null;
-  if (items.length === 0) return null;
+  if (visibleItems.length === 0) return null;
 
-  const urgent = items.filter((i) => i.urgency === "alta").length;
+  const urgent = visibleItems.filter((i) => i.urgency === "alta").length;
 
   return (
     <Accordion type="single" collapsible defaultValue="" className="rounded-lg border border-amber-500/40 bg-amber-500/5">
@@ -191,7 +219,7 @@ export default function MaintenanceRequestsAlert() {
             </div>
             <div className="flex-1 min-w-0 text-left">
               <p className="text-sm font-semibold text-foreground">
-                {items.length} manutenç{items.length > 1 ? "ões" : "ão"} aguardando você
+                {visibleItems.length} manutenç{visibleItems.length > 1 ? "ões" : "ão"} aguardando você
                 {urgent > 0 && (
                   <span className="ml-2 inline-flex items-center gap-1 text-xs font-semibold text-destructive">
                     • {urgent} urgente{urgent > 1 ? "s" : ""}
@@ -199,7 +227,7 @@ export default function MaintenanceRequestsAlert() {
                 )}
               </p>
               <p className="text-xs text-muted-foreground">
-                Toque para ver e resolver.
+                {canResolve ? "Toque para ver e resolver." : "Toque para ver e marcar como visto."}
               </p>
             </div>
           </div>
@@ -262,26 +290,31 @@ export default function MaintenanceRequestsAlert() {
                               </a>
                             )}
 
+                            {canResolve && (
                             <Textarea
                               value={notes[r.id] ?? ""}
                               onChange={(e) => setNotes((prev) => ({ ...prev, [r.id]: e.target.value }))}
                               placeholder="Observação (opcional) — o que foi feito?"
                               className="text-sm min-h-[60px]"
                             />
+                            )}
 
                             <div className="flex justify-end">
                               <Button
                                 size="sm"
-                                onClick={() => resolveOne(r)}
+                                variant={canResolve ? "default" : "outline"}
+                                onClick={() => (canResolve ? resolveOne(r) : markSeen(r))}
                                 disabled={resolving === r.id}
                                 className="h-8 gap-1"
                               >
                                 {resolving === r.id ? (
                                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                ) : (
+                                ) : canResolve ? (
                                   <CheckCircle2 className="h-3.5 w-3.5" />
+                                ) : (
+                                  <Eye className="h-3.5 w-3.5" />
                                 )}
-                                Resolver
+                                {canResolve ? "Resolver" : "Marcar como visto"}
                               </Button>
                             </div>
                           </div>

@@ -9781,6 +9781,8 @@ export type Database = {
           reopened_at: string | null
           requested_at: string
           resolved_note: string | null
+          seen_at: string | null
+          seen_by: string | null
           status: string
           store_id: string
           updated_at: string
@@ -9807,6 +9809,8 @@ export type Database = {
           reopened_at?: string | null
           requested_at?: string
           resolved_note?: string | null
+          seen_at?: string | null
+          seen_by?: string | null
           status?: string
           store_id: string
           updated_at?: string
@@ -9833,6 +9837,8 @@ export type Database = {
           reopened_at?: string | null
           requested_at?: string
           resolved_note?: string | null
+          seen_at?: string | null
+          seen_by?: string | null
           status?: string
           store_id?: string
           updated_at?: string
