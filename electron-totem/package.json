@@ -14,6 +14,7 @@
     "preflight:version": "node scripts/preflight-version.cjs",
     "clean:release": "node -e \"const fs=require('fs'); for (const dir of ['release','pack','dist-electron']) fs.rmSync(dir,{recursive:true,force:true});\"",
     "dist:win": "npm run sync:icons && npm run preflight:version && npm run clean:release && electron-builder --win nsis --x64",
+    "dist:win:rede": "npm run sync:icons && npm run preflight:version && npm run clean:release && electron-builder --win nsis --x64 --config.directories.output=C:/Users/Mauro/Desktop/rede",
     "dist:win-portable": "npm run sync:icons && npm run preflight:version && npm run clean:release && electron-builder --win portable --x64"
   },
   "dependencies": {
