@@ -68,6 +68,20 @@ const RecipeBookEditorDialog = ({ open, onOpenChange, recipeBookId, onSaved, sco
       });
   }, [open, recipeBookId]);
 
+  useEffect(() => {
+    if (!open) return;
+    void (async () => {
+      const [{ data: rs }, { data: mis }] = await Promise.all([
+        supabase.from("recipes").select("id, name").eq("is_active", true).order("name"),
+        supabase.from("menu_items").select("id, name").order("name"),
+      ]);
+      setRecipes(rs ?? []);
+      setMenuItems(mis ?? []);
+    })();
+  }, [open]);
+
+
+
   const photoUrl = data.photo_path
     ? supabase.storage.from("recipe-book-photos").getPublicUrl(data.photo_path).data.publicUrl
     : null;
