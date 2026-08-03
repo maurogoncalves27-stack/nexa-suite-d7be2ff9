@@ -53,6 +53,7 @@ function createWindow() {
     fullscreen: KIOSK,
     kiosk: KIOSK,
     autoHideMenuBar: true,
+    alwaysOnTop: KIOSK,
     frame: !KIOSK,
     title: "Nexa Totem",
     icon: path.join(__dirname, "build", "icon.ico"),
