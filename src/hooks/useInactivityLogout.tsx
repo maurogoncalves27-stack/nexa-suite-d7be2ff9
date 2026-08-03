@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { isStoreLoginId } from "@/lib/storeLogins";
+import { isKioskMetadata } from "@/lib/kioskSession";
 
 const INACTIVITY_MS = 10 * 60 * 1000; // 10 minutos
 const ACTIVITY_EVENTS = [
