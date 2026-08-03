@@ -269,7 +269,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { isAdmin: isAdminRaw, isManager: isManagerRaw, isContabilidade, isPartner: isPartnerRaw, isSuperUser, signOut, user } = useAuth();
   const { mode: viewMode } = useViewMode();
-  const { canReceive: inventoryCanReceive, loading: inventoryLoading } = useInventoryPermission();
+  const { canReceive: inventoryCanReceive } = useInventoryPermission();
   // O modo escolhido em /selecionar-acesso vira o perfil efetivo da sessão.
   const suppressStaff = viewMode === "socio" || viewMode === "colaborador";
   const suppressPartner = viewMode === "colaborador";
