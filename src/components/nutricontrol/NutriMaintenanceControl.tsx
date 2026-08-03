@@ -723,7 +723,7 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
                   <span className="text-xs text-muted-foreground ml-auto">
                     {format(new Date(r.recorded_at), "HH:mm")}
                   </span>
-                  {requestByRecordId[r.id] && (
+                  {requestByRecordId[r.id] && !readOnly && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -733,9 +733,11 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
                       <RotateCcw className="h-3 w-3" /> Reabrir
                     </Button>
                   )}
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeRecord(r.id)}>
-                    <Trash2 className="h-3 w-3 text-destructive" />
-                  </Button>
+                  {!readOnly && (
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeRecord(r.id)}>
+                      <Trash2 className="h-3 w-3 text-destructive" />
+                    </Button>
+                  )}
                 </div>
               );
             })}
