@@ -46,7 +46,12 @@ const RecipeBookEditorDialog = ({ open, onOpenChange, recipeBookId, onSaved, sco
     yield_text: "",
     prep_time_minutes: null,
     source_recipe_name: null,
+    recipe_id: null,
+    menu_item_id: null,
   });
+  const [recipes, setRecipes] = useState<{ id: string; name: string }[]>([]);
+  const [menuItems, setMenuItems] = useState<{ id: string; name: string }[]>([]);
+
 
   useEffect(() => {
     if (!open || !recipeBookId) return;
