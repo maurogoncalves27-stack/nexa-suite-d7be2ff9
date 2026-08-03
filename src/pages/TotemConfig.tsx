@@ -84,23 +84,27 @@ export default function TotemConfig() {
 
   const backgrounds = useMemo(() => assets.filter((a) => a.kind === "background"), [assets]);
   const logos = useMemo(() => assets.filter((a) => a.kind === "logo"), [assets]);
+  const videos = useMemo(() => assets.filter((a) => a.kind === "video"), [assets]);
 
   const handleUpload = async (
     file: File,
-    kind: "background" | "logo",
+    kind: "background" | "logo" | "video",
     brandSlug: string | null,
   ) => {
     if (kind === "logo" && !brandSlug) {
       toast({ title: "Selecione a marca antes de subir a logo", variant: "destructive" });
       return;
     }
-    if (!file.type.startsWith("image/")) {
-      toast({ title: "Arquivo precisa ser uma imagem", variant: "destructive" });
+    if (kind === "video" ? !file.type.startsWith("video/") : !file.type.startsWith("image/")) {
+      toast({
+        title: kind === "video" ? "Arquivo precisa ser um vídeo" : "Arquivo precisa ser uma imagem",
+        variant: "destructive",
+      });
       return;
     }
     setUploadingKind(kind);
     try {
-      const ext = file.name.split(".").pop()?.toLowerCase() ?? "png";
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? (kind === "video" ? "mp4" : "png");
       const path = `${kind}/${brandSlug ?? "_geral"}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
       const up = await supabase.storage.from(BUCKET).upload(path, file, {
         cacheControl: "3600",
@@ -119,7 +123,15 @@ export default function TotemConfig() {
         created_by: user?.id ?? null,
       });
       if (error) throw error;
-      toast({ title: "Imagem enviada" });
+      toast({ title: kind === "video" ? "Vídeo enviado" : "Imagem enviada" });
+      await load();
+    } catch (e: any) {
+      toast({ title: "Erro ao enviar", description: e?.message ?? String(e), variant: "destructive" });
+    } finally {
+      setUploadingKind(null);
+    }
+  };
+
       await load();
     } catch (e: any) {
       toast({ title: "Erro ao enviar", description: e?.message ?? String(e), variant: "destructive" });
