@@ -62,6 +62,7 @@ import TefConfigPanel from "@/components/pdv-novo/TefConfigPanel";
 import StockShortagesPanel from "@/components/pdv-novo/StockShortagesPanel";
 import { PrintersPanel } from "@/components/pdv-novo/PrintersPanel";
 import { PrintLayoutPanel } from "@/components/pdv-novo/PrintLayoutPanel";
+import BalcaoTab from "@/components/pdv-novo/BalcaoTab";
 import { routePrintOrder } from "@/lib/routePrint";
 import { closeOrder } from "@/lib/order";
 import type { ClosureChannel } from "@/lib/order/types";
