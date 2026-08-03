@@ -433,6 +433,18 @@ export default function Totem() {
     }
   };
 
+  // Emite/imprime o cupom fiscal automaticamente assim que o pedido é fechado.
+  const autoNfceRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (step !== "done" || !orderId || nfceEmitted || emittingNfce) return;
+    if (autoNfceRef.current === orderId) return;
+    autoNfceRef.current = orderId;
+    void handleEmitNfce();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, orderId]);
+
+
+
   // ------------------- RENDER -------------------
   return (
     <div className="fixed inset-0 bg-background flex flex-col overflow-hidden" style={TOTEM_THEME_STYLE}>
