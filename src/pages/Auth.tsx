@@ -21,6 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import LgpdTermsDialog from "@/components/auth/LgpdTermsDialog";
 import SignatureSetupDialog from "@/components/auth/SignatureSetupDialog";
 import { registerUserSignature } from "@/lib/userSignature";
+import { isKioskMetadata, saveKioskCredentials, clearKioskCredentials } from "@/lib/kioskSession";
 
 const emailSchema = z.string().trim().email("E-mail inválido").max(255);
 const passwordSchema = z.string().min(6, "Senha deve ter ao menos 6 caracteres").max(72);
