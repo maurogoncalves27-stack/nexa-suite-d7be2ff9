@@ -522,6 +522,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
       total: fakeTotal,
       created_by: user?.id ?? null,
       source_payload: { mock: true, generated_at: new Date().toISOString() },
+      closure_channel: "ifood",
     });
     setBusy(false);
     if (error) {
