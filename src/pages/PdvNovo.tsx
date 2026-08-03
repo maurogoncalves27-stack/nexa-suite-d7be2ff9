@@ -1186,6 +1186,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
         <div className="flex flex-wrap items-center gap-2">
           <TabsList>
             <TabsTrigger value="operacao">Operação</TabsTrigger>
+            <TabsTrigger value="balcao">Balcão</TabsTrigger>
             <TabsTrigger value="historico">Histórico de pedidos</TabsTrigger>
           </TabsList>
 
