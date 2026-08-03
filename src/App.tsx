@@ -195,6 +195,7 @@ const STAFF = ["admin", "manager"] as const;
 
 const InactivityWatcher = () => {
   useInactivityLogout();
+  useEffect(() => { startKioskSessionKeeper(); }, []);
   return null;
 };
 
