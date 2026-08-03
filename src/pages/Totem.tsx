@@ -421,7 +421,7 @@ export default function Totem() {
         storeId: selectedStore.id,
         channel: "totem",
         storeName: selectedStore.name,
-        printTargets: ["nfce", "kitchen"],
+        printTargets: ["nfce"],
       });
       if (result.status === "failed_at_step") throw new Error(result.error ?? "Falha no fechamento");
       if (!result.danfeUrl) {
