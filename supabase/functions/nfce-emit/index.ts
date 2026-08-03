@@ -95,11 +95,17 @@ Deno.serve(async (req) => {
     }
 
     // 4. Monta items NFC-e
+    // CRT 1/4 = Simples Nacional (usa CSOSN). CRT 3 = Regime Normal (usa CST + base/alíquota).
+    const crt = Number((store as any).regime_tributario ?? 1);
+    const isSimples = crt === 1 || crt === 4;
+    const aliquotaPadrao = Number((store as any).icms_aliquota_padrao ?? 12);
+
     const nfceItems = itemsRaw.map((it, idx) => {
       const f = fiscalByRecipe[it.menu_item_id] ?? {};
       const qty = Number(it.quantity) || 1;
       const unit = Number(it.unit_price) || 0;
-      return {
+      const bruto = Number((qty * unit).toFixed(2));
+      const base: Record<string, unknown> = {
         numero_item: idx + 1,
         codigo_produto: it.menu_item_id ?? `ITEM${idx + 1}`,
         descricao: it.name?.slice(0, 120) ?? "Produto",
@@ -110,16 +116,31 @@ Deno.serve(async (req) => {
         valor_unitario_tributavel: unit,
         unidade_tributavel: f.unidade_comercial ?? "UN",
         quantidade_tributavel: qty,
-        valor_bruto: Number((qty * unit).toFixed(2)),
+        valor_bruto: bruto,
         codigo_barras_comercial: f.ean ?? "SEM GTIN",
         codigo_barras_tributavel: f.ean ?? "SEM GTIN",
         codigo_ncm: f.ncm ?? "21069090",
         icms_origem: f.origem_mercadoria ?? 0,
-        icms_situacao_tributaria: f.csosn ?? "102",
         pis_situacao_tributaria: "07",
         cofins_situacao_tributaria: "07",
       };
+
+      if (isSimples) {
+        base.icms_situacao_tributaria = f.csosn ?? "102";
+      } else {
+        const cst = String(f.cst ?? "00");
+        base.icms_situacao_tributaria = cst;
+        if (cst === "00") {
+          const aliq = Number(f.icms_aliquota ?? aliquotaPadrao);
+          base.icms_modalidade_base_calculo = 3;
+          base.icms_base_calculo = bruto;
+          base.icms_aliquota = aliq;
+          base.icms_valor = Number(((bruto * aliq) / 100).toFixed(2));
+        }
+      }
+      return base;
     });
+
 
     // 5. Pagamento (somatório por método)
     const { data: payments } = await sb
