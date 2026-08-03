@@ -361,6 +361,10 @@ export default function Totem() {
       toast({ title: "CPF inválido", description: "Confira ou deixe em branco.", variant: "destructive" });
       return;
     }
+    if (!paymentMethod) {
+      toast({ title: "Escolha a forma de pagamento", variant: "destructive" });
+      return;
+    }
     // Abre o pinpad. A persistência só acontece se TEF aprovar.
     setTefOpen(true);
   };
