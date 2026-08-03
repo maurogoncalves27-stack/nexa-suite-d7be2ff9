@@ -30,10 +30,48 @@ const isPaygoNetworkMenuRequest = (result: TefPaymentResult) => {
   return result.status === "error" && text.includes("DEMO") && text.includes("REDE");
 };
 
+/** Procura, em profundidade, um payload PIX (EMV / copia e cola) no retorno do TEF. */
+const findPixPayload = (value: unknown, depth = 0): string | null => {
+  if (depth > 6 || value == null) return null;
+  if (typeof value === "string") {
+    const v = value.trim();
+    return v.startsWith("000201") && v.length > 40 ? v : null;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findPixPayload(item, depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (typeof value === "object") {
+    for (const item of Object.values(value as Record<string, unknown>)) {
+      const found = findPixPayload(item, depth + 1);
+      if (found) return found;
+    }
+  }
+  return null;
+};
+
 export function TefPaymentDialog({ open, request, onClose, onResult, configOverride }: Props) {
   const { status, message, result, pay, cancel, reset } = useTefPayment();
   const [networkPromptOpen, setNetworkPromptOpen] = useState(false);
+  const [qrImage, setQrImage] = useState<string | null>(null);
   const startedRef = useRef(false);
+
+  const isPix = request?.method === "pix";
+
+  useEffect(() => {
+    if (!open) { setQrImage(null); return; }
+    const payload = findPixPayload(result?.raw) ?? findPixPayload(message);
+    if (!payload) return;
+    let active = true;
+    void QRCode.toDataURL(payload, { width: 512, margin: 1 }).then((url) => {
+      if (active) setQrImage(url);
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [open, result, message]);
+
 
   useEffect(() => {
     if (!open) {
