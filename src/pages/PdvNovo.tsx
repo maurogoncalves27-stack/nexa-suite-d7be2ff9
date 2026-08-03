@@ -389,6 +389,9 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
           .limit(150),
       ]);
       setChannels(chRes.data ?? []);
+      if (!isAll) {
+        void ensureDefaultChannels(sid, (chRes.data ?? []) as Channel[]);
+      }
       if (isAll) {
         setSession(null);
       } else {
