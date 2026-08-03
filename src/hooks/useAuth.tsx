@@ -184,6 +184,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (typeof window !== "undefined") {
       sessionStorage.removeItem("rh:viewMode");
     }
+    clearKioskCredentials();
     await supabase.auth.signOut();
     setRoles([]);
   };
