@@ -32,17 +32,39 @@ export default function TotemConfig() {
   const [selectedBrand, setSelectedBrand] = useState<string>("");
   const bgInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const [physicalStores, setPhysicalStores] = useState<PhysicalStore[]>([]);
 
   const load = async () => {
     setLoading(true);
-    const [b, a] = await Promise.all([
+    const [b, a, st] = await Promise.all([
       supabase.from("brands").select("id,name,slug").eq("is_active", true).order("sort_order"),
       (supabase as any).from("totem_assets").select("*").order("sort_order"),
+      supabase
+        .from("stores")
+        .select("id,name,totem_allow_order_type")
+        .is("parent_store_id", null)
+        .order("name"),
     ]);
     setBrands(((b.data ?? []) as Brand[]).filter((x) => !/f[áa]brica/i.test(x.name)));
     setAssets((a.data ?? []) as TotemAsset[]);
+    setPhysicalStores(((st.data ?? []) as PhysicalStore[]).filter((s) => !/^(cd|f[áa]brica)/i.test(s.name)));
     setLoading(false);
   };
+
+  const toggleStoreOrderType = async (store: PhysicalStore, value: boolean) => {
+    setPhysicalStores((prev) => prev.map((s) => (s.id === store.id ? { ...s, totem_allow_order_type: value } : s)));
+    const { error } = await supabase
+      .from("stores")
+      .update({ totem_allow_order_type: value })
+      .eq("id", store.id);
+    if (error) {
+      setPhysicalStores((prev) => prev.map((s) => (s.id === store.id ? { ...s, totem_allow_order_type: !value } : s)));
+      toast({ title: "Não foi possível salvar", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: value ? `${store.name}: opção ativada` : `${store.name}: opção desativada` });
+  };
+
 
   useEffect(() => { void load(); }, []);
 
