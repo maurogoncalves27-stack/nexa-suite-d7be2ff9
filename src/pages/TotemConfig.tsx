@@ -1,20 +1,25 @@
-// Configuração visual do Totem: fundos do atrai + logos por marca.
-import { useEffect, useMemo, useRef, useState } from "react";
+// Configuração central do Totem: visual, vídeo, fiscal (NFC-e) e TEF.
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Monitor, Trash2, Upload, ImageIcon, ExternalLink } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Loader2, Monitor, Trash2, Upload, ImageIcon, ExternalLink, Video, FileCheck, CreditCard } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+
+const NfceTester = lazy(() => import("./NfceTester"));
+const TefPaygoSetup = lazy(() => import("./TefPaygoSetup"));
+const TefPayerSetup = lazy(() => import("./TefPayerSetup"));
 
 interface Brand { id: string; name: string; slug: string }
 interface PhysicalStore { id: string; name: string; totem_allow_order_type: boolean | null }
 interface TotemAsset {
   id: string;
-  kind: "background" | "logo";
+  kind: "background" | "logo" | "video";
   brand_slug: string | null;
   image_url: string;
   storage_path: string | null;
@@ -24,16 +29,24 @@ interface TotemAsset {
 
 const BUCKET = "totem-backgrounds";
 
+const TabFallback = () => (
+  <div className="flex items-center justify-center py-16">
+    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+  </div>
+);
+
 export default function TotemConfig() {
   const { user } = useAuth();
   const [brands, setBrands] = useState<Brand[]>([]);
   const [assets, setAssets] = useState<TotemAsset[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploadingKind, setUploadingKind] = useState<"background" | "logo" | null>(null);
+  const [uploadingKind, setUploadingKind] = useState<"background" | "logo" | "video" | null>(null);
   const [selectedBrand, setSelectedBrand] = useState<string>("");
   const bgInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const [physicalStores, setPhysicalStores] = useState<PhysicalStore[]>([]);
+
 
   const load = async () => {
     setLoading(true);
@@ -71,23 +84,27 @@ export default function TotemConfig() {
 
   const backgrounds = useMemo(() => assets.filter((a) => a.kind === "background"), [assets]);
   const logos = useMemo(() => assets.filter((a) => a.kind === "logo"), [assets]);
+  const videos = useMemo(() => assets.filter((a) => a.kind === "video"), [assets]);
 
   const handleUpload = async (
     file: File,
-    kind: "background" | "logo",
+    kind: "background" | "logo" | "video",
     brandSlug: string | null,
   ) => {
     if (kind === "logo" && !brandSlug) {
       toast({ title: "Selecione a marca antes de subir a logo", variant: "destructive" });
       return;
     }
-    if (!file.type.startsWith("image/")) {
-      toast({ title: "Arquivo precisa ser uma imagem", variant: "destructive" });
+    if (kind === "video" ? !file.type.startsWith("video/") : !file.type.startsWith("image/")) {
+      toast({
+        title: kind === "video" ? "Arquivo precisa ser um vídeo" : "Arquivo precisa ser uma imagem",
+        variant: "destructive",
+      });
       return;
     }
     setUploadingKind(kind);
     try {
-      const ext = file.name.split(".").pop()?.toLowerCase() ?? "png";
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? (kind === "video" ? "mp4" : "png");
       const path = `${kind}/${brandSlug ?? "_geral"}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
       const up = await supabase.storage.from(BUCKET).upload(path, file, {
         cacheControl: "3600",
@@ -106,7 +123,7 @@ export default function TotemConfig() {
         created_by: user?.id ?? null,
       });
       if (error) throw error;
-      toast({ title: "Imagem enviada" });
+      toast({ title: kind === "video" ? "Vídeo enviado" : "Imagem enviada" });
       await load();
     } catch (e: any) {
       toast({ title: "Erro ao enviar", description: e?.message ?? String(e), variant: "destructive" });
@@ -114,6 +131,8 @@ export default function TotemConfig() {
       setUploadingKind(null);
     }
   };
+
+
 
   const toggleActive = async (a: TotemAsset) => {
     const { error } = await (supabase as any)
@@ -159,7 +178,7 @@ export default function TotemConfig() {
             Configuração do Totem
           </h1>
           <p className="text-muted-foreground">
-            Personalize as imagens de fundo da tela de atrair e as logos das marcas exibidas no totem.
+            Tudo do totem em um só lugar: visual, vídeo de apresentação, emissão fiscal (NFC-e) e TEF.
           </p>
         </div>
         <Button asChild variant="outline" size="sm">
@@ -170,7 +189,17 @@ export default function TotemConfig() {
 
       </div>
 
+      <Tabs defaultValue="visual" className="space-y-4">
+        <TabsList className="w-full flex overflow-x-auto justify-start">
+          <TabsTrigger value="visual" className="gap-1"><ImageIcon className="h-4 w-4" />Visual</TabsTrigger>
+          <TabsTrigger value="video" className="gap-1"><Video className="h-4 w-4" />Vídeo</TabsTrigger>
+          <TabsTrigger value="fiscal" className="gap-1"><FileCheck className="h-4 w-4" />Fiscal/NFC-e</TabsTrigger>
+          <TabsTrigger value="tef" className="gap-1"><CreditCard className="h-4 w-4" />TEF</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="visual" className="space-y-6 mt-0">
       {/* MODO DE CONSUMO POR LOJA */}
+
       <Card className="p-4 space-y-4">
         <div>
           <h2 className="text-lg font-semibold">Comer no local / Para levar</h2>
@@ -354,6 +383,94 @@ export default function TotemConfig() {
           </div>
         )}
       </Card>
+        </TabsContent>
+
+        {/* VÍDEO */}
+        <TabsContent value="video" className="space-y-6 mt-0">
+          <Card className="p-4 space-y-4">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <h2 className="text-lg font-semibold">Vídeo de apresentação</h2>
+                <p className="text-sm text-muted-foreground">
+                  Vídeo exibido em loop na tela de atrair, no lugar do slideshow de imagens.
+                  Use MP4 sem áudio, na vertical, com no máximo ~50 MB.
+                </p>
+              </div>
+              <input
+                ref={videoInputRef}
+                type="file"
+                accept="video/mp4,video/webm"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void handleUpload(f, "video", null);
+                  e.target.value = "";
+                }}
+              />
+              <Button onClick={() => videoInputRef.current?.click()} disabled={uploadingKind === "video"}>
+                {uploadingKind === "video" ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4 mr-2" />
+                )}
+                Enviar vídeo
+              </Button>
+            </div>
+
+            {videos.length === 0 ? (
+              <div className="text-sm text-muted-foreground border border-dashed rounded p-6 text-center flex flex-col items-center gap-2">
+                <Video className="h-8 w-8" />
+                Nenhum vídeo cadastrado. O totem está usando o slideshow de imagens.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {videos.map((a) => (
+                  <div key={a.id} className="border rounded-md overflow-hidden bg-muted">
+                    <video src={a.image_url} className="w-full aspect-video object-cover" controls muted playsInline />
+                    <div className="p-2 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Switch checked={a.is_active} onCheckedChange={() => toggleActive(a)} />
+                        <span className="text-xs text-muted-foreground">{a.is_active ? "Ativo" : "Inativo"}</span>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => removeAsset(a)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </TabsContent>
+
+        {/* FISCAL / NFC-e */}
+        <TabsContent value="fiscal" className="mt-0">
+          <Suspense fallback={<TabFallback />}>
+            <NfceTester />
+          </Suspense>
+        </TabsContent>
+
+        {/* TEF */}
+        <TabsContent value="tef" className="mt-0">
+          <Tabs defaultValue="payer" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="payer">Payer</TabsTrigger>
+              <TabsTrigger value="paygo">PayGo</TabsTrigger>
+            </TabsList>
+            <TabsContent value="payer" className="mt-0">
+              <Suspense fallback={<TabFallback />}>
+                <TefPayerSetup />
+              </Suspense>
+            </TabsContent>
+            <TabsContent value="paygo" className="mt-0">
+              <Suspense fallback={<TabFallback />}>
+                <TefPaygoSetup />
+              </Suspense>
+            </TabsContent>
+          </Tabs>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
+

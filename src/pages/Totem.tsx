@@ -179,7 +179,9 @@ export default function Totem() {
   const [showCpfKb, setShowCpfKb] = useState(false);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const [customBackgrounds, setCustomBackgrounds] = useState<string[]>([]);
+  const [customVideo, setCustomVideo] = useState<string | null>(null);
   const [customLogos, setCustomLogos] = useState<Record<string, string>>({});
+
 
   // ----- carregar marcas/lojas + assets do totem
   useEffect(() => {
@@ -193,6 +195,8 @@ export default function Totem() {
       setStores((s.data ?? []) as Store[]);
       const assets = (ta.data ?? []) as Array<{ kind: string; brand_slug: string | null; image_url: string }>;
       setCustomBackgrounds(assets.filter(a => a.kind === "background").map(a => a.image_url));
+      setCustomVideo(assets.find(a => a.kind === "video")?.image_url ?? null);
+
       const logoMap: Record<string, string> = {};
       assets.filter(a => a.kind === "logo" && a.brand_slug).forEach(a => { logoMap[a.brand_slug!] = a.image_url; });
       setCustomLogos(logoMap);
@@ -534,8 +538,18 @@ export default function Totem() {
             onClick={() => setStep("store")}
             className="absolute inset-0 w-full h-full overflow-hidden text-left"
           >
-            {/* slideshow de fundo (usa imagens do banco se configuradas, senão fallback) */}
-            {(() => {
+            {/* vídeo de apresentação, se configurado; senão slideshow de imagens */}
+            {customVideo ? (
+              <video
+                src={customVideo}
+                autoPlay
+                loop
+                muted
+                playsInline
+                aria-hidden
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            ) : (() => {
               const slides = customBackgrounds.length > 0 ? customBackgrounds : [fakeParme, fakeBox, fakeEstrogonofe];
               return slides.map((src, i) => (
                 <img
@@ -549,6 +563,7 @@ export default function Totem() {
                 />
               ));
             })()}
+
             <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/90" />
             <div className="relative h-full flex flex-col items-center justify-center text-white px-8 gap-12">
               <div className="text-center">
