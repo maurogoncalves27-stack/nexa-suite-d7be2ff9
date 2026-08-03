@@ -562,6 +562,7 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
           </TabsList>
 
           {/* SOLICITAR */}
+          {!readOnly && (
           <TabsContent value="solicitar" className="mt-3 space-y-2">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Loja</label>
