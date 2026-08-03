@@ -284,6 +284,21 @@ Deno.serve(async (req) => {
 
     await sb.from("pdv_fiscal_invoices").update(update).eq("id", invoiceId);
 
+    if (status === "error" || status === "rejected") {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          invoice_id: invoiceId,
+          status,
+          error: update.rejection_reason
+            ? `NFC-e rejeitada: ${update.rejection_reason}`
+            : "NFC-e rejeitada pela SEFAZ/Focus",
+          focus: focusData,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     return new Response(
       JSON.stringify({
         ok: true,
