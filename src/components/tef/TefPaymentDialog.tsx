@@ -101,7 +101,17 @@ export function TefPaymentDialog({ open, request, onClose, onResult, configOverr
   const isAwaitingPayment = !isFinal && (status === "waiting_card" || status === "processing");
 
   const handleClose = async () => {
-    if (isSelectingNetwork || !isFinal) await cancel();
+    if (cancelling) return;
+    if (isSelectingNetwork || !isFinal) {
+      setCancelling(true);
+      try {
+        await cancel();
+        // dá tempo do pinpad/checkout liberar antes de permitir nova transação
+        await new Promise((r) => setTimeout(r, 2500));
+      } finally {
+        setCancelling(false);
+      }
+    }
     onClose();
   };
 
