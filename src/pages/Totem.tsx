@@ -424,8 +424,16 @@ export default function Totem() {
         printTargets: ["nfce", "kitchen"],
       });
       if (result.status === "failed_at_step") throw new Error(result.error ?? "Falha no fechamento");
+      if (!result.danfeUrl) {
+        toast({
+          title: "Cupom em processamento",
+          description: "A SEFAZ ainda não autorizou a NFC-e. Peça o cupom no balcão.",
+          variant: "destructive",
+        });
+        return;
+      }
       setNfceEmitted(true);
-      toast({ title: "Cupom fiscal emitido", description: "NFC-e enviada à SEFAZ. Será impressa em instantes." });
+      toast({ title: "Cupom fiscal emitido", description: "Retire o cupom na impressora." });
     } catch (e: any) {
       toast({ title: "Erro ao emitir cupom fiscal", description: e.message, variant: "destructive" });
     } finally {
@@ -433,15 +441,6 @@ export default function Totem() {
     }
   };
 
-  // Emite/imprime o cupom fiscal automaticamente assim que o pedido é fechado.
-  const autoNfceRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (step !== "done" || !orderId || nfceEmitted || emittingNfce) return;
-    if (autoNfceRef.current === orderId) return;
-    autoNfceRef.current = orderId;
-    void handleEmitNfce();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, orderId]);
 
 
 
@@ -841,18 +840,29 @@ export default function Totem() {
                 </div>
               </div>
             </div>
-            <div className="flex gap-4 no-print">
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={handleEmitNfce}
-                disabled={emittingNfce || nfceEmitted || !orderId}
-                className="gap-3 h-20 px-10 text-2xl font-bold"
-              >
-                <Printer className="h-7 w-7" /> {nfceEmitted ? "Cupom fiscal emitido" : emittingNfce ? "Emitindo..." : "Imprimir cupom fiscal"}
-              </Button>
-              <Button size="lg" onClick={handleReset} className="h-20 px-12 text-2xl font-black">Novo pedido</Button>
+            <div className="no-print flex flex-col items-center gap-4">
+              <p className="text-2xl font-semibold">Deseja o cupom fiscal?</p>
+              <div className="flex gap-4">
+                <Button
+                  size="lg"
+                  onClick={handleEmitNfce}
+                  disabled={emittingNfce || nfceEmitted || !orderId}
+                  className="gap-3 h-20 px-10 text-2xl font-bold"
+                >
+                  <Printer className="h-7 w-7" /> {nfceEmitted ? "Cupom emitido" : emittingNfce ? "Emitindo..." : "Sim, emitir cupom"}
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={handleReset}
+                  disabled={emittingNfce}
+                  className="h-20 px-12 text-2xl font-black"
+                >
+                  {nfceEmitted ? "Novo pedido" : "Não, obrigado"}
+                </Button>
+              </div>
             </div>
+
           </div>
         )}
       </main>
