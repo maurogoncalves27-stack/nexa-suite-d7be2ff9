@@ -56,6 +56,7 @@ export default function Menu() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [recipePhotos, setRecipePhotos] = useState<Record<string, string>>({});
+  const [bookPhotos, setBookPhotos] = useState<Record<string, string>>({});
   const [itemBrands, setItemBrands] = useState<Record<string, string[]>>({});
   const [itemStores, setItemStores] = useState<Record<string, string[]>>({});
 
