@@ -6,7 +6,7 @@ import type { TefPaymentResult } from "@/lib/tef";
 import { logTefTransaction } from "@/lib/tef";
 import { emitNfce } from "./emitNfce";
 import { printOrderClosure } from "./printOrderClosure";
-import type { CloseOrderParams, CloseOrderResult, ClosureStatus } from "./types";
+import type { CloseOrderParams, CloseOrderResult, ClosureStatus, ClosureChannel } from "./types";
 
 const updateClosure = async (
   orderId: string,
@@ -19,6 +19,11 @@ const updateClosure = async (
 ) => {
   await supabase.from("pdv_orders").update(patch).eq("id", orderId);
 };
+
+function resolveFinalStatus(channel: ClosureChannel): string {
+  // pdv_orders.status não aceita 'closed' (só placed/confirmed/preparing/ready/dispatched/concluded/cancelled/dispute)
+  return channel === "totem" ? "concluded" : "concluded";
+}
 
 export async function closeOrder(params: CloseOrderParams): Promise<CloseOrderResult> {
   const { orderId, storeId, channel, storeName, printTargets } = params;
@@ -76,16 +81,17 @@ export async function closeOrder(params: CloseOrderParams): Promise<CloseOrderRe
       targets: printTargets,
     });
 
+    const finalStatus = resolveFinalStatus(channel);
     await updateClosure(orderId, {
       closure_status: "closed",
       closed_at: new Date().toISOString(),
-      status: "closed",
+      status: finalStatus,
     });
 
     return {
       closureId,
       orderId,
-      status: "closed",
+      status: finalStatus as ClosureStatus,
       danfeUrl: fiscal.danfeUrl,
       invoiceId: fiscal.invoiceId,
     };

@@ -124,8 +124,10 @@ export async function routePrintOrder(opts: {
   order: OrderForPrint;
   target?: "customer" | "kitchen" | "both";
   manual?: boolean;
+  /** Se informado, imprime APENAS nesta impressora específica (sobrescreve o roteamento por função). */
+  printerId?: string;
 }) {
-  const { storeId, storeName, order, target = "both", manual = false } = opts;
+  const { storeId, storeName, order, target = "both", manual = false, printerId } = opts;
 
   if (!isElectron()) {
     console.warn("[route-print] impressão automática ignorada fora do app desktop", { orderId: order.id });
@@ -156,10 +158,17 @@ export async function routePrintOrder(opts: {
   const allowCustomer = manual || layout.print_customer_copy !== false;
   const allowKitchen  = manual || layout.print_kitchen_copy  !== false;
 
-  const customerPrinters = wantCustomer && allowCustomer
+  // Modo impressora específica: sobrescreve o roteamento por função.
+  const specificPrinter = printerId ? printers.find((p) => p.id === printerId) : undefined;
+
+  const customerPrinters = specificPrinter
+    ? (wantCustomer && allowCustomer ? [specificPrinter] : [])
+    : wantCustomer && allowCustomer
     ? printers.filter((p) => p.print_role === "customer" || p.print_role === "both")
     : [];
-  const kitchenPrinters  = wantKitchen && allowKitchen
+  const kitchenPrinters = specificPrinter
+    ? (wantKitchen && allowKitchen ? [specificPrinter] : [])
+    : wantKitchen && allowKitchen
     ? printers.filter((p) => p.print_role === "kitchen"  || p.print_role === "both")
     : [];
 

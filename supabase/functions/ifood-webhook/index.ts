@@ -275,6 +275,7 @@ Deno.serve(async (req) => {
             subtotal, delivery_fee: deliveryFee, total,
             source_payload: orderDetails,
             last_synced_at: new Date().toISOString(),
+            closure_channel: "ifood",
           })
           .select("id")
           .single();

@@ -19,6 +19,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Minus, Trash2, ShoppingCart, Loader2, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { closeOrder } from "@/lib/order";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
@@ -265,8 +266,10 @@ export default function BalcaoTab({ storeId, channelId, cashSessionId, onOrderCr
           confirmed_at: new Date().toISOString(),
           concluded_at: new Date().toISOString(),
           created_by: user?.id ?? null,
+          closure_channel: "pdv",
+          closure_status: "paid",
         })
-        .select("id")
+        .select("id,store_id")
         .single();
 
       if (ordErr) throw ordErr;
@@ -291,7 +294,24 @@ export default function BalcaoTab({ storeId, channelId, cashSessionId, onOrderCr
       });
       if (payErr) throw payErr;
 
-      toast({ title: "Venda finalizada!" });
+      // Emite NFC-e e imprime cupom/comanda automaticamente
+      try {
+        const result = await closeOrder({
+          orderId: order.id,
+          storeId: order.store_id,
+          channel: "pdv",
+          printTargets: ["customer", "kitchen"],
+        });
+        if (result.error) {
+          toast({ title: "Venda finalizada", description: `NFC-e pendente: ${result.error}`, variant: "destructive" });
+        } else {
+          toast({ title: "Venda finalizada!", description: result.danfeUrl ? "NFC-e emitida." : undefined });
+        }
+      } catch (closeErr) {
+        console.warn("[balcao] closeOrder falhou", closeErr);
+        toast({ title: "Venda finalizada", description: "Fiscal/impressão não concluída.", variant: "destructive" });
+      }
+
       setCart([]);
       setCheckoutOpen(false);
       setCartOpen(false);

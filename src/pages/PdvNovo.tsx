@@ -62,7 +62,10 @@ import TefConfigPanel from "@/components/pdv-novo/TefConfigPanel";
 import StockShortagesPanel from "@/components/pdv-novo/StockShortagesPanel";
 import { PrintersPanel } from "@/components/pdv-novo/PrintersPanel";
 import { PrintLayoutPanel } from "@/components/pdv-novo/PrintLayoutPanel";
+import BalcaoTab from "@/components/pdv-novo/BalcaoTab";
 import { routePrintOrder } from "@/lib/routePrint";
+import { closeOrder } from "@/lib/order";
+import type { ClosureChannel } from "@/lib/order/types";
 
 
 
@@ -122,7 +125,8 @@ interface Order {
   delivery_by?: string | null;
   packed_at?: string | null;
   has_unread_chat?: boolean | null;
-
+  closure_channel?: string | null;
+  closure_status?: string | null;
 }
 
 
@@ -209,6 +213,12 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
   const [readyChecklistOrder, setReadyChecklistOrder] = useState<Order | null>(null);
   const [checklistMode, setChecklistMode] = useState<"ready" | "pack">("ready");
 
+  // Seleção manual de impressora no modal de detalhes do pedido
+  const [printerPickerOpen, setPrinterPickerOpen] = useState(false);
+  const [printerPickerTarget, setPrinterPickerTarget] = useState<"customer" | "kitchen" | "both">("both");
+  const [storePrinters, setStorePrinters] = useState<Array<{ id: string; name: string; print_role: string }>>([]);
+  const [loadingPrinters, setLoadingPrinters] = useState(false);
+
   const [readyChecks, setReadyChecks] = useState<Record<string, boolean>>({});
   const [checkedByName, setCheckedByName] = useState("");
   const [readyItems, setReadyItems] = useState<Array<{ id: string; name: string; quantity: number; notes: string | null; complements: any }> | null>(null);
@@ -253,6 +263,12 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     [channels, aggregatedStoreIds]
   );
 
+  const balcaoChannelId = useMemo(() => {
+    const sid = storeId === "ALL" ? undefined : storeId;
+    if (!sid) return null;
+    return channelsByStore.find((c) => c.store_id === sid && /balcão|balcao|counter/i.test(c.name))?.id ?? null;
+  }, [channelsByStore, storeId]);
+
 
   const loadStores = useCallback(async () => {
     // Descobre se o usuário logado é um terminal de loja travado
@@ -296,6 +312,24 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     () => stores.find((s) => s.id === storeId) ?? null,
     [stores, storeId]
   );
+
+  const ensureDefaultChannels = useCallback(async (sid: string, existing: Channel[]) => {
+    const defaults = [
+      { name: "Balcão", code: "counter", sort_order: 10 },
+      { name: "iFood", code: "ifood", sort_order: 20 },
+      { name: "WhatsApp / Site", code: "whatsapp", sort_order: 30 },
+      { name: "Totem", code: "totem", sort_order: 40 },
+    ];
+    const missing = defaults.filter((d) => !existing.some((c) => c.store_id === sid && (c.code === d.code || new RegExp(d.code, "i").test(c.name))));
+    if (missing.length === 0) return;
+    const { data: created } = await supabase
+      .from("pdv_channels")
+      .insert(missing.map((d) => ({ ...d, store_id: sid, is_active: true })))
+      .select("id,store_id,code,name,is_active,sort_order");
+    if (created) {
+      setChannels((prev) => [...prev, ...(created as Channel[])]);
+    }
+  }, []);
 
   // Calcula IDs agregados a partir de um storeId raiz (loja física = inclui marcas virtuais filhas)
   // "ALL" = todas as lojas físicas + suas filhas virtuais
@@ -347,7 +381,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
               .maybeSingle(),
         supabase
           .from("pdv_orders")
-          .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by,packed_at,has_unread_chat")
+          .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by,packed_at,has_unread_chat,closure_channel,closure_status")
 
           .in("store_id", ids)
           .neq("status", "awaiting_payment")
@@ -355,6 +389,9 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
           .limit(150),
       ]);
       setChannels(chRes.data ?? []);
+      if (!isAll) {
+        void ensureDefaultChannels(sid, (chRes.data ?? []) as Channel[]);
+      }
       if (isAll) {
         setSession(null);
       } else {
@@ -369,6 +406,10 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
           if (created) sess = created as CashSession;
         }
         setSession(sess);
+        // Garante canais padrão para a loja física selecionada
+        if (chRes.data) {
+          await ensureDefaultChannels(sid, chRes.data);
+        }
       }
       setOrders((ordRes.data ?? []) as Order[]);
       setLoading(false);
@@ -385,7 +426,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
       end.setHours(23, 59, 59, 999);
       const { data } = await supabase
         .from("pdv_orders")
-        .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by,packed_at,has_unread_chat")
+        .select("id,store_id,channel_id,order_number,external_order_id,external_display_id,customer_name,status,total,opened_at,order_type,delivery_by,packed_at,has_unread_chat,closure_channel,closure_status")
 
         .in("store_id", ids)
         .neq("status", "awaiting_payment")
@@ -484,6 +525,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
       total: fakeTotal,
       created_by: user?.id ?? null,
       source_payload: { mock: true, generated_at: new Date().toISOString() },
+      closure_channel: "ifood",
     });
     setBusy(false);
     if (error) {
@@ -546,6 +588,30 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cancelOpen, selectedOrder?.id]);
 
+  const maybeAutoCloseOrder = useCallback(async (order: Order, newStatus: PdvStatus) => {
+    if (newStatus !== "ready" && newStatus !== "dispatched") return;
+    const channel = order.closure_channel as ClosureChannel | undefined;
+    const autoCloseChannels: ClosureChannel[] = ["ifood", "whatsapp", "pdv"];
+    if (!channel || !autoCloseChannels.includes(channel)) return;
+    try {
+      const storeName = stores.find((s) => s.id === order.store_id)?.name ?? "";
+      const result = await closeOrder({
+        orderId: order.id,
+        storeId: order.store_id,
+        storeName,
+        channel,
+        printTargets: ["customer", "kitchen"],
+      });
+      if (result.error) {
+        toast({ title: "Fechamento fiscal pendente", description: result.error, variant: "destructive" });
+      } else if (result.danfeUrl) {
+        toast({ title: "NFC-e emitida", description: `Cupom disponível em ${result.danfeUrl}` });
+      }
+    } catch (e) {
+      console.warn("[pdv-novo] auto closeOrder falhou", e);
+    }
+  }, [stores]);
+
   const advanceStatus = async (order: Order, newStatus: PdvStatus, eventCode?: string) => {
     setBusy(true);
     const ifoodAction = STATUS_TO_IFOOD_ACTION[newStatus];
@@ -592,13 +658,18 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
           description: "Avançado localmente para não travar a operação.",
         });
         if (localData && typeof localData === "object" && "id" in localData) {
-          setSelectedOrder(localData as Order);
+          const updated = localData as Order;
+          setSelectedOrder(updated);
+          await maybeAutoCloseOrder(updated, newStatus);
         }
         void loadForStore(storeId);
         return;
       }
       setBusy(false);
       toast({ title: `Pedido ${STATUS_LABEL[newStatus].label.toLowerCase()} (iFood)` });
+      const updated = { ...order, status: newStatus };
+      setSelectedOrder(updated);
+      await maybeAutoCloseOrder(updated, newStatus);
       void loadForStore(storeId);
       return;
     }
@@ -620,7 +691,11 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     }
     toast({ title: `Pedido ${STATUS_LABEL[newStatus].label.toLowerCase()}` });
     if (data && typeof data === "object" && "id" in data) {
-      setSelectedOrder(data as Order);
+      const updated = data as Order;
+      setSelectedOrder(updated);
+      await maybeAutoCloseOrder(updated, newStatus);
+    } else {
+      await maybeAutoCloseOrder({ ...order, status: newStatus }, newStatus);
     }
     void loadForStore(storeId);
   };
@@ -825,6 +900,78 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
     toast({ title: `Reimprimindo ${label}` });
     await printNewOrder(orderId, orderStoreId, target, true);
   }, [printNewOrder]);
+
+  const openPrinterPicker = useCallback(async (order: Order, target: "customer" | "kitchen" | "both") => {
+    setPrinterPickerTarget(target);
+    setSelectedOrder(order);
+    setPrinterPickerOpen(true);
+    setLoadingPrinters(true);
+    const { data } = await supabase
+      .from("pdv_printers")
+      .select("id,name,print_role")
+      .eq("store_id", order.store_id)
+      .eq("is_active", true)
+      .order("name");
+    setStorePrinters((data ?? []) as any[]);
+    setLoadingPrinters(false);
+  }, []);
+
+  const printToSpecificPrinter = useCallback(async (
+    order: Order,
+    printerId: string,
+    target: "customer" | "kitchen" | "both",
+  ) => {
+    setPrinterPickerOpen(false);
+    const label = target === "customer" ? "cupom do cliente"
+      : target === "kitchen" ? "comanda da cozinha"
+      : "cupom e comanda";
+    toast({ title: `Enviando ${label} para impressora selecionada` });
+    try {
+      const [ordRes, itemsRes, chRes, stRes] = await Promise.all([
+        supabase.from("pdv_orders")
+          .select("id,order_number,external_display_id,customer_name,customer_phone,delivery_address,notes,total,opened_at,order_type,channel_id")
+          .eq("id", order.id).maybeSingle(),
+        supabase.from("pdv_order_items")
+          .select("name,quantity,unit_price,total_price,notes")
+          .eq("order_id", order.id).order("created_at"),
+        supabase.from("pdv_channels").select("id,name").eq("store_id", order.store_id),
+        supabase.from("stores").select("name").eq("id", order.store_id).maybeSingle(),
+      ]);
+      const ord = ordRes.data as any;
+      if (!ord) return;
+      const chName = (chRes.data ?? []).find((c: any) => c.id === ord.channel_id)?.name ?? "";
+      const sName = (stRes.data as any)?.name ?? "";
+      await routePrintOrder({
+        storeId: order.store_id,
+        storeName: sName,
+        target,
+        manual: true,
+        printerId,
+        order: {
+          id: ord.id,
+          order_number: ord.external_display_id ?? ord.order_number,
+          channel_name: chName,
+          order_type: ord.order_type,
+          customer_name: ord.customer_name,
+          customer_phone: ord.customer_phone,
+          delivery_address: ord.delivery_address,
+          notes: ord.notes,
+          total: Number(ord.total ?? 0),
+          opened_at: ord.opened_at,
+          items: (itemsRes.data ?? []).map((it: any) => ({
+            name: it.name,
+            quantity: Number(it.quantity ?? 1),
+            unit_price: Number(it.unit_price ?? 0),
+            total: Number(it.total_price ?? 0),
+            notes: it.notes,
+          })),
+        },
+      });
+    } catch (e) {
+      console.warn("[pdv-novo] falha ao imprimir em impressora específica", e);
+      toast({ title: "Falha na impressão", description: String(e), variant: "destructive" });
+    }
+  }, []);
 
   useEffect(() => {
     if (!storeId) return;
@@ -1072,6 +1219,7 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
         <div className="flex flex-wrap items-center gap-2">
           <TabsList>
             <TabsTrigger value="operacao">Operação</TabsTrigger>
+            <TabsTrigger value="balcao">Balcão</TabsTrigger>
             <TabsTrigger value="historico">Histórico de pedidos</TabsTrigger>
           </TabsList>
 
@@ -1291,6 +1439,24 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
             )}
           </div>
 
+        </TabsContent>
+
+        <TabsContent value="balcao" className="mt-4 space-y-3">
+          {storeId && storeId !== "ALL" ? (
+            <BalcaoTab
+              storeId={storeId}
+              channelId={balcaoChannelId}
+              cashSessionId={session?.id ?? null}
+              onOrderCreated={() => storeId && loadForStore(storeId)}
+            />
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Balcão</CardTitle>
+                <CardDescription>Selecione uma loja específica para atendimento manual.</CardDescription>
+              </CardHeader>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="historico" className="mt-4 space-y-3">
@@ -1632,6 +1798,14 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
                       onClick={() => void reprintOrder(selectedOrder.id, selectedOrder.store_id, "customer")}>
                       <Printer className="h-3.5 w-3.5 mr-1.5" />Reimprimir cupom
                     </Button>
+                    <Button size="sm" variant="outline" className="h-8 px-3 text-xs" disabled={busy}
+                      onClick={() => void openPrinterPicker(selectedOrder, "kitchen")}>
+                      <Printer className="h-3.5 w-3.5 mr-1.5" />Imprimir comanda em...
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-8 px-3 text-xs" disabled={busy}
+                      onClick={() => void openPrinterPicker(selectedOrder, "customer")}>
+                      <Printer className="h-3.5 w-3.5 mr-1.5" />Imprimir cupom em...
+                    </Button>
                     {!["concluded", "cancelled"].includes(selectedOrder.status) && (
                       <Button size="sm" variant="outline" className="text-destructive border-destructive/40 hover:bg-destructive/10 h-8 px-3 text-xs" disabled={busy} onClick={() => setCancelOpen(true)}>
                         <AlertCircle className="h-3.5 w-3.5 mr-1.5" />Cancelar pedido
@@ -1661,6 +1835,45 @@ export default function PdvNovo({ hideHeader }: { hideHeader?: boolean } = {}) {
               </>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* ===== Dialog: selecionar impressora manualmente ===== */}
+      <Dialog open={printerPickerOpen} onOpenChange={setPrinterPickerOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Selecionar impressora</DialogTitle>
+            <DialogDescription>
+              Escolha para qual impressora enviar o {printerPickerTarget === "kitchen" ? "comanda da cozinha" : printerPickerTarget === "customer" ? "cupom do cliente" : "cupom e comanda"}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            {loadingPrinters ? (
+              <div className="flex items-center justify-center py-6 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />Carregando impressoras...
+              </div>
+            ) : storePrinters.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Nenhuma impressora ativa para esta loja.</p>
+            ) : (
+              storePrinters.map((p) => (
+                <Button
+                  key={p.id}
+                  variant="outline"
+                  className="w-full justify-start text-left h-auto py-3"
+                  onClick={() => selectedOrder && void printToSpecificPrinter(selectedOrder, p.id, printerPickerTarget)}
+                >
+                  <Printer className="h-4 w-4 mr-3 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{p.name}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{p.print_role === "customer" ? "Cupom" : p.print_role === "kitchen" ? "Cozinha" : "Cupom + Cozinha"}</p>
+                  </div>
+                </Button>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPrinterPickerOpen(false)}>Cancelar</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
