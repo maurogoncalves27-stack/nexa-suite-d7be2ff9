@@ -507,15 +507,27 @@ export const NutriMaintenanceControl = ({ currentDate, storeId }: Props) => {
           </span>
         </div>
 
-        <Tabs defaultValue="solicitar" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto gap-2 p-2">
-            <TabsTrigger
-              value="solicitar"
-              className="flex-col sm:flex-row gap-1 sm:gap-2 text-sm sm:text-base font-medium py-3 sm:py-3 min-h-[64px] sm:min-h-[56px]"
-            >
-              <Plus className="h-5 w-5 sm:h-4 sm:w-4" />
-              <span>Solicitar</span>
-            </TabsTrigger>
+        {readOnly && (
+          <div className="rounded-md border border-primary/30 bg-primary/5 p-2.5 text-xs flex items-start gap-2 mb-3">
+            <AlertCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+            <div>
+              <p className="font-semibold text-primary">Visualização apenas</p>
+              <p className="text-muted-foreground">Seu perfil de estoquista permite acompanhar as manutenções, mas não criar ou alterar solicitações.</p>
+            </div>
+          </div>
+        )}
+
+        <Tabs defaultValue={readOnly ? "pendentes" : "solicitar"} className="w-full">
+          <TabsList className={`grid w-full h-auto gap-2 p-2 ${readOnly ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4"}`}>
+            {!readOnly && (
+              <TabsTrigger
+                value="solicitar"
+                className="flex-col sm:flex-row gap-1 sm:gap-2 text-sm sm:text-base font-medium py-3 sm:py-3 min-h-[64px] sm:min-h-[56px]"
+              >
+                <Plus className="h-5 w-5 sm:h-4 sm:w-4" />
+                <span>Solicitar</span>
+              </TabsTrigger>
+            )}
             <TabsTrigger
               value="pendentes"
               className="flex-col sm:flex-row gap-1 sm:gap-2 text-sm sm:text-base font-medium py-3 sm:py-3 min-h-[64px] sm:min-h-[56px]"
