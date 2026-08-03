@@ -931,6 +931,7 @@ export default function Totem() {
         request={tefOpen ? {
           amount: cartTotal,
           storeId: tefStoreId,
+          method: paymentMethod!,
         } : null}
         onClose={() => setTefOpen(false)}
         onResult={finalizeOrder}
