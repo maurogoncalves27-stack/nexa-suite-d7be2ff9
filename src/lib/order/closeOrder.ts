@@ -6,7 +6,7 @@ import type { TefPaymentResult } from "@/lib/tef";
 import { logTefTransaction } from "@/lib/tef";
 import { emitNfce } from "./emitNfce";
 import { printOrderClosure } from "./printOrderClosure";
-import type { CloseOrderParams, CloseOrderResult, ClosureStatus } from "./types";
+import type { CloseOrderParams, CloseOrderResult, ClosureStatus, ClosureChannel } from "./types";
 
 const updateClosure = async (
   orderId: string,
