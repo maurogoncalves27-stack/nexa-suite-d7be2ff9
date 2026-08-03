@@ -126,7 +126,15 @@ export async function getStores(): Promise<DbStore[]> {
       .order("sort_order");
     if (error) throw error;
     if (!data?.length) return fallbackStores();
-    const mapped = data as unknown as DbStore[];
+    const fallbackById = new Map(fallbackStores().map((store) => [store.id, store]));
+    const mapped = (data as unknown as DbStore[]).map((store) => {
+      const fallback = fallbackById.get(store.id);
+      return {
+        ...store,
+        endereco: store.endereco?.trim() || fallback?.endereco || null,
+        horario: store.horario?.trim() || fallback?.horario || null,
+      };
+    });
     storesCache = { value: mapped, at: Date.now() };
     return mapped;
   } catch (e) {

@@ -100,10 +100,26 @@ export const PRATOS: Prato[] = [
 // devolve "informação em confirmação com a equipe".
 export const INFO = {
   lojas: {
-    "asa-sul":     { nome: "Asa Sul",     endereco: null as string | null, horario: null as string | null },
-    "asa-norte":   { nome: "Asa Norte",   endereco: null as string | null, horario: null as string | null },
-    "aguas-claras":{ nome: "Águas Claras",endereco: null as string | null, horario: null as string | null },
-    "lago-sul":    { nome: "Lago Sul",    endereco: null as string | null, horario: null as string | null },
+    "asa-sul": {
+      nome: "Asa Sul",
+      endereco: "CRS 513 Bloco B, Loja 79 – Asa Sul, Brasília-DF · CEP 70380-520",
+      horario: "Todos os dias, 11h às 22h, inclusive feriados",
+    },
+    "asa-norte": {
+      nome: "Asa Norte",
+      endereco: "CLN 114 Bloco B, Loja 60 – Asa Norte, Brasília-DF · CEP 70764-520",
+      horario: "Todos os dias, 11h às 22h, inclusive feriados",
+    },
+    "aguas-claras": {
+      nome: "Águas Claras",
+      endereco: "Quadra 101 – Rua das Figueiras, 6, Loja 15 – Águas Claras-DF · CEP 71906-750",
+      horario: "Todos os dias, 11h às 22h, inclusive feriados",
+    },
+    "lago-sul": {
+      nome: "Lago Sul",
+      endereco: "SMDB Conj. 12, PAC 2 Parte 2 – Lago Sul, Brasília-DF · CEP 71680-116",
+      horario: "Todos os dias, 11h às 22h, inclusive feriados",
+    },
   },
   delivery:
     "Hoje a entrega é feita 100% pelo iFood. Não temos entrega própria nem venda direta por WhatsApp/site.",
