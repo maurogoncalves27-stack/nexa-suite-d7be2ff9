@@ -383,6 +383,94 @@ export default function TotemConfig() {
           </div>
         )}
       </Card>
+        </TabsContent>
+
+        {/* VÍDEO */}
+        <TabsContent value="video" className="space-y-6 mt-0">
+          <Card className="p-4 space-y-4">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <h2 className="text-lg font-semibold">Vídeo de apresentação</h2>
+                <p className="text-sm text-muted-foreground">
+                  Vídeo exibido em loop na tela de atrair, no lugar do slideshow de imagens.
+                  Use MP4 sem áudio, na vertical, com no máximo ~50 MB.
+                </p>
+              </div>
+              <input
+                ref={videoInputRef}
+                type="file"
+                accept="video/mp4,video/webm"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void handleUpload(f, "video", null);
+                  e.target.value = "";
+                }}
+              />
+              <Button onClick={() => videoInputRef.current?.click()} disabled={uploadingKind === "video"}>
+                {uploadingKind === "video" ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4 mr-2" />
+                )}
+                Enviar vídeo
+              </Button>
+            </div>
+
+            {videos.length === 0 ? (
+              <div className="text-sm text-muted-foreground border border-dashed rounded p-6 text-center flex flex-col items-center gap-2">
+                <Video className="h-8 w-8" />
+                Nenhum vídeo cadastrado. O totem está usando o slideshow de imagens.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {videos.map((a) => (
+                  <div key={a.id} className="border rounded-md overflow-hidden bg-muted">
+                    <video src={a.image_url} className="w-full aspect-video object-cover" controls muted playsInline />
+                    <div className="p-2 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Switch checked={a.is_active} onCheckedChange={() => toggleActive(a)} />
+                        <span className="text-xs text-muted-foreground">{a.is_active ? "Ativo" : "Inativo"}</span>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => removeAsset(a)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </TabsContent>
+
+        {/* FISCAL / NFC-e */}
+        <TabsContent value="fiscal" className="mt-0">
+          <Suspense fallback={<TabFallback />}>
+            <NfceTester />
+          </Suspense>
+        </TabsContent>
+
+        {/* TEF */}
+        <TabsContent value="tef" className="mt-0">
+          <Tabs defaultValue="payer" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="payer">Payer</TabsTrigger>
+              <TabsTrigger value="paygo">PayGo</TabsTrigger>
+            </TabsList>
+            <TabsContent value="payer" className="mt-0">
+              <Suspense fallback={<TabFallback />}>
+                <TefPayerSetup />
+              </Suspense>
+            </TabsContent>
+            <TabsContent value="paygo" className="mt-0">
+              <Suspense fallback={<TabFallback />}>
+                <TefPaygoSetup />
+              </Suspense>
+            </TabsContent>
+          </Tabs>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
+
