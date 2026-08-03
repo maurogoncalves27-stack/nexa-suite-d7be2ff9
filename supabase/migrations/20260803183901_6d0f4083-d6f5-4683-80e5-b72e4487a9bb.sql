@@ -1,0 +1,1 @@
+UPDATE public.stores SET nfce_environment = 'producao' WHERE id = 'fcf435c2-c382-444c-b499-4d95f07b2633';
