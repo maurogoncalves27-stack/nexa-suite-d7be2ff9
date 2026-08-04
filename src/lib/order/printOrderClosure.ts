@@ -58,7 +58,7 @@ export async function printOrderClosure(opts: {
 
   const { data: items } = await supabase
     .from("pdv_order_items")
-    .select("name, quantity, unit_price, total, notes")
+    .select("name, quantity, unit_price, total, notes, complements")
     .eq("order_id", opts.orderId);
 
   const order: OrderForPrint = {
@@ -78,6 +78,7 @@ export async function printOrderClosure(opts: {
       unit_price: Number(it.unit_price ?? 0),
       total: Number(it.total ?? 0),
       notes: it.notes,
+      complements: Array.isArray(it.complements) ? it.complements : [],
     })),
   };
 

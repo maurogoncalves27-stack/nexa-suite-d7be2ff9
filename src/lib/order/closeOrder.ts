@@ -134,6 +134,13 @@ export interface TotemCartItem {
   unit_price: number;
   quantity: number;
   notes?: string;
+  complements?: Array<{
+    group_id: string;
+    group_name: string;
+    option_id: string;
+    option_name: string;
+    extra_price: number;
+  }>;
 }
 
 export interface CreateTotemOrderAndCloseParams {
@@ -207,6 +214,7 @@ export async function createTotemOrderAndClose(
     unit_price: c.unit_price,
     total: c.unit_price * c.quantity,
     notes: c.notes ?? null,
+    complements: c.complements?.length ? c.complements : null,
   }));
   const { error: ie } = await supabase.from("pdv_order_items").insert(itemsPayload);
   if (ie) throw ie;

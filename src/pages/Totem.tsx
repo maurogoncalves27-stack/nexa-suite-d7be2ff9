@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Plus, Minus, Trash2, ShoppingCart, ArrowLeft, Printer, Check, X, Timer, Hand, CreditCard, QrCode, Utensils, ShoppingBag } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -17,6 +17,7 @@ import { VirtualKeyboard } from "@/components/totem/VirtualKeyboard";
 import type { TefPaymentResult, TefPaymentMethod } from "@/lib/tef";
 import { loadTefConfig } from "@/lib/tef";
 import { closeOrder, createTotemOrderAndClose } from "@/lib/order";
+import { loadItemComplements, loadMenuCatalog, type CatalogComplementGroup, type SelectedComplement } from "@/lib/menuCatalog";
 import logoAquelaParme from "@/assets/logo-aquela-parme.png";
 import logoBoxCaipira from "@/assets/logo-box-caipira.png";
 import logoEstrogonofe from "@/assets/logo-estrogonofe.png";
@@ -65,7 +66,7 @@ interface MenuItem {
 }
 interface CartItem {
   uid: string; menu_item_id: string; name: string; unit_price: number;
-  quantity: number; notes?: string;
+  quantity: number; notes?: string; complements: SelectedComplement[];
 }
 
 const IDLE_TIMEOUT_MS = 60_000; // 60s sem toque → reset
@@ -172,7 +173,10 @@ export default function Totem() {
   const [nfceEmitted, setNfceEmitted] = useState(false);
   const [doneCountdown, setDoneCountdown] = useState<number | null>(null);
   const [cpf, setCpf] = useState("");
-  const [noteDialog, setNoteDialog] = useState<{ item: MenuItem; note: string; qty: number } | null>(null);
+  const [noteDialog, setNoteDialog] = useState<{
+    item: MenuItem; note: string; qty: number; groups: CatalogComplementGroup[];
+    selected: Record<string, string[]>; loadingComplements: boolean;
+  } | null>(null);
   const [tefOpen, setTefOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<TefPaymentMethod | null>(null);
   const [showNoteKb, setShowNoteKb] = useState(false);
@@ -208,60 +212,17 @@ export default function Totem() {
     if (step !== "menu" || !selectedBrand || !selectedStore) return;
     void (async () => {
       setLoading(true);
-      // loja física = parent_store_id da virtual (ou a própria, se já for física)
-      const physicalStoreId = selectedStore.parent_store_id ?? selectedStore.id;
-      const [cats, mib, mis] = await Promise.all([
-        supabase.from("menu_categories").select("id,name,sort_order,brand_id")
-          .or(`brand_id.eq.${selectedBrand.id},brand_id.is.null`).order("sort_order"),
-        supabase.from("menu_item_brands").select("menu_item_id").eq("brand_id", selectedBrand.id),
-        (supabase as any).from("menu_item_stores").select("menu_item_id")
-          .eq("store_id", physicalStoreId).eq("is_available", true),
-      ]);
-      const brandIds = new Set((mib.data ?? []).map((r: any) => r.menu_item_id));
-      const storeIds = new Set((mis.data ?? []).map((r: any) => r.menu_item_id));
-      const itemIds = Array.from(brandIds).filter((id) => storeIds.has(id));
-      let itemsData: MenuItem[] = [];
-      if (itemIds.length > 0) {
-        const { data } = await supabase.from("menu_items")
-          .select("id,name,description,price,category_id,photo_path,recipe_id")
-          .in("id", itemIds).eq("is_active", true).order("sort_order");
-        itemsData = (data ?? []) as MenuItem[];
-
-        // Mesma resolução do /cardapio: ficha técnica, foto do item e receituário como fallback.
-        const recipeIds = Array.from(new Set(itemsData.map((i) => i.recipe_id).filter(Boolean) as string[]));
-        const recipePhotoMap: Record<string, string> = {};
-        if (recipeIds.length > 0) {
-          const { data: recs } = await supabase.from("recipes").select("id,photo_path").in("id", recipeIds);
-          for (const r of (recs ?? []) as any[]) {
-            if (r.photo_path) {
-              recipePhotoMap[r.id] = supabase.storage.from("recipe-photos").getPublicUrl(r.photo_path).data.publicUrl;
-            }
-          }
-        }
-        const recipeBookPhotoMap: Record<string, string> = {};
-        const { data: books } = await (supabase as any)
-          .from("recipe_books")
-          .select("menu_item_id,recipe_id,photo_path")
-          .not("photo_path", "is", null)
-          .or(`menu_item_id.in.(${itemIds.join(",")})${recipeIds.length ? `,recipe_id.in.(${recipeIds.join(",")})` : ""}`);
-        const recipeBookPhotoByRecipe: Record<string, string> = {};
-        for (const book of (books ?? []) as Array<{ menu_item_id: string | null; recipe_id: string | null; photo_path: string }>) {
-          const url = supabase.storage.from("recipe-book-photos").getPublicUrl(book.photo_path).data.publicUrl;
-          if (book.menu_item_id) recipeBookPhotoMap[book.menu_item_id] = url;
-          if (book.recipe_id) recipeBookPhotoByRecipe[book.recipe_id] = url;
-        }
-        itemsData = itemsData.map((it) => ({
-          ...it,
-          photo_url:
-            (it.recipe_id ? recipePhotoMap[it.recipe_id] : null) ??
-            photoUrl(it.photo_path) ??
-            recipeBookPhotoMap[it.id] ??
-            (it.recipe_id ? recipeBookPhotoByRecipe[it.recipe_id] : null),
-        }));
+      try {
+        const physicalStoreId = selectedStore.parent_store_id ?? selectedStore.id;
+        const catalog = await loadMenuCatalog(physicalStoreId, selectedBrand.id);
+        setCategories(catalog.categories as Category[]);
+        setItems(catalog.items as MenuItem[]);
+      } catch (error) {
+        console.error(error);
+        toast({ title: "Não foi possível carregar o cardápio", variant: "destructive" });
+      } finally {
+        setLoading(false);
       }
-      setCategories((cats.data ?? []) as Category[]);
-      setItems(itemsData);
-      setLoading(false);
     })();
   }, [step, selectedBrand, selectedStore]);
 
@@ -384,14 +345,54 @@ export default function Totem() {
   const cartTotal = cart.reduce((s, c) => s + c.unit_price * c.quantity, 0);
   const tefStoreId = selectedStore?.parent_store_id ?? selectedStore?.id;
 
-  const addItem = (it: MenuItem, note?: string, qty: number = 1) => {
+  const openItem = async (it: MenuItem) => {
+    setNoteDialog({ item: it, note: "", qty: 1, groups: [], selected: {}, loadingComplements: true });
+    try {
+      const groups = await loadItemComplements(it.id);
+      setNoteDialog((current) => current?.item.id === it.id ? { ...current, groups, loadingComplements: false } : current);
+    } catch (error) {
+      console.error(error);
+      setNoteDialog((current) => current?.item.id === it.id ? { ...current, loadingComplements: false } : current);
+      toast({ title: "Não foi possível carregar os complementos", variant: "destructive" });
+    }
+  };
+
+  const toggleComplement = (group: CatalogComplementGroup, optionId: string) => {
+    setNoteDialog((current) => {
+      if (!current) return current;
+      const selected = current.selected[group.id] ?? [];
+      let next: string[];
+      if (selected.includes(optionId)) next = selected.filter((id) => id !== optionId);
+      else if (group.max_choices <= 1) next = [optionId];
+      else if (selected.length < group.max_choices) next = [...selected, optionId];
+      else {
+        toast({ title: `Escolha no máximo ${group.max_choices} em “${group.name}”`, variant: "destructive" });
+        return current;
+      }
+      return { ...current, selected: { ...current.selected, [group.id]: next } };
+    });
+  };
+
+  const selectedComplements = (dialog: NonNullable<typeof noteDialog>): SelectedComplement[] =>
+    dialog.groups.flatMap((group) => (dialog.selected[group.id] ?? []).flatMap((optionId) => {
+      const option = group.options.find((candidate) => candidate.id === optionId);
+      return option ? [{
+        group_id: group.id, group_name: group.name, option_id: option.id,
+        option_name: option.name, extra_price: option.extra_price,
+      }] : [];
+    }));
+
+  const addItem = (it: MenuItem, complements: SelectedComplement[], note?: string, qty: number = 1) => {
     beep(880, 80);
+    const unitPrice = Number(it.price) + complements.reduce((sum, complement) => sum + complement.extra_price, 0);
+    const signature = complements.map((complement) => complement.option_id).sort().join("|");
     setCart(prev => {
-      const ex = prev.find(c => c.menu_item_id === it.id && (c.notes || "") === (note || ""));
+      const ex = prev.find(c => c.menu_item_id === it.id && (c.notes || "") === (note || "")
+        && c.complements.map((complement) => complement.option_id).sort().join("|") === signature);
       if (ex) return prev.map(c => c.uid === ex.uid ? { ...c, quantity: c.quantity + qty } : c);
       return [...prev, {
         uid: crypto.randomUUID(), menu_item_id: it.id, name: it.name,
-        unit_price: Number(it.price), quantity: qty, notes: note || undefined,
+        unit_price: unitPrice, quantity: qty, notes: note || undefined, complements,
       }];
     });
   };
@@ -717,7 +718,7 @@ export default function Totem() {
                   return (
                     <Card key={it.id}
                       className="overflow-hidden cursor-pointer bg-card hover:bg-card transition-all hover:scale-[1.02] hover:shadow-lg flex flex-col relative"
-                      onClick={() => setNoteDialog({ item: it, note: "", qty: 1 })}>
+                      onClick={() => void openItem(it)}>
                       {inCart > 0 && (
                         <Badge className="absolute top-2 right-2 z-10 h-8 min-w-8 rounded-full text-base shadow-lg">
                           {inCart}
@@ -824,6 +825,11 @@ export default function Totem() {
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-xl">{c.name}</div>
                       <div className="text-base text-muted-foreground">{fmt(c.unit_price)}</div>
+                       {c.complements.length > 0 && (
+                         <div className="text-sm text-muted-foreground mt-1">
+                           {c.complements.map((complement) => complement.option_name).join(" · ")}
+                         </div>
+                       )}
                       {c.notes && <div className="text-sm italic text-amber-600 mt-1">📝 {c.notes}</div>}
                     </div>
                     <Button size="icon" variant="outline" className="h-12 w-12" onClick={() => decItem(c.uid)}><Minus className="h-6 w-6" /></Button>
@@ -918,6 +924,11 @@ export default function Totem() {
                       <span>{c.quantity}× {c.name}</span><span>{fmt(c.unit_price * c.quantity)}</span>
                     </div>
                     {c.notes && <div className="text-xs italic pl-4">- {c.notes}</div>}
+                     {c.complements.map((complement) => (
+                       <div key={`${c.uid}-${complement.option_id}`} className="text-xs pl-4">
+                         + {complement.option_name}
+                       </div>
+                     ))}
                   </div>
                 ))}
                 <div className="border-t mt-2 pt-2 flex justify-between font-bold">
@@ -957,11 +968,12 @@ export default function Totem() {
         )}
       </main>
 
-      {/* Dialog de observação ao adicionar item */}
+      {/* Dialog de complementos, quantidade e observação ao adicionar item */}
       <Dialog open={!!noteDialog} onOpenChange={(o) => { if (!o) { setNoteDialog(null); setShowNoteKb(false); } }}>
         <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto border-primary/30" style={TOTEM_THEME_STYLE}>
           <DialogHeader>
             <DialogTitle className="text-3xl font-black">{noteDialog?.item.name}</DialogTitle>
+            <DialogDescription className="text-base">Personalize o item antes de adicionar.</DialogDescription>
           </DialogHeader>
           {noteDialog && (
             <div className="space-y-5">
@@ -974,6 +986,40 @@ export default function Totem() {
               {noteDialog.item.description && (
                 <p className="text-lg text-muted-foreground">{noteDialog.item.description}</p>
               )}
+              {noteDialog.loadingComplements ? (
+                <div className="flex items-center justify-center gap-3 py-6 text-muted-foreground">
+                  <Loader2 className="h-6 w-6 animate-spin" /> Carregando opções...
+                </div>
+              ) : noteDialog.groups.map((group) => {
+                const selected = noteDialog.selected[group.id] ?? [];
+                const minimum = Math.max(group.is_required ? 1 : 0, group.min_choices);
+                return (
+                  <section key={group.id} className="border rounded-md p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h3 className="text-xl font-bold">{group.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {minimum > 0 ? `Escolha pelo menos ${minimum}` : "Opcional"} · máximo {group.max_choices}
+                        </p>
+                      </div>
+                      {minimum > 0 && <Badge variant={selected.length >= minimum ? "secondary" : "destructive"}>Obrigatório</Badge>}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {group.options.map((option) => {
+                        const active = selected.includes(option.id);
+                        return (
+                          <Button key={option.id} type="button" variant={active ? "default" : "outline"}
+                            className="h-auto min-h-14 justify-between px-4 py-3 text-left"
+                            onClick={() => toggleComplement(group, option.id)}>
+                            <span className="flex items-center gap-2"><span>{active ? "✓" : "○"}</span>{option.name}</span>
+                            <span>{option.extra_price > 0 ? `+ ${fmt(option.extra_price)}` : "Incluso"}</span>
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </section>
+                );
+              })}
               <div>
                 <label className="text-lg font-semibold block mb-3">Observação (opcional)</label>
                 <Textarea
@@ -1010,7 +1056,7 @@ export default function Totem() {
                   </Button>
                 </div>
                 <div className="text-4xl font-black text-primary">
-                  {fmt(Number(noteDialog.item.price) * noteDialog.qty)}
+                  {fmt((Number(noteDialog.item.price) + selectedComplements(noteDialog).reduce((sum, item) => sum + item.extra_price, 0)) * noteDialog.qty)}
                 </div>
               </div>
             </div>
@@ -1019,9 +1065,16 @@ export default function Totem() {
             <Button variant="outline" className="h-16 px-8 text-xl font-bold border-primary/40 hover:bg-primary/10" onClick={() => setNoteDialog(null)}>Cancelar</Button>
             <Button className="h-16 px-8 text-xl font-bold" onClick={() => {
               if (!noteDialog) return;
-              addItem(noteDialog.item, noteDialog.note.trim() || undefined, noteDialog.qty);
+              for (const group of noteDialog.groups) {
+                const minimum = Math.max(group.is_required ? 1 : 0, group.min_choices);
+                if ((noteDialog.selected[group.id] ?? []).length < minimum) {
+                  toast({ title: `Complete o grupo “${group.name}”`, variant: "destructive" });
+                  return;
+                }
+              }
+              addItem(noteDialog.item, selectedComplements(noteDialog), noteDialog.note.trim() || undefined, noteDialog.qty);
               setNoteDialog(null);
-            }}>
+            }} disabled={noteDialog?.loadingComplements}>
               <Plus className="mr-2 h-6 w-6" /> Adicionar ao carrinho
             </Button>
           </DialogFooter>

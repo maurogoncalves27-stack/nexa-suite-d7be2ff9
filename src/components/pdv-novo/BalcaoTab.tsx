@@ -20,6 +20,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Minus, Trash2, ShoppingCart, Loader2, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { closeOrder } from "@/lib/order";
+import { loadItemComplements, loadMenuCatalog } from "@/lib/menuCatalog";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
@@ -83,15 +84,18 @@ export default function BalcaoTab({ storeId, channelId, cashSessionId, onOrderCr
   useEffect(() => {
     void (async () => {
       setLoading(true);
-      const [cats, its] = await Promise.all([
-        supabase.from("menu_categories").select("id,name,sort_order").order("sort_order"),
-        supabase.from("menu_items").select("id,name,price,category_id,photo_path,is_active").eq("is_active", true).order("sort_order"),
-      ]);
-      setCategories((cats.data ?? []) as MenuCategory[]);
-      setItems((its.data ?? []) as MenuItem[]);
-      setLoading(false);
+      try {
+        const catalog = await loadMenuCatalog(storeId);
+        setCategories(catalog.categories as MenuCategory[]);
+        setItems(catalog.items as MenuItem[]);
+      } catch (error) {
+        console.error(error);
+        toast({ title: "Não foi possível carregar o cardápio", variant: "destructive" });
+      } finally {
+        setLoading(false);
+      }
     })();
-  }, []);
+  }, [storeId]);
 
   const filtered = useMemo(() => {
     return items.filter((it) => {
@@ -108,12 +112,7 @@ export default function BalcaoTab({ storeId, channelId, cashSessionId, onOrderCr
   const handlePickItem = async (it: MenuItem) => {
     setCompLoading(true);
     setCompItem(it);
-    const { data: gs } = await supabase
-      .from("menu_item_complement_groups")
-      .select("id,name,is_required,min_choices,max_choices,sort_order")
-      .eq("menu_item_id", it.id)
-      .order("sort_order");
-    const groups = (gs ?? []) as any[];
+    const groups = await loadItemComplements(it.id);
     if (groups.length === 0) {
       // adiciona direto
       addToCart(it, []);
@@ -121,21 +120,13 @@ export default function BalcaoTab({ storeId, channelId, cashSessionId, onOrderCr
       setCompLoading(false);
       return;
     }
-    const { data: opts } = await supabase
-      .from("menu_item_complement_options")
-      .select("id,group_id,name,extra_price,is_active,sort_order")
-      .in("group_id", groups.map((g) => g.id))
-      .eq("is_active", true)
-      .order("sort_order");
     const fullGroups: ComplementGroup[] = groups.map((g) => ({
       id: g.id,
       name: g.name,
       is_required: g.is_required,
       min_choices: g.min_choices,
       max_choices: g.max_choices,
-      options: ((opts ?? []) as any[])
-        .filter((o) => o.group_id === g.id)
-        .map((o) => ({ id: o.id, name: o.name, extra_price: Number(o.extra_price) })),
+      options: g.options,
     }));
     setCompGroups(fullGroups);
     setCompSelected({});
