@@ -266,6 +266,10 @@ export function AppSidebar() {
   const { state, isMobile, setOpen, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  // Garantia: no mobile o menu fecha sempre que a rota muda (independente de onde o clique partiu).
+  useEffect(() => {
+    if (isMobile) setOpenMobile(false);
+  }, [location.pathname, isMobile, setOpenMobile]);
   const navigate = useNavigate();
   const { isAdmin: isAdminRaw, isManager: isManagerRaw, isContabilidade, isPartner: isPartnerRaw, isSuperUser, signOut, user } = useAuth();
   const { mode: viewMode } = useViewMode();

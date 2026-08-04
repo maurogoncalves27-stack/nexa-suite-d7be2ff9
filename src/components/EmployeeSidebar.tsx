@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Sidebar,
@@ -41,8 +42,17 @@ export function EmployeeSidebar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { signOut, isAdmin, isManager, isPartner, isSuperUser } = useAuth();
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
+
+  // No mobile o menu fecha sozinho ao navegar.
+  useEffect(() => {
+    if (isMobile) setOpenMobile(false);
+  }, [pathname, isMobile, setOpenMobile]);
+
+  const closeSidebar = () => {
+    if (isMobile) setOpenMobile(false);
+  };
 
   const isActive = (url: string) =>
     url === "/area-colaborador" ? pathname === url : pathname.startsWith(url);
@@ -63,7 +73,7 @@ export function EmployeeSidebar() {
               {items.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url} className="flex items-center gap-2">
+                    <NavLink to={item.url} onClick={closeSidebar} className="flex items-center gap-2">
                       <item.icon className="h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
                     </NavLink>
