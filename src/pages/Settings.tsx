@@ -60,6 +60,12 @@ const Settings = () => {
                 Teste NFC-e (ACBr)
               </Link>
             </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/configuracoes/hardcodes" className="cursor-pointer">
+                <Code2 className="h-4 w-4 mr-2" />
+                Mapa de hardcodes
+              </Link>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
