@@ -117,7 +117,7 @@ export const STORES = [
     services: ["delivery", "retirada"] as const,
   },
   {
-    name: "Asa Norte",
+    name: "114 Norte",
     address: "CLN 114 Bloco B, Loja 60 – Asa Norte, Brasília-DF · CEP 70764-520",
     services: ["mesa", "delivery", "retirada"] as const,
   },

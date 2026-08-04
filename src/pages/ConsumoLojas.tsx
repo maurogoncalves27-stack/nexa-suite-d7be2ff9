@@ -26,12 +26,13 @@ const CATEG_GAS = "58c72c4a-fd1b-431d-b205-36f1333a62f9";
 const CATEG_VALE_GAS = "409dbcd7-379a-4b06-85c7-1bf92ef815c3";
 
 // Lojas físicas de operação (CD incluída — divide água/luz 50/50 com Asa Sul)
-const STORE_ORDER = ["ASA NORTE", "ÁGUAS CLARAS", "ASA SUL", "LAGO SUL", "CD"];
+const STORE_ORDER = ["114 NORTE", "ÁGUAS CLARAS", "ASA SUL", "LAGO SUL", "CD"];
 const FABRICA_NAME = "CD";
 const ASA_SUL_NAME = "ASA SUL";
 
 // Paleta fixa do sistema (HSL via tokens)
 const STORE_COLOR: Record<string, string> = {
+  "114 NORTE": "hsl(var(--success))",
   "ASA NORTE": "hsl(var(--success))",
   "ÁGUAS CLARAS": "hsl(var(--primary))",
   "ASA SUL": "hsl(var(--warning))",

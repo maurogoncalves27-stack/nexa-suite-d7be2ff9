@@ -33,7 +33,7 @@ export function getStoreColorClasses(name: string | undefined | null) {
   const n = (name ?? "").toLowerCase();
   if (n.includes("asa sul")) return { bg: "bg-store-asa-sul", fg: "text-store-asa-sul-foreground", dot: "bg-store-asa-sul" };
   if (n.includes("lago sul")) return { bg: "bg-store-lago-sul", fg: "text-store-lago-sul-foreground", dot: "bg-store-lago-sul" };
-  if (n.includes("asa norte")) return { bg: "bg-store-asa-norte", fg: "text-store-asa-norte-foreground", dot: "bg-store-asa-norte" };
+  if (n.includes("asa norte") || n.includes("114 norte")) return { bg: "bg-store-asa-norte", fg: "text-store-asa-norte-foreground", dot: "bg-store-asa-norte" };
   if (n.includes("aguas claras") || n.includes("águas claras"))
     return { bg: "bg-store-aguas-claras", fg: "text-store-aguas-claras-foreground", dot: "bg-store-aguas-claras" };
   return { bg: "bg-muted", fg: "text-foreground", dot: "bg-muted-foreground" };

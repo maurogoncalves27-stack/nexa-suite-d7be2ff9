@@ -89,7 +89,7 @@ const normalizeStoreKey = (name: string) => {
   const n = name.toUpperCase()
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   if (n.includes("AGUAS CLARAS")) return "aguas-claras";
-  if (n.includes("ASA NORTE")) return "asa-norte";
+  if (n.includes("ASA NORTE") || n.includes("114 NORTE")) return "asa-norte";
   if (n.includes("ASA SUL")) return "asa-sul";
   if (n.includes("LAGO SUL")) return "lago-sul";
   return null;

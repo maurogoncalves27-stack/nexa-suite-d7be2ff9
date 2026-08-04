@@ -215,7 +215,7 @@ export function ApFooter() {
                 <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
                   <MapPin style={{ marginTop: "0.125rem", height: "1rem", width: "1rem", flexShrink: 0 }} aria-hidden />
                   <div>
-                    <p style={{ fontWeight: 600, margin: 0 }}>Unidade Asa Norte</p>
+                    <p style={{ fontWeight: 600, margin: 0 }}>Unidade 114 Norte</p>
                     <p style={{ color: "hsl(var(--ap-cream) / .9)", margin: 0 }}>114 Norte, Asa Norte, Brasília — DF</p>
                     <a
                       href="https://maps.google.com/?q=Aquela+Parme+Asa+Norte+Brasilia"

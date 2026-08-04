@@ -770,7 +770,7 @@ export default function Faturamento() {
               </Card>
               <Card style={{ background: "hsl(142 50% 96%)" }}>
                 <CardContent className="p-3">
-                  <div className="text-xs text-muted-foreground">Salão (Asa Norte)</div>
+                  <div className="text-xs text-muted-foreground">Salão (114 Norte)</div>
                   <div className="text-lg sm:text-xl font-semibold">{fmtBRL(ownSalesData.totalSalao)}</div>
                 </CardContent>
               </Card>
@@ -787,7 +787,7 @@ export default function Faturamento() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Vendas próprias por mês — {year}</CardTitle>
-                <div className="text-xs text-muted-foreground">Totem (4 lojas) + Salão (apenas Asa Norte). Rótulos = % do mês.</div>
+                <div className="text-xs text-muted-foreground">Totem (4 lojas) + Salão (apenas 114 Norte). Rótulos = % do mês.</div>
               </CardHeader>
               <CardContent>
                 {ownSalesData.total === 0 ? (

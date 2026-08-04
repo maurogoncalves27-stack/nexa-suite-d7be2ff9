@@ -58,7 +58,7 @@ export function SiteFooter() {
                   <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
                   <div>
                     <p className="font-semibold">4 unidades em Brasília</p>
-                    <p style={{ color: "rgba(255,247,230,0.9)" }}>Asa Norte · Asa Sul · Lago Sul · Águas Claras</p>
+                    <p style={{ color: "rgba(255,247,230,0.9)" }}>114 Norte · Asa Sul · Lago Sul · Águas Claras</p>
                     <Link to="/parme/enderecos" className="mt-1 inline-block border-b pb-0.5 font-semibold transition" style={{ borderColor: "rgba(255,247,230,0.7)" }}>
                       Ver todos os endereços
                     </Link>

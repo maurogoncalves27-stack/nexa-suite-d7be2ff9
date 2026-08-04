@@ -48,7 +48,7 @@ import type { TefStatus } from "@/lib/tef/types";
 const fmt = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 
-const ALLOWED = ["ASA SUL", "ASA NORTE", "ÁGUAS CLARAS", "AGUAS CLARAS", "LAGO SUL"];
+const ALLOWED = ["ASA SUL", "114 NORTE", "ASA NORTE", "ÁGUAS CLARAS", "AGUAS CLARAS", "LAGO SUL"];
 
 interface Store { id: string; name: string }
 interface Mesa {
@@ -150,7 +150,7 @@ export default function Garcom() {
       );
       setStores(filtered);
       if (filtered.length) {
-        const norte = filtered.find((s) => s.name.toUpperCase().includes("ASA NORTE"));
+        const norte = filtered.find((s) => s.name.toUpperCase().includes("114 NORTE") || s.name.toUpperCase().includes("ASA NORTE"));
         setStoreId(norte?.id ?? filtered[0].id);
       }
       setCategories((cat.data ?? []) as MenuCat[]);

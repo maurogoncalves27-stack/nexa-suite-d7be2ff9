@@ -6,7 +6,7 @@ export type Service = "mesa" | "delivery" | "retirada";
 export const STORES: { name: string; address: string; services: readonly Service[] }[] = [
   { name: "Águas Claras", address: "Quadra 101 – Rua das Figueiras, 6, Loja 15 – Águas Claras-DF · CEP 71906-750", services: ["delivery", "retirada"] },
   { name: "Asa Sul", address: "CRS 513 Bloco B, Loja 79 – Asa Sul, Brasília-DF · CEP 70380-520", services: ["delivery", "retirada"] },
-  { name: "Asa Norte", address: "CLN 114 Bloco B, Loja 60 – Asa Norte, Brasília-DF · CEP 70764-520", services: ["mesa", "delivery", "retirada"] },
+  { name: "114 Norte", address: "CLN 114 Bloco B, Loja 60 – Asa Norte, Brasília-DF · CEP 70764-520", services: ["mesa", "delivery", "retirada"] },
   { name: "Lago Sul", address: "SMDB Conj. 12, PAC 2 Parte 2 – Lago Sul, Brasília-DF · CEP 71680-116", services: ["delivery", "retirada"] },
 ];
 

@@ -63,7 +63,7 @@ export default function ReservarPage() {
         <div className="mt-4 flex items-start gap-2 rounded-lg border bg-white/60 px-3 py-2 text-sm" style={{ borderColor: "rgba(0,0,0,0.1)", color: "rgba(0,0,0,0.7)" }}>
           <MapPin className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "#e8231f" }} />
           <p>
-            Reservas apenas na <span className="font-semibold" style={{ color: "#2a1810" }}>unidade Asa Norte</span>
+            Reservas apenas na <span className="font-semibold" style={{ color: "#2a1810" }}>unidade 114 Norte</span>
             <> — CLN 114 Bloco B, Loja 60</>
           </p>
         </div>

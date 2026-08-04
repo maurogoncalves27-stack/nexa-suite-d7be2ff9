@@ -106,7 +106,7 @@ export const INFO = {
       horario: "Todos os dias, 11h às 22h, inclusive feriados",
     },
     "asa-norte": {
-      nome: "Asa Norte",
+      nome: "114 Norte",
       endereco: "CLN 114 Bloco B, Loja 60 – Asa Norte, Brasília-DF · CEP 70764-520",
       horario: "Todos os dias, 11h às 22h, inclusive feriados",
     },
