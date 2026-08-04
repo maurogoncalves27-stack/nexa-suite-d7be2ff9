@@ -82,21 +82,26 @@ async function calcRecipeCostInternal(
     .maybeSingle();
   if (!recipe) return null;
 
-  const { data: ings } = await supabase
+  const { data: ingsData } = await supabase
     .from("recipe_ingredients")
     .select("product_id, quantity, unit, ingredient_state, product:inventory_products(name, product_type)")
-    .eq("recipe_id", recipeId);
+    .eq("recipe_id", recipeId)
+    .returns<IngredientRow[]>();
+  const ings: IngredientRow[] = ingsData ?? [];
 
-  const productIds = Array.from(new Set((ings ?? []).map((i: any) => i.product_id)));
-  const { data: convs } = productIds.length
-    ? await supabase
-        .from("product_conversions")
-        .select("product_id, from_qty, to_qty, is_default")
-        .eq("conversion_type", "preparo")
-        .in("product_id", productIds)
-    : { data: [] as any[] };
+  const productIds = Array.from(new Set(ings.map((i) => i.product_id)));
+  let convs: ConversionRow[] = [];
+  if (productIds.length) {
+    const { data } = await supabase
+      .from("product_conversions")
+      .select("product_id, from_qty, to_qty, is_default")
+      .eq("conversion_type", "preparo")
+      .in("product_id", productIds)
+      .returns<ConversionRow[]>();
+    convs = data ?? [];
+  }
   const prepByProduct = new Map<string, { from_qty: number; to_qty: number }>();
-  ((convs as any[]) ?? []).forEach((c) => {
+  convs.forEach((c) => {
     const existing = prepByProduct.get(c.product_id);
     if (!existing || c.is_default) prepByProduct.set(c.product_id, { from_qty: Number(c.from_qty), to_qty: Number(c.to_qty) });
   });
@@ -105,7 +110,8 @@ async function calcRecipeCostInternal(
   let total = 0;
   let inputBase = 0;
 
-  for (const i of (ings ?? []) as any[]) {
+  for (const i of ings) {
+
     let qty = Number(i.quantity ?? 0);
     // Se o ingrediente é usado "pronto" e o produto tem fator de preparo,
     // converte para cru (baixa real de estoque).
