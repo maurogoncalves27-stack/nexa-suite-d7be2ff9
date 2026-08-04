@@ -1,6 +1,12 @@
 # NEXA — Mapa de hardcodes
 
+# NEXA — Mapa de hardcodes
+
+> **Versão viva no sistema:** Configurações → Opções dev → **Mapa de hardcodes** (`/configuracoes/hardcodes`),
+> onde o status de cada item fica salvo no banco (`system_hardcodes`). Este documento é a referência histórica.
+
 > Inventário para resolver **um a um**. Piloto: Asa Sul · Atualizado: jun/2026  
+
 > Legenda prioridade: **P0** bloqueia piloto · **P1** multi-loja · **P2** operação · **P3** cosmético/doc
 
 **Como usar:** escolha um `#ID`, marque `[x]` quando resolver, anote a config alvo (tabela/env).

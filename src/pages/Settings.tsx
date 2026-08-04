@@ -1,5 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Store, ShieldCheck, Handshake, Link2, Eye, Settings as SettingsIcon, FlaskConical, CreditCard, Monitor, KeyRound, Router, Bell, Wrench, ChevronDown } from "lucide-react";
+import { Store, ShieldCheck, Handshake, Link2, Eye, Settings as SettingsIcon, FlaskConical, CreditCard, Monitor, KeyRound, Router, Bell, Wrench, ChevronDown, Code2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,6 +58,12 @@ const Settings = () => {
               <Link to="/configuracoes/nfce-tester" className="cursor-pointer">
                 <FlaskConical className="h-4 w-4 mr-2" />
                 Teste NFC-e (ACBr)
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/configuracoes/hardcodes" className="cursor-pointer">
+                <Code2 className="h-4 w-4 mr-2" />
+                Mapa de hardcodes
               </Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
