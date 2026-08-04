@@ -33,11 +33,17 @@ async function costPerUnitOfProduct(
 
   const { data: prod } = await supabase
     .from("inventory_products")
-    .select("id, average_cost, last_cost, product_type")
+    .select("id, average_cost, last_cost, product_type, infinite_stock, reference_unit_cost")
     .eq("id", productId)
     .maybeSingle();
 
   if (!prod) return 0;
+
+  // Produtos de estoque infinito (ex.: água potável) não têm entrada de nota:
+  // o custo vem sempre do custo de referência cadastrado.
+  if (prod.infinite_stock) {
+    return Number(prod.reference_unit_cost ?? 0);
+  }
 
   // Se for produzido, tenta calcular via receita ativa
   if (prod.product_type === "produzido") {
@@ -55,10 +61,13 @@ async function costPerUnitOfProduct(
     }
   }
 
-  // fallback: custo médio do estoque
+  // fallback: custo médio do estoque, depois última compra, depois referência
   const avg = Number(prod.average_cost ?? 0);
   if (avg > 0) return avg;
-  return Number(prod.last_cost ?? 0);
+  const last = Number(prod.last_cost ?? 0);
+  if (last > 0) return last;
+  return Number(prod.reference_unit_cost ?? 0);
+
 }
 
 async function calcRecipeCostInternal(
