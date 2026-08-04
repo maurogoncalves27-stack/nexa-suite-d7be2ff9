@@ -92,12 +92,14 @@ Painel interno de administração (ver clientes, uso, erros), rotina de suporte,
 | 5 — Cobrança | Médio-baixo |
 | 6 — Operação | Contínuo |
 
-Caminho mais seguro na prática: fazer a Fase 1 completa, depois vender **um módulo piloto** (RH ou NutriControle é o mais fácil de isolar) para um cliente real e só então abrir o catálogo completo.
+Caminho mais seguro na prática: fazer a Fase 1 completa, depois vender **um módulo piloto** para um cliente real e só então abrir o catálogo completo. O candidato mais forte a piloto é o **Monitoramento de Temperatura** — poucas tabelas, sem dependência de folha/fiscal, ciclo de venda curto e público muito maior que restaurantes. Saúde Ocupacional é o segundo mais fácil, por já estar isolado em uma área própria.
 
 ## 6. O que eu preciso de você para seguir
 
 1. Aprovar o modelo SaaS multiempresa como arquitetura-alvo.
 2. Confirmar o recorte dos módulos vendáveis da tabela acima.
-3. Dizer qual módulo seria o piloto comercial.
+3. Confirmar se Saúde Ocupacional será vendida também avulsa (fora do RH) ou apenas dentro do pacote RH.
+4. Dizer qual módulo seria o piloto comercial.
+
 
 Quando decidir, eu monto o plano técnico detalhado da Fase 1 (modelo de dados, ordem de migração das 436 tabelas e plano de testes de isolamento).
