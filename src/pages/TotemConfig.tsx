@@ -10,6 +10,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Loader2, Monitor, Trash2, Upload, ImageIcon, ExternalLink, Video, FileCheck, CreditCard } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import TotemLivePreview from "@/components/totem/TotemLivePreview";
+
 
 const NfceTester = lazy(() => import("./NfceTester"));
 const TefPaygoSetup = lazy(() => import("./TefPaygoSetup"));
@@ -383,10 +385,13 @@ export default function TotemConfig() {
           </div>
         )}
       </Card>
+
+      <TotemLivePreview assets={assets} brands={brands} />
         </TabsContent>
 
         {/* VÍDEO */}
         <TabsContent value="video" className="space-y-6 mt-0">
+
           <Card className="p-4 space-y-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div>
@@ -441,7 +446,10 @@ export default function TotemConfig() {
               </div>
             )}
           </Card>
+
+          <TotemLivePreview assets={assets} brands={brands} />
         </TabsContent>
+
 
         {/* FISCAL / NFC-e */}
         <TabsContent value="fiscal" className="mt-0">
