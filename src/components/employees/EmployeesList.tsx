@@ -16,8 +16,10 @@ import { sortStores } from "@/lib/storeSort";
 import { buildS2200Xml, downloadS2200Xml, getMissingS2200Fields } from "@/lib/esocialS2200Export";
 import { getTermsForPosition } from "@/lib/positionTerms";
 import { getActiveContractTemplate } from "@/lib/contractPdf";
+import { COMPANY_CNPJ_DIGITS } from "@/lib/companyIdentity";
 
-const COMPANY_CNPJ = "44932369000108";
+const COMPANY_CNPJ = COMPANY_CNPJ_DIGITS;
+
 
 interface Employee {
   id: string;
