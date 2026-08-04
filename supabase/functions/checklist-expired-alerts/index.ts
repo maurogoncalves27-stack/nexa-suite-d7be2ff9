@@ -190,6 +190,33 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Reconfirma no banco, imediatamente antes de notificar, que nenhum desses
+    // check-lists foi enviado (evita alerta em massa por leitura parcial/corrida).
+    const { data: recheck, error: recheckErr } = await supabase
+      .from("checklist_submissions")
+      .select("template_id, user_id")
+      .eq("shift_date", dateStr)
+      .in("template_id", Array.from(new Set(pendings.map((p) => p.templateId))))
+      .limit(5000);
+    if (recheckErr) {
+      console.error("[checklist-expired-alerts] recheck falhou, abortando:", recheckErr.message);
+      return new Response(JSON.stringify({ ok: false, aborted: true, error: recheckErr.message }), {
+        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const confirmedSubmitted = new Set((recheck ?? []).map((s: any) => `${s.template_id}|${s.user_id}`));
+    const confirmed = pendings.filter((p) => !confirmedSubmitted.has(`${p.templateId}|${p.userId}`));
+    pendings.length = 0;
+    pendings.push(...confirmed);
+
+    if (pendings.length === 0) {
+      return new Response(JSON.stringify({ ok: true, date: dateStr, pending: 0, notified: 0 }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+
+
     // ---- agrupa por loja e notifica gestores ----
     const byStore = new Map<string, Pending[]>();
     for (const p of pendings) {
