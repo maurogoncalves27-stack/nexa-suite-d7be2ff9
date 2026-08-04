@@ -439,6 +439,7 @@ const App = () => (
               <Route path="/configuracoes/tef-payer" element={<Guarded staff><TefPayerSetup /></Guarded>} />
               <Route path="/configuracoes/acesso-remoto" element={<Guarded staff><RemoteAccess /></Guarded>} />
               <Route path="/configuracoes/rede-lojas" element={<Guarded staff><NetworkMonitor /></Guarded>} />
+              <Route path="/configuracoes/hardcodes" element={<Guarded staff><HardcodesMap /></Guarded>} />
               <Route path="/recebimento" element={<Guarded><InventoryReceiving /></Guarded>} />
               <Route path="/nf-arquivadas" element={<Guarded><NfArchived /></Guarded>} />
               <Route path="/produtos" element={<Guarded><InventoryProducts /></Guarded>} />
