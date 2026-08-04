@@ -227,7 +227,7 @@ export default function Totem() {
           .in("id", itemIds).eq("is_active", true).order("sort_order");
         itemsData = (data ?? []) as MenuItem[];
 
-        // foto única: usa recipes.photo_path (mesma do /cardapio); fallback p/ menu_items.photo_path
+        // Mesma resolução do /cardapio: ficha técnica, foto do item e receituário como fallback.
         const recipeIds = Array.from(new Set(itemsData.map((i) => i.recipe_id).filter(Boolean) as string[]));
         const recipePhotoMap: Record<string, string> = {};
         if (recipeIds.length > 0) {
@@ -238,11 +238,25 @@ export default function Totem() {
             }
           }
         }
+        const recipeBookPhotoMap: Record<string, string> = {};
+        const { data: books } = await (supabase as any)
+          .from("recipe_books")
+          .select("menu_item_id,recipe_id,photo_path")
+          .not("photo_path", "is", null)
+          .or(`menu_item_id.in.(${itemIds.join(",")})${recipeIds.length ? `,recipe_id.in.(${recipeIds.join(",")})` : ""}`);
+        const recipeBookPhotoByRecipe: Record<string, string> = {};
+        for (const book of (books ?? []) as Array<{ menu_item_id: string | null; recipe_id: string | null; photo_path: string }>) {
+          const url = supabase.storage.from("recipe-book-photos").getPublicUrl(book.photo_path).data.publicUrl;
+          if (book.menu_item_id) recipeBookPhotoMap[book.menu_item_id] = url;
+          if (book.recipe_id) recipeBookPhotoByRecipe[book.recipe_id] = url;
+        }
         itemsData = itemsData.map((it) => ({
           ...it,
           photo_url:
             (it.recipe_id ? recipePhotoMap[it.recipe_id] : null) ??
-            photoUrl(it.photo_path),
+            photoUrl(it.photo_path) ??
+            recipeBookPhotoMap[it.id] ??
+            (it.recipe_id ? recipeBookPhotoByRecipe[it.recipe_id] : null),
         }));
       }
       setCategories((cats.data ?? []) as Category[]);
