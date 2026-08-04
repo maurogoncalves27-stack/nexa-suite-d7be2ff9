@@ -149,6 +149,7 @@ const SmartPosLogin = lazy(() => import("./pages/SmartPosLogin.tsx"));
 const Garcom = lazy(() => import("./pages/Garcom.tsx"));
 const Totem = lazy(() => import("./pages/Totem.tsx"));
 const TotemConfig = lazy(() => import("./pages/TotemConfig.tsx"));
+const OperationalHealth = lazy(() => import("./pages/OperationalHealth.tsx"));
 const NfceTester = lazy(() => import("./pages/NfceTester.tsx"));
 const NetworkMonitor = lazy(() => import("./pages/NetworkMonitor.tsx"));
 const HardcodesMap = lazy(() => import("./pages/HardcodesMap.tsx"));
@@ -432,6 +433,7 @@ const App = () => (
               <Route path="/configuracoes/whatsapp" element={<Guarded staff><WhatsAppAdmin /></Guarded>} />
               <Route path="/whatsapp" element={<Guarded staff><WhatsApp /></Guarded>} />
               <Route path="/configuracoes/totem" element={<Guarded staff><TotemConfig /></Guarded>} />
+              <Route path="/saude-operacional" element={<Guarded staff><OperationalHealth /></Guarded>} />
               <Route path="/configuracoes/nfce-tester" element={<Guarded staff><NfceTester /></Guarded>} />
               <Route path="/configuracoes/tef-paygo" element={<Guarded staff><TefPaygoSetup /></Guarded>} />
               <Route path="/configuracoes/yolo" element={<Guarded staff><YoloIntegration /></Guarded>} />

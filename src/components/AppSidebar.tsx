@@ -219,6 +219,7 @@ const pagamentosSections: Section[] = [
 const pdvSections: Section[] = [
   { label: "Operação", items: [
     { title: "PDV (gestor)", url: "/pdv-novo", icon: ShoppingBag, staffOnly: true },
+    { title: "Saúde operacional", url: "/saude-operacional", icon: Radar, staffOnly: true },
     { title: "Smart POS", url: "/smartpos", icon: Smartphone, staffOnly: true },
     { title: "Cancelamentos", url: "/pdv-cancelamentos", icon: XCircle, staffOnly: true },
     { title: "TEF PayGo", url: "/configuracoes/tef-paygo", icon: CreditCard, staffOnly: true },
