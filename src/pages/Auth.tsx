@@ -169,7 +169,7 @@ export default function Auth() {
     setBusy(true);
     const { data: signUpData, error } = await supabase.auth.signUp({
       email: ep.data, password: pp.data,
-      options: { emailRedirectTo: `${window.location.origin}/`, data: { full_name: np.data } },
+      options: { emailRedirectTo: `${window.location.origin}${nextParam ?? "/"}`, data: { full_name: np.data } },
     });
     if (error) {
       setBusy(false);
