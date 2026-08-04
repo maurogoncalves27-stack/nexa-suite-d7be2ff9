@@ -130,14 +130,14 @@ serve(async (req) => {
 
     const escopoBlock = escopo === "loja"
       ? `ESCOPO: análise focada APENAS na loja "${lojaAlvo}". Toda a análise (resumo, causas, padrões, sugestões) deve ser sobre ESSA loja. Em "loja_critica.nome" coloque "${lojaAlvo}". Não compare com outras lojas.`
-      : `ESCOPO: análise PANORÂMICA das 4 lojas (ASA SUL, ASA NORTE, ÁGUAS CLARAS, LAGO SUL). REGRAS OBRIGATÓRIAS:
+      : `ESCOPO: análise PANORÂMICA das 4 lojas (ASA SUL, 114 NORTE, ÁGUAS CLARAS, LAGO SUL). REGRAS OBRIGATÓRIAS:
 - O "resumo" DEVE citar pelo menos 2-3 lojas e seus índices per_10k_interno, comparando. NÃO foque numa loja só.
 - "loja_critica" é apenas o destaque do pior caso — mas o resto da análise olha o conjunto.
 - "causas_principais" devem ser causas que aparecem na REDE (em mais de uma loja se possível). Cite entre parênteses quais lojas mais sofrem com cada causa.
-- "padroes" DEVE incluir comparações entre lojas (ex: "ASA NORTE tem 3x mais erro de preparo que LAGO SUL", "todas as lojas têm pico de ocorrências às sextas").
+- "padroes" DEVE incluir comparações entre lojas (ex: "114 NORTE tem 3x mais erro de preparo que LAGO SUL", "todas as lojas têm pico de ocorrências às sextas").
 - "sugestoes" são para a REDE inteira (ações que beneficiam todas as lojas), não específicas de uma loja. Se uma ação for crítica só pra uma loja, deixe explícito no "detalhe".`;
 
-    const systemPrompt = `Você é um analista operacional sênior da rede de restaurantes Aquela Parme (delivery iFood, 4 lojas: ASA SUL, ASA NORTE, ÁGUAS CLARAS, LAGO SUL).
+    const systemPrompt = `Você é um analista operacional sênior da rede de restaurantes Aquela Parme (delivery iFood, 4 lojas: ASA SUL, 114 NORTE, ÁGUAS CLARAS, LAGO SUL).
 Sua função: ler agregações de ocorrências e devolver um diagnóstico executivo curto, direto e acionável.
 
 ${escopoBlock}
