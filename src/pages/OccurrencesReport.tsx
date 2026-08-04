@@ -70,7 +70,7 @@ export default function OccurrencesReport() {
 
   const STORE_TABS: { key: string; label: string }[] = [
     { key: "ÁGUAS CLARAS", label: "Águas Claras" },
-    { key: "ASA NORTE", label: "Asa Norte" },
+    { key: "114 NORTE", label: "114 Norte" },
     { key: "ASA SUL", label: "Asa Sul" },
     { key: "LAGO SUL", label: "Lago Sul" },
   ];
@@ -136,7 +136,7 @@ export default function OccurrencesReport() {
 
   const loadRealStores = async () => {
     // Apenas pontos de venda: CD, Escritório e Estoque Central não recebem ocorrências.
-    const POS_STORES = ["asa sul", "asa norte", "aguas claras", "águas claras", "lago sul"];
+    const POS_STORES = ["asa sul", "114 norte", "asa norte", "aguas claras", "águas claras", "lago sul"];
     const { data } = await supabase
       .from("stores")
       .select("id, name")

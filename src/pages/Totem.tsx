@@ -75,7 +75,7 @@ const DEFAULT_TOTEM_STORE = "asa sul";
 // Mapeia email do login de totem → loja física
 const TOTEM_LOGIN_STORE_MAP: Record<string, string> = {
   "totemas@aquelaparme.com.br": "asa sul",
-  "toteman@aquelaparme.com.br": "asa norte",
+  "toteman@aquelaparme.com.br": "114 norte",
   "totemls@aquelaparme.com.br": "lago sul",
   "totemac@aquelaparme.com.br": "aguas claras",
 };

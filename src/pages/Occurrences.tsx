@@ -388,7 +388,7 @@ export default function Occurrences() {
       // Carrega lojas reais (para o GPS e validação de IDs)
       // CD não é ponto de venda: englobado fisicamente pela ASA SUL (PDV + estoque central + escritório).
       // Só as 4 unidades de atendimento entram na detecção automática.
-      const POS_STORES = ["asa sul", "asa norte", "aguas claras", "águas claras", "lago sul"];
+      const POS_STORES = ["asa sul", "114 norte", "asa norte", "aguas claras", "águas claras", "lago sul"];
       const isPosStore = (name?: string | null) => {
         const n = (name ?? "").toLowerCase();
         return POS_STORES.some((p) => n.includes(p));

@@ -18,6 +18,7 @@ const normalize = (s: string) =>
 
 const STORE_NAME_TO_SNAPSHOT: Record<string, SnapshotStoreKey> = {
   "ASA NORTE": "ASN",
+  "114 NORTE": "ASN",
   "ASA SUL": "ASS",
   "AGUAS CLARAS": "AGC",
   "LAGO SUL": "LGS",

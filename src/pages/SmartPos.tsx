@@ -41,7 +41,7 @@ import { useSmartPosCart } from "@/hooks/useSmartPosCart";
 const fmt = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 
-const ALLOWED_STORE_NAMES = ["ASA SUL", "ASA NORTE", "ÁGUAS CLARAS", "AGUAS CLARAS", "LAGO SUL"];
+const ALLOWED_STORE_NAMES = ["ASA SUL", "114 NORTE", "ASA NORTE", "ÁGUAS CLARAS", "AGUAS CLARAS", "LAGO SUL"];
 
 interface Store {
   id: string;

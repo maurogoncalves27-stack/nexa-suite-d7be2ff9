@@ -41,7 +41,7 @@ const monthsAgoISO = (n: number) => {
 };
 
 // Lojas físicas que recebem rateio (por nome, robusto a remapeamento de IDs)
-const ALLOCATION_STORE_NAMES = ["ÁGUAS CLARAS", "ASA NORTE", "ASA SUL", "LAGO SUL"];
+const ALLOCATION_STORE_NAMES = ["ÁGUAS CLARAS", "114 NORTE", "ASA NORTE", "ASA SUL", "LAGO SUL"];
 // Identificação do CD (por nome)
 const FACTORY_STORE_NAMES = ["CD", "CD"];
 

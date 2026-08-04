@@ -413,7 +413,7 @@ function extractClientInfo(conv: any, msgs: any[] | null): Record<string, string
   if (endMatch) info["Endereço mencionado"] = endMatch[0].trim();
 
   // Loja mencionada
-  const lojas = ["Asa Norte", "Asa Sul", "Águas Claras", "Aguas Claras", "Lago Sul"];
+  const lojas = ["114 Norte", "Asa Norte", "Asa Sul", "Águas Claras", "Aguas Claras", "Lago Sul"];
   const lojaHit = lojas.find((l) => new RegExp(l, "i").test(userText));
   if (lojaHit) info["Loja mencionada"] = lojaHit;
 

@@ -121,7 +121,7 @@ export default function CustomerReviews({ embedded = false }: { embedded?: boole
 
   async function load() {
     setLoading(true);
-    const ALLOWED_STORES = ["ASA SUL", "ASA NORTE", "AGUAS CLARAS", "ÁGUAS CLARAS", "LAGO SUL", "CD", "CD"];
+    const ALLOWED_STORES = ["ASA SUL", "114 NORTE", "ASA NORTE", "AGUAS CLARAS", "ÁGUAS CLARAS", "LAGO SUL", "CD", "CD"];
     const ALLOWED_BRANDS = ["AQUELA PARME", "AQUELA PARMÊ", "AQUELE ESTROGONOFE", "AQUELE ESTROGONOFÊ", "BOX CAIPIRA"];
     const [r, b, s, g] = await Promise.all([
       supabase.from("customer_reviews").select("*").order("published_at", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false }).limit(500),
