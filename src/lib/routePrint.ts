@@ -11,6 +11,7 @@ interface OrderItemLite {
   unit_price?: number;
   total: number;
   notes?: string | null;
+  complements?: Array<{ option_name?: string; name?: string }>;
 }
 
 export interface OrderForPrint {
@@ -105,7 +106,10 @@ function mapItems(items: OrderItemLite[]) {
     qty: it.quantity,
     name: it.name,
     unitPrice: it.unit_price,
-    note: it.notes ?? undefined,
+    note: [
+      it.notes,
+      ...(it.complements ?? []).map((complement) => `+ ${complement.option_name ?? complement.name ?? "Complemento"}`),
+    ].filter(Boolean).join(" | ") || undefined,
   }));
 }
 
