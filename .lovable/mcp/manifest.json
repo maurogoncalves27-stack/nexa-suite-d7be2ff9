@@ -3,13 +3,17 @@
   "sdk_version": "0.20.0",
   "path": "/functions/v1/mcp",
   "auth": {
-    "type": "none"
+    "type": "oauth",
+    "issuer": "https://ixjgmerxxakdkfdzgumy.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
   },
   "mcp": {
     "server": {
-      "name": "nexa-suite-mcp",
-      "version": "0.1.0",
-      "title": "NEXA Suite MCP"
+      "name": "nexa-suite",
+      "version": "0.2.0",
+      "title": "NEXA SUITE"
     },
     "tools": [
       {

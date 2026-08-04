@@ -3,7 +3,7 @@
 // supabase function: mcp
 // Bundled from src/lib/mcp/index.ts by @lovable.dev/mcp-js.
 // src/lib/mcp/index.ts
-import { defineMcp } from "npm:@lovable.dev/mcp-js@0.20.0";
+import { auth, defineMcp } from "npm:@lovable.dev/mcp-js@0.20.0";
 
 // src/lib/mcp/tools/echo.ts
 import { defineTool } from "npm:@lovable.dev/mcp-js@0.20.0";
@@ -20,11 +20,16 @@ var echo_default = defineTool({
 });
 
 // src/lib/mcp/index.ts
+var projectRef = "ixjgmerxxakdkfdzgumy";
 var mcp_default = defineMcp({
-  name: "nexa-suite-mcp",
-  title: "NEXA Suite MCP",
-  version: "0.1.0",
-  instructions: "MCP server for NEXA Suite. Use `echo` to verify connectivity. Additional tools can be added under src/lib/mcp/tools/.",
+  name: "nexa-suite",
+  title: "NEXA SUITE",
+  version: "0.2.0",
+  instructions: "MCP server for NEXA Suite. Requires the caller to sign in as a NEXA Suite user; tools act with that user's permissions. Use `echo` to verify connectivity.",
+  auth: auth.oauth.issuer({
+    issuer: `https://${projectRef}.supabase.co/auth/v1`,
+    acceptedAudiences: "authenticated"
+  }),
   tools: [echo_default]
 });
 
