@@ -564,6 +564,39 @@ export type Database = {
           },
         ]
       }
+      audit_log: {
+        Row: {
+          action: string
+          changed_at: string
+          changed_by: string | null
+          id: number
+          new_data: Json | null
+          old_data: Json | null
+          record_id: string | null
+          table_name: string
+        }
+        Insert: {
+          action: string
+          changed_at?: string
+          changed_by?: string | null
+          id?: number
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string | null
+          table_name: string
+        }
+        Update: {
+          action?: string
+          changed_at?: string
+          changed_by?: string | null
+          id?: number
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string | null
+          table_name?: string
+        }
+        Relationships: []
+      }
       automation_rule_runs: {
         Row: {
           detail: Json | null
@@ -10513,6 +10546,44 @@ export type Database = {
         }
         Relationships: []
       }
+      operational_health_alerts_sent: {
+        Row: {
+          alert_date: string
+          alert_type: string
+          created_at: string
+          detail: string | null
+          id: string
+          notified_count: number
+          store_id: string
+        }
+        Insert: {
+          alert_date: string
+          alert_type: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          notified_count?: number
+          store_id: string
+        }
+        Update: {
+          alert_date?: string
+          alert_type?: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          notified_count?: number
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_health_alerts_sent_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       outsourced_companies: {
         Row: {
           address: string | null
@@ -19797,6 +19868,27 @@ export type Database = {
         Returns: string
       }
       operational_health: {
+        Args: never
+        Returns: {
+          allow_order_type: boolean
+          invoice_errors_24h: number
+          last_invoice_at: string
+          last_invoice_status: string
+          last_order_at: string
+          last_tef_at: string
+          last_tef_status: string
+          orders_today: number
+          printers_active: number
+          revenue_today: number
+          store_id: string
+          store_name: string
+          tef_active: boolean
+          tef_environment: string
+          tef_errors_24h: number
+          tef_provider: string
+        }[]
+      }
+      operational_health_snapshot: {
         Args: never
         Returns: {
           allow_order_type: boolean

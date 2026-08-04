@@ -17,6 +17,8 @@ import { RoleManifest } from "@/components/pwa/RoleManifest";
 // Eager: rotas críticas de boot (auth + landing)
 import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
+import OAuthConsent from "./pages/OAuthConsent.tsx";
+
 import NexaEntry from "./pages/NexaEntry.tsx";
 
 // Lazy: demais páginas só carregam ao acessar a rota
@@ -270,6 +272,8 @@ const App = () => (
             <Route path="/pedir/:slug/carrinho" element={<PedirCarrinho />} />
 
             <Route path="/auth" element={<Auth />} />
+            <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
+
             <Route path="/nexa" element={<NexaEntry />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/verificar/:type/:id" element={<VerifySignature />} />

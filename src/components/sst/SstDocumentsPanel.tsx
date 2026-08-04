@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { toast } from "@/hooks/use-toast";
 import { Download, FileText, History, Loader2, Plus, ShieldCheck, Trash2, Upload } from "lucide-react";
+import { COMPANY_CNPJ } from "@/lib/companyIdentity";
 
 type DocType =
   | "pcmso"
@@ -90,7 +91,7 @@ export default function SstDocumentsPanel() {
 
   // Form
   const [docType, setDocType] = useState<DocType>("pcmso");
-  const [cnpj, setCnpj] = useState("44.932.369/0001-08");
+  const [cnpj, setCnpj] = useState(COMPANY_CNPJ);
   const [companyName, setCompanyName] = useState("AQUELA PARMÊ");
   const [emittedAt, setEmittedAt] = useState(new Date().toISOString().slice(0, 10));
   const [validFrom, setValidFrom] = useState(new Date().toISOString().slice(0, 10));
@@ -101,7 +102,7 @@ export default function SstDocumentsPanel() {
   const resetForm = () => {
     setEditingDoc(null);
     setDocType("pcmso");
-    setCnpj("44.932.369/0001-08");
+    setCnpj(COMPANY_CNPJ);
     setCompanyName("AQUELA PARMÊ");
     const today = new Date().toISOString().slice(0, 10);
     setEmittedAt(today);

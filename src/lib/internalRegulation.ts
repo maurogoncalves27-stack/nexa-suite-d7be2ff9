@@ -1,3 +1,4 @@
+import { COMPANY_CNPJ } from "@/lib/companyIdentity";
 export const INTERNAL_REGULATION_VERSION = "1.0";
 
 export const INTERNAL_REGULATION_TITLE = "REGULAMENTO INTERNO DA EMPRESA";
@@ -116,7 +117,7 @@ export const INTERNAL_REGULATION_COMMITMENT =
 
 export const COMPANY_INFO = {
   name: "DVF FOODS SERVICE LTDA",
-  cnpj: "44.932.369/0001-08",
+  cnpj: COMPANY_CNPJ,
   address: "SHCS Cr Quadra 513 Bloco B - Asa Sul, Brasília - DF, 70.380-520",
 };
 

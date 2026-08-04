@@ -8,6 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { Loader2, Sparkles } from "lucide-react";
 import { classifySstDocument, matchEmployeeFromClassification, type SmartClassifyResult } from "@/lib/sstSmartUpload";
 import { uploadEmployeePdfBlob } from "@/lib/employeeDocUpload";
+import { COMPANY_CNPJ } from "@/lib/companyIdentity";
 
 type DocType =
   | "pcmso"
@@ -120,7 +121,7 @@ export default function SstSmartUploadButton({ variant = "secondary" }: { varian
       }
 
       const kind = smartResult.kind === "outros" ? "outros" : smartResult.kind;
-      const cnpjIn = smartResult.cnpj || "44.932.369/0001-08";
+      const cnpjIn = smartResult.cnpj || COMPANY_CNPJ;
       const cnpjKey = cnpjIn.replace(/\D/g, "");
       const company = smartResult.company_name || "AQUELA PARMÊ";
       const today = new Date().toISOString().slice(0, 10);

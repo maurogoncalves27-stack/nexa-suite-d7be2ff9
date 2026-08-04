@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { TimesheetClosureEntry, TimesheetClosureRow } from "@/lib/timesheetPdf";
+import { COMPANY_CNPJ } from "@/lib/companyIdentity";
 
 /** Resumo gravado em timesheet_closures.summary. */
 export interface TimesheetClosureSummary {
@@ -132,7 +133,7 @@ export async function buildEmployeeTimesheetRow(opts: {
     store_name: store?.name ?? null,
     store_address: addr,
     company_name: store?.legal_name ?? store?.name ?? null,
-    company_cnpj: "44.932.369/0001-08",
+    company_cnpj: COMPANY_CNPJ,
     position: emp.position ?? null,
     worked_days: sum.worked_days ?? null,
     scheduled_work_days: sum.scheduled_work_days ?? null,
