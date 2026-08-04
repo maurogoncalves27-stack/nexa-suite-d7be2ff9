@@ -118,7 +118,8 @@ Deno.serve(async (req) => {
         supabase
           .from("employees")
           .select("id, full_name, store_id, allocated_store_id")
-          .in("id", employeeIds),
+          .in("id", employeeIds)
+          .in("status", ["active", "in_training"]),
         supabase
           .from("late_punch_alerts_sent")
           .select("employee_id")
