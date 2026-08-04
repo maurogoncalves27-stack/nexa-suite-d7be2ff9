@@ -18,6 +18,7 @@ import { toast } from "@/hooks/use-toast";
 import { Link, Navigate } from "react-router-dom";
 import { buildS1200Xml, downloadS1200Xml } from "@/lib/esocialS1200Export";
 import PromotionAlertsCard from "@/components/contabilidade/PromotionAlertsCard";
+import { COMPANY_CNPJ_DIGITS } from "@/lib/companyIdentity";
 
 
 interface PayrollImport {
@@ -215,7 +216,7 @@ export default function Contabilidade() {
         toast({ title: "Sem dados", description: "Nenhum colaborador com rubricas e CPF.", variant: "destructive" });
         return;
       }
-      const xml = buildS1200Xml({ rows: exportRows, refYear: imp.ref_year, refMonth: imp.ref_month, cnpj: "44932369000108" });
+      const xml = buildS1200Xml({ rows: exportRows, refYear: imp.ref_year, refMonth: imp.ref_month, cnpj: COMPANY_CNPJ_DIGITS });
       downloadS1200Xml(xml, imp.ref_year, imp.ref_month);
       toast({ title: "eSocial S-1200 gerado", description: `${exportRows.length} evento(s) no XML.` });
     } catch (e: any) {
