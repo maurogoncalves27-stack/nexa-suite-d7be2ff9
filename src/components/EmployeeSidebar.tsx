@@ -41,8 +41,17 @@ export function EmployeeSidebar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { signOut, isAdmin, isManager, isPartner, isSuperUser } = useAuth();
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
+
+  // No mobile o menu fecha sozinho ao navegar.
+  useEffect(() => {
+    if (isMobile) setOpenMobile(false);
+  }, [pathname, isMobile, setOpenMobile]);
+
+  const closeSidebar = () => {
+    if (isMobile) setOpenMobile(false);
+  };
 
   const isActive = (url: string) =>
     url === "/area-colaborador" ? pathname === url : pathname.startsWith(url);
