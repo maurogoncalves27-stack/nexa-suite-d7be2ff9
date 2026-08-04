@@ -270,6 +270,8 @@ const App = () => (
             <Route path="/pedir/:slug/carrinho" element={<PedirCarrinho />} />
 
             <Route path="/auth" element={<Auth />} />
+            <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
+
             <Route path="/nexa" element={<NexaEntry />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/verificar/:type/:id" element={<VerifySignature />} />
