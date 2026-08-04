@@ -79,11 +79,11 @@ PREÇOS (CRÍTICO):
 - Não temos checkout/pagamento próprio. Todo pedido é pelo iFood.
 
 RETIRADA NO BALCÃO (RESPOSTA ÚNICA E PADRONIZADA):
-- Todas as 4 unidades (Asa Norte, Asa Sul, Águas Claras e Lago Sul) aceitam retirada.
+- Todas as 4 unidades (114 Norte, Asa Sul, Águas Claras e Lago Sul) aceitam retirada.
 - O pedido é feito pelo iFood escolhendo a opção "Retirada" — assim não há taxa de entrega.
 - Não temos pedido por telefone nem por WhatsApp.
 - O preço do prato é o mesmo do iFood; a economia é só na taxa de entrega.
-- Salão para comer no local: SOMENTE Asa Norte.
+- Salão para comer no local: SOMENTE 114 Norte (Asa Norte).
 - NUNCA diga que dá pra "pedir direto no balcão" fora dessa regra.
 
 DELIVERY (FLUXO CURTO):
@@ -977,7 +977,7 @@ Deno.serve(async (req) => {
       }),
 
       criar_reserva: tool({
-        description: "Cria uma reserva de mesa (salão só existe na Asa Norte) após confirmar nome, telefone, data, horário e nº de pessoas. NUNCA diga ao cliente que a reserva está feita sem que este tool retorne sucesso=true.",
+        description: "Cria uma reserva de mesa (salão só existe na 114 Norte) após confirmar nome, telefone, data, horário e nº de pessoas. NUNCA diga ao cliente que a reserva está feita sem que este tool retorne sucesso=true.",
         inputSchema: reservaSchema,
         execute: async ({ nome, telefone, data, horario, pessoas, observacao }) => {
           const hoje = new Date().toISOString().slice(0, 10);
@@ -1017,7 +1017,7 @@ Deno.serve(async (req) => {
               sucesso: false,
               erro: "falha_tecnica",
               mensagem:
-                "Não consegui registrar a reserva agora. Diga ao cliente com honestidade que houve falha no sistema, que a equipe da Asa Norte já foi acionada e vai retornar pelo telefone informado.",
+                "Não consegui registrar a reserva agora. Diga ao cliente com honestidade que houve falha no sistema, que a equipe da 114 Norte já foi acionada e vai retornar pelo telefone informado.",
             };
           }
           notifyStoreReservation(nome, telefone, data, horario, pessoas, observacao);
@@ -1227,7 +1227,7 @@ Deno.serve(async (req) => {
             }
           }
           const labels: Record<UnitKey, string> = {
-            "asa-norte": "Asa Norte",
+            "asa-norte": "114 Norte",
             "asa-sul": "Asa Sul",
             "lago-sul": "Lago Sul",
             "aguas-claras": "Águas Claras",

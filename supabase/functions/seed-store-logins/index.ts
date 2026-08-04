@@ -15,7 +15,7 @@ if (!PASSWORD) {
 
 const LOGINS = [
   { email: "asasul@aquelaparme.com.br", name: "PC ASA SUL" },
-  { email: "asanorte@aquelaparme.com.br", name: "PC ASA NORTE" },
+  { email: "asanorte@aquelaparme.com.br", name: "PC 114 NORTE" },
   { email: "aguasclaras@aquelaparme.com.br", name: "PC ÁGUAS CLARAS" },
   { email: "lagosul@aquelaparme.com.br", name: "PC LAGO SUL" },
 ];

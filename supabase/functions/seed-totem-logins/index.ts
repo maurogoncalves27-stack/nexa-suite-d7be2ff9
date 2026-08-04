@@ -12,7 +12,7 @@ const PASSWORD = Deno.env.get("TOTEM_SEED_PASSWORD");
 
 const LOGINS = [
   { email: "totemas@aquelaparme.com.br", name: "TOTEM ASA SUL", store: "asa sul" },
-  { email: "toteman@aquelaparme.com.br", name: "TOTEM ASA NORTE", store: "asa norte" },
+  { email: "toteman@aquelaparme.com.br", name: "TOTEM 114 NORTE", store: "114 norte" },
   { email: "totemls@aquelaparme.com.br", name: "TOTEM LAGO SUL", store: "lago sul" },
   { email: "totemac@aquelaparme.com.br", name: "TOTEM AGUAS CLARAS", store: "aguas claras" },
 ];

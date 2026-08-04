@@ -35,6 +35,7 @@ const PUBLIC_SITE_URL = (Deno.env.get("PUBLIC_SITE_URL") ?? "https://nexa.aquela
 
 const STORE_ICON_MAP: Record<string, string> = {
   "ASA NORTE": "/notification-icons/dot-asa-norte.png",
+  "114 NORTE": "/notification-icons/dot-asa-norte.png",
   "AGUAS CLARAS": "/notification-icons/dot-aguas-claras.png",
   "ÁGUAS CLARAS": "/notification-icons/dot-aguas-claras.png",
   "ASA SUL": "/notification-icons/dot-asa-sul.png",
@@ -43,6 +44,7 @@ const STORE_ICON_MAP: Record<string, string> = {
 
 const STORE_EMOJI_MAP: Record<string, string> = {
   "ASA NORTE": "🟢",
+  "114 NORTE": "🟢",
   "AGUAS CLARAS": "🔵",
   "ÁGUAS CLARAS": "🔵",
   "ASA SUL": "🟡",
