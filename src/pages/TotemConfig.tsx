@@ -446,7 +446,10 @@ export default function TotemConfig() {
               </div>
             )}
           </Card>
+
+          <TotemLivePreview assets={assets} brands={brands} />
         </TabsContent>
+
 
         {/* FISCAL / NFC-e */}
         <TabsContent value="fiscal" className="mt-0">
