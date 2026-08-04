@@ -16319,6 +16319,57 @@ export type Database = {
         }
         Relationships: []
       }
+      system_hardcodes: {
+        Row: {
+          area: string
+          assignee: string | null
+          code: string
+          created_at: string
+          description: string
+          file_path: string
+          id: string
+          notes: string | null
+          priority: string
+          resolved_at: string | null
+          sort_order: number
+          status: string
+          suggested_fix: string
+          updated_at: string
+        }
+        Insert: {
+          area: string
+          assignee?: string | null
+          code: string
+          created_at?: string
+          description: string
+          file_path: string
+          id?: string
+          notes?: string | null
+          priority?: string
+          resolved_at?: string | null
+          sort_order?: number
+          status?: string
+          suggested_fix?: string
+          updated_at?: string
+        }
+        Update: {
+          area?: string
+          assignee?: string | null
+          code?: string
+          created_at?: string
+          description?: string
+          file_path?: string
+          id?: string
+          notes?: string | null
+          priority?: string
+          resolved_at?: string | null
+          sort_order?: number
+          status?: string
+          suggested_fix?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       system_health_state: {
         Row: {
           details: Json | null
