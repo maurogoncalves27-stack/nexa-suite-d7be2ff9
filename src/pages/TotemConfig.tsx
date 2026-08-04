@@ -10,6 +10,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Loader2, Monitor, Trash2, Upload, ImageIcon, ExternalLink, Video, FileCheck, CreditCard } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import TotemLivePreview from "@/components/totem/TotemLivePreview";
+
 
 const NfceTester = lazy(() => import("./NfceTester"));
 const TefPaygoSetup = lazy(() => import("./TefPaygoSetup"));
