@@ -58,12 +58,16 @@ export default function TotemConfig() {
       supabase
         .from("stores")
         .select("id,name,totem_allow_order_type")
-        .is("parent_store_id", null)
+        .eq("is_virtual", false)
         .order("name"),
     ]);
     setBrands(((b.data ?? []) as Brand[]).filter((x) => !/f[áa]brica/i.test(x.name)));
     setAssets((a.data ?? []) as TotemAsset[]);
-    setPhysicalStores(((st.data ?? []) as PhysicalStore[]).filter((s) => !/^(cd|f[áa]brica)/i.test(s.name)));
+    setPhysicalStores(
+      ((st.data ?? []) as PhysicalStore[]).filter(
+        (s) => !/^(cd|f[áa]brica|escrit[óo]rio|estoque central)/i.test(s.name.trim()),
+      ),
+    );
     setLoading(false);
   };
 
