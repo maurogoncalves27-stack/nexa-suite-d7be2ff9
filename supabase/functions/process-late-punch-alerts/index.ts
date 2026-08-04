@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
           employee_id: sch.employee_id,
           schedule_date: dateStr,
           store_id: storeId ?? null,
-          shift_start_time: shift.start_time,
+          shift_start_time: startTime,
           notified_count: 0,
         });
         continue;
