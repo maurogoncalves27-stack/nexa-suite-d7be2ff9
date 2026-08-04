@@ -93,13 +93,12 @@ Deno.serve(async (req) => {
 
 
   try {
-    // 1. Escalas de hoje (não folga, com shift definido)
+    // 1. Escalas de hoje (não folga, com horário direto ou turno vinculado)
     const { data: schedules, error: schedErr } = await supabase
       .from("work_schedules")
-      .select("id, employee_id, store_id, shift_id, is_day_off, schedule_date")
+      .select("id, employee_id, store_id, shift_id, start_time, is_day_off, schedule_date")
       .eq("schedule_date", dateStr)
-      .eq("is_day_off", false)
-      .not("shift_id", "is", null);
+      .eq("is_day_off", false);
 
     if (schedErr) throw schedErr;
     if (!schedules || schedules.length === 0) {
@@ -113,7 +112,9 @@ Deno.serve(async (req) => {
 
     const [{ data: shifts }, { data: employees }, { data: alreadySent }, { data: stores }] =
       await Promise.all([
-        supabase.from("work_shifts").select("id, start_time, name").in("id", shiftIds),
+        shiftIds.length > 0
+          ? supabase.from("work_shifts").select("id, start_time, name").in("id", shiftIds)
+          : Promise.resolve({ data: [] }),
         supabase
           .from("employees")
           .select("id, full_name, store_id, allocated_store_id")
@@ -146,10 +147,11 @@ Deno.serve(async (req) => {
       if (sentSet.has(sch.employee_id)) continue;
       if (clockedIn.has(sch.employee_id)) continue;
 
-      const shift = shiftMap.get(sch.shift_id!);
-      if (!shift?.start_time) continue;
+      const shift = sch.shift_id ? shiftMap.get(sch.shift_id) : null;
+      const startTime = sch.start_time || shift?.start_time;
+      if (!startTime) continue;
 
-      const expectedStart = tzDateTimeToUtc(dateStr, shift.start_time);
+      const expectedStart = tzDateTimeToUtc(dateStr, startTime);
       const lateBy = (nowMs - expectedStart.getTime()) / 60000;
       if (lateBy < LATE_THRESHOLD_MIN) continue;
 
@@ -182,7 +184,7 @@ Deno.serve(async (req) => {
       const title = `⏰ Atraso: ${emp.full_name}`;
       const message =
         `${emp.full_name} ainda não bateu o ponto de entrada.\n` +
-        `Escala: ${shift.start_time.slice(0, 5)}${store ? ` · ${store.name}` : ""}\n` +
+        `Escala: ${startTime.slice(0, 5)}${store ? ` · ${store.name}` : ""}\n` +
         `Atraso: ${lateMin} min`;
 
       const rows = managerUserIds.map((uid) => ({
@@ -203,7 +205,7 @@ Deno.serve(async (req) => {
       const waText =
         `⏰ *Atraso de ponto*\n` +
         `*${emp.full_name}* ainda não bateu o ponto de entrada.\n` +
-        `Escala: ${shift.start_time.slice(0, 5)}${store ? ` · ${store.name}` : ""}\n` +
+        `Escala: ${startTime.slice(0, 5)}${store ? ` · ${store.name}` : ""}\n` +
         `Atraso: ${lateMin} min\n\n` +
         `Abrir: ${APP_BASE_URL}/ponto`;
       await fanoutWhatsapp(managerUserIds, waText);
@@ -226,7 +228,7 @@ Deno.serve(async (req) => {
         employee_id: sch.employee_id,
         schedule_date: dateStr,
         store_id: storeId ?? null,
-        shift_start_time: shift.start_time,
+        shift_start_time: startTime,
         notified_count: managerUserIds.length,
       });
 
