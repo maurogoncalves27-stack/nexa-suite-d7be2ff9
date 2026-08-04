@@ -35,7 +35,8 @@ Módulos propostos como pacotes vendáveis:
 | Pacote | Conteúdo |
 | --- | --- |
 | Core (obrigatório) | Empresa, unidades, usuários, permissões, notificações, dashboard |
-| Operação PDV | PDV, Totem, Garçom, TEF, NFC-e, canais de venda |
+| Operação PDV | PDV, Garçom, TEF, NFC-e, canais de venda |
+| Totem de Autoatendimento | Totem em modo quiosque, cardápio/marcas, comer no local ou levar, TEF no pinpad, NFC-e, comanda de cozinha, vídeo/slideshow de atrair e página de configuração |
 | RH | Colaboradores, ponto, escala, folha, rescisões, bonificações, portal do colaborador |
 | Saúde Ocupacional | Painel NR-1, riscos psicossociais, atestados, ASO/PCMSO, documentos SST, saúde mental, clima organizacional |
 | Monitoramento de Temperatura | Sensores de câmara fria/freezer, leituras automáticas, faixas por equipamento, alertas de fora-da-faixa e de sensor offline (WhatsApp/SMS), histórico e relatórios |
@@ -44,10 +45,12 @@ Módulos propostos como pacotes vendáveis:
 | Qualidade | NutriControle, check-lists, ocorrências, controle de pragas, óleo, caixa d'água |
 | Inteligência | Giana/IA, CRM, avaliações, painel de saúde operacional |
 
-Dois pontos sobre o recorte:
+Três pontos sobre o recorte:
 
 - **Monitoramento de Temperatura** vira módulo independente e é o melhor "produto de entrada": vende sozinho para qualquer cozinha, mercado, farmácia ou laboratório, mesmo para quem não quer o resto do sistema. Hoje ele já existe (sensores EMS-A + alertas) mas está amarrado dentro do NutriControle e com o sensor da Asa Sul fixo no código — precisa virar cadastro livre de sensores por unidade.
 - **Saúde Ocupacional** vira módulo próprio, vendável de duas formas: avulso (para RH terceirizado, clínicas de medicina do trabalho e consultorias de SST) ou como parte do pacote RH completo. Tecnicamente ele já está isolado numa área única com abas, o que facilita o desmembramento.
+- **Totem de Autoatendimento** sai do pacote PDV e vira módulo próprio, cobrado por totem ativo. Muito restaurante quer só o totem sem trocar o PDV existente — por isso ele precisa funcionar com catálogo e emissão fiscal próprios, sem exigir o módulo PDV contratado.
+
 
 
 ## 3. Roteiro por fases
