@@ -58,6 +58,17 @@ Três pontos sobre o recorte:
 ### Fase 0 — Decisões comerciais (antes do código)
 Definir preço por módulo, limites por plano (usuários/unidades), política de suporte e o que entra no pacote básico. Sem isso o modelo de dados de plano nasce errado.
 
+### Fase 0.5 — Infraestrutura e segurança de rede (pré-requisito da venda a terceiros)
+Sair da infraestrutura atual para um ambiente próprio e robusto, dimensionado para múltiplos clientes:
+
+- **Migração de servidor para nuvem robusta (AWS ou equivalente)**: banco gerenciado com réplica e backup automático (RDS/Aurora), execução das funções de backend em ambiente escalável, armazenamento de arquivos em S3, CDN para o front e para o cardápio público, ambientes separados de produção e homologação.
+- **Firewall de rede contratado**: WAF na borda (regras contra injeção, bots e abuso), proteção anti-DDoS, rede privada para o banco (sem exposição pública), VPN/bastion para acesso administrativo, e limitação de taxa por cliente.
+- **Observabilidade e continuidade**: monitoramento de disponibilidade, alertas de infraestrutura, retenção de logs, plano de recuperação de desastre com RPO/RTO definidos.
+- **Regra de execução**: a migração já sai **modularizada e sem hardcode** — nada de "mover primeiro e arrumar depois". Todo serviço migrado nasce parametrizado por empresa/módulo (variáveis de ambiente e configuração em banco, nunca CNPJ, loja, token fiscal ou alíquota fixos no código), consumindo `src/lib/companyIdentity.ts` e o mapa de hardcodes em `/hardcodes` como lista de corte obrigatória.
+
+Consequência prática: a Fase 3 (despersonalização) deixa de ser uma etapa isolada no fim e passa a ser critério de aceite de cada serviço migrado nesta fase.
+
+
 ### Fase 1 — Fundação multiempresa
 Criar `tenants`, `tenant_users`, vincular `stores` a um tenant, migrar todos os dados atuais para o tenant "Aquela Parmê". Reescrever as políticas de acesso para que cada consulta seja obrigatoriamente filtrada por empresa. **É a fase mais crítica e mais cara** — toca as 436 tabelas.
 
