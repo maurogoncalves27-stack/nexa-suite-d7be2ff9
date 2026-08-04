@@ -43,15 +43,15 @@ Deno.serve(async (req) => {
 
   try {
     const [
-      { data: templates },
-      { data: emps },
-      { data: ug },
-      { data: cts },
-      { data: sched },
-      { data: assigns },
-      { data: subs },
-      { data: sent },
-      { data: stores },
+      templatesRes,
+      empsRes,
+      ugRes,
+      ctsRes,
+      schedRes,
+      assignsRes,
+      subsRes,
+      sentRes,
+      storesRes,
     ] = await Promise.all([
       supabase.from("checklist_templates")
         .select("id, title, deadline_time, weekdays, require_scheduled, is_active, template_access_groups(group_id)")
@@ -63,12 +63,38 @@ Deno.serve(async (req) => {
       supabase.from("checklist_template_stores").select("template_id, store_id"),
       supabase.from("work_schedules").select("employee_id, store_id, is_day_off").eq("schedule_date", dateStr),
       supabase.from("checklist_template_assignments").select("template_id, employee_id"),
-      supabase.from("checklist_submissions").select("template_id, user_id").eq("shift_date", dateStr),
-      supabase.from("checklist_expired_alerts_sent").select("template_id, user_id").eq("shift_date", dateStr),
+      supabase.from("checklist_submissions").select("template_id, user_id").eq("shift_date", dateStr).limit(5000),
+      supabase.from("checklist_expired_alerts_sent").select("template_id, user_id").eq("shift_date", dateStr).limit(5000),
       supabase.from("stores").select("id, name"),
     ]);
 
+    // Se QUALQUER consulta falhar, aborta: seguir com dados parciais faria o alerta
+    // acusar como "expirados" check-lists que na verdade já foram enviados.
+    const failed = [
+      ["templates", templatesRes], ["employees", empsRes], ["user_access_groups", ugRes],
+      ["template_stores", ctsRes], ["work_schedules", schedRes], ["assignments", assignsRes],
+      ["submissions", subsRes], ["alerts_sent", sentRes], ["stores", storesRes],
+    ].filter(([, r]: any) => r.error);
+    if (failed.length > 0) {
+      const msg = failed.map(([n, r]: any) => `${n}: ${r.error.message}`).join(" | ");
+      console.error("[checklist-expired-alerts] consulta falhou, abortando:", msg);
+      return new Response(JSON.stringify({ ok: false, aborted: true, error: msg }), {
+        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const templates = templatesRes.data;
+    const emps = empsRes.data;
+    const ug = ugRes.data;
+    const cts = ctsRes.data;
+    const sched = schedRes.data;
+    const assigns = assignsRes.data;
+    const subs = subsRes.data;
+    const sent = sentRes.data;
+    const stores = storesRes.data;
+
     const storeMap = new Map((stores ?? []).map((s: any) => [s.id, s.name]));
+
 
     // ---- audiência (mesma regra do front: src/lib/checklistAudience.ts) ----
     const people = new Map<string, any>();
