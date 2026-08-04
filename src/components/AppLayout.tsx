@@ -188,6 +188,7 @@ const PAGE_TITLES: PageMeta[] = [
   { match: (p) => p.startsWith("/configuracoes/entregas"), title: "Entregas (Motoboy)", group: "Configurações" },
   { match: (p) => p.startsWith("/configuracoes/whatsapp"), title: "Notificações WhatsApp", group: "Configurações" },
   { match: (p) => p.startsWith("/configuracoes/totem"), title: "Configuração do Totem", group: "Configurações" },
+  { match: (p) => p.startsWith("/saude-operacional"), title: "Saúde operacional", group: "PDV" },
   { match: (p) => p.startsWith("/configuracoes/yolo"), title: "Integração Yolo Club", group: "Configurações" },
   { match: (p) => p.startsWith("/configuracoes/nfce-tester"), title: "Teste NFC-e (ACBr)", group: "Configurações" },
   { match: (p) => p.startsWith("/configuracoes/tef-paygo"), title: "TEF PayGo", group: "PDV" },

@@ -21,7 +21,23 @@ export interface RecipeCostResult {
   }>;
 }
 
+interface IngredientRow {
+  product_id: string;
+  quantity: number | null;
+  unit: string | null;
+  ingredient_state: string | null;
+  product: { name: string | null; product_type: string | null } | null;
+}
+
+interface ConversionRow {
+  product_id: string;
+  from_qty: number | null;
+  to_qty: number | null;
+  is_default: boolean | null;
+}
+
 const MAX_DEPTH = 6;
+
 
 async function costPerUnitOfProduct(
   productId: string,
@@ -33,11 +49,17 @@ async function costPerUnitOfProduct(
 
   const { data: prod } = await supabase
     .from("inventory_products")
-    .select("id, average_cost, last_cost, product_type")
+    .select("id, average_cost, last_cost, product_type, infinite_stock, reference_unit_cost")
     .eq("id", productId)
     .maybeSingle();
 
   if (!prod) return 0;
+
+  // Produtos de estoque infinito (ex.: água potável) não têm entrada de nota:
+  // o custo vem sempre do custo de referência cadastrado.
+  if (prod.infinite_stock) {
+    return Number(prod.reference_unit_cost ?? 0);
+  }
 
   // Se for produzido, tenta calcular via receita ativa
   if (prod.product_type === "produzido") {
@@ -55,10 +77,13 @@ async function costPerUnitOfProduct(
     }
   }
 
-  // fallback: custo médio do estoque
+  // fallback: custo médio do estoque, depois última compra, depois referência
   const avg = Number(prod.average_cost ?? 0);
   if (avg > 0) return avg;
-  return Number(prod.last_cost ?? 0);
+  const last = Number(prod.last_cost ?? 0);
+  if (last > 0) return last;
+  return Number(prod.reference_unit_cost ?? 0);
+
 }
 
 async function calcRecipeCostInternal(
@@ -73,21 +98,26 @@ async function calcRecipeCostInternal(
     .maybeSingle();
   if (!recipe) return null;
 
-  const { data: ings } = await supabase
+  const { data: ingsData } = await supabase
     .from("recipe_ingredients")
     .select("product_id, quantity, unit, ingredient_state, product:inventory_products(name, product_type)")
-    .eq("recipe_id", recipeId);
+    .eq("recipe_id", recipeId)
+    .returns<IngredientRow[]>();
+  const ings: IngredientRow[] = ingsData ?? [];
 
-  const productIds = Array.from(new Set((ings ?? []).map((i: any) => i.product_id)));
-  const { data: convs } = productIds.length
-    ? await supabase
-        .from("product_conversions")
-        .select("product_id, from_qty, to_qty, is_default")
-        .eq("conversion_type", "preparo")
-        .in("product_id", productIds)
-    : { data: [] as any[] };
+  const productIds = Array.from(new Set(ings.map((i) => i.product_id)));
+  let convs: ConversionRow[] = [];
+  if (productIds.length) {
+    const { data } = await supabase
+      .from("product_conversions")
+      .select("product_id, from_qty, to_qty, is_default")
+      .eq("conversion_type", "preparo")
+      .in("product_id", productIds)
+      .returns<ConversionRow[]>();
+    convs = data ?? [];
+  }
   const prepByProduct = new Map<string, { from_qty: number; to_qty: number }>();
-  ((convs as any[]) ?? []).forEach((c) => {
+  convs.forEach((c) => {
     const existing = prepByProduct.get(c.product_id);
     if (!existing || c.is_default) prepByProduct.set(c.product_id, { from_qty: Number(c.from_qty), to_qty: Number(c.to_qty) });
   });
@@ -96,7 +126,8 @@ async function calcRecipeCostInternal(
   let total = 0;
   let inputBase = 0;
 
-  for (const i of (ings ?? []) as any[]) {
+  for (const i of ings) {
+
     let qty = Number(i.quantity ?? 0);
     // Se o ingrediente é usado "pronto" e o produto tem fator de preparo,
     // converte para cru (baixa real de estoque).

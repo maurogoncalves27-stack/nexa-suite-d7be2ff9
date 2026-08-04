@@ -19796,6 +19796,27 @@ export type Database = {
         Args: { _category?: string; _notes?: string; _store_id: string }
         Returns: string
       }
+      operational_health: {
+        Args: never
+        Returns: {
+          allow_order_type: boolean
+          invoice_errors_24h: number
+          last_invoice_at: string
+          last_invoice_status: string
+          last_order_at: string
+          last_tef_at: string
+          last_tef_status: string
+          orders_today: number
+          printers_active: number
+          revenue_today: number
+          store_id: string
+          store_name: string
+          tef_active: boolean
+          tef_environment: string
+          tef_errors_24h: number
+          tef_provider: string
+        }[]
+      }
       outsourced_accessible_stores: {
         Args: { _user_id: string }
         Returns: string[]
