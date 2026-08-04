@@ -21,7 +21,23 @@ export interface RecipeCostResult {
   }>;
 }
 
+interface IngredientRow {
+  product_id: string;
+  quantity: number | null;
+  unit: string | null;
+  ingredient_state: string | null;
+  product: { name: string | null; product_type: string | null } | null;
+}
+
+interface ConversionRow {
+  product_id: string;
+  from_qty: number | null;
+  to_qty: number | null;
+  is_default: boolean | null;
+}
+
 const MAX_DEPTH = 6;
+
 
 async function costPerUnitOfProduct(
   productId: string,
