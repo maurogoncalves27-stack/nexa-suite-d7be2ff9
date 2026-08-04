@@ -37,10 +37,18 @@ Módulos propostos como pacotes vendáveis:
 | Core (obrigatório) | Empresa, unidades, usuários, permissões, notificações, dashboard |
 | Operação PDV | PDV, Totem, Garçom, TEF, NFC-e, canais de venda |
 | RH | Colaboradores, ponto, escala, folha, rescisões, bonificações, portal do colaborador |
+| Saúde Ocupacional | Painel NR-1, riscos psicossociais, atestados, ASO/PCMSO, documentos SST, saúde mental, clima organizacional |
+| Monitoramento de Temperatura | Sensores de câmara fria/freezer, leituras automáticas, faixas por equipamento, alertas de fora-da-faixa e de sensor offline (WhatsApp/SMS), histórico e relatórios |
 | Financeiro | Contas, DRE, faturamento, conciliação, portal contabilidade |
 | Suprimentos | Estoque, fichas técnicas, compras, fornecedores, fábrica |
-| Qualidade | NutriControle, check-lists, ocorrências, saúde ocupacional |
-| Inteligência | Giana/IA, CRM, avaliações, saúde mental, painel de saúde operacional |
+| Qualidade | NutriControle, check-lists, ocorrências, controle de pragas, óleo, caixa d'água |
+| Inteligência | Giana/IA, CRM, avaliações, painel de saúde operacional |
+
+Dois pontos sobre o recorte:
+
+- **Monitoramento de Temperatura** vira módulo independente e é o melhor "produto de entrada": vende sozinho para qualquer cozinha, mercado, farmácia ou laboratório, mesmo para quem não quer o resto do sistema. Hoje ele já existe (sensores EMS-A + alertas) mas está amarrado dentro do NutriControle e com o sensor da Asa Sul fixo no código — precisa virar cadastro livre de sensores por unidade.
+- **Saúde Ocupacional** vira módulo próprio, vendável de duas formas: avulso (para RH terceirizado, clínicas de medicina do trabalho e consultorias de SST) ou como parte do pacote RH completo. Tecnicamente ele já está isolado numa área única com abas, o que facilita o desmembramento.
+
 
 ## 3. Roteiro por fases
 
@@ -84,12 +92,14 @@ Painel interno de administração (ver clientes, uso, erros), rotina de suporte,
 | 5 — Cobrança | Médio-baixo |
 | 6 — Operação | Contínuo |
 
-Caminho mais seguro na prática: fazer a Fase 1 completa, depois vender **um módulo piloto** (RH ou NutriControle é o mais fácil de isolar) para um cliente real e só então abrir o catálogo completo.
+Caminho mais seguro na prática: fazer a Fase 1 completa, depois vender **um módulo piloto** para um cliente real e só então abrir o catálogo completo. O candidato mais forte a piloto é o **Monitoramento de Temperatura** — poucas tabelas, sem dependência de folha/fiscal, ciclo de venda curto e público muito maior que restaurantes. Saúde Ocupacional é o segundo mais fácil, por já estar isolado em uma área própria.
 
 ## 6. O que eu preciso de você para seguir
 
 1. Aprovar o modelo SaaS multiempresa como arquitetura-alvo.
 2. Confirmar o recorte dos módulos vendáveis da tabela acima.
-3. Dizer qual módulo seria o piloto comercial.
+3. Confirmar se Saúde Ocupacional será vendida também avulsa (fora do RH) ou apenas dentro do pacote RH.
+4. Dizer qual módulo seria o piloto comercial.
+
 
 Quando decidir, eu monto o plano técnico detalhado da Fase 1 (modelo de dados, ordem de migração das 436 tabelas e plano de testes de isolamento).
