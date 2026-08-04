@@ -44,6 +44,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { createMockAdapter } from "@/lib/tef/mockAdapter";
 import type { TefStatus } from "@/lib/tef/types";
+import { loadMenuCatalog } from "@/lib/menuCatalog";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
@@ -136,15 +137,11 @@ export default function Garcom() {
     if (!authLoading && !user) navigate("/smartpos/login", { replace: true });
   }, [authLoading, user, navigate]);
 
-  // Lojas + catálogo
+  // Lojas físicas
   useEffect(() => {
     void (async () => {
       setLoading(true);
-      const [st, cat, it] = await Promise.all([
-        supabase.from("stores").select("id,name,is_virtual").eq("is_virtual", false).order("name"),
-        supabase.from("menu_categories").select("id,name,sort_order").order("sort_order"),
-        supabase.from("menu_items").select("id,name,price,category_id,is_active").eq("is_active", true).order("sort_order"),
-      ]);
+      const st = await supabase.from("stores").select("id,name,is_virtual").eq("is_virtual", false).order("name");
       const filtered = ((st.data ?? []) as Store[]).filter((s) =>
         ALLOWED.some((n) => s.name.toUpperCase().includes(n)),
       );
@@ -153,11 +150,24 @@ export default function Garcom() {
         const norte = filtered.find((s) => s.name.toUpperCase().includes("114 NORTE") || s.name.toUpperCase().includes("ASA NORTE"));
         setStoreId(norte?.id ?? filtered[0].id);
       }
-      setCategories((cat.data ?? []) as MenuCat[]);
-      setItems((it.data ?? []) as MenuItem[]);
       setLoading(false);
     })();
   }, []);
+
+  // O mesmo cardápio canônico, respeitando a disponibilidade da loja selecionada.
+  useEffect(() => {
+    if (!storeId) return;
+    void (async () => {
+      try {
+        const catalog = await loadMenuCatalog(storeId);
+        setCategories(catalog.categories as MenuCat[]);
+        setItems(catalog.items as MenuItem[]);
+      } catch (error) {
+        console.error(error);
+        toast({ title: "Não foi possível carregar o cardápio", variant: "destructive" });
+      }
+    })();
+  }, [storeId]);
 
   // Mesas + sessões abertas da loja
   useEffect(() => {

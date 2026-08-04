@@ -924,6 +924,11 @@ export default function Totem() {
                       <span>{c.quantity}× {c.name}</span><span>{fmt(c.unit_price * c.quantity)}</span>
                     </div>
                     {c.notes && <div className="text-xs italic pl-4">- {c.notes}</div>}
+                     {c.complements.map((complement) => (
+                       <div key={`${c.uid}-${complement.option_id}`} className="text-xs pl-4">
+                         + {complement.option_name}
+                       </div>
+                     ))}
                   </div>
                 ))}
                 <div className="border-t mt-2 pt-2 flex justify-between font-bold">
