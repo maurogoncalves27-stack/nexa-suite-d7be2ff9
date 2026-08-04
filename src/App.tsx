@@ -151,6 +151,7 @@ const Totem = lazy(() => import("./pages/Totem.tsx"));
 const TotemConfig = lazy(() => import("./pages/TotemConfig.tsx"));
 const NfceTester = lazy(() => import("./pages/NfceTester.tsx"));
 const NetworkMonitor = lazy(() => import("./pages/NetworkMonitor.tsx"));
+const HardcodesMap = lazy(() => import("./pages/HardcodesMap.tsx"));
 
 const Menu = lazy(() => import("./pages/Menu.tsx"));
 const ComplementsCatalog = lazy(() => import("./pages/ComplementsCatalog.tsx"));
