@@ -383,10 +383,13 @@ export default function TotemConfig() {
           </div>
         )}
       </Card>
+
+      <TotemLivePreview assets={assets} brands={brands} />
         </TabsContent>
 
         {/* VÍDEO */}
         <TabsContent value="video" className="space-y-6 mt-0">
+
           <Card className="p-4 space-y-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div>
