@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PedirLayout, BrandCode } from "./PedirLayout";
 import { useEcommerceCart, formatBRL } from "@/hooks/useEcommerceCart";
 import { parmeAssets } from "@/assets/parme-assets";
+import { loadMenuCatalog } from "@/lib/menuCatalog";
 
 type EStore = { id: string; slug: string; display_name: string; store_id: string };
 type MenuRow = {
@@ -25,13 +26,6 @@ const BRAND_LABEL: Record<Exclude<BrandCode, "all">, string> = {
   "aquele-estrogonofe": "Estrogonofe",
   "box-caipira": "Box Caipira",
 };
-
-const PHOTO_BUCKET = "menu-photos";
-function resolvePhoto(path: string | null): string | null {
-  if (!path) return null;
-  if (/^https?:\/\//.test(path)) return path;
-  return supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
-}
 
 export default function PedirLoja() {
   const { slug = "" } = useParams<{ slug: string }>();
@@ -54,52 +48,31 @@ export default function PedirLoja() {
       }
       setStore(s as EStore);
 
-      const { data: rows } = await supabase
-        .from("menu_items")
-        .select(
-          `id, name, description, price, photo_path, recipe_id, is_active,
-           menu_categories(name, sort_order),
-           menu_item_brands(brands(slug)),
-           menu_item_stores!inner(is_available, store_id)`,
-        )
-        .eq("is_active", true)
-        .eq("menu_item_stores.store_id", (s as EStore).store_id)
-        .eq("menu_item_stores.is_available", true)
-        .gt("price", 0)
-        .order("sort_order", { ascending: true });
-
-      // Resolve fotos: prioriza recipes.photo_path (bucket recipe-photos), fallback menu_items.photo_path
-      const recipeIds = Array.from(
-        new Set((rows ?? []).map((r: any) => r.recipe_id).filter(Boolean)),
-      ) as string[];
-      const recipePhotoMap: Record<string, string> = {};
-      if (recipeIds.length > 0) {
-        const { data: recs } = await supabase
-          .from("recipes")
-          .select("id, photo_path")
-          .in("id", recipeIds);
-        for (const r of (recs ?? []) as any[]) {
-          if (r.photo_path) {
-            recipePhotoMap[r.id] = supabase.storage
-              .from("recipe-photos")
-              .getPublicUrl(r.photo_path).data.publicUrl;
-          }
-        }
+      const catalog = await loadMenuCatalog((s as EStore).store_id);
+      const itemIds = catalog.items.map((item) => item.id);
+      const { data: brandRows } = itemIds.length
+        ? await supabase.from("menu_item_brands").select("menu_item_id,brands(slug)").in("menu_item_id", itemIds)
+        : { data: [] };
+      const brandCodes = new Map<string, string[]>();
+      for (const row of (brandRows ?? []) as any[]) {
+        const slugValue = row.brands?.slug;
+        if (!slugValue) continue;
+        brandCodes.set(row.menu_item_id, [...(brandCodes.get(row.menu_item_id) ?? []), slugValue]);
       }
-
-      const mapped: MenuRow[] = (rows ?? []).map((r: any) => ({
-        id: r.id,
-        name: r.name,
-        description: r.description,
-        price: Number(r.price),
-        photo_url:
-          (r.recipe_id ? recipePhotoMap[r.recipe_id] : null) ?? resolvePhoto(r.photo_path),
-        category_name: r.menu_categories?.name ?? null,
-        category_sort: r.menu_categories?.sort_order ?? 999,
-        brand_codes: (r.menu_item_brands ?? [])
-          .map((mib: any) => mib.brands?.slug)
-          .filter(Boolean),
-      }));
+      const categoryMap = new Map(catalog.categories.map((category) => [category.id, category]));
+      const mapped: MenuRow[] = catalog.items.filter((item) => item.price > 0).map((item) => {
+        const category = item.category_id ? categoryMap.get(item.category_id) : null;
+        return {
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          price: item.price,
+          photo_url: item.photo_url ?? null,
+          category_name: category?.name ?? null,
+          category_sort: category?.sort_order ?? 999,
+          brand_codes: brandCodes.get(item.id) ?? [],
+        };
+      });
       setItems(mapped);
       setLoading(false);
     })();
