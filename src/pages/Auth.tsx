@@ -51,7 +51,17 @@ export default function Auth() {
   const { user, loading } = useAuth();
   const webAuthnOk = isWebAuthnSupported();
   const explicitFrom = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
+  // ?next=/caminho — usado pelo consentimento OAuth (integrações de agentes).
+  // Só aceita caminho relativo da própria origem.
+  const nextParam = (() => {
+    const raw = new URLSearchParams(location.search).get("next");
+    if (!raw) return null;
+    if (!raw.startsWith("/") || raw.startsWith("//")) return null;
+    return raw;
+  })();
   const computeRedirect = (uid?: string | null, meta?: Record<string, unknown> | null) => {
+    // Retorno explícito (ex.: tela de consentimento OAuth) tem prioridade máxima.
+    if (nextParam) return nextParam;
     // Super-usuário SEMPRE vai para a tela de seleção de perfil ao logar,
     // ignorando "from" e qualquer viewMode antigo na sessão.
     if (isSuperUserId(uid)) {
@@ -65,6 +75,7 @@ export default function Auth() {
     return "/";
   };
   const redirectAfterLogin = computeRedirect(user?.id);
+
 
 
   const [mode, setMode] = useState<Mode>("signin");
