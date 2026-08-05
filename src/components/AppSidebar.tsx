@@ -224,7 +224,7 @@ const pdvSections: Section[] = [
     { title: "Cancelamentos", url: "/pdv-cancelamentos", icon: XCircle, staffOnly: true },
     { title: "TEF PayGo", url: "/configuracoes/tef-paygo", icon: CreditCard, staffOnly: true },
     { title: "TEF Payer", url: "/configuracoes/tef-payer", icon: CreditCard, staffOnly: true },
-    { title: "Terminal SmartPOS", url: "/configuracoes/smartpos", icon: Smartphone, staffOnly: true },
+    { title: "Terminal SmartPOS", url: "/configuracoes/smartpos", icon: Tablet, staffOnly: true },
     
     { title: "Totem", url: "/configuracoes/totem", icon: Monitor, staffOnly: true },
     { title: "WhatsApp", url: "/whatsapp", icon: MessageCircle, staffOnly: true },
