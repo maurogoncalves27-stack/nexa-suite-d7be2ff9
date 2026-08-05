@@ -149,6 +149,7 @@ const StoreHome = lazy(() => import("./pages/StoreHome.tsx"));
 const SmartPos = lazy(() => import("./pages/SmartPos.tsx"));
 const SmartPosLogin = lazy(() => import("./pages/SmartPosLogin.tsx"));
 const Garcom = lazy(() => import("./pages/Garcom.tsx"));
+const SmartPosConfig = lazy(() => import("./pages/SmartPosConfig.tsx"));
 const Totem = lazy(() => import("./pages/Totem.tsx"));
 const TotemConfig = lazy(() => import("./pages/TotemConfig.tsx"));
 const OperationalHealth = lazy(() => import("./pages/OperationalHealth.tsx"));
@@ -443,6 +444,7 @@ const App = () => (
               <Route path="/configuracoes/yolo" element={<Guarded staff><YoloIntegration /></Guarded>} />
               
               <Route path="/configuracoes/tef-payer" element={<Guarded staff><TefPayerSetup /></Guarded>} />
+              <Route path="/configuracoes/smartpos" element={<Guarded staff><SmartPosConfig /></Guarded>} />
               <Route path="/configuracoes/acesso-remoto" element={<Guarded staff><RemoteAccess /></Guarded>} />
               <Route path="/configuracoes/rede-lojas" element={<Guarded staff><NetworkMonitor /></Guarded>} />
               <Route path="/configuracoes/hardcodes" element={<Guarded staff><HardcodesMap /></Guarded>} />

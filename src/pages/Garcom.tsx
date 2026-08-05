@@ -42,8 +42,10 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { createMockAdapter } from "@/lib/tef/mockAdapter";
-import type { TefStatus } from "@/lib/tef/types";
+import { loadTefConfig, createTefAdapter, logTefTransaction } from "@/lib/tef";
+import type { TefStatus, TefPaymentMethod, TefPaymentResult } from "@/lib/tef/types";
+import { finalizeSale } from "@/lib/smartpos/sale";
+import { printTefReceipts } from "@/lib/smartpos/print";
 import { loadMenuCatalog } from "@/lib/menuCatalog";
 
 const fmt = (n: number) =>
@@ -132,6 +134,7 @@ export default function Garcom() {
   // charge
   const [tefStatus, setTefStatus] = useState<TefStatus>("idle");
   const [tefMsg, setTefMsg] = useState("");
+  const [tefMethod, setTefMethod] = useState<TefPaymentMethod>("credit");
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/smartpos/login", { replace: true });
@@ -355,28 +358,89 @@ export default function Garcom() {
   const handleCharge = async () => {
     if (!activeSession) return;
     setScreen("charge");
-    const adapter = createMockAdapter({ provider: "mock", agentUrl: "" });
     setTefStatus("connecting");
-    const result = await adapter.processPayment(
-      { amount: sessionTotal, method: "credit", storeId },
-      (s, m) => { setTefStatus(s); setTefMsg(m ?? ""); },
-    );
+    setTefMsg("Conectando ao pinpad...");
+
+    const { data: sess } = await supabase
+      .from("pdv_table_sessions").select("order_id").eq("id", activeSession.id).single();
+    const orderId = sess?.order_id ?? undefined;
+
+    const config = await loadTefConfig(storeId);
+    const adapter = createTefAdapter(config);
+
+    let result: TefPaymentResult;
+    try {
+      result = await adapter.processPayment(
+        { amount: sessionTotal, method: tefMethod, storeId, orderId },
+        (s, m) => { setTefStatus(s); setTefMsg(m ?? ""); },
+      );
+    } catch (e) {
+      result = { status: "error", message: e instanceof Error ? e.message : "Falha no pinpad" };
+    }
+
+    void logTefTransaction({
+      orderId,
+      storeId,
+      provider: config.provider,
+      amount: sessionTotal,
+      status: result.status,
+      message: result.message,
+      nsu: result.nsu,
+      authorizationCode: result.authorizationCode,
+      cardBrand: result.cardBrand,
+      cardLast4: result.cardLast4,
+      installments: result.installments,
+      acquirer: result.acquirer ?? config.acquirer,
+      method: tefMethod,
+      raw: result.raw,
+    });
+
     if (result.status === "approved") {
       await supabase
         .from("pdv_table_sessions")
         .update({ status: "paid", closed_at: new Date().toISOString() })
         .eq("id", activeSession.id);
-      const { data: sess } = await supabase
-        .from("pdv_table_sessions").select("order_id").eq("id", activeSession.id).single();
-      if (sess?.order_id) {
-        await supabase.from("pdv_orders").update({ status: "concluded", concluded_at: new Date().toISOString() }).eq("id", sess.order_id);
+      if (orderId) {
+        const fin = await finalizeSale({
+          orderId,
+          method: tefMethod,
+          amount: sessionTotal,
+          nsu: result.nsu,
+          authorizationCode: result.authorizationCode,
+        });
+        if (!fin.ok) {
+          toast({
+            title: "Pagamento aprovado, pedido pendente",
+            description: fin.error ?? "",
+            variant: "destructive",
+          });
+        }
       }
+      void printTefReceipts({
+        storeName: stores.find((s) => s.id === storeId)?.name ?? "NEXA",
+        tableLabel: activeTable ? String(activeTable.label ?? activeTable.number) : undefined,
+        items: roundItems.map((i) => ({
+          name: i.name,
+          quantity: Number(i.quantity),
+          unit_price: Number(i.unit_price),
+        })),
+        total: sessionTotal,
+        method: tefMethod,
+        nsu: result.nsu,
+        authorizationCode: result.authorizationCode,
+        cardBrand: result.cardBrand,
+        cardLast4: result.cardLast4,
+        installments: result.installments,
+        operator: user?.email ?? undefined,
+        tefReceipt: result.customerReceipt,
+      });
       setScreen("done");
     } else {
       toast({ title: "Pagamento não concluído", description: result.message, variant: "destructive" });
       setScreen("bill");
     }
   };
+
 
   const finishAndBack = async () => {
     setActiveSession(null);
@@ -493,10 +557,23 @@ export default function Garcom() {
             <span className="text-muted-foreground">Total</span>
             <span className="font-bold text-2xl text-primary">{fmt(sessionTotal)}</span>
           </div>
+          <div className="grid grid-cols-3 gap-2">
+            {(["credit", "debit", "pix"] as TefPaymentMethod[]).map((m) => (
+              <Button
+                key={m}
+                variant={tefMethod === m ? "default" : "outline"}
+                className="h-11 text-xs uppercase"
+                onClick={() => setTefMethod(m)}
+              >
+                {m}
+              </Button>
+            ))}
+          </div>
           <Button className="w-full h-14 text-base" disabled={sessionTotal <= 0} onClick={handleCharge}>
             <CreditCard className="h-5 w-5 mr-2" /> Cobrar
           </Button>
         </div>
+
       </div>
     );
   }

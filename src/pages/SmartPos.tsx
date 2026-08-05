@@ -32,11 +32,15 @@ import {
   CreditCard,
   Smartphone,
   Search,
+  Printer,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { createMockAdapter } from "@/lib/tef/mockAdapter";
-import type { TefStatus, TefPaymentMethod } from "@/lib/tef/types";
+import { loadTefConfig, createTefAdapter } from "@/lib/tef";
+import type { TefStatus, TefPaymentMethod, TefPaymentResult } from "@/lib/tef/types";
+import { logTefTransaction } from "@/lib/tef";
 import { useSmartPosCart } from "@/hooks/useSmartPosCart";
+import { createDraftOrder, finalizeSale, discardDraftOrder } from "@/lib/smartpos/sale";
+import { printTefReceipts } from "@/lib/smartpos/print";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
@@ -79,12 +83,14 @@ export default function SmartPos() {
   const [tefStatus, setTefStatus] = useState<TefStatus>("idle");
   const [tefMsg, setTefMsg] = useState<string>("");
   const [tefMethod, setTefMethod] = useState<TefPaymentMethod>("credit");
+  const [tefProvider, setTefProvider] = useState<string>("");
   const [lastResult, setLastResult] = useState<{
     nsu?: string;
     brand?: string;
     last4?: string;
     total: number;
     method: TefPaymentMethod;
+    receipt?: Parameters<typeof printTefReceipts>[0];
   } | null>(null);
 
   const cart = useSmartPosCart();
@@ -146,26 +152,110 @@ export default function SmartPos() {
   };
 
   const handleCharge = async () => {
-    const adapter = createMockAdapter({ provider: "mock", agentUrl: "" });
+    if (!storeId || cart.count === 0) return;
     setTefStatus("connecting");
-    setTefMsg("Conectando...");
-    const result = await adapter.processPayment(
-      { amount: cart.total, method: tefMethod, storeId },
-      (s, m) => {
-        setTefStatus(s);
-        setTefMsg(m ?? "");
-      },
-    );
+    setTefMsg("Abrindo pedido...");
+
+    const storeName = stores.find((s) => s.id === storeId)?.name ?? "NEXA";
+    const { order, error } = await createDraftOrder({
+      storeId,
+      items: cart.items.map((i) => ({
+        menu_item_id: i.menu_item_id,
+        name: i.name,
+        quantity: i.quantity,
+        unit_price: i.unit_price,
+      })),
+      userId: user?.id,
+      channelCodes: ["smartpos", "balcao", "counter"],
+      orderType: "counter",
+      source: "smartpos",
+    });
+    if (!order) {
+      setTefStatus("idle");
+      toast({ title: "Erro ao abrir pedido", description: error ?? "", variant: "destructive" });
+      return;
+    }
+
+    const config = await loadTefConfig(storeId);
+    const adapter = createTefAdapter(config);
+    setTefProvider(config.provider);
+    const amount = order.total;
+
+    let result: TefPaymentResult;
+    try {
+      result = await adapter.processPayment(
+        { amount, method: tefMethod, storeId, orderId: order.orderId },
+        (s, m) => {
+          setTefStatus(s);
+          setTefMsg(m ?? "");
+        },
+      );
+    } catch (e) {
+      result = {
+        status: "error",
+        message: e instanceof Error ? e.message : "Falha na comunicação com o pinpad",
+      };
+    }
+
+    void logTefTransaction({
+      orderId: order.orderId,
+      storeId,
+      provider: config.provider,
+      amount,
+      status: result.status,
+      message: result.message,
+      nsu: result.nsu,
+      authorizationCode: result.authorizationCode,
+      cardBrand: result.cardBrand,
+      cardLast4: result.cardLast4,
+      installments: result.installments,
+      acquirer: result.acquirer ?? config.acquirer,
+      method: tefMethod,
+      saleId: order.orderNumber,
+      raw: result.raw,
+    });
+
     if (result.status === "approved") {
+      const fin = await finalizeSale({
+        orderId: order.orderId,
+        method: tefMethod,
+        amount,
+        nsu: result.nsu,
+        authorizationCode: result.authorizationCode,
+      });
+      if (!fin.ok) {
+        toast({
+          title: "Pagamento aprovado, pedido pendente",
+          description: `Registre manualmente: ${fin.error ?? ""}`,
+          variant: "destructive",
+        });
+      }
+      const receipt = {
+        storeName,
+        orderNumber: order.orderNumber,
+        items: cart.items.map((i) => ({ name: i.name, quantity: i.quantity, unit_price: i.unit_price })),
+        total: amount,
+        method: tefMethod,
+        nsu: result.nsu,
+        authorizationCode: result.authorizationCode,
+        cardBrand: result.cardBrand,
+        cardLast4: result.cardLast4,
+        installments: result.installments,
+        operator: user?.email ?? undefined,
+        tefReceipt: result.customerReceipt,
+      };
       setLastResult({
         nsu: result.nsu,
         brand: result.cardBrand,
         last4: result.cardLast4,
-        total: cart.total,
+        total: amount,
         method: tefMethod,
+        receipt,
       });
+      void printTefReceipts(receipt);
       setScreen("receipt");
     } else {
+      await discardDraftOrder(order.orderId, result.message ?? result.status);
       toast({
         title: "Pagamento não concluído",
         description: result.message ?? result.status,
@@ -174,6 +264,17 @@ export default function SmartPos() {
       setTefStatus("idle");
     }
   };
+
+  const reprintReceipt = async () => {
+    if (!lastResult?.receipt) return;
+    const r = await printTefReceipts(lastResult.receipt, { merchantCopy: false });
+    toast({
+      title: r.ok ? "Comprovante enviado para impressão" : "Falha ao imprimir",
+      description: r.ok ? undefined : r.error,
+      variant: r.ok ? undefined : "destructive",
+    });
+  };
+
 
   const newSale = () => {
     cart.clear();
@@ -226,12 +327,14 @@ export default function SmartPos() {
             </div>
           )}
         </div>
-        <p className="text-xs text-muted-foreground">
-          (Impressão de cupom será nativa na Fase 3)
-        </p>
+        <Button variant="outline" className="w-full max-w-xs h-12" onClick={reprintReceipt}>
+          <Printer className="h-4 w-4 mr-2" />
+          Reimprimir comprovante
+        </Button>
         <Button className="w-full max-w-xs h-14 text-base" onClick={newSale}>
           Nova venda
         </Button>
+
       </div>
     );
   }
@@ -275,8 +378,13 @@ export default function SmartPos() {
               Cobrar {fmt(cart.total)}
             </Button>
             <p className="text-center text-xs text-muted-foreground">
-              TEF em modo simulação (mock)
+              {tefProvider === "mock"
+                ? "TEF em modo simulação (mock) — configure o provider da loja"
+                : tefProvider
+                  ? `TEF: ${tefProvider.toUpperCase()}`
+                  : "TEF configurado por loja"}
             </p>
+
           </>
         )}
 
