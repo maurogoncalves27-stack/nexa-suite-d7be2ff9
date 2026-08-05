@@ -284,6 +284,12 @@ const sitefAgentUrl = (pathName) => {
   return `http://127.0.0.1:${port}${pathName}`;
 };
 
+// Permite que o frontend reafirme o kiosk (ex.: ao abrir/fechar o modal de PIX/TEF)
+ipcMain.handle("kiosk:reassert", async () => {
+  reassertKiosk();
+  return { ok: true };
+});
+
 ipcMain.handle("sitef:health", async () => {
   try {
     const r = await fetch(sitefAgentUrl("/sitef/health"));
