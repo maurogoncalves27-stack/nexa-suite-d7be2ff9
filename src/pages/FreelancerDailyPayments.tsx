@@ -37,6 +37,7 @@ type Payment = {
   notes: string | null;
   status: "pending" | "paid";
   paid_at: string | null;
+  check_in_at?: string | null;
   freelancers?: { full_name: string; pix_key: string | null; pix_key_type: string | null } | null;
   stores?: { name: string } | null;
 };
