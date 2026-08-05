@@ -82,12 +82,14 @@ export default function SmartPos() {
   const [tefStatus, setTefStatus] = useState<TefStatus>("idle");
   const [tefMsg, setTefMsg] = useState<string>("");
   const [tefMethod, setTefMethod] = useState<TefPaymentMethod>("credit");
+  const [tefProvider, setTefProvider] = useState<string>("");
   const [lastResult, setLastResult] = useState<{
     nsu?: string;
     brand?: string;
     last4?: string;
     total: number;
     method: TefPaymentMethod;
+    receipt?: Parameters<typeof printTefReceipts>[0];
   } | null>(null);
 
   const cart = useSmartPosCart();
