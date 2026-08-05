@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, MapPin, Calendar, Clock, HandCoins, LogOut, CheckCircle2, X } from "lucide-react";
 import { toast } from "sonner";
+import FreelancerShiftsPanel from "@/components/freelancers/FreelancerShiftsPanel";
 
 type Job = {
   id: string;
