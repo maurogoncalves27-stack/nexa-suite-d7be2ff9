@@ -53,7 +53,11 @@ function reassertKiosk() {
     if (mainWindow.isMinimized()) mainWindow.restore();
     if (!mainWindow.isFullScreen()) mainWindow.setFullScreen(true);
     if (!mainWindow.isKiosk?.()) mainWindow.setKiosk?.(true);
+    // Alterna o topmost para forçar o Windows a re-elevar a janela acima da
+    // barra de tarefas (só chamar setAlwaysOnTop(true) não re-eleva se já estiver true).
+    mainWindow.setAlwaysOnTop(false);
     mainWindow.setAlwaysOnTop(true, "screen-saver");
+    mainWindow.setSkipTaskbar?.(true);
     mainWindow.moveTop?.();
     mainWindow.show();
     mainWindow.focus();
@@ -61,6 +65,26 @@ function reassertKiosk() {
     console.warn("[totem] reassertKiosk falhou", e?.message || e);
   }
 }
+
+// Modo agressivo: usado enquanto o modal de pagamento (TEF/PIX) está aberto,
+// quando apps externos roubam foco com frequência e revelam a barra de tarefas.
+let aggressiveTimer = null;
+let aggressiveUntil = 0;
+function startAggressiveKiosk(durationMs = 20000) {
+  if (!KIOSK) return;
+  aggressiveUntil = Date.now() + durationMs;
+  if (aggressiveTimer) return;
+  aggressiveTimer = setInterval(() => {
+    if (Date.now() > aggressiveUntil || !mainWindow || mainWindow.isDestroyed()) {
+      clearInterval(aggressiveTimer);
+      aggressiveTimer = null;
+      return;
+    }
+    reassertKiosk();
+  }, 300);
+  reassertKiosk();
+}
+
 
 
 // Garante que qualquer window.print() disparado pela página remota não abra diálogo do Windows.
@@ -95,13 +119,16 @@ function createWindow() {
     mainWindow.on("blur", () => {
       // Alguns apps de TEF (Payer/PayGo) roubam o foco e revelam a barra de tarefas.
       // Reafirma o kiosk algumas vezes até a janela voltar à frente.
-      [80, 250, 600, 1200].forEach((ms) => setTimeout(reassertKiosk, ms));
+      [0, 80, 250, 600, 1200].forEach((ms) => setTimeout(reassertKiosk, ms));
     });
+    mainWindow.on("leave-full-screen", () => reassertKiosk());
+    mainWindow.on("minimize", () => reassertKiosk());
     // Watchdog: garante fullscreen/topmost mesmo se algo externo alterar o estado.
     kioskWatchdog = setInterval(() => {
       if (!mainWindow || mainWindow.isDestroyed()) return;
       if (!mainWindow.isFullScreen() || !mainWindow.isAlwaysOnTop()) reassertKiosk();
-    }, 2000);
+    }, 1000);
+
     mainWindow.on("closed", () => {
       if (kioskWatchdog) clearInterval(kioskWatchdog);
       kioskWatchdog = null;
@@ -285,10 +312,13 @@ const sitefAgentUrl = (pathName) => {
 };
 
 // Permite que o frontend reafirme o kiosk (ex.: ao abrir/fechar o modal de PIX/TEF)
-ipcMain.handle("kiosk:reassert", async () => {
-  reassertKiosk();
+ipcMain.handle("kiosk:reassert", async (_e, opts) => {
+  const durationMs = Number(opts?.durationMs) || 0;
+  if (durationMs > 0) startAggressiveKiosk(durationMs);
+  else reassertKiosk();
   return { ok: true };
 });
+
 
 ipcMain.handle("sitef:health", async () => {
   try {
