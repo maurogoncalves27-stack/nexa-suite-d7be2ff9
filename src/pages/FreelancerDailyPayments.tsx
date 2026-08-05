@@ -160,6 +160,17 @@ export default function FreelancerDailyPayments() {
     load();
   };
 
+  const markPresence = async (p: Payment) => {
+    if (p.check_in_at) return;
+    const { error } = await supabase
+      .from("freelancer_daily_payments")
+      .update({ check_in_at: new Date().toISOString() })
+      .eq("id", p.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Presença marcada manualmente.");
+    load();
+  };
+
   const movePeriod = (delta: number) => {
     const d = new Date(year, month - 1 + delta, 1);
     setYear(d.getFullYear()); setMonth(d.getMonth() + 1);
