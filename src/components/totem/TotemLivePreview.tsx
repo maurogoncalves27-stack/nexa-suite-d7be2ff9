@@ -257,15 +257,21 @@ export default function TotemLivePreview({
             className="relative overflow-hidden rounded-lg border border-border bg-background"
             style={{ width: SCREEN_W * fullScale, height: SCREEN_H * fullScale }}
           >
-            <div
-              className="absolute top-0 left-0 origin-top-left"
-              style={{ width: SCREEN_W, height: SCREEN_H, transform: `scale(${fullScale})` }}
-            >
-              {screen}
-            </div>
+            {expanded && (
+              <iframe
+                src="/totem"
+                title="Totem em tempo real"
+                className="absolute top-0 left-0 origin-top-left border-0"
+                style={{ width: SCREEN_W, height: SCREEN_H, transform: `scale(${fullScale})` }}
+              />
+            )}
           </div>
+          <p className="text-xs text-muted-foreground">
+            Totem real carregado em tempo real — totalmente interativo.
+          </p>
         </DialogContent>
       </Dialog>
+
 
       <div className="flex flex-wrap gap-2">
         <Badge variant="outline" className="font-normal">
