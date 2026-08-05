@@ -42,6 +42,26 @@ const APP_URL =
 const KIOSK = process.env.NEXA_KIOSK !== "false"; // padrão: kiosk
 const SITEF_AGENT_PORT = parseInt(process.env.SITEF_AGENT_PORT || "60906", 10);
 let mainWindow;
+let kioskWatchdog = null;
+
+// Reafirma o modo kiosk (fullscreen + sempre à frente + foco).
+// Necessário porque apps externos de TEF (Payer/PayGo) roubam o foco e
+// fazem a barra de tarefas do Windows reaparecer sobre o totem.
+function reassertKiosk() {
+  if (!KIOSK || !mainWindow || mainWindow.isDestroyed()) return;
+  try {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    if (!mainWindow.isFullScreen()) mainWindow.setFullScreen(true);
+    if (!mainWindow.isKiosk?.()) mainWindow.setKiosk?.(true);
+    mainWindow.setAlwaysOnTop(true, "screen-saver");
+    mainWindow.moveTop?.();
+    mainWindow.show();
+    mainWindow.focus();
+  } catch (e) {
+    console.warn("[totem] reassertKiosk falhou", e?.message || e);
+  }
+}
+
 
 // Garante que qualquer window.print() disparado pela página remota não abra diálogo do Windows.
 app.commandLine.appendSwitch("kiosk-printing");
