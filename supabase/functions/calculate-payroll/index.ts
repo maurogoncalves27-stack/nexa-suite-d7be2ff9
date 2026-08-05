@@ -323,9 +323,11 @@ Deno.serve(async (req: Request) => {
         .lte("reference_date", periodEnd)
         .in("status", ["approved", "resolved"]),
       supabase.from("employee_leaves")
-        .select("employee_id, start_date, end_date, is_paid")
+        .select("employee_id, start_date, end_date, is_paid, leave_type")
         .in("employee_id", empIds)
-        .eq("is_paid", false)
+        // Suspensão disciplinar e falta injustificada são SEMPRE não remuneradas,
+        // mesmo que o registro tenha vindo marcado como "pago".
+        .or("is_paid.eq.false,leave_type.in.(suspension,unpaid_absence)")
         .lte("start_date", periodEnd)
         .gte("end_date", periodStart),
     ]);
