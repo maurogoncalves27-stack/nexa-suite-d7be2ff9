@@ -16,7 +16,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Plus, Loader2, Pencil, Trash2, CheckCircle2, RotateCcw, Download, ChevronLeft, ChevronRight, CalendarDays, HandCoins } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, CheckCircle2, RotateCcw, Download, ChevronLeft, ChevronRight, CalendarDays, HandCoins, UserCheck } from "lucide-react";
 import { exportC6PixFile } from "@/lib/c6Export";
 import { sortStores } from "@/lib/storeSort";
 
