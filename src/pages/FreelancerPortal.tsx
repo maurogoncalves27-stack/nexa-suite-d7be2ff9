@@ -118,10 +118,16 @@ export default function FreelancerPortal() {
 
       <main className="container mx-auto p-4 max-w-3xl">
         <Tabs defaultValue="open">
-          <TabsList className="grid grid-cols-2 w-full">
-            <TabsTrigger value="open">Vagas disponíveis ({open.length})</TabsTrigger>
-            <TabsTrigger value="mine">Minhas candidaturas ({mine.length})</TabsTrigger>
+          <TabsList className="grid grid-cols-3 w-full">
+            <TabsTrigger value="shifts">Meus turnos</TabsTrigger>
+            <TabsTrigger value="open">Vagas ({open.length})</TabsTrigger>
+            <TabsTrigger value="mine">Candidaturas ({mine.length})</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="shifts" className="space-y-3 mt-4">
+            <FreelancerShiftsPanel freelancerId={freelancer.id} />
+          </TabsContent>
+
 
           <TabsContent value="open" className="space-y-3 mt-4">
             {loading ? (
