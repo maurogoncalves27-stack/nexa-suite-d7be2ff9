@@ -44,6 +44,35 @@ const SITEF_AGENT_PORT = parseInt(process.env.SITEF_AGENT_PORT || "60906", 10);
 let mainWindow;
 let kioskWatchdog = null;
 
+// Esconde/mostra a barra de tarefas do Windows no nível do SO.
+// Necessário porque o Checkout Payer/PayGo rouba o foco e o Windows
+// re-exibe a taskbar por cima do totem mesmo em kiosk/topmost.
+let taskbarHidden = false;
+let lastTaskbarCall = 0;
+function setWindowsTaskbarVisible(visible) {
+  if (process.platform !== "win32") return;
+  if (visible === !taskbarHidden) return;
+  const now = Date.now();
+  if (!visible && now - lastTaskbarCall < 3000) return; // throttle
+  lastTaskbarCall = now;
+  taskbarHidden = !visible;
+  const nCmdShow = visible ? 5 : 0; // SW_SHOW / SW_HIDE
+  const ps = `
+$sig = '[DllImport("user32.dll")] public static extern IntPtr FindWindow(string c, string w);
+[DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int n);';
+$u = Add-Type -MemberDefinition $sig -Name NexaTb -Namespace Win32 -PassThru;
+foreach ($cls in @('Shell_TrayWnd','Shell_SecondaryTrayWnd')) {
+  $h = $u::FindWindow($cls, $null);
+  if ($h -ne [IntPtr]::Zero) { [void]$u::ShowWindow($h, ${nCmdShow}) }
+}`;
+  execFile(
+    "powershell.exe",
+    ["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", ps],
+    { windowsHide: true },
+    (err) => { if (err) console.warn("[totem] taskbar toggle falhou", err.message); },
+  );
+}
+
 // Reafirma o modo kiosk (fullscreen + sempre à frente + foco).
 // Necessário porque apps externos de TEF (Payer/PayGo) roubam o foco e
 // fazem a barra de tarefas do Windows reaparecer sobre o totem.
@@ -61,10 +90,12 @@ function reassertKiosk() {
     mainWindow.moveTop?.();
     mainWindow.show();
     mainWindow.focus();
+    setWindowsTaskbarVisible(false);
   } catch (e) {
     console.warn("[totem] reassertKiosk falhou", e?.message || e);
   }
 }
+
 
 // Modo agressivo: usado enquanto o modal de pagamento (TEF/PIX) está aberto,
 // quando apps externos roubam foco com frequência e revelam a barra de tarefas.
