@@ -149,26 +149,110 @@ export default function SmartPos() {
   };
 
   const handleCharge = async () => {
-    const adapter = createMockAdapter({ provider: "mock", agentUrl: "" });
+    if (!storeId || cart.count === 0) return;
     setTefStatus("connecting");
-    setTefMsg("Conectando...");
-    const result = await adapter.processPayment(
-      { amount: cart.total, method: tefMethod, storeId },
-      (s, m) => {
-        setTefStatus(s);
-        setTefMsg(m ?? "");
-      },
-    );
+    setTefMsg("Abrindo pedido...");
+
+    const storeName = stores.find((s) => s.id === storeId)?.name ?? "NEXA";
+    const { order, error } = await createDraftOrder({
+      storeId,
+      items: cart.items.map((i) => ({
+        menu_item_id: i.menu_item_id,
+        name: i.name,
+        quantity: i.quantity,
+        unit_price: i.unit_price,
+      })),
+      userId: user?.id,
+      channelCodes: ["smartpos", "balcao", "counter"],
+      orderType: "counter",
+      source: "smartpos",
+    });
+    if (!order) {
+      setTefStatus("idle");
+      toast({ title: "Erro ao abrir pedido", description: error ?? "", variant: "destructive" });
+      return;
+    }
+
+    const config = await loadTefConfig(storeId);
+    const adapter = createTefAdapter(config);
+    setTefProvider(config.provider);
+    const amount = order.total;
+
+    let result: TefPaymentResult;
+    try {
+      result = await adapter.processPayment(
+        { amount, method: tefMethod, storeId, orderId: order.orderId },
+        (s, m) => {
+          setTefStatus(s);
+          setTefMsg(m ?? "");
+        },
+      );
+    } catch (e) {
+      result = {
+        status: "error",
+        message: e instanceof Error ? e.message : "Falha na comunicação com o pinpad",
+      };
+    }
+
+    void logTefTransaction({
+      orderId: order.orderId,
+      storeId,
+      provider: config.provider,
+      amount,
+      status: result.status,
+      message: result.message,
+      nsu: result.nsu,
+      authorizationCode: result.authorizationCode,
+      cardBrand: result.cardBrand,
+      cardLast4: result.cardLast4,
+      installments: result.installments,
+      acquirer: result.acquirer ?? config.acquirer,
+      method: tefMethod,
+      saleId: order.orderNumber,
+      raw: result.raw,
+    });
+
     if (result.status === "approved") {
+      const fin = await finalizeSale({
+        orderId: order.orderId,
+        method: tefMethod,
+        amount,
+        nsu: result.nsu,
+        authorizationCode: result.authorizationCode,
+      });
+      if (!fin.ok) {
+        toast({
+          title: "Pagamento aprovado, pedido pendente",
+          description: `Registre manualmente: ${fin.error ?? ""}`,
+          variant: "destructive",
+        });
+      }
+      const receipt = {
+        storeName,
+        orderNumber: order.orderNumber,
+        items: cart.items.map((i) => ({ name: i.name, quantity: i.quantity, unit_price: i.unit_price })),
+        total: amount,
+        method: tefMethod,
+        nsu: result.nsu,
+        authorizationCode: result.authorizationCode,
+        cardBrand: result.cardBrand,
+        cardLast4: result.cardLast4,
+        installments: result.installments,
+        operator: user?.email ?? undefined,
+        tefReceipt: result.customerReceipt,
+      };
       setLastResult({
         nsu: result.nsu,
         brand: result.cardBrand,
         last4: result.cardLast4,
-        total: cart.total,
+        total: amount,
         method: tefMethod,
+        receipt,
       });
+      void printTefReceipts(receipt);
       setScreen("receipt");
     } else {
+      await discardDraftOrder(order.orderId, result.message ?? result.status);
       toast({
         title: "Pagamento não concluído",
         description: result.message ?? result.status,
@@ -177,6 +261,17 @@ export default function SmartPos() {
       setTefStatus("idle");
     }
   };
+
+  const reprintReceipt = async () => {
+    if (!lastResult?.receipt) return;
+    const r = await printTefReceipts(lastResult.receipt, { merchantCopy: false });
+    toast({
+      title: r.ok ? "Comprovante enviado para impressão" : "Falha ao imprimir",
+      description: r.ok ? undefined : r.error,
+      variant: r.ok ? undefined : "destructive",
+    });
+  };
+
 
   const newSale = () => {
     cart.clear();
