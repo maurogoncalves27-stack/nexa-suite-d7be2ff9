@@ -188,6 +188,7 @@ export default function Totem() {
     return () => { clearInterval(id); reassert(); };
   }, [tefOpen]);
 
+
   const [paymentMethod, setPaymentMethod] = useState<TefPaymentMethod | null>(null);
   const [showNoteKb, setShowNoteKb] = useState(false);
   const [showCpfKb, setShowCpfKb] = useState(false);
