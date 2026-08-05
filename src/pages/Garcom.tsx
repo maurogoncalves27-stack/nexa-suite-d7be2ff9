@@ -134,6 +134,7 @@ export default function Garcom() {
   // charge
   const [tefStatus, setTefStatus] = useState<TefStatus>("idle");
   const [tefMsg, setTefMsg] = useState("");
+  const [tefMethod, setTefMethod] = useState<TefPaymentMethod>("credit");
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/smartpos/login", { replace: true });
