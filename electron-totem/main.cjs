@@ -70,18 +70,24 @@ function createWindow() {
   if (KIOSK) {
     // Mantém o totem sempre à frente: o Checkout Payer roda oculto atrás
     // (a interação do cliente é no pinpad + na nossa tela).
-    mainWindow.setAlwaysOnTop(true, "screen-saver");
+    reassertKiosk();
     mainWindow.setVisibleOnAllWorkspaces?.(true);
     mainWindow.on("blur", () => {
-      setTimeout(() => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.setAlwaysOnTop(true, "screen-saver");
-          mainWindow.show();
-          mainWindow.focus();
-        }
-      }, 150);
+      // Alguns apps de TEF (Payer/PayGo) roubam o foco e revelam a barra de tarefas.
+      // Reafirma o kiosk algumas vezes até a janela voltar à frente.
+      [80, 250, 600, 1200].forEach((ms) => setTimeout(reassertKiosk, ms));
+    });
+    // Watchdog: garante fullscreen/topmost mesmo se algo externo alterar o estado.
+    kioskWatchdog = setInterval(() => {
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      if (!mainWindow.isFullScreen() || !mainWindow.isAlwaysOnTop()) reassertKiosk();
+    }, 2000);
+    mainWindow.on("closed", () => {
+      if (kioskWatchdog) clearInterval(kioskWatchdog);
+      kioskWatchdog = null;
     });
   }
+
 
   // Sempre buscar a versão publicada mais recente do app web:
   // limpa o cache HTTP antes de carregar e ignora cache na navegação inicial.
