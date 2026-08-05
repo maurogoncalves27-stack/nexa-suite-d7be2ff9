@@ -13,9 +13,9 @@ export const PAYROLL_TABLES_VERSION = "2026-01";
 /** INSS — faixas progressivas mensais (empregado). */
 export const INSS_BRACKETS: { upTo: number; rate: number }[] = [
   { upTo: 1621.00, rate: 0.075 },
-  { upTo: 2793.88, rate: 0.09 },
-  { upTo: 4190.83, rate: 0.12 },
-  { upTo: 8157.41, rate: 0.14 }, // teto INSS 2026 (atualize quando sair valor oficial definitivo)
+  { upTo: 2902.84, rate: 0.09 },
+  { upTo: 4354.27, rate: 0.12 },
+  { upTo: 8475.55, rate: 0.14 }, // teto INSS 2026 (Portaria Interministerial MPS/MF nº 13/2026)
 ];
 
 /** Calcula o INSS do empregado (progressivo). Retorna o valor a descontar. */
