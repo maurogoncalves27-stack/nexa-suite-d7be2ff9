@@ -1,10 +1,11 @@
 // Pré-visualização em tempo real da tela do totem com base nas configurações
 // das abas Visual e Vídeo. Componente puramente de apresentação.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Hand, Timer, Monitor, Info } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Hand, Timer, Monitor, Info, Maximize2 } from "lucide-react";
 
 export interface PreviewAsset {
   id: string;
@@ -23,6 +24,16 @@ export interface PreviewBrand {
 const SCREEN_W = 1080;
 const SCREEN_H = 1920;
 
+// Mesmo tema aplicado no totem real (/totem) — primário vermelho da marca.
+const TOTEM_THEME_STYLE = {
+  "--primary": "0 82% 43%",
+  "--primary-foreground": "0 0% 100%",
+  "--primary-glow": "0 88% 56%",
+  "--accent": "6 84% 54%",
+  "--accent-foreground": "0 0% 100%",
+  "--ring": "0 82% 43%",
+} as CSSProperties;
+
 export default function TotemLivePreview({
   assets,
   brands,
@@ -32,8 +43,12 @@ export default function TotemLivePreview({
 }) {
   const [mode, setMode] = useState<"idle" | "brands">("idle");
   const [slide, setSlide] = useState(0);
+  const [expanded, setExpanded] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const fullRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.2);
+  const [fullScale, setFullScale] = useState(0.4);
+
 
   const video = useMemo(
     () => assets.find((a) => a.kind === "video" && a.is_active) ?? null,
