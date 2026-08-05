@@ -119,13 +119,16 @@ function createWindow() {
     mainWindow.on("blur", () => {
       // Alguns apps de TEF (Payer/PayGo) roubam o foco e revelam a barra de tarefas.
       // Reafirma o kiosk algumas vezes até a janela voltar à frente.
-      [80, 250, 600, 1200].forEach((ms) => setTimeout(reassertKiosk, ms));
+      [0, 80, 250, 600, 1200].forEach((ms) => setTimeout(reassertKiosk, ms));
     });
+    mainWindow.on("leave-full-screen", () => reassertKiosk());
+    mainWindow.on("minimize", () => reassertKiosk());
     // Watchdog: garante fullscreen/topmost mesmo se algo externo alterar o estado.
     kioskWatchdog = setInterval(() => {
       if (!mainWindow || mainWindow.isDestroyed()) return;
       if (!mainWindow.isFullScreen() || !mainWindow.isAlwaysOnTop()) reassertKiosk();
-    }, 2000);
+    }, 1000);
+
     mainWindow.on("closed", () => {
       if (kioskWatchdog) clearInterval(kioskWatchdog);
       kioskWatchdog = null;
