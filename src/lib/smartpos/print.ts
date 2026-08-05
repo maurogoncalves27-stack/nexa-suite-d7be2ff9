@@ -91,10 +91,17 @@ const line = (char = "-") => char.repeat(38);
 const money = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 
+export interface ReceiptItem {
+  name: string;
+  quantity: number;
+  unit_price: number;
+  complements?: { option_name: string; extra_price?: number }[];
+}
+
 export interface ReceiptData {
   storeName: string;
   orderNumber?: string | null;
-  items?: { name: string; quantity: number; unit_price: number }[];
+  items?: ReceiptItem[];
   total: number;
   method: string;
   nsu?: string;
@@ -109,6 +116,7 @@ export interface ReceiptData {
   copy: "cliente" | "estabelecimento";
 }
 
+
 export const buildTefReceiptText = (d: ReceiptData): string => {
   const rows: string[] = [];
   rows.push(d.storeName.toUpperCase());
@@ -121,10 +129,19 @@ export const buildTefReceiptText = (d: ReceiptData): string => {
   if (d.items?.length) {
     for (const it of d.items) {
       rows.push(`${it.quantity}x ${it.name}`.slice(0, 38));
+      if (it.complements?.length) {
+        for (const c of it.complements) {
+          const lineText = c.extra_price && c.extra_price > 0
+            ? `  + ${c.option_name} (${money(c.extra_price)})`
+            : `  + ${c.option_name}`;
+          rows.push(lineText.slice(0, 38));
+        }
+      }
       rows.push(`${" ".repeat(20)}${money(it.quantity * it.unit_price).padStart(18)}`);
     }
     rows.push(line());
   }
+
 
   rows.push(`TOTAL${money(d.total).padStart(33)}`);
   rows.push(`Forma: ${d.method.toUpperCase()}`);

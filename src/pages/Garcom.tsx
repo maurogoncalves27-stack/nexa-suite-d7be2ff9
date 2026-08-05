@@ -46,7 +46,13 @@ import { loadTefConfig, createTefAdapter, logTefTransaction } from "@/lib/tef";
 import type { TefStatus, TefPaymentMethod, TefPaymentResult } from "@/lib/tef/types";
 import { finalizeSale } from "@/lib/smartpos/sale";
 import { printTefReceipts } from "@/lib/smartpos/print";
-import { loadMenuCatalog } from "@/lib/menuCatalog";
+import {
+  loadMenuCatalog,
+  loadItemComplements,
+  type CatalogComplementGroup,
+  type SelectedComplement,
+} from "@/lib/menuCatalog";
+
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
@@ -89,14 +95,27 @@ interface RoundItem {
   quantity: number;
   unit_price: number;
   total: number;
+  notes?: string;
+  complements?: SelectedComplement[];
 }
+
 interface CartItem {
   uid: string;
   menu_item_id: string;
   name: string;
   unit_price: number;
   quantity: number;
+  notes?: string;
+  complements?: SelectedComplement[];
 }
+
+interface ComplementDialog {
+  item: MenuItem;
+  groups: CatalogComplementGroup[];
+  selected: Record<string, string[]>;
+  loading: boolean;
+}
+
 
 type Screen = "map" | "session" | "catalog" | "bill" | "charge" | "done";
 
@@ -130,6 +149,8 @@ export default function Garcom() {
   const [activeCat, setActiveCat] = useState("all");
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [complementDialog, setComplementDialog] = useState<ComplementDialog | null>(null);
+
 
   // charge
   const [tefStatus, setTefStatus] = useState<TefStatus>("idle");
@@ -252,10 +273,12 @@ export default function Garcom() {
     if (roundIds.length) {
       const { data: itd } = await supabase
         .from("pdv_order_items")
-        .select("id,round_id,name,quantity,unit_price,total")
+        .select("id,round_id,name,quantity,unit_price,total,notes,complements")
         .in("round_id", roundIds);
-      its = (itd ?? []) as RoundItem[];
+      its = (itd ?? []) as unknown as RoundItem[];
     }
+
+
     setRounds((rd ?? []) as Round[]);
     setRoundItems(its);
   };
@@ -271,16 +294,80 @@ export default function Garcom() {
     [items, activeCat, search],
   );
 
-  const addToCart = (it: MenuItem) =>
+  const openItem = async (it: MenuItem) => {
+    setComplementDialog({ item: it, groups: [], selected: {}, loading: true });
+    try {
+      const groups = await loadItemComplements(it.id);
+      setComplementDialog((current) =>
+        current?.item.id === it.id ? { ...current, groups, loading: false } : current,
+      );
+    } catch (error) {
+      console.error(error);
+      setComplementDialog((current) =>
+        current?.item.id === it.id ? { ...current, loading: false } : current,
+      );
+      toast({ title: "Não foi possível carregar os complementos", variant: "destructive" });
+    }
+  };
+
+  const toggleComplement = (group: CatalogComplementGroup, optionId: string) => {
+    setComplementDialog((current) => {
+      if (!current) return current;
+      const selected = current.selected[group.id] ?? [];
+      let next: string[];
+      if (selected.includes(optionId)) next = selected.filter((id) => id !== optionId);
+      else if (group.max_choices <= 1) next = [optionId];
+      else if (selected.length < group.max_choices) next = [...selected, optionId];
+      else {
+        toast({ title: `Escolha no máximo ${group.max_choices} em “${group.name}”`, variant: "destructive" });
+        return current;
+      }
+      return { ...current, selected: { ...current.selected, [group.id]: next } };
+    });
+  };
+
+  const selectedComplements = (dialog: NonNullable<typeof complementDialog>): SelectedComplement[] =>
+    dialog.groups.flatMap((group) =>
+      (dialog.selected[group.id] ?? []).flatMap((optionId) => {
+        const option = group.options.find((candidate) => candidate.id === optionId);
+        return option
+          ? [{
+              group_id: group.id,
+              group_name: group.name,
+              option_id: option.id,
+              option_name: option.name,
+              extra_price: option.extra_price,
+            }]
+          : [];
+      }),
+    );
+
+  const addToCart = (it: MenuItem, complements: SelectedComplement[] = []) =>
     setCart((prev) => {
-      const ex = prev.find((p) => p.menu_item_id === it.id);
+      const signature = [it.id, ...complements.map((c) => c.option_id).sort()].join("|");
+      const ex = prev.find((p) => {
+        const itemSig = [p.menu_item_id, ...(p.complements ?? []).map((c) => c.option_id).sort()].join("|");
+        return itemSig === signature;
+      });
       if (ex) return prev.map((p) => (p.uid === ex.uid ? { ...p, quantity: p.quantity + 1 } : p));
-      return [...prev, { uid: crypto.randomUUID(), menu_item_id: it.id, name: it.name, unit_price: Number(it.price) || 0, quantity: 1 }];
+      const unitPrice = Number(it.price) + complements.reduce((sum, c) => sum + c.extra_price, 0);
+      return [
+        ...prev,
+        {
+          uid: crypto.randomUUID(),
+          menu_item_id: it.id,
+          name: it.name,
+          unit_price: unitPrice,
+          quantity: 1,
+          complements: complements.length ? complements : undefined,
+        },
+      ];
     });
   const incCart = (uid: string) => setCart((p) => p.map((c) => (c.uid === uid ? { ...c, quantity: c.quantity + 1 } : c)));
   const decCart = (uid: string) =>
     setCart((p) => p.map((c) => (c.uid === uid ? { ...c, quantity: c.quantity - 1 } : c)).filter((c) => c.quantity > 0));
   const rmCart = (uid: string) => setCart((p) => p.filter((c) => c.uid !== uid));
+
 
   const cartTotal = cart.reduce((s, i) => s + i.quantity * i.unit_price, 0);
   const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
@@ -338,8 +425,12 @@ export default function Garcom() {
       quantity: c.quantity,
       unit_price: c.unit_price,
       total: c.unit_price * c.quantity,
+      notes: c.notes,
+      complements: c.complements as unknown as Record<string, string | number>[],
     }));
-    await supabase.from("pdv_order_items").insert(rows);
+    await supabase.from("pdv_order_items").insert(rows as any);
+
+
     // atualiza total do pedido
     const newSubtotal = (await supabase
       .from("pdv_order_items")
@@ -423,6 +514,7 @@ export default function Garcom() {
           name: i.name,
           quantity: Number(i.quantity),
           unit_price: Number(i.unit_price),
+          complements: i.complements?.map((c) => ({ option_name: c.option_name, extra_price: c.extra_price })),
         })),
         total: sessionTotal,
         method: tefMethod,
@@ -434,6 +526,7 @@ export default function Garcom() {
         operator: user?.email ?? undefined,
         tefReceipt: result.customerReceipt,
       });
+
       setScreen("done");
     } else {
       toast({ title: "Pagamento não concluído", description: result.message, variant: "destructive" });
@@ -539,12 +632,20 @@ export default function Garcom() {
                 </div>
                 <div className="space-y-1 text-sm">
                   {items.map((i) => (
-                    <div key={i.id} className="flex justify-between">
-                      <span>{i.quantity}× {i.name}</span>
-                      <span className="font-medium">{fmt(Number(i.total))}</span>
+                    <div key={i.id}>
+                      <div className="flex justify-between">
+                        <span>{i.quantity}× {i.name}</span>
+                        <span className="font-medium">{fmt(Number(i.total))}</span>
+                      </div>
+                      {i.complements && i.complements.length > 0 && (
+                        <div className="text-xs text-muted-foreground pl-3">
+                          {i.complements.map((c) => `+ ${c.option_name}`).join(" · ")}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
+
               </div>
             ))}
             {groupedByRound.length === 0 && (
@@ -611,13 +712,14 @@ export default function Garcom() {
             {filteredItems.map((it) => (
               <button
                 key={it.id}
-                onClick={() => addToCart(it)}
+                onClick={() => openItem(it)}
                 className="border rounded-lg p-3 text-left bg-card hover:border-primary active:scale-95 transition-all min-h-[88px] flex flex-col justify-between"
               >
                 <div className="text-sm font-medium line-clamp-2">{it.name}</div>
                 <div className="text-primary font-bold text-sm mt-2">{fmt(Number(it.price))}</div>
               </button>
             ))}
+
             {filteredItems.length === 0 && (
               <div className="col-span-2 text-center text-muted-foreground text-sm py-12">Nenhum produto</div>
             )}
@@ -631,6 +733,11 @@ export default function Garcom() {
                   <div key={ci.uid} className="flex items-center gap-2 border rounded-lg p-2">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium truncate">{ci.name}</div>
+                      {ci.complements && ci.complements.length > 0 && (
+                        <div className="text-xs text-muted-foreground truncate">
+                          {ci.complements.map((c) => c.option_name).join(" · ")}
+                        </div>
+                      )}
                       <div className="text-xs text-muted-foreground">{fmt(ci.unit_price)}</div>
                     </div>
                     <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => decCart(ci.uid)}><Minus className="h-3 w-3" /></Button>
@@ -639,6 +746,7 @@ export default function Garcom() {
                     <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => rmCart(ci.uid)}><Trash2 className="h-3 w-3" /></Button>
                   </div>
                 ))}
+
               </div>
             </ScrollArea>
             <div className="flex justify-between items-baseline">
@@ -688,12 +796,20 @@ export default function Garcom() {
                     </div>
                     <div className="space-y-1 text-sm">
                       {its.map((i) => (
-                        <div key={i.id} className="flex justify-between">
-                          <span>{i.quantity}× {i.name}</span>
-                          <span>{fmt(Number(i.total))}</span>
+                        <div key={i.id}>
+                          <div className="flex justify-between">
+                            <span>{i.quantity}× {i.name}</span>
+                            <span>{fmt(Number(i.total))}</span>
+                          </div>
+                          {i.complements && i.complements.length > 0 && (
+                            <div className="text-xs text-muted-foreground pl-3">
+                              {i.complements.map((c) => `+ ${c.option_name}`).join(" · ")}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
+
                     <div className="flex justify-between text-sm font-medium mt-2 pt-2 border-t">
                       <span>Subtotal</span><span>{fmt(tot)}</span>
                     </div>
@@ -825,6 +941,93 @@ export default function Garcom() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog
+        open={!!complementDialog}
+        onOpenChange={(open) => {
+          if (!open) setComplementDialog(null);
+        }}
+      >
+        <DialogContent className="max-w-sm p-0 overflow-hidden">
+          <DialogHeader className="p-4 pb-0">
+            <DialogTitle className="text-lg">
+              {complementDialog?.item.name ?? "Personalizar"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-4 max-h-[60vh] overflow-y-auto space-y-4">
+            {complementDialog?.loading && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            )}
+            {complementDialog?.groups.map((group) => (
+              <div key={group.id}>
+                <div className="font-medium text-sm mb-2">
+                  {group.name}
+                  {group.is_required && <span className="text-destructive ml-1">*</span>}
+                  <span className="text-muted-foreground text-xs block font-normal">
+                    {group.min_choices === group.max_choices
+                      ? `Escolha ${group.min_choices}`
+                      : `Escolha de ${group.min_choices} até ${group.max_choices}`}
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {group.options.map((opt) => {
+                    const selected = (complementDialog.selected[group.id] ?? []).includes(opt.id);
+                    return (
+                      <button
+                        key={opt.id}
+                        onClick={() => toggleComplement(group, opt.id)}
+                        className={`w-full flex items-center justify-between rounded-lg border p-3 text-left transition-colors ${
+                          selected ? "border-primary bg-primary/5" : "border-border bg-card"
+                        }`}
+                      >
+                        <span className="text-sm">{opt.name}</span>
+                        <span className="text-sm font-medium text-primary">
+                          {opt.extra_price > 0 ? `+ ${fmt(opt.extra_price)}` : "Incluído"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+          <DialogFooter className="p-4 pt-0 gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setComplementDialog(null)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={() => {
+                if (!complementDialog) return;
+                const missing = complementDialog.groups.filter(
+                  (group) =>
+                    group.is_required &&
+                    (complementDialog.selected[group.id] ?? []).length < group.min_choices,
+                );
+                if (missing.length) {
+                  toast({
+                    title: "Escolha obrigatória",
+                    description: missing.map((g) => g.name).join(", "),
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                addToCart(complementDialog.item, selectedComplements(complementDialog));
+                setComplementDialog(null);
+              }}
+            >
+              Adicionar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+

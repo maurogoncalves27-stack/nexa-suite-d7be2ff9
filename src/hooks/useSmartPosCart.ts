@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import type { SelectedComplement } from "@/lib/menuCatalog";
 
 export interface SmartPosCartItem {
   uid: string;
@@ -6,14 +7,31 @@ export interface SmartPosCartItem {
   name: string;
   unit_price: number;
   quantity: number;
+  notes?: string;
+  complements?: SelectedComplement[];
 }
 
 export function useSmartPosCart() {
   const [items, setItems] = useState<SmartPosCartItem[]>([]);
 
-  const add = useCallback((it: { id: string; name: string; price: number }) => {
+  const signature = (complements?: SelectedComplement[]) =>
+    (complements ?? []).map((c) => c.option_id).sort().join("|");
+
+  const add = useCallback((it: {
+    id: string;
+    name: string;
+    price: number;
+    notes?: string;
+    complements?: SelectedComplement[];
+  }) => {
     setItems((prev) => {
-      const existing = prev.find((p) => p.menu_item_id === it.id);
+      const sig = signature(it.complements);
+      const existing = prev.find(
+        (p) =>
+          p.menu_item_id === it.id &&
+          (p.notes || "") === (it.notes || "") &&
+          signature(p.complements) === sig,
+      );
       if (existing) {
         return prev.map((p) =>
           p.uid === existing.uid ? { ...p, quantity: p.quantity + 1 } : p,
@@ -27,6 +45,8 @@ export function useSmartPosCart() {
           name: it.name,
           unit_price: Number(it.price) || 0,
           quantity: 1,
+          notes: it.notes,
+          complements: it.complements,
         },
       ];
     });
@@ -57,3 +77,4 @@ export function useSmartPosCart() {
 
   return { items, add, inc, dec, remove, clear, count, total };
 }
+
