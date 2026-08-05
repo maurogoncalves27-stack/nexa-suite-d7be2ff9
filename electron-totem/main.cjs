@@ -42,6 +42,26 @@ const APP_URL =
 const KIOSK = process.env.NEXA_KIOSK !== "false"; // padrão: kiosk
 const SITEF_AGENT_PORT = parseInt(process.env.SITEF_AGENT_PORT || "60906", 10);
 let mainWindow;
+let kioskWatchdog = null;
+
+// Reafirma o modo kiosk (fullscreen + sempre à frente + foco).
+// Necessário porque apps externos de TEF (Payer/PayGo) roubam o foco e
+// fazem a barra de tarefas do Windows reaparecer sobre o totem.
+function reassertKiosk() {
+  if (!KIOSK || !mainWindow || mainWindow.isDestroyed()) return;
+  try {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    if (!mainWindow.isFullScreen()) mainWindow.setFullScreen(true);
+    if (!mainWindow.isKiosk?.()) mainWindow.setKiosk?.(true);
+    mainWindow.setAlwaysOnTop(true, "screen-saver");
+    mainWindow.moveTop?.();
+    mainWindow.show();
+    mainWindow.focus();
+  } catch (e) {
+    console.warn("[totem] reassertKiosk falhou", e?.message || e);
+  }
+}
+
 
 // Garante que qualquer window.print() disparado pela página remota não abra diálogo do Windows.
 app.commandLine.appendSwitch("kiosk-printing");
@@ -70,18 +90,24 @@ function createWindow() {
   if (KIOSK) {
     // Mantém o totem sempre à frente: o Checkout Payer roda oculto atrás
     // (a interação do cliente é no pinpad + na nossa tela).
-    mainWindow.setAlwaysOnTop(true, "screen-saver");
+    reassertKiosk();
     mainWindow.setVisibleOnAllWorkspaces?.(true);
     mainWindow.on("blur", () => {
-      setTimeout(() => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.setAlwaysOnTop(true, "screen-saver");
-          mainWindow.show();
-          mainWindow.focus();
-        }
-      }, 150);
+      // Alguns apps de TEF (Payer/PayGo) roubam o foco e revelam a barra de tarefas.
+      // Reafirma o kiosk algumas vezes até a janela voltar à frente.
+      [80, 250, 600, 1200].forEach((ms) => setTimeout(reassertKiosk, ms));
+    });
+    // Watchdog: garante fullscreen/topmost mesmo se algo externo alterar o estado.
+    kioskWatchdog = setInterval(() => {
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      if (!mainWindow.isFullScreen() || !mainWindow.isAlwaysOnTop()) reassertKiosk();
+    }, 2000);
+    mainWindow.on("closed", () => {
+      if (kioskWatchdog) clearInterval(kioskWatchdog);
+      kioskWatchdog = null;
     });
   }
+
 
   // Sempre buscar a versão publicada mais recente do app web:
   // limpa o cache HTTP antes de carregar e ignora cache na navegação inicial.
@@ -257,6 +283,12 @@ const sitefAgentUrl = (pathName) => {
   const port = parseInt(process.env.SITEF_AGENT_PORT || "60906", 10);
   return `http://127.0.0.1:${port}${pathName}`;
 };
+
+// Permite que o frontend reafirme o kiosk (ex.: ao abrir/fechar o modal de PIX/TEF)
+ipcMain.handle("kiosk:reassert", async () => {
+  reassertKiosk();
+  return { ok: true };
+});
 
 ipcMain.handle("sitef:health", async () => {
   try {
