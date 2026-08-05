@@ -135,7 +135,7 @@ export async function loadItemComplements(menuItemId: string): Promise<CatalogCo
       .select("id,group_id,name,extra_price,is_active,sort_order")
       .in("group_id", groupIds).eq("is_active", true).order("sort_order");
     if (error) throw error;
-    return activeLinks.map((link: any) => ({
+    const reusableGroups = activeLinks.map((link: any) => ({
       id: link.complement_groups.id,
       name: link.complement_groups.name,
       is_required: Boolean(link.complement_groups.is_required),
@@ -144,6 +144,28 @@ export async function loadItemComplements(menuItemId: string): Promise<CatalogCo
       options: (options ?? []).filter((option: any) => option.group_id === link.group_id)
         .map((option: any) => ({ id: option.id, name: option.name, extra_price: Number(option.extra_price ?? 0) })),
     }));
+
+    // Alguns itens importados (principalmente bebidas) representam cada variação
+    // como um grupo sem opções: “Normal”/“Zero”, “Com gás”/“Sem gás”, sabores etc.
+    // Converte esse formato legado em uma escolha única sem alterar o cadastro.
+    const groupsWithOptions = reusableGroups.filter((group) => group.options.length > 0);
+    const emptyVariantGroups = reusableGroups.filter((group) => group.options.length === 0);
+    if (groupsWithOptions.length === 0 && emptyVariantGroups.length > 1) {
+      return [{
+        id: `variant:${menuItemId}`,
+        name: "Escolha uma opção",
+        is_required: true,
+        min_choices: 1,
+        max_choices: 1,
+        options: emptyVariantGroups.map((group) => ({
+          id: group.id,
+          name: group.name,
+          extra_price: 0,
+        })),
+      }];
+    }
+
+    return groupsWithOptions;
   }
 
   const { data: legacyGroups, error: groupsError } = await supabase
