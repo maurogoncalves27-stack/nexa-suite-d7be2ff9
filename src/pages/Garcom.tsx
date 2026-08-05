@@ -42,8 +42,10 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { createMockAdapter } from "@/lib/tef/mockAdapter";
-import type { TefStatus } from "@/lib/tef/types";
+import { loadTefConfig, createTefAdapter, logTefTransaction } from "@/lib/tef";
+import type { TefStatus, TefPaymentMethod, TefPaymentResult } from "@/lib/tef/types";
+import { finalizeSale } from "@/lib/smartpos/sale";
+import { printTefReceipts } from "@/lib/smartpos/print";
 import { loadMenuCatalog } from "@/lib/menuCatalog";
 
 const fmt = (n: number) =>
