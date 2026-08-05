@@ -90,7 +90,24 @@ const ROLE_MAP: Array<{ prefix: string; config: RoleManifestConfig }> = [
       appleIcon: "/icons/nexa-contabilidade-512.png",
     },
   },
+  {
+    prefix: "/smartpos",
+    config: {
+      manifest: "/manifest-waiter.json",
+      themeColor: "#3B82F6",
+      appleIcon: "/icons/nexa-app-512.png",
+    },
+  },
+  {
+    prefix: "/garcom",
+    config: {
+      manifest: "/manifest-waiter.json",
+      themeColor: "#3B82F6",
+      appleIcon: "/icons/nexa-app-512.png",
+    },
+  },
 ];
+
 
 
 function resolveConfig(pathname: string): RoleManifestConfig {

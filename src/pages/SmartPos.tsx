@@ -21,6 +21,14 @@ import {
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Loader2,
   ShoppingCart,
   Plus,
@@ -41,6 +49,14 @@ import { logTefTransaction } from "@/lib/tef";
 import { useSmartPosCart } from "@/hooks/useSmartPosCart";
 import { createDraftOrder, finalizeSale, discardDraftOrder } from "@/lib/smartpos/sale";
 import { printTefReceipts } from "@/lib/smartpos/print";
+import {
+  loadMenuCatalog,
+  loadItemComplements,
+  type CatalogCategory,
+  type CatalogMenuItem,
+  type CatalogComplementGroup,
+  type SelectedComplement,
+} from "@/lib/menuCatalog";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
@@ -51,18 +67,16 @@ interface Store {
   id: string;
   name: string;
 }
-interface MenuCategory {
-  id: string;
-  name: string;
-  sort_order: number;
+type MenuCategory = CatalogCategory;
+type MenuItem = CatalogMenuItem;
+
+interface ComplementDialog {
+  item: MenuItem;
+  groups: CatalogComplementGroup[];
+  selected: Record<string, string[]>;
+  loading: boolean;
 }
-interface MenuItem {
-  id: string;
-  name: string;
-  price: number;
-  category_id: string | null;
-  is_active: boolean;
-}
+
 
 type Screen = "catalog" | "charge" | "receipt";
 
@@ -78,6 +92,7 @@ export default function SmartPos() {
   const [loading, setLoading] = useState(true);
   const [screen, setScreen] = useState<Screen>("catalog");
   const [cartOpen, setCartOpen] = useState(false);
+  const [complementDialog, setComplementDialog] = useState<ComplementDialog | null>(null);
 
   // TEF state
   const [tefStatus, setTefStatus] = useState<TefStatus>("idle");
@@ -100,29 +115,35 @@ export default function SmartPos() {
     if (!authLoading && !user) navigate("/smartpos/login", { replace: true });
   }, [authLoading, user, navigate]);
 
-  // Carrega lojas permitidas + catálogo
+  // Carrega lojas permitidas
   useEffect(() => {
     void (async () => {
       setLoading(true);
-      const [stRes, catRes, itRes] = await Promise.all([
-        supabase.from("stores").select("id,name,is_virtual").eq("is_virtual", false).order("name"),
-        supabase.from("menu_categories").select("id,name,sort_order").order("sort_order"),
-        supabase
-          .from("menu_items")
-          .select("id,name,price,category_id,is_active")
-          .eq("is_active", true)
-          .order("sort_order"),
-      ]);
-      const filteredStores = ((stRes.data ?? []) as Store[]).filter((s) =>
+      const { data } = await supabase.from("stores").select("id,name,is_virtual").eq("is_virtual", false).order("name");
+      const filteredStores = ((data ?? []) as Store[]).filter((s) =>
         ALLOWED_STORE_NAMES.some((n) => s.name.toUpperCase().includes(n)),
       );
       setStores(filteredStores);
       if (filteredStores.length === 1) setStoreId(filteredStores[0].id);
-      setCategories((catRes.data ?? []) as MenuCategory[]);
-      setItems((itRes.data ?? []) as MenuItem[]);
       setLoading(false);
     })();
   }, []);
+
+  // Catálogo canônico por loja
+  useEffect(() => {
+    if (!storeId) return;
+    void (async () => {
+      try {
+        const catalog = await loadMenuCatalog(storeId);
+        setCategories(catalog.categories);
+        setItems(catalog.items);
+      } catch (error) {
+        console.error(error);
+        toast({ title: "Não foi possível carregar o cardápio", variant: "destructive" });
+      }
+    })();
+  }, [storeId]);
+
 
   const filteredItems = useMemo(() => {
     return items.filter((it) => {
@@ -132,7 +153,66 @@ export default function SmartPos() {
     });
   }, [items, activeCat, search]);
 
+  const openItem = async (it: MenuItem) => {
+    setComplementDialog({ item: it, groups: [], selected: {}, loading: true });
+    try {
+      const groups = await loadItemComplements(it.id);
+      setComplementDialog((current) =>
+        current?.item.id === it.id ? { ...current, groups, loading: false } : current,
+      );
+    } catch (error) {
+      console.error(error);
+      setComplementDialog((current) =>
+        current?.item.id === it.id ? { ...current, loading: false } : current,
+      );
+      toast({ title: "Não foi possível carregar os complementos", variant: "destructive" });
+    }
+  };
+
+  const toggleComplement = (group: CatalogComplementGroup, optionId: string) => {
+    setComplementDialog((current) => {
+      if (!current) return current;
+      const selected = current.selected[group.id] ?? [];
+      let next: string[];
+      if (selected.includes(optionId)) next = selected.filter((id) => id !== optionId);
+      else if (group.max_choices <= 1) next = [optionId];
+      else if (selected.length < group.max_choices) next = [...selected, optionId];
+      else {
+        toast({ title: `Escolha no máximo ${group.max_choices} em “${group.name}”`, variant: "destructive" });
+        return current;
+      }
+      return { ...current, selected: { ...current.selected, [group.id]: next } };
+    });
+  };
+
+  const selectedComplements = (dialog: NonNullable<typeof complementDialog>): SelectedComplement[] =>
+    dialog.groups.flatMap((group) =>
+      (dialog.selected[group.id] ?? []).flatMap((optionId) => {
+        const option = group.options.find((candidate) => candidate.id === optionId);
+        return option
+          ? [{
+              group_id: group.id,
+              group_name: group.name,
+              option_id: option.id,
+              option_name: option.name,
+              extra_price: option.extra_price,
+            }]
+          : [];
+      }),
+    );
+
+  const addItemToCart = (it: MenuItem, complements: SelectedComplement[]) => {
+    const unitPrice = Number(it.price) + complements.reduce((sum, c) => sum + c.extra_price, 0);
+    cart.add({
+      id: it.id,
+      name: it.name,
+      price: unitPrice,
+      complements: complements.length ? complements : undefined,
+    });
+  };
+
   const handleLogout = async () => {
+
     await supabase.auth.signOut();
     navigate("/smartpos/login", { replace: true });
   };
@@ -164,12 +244,15 @@ export default function SmartPos() {
         name: i.name,
         quantity: i.quantity,
         unit_price: i.unit_price,
+        notes: i.notes,
+        complements: i.complements,
       })),
       userId: user?.id,
       channelCodes: ["smartpos", "balcao", "counter"],
       orderType: "counter",
       source: "smartpos",
     });
+
     if (!order) {
       setTefStatus("idle");
       toast({ title: "Erro ao abrir pedido", description: error ?? "", variant: "destructive" });
@@ -233,7 +316,12 @@ export default function SmartPos() {
       const receipt = {
         storeName,
         orderNumber: order.orderNumber,
-        items: cart.items.map((i) => ({ name: i.name, quantity: i.quantity, unit_price: i.unit_price })),
+        items: cart.items.map((i) => ({
+          name: i.name,
+          quantity: i.quantity,
+          unit_price: i.unit_price,
+          complements: i.complements?.map((c) => ({ option_name: c.option_name, extra_price: c.extra_price })),
+        })),
         total: amount,
         method: tefMethod,
         nsu: result.nsu,
@@ -244,6 +332,7 @@ export default function SmartPos() {
         operator: user?.email ?? undefined,
         tefReceipt: result.customerReceipt,
       };
+
       setLastResult({
         nsu: result.nsu,
         brand: result.cardBrand,
@@ -474,13 +563,14 @@ export default function SmartPos() {
           {filteredItems.map((it) => (
             <button
               key={it.id}
-              onClick={() => cart.add(it)}
+              onClick={() => openItem(it)}
               className="border rounded-lg p-3 text-left bg-card hover:border-primary active:scale-95 transition-all min-h-[88px] flex flex-col justify-between"
             >
               <div className="text-sm font-medium line-clamp-2">{it.name}</div>
               <div className="text-primary font-bold text-sm mt-2">{fmt(Number(it.price))}</div>
             </button>
           ))}
+
           {filteredItems.length === 0 && (
             <div className="col-span-2 text-center text-muted-foreground text-sm py-12">
               Nenhum produto encontrado
@@ -513,6 +603,11 @@ export default function SmartPos() {
                 <div key={ci.uid} className="flex items-center gap-2 border rounded-lg p-2">
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{ci.name}</div>
+                    {ci.complements && ci.complements.length > 0 && (
+                      <div className="text-xs text-muted-foreground truncate">
+                        {ci.complements.map((c) => c.option_name).join(" · ")}
+                      </div>
+                    )}
                     <div className="text-xs text-muted-foreground">{fmt(ci.unit_price)}</div>
                   </div>
                   <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => cart.dec(ci.uid)}>
@@ -532,6 +627,7 @@ export default function SmartPos() {
                   </Button>
                 </div>
               ))}
+
               {cart.items.length === 0 && (
                 <div className="text-center text-muted-foreground py-10 text-sm">
                   Carrinho vazio
@@ -561,6 +657,96 @@ export default function SmartPos() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <Dialog
+        open={!!complementDialog}
+        onOpenChange={(open) => {
+          if (!open) setComplementDialog(null);
+        }}
+      >
+        <DialogContent className="max-w-sm p-0 overflow-hidden">
+          <DialogHeader className="p-4 pb-0">
+            <DialogTitle className="text-lg">
+              {complementDialog?.item.name ?? "Personalizar"}
+            </DialogTitle>
+            <DialogDescription>
+              {fmt(Number(complementDialog?.item.price ?? 0))}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="p-4 max-h-[60vh] overflow-y-auto space-y-4">
+            {complementDialog?.loading && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            )}
+            {complementDialog?.groups.map((group) => (
+              <div key={group.id}>
+                <div className="font-medium text-sm mb-2">
+                  {group.name}
+                  {group.is_required && <span className="text-destructive ml-1">*</span>}
+                  <span className="text-muted-foreground text-xs block font-normal">
+                    {group.min_choices === group.max_choices
+                      ? `Escolha ${group.min_choices}`
+                      : `Escolha de ${group.min_choices} até ${group.max_choices}`}
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {group.options.map((opt) => {
+                    const selected = (complementDialog.selected[group.id] ?? []).includes(opt.id);
+                    return (
+                      <button
+                        key={opt.id}
+                        onClick={() => toggleComplement(group, opt.id)}
+                        className={`w-full flex items-center justify-between rounded-lg border p-3 text-left transition-colors ${
+                          selected ? "border-primary bg-primary/5" : "border-border bg-card"
+                        }`}
+                      >
+                        <span className="text-sm">{opt.name}</span>
+                        <span className="text-sm font-medium text-primary">
+                          {opt.extra_price > 0 ? `+ ${fmt(opt.extra_price)}` : "Incluído"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+          <DialogFooter className="p-4 pt-0 gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setComplementDialog(null)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={() => {
+                if (!complementDialog) return;
+                const missing = complementDialog.groups.filter(
+                  (group) =>
+                    group.is_required &&
+                    (complementDialog.selected[group.id] ?? []).length < group.min_choices,
+                );
+                if (missing.length) {
+                  toast({
+                    title: "Escolha obrigatória",
+                    description: missing.map((g) => g.name).join(", "),
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                addItemToCart(complementDialog.item, selectedComplements(complementDialog));
+                setComplementDialog(null);
+              }}
+            >
+              Adicionar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+

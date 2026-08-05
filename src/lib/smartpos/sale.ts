@@ -5,13 +5,17 @@
  * depois conclui com o pagamento ou cancela se o TEF não aprovar.
  */
 import { supabase } from "@/integrations/supabase/client";
+import type { SelectedComplement } from "@/lib/menuCatalog";
 
 export interface SaleItemInput {
   menu_item_id: string;
   name: string;
   quantity: number;
   unit_price: number;
+  notes?: string;
+  complements?: SelectedComplement[];
 }
+
 
 const PENDING_KEY = "smartpos.pendingOrderId";
 
@@ -140,11 +144,16 @@ export const createDraftOrder = async (params: {
     quantity: i.quantity,
     unit_price: i.unit_price,
     total: i.quantity * i.unit_price,
+    notes: i.notes ?? null,
+    complements: i.complements?.length ? i.complements : null,
   }));
-  const { error: itemsError } = await supabase.from("pdv_order_items").insert(rows);
+  const { error: itemsError } = await supabase.from("pdv_order_items").insert(rows as any);
   if (itemsError) {
     return { order: null, error: itemsError.message };
   }
+
+
+
 
   setPendingOrderId(data.id);
   return { order: { orderId: data.id, orderNumber, total }, error: null };
