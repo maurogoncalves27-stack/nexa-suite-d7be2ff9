@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Smartphone, Loader2, Printer, PlugZap } from "lucide-react";
+import { Tablet, Loader2, Printer, PlugZap } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { loadTefConfig } from "@/lib/tef";
 import { payerDiagnostics } from "@/lib/tef/payer";
@@ -128,7 +128,7 @@ export default function SmartPosConfig() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-          <Smartphone className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+          <Tablet className="h-6 w-6 md:h-7 md:w-7 text-primary" />
           Terminal SmartPOS
         </h1>
         <p className="text-muted-foreground">
