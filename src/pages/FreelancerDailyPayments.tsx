@@ -16,7 +16,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Plus, Loader2, Pencil, Trash2, CheckCircle2, RotateCcw, Download, ChevronLeft, ChevronRight, CalendarDays, HandCoins } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, CheckCircle2, RotateCcw, Download, ChevronLeft, ChevronRight, CalendarDays, HandCoins, UserCheck } from "lucide-react";
 import { exportC6PixFile } from "@/lib/c6Export";
 import { sortStores } from "@/lib/storeSort";
 
@@ -37,6 +37,7 @@ type Payment = {
   notes: string | null;
   status: "pending" | "paid";
   paid_at: string | null;
+  check_in_at?: string | null;
   freelancers?: { full_name: string; pix_key: string | null; pix_key_type: string | null } | null;
   stores?: { name: string } | null;
 };
@@ -156,6 +157,17 @@ export default function FreelancerDailyPayments() {
     const next = p.status === "paid" ? { status: "pending", paid_at: null } : { status: "paid", paid_at: new Date().toISOString() };
     const { error } = await supabase.from("freelancer_daily_payments").update(next).eq("id", p.id);
     if (error) { toast.error(error.message); return; }
+    load();
+  };
+
+  const markPresence = async (p: Payment) => {
+    if (p.check_in_at) return;
+    const { error } = await supabase
+      .from("freelancer_daily_payments")
+      .update({ check_in_at: new Date().toISOString() })
+      .eq("id", p.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Presença marcada manualmente.");
     load();
   };
 
@@ -327,6 +339,11 @@ export default function FreelancerDailyPayments() {
                     <div className="flex items-center justify-between">
                       <div className="font-semibold">{fmtMoney(Number(p.amount))}</div>
                       <div className="flex gap-1">
+                        {!p.check_in_at && (
+                          <Button size="icon" variant="outline" onClick={() => markPresence(p)} title="Marcar presença">
+                            <UserCheck className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button size="icon" variant="outline" onClick={() => togglePaid(p)} title={p.status === "paid" ? "Reabrir" : "Marcar pago"}>
                           {p.status === "paid" ? <RotateCcw className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
                         </Button>
@@ -367,6 +384,11 @@ export default function FreelancerDailyPayments() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="inline-flex gap-1">
+                            {!p.check_in_at && (
+                              <Button size="icon" variant="outline" onClick={() => markPresence(p)} title="Marcar presença">
+                                <UserCheck className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button size="icon" variant="outline" onClick={() => togglePaid(p)} title={p.status === "paid" ? "Reabrir" : "Marcar pago"}>
                               {p.status === "paid" ? <RotateCcw className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
                             </Button>

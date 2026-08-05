@@ -19597,6 +19597,10 @@ export type Database = {
         }[]
       }
       find_user_id_by_email: { Args: { _email: string }; Returns: string }
+      freelancer_check_punch: {
+        Args: { _job_id: string; _kind: string; _lat?: number; _lng?: number }
+        Returns: Json
+      }
       friday_separation_checklist: {
         Args: never
         Returns: {

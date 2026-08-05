@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, MapPin, Calendar, Clock, HandCoins, LogOut, CheckCircle2, X } from "lucide-react";
 import { toast } from "sonner";
+import FreelancerShiftsPanel from "@/components/freelancers/FreelancerShiftsPanel";
 
 type Job = {
   id: string;
@@ -116,11 +117,17 @@ export default function FreelancerPortal() {
       </header>
 
       <main className="container mx-auto p-4 max-w-3xl">
-        <Tabs defaultValue="open">
-          <TabsList className="grid grid-cols-2 w-full">
-            <TabsTrigger value="open">Vagas disponíveis ({open.length})</TabsTrigger>
-            <TabsTrigger value="mine">Minhas candidaturas ({mine.length})</TabsTrigger>
+        <Tabs defaultValue="shifts">
+          <TabsList className="grid grid-cols-3 w-full">
+            <TabsTrigger value="shifts">Meus turnos</TabsTrigger>
+            <TabsTrigger value="open">Vagas ({open.length})</TabsTrigger>
+            <TabsTrigger value="mine">Candidaturas ({mine.length})</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="shifts" className="space-y-3 mt-4">
+            <FreelancerShiftsPanel freelancerId={freelancer.id} />
+          </TabsContent>
+
 
           <TabsContent value="open" className="space-y-3 mt-4">
             {loading ? (
