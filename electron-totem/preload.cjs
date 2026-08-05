@@ -18,7 +18,7 @@ contextBridge.exposeInMainWorld("electron", {
   // Impressão silenciosa direta de URL/PDF/DANFE fiscal
   printUrl: (payload) => ipcRenderer.invoke("printer:printUrl", payload),
   // Reafirma kiosk/fullscreen (esconde a barra de tarefas se algum app roubar o foco)
-  reassertKiosk: () => ipcRenderer.invoke("kiosk:reassert"),
+  reassertKiosk: (opts) => ipcRenderer.invoke("kiosk:reassert", opts),
   // SiTef: agente HTTP local (CliSiTef wrapper). Ver electron/sitef-agent.cjs
   sitef: {
     health: () => ipcRenderer.invoke("sitef:health"),
