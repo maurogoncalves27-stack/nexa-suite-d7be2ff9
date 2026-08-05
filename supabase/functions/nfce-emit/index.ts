@@ -348,8 +348,9 @@ Deno.serve(async (req) => {
       response_payload: isContingency
         ? { contingency: true, error: networkErr ? String(networkErr.message ?? networkErr) : `HTTP ${focusResp?.status}` }
         : focusData,
-      numero: focusData.numero ? Number(focusData.numero) : null,
-      serie: focusData.serie ? Number(focusData.serie) : null,
+      numero: focusData.numero ? Number(focusData.numero) : numeroNfce,
+      serie: focusData.serie ? Number(focusData.serie) : serieNfce,
+
       chave_acesso: focusData.chave_nfe ?? null,
       protocolo: focusData.protocolo ?? null,
       danfe_url: focusData.caminho_danfe ? `${baseUrl(env)}${focusData.caminho_danfe}` : null,
