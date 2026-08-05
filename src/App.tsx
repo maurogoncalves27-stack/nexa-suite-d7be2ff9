@@ -149,6 +149,7 @@ const StoreHome = lazy(() => import("./pages/StoreHome.tsx"));
 const SmartPos = lazy(() => import("./pages/SmartPos.tsx"));
 const SmartPosLogin = lazy(() => import("./pages/SmartPosLogin.tsx"));
 const Garcom = lazy(() => import("./pages/Garcom.tsx"));
+const SmartPosConfig = lazy(() => import("./pages/SmartPosConfig.tsx"));
 const Totem = lazy(() => import("./pages/Totem.tsx"));
 const TotemConfig = lazy(() => import("./pages/TotemConfig.tsx"));
 const OperationalHealth = lazy(() => import("./pages/OperationalHealth.tsx"));
