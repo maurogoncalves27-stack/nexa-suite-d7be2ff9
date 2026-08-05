@@ -254,33 +254,73 @@ Deno.serve(async (req) => {
       }
     }
 
+    // 6.1 Numeração controlada por nós (série + número).
+    // A série 1 do CNPJ já foi usada por emissor legado, o que gera
+    // "Rejeicao 539: Duplicidade de NF-e". Por isso a série vem de
+    // stores.nfce_serie e o número é o próximo livre da nossa base.
+    const serieNfce = Number((store as any).nfce_serie ?? 1) || 1;
+    const { data: lastNum } = await sb
+      .from("pdv_fiscal_invoices")
+      .select("numero")
+      .eq("store_id", store.id)
+      .eq("serie", serieNfce)
+      .not("numero", "is", null)
+      .order("numero", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    let numeroNfce = Number(lastNum?.numero ?? 0) + 1;
+
+    payload.serie = serieNfce;
+
     // 7. Envia pra Focus NFe (com detecção de contingência por rede/timeout/5xx)
-    const url = `${baseUrl(env)}/v2/nfce?ref=${focusRef}`;
     let focusResp: Response | null = null;
     let focusText = "";
     let focusData: any = {};
     let networkErr: any = null;
+    let currentRef = focusRef;
 
-    try {
-      const ctrl = new AbortController();
-      const tmo = setTimeout(() => ctrl.abort(), 15000); // 15s
-      focusResp = await fetch(url, {
-        method: "POST",
-        headers: {
-          Authorization: basicAuth(token),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-        signal: ctrl.signal,
-      });
-      clearTimeout(tmo);
-      focusText = await focusResp.text();
-      try { focusData = JSON.parse(focusText); } catch { focusData = { raw: focusText }; }
-      console.log("Focus NFe response:", focusResp.status, focusText.slice(0, 1000));
-    } catch (e: any) {
-      networkErr = e;
-      console.error("Focus NFe network error:", e?.message ?? e);
+    const isDuplicidade = (d: any) =>
+      String(d?.status_sefaz ?? "") === "539" ||
+      /duplicidade de nf-?e/i.test(String(d?.mensagem_sefaz ?? d?.mensagem ?? ""));
+
+    for (let attempt = 0; attempt < 10; attempt++) {
+      payload.numero = numeroNfce;
+      if (attempt > 0) {
+        currentRef = `${focusRef}-r${attempt}`;
+        await sb.from("pdv_fiscal_invoices").update({ focus_ref: currentRef }).eq("id", invoiceId);
+      }
+      const url = `${baseUrl(env)}/v2/nfce?ref=${currentRef}`;
+      networkErr = null;
+      try {
+        const ctrl = new AbortController();
+        const tmo = setTimeout(() => ctrl.abort(), 15000); // 15s
+        focusResp = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: basicAuth(token),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+          signal: ctrl.signal,
+        });
+        clearTimeout(tmo);
+        focusText = await focusResp.text();
+        try { focusData = JSON.parse(focusText); } catch { focusData = { raw: focusText }; }
+        console.log(`Focus NFe response (serie ${serieNfce} nº ${numeroNfce}):`, focusResp.status, focusText.slice(0, 1000));
+      } catch (e: any) {
+        networkErr = e;
+        console.error("Focus NFe network error:", e?.message ?? e);
+        break;
+      }
+
+      // Número já usado na SEFAZ → tenta o próximo.
+      if (isDuplicidade(focusData)) {
+        numeroNfce += 1;
+        continue;
+      }
+      break;
     }
+
 
     // Contingência: SEFAZ/Focus indisponível (timeout, erro de rede ou HTTP 5xx).
     // A nota fica salva e será reenviada pelo job nfce-retry-contingency.
