@@ -325,6 +325,8 @@ app.on("window-all-closed", () => {
 app.on("before-quit", () => {
   stopSitefAgent();
   stopPayerAgent();
+  lastTaskbarCall = 0;
+  setWindowsTaskbarVisible(true);
   globalShortcut.unregisterAll();
 });
 
