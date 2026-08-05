@@ -309,10 +309,13 @@ const sitefAgentUrl = (pathName) => {
 };
 
 // Permite que o frontend reafirme o kiosk (ex.: ao abrir/fechar o modal de PIX/TEF)
-ipcMain.handle("kiosk:reassert", async () => {
-  reassertKiosk();
+ipcMain.handle("kiosk:reassert", async (_e, opts) => {
+  const durationMs = Number(opts?.durationMs) || 0;
+  if (durationMs > 0) startAggressiveKiosk(durationMs);
+  else reassertKiosk();
   return { ok: true };
 });
+
 
 ipcMain.handle("sitef:health", async () => {
   try {
