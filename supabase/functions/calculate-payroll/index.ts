@@ -810,10 +810,11 @@ Deno.serve(async (req: Request) => {
       const dsrLossDiscount = r2(dsrLossDays * dailyRateAbs);
 
 
-      // Falta injustificada zera a produtividade do período (apenas quando o
-      // ponto deste colaborador impacta folha — supervisor não perde produtividade
-      // por falta no ponto).
-      const productivityLost = timeClockImpactsPayroll && absentDays > 0;
+      // Falta injustificada zera a produtividade do período.
+      // Para quem o ponto não impacta folha (ex.: supervisor), só zera quando há
+      // afastamento não remunerado / suspensão lançado manualmente.
+      const unpaidDaysCount = unpaidDates?.size ?? 0;
+      const productivityLost = (timeClockImpactsPayroll && absentDays > 0) || unpaidDaysCount > 0;
       if (productivityLost) productivity = 0;
 
       // ===== VT — cálculo final =====
