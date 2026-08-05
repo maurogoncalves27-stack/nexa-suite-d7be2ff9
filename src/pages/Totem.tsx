@@ -182,21 +182,23 @@ export default function Totem() {
   // pode roubar o foco e revelar a barra de tarefas do Windows. Reafirmamos o kiosk.
   useEffect(() => {
     if (!tefOpen) return;
-    const reassert = () => { void (window as any).electron?.reassertKiosk?.(); };
+    // Modo agressivo no processo Electron (300ms) enquanto o modal estiver aberto.
+    const reassert = () => { void (window as any).electron?.reassertKiosk?.({ durationMs: 15000 }); };
     reassert();
-    const id = setInterval(reassert, 1500);
-    return () => { clearInterval(id); reassert(); };
+    const id = setInterval(reassert, 5000);
+    return () => { clearInterval(id); void (window as any).electron?.reassertKiosk?.({ durationMs: 5000 }); };
   }, [tefOpen]);
 
   // Após finalizar a venda (impressão do cupom/NFC-e), o spooler/visualizador do
   // Windows pode roubar o foco e revelar a barra de tarefas. Reafirmamos o kiosk.
   useEffect(() => {
     if (step !== "done") return;
-    const reassert = () => { void (window as any).electron?.reassertKiosk?.(); };
+    const reassert = () => { void (window as any).electron?.reassertKiosk?.({ durationMs: 15000 }); };
     reassert();
-    const id = setInterval(reassert, 1500);
-    return () => { clearInterval(id); reassert(); };
+    const id = setInterval(reassert, 5000);
+    return () => { clearInterval(id); void (window as any).electron?.reassertKiosk?.({ durationMs: 5000 }); };
   }, [step]);
+
 
 
 
