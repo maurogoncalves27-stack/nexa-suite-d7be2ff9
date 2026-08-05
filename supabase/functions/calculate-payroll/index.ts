@@ -615,8 +615,10 @@ Deno.serve(async (req: Request) => {
 
       let workedDays = 30;
       if (admissionDate && admissionDate >= periodStart && admissionDate <= periodEnd) {
-        const hire = new Date(admissionDate);
-        workedDays = MONTH_DAYS - hire.getDate() + 1;
+        const hire = new Date(`${admissionDate}T00:00:00`);
+        // Dias corridos da admissão até o fim do mês (critério contábil Exact),
+        // limitado a 30 (mês comercial).
+        workedDays = Math.min(MONTH_DAYS, lastDay - hire.getDate() + 1);
       }
       if (emp.termination_date && emp.termination_date >= periodStart && emp.termination_date <= periodEnd) {
         const term = new Date(emp.termination_date);
@@ -795,8 +797,12 @@ Deno.serve(async (req: Request) => {
       const weeksWithAbsence = new Set<string>();
       for (const d of absenceDateSet) {
         const dt = new Date(`${d}T00:00:00`);
-        // chave da semana = data da segunda-feira
         const day = dt.getDay(); // 0=dom..6=sab
+        // Falta em domingo NÃO gera perda de DSR adicional: o próprio domingo
+        // já é o descanso da semana (evita contar 2 DSR num afastamento
+        // contínuo que atravessa o fim de semana).
+        if (day === 0) continue;
+        // chave da semana = data da segunda-feira
         const diffToMonday = (day + 6) % 7;
         const monday = new Date(dt);
         monday.setDate(dt.getDate() - diffToMonday);
