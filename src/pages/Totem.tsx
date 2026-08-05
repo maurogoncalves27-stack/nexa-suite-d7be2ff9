@@ -188,6 +188,19 @@ export default function Totem() {
     return () => { clearInterval(id); reassert(); };
   }, [tefOpen]);
 
+  // Após finalizar a venda (impressão do cupom/NFC-e), o spooler/visualizador do
+  // Windows pode roubar o foco e revelar a barra de tarefas. Reafirmamos o kiosk.
+  useEffect(() => {
+    if (step !== "done") return;
+    const reassert = () => { void (window as any).electron?.reassertKiosk?.(); };
+    reassert();
+    const id = setInterval(reassert, 1500);
+    return () => { clearInterval(id); reassert(); };
+  }, [step]);
+
+
+
+
   const [paymentMethod, setPaymentMethod] = useState<TefPaymentMethod | null>(null);
   const [showNoteKb, setShowNoteKb] = useState(false);
   const [showCpfKb, setShowCpfKb] = useState(false);
