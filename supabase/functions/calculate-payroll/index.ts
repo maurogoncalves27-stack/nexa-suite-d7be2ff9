@@ -46,6 +46,7 @@ const FAMILY_ALLOWANCE_QUOTA = 67.54;
 
 const PRODUCTIVITY_RATE = 0.05;          // 5% sobre salário proporcional
 const NIGHT_RATE = 0.20;                  // 20% adicional noturno CLT urbano
+const MONTH_DAYS = 30;                    // mês comercial fixo (CLT art. 64)
 const NIGHT_HOUR_FACTOR = 60 / 52.5;      // hora noturna reduzida (52'30")
 const NIGHT_START_MIN = 22 * 60;          // 22:00
 const NIGHT_END_MIN = 5 * 60;             // 05:00 (do dia seguinte)
@@ -613,7 +614,7 @@ Deno.serve(async (req: Request) => {
       let workedDays = 30;
       if (admissionDate && admissionDate >= periodStart && admissionDate <= periodEnd) {
         const hire = new Date(admissionDate);
-        workedDays = lastDay - hire.getDate() + 1;
+        workedDays = MONTH_DAYS - hire.getDate() + 1;
       }
       if (emp.termination_date && emp.termination_date >= periodStart && emp.termination_date <= periodEnd) {
         const term = new Date(emp.termination_date);
@@ -632,7 +633,7 @@ Deno.serve(async (req: Request) => {
       const vacationDaysInMonth = Math.min(vacationDaysMap.get(emp.id) ?? 0, workedDays);
       // Dias pagos como salário normal na folha: descontamos afastamento INSS + férias.
       const salaryWorkedDays = Math.max(0, workedDays - inssTotalDays - vacationDaysInMonth);
-      const dailyBase = baseSalary / lastDay;
+      const dailyBase = baseSalary / MONTH_DAYS;
       const proportionalSalary = (hasPartialMonth || inssTotalDays > 0 || vacationDaysInMonth > 0)
         ? r2(dailyBase * salaryWorkedDays)
         : baseSalary;
@@ -702,7 +703,7 @@ Deno.serve(async (req: Request) => {
       const infractionDiscount = r2(infMap.get(emp.id) ?? 0);
 
       // Salário-família — cota proporcional aos dias efetivamente trabalhados no mês.
-      // Conta admissão/demissão no curso do mês (workedDays < lastDay) e também
+      // Conta admissão/demissão no curso do mês (workedDays < 30) e também
       // faltas injustificadas (descontadas mais abaixo). Base de limite usa o
       // salário proporcional. Cálculo final feito após apurar absentDays.
       // Placeholder — será sobrescrito mais adiante.
@@ -762,9 +763,8 @@ Deno.serve(async (req: Request) => {
         : r2(calculatedNightAddition + manualNightAddition);
 
       // Feriados trabalhados: pagos em DOBRO conforme convenção coletiva.
-      // Base PROPORCIONAL aos dias do mês de referência (lastDay), NÃO 30 fixo.
-      // Ex.: maio (31 dias) -> diária = salário/31; abril (30 dias) -> diária = salário/30.
-      const holidayDailyRate = baseSalary / lastDay;
+      // Base diária SEMPRE sobre mês comercial de 30 dias (CLT art. 64).
+      const holidayDailyRate = baseSalary / MONTH_DAYS;
       const holidayPay = r2(holidayDaysWorked * holidayDailyRate * 2);
 
       // ===== Faltas e DSR (a partir da escala vs ponto) =====
@@ -802,8 +802,8 @@ Deno.serve(async (req: Request) => {
       }
       const dsrLossDays = weeksWithAbsence.size;
 
-      // Base diária proporcional aos dias do mês de referência (lastDay), NÃO 30 fixo.
-      const dailyRateAbs = baseSalary / lastDay;
+      // Base diária SEMPRE sobre mês comercial de 30 dias (CLT art. 64).
+      const dailyRateAbs = baseSalary / MONTH_DAYS;
       const absenceDiscount = r2(absentDays * dailyRateAbs + (manualAbsenceMap.get(emp.id) ?? 0));
       const dsrLossDiscount = r2(dsrLossDays * dailyRateAbs);
 
@@ -836,7 +836,7 @@ Deno.serve(async (req: Request) => {
         // mesmo que o valor do VT creditado seja menor (sem cap por fullVoucher).
         // O acerto de "VT não utilizado" é rubrica SEPARADA.
         const fullDiscount = r2(baseSalary * (pct / 100));
-        const proportionFactor = hasPartialMonth ? (workedDays / lastDay) : 1;
+        const proportionFactor = hasPartialMonth ? (workedDays / MONTH_DAYS) : 1;
 
         // VT pago efetivamente no mês (recarga real informada em /vale-transporte).
         // Quando há registro, ele substitui o cálculo teórico do provento e vira
@@ -896,7 +896,7 @@ Deno.serve(async (req: Request) => {
       // (CLT: cota devida por vínculo no mês, faltas são descontadas separadamente).
       familyAllowance =
         proportionalSalary <= FAMILY_ALLOWANCE_LIMIT && deps.under14 > 0
-          ? r2(deps.under14 * FAMILY_ALLOWANCE_QUOTA * (workedDays / lastDay))
+          ? r2(deps.under14 * FAMILY_ALLOWANCE_QUOTA * (workedDays / MONTH_DAYS))
           : 0;
       
 
