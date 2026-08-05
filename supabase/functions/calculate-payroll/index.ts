@@ -616,7 +616,9 @@ Deno.serve(async (req: Request) => {
       let workedDays = 30;
       if (admissionDate && admissionDate >= periodStart && admissionDate <= periodEnd) {
         const hire = new Date(admissionDate);
-        workedDays = MONTH_DAYS - hire.getDate() + 1;
+        // Dias corridos da admissão até o fim do mês (critério contábil Exact),
+        // limitado a 30 (mês comercial).
+        workedDays = Math.min(MONTH_DAYS, lastDay - hire.getDate() + 1);
       }
       if (emp.termination_date && emp.termination_date >= periodStart && emp.termination_date <= periodEnd) {
         const term = new Date(emp.termination_date);
