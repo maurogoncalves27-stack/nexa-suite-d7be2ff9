@@ -557,10 +557,23 @@ export default function Garcom() {
             <span className="text-muted-foreground">Total</span>
             <span className="font-bold text-2xl text-primary">{fmt(sessionTotal)}</span>
           </div>
+          <div className="grid grid-cols-3 gap-2">
+            {(["credit", "debit", "pix"] as TefPaymentMethod[]).map((m) => (
+              <Button
+                key={m}
+                variant={tefMethod === m ? "default" : "outline"}
+                className="h-11 text-xs uppercase"
+                onClick={() => setTefMethod(m)}
+              >
+                {m}
+              </Button>
+            ))}
+          </div>
           <Button className="w-full h-14 text-base" disabled={sessionTotal <= 0} onClick={handleCharge}>
             <CreditCard className="h-5 w-5 mr-2" /> Cobrar
           </Button>
         </div>
+
       </div>
     );
   }
