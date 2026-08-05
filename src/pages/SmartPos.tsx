@@ -378,8 +378,13 @@ export default function SmartPos() {
               Cobrar {fmt(cart.total)}
             </Button>
             <p className="text-center text-xs text-muted-foreground">
-              TEF em modo simulação (mock)
+              {tefProvider === "mock"
+                ? "TEF em modo simulação (mock) — configure o provider da loja"
+                : tefProvider
+                  ? `TEF: ${tefProvider.toUpperCase()}`
+                  : "TEF configurado por loja"}
             </p>
+
           </>
         )}
 
