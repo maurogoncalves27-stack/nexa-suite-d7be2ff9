@@ -339,6 +339,11 @@ export default function FreelancerDailyPayments() {
                     <div className="flex items-center justify-between">
                       <div className="font-semibold">{fmtMoney(Number(p.amount))}</div>
                       <div className="flex gap-1">
+                        {!p.check_in_at && (
+                          <Button size="icon" variant="outline" onClick={() => markPresence(p)} title="Marcar presença">
+                            <UserCheck className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button size="icon" variant="outline" onClick={() => togglePaid(p)} title={p.status === "paid" ? "Reabrir" : "Marcar pago"}>
                           {p.status === "paid" ? <RotateCcw className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
                         </Button>
