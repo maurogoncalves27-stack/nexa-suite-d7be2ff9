@@ -32,6 +32,7 @@ import {
   CreditCard,
   Smartphone,
   Search,
+  Printer,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { loadTefConfig, createTefAdapter } from "@/lib/tef";
