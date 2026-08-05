@@ -34,9 +34,12 @@ import {
   Search,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { createMockAdapter } from "@/lib/tef/mockAdapter";
-import type { TefStatus, TefPaymentMethod } from "@/lib/tef/types";
+import { loadTefConfig, createTefAdapter } from "@/lib/tef";
+import type { TefStatus, TefPaymentMethod, TefPaymentResult } from "@/lib/tef/types";
+import { logTefTransaction } from "@/lib/tef";
 import { useSmartPosCart } from "@/hooks/useSmartPosCart";
+import { createDraftOrder, finalizeSale, discardDraftOrder } from "@/lib/smartpos/sale";
+import { printTefReceipts } from "@/lib/smartpos/print";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
