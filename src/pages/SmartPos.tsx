@@ -326,12 +326,14 @@ export default function SmartPos() {
             </div>
           )}
         </div>
-        <p className="text-xs text-muted-foreground">
-          (Impressão de cupom será nativa na Fase 3)
-        </p>
+        <Button variant="outline" className="w-full max-w-xs h-12" onClick={reprintReceipt}>
+          <Printer className="h-4 w-4 mr-2" />
+          Reimprimir comprovante
+        </Button>
         <Button className="w-full max-w-xs h-14 text-base" onClick={newSale}>
           Nova venda
         </Button>
+
       </div>
     );
   }
