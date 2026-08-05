@@ -83,12 +83,104 @@ export default function TotemLivePreview({
     return () => ro.disconnect();
   }, []);
 
+  // escala do preview ampliado (modal)
+  useEffect(() => {
+    if (!expanded) return;
+    const update = () => {
+      const maxH = window.innerHeight * 0.82;
+      const maxW = Math.min(window.innerWidth * 0.9, 520);
+      setFullScale(Math.min(maxH / SCREEN_H, maxW / SCREEN_W));
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [expanded]);
+
   // slideshow (mesma cadência da tela de atrair)
   useEffect(() => {
     if (video || backgrounds.length <= 1) return;
     const t = setInterval(() => setSlide((s) => s + 1), 5000);
     return () => clearInterval(t);
   }, [video, backgrounds.length]);
+
+  const screen =
+    mode === "idle" ? (
+      <div className="relative w-full h-full overflow-hidden" style={TOTEM_THEME_STYLE}>
+        {video ? (
+          <video
+            src={video.image_url}
+            autoPlay
+            loop
+            muted
+            playsInline
+            aria-hidden
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : backgrounds.length > 0 ? (
+          backgrounds.map((a, i) => (
+            <img
+              key={a.id}
+              src={a.image_url}
+              alt=""
+              aria-hidden
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+                slide % backgrounds.length === i ? "opacity-100" : "opacity-0"
+              }`}
+            />
+          ))
+        ) : (
+          <div className="absolute inset-0 bg-muted" />
+        )}
+
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/90" />
+        <div className="relative h-full flex flex-col items-center justify-center text-primary-foreground px-8 gap-12">
+          <div className="text-center">
+            <h1
+              className="text-[14rem] font-black leading-none tracking-tight animate-pulse"
+              style={{
+                textShadow:
+                  "0 6px 24px rgba(0,0,0,0.95), 0 2px 6px rgba(0,0,0,0.95), 0 0 80px rgba(0,0,0,0.7)",
+                WebkitTextStroke: "2px rgba(0,0,0,0.5)",
+              }}
+            >
+              PEÇA AQUI
+            </h1>
+            <div
+              className="mt-10 inline-flex items-center gap-5 bg-primary text-primary-foreground rounded-full px-12 py-6 text-5xl font-black shadow-2xl ring-4 ring-white/30"
+              style={{ textShadow: "0 3px 10px rgba(0,0,0,0.6)" }}
+            >
+              <Timer className="h-16 w-16" />
+              <span>Seu pedido em 15 min</span>
+            </div>
+          </div>
+          <div className="absolute bottom-12 inline-flex items-center gap-3 text-2xl font-semibold animate-bounce">
+            <Hand className="h-8 w-8" />
+            <span>Toque na tela para começar</span>
+          </div>
+        </div>
+      </div>
+    ) : (
+      <div
+        className="w-full h-full overflow-hidden p-8 flex items-center justify-center bg-background"
+        style={TOTEM_THEME_STYLE}
+      >
+        <div className="flex flex-col gap-12 w-full max-w-4xl mx-auto">
+          {brands.map((b) => {
+            const logo = logoBySlug.get(b.slug);
+            return (
+              <div key={b.id} className="flex items-center justify-center h-56 overflow-visible">
+                {logo ? (
+                  <img src={logo} alt={b.name} className="h-40 w-[34rem] object-contain" />
+                ) : (
+                  <div className="text-5xl font-bold text-foreground">{b.name}</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+
 
   return (
     <Card className="p-4 space-y-4">
