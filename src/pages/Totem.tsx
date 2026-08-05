@@ -178,6 +178,16 @@ export default function Totem() {
     selected: Record<string, string[]>; loadingComplements: boolean;
   } | null>(null);
   const [tefOpen, setTefOpen] = useState(false);
+  // Enquanto o modal de pagamento (PIX/cartão) está aberto, o app de TEF externo
+  // pode roubar o foco e revelar a barra de tarefas do Windows. Reafirmamos o kiosk.
+  useEffect(() => {
+    if (!tefOpen) return;
+    const reassert = () => { void (window as any).electron?.reassertKiosk?.(); };
+    reassert();
+    const id = setInterval(reassert, 1500);
+    return () => { clearInterval(id); reassert(); };
+  }, [tefOpen]);
+
   const [paymentMethod, setPaymentMethod] = useState<TefPaymentMethod | null>(null);
   const [showNoteKb, setShowNoteKb] = useState(false);
   const [showCpfKb, setShowCpfKb] = useState(false);
