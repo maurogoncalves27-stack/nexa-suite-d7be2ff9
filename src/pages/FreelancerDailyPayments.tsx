@@ -384,6 +384,11 @@ export default function FreelancerDailyPayments() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="inline-flex gap-1">
+                            {!p.check_in_at && (
+                              <Button size="icon" variant="outline" onClick={() => markPresence(p)} title="Marcar presença">
+                                <UserCheck className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button size="icon" variant="outline" onClick={() => togglePaid(p)} title={p.status === "paid" ? "Reabrir" : "Marcar pago"}>
                               {p.status === "paid" ? <RotateCcw className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
                             </Button>
