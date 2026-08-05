@@ -83,7 +83,16 @@ function createWindow() {
     });
   }
 
-  mainWindow.loadURL(APP_URL);
+  // Sempre buscar a versão publicada mais recente do app web:
+  // limpa o cache HTTP antes de carregar e ignora cache na navegação inicial.
+  mainWindow.webContents.session
+    .clearCache()
+    .catch((e) => console.warn("[totem] falha ao limpar cache", e))
+    .finally(() => {
+      mainWindow.loadURL(APP_URL, { extraHeaders: "pragma: no-cache\ncache-control: no-cache\n" });
+    });
+
+
 
 
 
