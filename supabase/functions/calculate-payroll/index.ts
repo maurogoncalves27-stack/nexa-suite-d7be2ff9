@@ -323,9 +323,11 @@ Deno.serve(async (req: Request) => {
         .lte("reference_date", periodEnd)
         .in("status", ["approved", "resolved"]),
       supabase.from("employee_leaves")
-        .select("employee_id, start_date, end_date, is_paid")
+        .select("employee_id, start_date, end_date, is_paid, leave_type")
         .in("employee_id", empIds)
-        .eq("is_paid", false)
+        // Suspensão disciplinar e falta injustificada são SEMPRE não remuneradas,
+        // mesmo que o registro tenha vindo marcado como "pago".
+        .or("is_paid.eq.false,leave_type.in.(suspension,unpaid_absence)")
         .lte("start_date", periodEnd)
         .gte("end_date", periodStart),
     ]);
@@ -808,10 +810,11 @@ Deno.serve(async (req: Request) => {
       const dsrLossDiscount = r2(dsrLossDays * dailyRateAbs);
 
 
-      // Falta injustificada zera a produtividade do período (apenas quando o
-      // ponto deste colaborador impacta folha — supervisor não perde produtividade
-      // por falta no ponto).
-      const productivityLost = timeClockImpactsPayroll && absentDays > 0;
+      // Falta injustificada zera a produtividade do período.
+      // Para quem o ponto não impacta folha (ex.: supervisor), só zera quando há
+      // afastamento não remunerado / suspensão lançado manualmente.
+      const unpaidDaysCount = unpaidDates?.size ?? 0;
+      const productivityLost = (timeClockImpactsPayroll && absentDays > 0) || unpaidDaysCount > 0;
       if (productivityLost) productivity = 0;
 
       // ===== VT — cálculo final =====
