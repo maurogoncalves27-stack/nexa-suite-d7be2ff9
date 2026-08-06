@@ -13,12 +13,31 @@ export type CartItem = {
   notes?: string;
 };
 
+export type OrderType = "pickup" | "delivery";
+
+// Endereço de entrega já resolvido em coordenadas (Lalamove exige lat/lng).
+export type DeliveryAddress = {
+  street: string;
+  number?: string;
+  complement?: string;
+  neighborhood?: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  country?: string;
+  latitude?: number;
+  longitude?: number;
+  notes?: string;
+};
+
 export type CartState = {
   storeSlug: string;
   items: CartItem[];
   customer_name?: string;
   customer_phone?: string;
   pickup_eta?: string; // ISO
+  order_type?: OrderType;
+  delivery_address?: DeliveryAddress;
 };
 
 const STORAGE_PREFIX = "pedir.cart.v1.";
@@ -100,9 +119,16 @@ export function useEcommerceCart(storeSlug: string) {
     setState({ storeSlug, items: [] });
   }, [storeSlug]);
 
-  const updateCustomer = useCallback((patch: Partial<Pick<CartState, "customer_name" | "customer_phone" | "pickup_eta">>) => {
-    setState((s) => ({ ...s, ...patch }));
-  }, []);
+  const updateCustomer = useCallback(
+    (
+      patch: Partial<
+        Pick<CartState, "customer_name" | "customer_phone" | "pickup_eta" | "order_type" | "delivery_address">
+      >,
+    ) => {
+      setState((s) => ({ ...s, ...patch }));
+    },
+    [],
+  );
 
   const subtotal = state.items.reduce((sum, i) => sum + i.unit_price * i.quantity, 0);
 

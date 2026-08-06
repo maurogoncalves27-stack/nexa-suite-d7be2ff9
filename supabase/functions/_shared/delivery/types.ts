@@ -20,6 +20,8 @@ export interface QuoteRequest {
   dropoff: DeliveryAddress;
   service_type?: string; // MOTORCYCLE
   order_value_cents?: number;
+  /** ISO8601 UTC. Lalamove exige scheduleAt já na cotação do pedido agendado. */
+  schedule_at?: string;
 }
 
 export interface QuoteResult {

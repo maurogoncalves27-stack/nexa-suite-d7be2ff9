@@ -96,6 +96,7 @@ export const lalamoveAdapter: DeliveryAdapter = {
       data: {
         serviceType,
         language: 'pt_BR',
+        ...(req.schedule_at ? { scheduleAt: req.schedule_at } : {}),
         stops: [addrToStop(req.pickup), addrToStop(req.dropoff)],
         item: {
           quantity: '1',
@@ -120,7 +121,9 @@ export const lalamoveAdapter: DeliveryAdapter = {
   },
 
   async createOrder(req: CreateOrderRequest): Promise<CreateOrderResult> {
-    let quotationId = req.quote_id;
+    // Uma cotação só vale ~5min e o scheduleAt precisa estar nela desde a
+    // cotação — então pedido agendado sempre recota.
+    let quotationId = req.schedule_at ? undefined : req.quote_id;
     let stopIds: string[] = [];
     let fee = 0;
 
