@@ -88,18 +88,20 @@ export default function PayerTestSaleCard({
               raw: retorno,
             });
           } else {
+            const rejectMsg = String(retorno.message ?? "") || "Pagamento recusado";
             setStatus("rejected");
-            setStatusMsg(data?.retorno?.message || "Pagamento recusado");
+            setStatusMsg(rejectMsg);
             void logTefTransaction({
               storeId,
               provider: "payer",
               amount: value,
               status: "declined",
               method,
-              message: data?.retorno?.message,
+              message: rejectMsg,
               raw: retorno,
             });
           }
+
           return;
         }
       } catch {
