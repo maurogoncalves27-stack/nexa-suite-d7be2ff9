@@ -2,7 +2,7 @@
 // Guia oficial: GET /integracao/consultar-token?codigo=XXXXXX
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
-import { loadYoloContext, serviceClient, yoloHeaders, yoloUrl, jsonResponse, toYoloMoney } from '../_shared/yolo.ts';
+import { loadYoloContext, serviceClient, yoloHeaders, yoloUrl, jsonResponse } from '../_shared/yolo.ts';
 
 const BodySchema = z.object({
   code: z.string().trim().length(6).regex(/^\d{6}$/, 'Código deve ter 6 dígitos'),
