@@ -106,7 +106,7 @@ if (keystorePropsFile.exists()) {
     signingConfigs {
         release {
             if (keystoreProps['storeFile']) {
-                storeFile file(keystoreProps['storeFile'])
+                storeFile rootProject.file(keystoreProps['storeFile'])
                 storePassword keystoreProps['storePassword']
                 keyAlias keystoreProps['keyAlias']
                 keyPassword keystoreProps['keyPassword']
