@@ -64,6 +64,9 @@ if (-not (Test-Path $keystorePath)) {
     -keyalg RSA -keysize 2048 -validity 10000 `
     -storepass $KeystorePassword -keypass $KeystorePassword `
     -dname "CN=NEXA Gestao Inteligente, OU=NEXA Suite, O=NEXA Gestao Inteligente, L=Brasilia, ST=DF, C=BR"
+  if ($LASTEXITCODE -ne 0 -or -not (Test-Path $keystorePath)) {
+    throw "A criacao da keystore falhou. Nenhum APK de release foi gerado."
+  }
   Write-Host "IMPORTANTE: faca backup de $keystorePath e da senha." -ForegroundColor Red
 } else {
   Write-Host "Keystore ja existe: $keystorePath" -ForegroundColor Green
