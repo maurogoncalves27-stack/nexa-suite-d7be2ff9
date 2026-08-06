@@ -29,6 +29,28 @@ ao provedor fica em `delivery_jobs.fee_cents`. Os dois não se sobrescrevem.
 | `LALAMOVE_WEBHOOK_SECRET` | string aleatória sua | valida o push de status |
 | `SITE_PUBLIC_ORIGIN` | ex. `https://pedir.aquelaparme.com.br` | monta os links de acompanhamento e avaliação |
 | `DELIVERY_RATING_SECRET` | opcional | se ausente, o token de avaliação deriva da service role key |
+| `GOOGLE_MAPS_API_KEY` | chave com Geocoding API | **recomendado**, ver abaixo |
+
+## Geocodificação do endereço
+
+A Lalamove exige lat/lng em todos os stops, então o endereço do cliente é
+resolvido antes da cotação. A ordem das fontes é:
+
+1. **CEP** → BrasilAPI v2 (com ViaCEP de reserva) para rua/bairro/cidade/UF, e as
+   coordenadas do CEP quando existirem.
+2. **Google Geocoding** com o endereço completo, se `GOOGLE_MAPS_API_KEY` estiver
+   configurada.
+3. **Nominatim (OSM)** como reserva gratuita.
+
+Cada resultado vem com uma precisão: `rooftop`, `street`, `postal_code` ou
+`city`. **`city` é recusado** no carrinho e no checkout — entregar num centróide
+de cidade colocaria o motoboy a quilômetros do destino.
+
+Sem a chave do Google, endereços de via nomeada (ex. Avenida Paulista, 1578)
+resolvem bem pelo Nominatim, mas o padrão de quadras de Brasília
+(ex. `Quadra SGAS 908/909`) **não** resolve e cai em `city`, bloqueando a
+entrega. Para operar no DF, configure `GOOGLE_MAPS_API_KEY` com a Geocoding API
+habilitada.
 
 ## Webhook da Lalamove
 

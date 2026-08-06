@@ -27,6 +27,8 @@ export type DeliveryAddress = {
   country?: string;
   latitude?: number;
   longitude?: number;
+  /** Quão exato foi o geocode. `city` não serve para entregar. */
+  geo_precision?: "rooftop" | "street" | "postal_code" | "city";
   notes?: string;
 };
 

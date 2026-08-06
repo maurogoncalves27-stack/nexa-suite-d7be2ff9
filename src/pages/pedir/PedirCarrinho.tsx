@@ -35,6 +35,8 @@ const CHECKOUT_ERRORS: Record<string, string> = {
   delivery_not_available: "Esta loja ainda não faz entrega.",
   pickup_not_available: "Esta loja não faz retirada no balcão.",
   invalid_delivery_address: "Endereço de entrega incompleto.",
+  imprecise_delivery_address:
+    "Não conseguimos localizar esse endereço no mapa. Revise a rua e o número.",
   delivery_unavailable: "Nenhum entregador disponível para esse endereço.",
   invalid_payload: "Dados do pedido incompletos.",
 };
@@ -77,6 +79,7 @@ export default function PedirCarrinho() {
       ? { latitude: saved.latitude, longitude: saved.longitude }
       : null,
   );
+  const [precision, setPrecision] = useState<DeliveryAddress["geo_precision"]>(saved?.geo_precision);
 
   const [geocoding, setGeocoding] = useState(false);
   const [quoting, setQuoting] = useState(false);
@@ -128,9 +131,10 @@ export default function PedirCarrinho() {
       country: "BR",
       latitude: coords?.latitude,
       longitude: coords?.longitude,
+      geo_precision: precision,
       notes: addressNotes.trim() || undefined,
     };
-  }, [street, number, complement, neighborhood, city, uf, cep, coords, addressNotes]);
+  }, [street, number, complement, neighborhood, city, uf, cep, coords, precision, addressNotes]);
 
   // Qualquer mudança no endereço invalida a cotação anterior.
   const invalidateQuote = useCallback(() => {
@@ -162,10 +166,12 @@ export default function PedirCarrinho() {
       if (addr.state) setUf(addr.state);
       if (addr.latitude != null && addr.longitude != null) {
         setCoords({ latitude: addr.latitude, longitude: addr.longitude });
+        setPrecision(addr.geo_precision);
       }
     } catch (err) {
       lastGeocodedCep.current = "";
       setCoords(null);
+      setPrecision(undefined);
       toast({
         title: "Não encontramos esse CEP",
         description: errMessage(err, "Confira o CEP e tente novamente."),
@@ -191,7 +197,13 @@ export default function PedirCarrinho() {
       const addr = res.data?.address;
       if (addr?.latitude != null && addr?.longitude != null) {
         setCoords({ latitude: addr.latitude, longitude: addr.longitude });
-        return { ...dropoff, latitude: addr.latitude, longitude: addr.longitude };
+        setPrecision(addr.geo_precision);
+        return {
+          ...dropoff,
+          latitude: addr.latitude,
+          longitude: addr.longitude,
+          geo_precision: addr.geo_precision,
+        };
       }
     } catch {
       /* mantém as coordenadas do CEP */
@@ -205,6 +217,12 @@ export default function PedirCarrinho() {
     setQuoteError(null);
     try {
       const dropoff = await refineCoords();
+      // Centróide de cidade mandaria o entregador para o lugar errado.
+      if (dropoff.geo_precision === "city") {
+        throw new Error(
+          "Não conseguimos localizar esse endereço no mapa. Revise a rua e o número.",
+        );
+      }
       const res = await invokeEdge<{
         best?: Quote;
         quotes?: { error?: string }[];

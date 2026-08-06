@@ -52,6 +52,12 @@ function isValidDropoff(a: unknown): a is DeliveryAddress {
     typeof d.longitude === "number" && Number.isFinite(d.longitude);
 }
 
+// Coordenada de cidade deixaria o entregador a quilômetros do destino, então
+// não serve para criar uma corrida.
+function isPreciseEnough(a: DeliveryAddress) {
+  return (a as { geo_precision?: string }).geo_precision !== "city";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") {
@@ -156,6 +162,15 @@ Deno.serve(async (req) => {
         return new Response(
           JSON.stringify({ error: "invalid_delivery_address", detail: "Endereço incompleto ou sem coordenadas" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      if (!isPreciseEnough(dropoffInput)) {
+        return new Response(
+          JSON.stringify({
+            error: "imprecise_delivery_address",
+            detail: "Não localizamos o endereço no mapa com precisão suficiente",
+          }),
+          { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
       dropoff = {

@@ -7,6 +7,7 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 
 const USER_AGENT = 'NexaSuite/1.0 (+https://nexasuite.aquelaparme.com.br)';
+const GMAPS_KEY = Deno.env.get('GOOGLE_MAPS_API_KEY') ?? '';
 
 type AddressInput = {
   postal_code?: string;
@@ -29,10 +30,11 @@ type Resolved = {
   country: string;
   latitude?: number;
   longitude?: number;
+  geo_precision?: Precision;
 };
 
-// 'rooftop' = número casado pelo Nominatim; 'street' = via sem número;
-// 'postal_code' = centróide do CEP; 'city' = só cidade (impreciso).
+// 'rooftop' = número casado; 'street' = via sem número; 'postal_code' =
+// centróide do CEP; 'city' = só cidade — impreciso demais para uma entrega.
 type Precision = 'rooftop' | 'street' | 'postal_code' | 'city';
 
 function onlyDigits(v: string | undefined) {
@@ -88,7 +90,8 @@ async function lookupViaCep(cep: string) {
   };
 }
 
-// Nominatim (OSM) para casar rua + número e ganhar precisão de fachada.
+// Nominatim (OSM) como alternativa gratuita. Cobre mal endereço brasileiro
+// (sobretudo o padrão de quadras de Brasília), então serve só de reserva.
 async function geocodeNominatim(q: Record<string, string>) {
   const params = new URLSearchParams({ format: 'jsonv2', limit: '1', countrycodes: 'br', ...q });
   const j = await fetchJson(`https://nominatim.openstreetmap.org/search?${params}`, 8000);
@@ -97,6 +100,42 @@ async function geocodeNominatim(q: Record<string, string>) {
   const lon = num(j[0]?.lon);
   if (lat == null || lon == null) return null;
   return { latitude: lat, longitude: lon };
+}
+
+/**
+ * Google Geocoding — melhor cobertura de endereço brasileiro. É a fonte
+ * primária quando GOOGLE_MAPS_API_KEY está configurada.
+ */
+async function geocodeGoogle(address: string, cep: string) {
+  if (!GMAPS_KEY) return null;
+  const params = new URLSearchParams({
+    address,
+    key: GMAPS_KEY,
+    region: 'br',
+    language: 'pt-BR',
+    components: cep ? `country:BR|postal_code:${cep}` : 'country:BR',
+  });
+  const j = await fetchJson(`https://maps.googleapis.com/maps/api/geocode/json?${params}`, 8000);
+  if (j?.status !== 'OK' || !Array.isArray(j.results) || j.results.length === 0) {
+    if (j?.status && j.status !== 'ZERO_RESULTS') {
+      console.warn('[geocode-address] google status', j.status, j.error_message ?? '');
+    }
+    return null;
+  }
+  const top = j.results[0];
+  const lat = num(top?.geometry?.location?.lat);
+  const lng = num(top?.geometry?.location?.lng);
+  if (lat == null || lng == null) return null;
+
+  const locType = String(top?.geometry?.location_type ?? '');
+  const types: string[] = Array.isArray(top?.types) ? top.types : [];
+  let precision: Precision;
+  if (locType === 'ROOFTOP' || locType === 'RANGE_INTERPOLATED') precision = 'rooftop';
+  else if (locType === 'GEOMETRIC_CENTER') precision = 'street';
+  else if (types.includes('postal_code')) precision = 'postal_code';
+  else precision = 'city';
+
+  return { latitude: lat, longitude: lng, precision };
 }
 
 Deno.serve(async (req) => {
@@ -141,11 +180,27 @@ Deno.serve(async (req) => {
       return json({ error: 'address_not_resolved', detail: 'CEP inválido ou cidade/UF ausentes' }, 422);
     }
 
+    // Coordenada que veio junto do CEP: ponto de partida, nunca o ideal.
     let precision: Precision = base.latitude != null ? 'postal_code' : 'city';
     const houseNumber = String(body.number ?? '').trim();
 
-    // Tenta refinar com rua + número.
-    if (base.street) {
+    const fullAddress = [
+      [base.street, houseNumber].filter(Boolean).join(', '),
+      base.neighborhood,
+      `${base.city} - ${base.state}`,
+      cep.length === 8 ? cep : '',
+      'Brasil',
+    ]
+      .filter(Boolean)
+      .join(', ');
+
+    const google = await geocodeGoogle(fullAddress, cep);
+    if (google) {
+      base.latitude = google.latitude;
+      base.longitude = google.longitude;
+      precision = google.precision;
+      sources.push('google');
+    } else if (base.street) {
       const refined = await geocodeNominatim({
         street: houseNumber ? `${houseNumber} ${base.street}` : base.street,
         city: base.city,
@@ -160,7 +215,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Último recurso: centróide da cidade.
+    // Último recurso: centróide da cidade. Serve para exibir algo, mas é
+    // marcado como impreciso e o checkout recusa entregar nele.
     if (base.latitude == null || base.longitude == null) {
       const city = await geocodeNominatim({ city: base.city, state: base.state });
       if (city) {
@@ -186,9 +242,11 @@ Deno.serve(async (req) => {
       country: 'BR',
       latitude: base.latitude,
       longitude: base.longitude,
+      geo_precision: precision,
     };
 
-    return json({ ok: true, address, precision, sources });
+    // Coordenada de cidade colocaria o entregador a quilômetros do destino.
+    return json({ ok: true, address, precision, precise: precision !== 'city', sources });
   } catch (e) {
     console.error('[geocode-address] error', e);
     return json({ error: String(e) }, 500);
