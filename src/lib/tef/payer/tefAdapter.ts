@@ -2,7 +2,7 @@
  * Adapter TEF Payer — Checkout API Localhost via NEXA ACBr Agent.
  * POST /payer/payment (wait: false) + poll GET /payer/response até status final.
  */
-import { joinAgentUrl } from "../agentUrl";
+import { payerTransportAbort, payerTransportPayment, payerTransportResponse } from "./transport";
 import type {
   TefAdapter,
   TefConfig,
@@ -98,11 +98,10 @@ export const createPayerTefAdapter = (config: TefConfig): TefAdapter => {
       onStatus?.("connecting", "Conectando ao Checkout Payer...");
       await new Promise((r) => setTimeout(r, 200));
 
-      const startResp = (await fetch(joinAgentUrl(config.agentUrl, "/payer/payment"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildPaymentPayload(req)),
-      }).then((r) => r.json().catch(() => ({})))) as PayerResponseBody;
+      const startResp = (await payerTransportPayment(
+        config.agentUrl,
+        buildPaymentPayload(req),
+      )) as PayerResponseBody;
 
       if (!startResp.ok) {
         const msg = startResp.error ?? "Falha ao iniciar pagamento Payer";
@@ -116,10 +115,7 @@ export const createPayerTefAdapter = (config: TefConfig): TefAdapter => {
       while (!aborted && Date.now() < deadline) {
         let pollData: PayerResponseBody = {};
         try {
-          const r = await fetch(joinAgentUrl(config.agentUrl, "/payer/response"), {
-            signal: AbortSignal.timeout(5000),
-          });
-          pollData = (await r.json().catch(() => ({}))) as PayerResponseBody;
+          pollData = (await payerTransportResponse(config.agentUrl)) as PayerResponseBody;
         } catch {
           await new Promise((r) => setTimeout(r, POLL_MS));
           continue;
@@ -149,7 +145,7 @@ export const createPayerTefAdapter = (config: TefConfig): TefAdapter => {
     async cancel() {
       aborted = true;
       try {
-        await fetch(joinAgentUrl(config.agentUrl, "/payer/abort"), { method: "POST" });
+        await payerTransportAbort(config.agentUrl);
       } catch {
         /* best effort */
       }

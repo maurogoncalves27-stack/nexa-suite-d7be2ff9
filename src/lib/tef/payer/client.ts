@@ -1,21 +1,28 @@
 /**
- * Cliente HTTP Payer — fala com o agente NEXA em /payer/* (proxy para Checkout :6060).
+ * Cliente HTTP Payer — usa a camada de transporte (agente Windows ou direto Android).
  * Não importa nada de tef-paygo ou paygoAdapter.
  */
-import { joinAgentUrl } from "../agentUrl";
 import type { PayerAgentStatus, PayerDiagnostics, PayerPaymentPayload } from "./types";
+import {
+  payerHealth,
+  payerTransportAbort,
+  payerTransportDiagnostics,
+  payerTransportLogin,
+  payerTransportPayment,
+  payerTransportResponse,
+  resolvePayerTransport,
+} from "./transport";
 
 export const DEFAULT_PAYER_AGENT_URL = "https://127.0.0.1:3031";
 
 export const checkPayerAgent = async (agentUrl: string): Promise<PayerAgentStatus> => {
-  try {
-    const health = await fetch(joinAgentUrl(agentUrl, "/health"), {
-      signal: AbortSignal.timeout(2500),
-    });
-    if (!health.ok) return { ok: false, online: false, error: `HTTP ${health.status}` };
-    const h = await health.json().catch(() => ({}));
+  const health = await payerHealth(agentUrl);
+  if (!health.online) {
+    return { ok: false, online: false, error: health.error ?? "Agente offline" };
+  }
 
-    const d = await payerDiagnostics(agentUrl);
+  try {
+    const d = await payerTransportDiagnostics(agentUrl);
     const checkoutOk = !!d.checkoutReachable;
     return {
       ok: checkoutOk,
@@ -24,62 +31,38 @@ export const checkPayerAgent = async (agentUrl: string): Promise<PayerAgentStatu
       loggedIn: !!d.loggedIn,
       hasCredentials: !!d.hasCredentials,
       baseUrl: d.baseUrl,
-      version: h?.version,
+      version: health.version,
       error: d.lastError ?? (!checkoutOk ? "Checkout :6060 indisponível" : undefined),
     };
   } catch (e) {
     return {
       ok: false,
-      online: false,
-      error: e instanceof Error ? e.message : "Agente offline",
+      online: true,
+      version: health.version,
+      error: e instanceof Error ? e.message : "Falha no diagnóstico Payer",
     };
   }
 };
 
 export const payerDiagnostics = async (
   agentUrl = DEFAULT_PAYER_AGENT_URL,
-): Promise<PayerDiagnostics> => {
-  const r = await fetch(joinAgentUrl(agentUrl, "/payer/diagnostics"), {
-    signal: AbortSignal.timeout(5000),
-  });
-  return r.json();
-};
+): Promise<PayerDiagnostics> => payerTransportDiagnostics(agentUrl);
 
 export const payerLogin = async (
   agentUrl = DEFAULT_PAYER_AGENT_URL,
   body?: { email?: string; password?: string },
-) => {
-  const r = await fetch(joinAgentUrl(agentUrl, "/payer/login"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body ?? {}),
-  });
-  return r.json();
-};
+) => payerTransportLogin(agentUrl, body);
 
 export const payerPayment = async (
   agentUrl = DEFAULT_PAYER_AGENT_URL,
   payload: PayerPaymentPayload,
-) => {
-  const r = await fetch(joinAgentUrl(agentUrl, "/payer/payment"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  return r.json();
-};
+) => payerTransportPayment(agentUrl, payload);
 
-export const payerResponse = async (agentUrl = DEFAULT_PAYER_AGENT_URL) => {
-  const r = await fetch(joinAgentUrl(agentUrl, "/payer/response"), {
-    signal: AbortSignal.timeout(5000),
-  });
-  return r.json();
-};
+export const payerResponse = async (agentUrl = DEFAULT_PAYER_AGENT_URL) =>
+  payerTransportResponse(agentUrl);
 
-export const payerAbort = async (agentUrl = DEFAULT_PAYER_AGENT_URL) => {
-  const r = await fetch(joinAgentUrl(agentUrl, "/payer/abort"), { method: "POST" });
-  return r.json();
-};
+export const payerAbort = async (agentUrl = DEFAULT_PAYER_AGENT_URL) =>
+  payerTransportAbort(agentUrl);
 
 export const payerCancellation = async (
   agentUrl = DEFAULT_PAYER_AGENT_URL,
@@ -90,3 +73,5 @@ export const payerCancellation = async (
     idPayer,
     wait: false,
   });
+
+export { resolvePayerTransport };
