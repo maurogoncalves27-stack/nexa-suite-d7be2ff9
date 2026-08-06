@@ -72,6 +72,14 @@ if (-not (Test-Path $keystorePath)) {
     $KeystorePassword = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
       [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec))
   }
+
+  # Interrompe antes do Gradle quando o arquivo existente esta incompleto,
+  # corrompido ou a senha informada nao corresponde. Nunca sobrescreve uma
+  # chave existente automaticamente, pois ela sera necessaria nas atualizacoes.
+  & keytool -list -keystore $keystorePath -storepass $KeystorePassword *> $null
+  if ($LASTEXITCODE -ne 0) {
+    throw "Nao foi possivel abrir android\keystore\nexa-release.jks. Confira a senha. Se esta for a primeira assinatura e o arquivo veio de uma tentativa que falhou, renomeie-o para nexa-release-invalida.jks e execute o script novamente."
+  }
 }
 
 @"
@@ -88,6 +96,11 @@ $gradle = [IO.File]::ReadAllText($gradlePath)
 # ou comandos executados com codificacoes diferentes no Windows.
 $gradle = $gradle.TrimStart([char]0xFEFF)
 $gradle = $gradle -replace "^ï»¿", ""
+
+# Corrige configuracoes geradas por versoes anteriores do script. Dentro do
+# modulo app, file(...) aponta para android/app; a chave fica em android/keystore.
+$gradle = $gradle.Replace("storeFile file(keystoreProps['storeFile'])", "storeFile rootProject.file(keystoreProps['storeFile'])")
+$gradle = $gradle.Replace('storeFile file(keystoreProps["storeFile"])', 'storeFile rootProject.file(keystoreProps["storeFile"])')
 
 if ($gradle -notmatch "keystore.properties") {
   Write-Host "Injetando signingConfigs no build.gradle..." -ForegroundColor Yellow
@@ -129,7 +142,7 @@ if (keystorePropsFile.exists()) {
   [IO.File]::WriteAllText($gradlePath, $gradle, [System.Text.UTF8Encoding]::new($false))
 } else {
   Write-Host "build.gradle ja configurado para assinatura." -ForegroundColor Green
-  # garante que nao ficou BOM de execucao anterior
+  # garante que correcoes de caminho e remocao de BOM sejam persistidas
   [IO.File]::WriteAllText($gradlePath, $gradle, [System.Text.UTF8Encoding]::new($false))
 }
 
