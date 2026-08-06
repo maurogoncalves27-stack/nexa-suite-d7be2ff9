@@ -18,6 +18,15 @@ import { toast } from "@/hooks/use-toast";
 import { loadTefConfig } from "@/lib/tef";
 import { payerDiagnostics } from "@/lib/tef/payer";
 import {
+  DEFAULT_PAYER_DIRECT_URL,
+  getPayerDirectUrl,
+  isNativeShell,
+  resolvePayerTransport,
+  setPayerDirectUrl,
+  setPayerTransport,
+  type PayerTransportMode,
+} from "@/lib/tef/payer/transport";
+import {
   getSmartPosPrinterUrl,
   setSmartPosPrinterUrl,
   isNativePrinterAvailable,
@@ -32,7 +41,13 @@ const PROVIDERS = [
   { value: "mock", label: "Simulação (mock)" },
 ];
 
-const DEFAULT_SMARTPOS_URL = "http://127.0.0.1:6060";
+const DEFAULT_SMARTPOS_URL = DEFAULT_PAYER_DIRECT_URL;
+
+const TRANSPORTS: { value: PayerTransportMode | "auto"; label: string }[] = [
+  { value: "auto", label: "Automático (recomendado)" },
+  { value: "direct", label: "Direto no aparelho (APK Android)" },
+  { value: "agent", label: "Via agente NEXA (PC Windows)" },
+];
 
 export default function SmartPosConfig() {
   const [stores, setStores] = useState<Store[]>([]);
@@ -45,6 +60,14 @@ export default function SmartPosConfig() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<string>("");
+  const [transport, setTransport] = useState<PayerTransportMode | "auto">(() => {
+    try {
+      const v = localStorage.getItem("nexa-payer-transport");
+      return v === "agent" || v === "direct" ? v : "auto";
+    } catch {
+      return "auto";
+    }
+  });
 
   useEffect(() => {
     void (async () => {
@@ -70,6 +93,8 @@ export default function SmartPosConfig() {
     if (!storeId) return;
     setSaving(true);
     setSmartPosPrinterUrl(printerUrl.trim());
+    setPayerTransport(transport);
+    if (resolvePayerTransport() === "direct") setPayerDirectUrl(agentUrl.trim());
     const { data: existing } = await supabase
       .from("pdv_tef_config").select("id").eq("store_id", storeId).maybeSingle();
     const payload = {
@@ -93,6 +118,8 @@ export default function SmartPosConfig() {
     setTestResult("");
     try {
       if (provider === "payer") {
+        setPayerTransport(transport);
+        if (resolvePayerTransport() === "direct") setPayerDirectUrl(agentUrl.trim());
         const d = await payerDiagnostics(agentUrl.trim());
         setTestResult(
           d.checkoutReachable
@@ -166,6 +193,19 @@ export default function SmartPosConfig() {
             <div className="space-y-1">
               <Label>Endereço do serviço local</Label>
               <Input value={agentUrl} onChange={(e) => setAgentUrl(e.target.value)} placeholder={DEFAULT_SMARTPOS_URL} />
+            </div>
+            <div className="space-y-1">
+              <Label>Comunicação com o Payer</Label>
+              <Select value={transport} onValueChange={(v) => setTransport(v as PayerTransportMode | "auto")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {TRANSPORTS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Detectado agora: {resolvePayerTransport() === "direct" ? "direto no aparelho" : "via agente NEXA"}
+                {isNativeShell() ? " (APK)" : ""} · Checkout local: {getPayerDirectUrl()}
+              </p>
             </div>
             <div className="space-y-1">
               <Label>Terminal / número lógico</Label>
