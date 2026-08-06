@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bike, Loader2, RefreshCw, AlertCircle } from "lucide-react";
+import { Bike, Loader2, RefreshCw, AlertCircle, Globe } from "lucide-react";
 import { toast } from "sonner";
+import { invokeEdge } from "@/lib/edgeInvoke";
 
 type Store = { id: string; name: string };
 type Provider = "lalamove" | "uber_direct" | "mock";
@@ -47,6 +48,23 @@ type Job = {
   created_at: string;
 };
 
+type EcomStore = {
+  id: string;
+  slug: string;
+  display_name: string;
+  accepts_pickup: boolean;
+  accepts_delivery: boolean;
+};
+
+type ServiceTypesResult = {
+  ok?: boolean;
+  error?: string;
+  detail?: string;
+  market?: string;
+  env?: string;
+  cities?: { locode: string; name: string; service_types: string[] }[];
+};
+
 const PROVIDERS: { value: Provider; label: string }[] = [
   { value: "lalamove", label: "Lalamove" },
   { value: "uber_direct", label: "Uber Direct" },
@@ -76,6 +94,9 @@ export default function DeliverySettings() {
   const [testCep, setTestCep] = useState("");
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<unknown>(null);
+  const [ecomStore, setEcomStore] = useState<EcomStore | null>(null);
+  const [serviceTypes, setServiceTypes] = useState<ServiceTypesResult | null>(null);
+  const [loadingServices, setLoadingServices] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -96,7 +117,7 @@ export default function DeliverySettings() {
 
   async function loadAll() {
     setLoading(true);
-    const [cfgRes, jobRes] = await Promise.all([
+    const [cfgRes, jobRes, ecomRes] = await Promise.all([
       supabase
         .from("delivery_provider_config")
         .select("*")
@@ -108,9 +129,15 @@ export default function DeliverySettings() {
         .eq("store_id", storeId)
         .order("created_at", { ascending: false })
         .limit(50),
+      supabase
+        .from("ecommerce_stores")
+        .select("id, slug, display_name, accepts_pickup, accepts_delivery")
+        .eq("store_id", storeId)
+        .maybeSingle(),
     ]);
     setConfigs(((cfgRes.data ?? []) as unknown) as Cfg[]);
     setJobs(((jobRes.data ?? []) as unknown) as Job[]);
+    setEcomStore((ecomRes.data as EcomStore | null) ?? null);
     setLoading(false);
   }
 
@@ -118,6 +145,18 @@ export default function DeliverySettings() {
     const have = new Set(configs.map((c) => c.provider));
     return PROVIDERS.filter((p) => !have.has(p.value));
   }, [configs]);
+
+  // Lalamove/Uber recusam stops sem coordenadas, então a coleta precisa ter lat/lng.
+  const hasActiveProviderWithCoords = useMemo(
+    () =>
+      configs.some(
+        (c) =>
+          c.is_active &&
+          typeof c.pickup_address?.latitude === "number" &&
+          typeof c.pickup_address?.longitude === "number",
+      ),
+    [configs],
+  );
 
   async function upsertConfig(cfg: Cfg) {
     const payload = {
@@ -166,25 +205,47 @@ export default function DeliverySettings() {
     setTesting(true);
     setTestResult(null);
     try {
-      const { data, error } = await supabase.functions.invoke("delivery-quote", {
-        body: {
-          store_id: storeId,
-          dropoff: {
-            street: "Endereço de teste",
-            city: "Brasília",
-            state: "DF",
-            postal_code: testCep,
-            country: "BR",
-          },
-        },
-      });
-      if (error) throw error;
-      setTestResult(data);
+      // Lalamove exige coordenadas: resolve o CEP antes de cotar.
+      const geo = await invokeEdge<{ address?: Record<string, unknown>; detail?: string }>(
+        "geocode-address",
+        { postal_code: testCep, number: "1" },
+      );
+      const dropoff = geo.data?.address;
+      if (!dropoff) throw new Error(geo.data?.detail || "Não foi possível resolver o CEP");
+
+      const res = await invokeEdge("delivery-quote", { store_id: storeId, dropoff });
+      setTestResult(res.data);
     } catch (e) {
       toast.error("Erro no teste: " + (e as Error).message);
     } finally {
       setTesting(false);
     }
+  }
+
+  async function loadServiceTypes() {
+    setLoadingServices(true);
+    try {
+      const res = await invokeEdge<ServiceTypesResult>("delivery-service-types");
+      setServiceTypes(res.data);
+    } catch (e) {
+      toast.error("Erro ao consultar Lalamove: " + (e as Error).message);
+    } finally {
+      setLoadingServices(false);
+    }
+  }
+
+  async function saveSiteChannel(patch: Partial<Pick<EcomStore, "accepts_delivery" | "accepts_pickup">>) {
+    if (!ecomStore) return;
+    const { error } = await supabase
+      .from("ecommerce_stores")
+      .update(patch)
+      .eq("id", ecomStore.id);
+    if (error) {
+      toast.error("Erro ao salvar: " + error.message);
+      return;
+    }
+    setEcomStore({ ...ecomStore, ...patch });
+    toast.success("Canal do site atualizado");
   }
 
   return (
@@ -195,7 +256,8 @@ export default function DeliverySettings() {
           Entregas — Motoboy
         </h1>
         <p className="text-muted-foreground">
-          Configuração dos provedores de motoboy (Lalamove, Uber Direct). Usado apenas para pedidos do canal WhatsApp.
+          Configuração dos provedores de motoboy (Lalamove, Uber Direct). Atende os pedidos com entrega
+          do site (<code>/pedir</code>) e do canal WhatsApp.
         </p>
       </div>
 
@@ -252,8 +314,96 @@ export default function DeliverySettings() {
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Globe className="h-4 w-4 text-primary" />
+            Canal do site (/pedir)
+          </CardTitle>
+          <CardDescription>
+            Ligue a entrega só nas lojas com provedor ativo e endereço de coleta com coordenadas.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {!ecomStore ? (
+            <p className="text-sm text-muted-foreground">
+              Esta loja não está publicada no site. Cadastre-a em <code>ecommerce_stores</code> para vender pelo <code>/pedir</code>.
+            </p>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Loja no site: <strong>{ecomStore.display_name}</strong> (<code>/pedir/{ecomStore.slug}</code>)
+              </p>
+              <Label className="flex items-center gap-2 text-sm cursor-pointer">
+                <Switch
+                  checked={ecomStore.accepts_pickup}
+                  onCheckedChange={(v) => saveSiteChannel({ accepts_pickup: v })}
+                />
+                Aceita retirada no balcão
+              </Label>
+              <Label className="flex items-center gap-2 text-sm cursor-pointer">
+                <Switch
+                  checked={ecomStore.accepts_delivery}
+                  onCheckedChange={(v) => saveSiteChannel({ accepts_delivery: v })}
+                />
+                Aceita entrega (aciona o motoboy no pagamento aprovado)
+              </Label>
+              {ecomStore.accepts_delivery && !hasActiveProviderWithCoords && (
+                <p className="text-sm text-warning flex items-start gap-1.5">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  Entrega ligada, mas nenhum provedor ativo tem endereço de coleta com lat/lng. A cotação
+                  vai falhar no checkout.
+                </p>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-base">Tipos de serviço da Lalamove</CardTitle>
+            <CardDescription>
+              Os valores válidos de <code>serviceType</code> variam por cidade. Consulte antes de configurar.
+            </CardDescription>
+          </div>
+          <Button size="sm" variant="outline" onClick={loadServiceTypes} disabled={loadingServices}>
+            {loadingServices ? <Loader2 className="h-4 w-4 animate-spin" /> : "Consultar"}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {!serviceTypes ? (
+            <p className="text-sm text-muted-foreground">
+              Consulte para listar as cidades habilitadas na sua conta.
+            </p>
+          ) : serviceTypes.error ? (
+            <p className="text-sm text-destructive">{serviceTypes.detail || serviceTypes.error}</p>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Mercado {serviceTypes.market} · ambiente {serviceTypes.env}
+              </p>
+              {(serviceTypes.cities ?? []).map((c) => (
+                <div key={c.locode} className="text-sm">
+                  <span className="font-medium">{c.name}</span>{" "}
+                  <span className="text-xs text-muted-foreground">({c.locode})</span>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {c.service_types.map((s) => (
+                      <Badge key={s} variant="outline" className="text-[10px]">{s}</Badge>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-base">Teste de cotação</CardTitle>
-          <CardDescription>Simula um destino e cota nos provedores ativos.</CardDescription>
+          <CardDescription>
+            Resolve o CEP em coordenadas e cota nos provedores ativos, igual ao checkout do site.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-col md:flex-row gap-2">
@@ -322,12 +472,16 @@ export default function DeliverySettings() {
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm space-y-1">
-          <p>· <strong>Lalamove</strong>: aguardando cadastro de parceiro (Fase 1).</p>
-          <p>· <strong>Uber Direct</strong>: aguardando OAuth credentials (Fase 2).</p>
-          <p>· <strong>Mock</strong>: sempre disponível para testes.</p>
+          <p>
+            · <strong>Lalamove</strong>: secrets <code>LALAMOVE_API_KEY</code>,{" "}
+            <code>LALAMOVE_API_SECRET</code>, <code>LALAMOVE_MARKET</code> (BR),{" "}
+            <code>LALAMOVE_ENV</code> (sandbox/production) e <code>LALAMOVE_WEBHOOK_SECRET</code>.
+          </p>
+          <p>· <strong>Uber Direct</strong>: aguardando OAuth credentials (stub).</p>
+          <p>· <strong>Mock</strong>: sempre disponível para testes sem credencial.</p>
           <p className="text-xs text-muted-foreground pt-2">
-            Webhooks (cole no painel do provedor quando aprovado):<br />
-            Lalamove → <code>/functions/v1/delivery-webhook-lalamove</code><br />
+            Webhook Lalamove (o Partner Portal não envia headers, então o secret vai na URL):<br />
+            <code>/functions/v1/delivery-webhook-lalamove?secret=$LALAMOVE_WEBHOOK_SECRET</code><br />
             Uber Direct → <code>/functions/v1/delivery-webhook-uber</code>
           </p>
         </CardContent>
@@ -390,6 +544,12 @@ function ProviderCard({ cfg, onSave, onRemove }: {
 
       <div>
         <p className="text-xs font-medium mb-2">Endereço de coleta</p>
+        {(typeof addr.latitude !== "number" || typeof addr.longitude !== "number") && (
+          <p className="text-xs text-warning flex items-start gap-1.5 mb-2">
+            <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            Sem lat/lng a cotação falha: Lalamove e Uber exigem coordenadas em todos os pontos.
+          </p>
+        )}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <Input placeholder="Rua" value={addr.street ?? ""} onChange={(e) => updateAddr("street", e.target.value)} className="md:col-span-2" />
           <Input placeholder="Nº" value={addr.number ?? ""} onChange={(e) => updateAddr("number", e.target.value)} />

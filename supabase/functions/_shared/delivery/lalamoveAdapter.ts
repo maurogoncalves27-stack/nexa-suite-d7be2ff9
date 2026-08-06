@@ -175,6 +175,19 @@ export const lalamoveAdapter: DeliveryAdapter = {
   },
 };
 
+/**
+ * Cidades e serviços habilitados no mercado configurado. Os valores de
+ * `serviceType` variam por cidade — não assuma MOTORCYCLE no Brasil.
+ */
+export async function lalamoveCities() {
+  const res = await call('GET', '/v3/cities');
+  return (res?.data ?? []) as {
+    locode: string;
+    name: string;
+    services: { key: string; description?: string }[];
+  }[];
+}
+
 export const lalamoveMeta = {
   configured: !!(API_KEY && API_SECRET),
   market: MARKET,
