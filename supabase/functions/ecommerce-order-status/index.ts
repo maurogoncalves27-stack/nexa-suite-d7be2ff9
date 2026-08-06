@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
     const { data: order } = await supabase
       .from("pdv_orders")
       .select(
-        "id, status, order_number, total, subtotal, pickup_eta, confirmed_at, ready_at, brand_breakdown, customer_name, store_id",
+        "id, status, order_number, total, subtotal, pickup_eta, confirmed_at, ready_at, dispatched_at, concluded_at, brand_breakdown, customer_name, store_id, order_type, delivery_fee, delivery_address, delivery_tracking_url, delivery_job_id",
       )
       .eq("id", id)
       .maybeSingle();
@@ -42,10 +42,41 @@ Deno.serve(async (req) => {
       .eq("store_id", order.store_id)
       .maybeSingle();
 
+    // Estado da corrida, quando houver. Só o necessário para acompanhar:
+    // nada de telefone do entregador nem endereço bruto neste endpoint público.
+    let delivery: Record<string, unknown> | null = null;
+    if (order.order_type === "delivery") {
+      const { data: job } = order.delivery_job_id
+        ? await supabase
+            .from("delivery_jobs")
+            .select("status, driver_name, eta_minutes, tracking_url, picked_up_at, delivered_at")
+            .eq("id", order.delivery_job_id)
+            .maybeSingle()
+        : { data: null };
+
+      delivery = {
+        fee: Number(order.delivery_fee ?? 0),
+        address_label: formatAddress(order.delivery_address),
+        tracking_url: order.delivery_tracking_url ?? job?.tracking_url ?? null,
+        job_status: job?.status ?? null,
+        driver_name: job?.driver_name ?? null,
+        eta_minutes: job?.eta_minutes ?? null,
+        picked_up_at: job?.picked_up_at ?? null,
+        delivered_at: job?.delivered_at ?? null,
+      };
+    }
+
+    const {
+      delivery_address: _addr,
+      delivery_job_id: _jobId,
+      store_id: _storeId,
+      ...publicOrder
+    } = order as Record<string, unknown>;
+
     return new Response(
       JSON.stringify({
         ok: true,
-        order: { ...order, items: items || [], store: store || null },
+        order: { ...publicOrder, items: items || [], store: store || null, delivery },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
@@ -57,3 +88,11 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+// Rótulo curto do endereço, sem complemento nem telefone.
+function formatAddress(raw: unknown): string | null {
+  if (!raw || typeof raw !== "object") return null;
+  const a = raw as Record<string, unknown>;
+  const street = [a.street, a.number].filter(Boolean).join(", ");
+  return [street, a.neighborhood, a.city].filter(Boolean).join(" · ") || null;
+}
