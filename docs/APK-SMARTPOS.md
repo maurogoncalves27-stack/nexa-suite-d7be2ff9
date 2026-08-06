@@ -6,7 +6,7 @@ carrega o app publicado dentro de um APK.
 
 ## O que o APK faz
 
-- Abre `https://nexasuite.aquelaparme.com.br/smartpos/login` em tela cheia.
+- Abre `https://nexasuite.aquelaparme.com.br/garcom` em tela cheia.
 - Permite navegação para o domínio NEXA e para `127.0.0.1` (Checkout Payer, porta 6060).
 - Sem dados offline: o terminal precisa de internet.
 
@@ -77,9 +77,25 @@ Continua **API Localhost** da Payer: o Checkout Payer precisa estar instalado e
 logado no próprio terminal, escutando em `http://127.0.0.1:6060`.
 Terminal alvo: Gertec GPOS780, NS 6001072502003427.
 
+### Como o app fala com o Payer
+
+Existem dois modos de transporte:
+
+| Modo | Onde | Endpoint |
+|------|------|----------|
+| `agent` | PC Windows (totem / PDV) | agente NEXA em `https://127.0.0.1:3031` → proxy `/payer/*` |
+| `direct` | APK Android na GPOS780 | Checkout Payer direto em `http://127.0.0.1:6060/Client/*` |
+
+Dentro do APK o modo `direct` é detectado automaticamente (Capacitor). Em
+**Configurações → Terminal SmartPOS** é possível forçar o modo e ajustar o
+endereço do serviço local, com botão de **Testar conexão**.
+
+No modo direto o login fica no próprio app Checkout Payer do terminal — o NEXA
+não armazena e-mail/senha da Payer no aparelho.
+
 ## Depois de instalar
 
-1. Abrir o app NEXA SmartPOS no terminal.
-2. Login em `/smartpos/login` (balcão) ou navegar para `/garcom`.
+1. Abrir o app NEXA Garçom no terminal.
+2. Fazer login (o app já abre em `/garcom`).
 3. Configurar loja/terminal em **Configurações → Terminal SmartPOS**.
 4. Venda de teste de R$ 0,01 pelo Payer.
