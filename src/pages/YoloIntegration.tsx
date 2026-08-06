@@ -11,18 +11,13 @@ import { toast } from "sonner";
 
 type YoloConfig = {
   id: string;
-  environment: string;
   base_url: string;
-  partner_id: string | null;
-  validate_path: string;
-  confirm_path: string;
-  code_header_name: string;
   enabled: boolean;
   notes: string | null;
 };
 
 type StoreRow = { id: string; name: string };
-type TokenRow = { store_id: string; token: string; yolo_branch_id: string | null; enabled: boolean };
+type TokenRow = { store_id: string; token: string; enabled: boolean; notes: string | null };
 
 export default function YoloIntegration() {
   const [loading, setLoading] = useState(true);
@@ -34,9 +29,9 @@ export default function YoloIntegration() {
   useEffect(() => {
     (async () => {
       const [{ data: cfg }, { data: st }, { data: tk }] = await Promise.all([
-        supabase.from("yolo_config").select("*").limit(1).maybeSingle(),
+        supabase.from("yolo_config").select("id, base_url, enabled, notes").limit(1).maybeSingle(),
         supabase.from("stores").select("id, name").eq("is_virtual", false).order("name"),
-        supabase.from("yolo_store_tokens").select("store_id, token, yolo_branch_id, enabled"),
+        supabase.from("yolo_store_tokens").select("store_id, token, enabled, notes"),
       ]);
       setConfig((cfg as YoloConfig) ?? null);
       setStores((st as StoreRow[]) ?? []);
@@ -53,12 +48,7 @@ export default function YoloIntegration() {
     const { error } = await supabase
       .from("yolo_config")
       .update({
-        base_url: config.base_url,
-        environment: config.environment,
-        partner_id: config.partner_id,
-        validate_path: config.validate_path,
-        confirm_path: config.confirm_path,
-        code_header_name: config.code_header_name,
+        base_url: config.base_url.replace(/\/+$/, ""),
         enabled: config.enabled,
         notes: config.notes,
       })
@@ -75,8 +65,8 @@ export default function YoloIntegration() {
       {
         store_id: storeId,
         token: row.token.trim(),
-        yolo_branch_id: row.yolo_branch_id?.trim() || null,
         enabled: row.enabled ?? true,
+        notes: row.notes ?? null,
       },
       { onConflict: "store_id" },
     );
@@ -87,7 +77,7 @@ export default function YoloIntegration() {
   const setToken = (storeId: string, patch: Partial<TokenRow>) =>
     setTokens((prev) => ({
       ...prev,
-      [storeId]: { store_id: storeId, token: "", yolo_branch_id: null, enabled: true, ...prev[storeId], ...patch },
+      [storeId]: { store_id: storeId, token: "", enabled: true, notes: null, ...prev[storeId], ...patch },
     }));
 
   if (loading) {
@@ -106,8 +96,8 @@ export default function YoloIntegration() {
           Integração Yolo Club
         </h1>
         <p className="text-muted-foreground">
-          Validação e confirmação de cupons Yolo no Totem e no NEXA Garçom. O token é gerado por filial no painel da
-          Yolo e enviado no cabeçalho junto com o código do cliente.
+          Validação e consumo de cupons Yolo no Totem, NEXA Garçom e PDV. O token é gerado por filial no painel da
+          Yolo Club.
         </p>
       </div>
 
@@ -130,47 +120,23 @@ export default function YoloIntegration() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label>URL base</Label>
+                <div className="space-y-1.5 md:col-span-2">
+                  <Label>URL base da API Yolo</Label>
                   <Input
                     value={config.base_url}
                     onChange={(e) => setConfig({ ...config, base_url: e.target.value })}
+                    placeholder="https://integracao.yoloclub.com.br"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Produção: https://integracao.yoloclub.com.br
+                  </p>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Ambiente</Label>
+                <div className="space-y-1.5 md:col-span-2">
+                  <Label>Observações internas</Label>
                   <Input
-                    value={config.environment}
-                    onChange={(e) => setConfig({ ...config, environment: e.target.value })}
-                    placeholder="sandbox ou production"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Caminho de validação</Label>
-                  <Input
-                    value={config.validate_path}
-                    onChange={(e) => setConfig({ ...config, validate_path: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Caminho de confirmação</Label>
-                  <Input
-                    value={config.confirm_path}
-                    onChange={(e) => setConfig({ ...config, confirm_path: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Header do código do cliente</Label>
-                  <Input
-                    value={config.code_header_name}
-                    onChange={(e) => setConfig({ ...config, code_header_name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Partner ID (opcional)</Label>
-                  <Input
-                    value={config.partner_id ?? ""}
-                    onChange={(e) => setConfig({ ...config, partner_id: e.target.value })}
+                    value={config.notes ?? ""}
+                    onChange={(e) => setConfig({ ...config, notes: e.target.value })}
+                    placeholder="Ex.: contato do parceiro, datas de homologação"
                   />
                 </div>
               </div>
@@ -203,23 +169,22 @@ export default function YoloIntegration() {
                     <Badge variant="outline">Sem token</Badge>
                   )}
                 </div>
-                <div className="grid gap-3 md:grid-cols-3">
-                  <div className="space-y-1.5 md:col-span-2">
-                    <Label className="text-xs">Token de integração</Label>
-                    <Input
-                      type="password"
-                      value={row?.token ?? ""}
-                      placeholder="Token gerado no painel da Yolo"
-                      onChange={(e) => setToken(s.id, { token: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">ID da filial na Yolo</Label>
-                    <Input
-                      value={row?.yolo_branch_id ?? ""}
-                      onChange={(e) => setToken(s.id, { yolo_branch_id: e.target.value })}
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Token de integração (64 caracteres)</Label>
+                  <Input
+                    type="password"
+                    value={row?.token ?? ""}
+                    placeholder="Token gerado no painel da Yolo"
+                    onChange={(e) => setToken(s.id, { token: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Observações</Label>
+                  <Input
+                    value={row?.notes ?? ""}
+                    placeholder="ID interno da filial no Yolo, responsável..."
+                    onChange={(e) => setToken(s.id, { notes: e.target.value })}
+                  />
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">

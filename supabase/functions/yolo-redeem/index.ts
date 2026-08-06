@@ -1,12 +1,11 @@
-// Confirma/ativa o voucher Yolo após o pedido ser fechado/pago. Idempotente por order_id+code.
-// Segundo endpoint do modelo Yolo: "ativação mesmo, o status de confirmação dele".
+// Consome/valida o voucher Yolo após o pedido ser fechado/pago. Idempotente por order_id+code.
+// Guia oficial: POST /integracao/validar-token { Codigo, Valor, Economizou }
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
-import { loadYoloContext, serviceClient, yoloHeaders, yoloUrl, jsonResponse } from '../_shared/yolo.ts';
+import { loadYoloContext, serviceClient, yoloHeaders, yoloUrl, jsonResponse, toYoloMoney } from '../_shared/yolo.ts';
 
 const BodySchema = z.object({
-  voucher_id: z.string().min(1).optional(),
-  code: z.string().trim().min(3).max(64),
+  code: z.string().trim().length(6).regex(/^\d{6}$/, 'Código deve ter 6 dígitos'),
   store_id: z.string().uuid(),
   channel: z.enum(['totem', 'garcom', 'online', 'pdv']),
   order_id: z.string().min(1).max(128),
@@ -36,44 +35,44 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (existing) {
-      return json({ redeemed: true, already: true, voucher_id: p.voucher_id ?? null }, 200);
+      return json({ redeemed: true, already: true, code: p.code }, 200);
     }
 
     const { ctx, error } = await loadYoloContext(supabase, p.store_id);
     if (!ctx) return json({ redeemed: false, reason: error!.reason, message: error!.message }, error!.status);
 
-    const upstream = await fetch(yoloUrl(ctx, ctx.config.confirm_path), {
+    const upstream = await fetch(yoloUrl(ctx, '/integracao/validar-token'), {
       method: 'POST',
-      headers: yoloHeaders(ctx, p.code),
+      headers: yoloHeaders(ctx),
       body: JSON.stringify({
-        code: p.code,
-        voucher_id: p.voucher_id ?? null,
-        partner_id: ctx.config.partner_id,
-        branch_id: ctx.branchId,
-        order_id: p.order_id,
-        cart_total_cents: p.order_total_cents,
-        discount_cents: p.discount_applied_cents,
-        confirmed_at: new Date().toISOString(),
+        Codigo: p.code,
+        Valor: toYoloMoney(p.order_total_cents),
+        Economizou: toYoloMoney(p.discount_applied_cents),
       }),
     });
 
     const body = await upstream.json().catch(() => ({}));
-    const ok = upstream.ok && body?.confirmed !== false && body?.redeemed !== false;
+    const ok = upstream.ok && body?.error === false && body?.data?.valido === true && body?.data?.TokenUtilizado === true;
 
     await supabase.from('yolo_vouchers_used').insert({
       code: p.code,
-      voucher_id: p.voucher_id ?? body?.voucher_id ?? null,
+      voucher_id: null,
       order_id: p.order_id,
       store_id: p.store_id,
       channel: p.channel,
       status: ok ? 'redeemed' : 'failed',
       discount_applied_cents: p.discount_applied_cents,
       order_total_cents: p.order_total_cents,
-      failure_reason: ok ? null : (body?.reason ?? `http_${upstream.status}`),
+      failure_reason: ok ? null : (body?.message ?? body?.data?.motivo ?? `http_${upstream.status}`),
       raw_response: body,
     });
 
-    return json(body, upstream.status);
+    return json({
+      redeemed: ok,
+      code: p.code,
+      message: body?.message ?? null,
+      raw: body,
+    }, upstream.status);
   } catch (err) {
     console.error('yolo-redeem error:', err);
     return json({ redeemed: false, reason: 'internal_error', message: String(err) }, 500);

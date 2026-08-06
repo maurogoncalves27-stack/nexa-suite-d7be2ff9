@@ -1,12 +1,11 @@
-// Valida um código Yolo Club sem consumir (chamado antes de aplicar desconto no carrinho).
-// Modelo Yolo: token POR FILIAL no header + code do usuário no header.
-// Já enviamos aqui o valor economizado (desconto) e o total da comanda, conforme pedido pelo dev da Yolo.
+// Pré-valida um código Yolo Club sem consumir (chamado antes de aplicar desconto no carrinho).
+// Guia oficial: GET /integracao/consultar-token?codigo=XXXXXX
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
-import { loadYoloContext, serviceClient, yoloHeaders, yoloUrl, jsonResponse } from '../_shared/yolo.ts';
+import { loadYoloContext, serviceClient, yoloHeaders, yoloUrl, jsonResponse, toYoloMoney } from '../_shared/yolo.ts';
 
 const BodySchema = z.object({
-  code: z.string().trim().min(3).max(64),
+  code: z.string().trim().length(6).regex(/^\d{6}$/, 'Código deve ter 6 dígitos'),
   store_id: z.string().uuid(),
   channel: z.enum(['totem', 'garcom', 'online', 'pdv']),
   cart_total_cents: z.number().int().nonnegative().optional(),
@@ -27,37 +26,35 @@ Deno.serve(async (req) => {
     const { ctx, error } = await loadYoloContext(supabase, store_id);
     if (!ctx) return json({ valid: false, reason: error!.reason, message: error!.message }, error!.status);
 
-    const upstream = await fetch(yoloUrl(ctx, ctx.config.validate_path), {
-      method: 'POST',
-      headers: yoloHeaders(ctx, code),
-      body: JSON.stringify({
-        code,
-        partner_id: ctx.config.partner_id,
-        branch_id: ctx.branchId,
-        channel,
-        cart_total_cents: cart_total_cents ?? 0,
-        // "valor economizado pelo cliente" + "total da comanda" já na validação
-        discount_cents: discount_cents ?? 0,
-      }),
+    const upstream = await fetch(`${yoloUrl(ctx, '/integracao/consultar-token')}?${new URLSearchParams({ codigo: code })}`, {
+      method: 'GET',
+      headers: yoloHeaders(ctx),
     });
 
     const body = await upstream.json().catch(() => ({}));
+    const isValid = upstream.ok && body?.error === false && body?.data?.valido === true;
 
     // Log auditoria (não bloqueia resposta)
     supabase.from('yolo_vouchers_used').insert({
       code,
-      voucher_id: body?.voucher_id ?? null,
+      voucher_id: null,
       store_id,
       channel,
-      status: upstream.ok && body?.valid !== false ? 'validated' : 'failed',
-      benefit_snapshot: body?.benefit ?? null,
+      status: isValid ? 'validated' : 'failed',
+      benefit_snapshot: body?.data ?? null,
       order_total_cents: cart_total_cents ?? null,
       discount_applied_cents: discount_cents ?? null,
-      failure_reason: !upstream.ok || body?.valid === false ? (body?.reason ?? `http_${upstream.status}`) : null,
+      failure_reason: !isValid ? (body?.message ?? `http_${upstream.status}`) : null,
       raw_response: body,
     }).then(() => {});
 
-    return json(body, upstream.status);
+    // Resposta compatível com o restante do sistema NEXA
+    return json({
+      valid: isValid,
+      yolo_valid: isValid,
+      message: body?.message ?? null,
+      raw: body,
+    }, upstream.status);
   } catch (err) {
     console.error('yolo-validate error:', err);
     return json({ valid: false, reason: 'internal_error', message: String(err) }, 500);
