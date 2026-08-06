@@ -233,12 +233,17 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
                                         <div className="px-2 py-1 text-xs text-muted-foreground">Nenhuma ficha disponível</div>
                                       )}
                                       {Object.values(recipeByOutput)
+                                        .filter((r) => {
+                                          const q = (productSearch[idx] ?? "").trim().toLowerCase();
+                                          return !q || r.name.toLowerCase().includes(q);
+                                        })
                                         .sort((a, b) => a.name.localeCompare(b.name))
                                         .map((r) => (
                                           <SelectItem key={r.output_product_id} value={r.output_product_id}>
                                             🧪 {r.name}
                                           </SelectItem>
                                         ))}
+
                                     </SelectGroup>
                                   )}
                                   {(() => {
