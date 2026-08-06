@@ -70,3 +70,10 @@ PGWebLib/
 *.bak
 *.tmp
 *.temp
+
+# Android / Capacitor
+android/keystore/
+android/keystore.properties
+android/local.properties
+*.jks
+*.keystore
