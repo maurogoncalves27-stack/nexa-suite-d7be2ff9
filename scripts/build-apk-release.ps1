@@ -124,11 +124,11 @@ if (keystorePropsFile.exists()) {
     1)
 
   # grava SEM BOM (UTF8Encoding($false)) - com BOM o Gradle falha em "line 1, column 1"
-  [IO.File]::WriteAllText($gradlePath, $gradle, (New-Object System.Text.UTF8Encoding($false)))
+  [IO.File]::WriteAllText($gradlePath, $gradle, [System.Text.UTF8Encoding]::new($false))
 } else {
   Write-Host "build.gradle ja configurado para assinatura." -ForegroundColor Green
   # garante que nao ficou BOM de execucao anterior
-  [IO.File]::WriteAllText($gradlePath, $gradle, (New-Object System.Text.UTF8Encoding($false)))
+  [IO.File]::WriteAllText($gradlePath, $gradle, [System.Text.UTF8Encoding]::new($false))
 }
 
 # --- 5. Build --------------------------------------------------------
