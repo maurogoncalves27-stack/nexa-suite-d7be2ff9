@@ -43,6 +43,8 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
   const [products, setProducts] = useState<Product[]>([]);
   const [recipeByOutput, setRecipeByOutput] = useState<Record<string, RecipeRef>>({});
   const [items, setItems] = useState<Item[]>([]);
+  const [productSearch, setProductSearch] = useState<Record<number, string>>({});
+
   const [prepConvByProduct, setPrepConvByProduct] = useState<Record<string, ConvRef>>({});
   const brandKey = brandIds.join("|");
 
@@ -214,6 +216,16 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
                                   <SelectValue placeholder="Produto ou ficha…" />
                                 </SelectTrigger>
                                 <SelectContent>
+                                  <div className="p-1 sticky top-0 bg-popover z-10">
+                                    <Input
+                                      placeholder="Buscar item…"
+                                      value={productSearch[idx] ?? ""}
+                                      onChange={(e) => setProductSearch((p) => ({ ...p, [idx]: e.target.value }))}
+                                      onKeyDown={(e) => e.stopPropagation()}
+                                      className="h-8 text-xs"
+                                    />
+                                  </div>
+
                                   {!group.isPack && (
                                     <SelectGroup>
                                       <SelectLabel>Pré-preparos / Fichas</SelectLabel>
@@ -221,31 +233,89 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
                                         <div className="px-2 py-1 text-xs text-muted-foreground">Nenhuma ficha disponível</div>
                                       )}
                                       {Object.values(recipeByOutput)
+                                        .filter((r) => {
+                                          const q = (productSearch[idx] ?? "").trim().toLowerCase();
+                                          return !q || r.name.toLowerCase().includes(q);
+                                        })
                                         .sort((a, b) => a.name.localeCompare(b.name))
                                         .map((r) => (
                                           <SelectItem key={r.output_product_id} value={r.output_product_id}>
                                             🧪 {r.name}
                                           </SelectItem>
                                         ))}
+
                                     </SelectGroup>
                                   )}
-                                  <SelectGroup>
-                                    <SelectLabel>{group.isPack ? "Embalagens / Descartáveis" : "Insumos / Produtos"}</SelectLabel>
-                                    {products
+                                  {(() => {
+                                    const base = products
                                       .filter((p) => !recipeByOutput[p.id])
-                                      .filter((p) => (contextScope === "fabrica" ? p.factory_only : !p.factory_only))
-                                      .filter((p) => {
-                                        // Ingrediente precisa ser insumo (produção ou montagem). Embalagens usam grupo próprio.
-                                        const roles = p.usage_roles ?? [];
-                                        if (roles.length === 0) return true; // legado sem classificação
-                                        return roles.includes("insumo_producao") || roles.includes("insumo_montagem");
-                                      })
                                       .filter((p) => {
                                         const isPack = /embalag/i.test(p.category ?? "");
                                         return group.isPack ? isPack : !isPack;
                                       })
-                                      .map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                                  </SelectGroup>
+                                      .filter((p) => {
+                                        const q = (productSearch[idx] ?? "").trim().toLowerCase();
+                                        return !q || p.name.toLowerCase().includes(q);
+                                      });
+
+                                    if (group.isPack || contextScope === "fabrica") {
+                                      const list = base
+                                        .filter((p) => (contextScope === "fabrica" ? p.factory_only : !p.factory_only))
+                                        .filter((p) => {
+                                          const roles = p.usage_roles ?? [];
+                                          if (roles.length === 0) return true;
+                                          if (group.isPack) return true;
+                                          return roles.includes("insumo_producao") || roles.includes("insumo_montagem");
+                                        });
+                                      return (
+                                        <SelectGroup>
+                                          <SelectLabel>{group.isPack ? "Embalagens / Descartáveis" : "Insumos / Produtos"}</SelectLabel>
+                                          {list.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                        </SelectGroup>
+                                      );
+                                    }
+
+                                    const cd = base.filter(
+                                      (p) => p.factory_only || (p.usage_roles ?? []).includes("venda_fabrica"),
+                                    );
+                                    const rest = base.filter((p) => !cd.includes(p));
+                                    const revenda = rest.filter((p) => {
+                                      const roles = p.usage_roles ?? [];
+                                      return (
+                                        roles.includes("venda_loja") &&
+                                        !roles.includes("insumo_producao") &&
+                                        !roles.includes("insumo_montagem")
+                                      );
+                                    });
+                                    const insumos = rest.filter((p) => {
+                                      if (revenda.includes(p)) return false;
+                                      const roles = p.usage_roles ?? [];
+                                      if (roles.length === 0) return true;
+                                      return roles.includes("insumo_producao") || roles.includes("insumo_montagem");
+                                    });
+
+                                    return (
+                                      <>
+                                        {cd.length > 0 && (
+                                          <SelectGroup>
+                                            <SelectLabel>Produzidos no CD</SelectLabel>
+                                            {cd.map((p) => <SelectItem key={p.id} value={p.id}>🏭 {p.name}</SelectItem>)}
+                                          </SelectGroup>
+                                        )}
+                                        <SelectGroup>
+                                          <SelectLabel>Insumos / Produtos</SelectLabel>
+                                          {insumos.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                        </SelectGroup>
+                                        {revenda.length > 0 && (
+                                          <SelectGroup>
+                                            <SelectLabel>Bebidas / Revenda</SelectLabel>
+                                            {revenda.map((p) => <SelectItem key={p.id} value={p.id}>🥤 {p.name}</SelectItem>)}
+                                          </SelectGroup>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
+
                                 </SelectContent>
                               </Select>
                               {recipeByOutput[i.product_id] && (
