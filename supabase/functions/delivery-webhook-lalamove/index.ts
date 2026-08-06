@@ -55,39 +55,59 @@ async function sendWhatsApp(phone: string, message: string) {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-
-  // Sem secret configurado o endpoint fica fechado, para não aceitar evento forjado.
-  const expectedSecret = Deno.env.get('LALAMOVE_WEBHOOK_SECRET');
-  if (!expectedSecret) {
-    return json({ error: 'webhook secret not configured' }, 503);
-  }
+  // Healthcheck do Partner Portal / probes — a doc da Lalamove exige HTTP 200
+  // mesmo sem body, antes de qualquer lógica.
+  if (req.method === 'GET' || req.method === 'HEAD') return json({ ok: true });
 
   const url = new URL(req.url);
+  const expectedSecret = Deno.env.get('LALAMOVE_WEBHOOK_SECRET') ?? '';
   const provided =
     req.headers.get('x-webhook-secret') ??
     req.headers.get('x-lalamove-signature') ??
     url.searchParams.get('secret') ??
     url.searchParams.get('token') ??
     '';
+
+  let payload: Record<string, unknown> = {};
+  try {
+    const raw = await req.text();
+    payload = raw ? JSON.parse(raw) : {};
+  } catch {
+    payload = {};
+  }
+
+  const orderData = (payload?.data as Record<string, unknown> | undefined)?.order as
+    | Record<string, unknown>
+    | undefined ?? {};
+  const providerOrderId = (orderData.orderId ?? payload?.orderId) as string | undefined;
+
+  // Ping de validação do portal (sem orderId): responde 200 para o host ser
+  // aceito. Eventos reais continuam exigindo o shared secret.
+  if (!providerOrderId) {
+    if (expectedSecret && !timingSafeEqual(provided, expectedSecret)) {
+      return json({ error: 'unauthorized' }, 401);
+    }
+    return json({ ok: true, ping: true });
+  }
+
+  if (!expectedSecret) {
+    return json({ error: 'webhook secret not configured' }, 503);
+  }
   if (!timingSafeEqual(provided, expectedSecret)) {
     return json({ error: 'unauthorized' }, 401);
   }
 
   try {
-    const payload = await req.json();
     console.log('[lalamove-webhook]', JSON.stringify(payload).slice(0, 500));
 
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-    const orderData = payload?.data?.order ?? {};
-    const providerOrderId = orderData.orderId ?? payload?.orderId;
-    const externalStatus = orderData.status ?? payload?.status;
-    const eventType = payload?.eventType ?? payload?.event ?? externalStatus ?? 'unknown';
-    const driver = payload?.data?.driver ?? {};
-
-    if (!providerOrderId) {
-      return json({ ok: false, reason: 'missing orderId' });
-    }
+    const externalStatus = (orderData.status ?? payload?.status) as string | undefined;
+    const eventType = (payload?.eventType ?? payload?.event ?? externalStatus ?? 'unknown') as string;
+    const driver = ((payload?.data as Record<string, unknown> | undefined)?.driver ?? {}) as Record<
+      string,
+      unknown
+    >;
 
     const { data: job } = await supabase
       .from('delivery_jobs')
@@ -109,9 +129,9 @@ Deno.serve(async (req) => {
     });
 
     const newStatus = externalStatus ? STATUS_MAP[externalStatus] ?? null : null;
-    const trackingUrl = orderData.shareLink ?? job.tracking_url ?? null;
-    const driverName = driver.name ?? null;
-    const driverPhone = driver.phone ?? null;
+    const trackingUrl = (orderData.shareLink as string | undefined) ?? job.tracking_url ?? null;
+    const driverName = (driver.name as string | undefined) ?? null;
+    const driverPhone = (driver.phone as string | undefined) ?? null;
 
     const jobPatch: Record<string, unknown> = {};
     if (trackingUrl && trackingUrl !== job.tracking_url) jobPatch.tracking_url = trackingUrl;
