@@ -4,6 +4,7 @@
 // registrada no Partner Portal (que não permite headers customizados).
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { buildRatingUrl } from '../_shared/delivery/ratingToken.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -207,7 +208,17 @@ async function syncOrder(
         `🛵 Seu pedido${ref} saiu para entrega${who}!${link}`,
       );
     } else if (target === 'concluded') {
-      await sendWhatsApp(order.customer_phone, `✅ Seu pedido${ref} foi entregue. Bom apetite!`);
+      let ask = '';
+      try {
+        const ratingUrl = await buildRatingUrl(SITE_ORIGIN, order.id);
+        ask = `\n\nComo foi a entrega? Avalie em 1 toque: ${ratingUrl}`;
+      } catch (e) {
+        console.error('[lalamove-webhook] rating link failed', e);
+      }
+      await sendWhatsApp(
+        order.customer_phone,
+        `✅ Seu pedido${ref} foi entregue. Bom apetite!${ask}`,
+      );
     }
   }
 }

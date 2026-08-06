@@ -1,6 +1,6 @@
 // Página pública de acompanhamento do pedido — polling no status.
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import {
   Loader2,
   CheckCircle2,
@@ -12,6 +12,7 @@ import {
   Phone,
   Bike,
   ExternalLink,
+  Star,
 } from "lucide-react";
 import { PedirLayout } from "./PedirLayout";
 
@@ -24,6 +25,8 @@ type DeliveryInfo = {
   eta_minutes: number | null;
   picked_up_at: string | null;
   delivered_at: string | null;
+  rating_token: string | null;
+  rating: number | null;
 };
 
 type OrderStatus = {
@@ -260,6 +263,32 @@ export default function PedirPedido() {
                   </a>
                 )}
               </div>
+            )}
+
+            {/* Avaliação da entrega */}
+            {isDelivery && delivery?.rating_token && (
+              <Link
+                to={`/pedir/avaliar/${order.id}?t=${delivery.rating_token}`}
+                className="ap-card flex items-center justify-between gap-3 p-5 transition hover:shadow-lg"
+              >
+                <div>
+                  <div className="ap-display" style={{ fontSize: "1.15rem" }}>
+                    {delivery.rating ? "Avaliação enviada" : "Como foi sua entrega?"}
+                  </div>
+                  <div className="mt-1 text-xs" style={{ color: "hsl(var(--ap-brown-2))" }}>
+                    {delivery.rating
+                      ? `Você deu ${delivery.rating} de 5. Toque para alterar.`
+                      : "Sua nota ajuda a gente a melhorar."}
+                  </div>
+                </div>
+                <Star
+                  className="h-7 w-7 shrink-0"
+                  style={{
+                    color: "hsl(var(--ap-mustard))",
+                    fill: delivery.rating ? "hsl(var(--ap-mustard))" : "transparent",
+                  }}
+                />
+              </Link>
             )}
 
             {/* Resumo */}

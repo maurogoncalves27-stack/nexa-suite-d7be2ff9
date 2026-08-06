@@ -2,6 +2,7 @@
 // GET ?id=<order_id>  → { status, order_number, total, pickup_eta, items[], brand_breakdown }
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { signRatingToken } from "../_shared/delivery/ratingToken.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -54,6 +55,19 @@ Deno.serve(async (req) => {
             .maybeSingle()
         : { data: null };
 
+      // Entrega concluída habilita a avaliação direto na página do pedido.
+      let ratingToken: string | null = null;
+      let rating: number | null = null;
+      if (order.status === "concluded") {
+        ratingToken = await signRatingToken(order.id).catch(() => null);
+        const { data: existing } = await supabase
+          .from("delivery_ratings")
+          .select("rating")
+          .eq("order_id", order.id)
+          .maybeSingle();
+        rating = existing?.rating ?? null;
+      }
+
       delivery = {
         fee: Number(order.delivery_fee ?? 0),
         address_label: formatAddress(order.delivery_address),
@@ -63,6 +77,8 @@ Deno.serve(async (req) => {
         eta_minutes: job?.eta_minutes ?? null,
         picked_up_at: job?.picked_up_at ?? null,
         delivered_at: job?.delivered_at ?? null,
+        rating_token: ratingToken,
+        rating,
       };
     }
 
