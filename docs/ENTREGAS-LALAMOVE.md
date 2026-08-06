@@ -26,6 +26,7 @@ ao provedor fica em `delivery_jobs.fee_cents`. Os dois não se sobrescrevem.
 | `LALAMOVE_API_SECRET` | secret do Partner Portal | usado no HMAC-SHA256 |
 | `LALAMOVE_MARKET` | `BR` | |
 | `LALAMOVE_ENV` | `sandbox` ou `production` | define o host da API |
+| `LALAMOVE_SERVICE_TYPE` | opcional, default `LALAGO` | fallback quando a loja não tem `service_type` |
 | `LALAMOVE_WEBHOOK_SECRET` | string aleatória sua | valida o push de status |
 | `SITE_PUBLIC_ORIGIN` | ex. `https://pedir.aquelaparme.com.br` | monta os links de acompanhamento e avaliação |
 | `DELIVERY_RATING_SECRET` | opcional | se ausente, o token de avaliação deriva da service role key |
@@ -72,8 +73,10 @@ Em **Configurações → Entregas** (`/configuracoes/entregas`), com a loja sele
    endereço de coleta **com latitude e longitude**. Sem coordenadas a cotação
    falha — a API v3 exige lat/lng em todos os stops.
 2. **Tipos de serviço da Lalamove**: clique em *Consultar* para listar as cidades
-   e os `serviceType` válidos da sua conta, e use um deles no provedor. Não
-   assuma `MOTORCYCLE`: os valores variam por cidade.
+   e os `serviceType` válidos da sua conta. No Brasil o sandbox aceita
+   `LALAGO` (mais barato e disponível em todas as cidades), `HATCHBACK`,
+   `CAR`, `VAN`, etc. **`MOTORCYCLE` não existe no mercado BR** — a API
+   rejeita a cotação. O default do projeto é `LALAGO`.
 3. **Canal do site**: ligue *Aceita entrega* só nas lojas piloto com provedor
    ativo. O card avisa se a entrega está ligada sem coleta geocodificada.
 4. **Teste de cotação**: informe um CEP de destino; o teste resolve as

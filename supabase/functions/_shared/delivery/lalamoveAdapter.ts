@@ -14,6 +14,10 @@ import type {
 const API_KEY = Deno.env.get('LALAMOVE_API_KEY') || '';
 const API_SECRET = Deno.env.get('LALAMOVE_API_SECRET') || '';
 const MARKET = Deno.env.get('LALAMOVE_MARKET') || 'BR'; // BR (Brasil)
+// `MOTORCYCLE` não existe no mercado brasileiro — a API recusa. LALAGO é o
+// serviço mais barato e o único presente em todas as cidades BR do sandbox.
+// Use GET /v3/cities (delivery-service-types) para conferir por cidade.
+const DEFAULT_SERVICE_TYPE = Deno.env.get('LALAMOVE_SERVICE_TYPE') || 'LALAGO';
 const ENV = (Deno.env.get('LALAMOVE_ENV') || 'sandbox').toLowerCase();
 const BASE_URL = ENV === 'production'
   ? 'https://rest.lalamove.com'
@@ -80,6 +84,16 @@ function addrToStop(a: DeliveryAddress) {
   };
 }
 
+// A cotação da Lalamove devolve distância, não duração. Estimamos o tempo de
+// rota por uma média de trânsito urbano, mais uma folga de coleta/entrega.
+const URBAN_KMH = 22;
+const HANDOVER_MINUTES = 8;
+
+function etaFromDistance(meters?: number): number {
+  if (!meters || !Number.isFinite(meters) || meters <= 0) return 0;
+  return Math.round((meters / 1000 / URBAN_KMH) * 60) + HANDOVER_MINUTES;
+}
+
 function contact(a: DeliveryAddress) {
   return {
     name: a.contact_name || 'Cliente',
@@ -91,7 +105,7 @@ export const lalamoveAdapter: DeliveryAdapter = {
   provider: 'lalamove',
 
   async quote(req: QuoteRequest): Promise<QuoteResult> {
-    const serviceType = req.service_type || 'MOTORCYCLE';
+    const serviceType = req.service_type || DEFAULT_SERVICE_TYPE;
     const body = {
       data: {
         serviceType,
@@ -110,12 +124,14 @@ export const lalamoveAdapter: DeliveryAdapter = {
     const d = res?.data ?? {};
     const totalCents = Math.round(parseFloat(d.priceBreakdown?.total ?? '0') * 100);
     const expiresAt = d.expiresAt as string | undefined;
+    const distanceMeters = d.distance?.unit === 'm' ? Number(d.distance.value) : undefined;
     return {
       provider: 'lalamove',
       quote_id: d.quotationId,
       fee_cents: totalCents,
-      eta_minutes: 0, // Lalamove não retorna ETA na cotação
+      eta_minutes: etaFromDistance(distanceMeters),
       expires_at: expiresAt,
+      distance_meters: Number.isFinite(distanceMeters) ? distanceMeters : undefined,
       raw: res,
     };
   },
@@ -153,6 +169,7 @@ export const lalamoveAdapter: DeliveryAdapter = {
     };
     const res = await call('POST', '/v3/orders', body);
     const d = res?.data ?? {};
+    const distanceMeters = d.distance?.unit === 'm' ? Number(d.distance.value) : undefined;
     return {
       provider: 'lalamove',
       order_id: d.orderId,
@@ -161,6 +178,7 @@ export const lalamoveAdapter: DeliveryAdapter = {
       driver_name: undefined,
       driver_phone: undefined,
       fee_cents: fee,
+      eta_minutes: etaFromDistance(distanceMeters),
       raw: res,
     };
   },

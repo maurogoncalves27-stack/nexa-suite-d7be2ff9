@@ -191,7 +191,7 @@ export default function DeliverySettings() {
       provider,
       is_active: true,
       priority: (configs[configs.length - 1]?.priority ?? 0) + 1,
-      service_type: "MOTORCYCLE",
+      service_type: "LALAGO",
       pickup_address: null,
     };
     await upsertConfig(newCfg);
@@ -539,6 +539,12 @@ function ProviderCard({ cfg, onSave, onRemove }: {
             value={local.service_type}
             onChange={(e) => setLocal({ ...local, service_type: e.target.value })}
           />
+          {local.provider === "lalamove" && (
+            <p className="text-[11px] text-muted-foreground mt-1">
+              No Brasil: <code>LALAGO</code> (mais barato), <code>HATCHBACK</code>, <code>CAR</code>,{" "}
+              <code>VAN</code>. <code>MOTORCYCLE</code> não existe aqui.
+            </p>
+          )}
         </div>
       </div>
 
