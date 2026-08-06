@@ -43,6 +43,8 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
   const [products, setProducts] = useState<Product[]>([]);
   const [recipeByOutput, setRecipeByOutput] = useState<Record<string, RecipeRef>>({});
   const [items, setItems] = useState<Item[]>([]);
+  const [productSearch, setProductSearch] = useState<Record<number, string>>({});
+
   const [prepConvByProduct, setPrepConvByProduct] = useState<Record<string, ConvRef>>({});
   const brandKey = brandIds.join("|");
 
