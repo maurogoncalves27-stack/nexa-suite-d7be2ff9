@@ -1,12 +1,12 @@
-// Estorna um voucher Yolo previamente confirmado (usado quando o pedido é cancelado).
-// Endpoint opcional no modelo da Yolo — se não existir lá, o log local serve para conciliação manual.
+// Estorno de voucher Yolo.
+// A API oficial do Yolo Club (v1.0, 07/2026) NÃO possui endpoint de estorno.
+// Esta function mantém apenas o log local para conciliação manual e retorna 501.
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
-import { loadYoloContext, serviceClient, yoloHeaders, yoloUrl, jsonResponse } from '../_shared/yolo.ts';
+import { loadYoloContext, serviceClient, jsonResponse } from '../_shared/yolo.ts';
 
 const BodySchema = z.object({
-  voucher_id: z.string().min(1).optional(),
-  code: z.string().trim().min(3).max(64),
+  code: z.string().trim().length(6).regex(/^\d{6}$/, 'Código deve ter 6 dígitos'),
   store_id: z.string().uuid(),
   channel: z.enum(['totem', 'garcom', 'online', 'pdv']),
   order_id: z.string().min(1).max(128),
@@ -24,38 +24,26 @@ Deno.serve(async (req) => {
     const p = parsed.data;
 
     const supabase = serviceClient();
-    const { ctx, error } = await loadYoloContext(supabase, p.store_id);
-    if (!ctx) return json({ voided: false, reason: error!.reason, message: error!.message }, error!.status);
+    const { error } = await loadYoloContext(supabase, p.store_id);
+    if (error) return json({ voided: false, reason: error.reason, message: error.message }, error.status);
 
-    const upstream = await fetch(yoloUrl(ctx, '/vouchers/void'), {
-      method: 'POST',
-      headers: yoloHeaders(ctx, p.code),
-      body: JSON.stringify({
-        code: p.code,
-        voucher_id: p.voucher_id ?? null,
-        partner_id: ctx.config.partner_id,
-        branch_id: ctx.branchId,
-        order_id: p.order_id,
-        reason: p.reason ?? 'order_cancelled',
-        voided_at: new Date().toISOString(),
-      }),
-    });
-
-    const body = await upstream.json().catch(() => ({}));
-    const ok = upstream.ok;
-
+    // Log local para conciliação manual; a Yolo não fornece endpoint de estorno.
     await supabase.from('yolo_vouchers_used').insert({
       code: p.code,
-      voucher_id: p.voucher_id ?? null,
+      voucher_id: null,
       order_id: p.order_id,
       store_id: p.store_id,
       channel: p.channel,
-      status: ok ? 'voided' : 'failed',
-      failure_reason: ok ? p.reason ?? 'order_cancelled' : (body?.reason ?? `http_${upstream.status}`),
-      raw_response: body,
+      status: 'voided',
+      failure_reason: p.reason ?? 'order_cancelled',
+      raw_response: { note: 'Yolo API v1.0 does not expose a void endpoint' },
     });
 
-    return json(body, upstream.status);
+    return json({
+      voided: false,
+      reason: 'not_supported_by_provider',
+      message: 'A API Yolo Club não possui endpoint de estorno. Registro local mantido para conciliação.',
+    }, 501);
   } catch (err) {
     console.error('yolo-void error:', err);
     return json({ voided: false, reason: 'internal_error', message: String(err) }, 500);
