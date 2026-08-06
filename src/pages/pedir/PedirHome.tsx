@@ -1,7 +1,7 @@
 // Seletor de loja para retirada — visual Aquela Parmê.
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { MapPin, Clock, ArrowRight } from "lucide-react";
+import { MapPin, Clock, ArrowRight, Bike } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PedirLayout } from "./PedirLayout";
 import { parmeAssets } from "@/assets/parme-assets";
@@ -13,6 +13,7 @@ type Store = {
   address: string | null;
   is_open: boolean;
   min_pickup_minutes: number;
+  accepts_delivery: boolean;
 };
 
 export default function PedirHome() {
@@ -23,7 +24,7 @@ export default function PedirHome() {
     (async () => {
       const { data, error } = await supabase
         .from("ecommerce_stores")
-        .select("id, slug, display_name, address, is_open, min_pickup_minutes")
+        .select("id, slug, display_name, address, is_open, min_pickup_minutes, accepts_delivery")
         .eq("active", true)
         .order("display_name");
       if (!error && data) setStores(data as Store[]);
@@ -106,11 +107,19 @@ export default function PedirHome() {
                       </div>
                     )}
                     <div
-                      className="mt-1.5 flex items-center gap-1.5 text-sm"
+                      className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"
                       style={{ color: "hsl(var(--ap-brown-2))" }}
                     >
-                      <Clock className="h-4 w-4" />
-                      Pronto em ~{s.min_pickup_minutes} min
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="h-4 w-4" />
+                        Pronto em ~{s.min_pickup_minutes} min
+                      </span>
+                      {s.accepts_delivery && (
+                        <span className="flex items-center gap-1.5">
+                          <Bike className="h-4 w-4" />
+                          Entrega disponível
+                        </span>
+                      )}
                     </div>
                   </div>
 

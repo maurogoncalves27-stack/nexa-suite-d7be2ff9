@@ -9,7 +9,14 @@ import { useEcommerceCart, formatBRL } from "@/hooks/useEcommerceCart";
 import { parmeAssets } from "@/assets/parme-assets";
 import { loadMenuCatalog } from "@/lib/menuCatalog";
 
-type EStore = { id: string; slug: string; display_name: string; store_id: string };
+type EStore = {
+  id: string;
+  slug: string;
+  display_name: string;
+  store_id: string;
+  accepts_pickup: boolean;
+  accepts_delivery: boolean;
+};
 type MenuRow = {
   id: string;
   name: string;
@@ -39,7 +46,7 @@ export default function PedirLoja() {
       setLoading(true);
       const { data: s } = await supabase
         .from("ecommerce_stores")
-        .select("id, slug, display_name, store_id")
+        .select("id, slug, display_name, store_id, accepts_pickup, accepts_delivery")
         .eq("slug", slug)
         .maybeSingle();
       if (!s) {
@@ -104,7 +111,13 @@ export default function PedirLoja() {
     <PedirLayout brand="all" cartCount={cart.totalItems} cartHref={`/pedir/${slug}/carrinho`}>
       {/* Cabeçalho */}
       <div className="mb-5">
-        <span className="ap-tag">Retirada no balcão</span>
+        <span className="ap-tag">
+          {store?.accepts_delivery
+            ? store.accepts_pickup
+              ? "Retirada ou entrega"
+              : "Entrega"
+            : "Retirada no balcão"}
+        </span>
         <h1 className="ap-display mt-3" style={{ fontSize: "clamp(2rem, 6vw, 2.75rem)" }}>
           {store?.display_name ?? "Carregando…"}
         </h1>

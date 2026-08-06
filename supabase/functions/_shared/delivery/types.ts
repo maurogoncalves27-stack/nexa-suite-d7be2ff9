@@ -18,8 +18,11 @@ export interface DeliveryAddress {
 export interface QuoteRequest {
   pickup: DeliveryAddress;
   dropoff: DeliveryAddress;
-  service_type?: string; // MOTORCYCLE
+  /** Depende do mercado/cidade. No Brasil: LALAGO, HATCHBACK, CAR, VAN… */
+  service_type?: string;
   order_value_cents?: number;
+  /** ISO8601 UTC. Lalamove exige scheduleAt já na cotação do pedido agendado. */
+  schedule_at?: string;
 }
 
 export interface QuoteResult {
@@ -28,6 +31,7 @@ export interface QuoteResult {
   fee_cents: number;
   eta_minutes: number;
   expires_at?: string;
+  distance_meters?: number;
   raw: unknown;
 }
 

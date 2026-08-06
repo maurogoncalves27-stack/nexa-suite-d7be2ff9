@@ -14,6 +14,7 @@
 | **Totem** | Cliente | Pinpad no totem (cartão / PIX) | PayGo ou Payer (corrida TEF) |
 | **Mesa / garçom** | Garçom (`/garcom`) | Conforme operação da loja* | Sem caixa físico no PDV gestor |
 | **WhatsApp** | Cliente | **Pagamento online** (link / PIX) | Mercado Pago, Payer Web ou PIX API — **não pinpad** |
+| **Site (`/pedir`)** | Cliente | **Pagamento online** (Mercado Pago) | Retirada ou entrega via Lalamove — ver [ENTREGAS-LALAMOVE.md](ENTREGAS-LALAMOVE.md) |
 
 \* Mesa/garçom: pedido entra no sistema; cobrança pode ser no totem, link WhatsApp ou fluxo definido por loja — **nunca balcão com operador.**
 

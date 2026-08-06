@@ -2,10 +2,14 @@
 // e gera preferência de pagamento no Mercado Pago.
 // Pública (anon): qualquer cliente pode chamar.
 //
-// Body: { storeSlug, customer_name, customer_phone, items: [{ menu_item_id?, name, brand_code, unit_price, quantity, notes? }] }
+// Body: { storeSlug, customer_name, customer_phone, order_type?: 'pickup'|'delivery',
+//         delivery_address?: DeliveryAddress, delivery_quote?: { quote_id, provider, fee_cents },
+//         items: [{ menu_item_id?, name, brand_code, unit_price, quantity, notes? }] }
 // Retorno: { ok, order_id, init_point, preference_id }
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { quoteStore } from "../_shared/delivery/service.ts";
+import type { DeliveryAddress } from "../_shared/delivery/types.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -33,6 +37,27 @@ type Item = {
   notes?: string;
 };
 
+// Diferença máxima (centavos) que absorvemos entre o frete mostrado ao cliente
+// e a recotação no momento do checkout. Acima disso, pedimos confirmação.
+const FEE_TOLERANCE_CENTS = 200;
+
+function isValidDropoff(a: unknown): a is DeliveryAddress {
+  const d = a as DeliveryAddress | null;
+  return !!d &&
+    typeof d.street === "string" && d.street.trim().length > 1 &&
+    typeof d.city === "string" && d.city.trim().length > 1 &&
+    typeof d.state === "string" && /^[A-Za-z]{2}$/.test(d.state.trim()) &&
+    typeof d.postal_code === "string" && d.postal_code.replace(/\D/g, "").length === 8 &&
+    typeof d.latitude === "number" && Number.isFinite(d.latitude) &&
+    typeof d.longitude === "number" && Number.isFinite(d.longitude);
+}
+
+// Coordenada de cidade deixaria o entregador a quilômetros do destino, então
+// não serve para criar uma corrida.
+function isPreciseEnough(a: DeliveryAddress) {
+  return (a as { geo_precision?: string }).geo_precision !== "city";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") {
@@ -48,6 +73,9 @@ Deno.serve(async (req) => {
     const customer_name = String(body?.customer_name || "").trim();
     const customer_phone = String(body?.customer_phone || "").trim();
     const items = (Array.isArray(body?.items) ? body.items : []) as Item[];
+    const orderType = body?.order_type === "delivery" ? "delivery" : "pickup";
+    const dropoffInput = body?.delivery_address ?? null;
+    const clientQuote = body?.delivery_quote ?? null;
 
     if (!storeSlug || !customer_name || !customer_phone || items.length === 0) {
       return new Response(JSON.stringify({ error: "invalid_payload" }), {
@@ -72,7 +100,7 @@ Deno.serve(async (req) => {
     // 1. loja
     const { data: store, error: storeErr } = await supabase
       .from("ecommerce_stores")
-      .select("id, store_id, slug, is_open, active, min_pickup_minutes")
+      .select("id, store_id, slug, is_open, active, min_pickup_minutes, accepts_pickup, accepts_delivery")
       .eq("slug", storeSlug)
       .maybeSingle();
     if (storeErr || !store) {
@@ -103,14 +131,94 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 3. totais + brand_breakdown
+    // 3. modalidade + frete
+    if (orderType === "delivery" && !store.accepts_delivery) {
+      return new Response(JSON.stringify({ error: "delivery_not_available" }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (orderType === "pickup" && store.accepts_pickup === false) {
+      return new Response(JSON.stringify({ error: "pickup_not_available" }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const subtotal = items.reduce((s, it) => s + it.unit_price * it.quantity, 0);
-    const total = subtotal;
     const brand_breakdown: Record<string, number> = {};
     for (const it of items) {
       const k = it.brand_code || "other";
       brand_breakdown[k] = (brand_breakdown[k] || 0) + it.unit_price * it.quantity;
     }
+
+    let dropoff: DeliveryAddress | null = null;
+    let deliveryFeeCents = 0;
+    let deliveryProvider: string | null = null;
+    let deliveryQuoteId: string | null = null;
+
+    if (orderType === "delivery") {
+      if (!isValidDropoff(dropoffInput)) {
+        return new Response(
+          JSON.stringify({ error: "invalid_delivery_address", detail: "Endereço incompleto ou sem coordenadas" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      if (!isPreciseEnough(dropoffInput)) {
+        return new Response(
+          JSON.stringify({
+            error: "imprecise_delivery_address",
+            detail: "Não localizamos o endereço no mapa com precisão suficiente",
+          }),
+          { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      dropoff = {
+        ...dropoffInput,
+        postal_code: dropoffInput.postal_code.replace(/\D/g, ""),
+        state: dropoffInput.state.trim().toUpperCase(),
+        country: "BR",
+        contact_name: dropoffInput.contact_name || customer_name,
+        contact_phone: dropoffInput.contact_phone || customer_phone,
+      };
+
+      // Nunca confia no frete vindo do cliente: recota no servidor.
+      const { best, quotes } = await quoteStore(supabase, {
+        store_id: store.store_id,
+        dropoff,
+        order_value_cents: Math.round(subtotal * 100),
+      });
+      if (!best) {
+        const firstErr = (quotes as { error?: string }[]).find((q) => q?.error)?.error;
+        return new Response(
+          JSON.stringify({ error: "delivery_unavailable", detail: firstErr ?? "Nenhum provedor disponível" }),
+          { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const shownCents = Number(clientQuote?.fee_cents);
+      const freshCents = best.fee_cents;
+      // Se ficou mais caro que a tolerância, o cliente confirma o novo valor.
+      if (Number.isFinite(shownCents) && freshCents - shownCents > FEE_TOLERANCE_CENTS) {
+        return new Response(
+          JSON.stringify({
+            error: "delivery_fee_changed",
+            delivery_fee_cents: freshCents,
+            quote_id: best.quote_id,
+            provider: best.provider,
+          }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      // Honra o valor exibido quando a diferença é pequena (ou ficou mais barato).
+      deliveryFeeCents = Number.isFinite(shownCents) ? Math.min(shownCents, freshCents) : freshCents;
+      deliveryProvider = best.provider;
+      deliveryQuoteId = best.quote_id;
+    }
+
+    const deliveryFee = deliveryFeeCents / 100;
+    const total = subtotal + deliveryFee;
 
     const pickup_eta = new Date(Date.now() + (store.min_pickup_minutes || 30) * 60_000).toISOString();
 
@@ -120,7 +228,7 @@ Deno.serve(async (req) => {
       .insert({
         store_id: store.store_id,
         channel_id: channel.id,
-        order_type: "pickup",
+        order_type: orderType,
         status: "awaiting_payment",
         source: "site",
         customer_name,
@@ -130,6 +238,13 @@ Deno.serve(async (req) => {
         brand_breakdown,
         pickup_eta,
         closure_channel: "whatsapp",
+        ...(orderType === "delivery"
+          ? {
+              delivery_address: { ...dropoff, provider_quote_id: deliveryQuoteId },
+              delivery_fee: deliveryFee,
+              delivery_provider: deliveryProvider,
+            }
+          : {}),
       })
       .select("id, order_number")
       .single();
@@ -200,7 +315,11 @@ Deno.serve(async (req) => {
         pending: `${origin}/pedir/pedido/${order.id}`,
       },
       auto_return: "approved",
-      metadata: { source: "site", store_slug: storeSlug },
+      // MP soma shipments.cost ao total cobrado, mantendo os itens só com produtos.
+      ...(deliveryFeeCents > 0
+        ? { shipments: { mode: "not_specified", cost: Number(deliveryFee.toFixed(2)) } }
+        : {}),
+      metadata: { source: "site", store_slug: storeSlug, order_type: orderType },
     };
 
     const mpResp = await fetch("https://api.mercadopago.com/checkout/preferences", {
@@ -238,6 +357,9 @@ Deno.serve(async (req) => {
         order_number: order.order_number,
         preference_id: mpData.id,
         init_point: initPoint,
+        order_type: orderType,
+        delivery_fee_cents: deliveryFeeCents,
+        total,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

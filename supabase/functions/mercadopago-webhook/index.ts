@@ -2,6 +2,8 @@
 // deploy: force redeploy
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { dispatchDelivery } from '../_shared/delivery/service.ts';
+import type { DeliveryAddress } from '../_shared/delivery/types.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -16,6 +18,10 @@ const MP_WEBHOOK_SECRET = MP_WEBHOOK_SECRETS[0] || '';
 const ZAPI_INSTANCE = Deno.env.get('ZAPI_CUSTOMER_INSTANCE_ID') || '';
 const ZAPI_TOKEN = Deno.env.get('ZAPI_CUSTOMER_TOKEN') || '';
 const ZAPI_CLIENT_TOKEN = Deno.env.get('ZAPI_CUSTOMER_CLIENT_TOKEN') || '';
+
+const SITE_ORIGIN = Deno.env.get('SITE_PUBLIC_ORIGIN') || 'https://www.aquelaparme.com.br';
+// Minutos de preparo assumidos quando a loja não tem ETA configurado.
+const DEFAULT_PREP_MINUTES = 30;
 
 async function sendWhatsApp(phone: string, message: string) {
   if (!ZAPI_INSTANCE || !ZAPI_TOKEN) return;
@@ -166,7 +172,9 @@ Deno.serve(async (req) => {
 
     const { data: order } = await supabase
       .from('pdv_orders')
-      .select('id, status, store_id, customer_phone, order_number, total')
+      .select(
+        'id, status, store_id, customer_phone, customer_name, order_number, total, order_type, source, delivery_address, delivery_job_id',
+      )
       .eq('id', orderId)
       .maybeSingle();
     if (!order) {
@@ -192,10 +200,12 @@ Deno.serve(async (req) => {
       await supabase.from('pdv_whatsapp_carts').update({ status: 'paid' })
         .eq('pdv_order_id', orderId);
 
+      // Pagamento aprovado aciona loja e entregador ao mesmo tempo.
+      const dispatch = await dispatchPaidDelivery(supabase, order);
+
       // mensagem ao cliente
       if (order.customer_phone) {
-        const msg = `✅ Pagamento confirmado! Seu pedido${order.order_number ? ` #${order.order_number}` : ''} foi enviado para a cozinha. Em breve te avisamos quando sair pra entrega 🍽️`;
-        await sendWhatsApp(order.customer_phone, msg);
+        await sendWhatsApp(order.customer_phone, buildCustomerMessage(order, dispatch));
       }
     } else if (status === 'rejected' || status === 'cancelled') {
       await supabase.from('pdv_whatsapp_carts').update({ status: 'cancelled' })
@@ -223,3 +233,154 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+type PaidOrder = {
+  id: string;
+  store_id: string;
+  order_number: string | null;
+  total: number | null;
+  order_type: string | null;
+  source: string | null;
+  customer_name: string | null;
+  delivery_address: Record<string, unknown> | null;
+  delivery_job_id: string | null;
+};
+
+type DispatchOutcome = {
+  ok: boolean;
+  skipped?: string;
+  tracking_url?: string | null;
+  error?: string;
+};
+
+function hasCoords(a: Record<string, unknown> | null): a is Record<string, unknown> {
+  return !!a && typeof a.latitude === 'number' && typeof a.longitude === 'number';
+}
+
+/**
+ * Aciona a corrida logo após o pagamento. O entregador é agendado para o fim do
+ * preparo (scheduleAt) para não chegar antes de o pedido estar pronto.
+ * Falha aqui nunca invalida o pagamento: registra o evento e deixa a loja
+ * despachar manualmente pelo painel de entregas.
+ */
+async function dispatchPaidDelivery(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  order: PaidOrder,
+): Promise<DispatchOutcome> {
+  if (order.order_type !== 'delivery') return { ok: false, skipped: 'not_delivery' };
+  if (order.delivery_job_id) return { ok: false, skipped: 'already_dispatched' };
+
+  if (!hasCoords(order.delivery_address)) {
+    console.warn('[mp-webhook] delivery order without coordinates', order.id);
+    await logDeliveryEvent(supabase, order, 'delivery.dispatch_skipped', {
+      reason: 'missing_coordinates',
+    });
+    return { ok: false, error: 'missing_coordinates' };
+  }
+
+  const { data: ecomStore } = await supabase
+    .from('ecommerce_stores')
+    .select('min_pickup_minutes')
+    .eq('store_id', order.store_id)
+    .maybeSingle();
+
+  const prepMinutes = Number(ecomStore?.min_pickup_minutes) || DEFAULT_PREP_MINUTES;
+  const scheduleAt = new Date(Date.now() + prepMinutes * 60_000).toISOString();
+
+  try {
+    const result = await dispatchDelivery(supabase, {
+      order_id: order.id,
+      store_id: order.store_id,
+      dropoff: order.delivery_address as unknown as DeliveryAddress,
+      order_value_cents: Math.round(Number(order.total ?? 0) * 100),
+      schedule_at: scheduleAt,
+      // O frete já foi cobrado do cliente no checkout; o custo real fica no job.
+      update_order_fee: false,
+    });
+
+    if (!result.ok) {
+      await registerFailedDispatch(supabase, order, result.last_error ?? result.error);
+      return { ok: false, error: result.last_error ?? result.error };
+    }
+
+    await logDeliveryEvent(supabase, order, 'delivery.dispatched', {
+      provider: result.provider,
+      job_id: result.job_id,
+      provider_order_id: result.result.order_id,
+      schedule_at: scheduleAt,
+    });
+
+    return { ok: true, tracking_url: result.result.tracking_url ?? null };
+  } catch (e) {
+    const message = String((e as Error)?.message ?? e);
+    console.error('[mp-webhook] dispatch error', message);
+    await registerFailedDispatch(supabase, order, message);
+    return { ok: false, error: message };
+  }
+}
+
+// Deixa a falha visível no painel de entregas para retry manual.
+async function registerFailedDispatch(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  order: PaidOrder,
+  message: string,
+) {
+  // Atribui a falha ao provedor primário da loja para não inventar provider.
+  const { data: primary } = await supabase
+    .from('delivery_provider_config')
+    .select('provider')
+    .eq('store_id', order.store_id)
+    .eq('is_active', true)
+    .order('priority', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (primary?.provider) {
+    const { error } = await supabase.from('delivery_jobs').insert({
+      order_id: order.id,
+      store_id: order.store_id,
+      provider: primary.provider,
+      status: 'failed',
+      dropoff_address: order.delivery_address,
+      error_message: message.slice(0, 500),
+      requested_at: new Date().toISOString(),
+    });
+    if (error) console.error('[mp-webhook] failed job insert', error);
+  }
+
+  await logDeliveryEvent(supabase, order, 'delivery.dispatch_failed', { error: message });
+}
+
+async function logDeliveryEvent(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  order: PaidOrder,
+  eventCode: string,
+  payload: Record<string, unknown>,
+) {
+  const { error } = await supabase.from('pdv_order_events').insert({
+    order_id: order.id,
+    store_id: order.store_id,
+    source: 'delivery',
+    event_code: eventCode,
+    previous_status: 'confirmed',
+    new_status: 'confirmed',
+    payload,
+  });
+  if (error) console.error('[mp-webhook] event log failed', error);
+}
+
+function buildCustomerMessage(order: PaidOrder, dispatch: DispatchOutcome) {
+  const ref = order.order_number ? ` #${order.order_number}` : '';
+  const statusLink = order.source === 'site' ? `\n\nAcompanhe: ${SITE_ORIGIN}/pedir/pedido/${order.id}` : '';
+
+  if (order.order_type !== 'delivery') {
+    return `✅ Pagamento confirmado! Seu pedido${ref} foi enviado para a cozinha. Avisamos assim que estiver pronto para retirada 🍽️${statusLink}`;
+  }
+  if (dispatch.ok) {
+    return `✅ Pagamento confirmado! Seu pedido${ref} foi para a cozinha e já chamamos um entregador 🛵${statusLink}`;
+  }
+  return `✅ Pagamento confirmado! Seu pedido${ref} foi para a cozinha. Estamos organizando a entrega e te avisamos assim que o entregador estiver a caminho 🛵${statusLink}`;
+}

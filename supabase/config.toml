@@ -39,3 +39,11 @@ verify_jwt = true
 
 [functions.zapi-health-check]
 verify_jwt = false
+
+# Push de status dos provedores de entrega: chamadas externas sem JWT do Supabase.
+# A autenticação é feita dentro da function (shared secret / assinatura).
+[functions.delivery-webhook-lalamove]
+verify_jwt = false
+
+[functions.delivery-webhook-uber]
+verify_jwt = false
