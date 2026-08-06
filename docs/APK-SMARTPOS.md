@@ -1,0 +1,85 @@
+# APK NEXA SmartPOS / Garçom (Gertec GPOS780)
+
+A GPOS780 é um terminal de pagamento e **não permite instalar navegador**, então
+o PWA não pode ser usado. A solução é este wrapper **Capacitor (WebView)** que
+carrega o app publicado dentro de um APK.
+
+## O que o APK faz
+
+- Abre `https://nexasuite.aquelaparme.com.br/smartpos/login` em tela cheia.
+- Permite navegação para o domínio NEXA e para `127.0.0.1` (Checkout Payer, porta 6060).
+- Sem dados offline: o terminal precisa de internet.
+
+## Gerar o APK (na sua máquina, não no Lovable)
+
+Pré-requisitos: Node 20+, Android Studio + SDK, JDK 17.
+
+```bash
+# 1. Exportar o projeto para o GitHub e clonar
+git clone <seu-repo> && cd <seu-repo>
+npm install
+
+# 2. Adicionar a plataforma Android (só na primeira vez)
+npx cap add android
+npx cap update android
+
+# 3. Build web + sync
+npm run build
+npx cap sync
+
+# 4. Gerar APK de debug (para teste via OTG)
+cd android
+./gradlew assembleDebug
+# saída: android/app/build/outputs/apk/debug/app-debug.apk
+
+# 5. Gerar APK de release assinado (para MDM / Gertec Box)
+./gradlew assembleRelease
+```
+
+### Assinatura (release)
+
+Crie uma keystore e configure em `android/app/build.gradle`:
+
+```bash
+keytool -genkey -v -keystore nexa-smartpos.keystore \
+  -alias nexa -keyalg RSA -keysize 2048 -validity 10000
+```
+
+```gradle
+android {
+  signingConfigs {
+    release {
+      storeFile file("../../nexa-smartpos.keystore")
+      storePassword System.getenv("NEXA_KS_PASS")
+      keyAlias "nexa"
+      keyPassword System.getenv("NEXA_KEY_PASS")
+    }
+  }
+  buildTypes { release { signingConfig signingConfigs.release } }
+}
+```
+
+Guarde a keystore — sem ela não é possível publicar atualizações do mesmo APK.
+
+## Instalação no terminal
+
+**Via OTG/pendrive:** copie o APK para o pendrive, conecte no terminal com cabo OTG,
+abra o gerenciador de arquivos e instale (pode exigir liberar "fontes desconhecidas"
+junto ao suporte Gertec).
+
+**Via MDM (Gertec Box):** envie o APK **release assinado** para o suporte Gertec
+distribuir no parque. É o caminho recomendado em terminais de produção e permite
+travar o aparelho em modo quiosque.
+
+## TEF
+
+Continua **API Localhost** da Payer: o Checkout Payer precisa estar instalado e
+logado no próprio terminal, escutando em `http://127.0.0.1:6060`.
+Terminal alvo: Gertec GPOS780, NS 6001072502003427.
+
+## Depois de instalar
+
+1. Abrir o app NEXA SmartPOS no terminal.
+2. Login em `/smartpos/login` (balcão) ou navegar para `/garcom`.
+3. Configurar loja/terminal em **Configurações → Terminal SmartPOS**.
+4. Venda de teste de R$ 0,01 pelo Payer.
