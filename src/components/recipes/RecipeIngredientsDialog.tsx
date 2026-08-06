@@ -229,23 +229,76 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
                                         ))}
                                     </SelectGroup>
                                   )}
-                                  <SelectGroup>
-                                    <SelectLabel>{group.isPack ? "Embalagens / Descartáveis" : "Insumos / Produtos"}</SelectLabel>
-                                    {products
+                                  {(() => {
+                                    const base = products
                                       .filter((p) => !recipeByOutput[p.id])
-                                      .filter((p) => (contextScope === "fabrica" ? p.factory_only : !p.factory_only))
-                                      .filter((p) => {
-                                        // Ingrediente precisa ser insumo (produção ou montagem). Embalagens usam grupo próprio.
-                                        const roles = p.usage_roles ?? [];
-                                        if (roles.length === 0) return true; // legado sem classificação
-                                        return roles.includes("insumo_producao") || roles.includes("insumo_montagem");
-                                      })
                                       .filter((p) => {
                                         const isPack = /embalag/i.test(p.category ?? "");
                                         return group.isPack ? isPack : !isPack;
                                       })
-                                      .map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                                  </SelectGroup>
+                                      .filter((p) => {
+                                        const q = (productSearch[idx] ?? "").trim().toLowerCase();
+                                        return !q || p.name.toLowerCase().includes(q);
+                                      });
+
+                                    if (group.isPack || contextScope === "fabrica") {
+                                      const list = base
+                                        .filter((p) => (contextScope === "fabrica" ? p.factory_only : !p.factory_only))
+                                        .filter((p) => {
+                                          const roles = p.usage_roles ?? [];
+                                          if (roles.length === 0) return true;
+                                          if (group.isPack) return true;
+                                          return roles.includes("insumo_producao") || roles.includes("insumo_montagem");
+                                        });
+                                      return (
+                                        <SelectGroup>
+                                          <SelectLabel>{group.isPack ? "Embalagens / Descartáveis" : "Insumos / Produtos"}</SelectLabel>
+                                          {list.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                        </SelectGroup>
+                                      );
+                                    }
+
+                                    const cd = base.filter(
+                                      (p) => p.factory_only || (p.usage_roles ?? []).includes("venda_fabrica"),
+                                    );
+                                    const rest = base.filter((p) => !cd.includes(p));
+                                    const revenda = rest.filter((p) => {
+                                      const roles = p.usage_roles ?? [];
+                                      return (
+                                        roles.includes("venda_loja") &&
+                                        !roles.includes("insumo_producao") &&
+                                        !roles.includes("insumo_montagem")
+                                      );
+                                    });
+                                    const insumos = rest.filter((p) => {
+                                      if (revenda.includes(p)) return false;
+                                      const roles = p.usage_roles ?? [];
+                                      if (roles.length === 0) return true;
+                                      return roles.includes("insumo_producao") || roles.includes("insumo_montagem");
+                                    });
+
+                                    return (
+                                      <>
+                                        {cd.length > 0 && (
+                                          <SelectGroup>
+                                            <SelectLabel>Produzidos no CD</SelectLabel>
+                                            {cd.map((p) => <SelectItem key={p.id} value={p.id}>🏭 {p.name}</SelectItem>)}
+                                          </SelectGroup>
+                                        )}
+                                        <SelectGroup>
+                                          <SelectLabel>Insumos / Produtos</SelectLabel>
+                                          {insumos.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                        </SelectGroup>
+                                        {revenda.length > 0 && (
+                                          <SelectGroup>
+                                            <SelectLabel>Bebidas / Revenda</SelectLabel>
+                                            {revenda.map((p) => <SelectItem key={p.id} value={p.id}>🥤 {p.name}</SelectItem>)}
+                                          </SelectGroup>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
+
                                 </SelectContent>
                               </Select>
                               {recipeByOutput[i.product_id] && (
