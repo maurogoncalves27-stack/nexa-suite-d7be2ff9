@@ -216,6 +216,16 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
                                   <SelectValue placeholder="Produto ou ficha…" />
                                 </SelectTrigger>
                                 <SelectContent>
+                                  <div className="p-1 sticky top-0 bg-popover z-10">
+                                    <Input
+                                      placeholder="Buscar item…"
+                                      value={productSearch[idx] ?? ""}
+                                      onChange={(e) => setProductSearch((p) => ({ ...p, [idx]: e.target.value }))}
+                                      onKeyDown={(e) => e.stopPropagation()}
+                                      className="h-8 text-xs"
+                                    />
+                                  </div>
+
                                   {!group.isPack && (
                                     <SelectGroup>
                                       <SelectLabel>Pré-preparos / Fichas</SelectLabel>
