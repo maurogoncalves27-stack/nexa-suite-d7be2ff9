@@ -99,3 +99,41 @@ não armazena e-mail/senha da Payer no aparelho.
 2. Fazer login (o app já abre em `/garcom`).
 3. Configurar loja/terminal em **Configurações → Terminal SmartPOS**.
 4. Venda de teste de R$ 0,01 pelo Payer.
+
+## APK de RELEASE assinado (obrigatório para o MDM Gertec)
+
+Rode na raiz do repo, no PowerShell:
+
+```powershell
+.\scripts\build-apk-release.ps1
+```
+
+O script faz tudo: valida Java/SDK, cria a keystore (só na primeira vez),
+grava `android\keystore.properties`, injeta a `signingConfig release` no
+`android\app\build.gradle`, roda `vite build` + `cap sync` e por fim
+`gradlew assembleRelease`.
+
+Saída: `android\app\build\outputs\apk\release\app-release.apk`
+
+Parâmetros opcionais:
+
+```powershell
+.\scripts\build-apk-release.ps1 -KeystorePassword "SenhaForte" -KeyAlias nexa `
+  -SdkDir "C:\Users\Mauro\AppData\Local\Android\Sdk" `
+  -JavaHome "C:\Program Files\Android\Android Studio\jbr"
+```
+
+### Guardar a keystore
+
+`android\keystore\nexa-release.jks` + senha = identidade do app.
+Sem eles não é possível publicar **nenhuma atualização** do mesmo APK
+(o Android recusa instalar por cima com assinatura diferente).
+A keystore e o `keystore.properties` estão no `.gitignore` — faça backup
+manual em local seguro (cofre/drive privado).
+
+### Conferir a assinatura
+
+```powershell
+& "$env:JAVA_HOME\bin\jarsigner" -verify -verbose -certs `
+  android\app\build\outputs\apk\release\app-release.apk
+```
