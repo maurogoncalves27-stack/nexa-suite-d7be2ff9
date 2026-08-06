@@ -84,8 +84,10 @@ keyPassword=$KeystorePassword
 # --- 4. build.gradle -------------------------------------------------
 $gradlePath = "$root\android\app\build.gradle"
 $gradle = [IO.File]::ReadAllText($gradlePath)
-# remove BOM eventualmente gravado por execucoes anteriores (Gradle nao aceita)
-$gradle = $gradle -replace "^\uFEFF", ""
+# Remove tanto o BOM real quanto o BOM corrompido como "ï»¿" por editores
+# ou comandos executados com codificacoes diferentes no Windows.
+$gradle = $gradle.TrimStart([char]0xFEFF)
+$gradle = $gradle -replace "^ï»¿", ""
 
 if ($gradle -notmatch "keystore.properties") {
   Write-Host "Injetando signingConfigs no build.gradle..." -ForegroundColor Yellow
