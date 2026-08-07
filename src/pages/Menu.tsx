@@ -549,7 +549,15 @@ export default function Menu() {
                             <Ticket className="h-4 w-4" />
                           </Button>
                         )}
-
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          title="Editar categoria"
+                          onClick={() => openEditCategory(categories[catIdx])}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
                         <Button
                           size="icon"
                           variant="ghost"
