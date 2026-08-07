@@ -673,7 +673,10 @@ export default function Menu() {
 
       <AddCategoryDialog
         open={catOpen}
-        onOpenChange={setCatOpen}
+        onOpenChange={(v) => {
+          setCatOpen(v);
+          if (!v) setEditingCategoryId(null);
+        }}
         value={catName}
         onChange={setCatName}
         brands={brands}
@@ -682,6 +685,7 @@ export default function Menu() {
         isYolo={catYolo}
         onIsYoloChange={setCatYolo}
         onSave={saveCategory}
+        editingId={editingCategoryId}
       />
 
       <YoloCategoryWindowsDialog
