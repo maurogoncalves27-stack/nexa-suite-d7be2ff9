@@ -10,7 +10,7 @@ const BankReconciliation = () => {
           Conciliação bancária
         </h1>
         <p className="text-muted-foreground">
-          Importe extratos no formato OFX e concilie automaticamente contra as contas a pagar em aberto.
+          Importe extratos em OFX, CSV ou XLS/XLSX e concilie automaticamente contra as contas a pagar em aberto.
         </p>
       </div>
       <BankReconciliationPanel />
