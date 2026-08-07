@@ -49,7 +49,7 @@ const TRANSPORTS: { value: PayerTransportMode | "auto"; label: string }[] = [
   { value: "agent", label: "Via agente NEXA (PC Windows)" },
 ];
 
-export default function SmartPosConfig() {
+export default function SmartPosConfig({ embedded = false }: { embedded?: boolean } = {}) {
   const [stores, setStores] = useState<Store[]>([]);
   const [storeId, setStoreId] = useState("");
   const [provider, setProvider] = useState("payer");
@@ -153,15 +153,17 @@ export default function SmartPosConfig() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-          <Tablet className="h-6 w-6 md:h-7 md:w-7 text-primary" />
-          Terminal SmartPOS
-        </h1>
-        <p className="text-muted-foreground">
-          Configuração do TEF e da impressora das maquininhas SmartPOS e do NEXA Garçom.
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+            <Tablet className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+            Terminal SmartPOS
+          </h1>
+          <p className="text-muted-foreground">
+            Configuração do TEF e da impressora das maquininhas SmartPOS e do NEXA Garçom.
+          </p>
+        </div>
+      )}
 
       <Card>
         <CardHeader>

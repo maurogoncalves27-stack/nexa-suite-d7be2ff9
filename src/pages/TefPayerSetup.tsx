@@ -29,7 +29,7 @@ const PAYER_DOCS = "https://docs.payer.com.br/docs/integrations/api-localhost.ht
 
 interface Store { id: string; name: string; }
 
-export default function TefPayerSetup() {
+export default function TefPayerSetup({ embedded = false }: { embedded?: boolean } = {}) {
   const [stores, setStores] = useState<Store[]>([]);
   const [storeId, setStoreId] = useState<string>("");
   const [agentUrl, setAgentUrl] = useState(DEFAULT_PAYER_AGENT_URL);
@@ -85,16 +85,20 @@ export default function TefPayerSetup() {
   };
 
   return (
-    <div className="space-y-6 p-4 md:p-6 max-w-5xl">
+    <div className={embedded ? "space-y-6 max-w-5xl" : "space-y-6 p-4 md:p-6 max-w-5xl"}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <CreditCard className="h-6 w-6" />
-            TEF Payer — Testes
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Homologação via API Localhost (Checkout Payer na porta 6060). Módulo isolado do PayGo.
-          </p>
+          {!embedded && (
+            <>
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <CreditCard className="h-6 w-6" />
+                TEF Payer — Testes
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Homologação via API Localhost (Checkout Payer na porta 6060). Módulo isolado do PayGo.
+              </p>
+            </>
+          )}
         </div>
         <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
