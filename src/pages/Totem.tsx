@@ -658,7 +658,7 @@ export default function Totem() {
         {/* STEP 1: marca/loja — logos empilhadas, grandes */}
         {!loading && step === "store" && (
           <div className="h-full overflow-auto p-8 flex items-center justify-center animate-fade-in">
-            <div className="flex flex-col gap-12 w-full max-w-4xl mx-auto">
+            <div className="flex flex-col gap-16 w-full max-w-5xl mx-auto">
               {displayedBrands.map(b => {
                 const logo = brandLogo(b);
                 return (
@@ -685,7 +685,7 @@ export default function Totem() {
                         });
                       }
                     }}
-                    className="flex items-center justify-center h-56 transition-transform hover:scale-105 active:scale-95 overflow-visible"
+                    className="flex items-center justify-center h-80 transition-transform hover:scale-105 active:scale-95 overflow-visible"
                     aria-label={b.name}
                   >
                     {logo ? (
