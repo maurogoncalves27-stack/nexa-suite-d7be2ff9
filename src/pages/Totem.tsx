@@ -105,11 +105,11 @@ const buildBrandLogoResolver = (
 ) => (brand: { id?: string; name: string }): { src: string; scale: number } | null => {
   const slug = brand.id ? brandSlugById[brand.id] : undefined;
   const custom = slug ? customLogos[slug] : undefined;
-  if (custom) return { src: custom, scale: 1 };
+  if (custom) return { src: custom, scale: 3 };
   const n = normalize(brand.name);
-  if (n.includes("box") || n.includes("caipira")) return { src: logoBoxCaipira, scale: 1 };
-  if (n.includes("estrog")) return { src: logoEstrogonofe, scale: 1 };
-  if (n.includes("parme")) return { src: logoAquelaParme, scale: 1 };
+  if (n.includes("box") || n.includes("caipira")) return { src: logoBoxCaipira, scale: 3 };
+  if (n.includes("estrog")) return { src: logoEstrogonofe, scale: 3 };
+  if (n.includes("parme")) return { src: logoAquelaParme, scale: 3 };
   return null;
 };
 
@@ -631,7 +631,7 @@ export default function Totem() {
               ));
             })()}
 
-            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/90" />
+            
             <div className="relative h-full flex flex-col items-center justify-center text-white px-8 gap-12">
               <div className="text-center">
                 <img
