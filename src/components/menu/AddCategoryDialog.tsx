@@ -4,6 +4,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
 interface Brand { id: string; name: string; }
 
@@ -15,12 +16,16 @@ interface Props {
   brands: Brand[];
   selectedBrands: string[];
   onSelectedBrandsChange: (v: string[]) => void;
+  isYolo: boolean;
+  onIsYoloChange: (v: boolean) => void;
   onSave: () => void;
 }
 
 export default function AddCategoryDialog({
-  open, onOpenChange, value, onChange, brands, selectedBrands, onSelectedBrandsChange, onSave,
+  open, onOpenChange, value, onChange, brands, selectedBrands, onSelectedBrandsChange,
+  isYolo, onIsYoloChange, onSave,
 }: Props) {
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
@@ -66,7 +71,17 @@ export default function AddCategoryDialog({
               })}
             </div>
           </div>
+          <div className="flex items-center justify-between rounded-md border p-3">
+            <div className="pr-3">
+              <Label className="text-sm">Exclusiva Yolo</Label>
+              <p className="text-xs text-muted-foreground">
+                Só aparece depois que o cliente validar o código Yolo, nos dias/horários da loja.
+              </p>
+            </div>
+            <Switch checked={isYolo} onCheckedChange={onIsYoloChange} />
+          </div>
         </div>
+
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={onSave}>Adicionar</Button>

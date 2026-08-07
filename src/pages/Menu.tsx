@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Loader2, FolderPlus, Search, ScanText, Layers, ChevronUp, ChevronDown, Copy, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, FolderPlus, Search, ScanText, Layers, ChevronUp, ChevronDown, Copy, AlertTriangle, Ticket } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -16,11 +16,13 @@ import AddCategoryDialog from "@/components/menu/AddCategoryDialog";
 import MenuItemEditorDialog from "@/components/menu/MenuItemEditorDialog";
 import ComplementsCatalogDialog from "@/components/menu/ComplementsCatalogDialog";
 import ReplicateMenuDialog from "@/components/menu/ReplicateMenuDialog";
+import YoloCategoryWindowsDialog from "@/components/menu/YoloCategoryWindowsDialog";
 import { fmt } from "@/lib/menuFormat";
+
 
 interface Brand { id: string; name: string; sort_order: number; }
 interface Store { id: string; name: string; }
-interface Category { id: string; name: string; sort_order: number; }
+interface Category { id: string; name: string; sort_order: number; is_yolo_exclusive?: boolean; }
 interface MenuItem {
   id: string;
   name: string;
@@ -66,6 +68,9 @@ export default function Menu() {
   const [catOpen, setCatOpen] = useState(false);
   const [catName, setCatName] = useState("");
   const [catBrands, setCatBrands] = useState<string[]>([]);
+  const [catYolo, setCatYolo] = useState(false);
+  const [windowsCategory, setWindowsCategory] = useState<Category | null>(null);
+
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -111,8 +116,9 @@ export default function Menu() {
     const catIds = Array.from(new Set(((catLinks ?? []) as any[]).map((r) => r.category_id)));
     let cat: Category[] = [];
     if (catIds.length) {
-      const { data } = await supabase.from("menu_categories")
-        .select("id,name,sort_order").in("id", catIds).order("sort_order").order("name");
+      const { data } = await (supabase as any).from("menu_categories")
+        .select("id,name,sort_order,is_yolo_exclusive").in("id", catIds).order("sort_order").order("name");
+
       cat = (data ?? []) as Category[];
     }
     setCategories(cat);
@@ -201,14 +207,16 @@ export default function Menu() {
       toast({ title: "Selecione ao menos uma marca", variant: "destructive" });
       return;
     }
-    const { data: cat, error } = await supabase.from("menu_categories").insert({
-      name, sort_order: categories.length,
+    const { data: cat, error } = await (supabase as any).from("menu_categories").insert({
+      name, sort_order: categories.length, is_yolo_exclusive: catYolo,
     }).select("id").single();
     if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
     const links = catBrands.map((b) => ({ category_id: cat.id, brand_id: b }));
     const { error: e2 } = await (supabase as any).from("menu_category_brands").insert(links);
     if (e2) { toast({ title: "Erro nos vínculos", description: e2.message, variant: "destructive" }); return; }
     setCatOpen(false);
+    setCatYolo(false);
+
     toast({ title: "Categoria criada" });
     load();
   }
