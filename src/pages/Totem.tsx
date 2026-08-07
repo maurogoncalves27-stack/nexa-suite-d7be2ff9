@@ -105,11 +105,11 @@ const buildBrandLogoResolver = (
 ) => (brand: { id?: string; name: string }): { src: string; scale: number } | null => {
   const slug = brand.id ? brandSlugById[brand.id] : undefined;
   const custom = slug ? customLogos[slug] : undefined;
-  if (custom) return { src: custom, scale: 1 };
+  if (custom) return { src: custom, scale: 3 };
   const n = normalize(brand.name);
-  if (n.includes("box") || n.includes("caipira")) return { src: logoBoxCaipira, scale: 1 };
-  if (n.includes("estrog")) return { src: logoEstrogonofe, scale: 1 };
-  if (n.includes("parme")) return { src: logoAquelaParme, scale: 1 };
+  if (n.includes("box") || n.includes("caipira")) return { src: logoBoxCaipira, scale: 3 };
+  if (n.includes("estrog")) return { src: logoEstrogonofe, scale: 3 };
+  if (n.includes("parme")) return { src: logoAquelaParme, scale: 3 };
   return null;
 };
 
@@ -631,7 +631,7 @@ export default function Totem() {
               ));
             })()}
 
-            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/90" />
+            
             <div className="relative h-full flex flex-col items-center justify-center text-white px-8 gap-12">
               <div className="text-center">
                 <img
@@ -658,7 +658,7 @@ export default function Totem() {
         {/* STEP 1: marca/loja — logos empilhadas, grandes */}
         {!loading && step === "store" && (
           <div className="h-full overflow-auto p-8 flex items-center justify-center animate-fade-in">
-            <div className="flex flex-col gap-12 w-full max-w-4xl mx-auto">
+            <div className="flex flex-col gap-16 w-full max-w-5xl mx-auto">
               {displayedBrands.map(b => {
                 const logo = brandLogo(b);
                 return (
@@ -685,7 +685,7 @@ export default function Totem() {
                         });
                       }
                     }}
-                    className="flex items-center justify-center h-56 transition-transform hover:scale-105 active:scale-95 overflow-visible"
+                    className="flex items-center justify-center h-80 transition-transform hover:scale-105 active:scale-95 overflow-visible"
                     aria-label={b.name}
                   >
                     {logo ? (
