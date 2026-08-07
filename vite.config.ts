@@ -15,6 +15,15 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [react(), mode === "development" && componentTagger(), mcpPlugin()].filter(Boolean),
 
+  // WebView antigo da Gertec GPOS780/720 (Chrome ~60) não entende sintaxe ES2020
+  // (optional chaining, nullish, top-level await) — sem isso o APK abre em branco.
+  build: {
+    target: ["es2015", "chrome60", "safari12"],
+  },
+  esbuild: {
+    target: "es2015",
+  },
+
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
