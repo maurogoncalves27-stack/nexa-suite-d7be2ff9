@@ -254,6 +254,7 @@ export default function Garcom() {
     setRounds([]);
     setRoundItems([]);
     setCart([]);
+    setYoloUnlocked(false);
     await loadTables();
   };
 
@@ -267,6 +268,7 @@ export default function Garcom() {
     }
     setActiveTable(mesa);
     setActiveSession(s);
+    setYoloUnlocked(false);
     setScreen("session");
     await loadSessionDetail(s.id);
   };
@@ -550,6 +552,7 @@ export default function Garcom() {
     setRounds([]);
     setRoundItems([]);
     setCart([]);
+    setYoloUnlocked(false);
     setScreen("map");
     setTefStatus("idle");
     await loadTables();
@@ -693,7 +696,7 @@ export default function Garcom() {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <header className="border-b bg-card p-3 flex items-center gap-2 sticky top-0 z-10">
-          <Button size="icon" variant="ghost" onClick={() => { setCart([]); setScreen("session"); }}>
+          <Button size="icon" variant="ghost" onClick={() => { setCart([]); setYoloUnlocked(false); setScreen("session"); }}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
