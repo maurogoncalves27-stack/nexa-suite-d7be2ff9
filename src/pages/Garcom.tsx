@@ -40,8 +40,12 @@ import {
   XCircle,
   ArrowLeft,
   UtensilsCrossed,
+  Ticket,
 } from "lucide-react";
+
 import { toast } from "@/hooks/use-toast";
+import YoloCodeDialog from "@/components/yolo/YoloCodeDialog";
+
 import { loadTefConfig, createTefAdapter, logTefTransaction } from "@/lib/tef";
 import type { TefStatus, TefPaymentMethod, TefPaymentResult } from "@/lib/tef/types";
 import { finalizeSale } from "@/lib/smartpos/sale";
@@ -147,6 +151,10 @@ export default function Garcom() {
 
   // catalog
   const [activeCat, setActiveCat] = useState("all");
+  // Yolo: desbloqueio vale apenas para a rodada atual.
+  const [yoloUnlocked, setYoloUnlocked] = useState(false);
+  const [yoloDialogOpen, setYoloDialogOpen] = useState(false);
+
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [complementDialog, setComplementDialog] = useState<ComplementDialog | null>(null);
@@ -183,7 +191,7 @@ export default function Garcom() {
     if (!storeId) return;
     void (async () => {
       try {
-        const catalog = await loadMenuCatalog(storeId, null, { channel: "garcom" });
+        const catalog = await loadMenuCatalog(storeId, null, { channel: "garcom", yoloUnlocked });
         setCategories(catalog.categories as MenuCat[]);
         setItems(catalog.items as MenuItem[]);
       } catch (error) {
@@ -191,7 +199,13 @@ export default function Garcom() {
         toast({ title: "Não foi possível carregar o cardápio", variant: "destructive" });
       }
     })();
+  }, [storeId, yoloUnlocked]);
+
+  // Trocar de loja descarta o desbloqueio Yolo (token é por filial).
+  useEffect(() => {
+    setYoloUnlocked(false);
   }, [storeId]);
+
 
   // Mesas + sessões abertas da loja
   useEffect(() => {
@@ -245,6 +259,7 @@ export default function Garcom() {
     setRounds([]);
     setRoundItems([]);
     setCart([]);
+    setYoloUnlocked(false);
     await loadTables();
   };
 
@@ -258,6 +273,7 @@ export default function Garcom() {
     }
     setActiveTable(mesa);
     setActiveSession(s);
+    setYoloUnlocked(false);
     setScreen("session");
     await loadSessionDetail(s.id);
   };
@@ -440,6 +456,8 @@ export default function Garcom() {
 
     toast({ title: `Rodada ${round.round_number} enviada para a cozinha` });
     setCart([]);
+    setYoloUnlocked(false);
+
     await loadSessionDetail(activeSession.id);
     setScreen("session");
   };
@@ -541,6 +559,7 @@ export default function Garcom() {
     setRounds([]);
     setRoundItems([]);
     setCart([]);
+    setYoloUnlocked(false);
     setScreen("map");
     setTefStatus("idle");
     await loadTables();
@@ -684,7 +703,7 @@ export default function Garcom() {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <header className="border-b bg-card p-3 flex items-center gap-2 sticky top-0 z-10">
-          <Button size="icon" variant="ghost" onClick={() => { setCart([]); setScreen("session"); }}>
+          <Button size="icon" variant="ghost" onClick={() => { setCart([]); setYoloUnlocked(false); setScreen("session"); }}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
@@ -696,6 +715,20 @@ export default function Garcom() {
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-10 pl-8" />
           </div>
+          {yoloUnlocked ? (
+            <Badge variant="secondary" className="w-full justify-center py-2">
+              <Ticket className="h-4 w-4 mr-1" /> Yolo liberado nesta rodada
+            </Badge>
+          ) : (
+            <Button
+              variant="outline"
+              className="w-full h-11"
+              onClick={() => setYoloDialogOpen(true)}
+            >
+              <Ticket className="h-4 w-4 mr-2" /> Código Yolo
+            </Button>
+          )}
+
           <ScrollArea className="w-full">
             <div className="flex gap-2 pb-1">
               <Button size="sm" variant={activeCat === "all" ? "default" : "outline"} onClick={() => setActiveCat("all")} className="shrink-0">Todos</Button>
@@ -758,7 +791,18 @@ export default function Garcom() {
             </Button>
           </div>
         )}
+        <YoloCodeDialog
+          open={yoloDialogOpen}
+          onOpenChange={setYoloDialogOpen}
+          storeId={storeId}
+          channel="garcom"
+          onUnlocked={() => {
+            setYoloUnlocked(true);
+            toast({ title: "Código Yolo validado", description: "Categoria exclusiva liberada nesta rodada." });
+          }}
+        />
       </div>
+
     );
   }
 
