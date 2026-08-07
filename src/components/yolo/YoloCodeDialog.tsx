@@ -2,6 +2,7 @@
 // O código é consumido na Yolo já na validação inicial.
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -55,6 +56,7 @@ export default function YoloCodeDialog({ open, onOpenChange, storeId, channel, o
         setError(redeem?.message ?? "Não foi possível validar o código agora.");
         return;
       }
+      toast.success("Código Yolo validado! Cardápio exclusivo liberado.");
       onUnlocked(clean);
       setCode("");
       onOpenChange(false);
