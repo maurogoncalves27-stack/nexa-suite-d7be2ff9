@@ -13,6 +13,9 @@ const config: CapacitorConfig = {
     url: "https://nexasuite.aquelaparme.com.br/garcom",
     cleartext: true,
     androidScheme: "https",
+    // Se o WebView não conseguir carregar a URL (sem internet/DNS), mostra uma
+    // tela explicativa em vez de ficar branca.
+    errorPath: "apk-error.html",
 
     // Checkout Payer roda em http://127.0.0.1:6060 no próprio terminal.
     allowNavigation: [
