@@ -70,6 +70,7 @@ export default function Menu() {
   const [catName, setCatName] = useState("");
   const [catBrands, setCatBrands] = useState<string[]>([]);
   const [catYolo, setCatYolo] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [windowsCategory, setWindowsCategory] = useState<Category | null>(null);
 
 
@@ -196,8 +197,22 @@ export default function Menu() {
   }, [brandFilter, brands]);
 
   function openNewCategory() {
+    setEditingCategoryId(null);
     setCatName("");
     setCatBrands(targetBrandId ? [targetBrandId] : []);
+    setCatYolo(false);
+    setCatOpen(true);
+  }
+
+  async function openEditCategory(category: Category) {
+    setEditingCategoryId(category.id);
+    setCatName(category.name);
+    setCatYolo(!!category.is_yolo_exclusive);
+    const { data: links } = await (supabase as any)
+      .from("menu_category_brands")
+      .select("brand_id")
+      .eq("category_id", category.id);
+    setCatBrands(((links ?? []) as any[]).map((r) => r.brand_id));
     setCatOpen(true);
   }
 
@@ -208,17 +223,38 @@ export default function Menu() {
       toast({ title: "Selecione ao menos uma marca", variant: "destructive" });
       return;
     }
-    const { data: cat, error } = await (supabase as any).from("menu_categories").insert({
-      name, sort_order: categories.length, is_yolo_exclusive: catYolo,
-    }).select("id").single();
-    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
-    const links = catBrands.map((b) => ({ category_id: cat.id, brand_id: b }));
-    const { error: e2 } = await (supabase as any).from("menu_category_brands").insert(links);
-    if (e2) { toast({ title: "Erro nos vínculos", description: e2.message, variant: "destructive" }); return; }
+
+    if (editingCategoryId) {
+      const { error } = await (supabase as any).from("menu_categories").update({
+        name, is_yolo_exclusive: catYolo,
+      }).eq("id", editingCategoryId);
+      if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+
+      const { error: delErr } = await (supabase as any)
+        .from("menu_category_brands")
+        .delete()
+        .eq("category_id", editingCategoryId);
+      if (delErr) { toast({ title: "Erro ao atualizar vínculos", description: delErr.message, variant: "destructive" }); return; }
+
+      const links = catBrands.map((b) => ({ category_id: editingCategoryId, brand_id: b }));
+      const { error: e2 } = await (supabase as any).from("menu_category_brands").insert(links);
+      if (e2) { toast({ title: "Erro nos vínculos", description: e2.message, variant: "destructive" }); return; }
+
+      toast({ title: "Categoria atualizada" });
+    } else {
+      const { data: cat, error } = await (supabase as any).from("menu_categories").insert({
+        name, sort_order: categories.length, is_yolo_exclusive: catYolo,
+      }).select("id").single();
+      if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+      const links = catBrands.map((b) => ({ category_id: cat.id, brand_id: b }));
+      const { error: e2 } = await (supabase as any).from("menu_category_brands").insert(links);
+      if (e2) { toast({ title: "Erro nos vínculos", description: e2.message, variant: "destructive" }); return; }
+      toast({ title: "Categoria criada" });
+    }
+
     setCatOpen(false);
     setCatYolo(false);
-
-    toast({ title: "Categoria criada" });
+    setEditingCategoryId(null);
     load();
   }
 
@@ -513,7 +549,15 @@ export default function Menu() {
                             <Ticket className="h-4 w-4" />
                           </Button>
                         )}
-
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          title="Editar categoria"
+                          onClick={() => openEditCategory(categories[catIdx])}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
                         <Button
                           size="icon"
                           variant="ghost"
@@ -629,7 +673,10 @@ export default function Menu() {
 
       <AddCategoryDialog
         open={catOpen}
-        onOpenChange={setCatOpen}
+        onOpenChange={(v) => {
+          setCatOpen(v);
+          if (!v) setEditingCategoryId(null);
+        }}
         value={catName}
         onChange={setCatName}
         brands={brands}
@@ -638,6 +685,7 @@ export default function Menu() {
         isYolo={catYolo}
         onIsYoloChange={setCatYolo}
         onSave={saveCategory}
+        editingId={editingCategoryId}
       />
 
       <YoloCategoryWindowsDialog
