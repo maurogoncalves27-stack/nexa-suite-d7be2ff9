@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { KeyRound, RefreshCw, CheckCircle2, XCircle, ExternalLink, ShieldAlert, Search } from "lucide-react";
+import { KeyRound, RefreshCw, CheckCircle2, XCircle, ExternalLink, ShieldAlert, Search, Ticket } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -249,9 +250,26 @@ export default function IntegrationsPage() {
 
       {/* Painéis operacionais migrados do CRM */}
       <div className="space-y-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Ticket className="h-4 w-4 text-primary" />
+              Yolo Club
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Cupons Yolo no Totem, NEXA Garçom, PDV e site. O token é gerado por filial no painel da Yolo Club.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/configuracoes/yolo">Abrir configuração da Yolo</Link>
+            </Button>
+          </CardContent>
+        </Card>
         <GoogleReviewsPanel />
         <CrmIntegrationsPanel />
       </div>
+
 
       <div className="space-y-8">
         {grouped.map(([cat, items]) => (
