@@ -225,9 +225,8 @@ export default function OfxImportDialog({ accounts, open, onOpenChange, onImport
               OFX, CSV ou XLS/XLSX. PDF não é aceito.
             </p>
           </div>
-
-          </div>
         </div>
+
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>Cancelar</Button>
