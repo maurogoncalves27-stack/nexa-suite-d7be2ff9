@@ -33,10 +33,11 @@ export default function OfxImportDialog({ accounts, open, onOpenChange, onImport
       return;
     }
     const ext = file.name.split(".").pop()?.toLowerCase();
-    if (ext !== "ofx") {
+    const ACCEPTED = ["ofx", "csv", "txt", "xls", "xlsx"];
+    if (!ext || !ACCEPTED.includes(ext)) {
       toast({
         title: "Formato inválido",
-        description: `Apenas arquivos .ofx são aceitos. Você selecionou um arquivo .${ext || "?"}. Baixe o extrato no formato OFX pelo internet banking.`,
+        description: `Aceitos: .ofx, .csv, .xls e .xlsx. Você selecionou um arquivo .${ext || "?"}. PDF não é aceito — exporte o extrato em CSV pelo internet banking.`,
         variant: "destructive",
       });
       return;
@@ -45,20 +46,25 @@ export default function OfxImportDialog({ accounts, open, onOpenChange, onImport
     let createdStatementId: string | null = null;
     let inserted = 0;
     try {
-      const text = await file.text();
       let parsed;
-      try {
-        parsed = parseOfx(text);
-      } catch (parseErr: any) {
-        throw new Error(
-          "Não foi possível ler o arquivo. Verifique se é um OFX válido exportado do internet banking."
-        );
+      if (ext === "ofx") {
+        const text = await file.text();
+        try {
+          parsed = parseOfx(text);
+        } catch {
+          throw new Error(
+            "Não foi possível ler o arquivo. Verifique se é um OFX válido exportado do internet banking."
+          );
+        }
+      } else {
+        parsed = await parseBankStatementFile(file);
       }
       if (parsed.transactions.length === 0) {
         throw new Error(
-          "Nenhuma transação encontrada. Confirme se o arquivo é um extrato OFX válido (não um XLSX ou PDF renomeado)."
+          "Nenhuma transação encontrada. Confirme se o arquivo é um extrato válido (OFX, CSV ou XLS do internet banking)."
         );
       }
+
 
       const fileDuplicatesByFitId = new Set<string>();
       const uniqueRowsMap = new Map<string, {
