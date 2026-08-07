@@ -786,7 +786,18 @@ export default function Garcom() {
             </Button>
           </div>
         )}
+        <YoloCodeDialog
+          open={yoloDialogOpen}
+          onOpenChange={setYoloDialogOpen}
+          storeId={storeId}
+          channel="garcom"
+          onUnlocked={() => {
+            setYoloUnlocked(true);
+            toast({ title: "Código Yolo validado", description: "Categoria exclusiva liberada nesta rodada." });
+          }}
+        />
       </div>
+
     );
   }
 
