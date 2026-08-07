@@ -63,7 +63,7 @@ const Field = ({ label, value }: { label: string; value: string }) => (
   </div>
 );
 
-const TefPaygoSetup = () => {
+const TefPaygoSetup = ({ embedded = false }: { embedded?: boolean } = {}) => {
   const [stores, setStores] = useState<Store[]>([]);
   const [storeId, setStoreId] = useState<string>("fcf435c2-c382-444c-b499-4d95f07b2633");
   const [cfg, setCfg] = useState<TefRow | null>(null);
@@ -218,15 +218,17 @@ const TefPaygoSetup = () => {
 
   return (
     <div className="space-y-4 max-w-7xl">
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-          <CreditCard className="h-6 w-6 md:h-7 md:w-7 text-primary" />
-          TEF PayGo — Testes
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          Painel rápido para validar transações e configuração do pinpad.
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+            <CreditCard className="h-6 w-6 md:h-7 md:w-7 text-primary" />
+            TEF PayGo — Testes
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            Painel rápido para validar transações e configuração do pinpad.
+          </p>
+        </div>
+      )}
 
       <div className="space-y-4 min-h-0">
         <div className="space-y-4 min-h-0">
