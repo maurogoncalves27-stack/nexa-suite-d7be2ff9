@@ -710,6 +710,20 @@ export default function Garcom() {
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-10 pl-8" />
           </div>
+          {yoloUnlocked ? (
+            <Badge variant="secondary" className="w-full justify-center py-2">
+              <Ticket className="h-4 w-4 mr-1" /> Yolo liberado nesta rodada
+            </Badge>
+          ) : (
+            <Button
+              variant="outline"
+              className="w-full h-11"
+              onClick={() => setYoloDialogOpen(true)}
+            >
+              <Ticket className="h-4 w-4 mr-2" /> Código Yolo
+            </Button>
+          )}
+
           <ScrollArea className="w-full">
             <div className="flex gap-2 pb-1">
               <Button size="sm" variant={activeCat === "all" ? "default" : "outline"} onClick={() => setActiveCat("all")} className="shrink-0">Todos</Button>
