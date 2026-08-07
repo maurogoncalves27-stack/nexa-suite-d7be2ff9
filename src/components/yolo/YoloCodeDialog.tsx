@@ -1,13 +1,14 @@
 // Entrada do código Yolo (6 dígitos) que libera a categoria exclusiva no Totem e no site.
 // O código é consumido na Yolo já na validação inicial.
 import { useState } from "react";
-import { Loader2, Ticket } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import yoloLogo from "@/assets/yolo-logo.png.asset.json";
 
 interface Props {
   open: boolean;
@@ -64,7 +65,8 @@ export default function YoloCodeDialog({ open, onOpenChange, storeId, channel, o
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Ticket className="h-5 w-5 text-primary" /> Código Yolo
+            <img src={yoloLogo.url} alt="Yolo Club" className="h-5 w-auto" />
+            <span>Código Yolo</span>
           </DialogTitle>
           <DialogDescription>
             Digite o código de 6 dígitos do app Yolo Club para liberar o cardápio exclusivo.

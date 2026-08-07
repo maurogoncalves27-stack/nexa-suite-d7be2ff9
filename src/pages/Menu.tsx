@@ -18,6 +18,7 @@ import ComplementsCatalogDialog from "@/components/menu/ComplementsCatalogDialog
 import ReplicateMenuDialog from "@/components/menu/ReplicateMenuDialog";
 import YoloCategoryWindowsDialog from "@/components/menu/YoloCategoryWindowsDialog";
 import { fmt } from "@/lib/menuFormat";
+import yoloLogo from "@/assets/yolo-logo.png.asset.json";
 
 
 interface Brand { id: string; name: string; sort_order: number; }
@@ -494,8 +495,9 @@ export default function Menu() {
                     <CardTitle className="text-base flex items-center gap-2">
                       {catName_(catId === "__none__" ? null : catId)}
                       {catIdx >= 0 && categories[catIdx]?.is_yolo_exclusive && (
-                        <Badge variant="secondary" className="gap-1">
-                          <Ticket className="h-3 w-3" /> Yolo
+                        <Badge variant="secondary" className="gap-1.5 py-0.5">
+                          <img src={yoloLogo.url} alt="Yolo Club" className="h-3 w-auto opacity-80" />
+                          <span className="text-[11px]">Exclusiva</span>
                         </Badge>
                       )}
                     </CardTitle>
