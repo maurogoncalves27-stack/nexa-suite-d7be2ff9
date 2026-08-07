@@ -44,6 +44,8 @@ import {
 } from "lucide-react";
 
 import { toast } from "@/hooks/use-toast";
+import YoloCodeDialog from "@/components/yolo/YoloCodeDialog";
+
 import { loadTefConfig, createTefAdapter, logTefTransaction } from "@/lib/tef";
 import type { TefStatus, TefPaymentMethod, TefPaymentResult } from "@/lib/tef/types";
 import { finalizeSale } from "@/lib/smartpos/sale";
