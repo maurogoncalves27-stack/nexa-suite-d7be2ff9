@@ -201,6 +201,11 @@ export default function Garcom() {
     })();
   }, [storeId, yoloUnlocked]);
 
+  // Trocar de loja descarta o desbloqueio Yolo (token é por filial).
+  useEffect(() => {
+    setYoloUnlocked(false);
+  }, [storeId]);
+
 
   // Mesas + sessões abertas da loja
   useEffect(() => {
