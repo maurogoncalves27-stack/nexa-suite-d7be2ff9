@@ -19,11 +19,12 @@ interface Props {
   isYolo: boolean;
   onIsYoloChange: (v: boolean) => void;
   onSave: () => void;
+  editingId?: string | null;
 }
 
 export default function AddCategoryDialog({
   open, onOpenChange, value, onChange, brands, selectedBrands, onSelectedBrandsChange,
-  isYolo, onIsYoloChange, onSave,
+  isYolo, onIsYoloChange, onSave, editingId,
 }: Props) {
 
   return (
