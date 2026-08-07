@@ -19,9 +19,14 @@ import { loadTefConfig } from "@/lib/tef";
 import { closeOrder, createTotemOrderAndClose } from "@/lib/order";
 import YoloCodeDialog from "@/components/yolo/YoloCodeDialog";
 import { loadItemComplements, loadMenuCatalog, type CatalogComplementGroup, type SelectedComplement } from "@/lib/menuCatalog";
-import logoAquelaParme from "@/assets/logo-aquela-parme.png";
-import logoBoxCaipira from "@/assets/logo-box-caipira.png";
-import logoEstrogonofe from "@/assets/logo-estrogonofe.png";
+import logoAquelaParmeAsset from "@/assets/logo-aquela-parme-v2.png.asset.json";
+import logoBoxCaipiraAsset from "@/assets/logo-box-caipira-v2.png.asset.json";
+import logoEstrogonofeAsset from "@/assets/logo-estrogonofe-v2.png.asset.json";
+import pecaAquiAsset from "@/assets/totem-peca-aqui.png.asset.json";
+
+const logoAquelaParme = logoAquelaParmeAsset.url;
+const logoBoxCaipira = logoBoxCaipiraAsset.url;
+const logoEstrogonofe = logoEstrogonofeAsset.url;
 import fakeParme from "@/assets/totem-fake-parme.jpg";
 import fakeBox from "@/assets/totem-fake-box.jpg";
 import fakeEstrogonofe from "@/assets/totem-fake-estrogonofe.jpg";
@@ -102,9 +107,9 @@ const buildBrandLogoResolver = (
   const custom = slug ? customLogos[slug] : undefined;
   if (custom) return { src: custom, scale: 1 };
   const n = normalize(brand.name);
-  if (n.includes("box") || n.includes("caipira")) return { src: logoBoxCaipira, scale: 0.86 };
-  if (n.includes("estrog")) return { src: logoEstrogonofe, scale: 0.78 };
-  if (n.includes("parme")) return { src: logoAquelaParme, scale: 2.2 };
+  if (n.includes("box") || n.includes("caipira")) return { src: logoBoxCaipira, scale: 1 };
+  if (n.includes("estrog")) return { src: logoEstrogonofe, scale: 1 };
+  if (n.includes("parme")) return { src: logoAquelaParme, scale: 1 };
   return null;
 };
 
@@ -629,15 +634,11 @@ export default function Totem() {
             <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/90" />
             <div className="relative h-full flex flex-col items-center justify-center text-white px-8 gap-12">
               <div className="text-center">
-                <h1
-                  className="text-[14rem] font-black leading-none tracking-tight animate-pulse"
-                  style={{
-                    textShadow: "0 6px 24px rgba(0,0,0,0.95), 0 2px 6px rgba(0,0,0,0.95), 0 0 80px rgba(0,0,0,0.7)",
-                    WebkitTextStroke: "2px rgba(0,0,0,0.5)",
-                  }}
-                >
-                  PEÇA AQUI
-                </h1>
+                <img
+                  src={pecaAquiAsset.url}
+                  alt="Peça aqui"
+                  className="mx-auto w-[85%] max-w-[1100px] object-contain drop-shadow-2xl"
+                />
                 <div
                   className="mt-10 inline-flex items-center gap-5 bg-primary text-primary-foreground rounded-full px-12 py-6 text-5xl font-black shadow-2xl ring-4 ring-white/30"
                   style={{ textShadow: "0 3px 10px rgba(0,0,0,0.6)" }}
