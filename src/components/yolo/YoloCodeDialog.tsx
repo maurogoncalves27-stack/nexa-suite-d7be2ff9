@@ -56,6 +56,7 @@ export default function YoloCodeDialog({ open, onOpenChange, storeId, channel, o
         setError(redeem?.message ?? "Não foi possível validar o código agora.");
         return;
       }
+      toast.success("Código Yolo validado! Cardápio exclusivo liberado.");
       onUnlocked(clean);
       setCode("");
       onOpenChange(false);
