@@ -191,7 +191,7 @@ export default function Garcom() {
     if (!storeId) return;
     void (async () => {
       try {
-        const catalog = await loadMenuCatalog(storeId, null, { channel: "garcom" });
+        const catalog = await loadMenuCatalog(storeId, null, { channel: "garcom", yoloUnlocked });
         setCategories(catalog.categories as MenuCat[]);
         setItems(catalog.items as MenuItem[]);
       } catch (error) {
@@ -199,7 +199,8 @@ export default function Garcom() {
         toast({ title: "Não foi possível carregar o cardápio", variant: "destructive" });
       }
     })();
-  }, [storeId]);
+  }, [storeId, yoloUnlocked]);
+
 
   // Mesas + sessões abertas da loja
   useEffect(() => {
