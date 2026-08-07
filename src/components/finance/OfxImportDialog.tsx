@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Upload } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { parseOfx } from "@/lib/ofxParser";
+import { parseBankStatementFile } from "@/lib/bankStatementParser";
 import type { BankAccount } from "./BankAccountsManager";
 
 interface Props {
@@ -32,10 +33,11 @@ export default function OfxImportDialog({ accounts, open, onOpenChange, onImport
       return;
     }
     const ext = file.name.split(".").pop()?.toLowerCase();
-    if (ext !== "ofx") {
+    const ACCEPTED = ["ofx", "csv", "txt", "xls", "xlsx"];
+    if (!ext || !ACCEPTED.includes(ext)) {
       toast({
         title: "Formato inválido",
-        description: `Apenas arquivos .ofx são aceitos. Você selecionou um arquivo .${ext || "?"}. Baixe o extrato no formato OFX pelo internet banking.`,
+        description: `Aceitos: .ofx, .csv, .xls e .xlsx. Você selecionou um arquivo .${ext || "?"}. PDF não é aceito — exporte o extrato em CSV pelo internet banking.`,
         variant: "destructive",
       });
       return;
@@ -44,20 +46,25 @@ export default function OfxImportDialog({ accounts, open, onOpenChange, onImport
     let createdStatementId: string | null = null;
     let inserted = 0;
     try {
-      const text = await file.text();
       let parsed;
-      try {
-        parsed = parseOfx(text);
-      } catch (parseErr: any) {
-        throw new Error(
-          "Não foi possível ler o arquivo. Verifique se é um OFX válido exportado do internet banking."
-        );
+      if (ext === "ofx") {
+        const text = await file.text();
+        try {
+          parsed = parseOfx(text);
+        } catch {
+          throw new Error(
+            "Não foi possível ler o arquivo. Verifique se é um OFX válido exportado do internet banking."
+          );
+        }
+      } else {
+        parsed = await parseBankStatementFile(file);
       }
       if (parsed.transactions.length === 0) {
         throw new Error(
-          "Nenhuma transação encontrada. Confirme se o arquivo é um extrato OFX válido (não um XLSX ou PDF renomeado)."
+          "Nenhuma transação encontrada. Confirme se o arquivo é um extrato válido (OFX, CSV ou XLS do internet banking)."
         );
       }
+
 
       const fileDuplicatesByFitId = new Set<string>();
       const uniqueRowsMap = new Map<string, {
@@ -187,9 +194,9 @@ export default function OfxImportDialog({ accounts, open, onOpenChange, onImport
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><Upload className="h-5 w-5" /> Importar extrato OFX</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><Upload className="h-5 w-5" /> Importar extrato bancário</DialogTitle>
           <DialogDescription>
-            Selecione a conta bancária e envie o arquivo .ofx baixado do internet banking. Transações já importadas são ignoradas automaticamente.
+            Selecione a conta bancária e envie o extrato em <strong>OFX</strong>, <strong>CSV</strong> ou <strong>XLS/XLSX</strong>. No C6, use o CSV. Transações já importadas são ignoradas automaticamente.
           </DialogDescription>
         </DialogHeader>
 
@@ -208,14 +215,18 @@ export default function OfxImportDialog({ accounts, open, onOpenChange, onImport
             </select>
           </div>
           <div className="space-y-1">
-            <Label>Arquivo OFX *</Label>
+            <Label>Arquivo do extrato *</Label>
             <Input
               type="file"
-              accept=".ofx,application/x-ofx,text/plain"
+              accept=".ofx,.csv,.txt,.xls,.xlsx,application/x-ofx,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
+            <p className="text-xs text-muted-foreground">
+              OFX, CSV ou XLS/XLSX. PDF não é aceito.
+            </p>
           </div>
         </div>
+
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>Cancelar</Button>
