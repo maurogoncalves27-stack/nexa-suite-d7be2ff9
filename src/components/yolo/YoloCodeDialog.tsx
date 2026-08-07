@@ -33,9 +33,14 @@ export default function YoloCodeDialog({ open, onOpenChange, storeId, channel, o
         body: { code: clean, store_id: storeId, channel },
       });
       if (!check?.valid) {
-        setError(check?.message ?? "Código inválido ou já utilizado.");
+        setError(check?.message ?? (check?.reason === "missing_store_token"
+          ? "Token Yolo não configurado para esta loja."
+          : check?.reason === "integration_disabled"
+            ? "Integração Yolo desativada nas configurações."
+            : "Código inválido ou já utilizado."));
         return;
       }
+
       const { data: redeem } = await supabase.functions.invoke("yolo-redeem", {
         body: {
           code: clean,
