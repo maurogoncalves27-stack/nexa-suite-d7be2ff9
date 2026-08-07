@@ -617,7 +617,7 @@ export default function BankReconciliationPanel() {
                 </Button>
               )}
               <Button size="sm" disabled={accounts.length === 0} onClick={() => setImportOpen(true)} className="gap-1">
-                <Upload className="h-3.5 w-3.5" /> Importar OFX
+                <Upload className="h-3.5 w-3.5" /> Importar extrato
               </Button>
             </div>
           </div>
@@ -636,7 +636,7 @@ export default function BankReconciliationPanel() {
           ) : filteredTx.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">
               {transactions.length === 0
-                ? "Nenhuma transação importada ainda. Clique em \"Importar OFX\"."
+                ? "Nenhuma transação importada ainda. Clique em \"Importar extrato\"."
                 : "Nenhuma transação corresponde ao filtro."}
             </p>
           ) : (
