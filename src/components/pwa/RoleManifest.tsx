@@ -95,7 +95,7 @@ const ROLE_MAP: Array<{ prefix: string; config: RoleManifestConfig }> = [
     config: {
       manifest: "/manifest-waiter.json",
       themeColor: "#3B82F6",
-      appleIcon: "/icons/nexa-app-512.png",
+      appleIcon: "/icons/nexa-garcom-512.png",
     },
   },
   {
@@ -103,7 +103,7 @@ const ROLE_MAP: Array<{ prefix: string; config: RoleManifestConfig }> = [
     config: {
       manifest: "/manifest-waiter.json",
       themeColor: "#3B82F6",
-      appleIcon: "/icons/nexa-app-512.png",
+      appleIcon: "/icons/nexa-garcom-512.png",
     },
   },
 ];
