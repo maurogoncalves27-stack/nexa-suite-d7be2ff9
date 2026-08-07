@@ -30,7 +30,13 @@ export default function YoloIntegration() {
     (async () => {
       const [{ data: cfg }, { data: st }, { data: tk }] = await Promise.all([
         supabase.from("yolo_config").select("id, base_url, enabled, notes").limit(1).maybeSingle(),
-        supabase.from("stores").select("id, name").eq("is_virtual", false).order("name"),
+        supabase
+          .from("stores")
+          .select("id, name")
+          .eq("is_virtual", false)
+          .eq("store_type", "loja")
+          .not("name", "in", '("ESCRITÓRIO")')
+          .order("name"),
         supabase.from("yolo_store_tokens").select("store_id, token, enabled, notes"),
       ]);
       setConfig((cfg as YoloConfig) ?? null);
