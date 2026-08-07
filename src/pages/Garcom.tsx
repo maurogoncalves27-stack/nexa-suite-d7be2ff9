@@ -183,7 +183,7 @@ export default function Garcom() {
     if (!storeId) return;
     void (async () => {
       try {
-        const catalog = await loadMenuCatalog(storeId);
+        const catalog = await loadMenuCatalog(storeId, null, { channel: "garcom" });
         setCategories(catalog.categories as MenuCat[]);
         setItems(catalog.items as MenuItem[]);
       } catch (error) {
