@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Plus, Minus, Trash2, ShoppingCart, ArrowLeft, Printer, Check, X, Timer, Hand, CreditCard, QrCode, Utensils, ShoppingBag, Ticket } from "lucide-react";
+import { Loader2, Plus, Minus, Trash2, ShoppingCart, ArrowLeft, Printer, Check, X, Timer, CreditCard, QrCode, Utensils, ShoppingBag, Ticket } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { TefPaymentDialog } from "@/components/tef/TefPaymentDialog";
 import { VirtualKeyboard } from "@/components/totem/VirtualKeyboard";
@@ -637,7 +637,7 @@ export default function Totem() {
                 <img
                   src={pecaAquiAsset.url}
                   alt="Peça aqui"
-                  className="mx-auto w-[85%] max-w-[1100px] object-contain drop-shadow-2xl"
+                  className="mx-auto w-[85%] max-w-[1100px] object-contain drop-shadow-2xl animate-[bounce_2s_infinite]"
                 />
                 <div
                   className="mt-10 inline-flex items-center gap-5 bg-primary text-primary-foreground rounded-full px-12 py-6 text-5xl font-black shadow-2xl ring-4 ring-white/30"
@@ -646,10 +646,6 @@ export default function Totem() {
                   <Timer className="h-16 w-16" />
                   <span>Seu pedido em 15 min</span>
                 </div>
-              </div>
-              <div className="absolute bottom-12 inline-flex items-center gap-3 text-2xl font-semibold animate-bounce">
-                <Hand className="h-8 w-8" />
-                <span>Toque na tela para começar</span>
               </div>
             </div>
           </button>
