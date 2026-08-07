@@ -194,9 +194,9 @@ export default function OfxImportDialog({ accounts, open, onOpenChange, onImport
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><Upload className="h-5 w-5" /> Importar extrato OFX</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><Upload className="h-5 w-5" /> Importar extrato bancário</DialogTitle>
           <DialogDescription>
-            Selecione a conta bancária e envie o arquivo .ofx baixado do internet banking. Transações já importadas são ignoradas automaticamente.
+            Selecione a conta bancária e envie o extrato em <strong>OFX</strong>, <strong>CSV</strong> ou <strong>XLS/XLSX</strong>. No C6, use o CSV. Transações já importadas são ignoradas automaticamente.
           </DialogDescription>
         </DialogHeader>
 
@@ -215,12 +215,17 @@ export default function OfxImportDialog({ accounts, open, onOpenChange, onImport
             </select>
           </div>
           <div className="space-y-1">
-            <Label>Arquivo OFX *</Label>
+            <Label>Arquivo do extrato *</Label>
             <Input
               type="file"
-              accept=".ofx,application/x-ofx,text/plain"
+              accept=".ofx,.csv,.txt,.xls,.xlsx,application/x-ofx,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
+            <p className="text-xs text-muted-foreground">
+              OFX, CSV ou XLS/XLSX. PDF não é aceito.
+            </p>
+          </div>
+
           </div>
         </div>
 
