@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Plus, Minus, Trash2, ShoppingCart, ArrowLeft, Printer, Check, X, Timer, Hand, CreditCard, QrCode, Utensils, ShoppingBag } from "lucide-react";
+import { Loader2, Plus, Minus, Trash2, ShoppingCart, ArrowLeft, Printer, Check, X, Timer, Hand, CreditCard, QrCode, Utensils, ShoppingBag, Ticket } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { TefPaymentDialog } from "@/components/tef/TefPaymentDialog";
 import { VirtualKeyboard } from "@/components/totem/VirtualKeyboard";
@@ -576,6 +576,14 @@ export default function Totem() {
           <X className="h-7 w-7" />
         </button>
       )}
+
+      <YoloCodeDialog
+        open={yoloDialogOpen}
+        onOpenChange={setYoloDialogOpen}
+        storeId={(selectedStore?.parent_store_id ?? selectedStore?.id) ?? ""}
+        channel="totem"
+        onUnlocked={() => setYoloUnlocked(true)}
+      />
 
       {/* Conteúdo */}
       <main className="flex-1 overflow-hidden">
