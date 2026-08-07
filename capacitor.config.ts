@@ -4,7 +4,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 // O terminal de pagamento não permite instalar navegador, então distribuímos
 // um APK que carrega o app publicado dentro de um WebView em tela cheia.
 const config: CapacitorConfig = {
-  appId: "app.lovable.b68f3ba2e21a49eeb08480c47f8ad72b",
+  appId: "com.aquelaparme.nexa",
   appName: "NEXA Garçom",
   webDir: "dist",
   server: {
@@ -12,6 +12,7 @@ const config: CapacitorConfig = {
     // "https://b68f3ba2-e21a-49ee-b084-80c47f8ad72b.lovableproject.com?forceHideBadge=true"
     url: "https://nexasuite.aquelaparme.com.br/garcom",
     cleartext: true,
+    androidScheme: "https",
 
     // Checkout Payer roda em http://127.0.0.1:6060 no próprio terminal.
     allowNavigation: [
@@ -24,7 +25,8 @@ const config: CapacitorConfig = {
   },
   android: {
     allowMixedContent: true,
-    webContentsDebuggingEnabled: false,
+    // Deixa o logcat/chrome://inspect enxergar erros de JS no terminal.
+    webContentsDebuggingEnabled: true,
   },
 };
 
