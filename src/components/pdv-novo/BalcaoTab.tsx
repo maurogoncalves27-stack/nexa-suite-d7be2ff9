@@ -85,7 +85,7 @@ export default function BalcaoTab({ storeId, channelId, cashSessionId, onOrderCr
     void (async () => {
       setLoading(true);
       try {
-        const catalog = await loadMenuCatalog(storeId);
+        const catalog = await loadMenuCatalog(storeId, null, { channel: "pdv" });
         setCategories(catalog.categories as MenuCategory[]);
         setItems(catalog.items as MenuItem[]);
       } catch (error) {

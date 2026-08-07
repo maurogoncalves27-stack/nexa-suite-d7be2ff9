@@ -1,10 +1,27 @@
 import { supabase } from "@/integrations/supabase/client";
 
+export type MenuChannel = "totem" | "site" | "pdv" | "garcom" | "ifood";
+export type MenuFulfillment = "delivery" | "pickup";
+
+export const MENU_CHANNELS: { value: MenuChannel; label: string }[] = [
+  { value: "totem", label: "Totem" },
+  { value: "site", label: "Site (/pedir)" },
+  { value: "pdv", label: "PDV" },
+  { value: "garcom", label: "Garçom" },
+  { value: "ifood", label: "iFood" },
+];
+
+export const MENU_FULFILLMENTS: { value: MenuFulfillment; label: string }[] = [
+  { value: "delivery", label: "Entrega" },
+  { value: "pickup", label: "Retirada" },
+];
+
 export interface CatalogCategory {
   id: string;
   name: string;
   sort_order: number;
   brand_id?: string | null;
+  is_yolo_exclusive?: boolean;
 }
 
 export interface CatalogMenuItem {
@@ -17,7 +34,10 @@ export interface CatalogMenuItem {
   recipe_id?: string | null;
   photo_url?: string | null;
   is_active?: boolean;
+  channels?: string[] | null;
+  fulfillment?: string[] | null;
 }
+
 
 export interface CatalogComplementOption {
   id: string;
@@ -48,8 +68,35 @@ const publicUrl = (bucket: string, path?: string | null) => {
   return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 };
 
+export interface MenuCatalogOptions {
+  /** Canal de venda; filtra itens que não estão habilitados nele. */
+  channel?: MenuChannel;
+  /** Modalidade escolhida pelo cliente (entrega x retirada). */
+  fulfillment?: MenuFulfillment;
+  /** Só libera categorias exclusivas Yolo quando o código foi validado. */
+  yoloUnlocked?: boolean;
+  /** Data/hora usada na checagem das janelas (default: agora). */
+  now?: Date;
+}
+
+/** Verifica se um horário está dentro da janela (com suporte a virada de dia). */
+const isWithinWindow = (minutes: number, start: string, end: string) => {
+  const toMinutes = (value: string) => {
+    const [h, m] = value.split(":");
+    return Number(h) * 60 + Number(m ?? 0);
+  };
+  const startMin = toMinutes(start);
+  const endMin = toMinutes(end);
+  if (endMin >= startMin) return minutes >= startMin && minutes <= endMin;
+  return minutes >= startMin || minutes <= endMin;
+};
+
 /** Fonte única de leitura do cardápio por loja física e, opcionalmente, marca. */
-export async function loadMenuCatalog(storeId: string, brandId?: string | null) {
+export async function loadMenuCatalog(
+  storeId: string,
+  brandId?: string | null,
+  options: MenuCatalogOptions = {},
+) {
   const [storeLinks, brandLinks] = await Promise.all([
     (supabase as any).from("menu_item_stores").select("menu_item_id")
       .eq("store_id", storeId).eq("is_available", true),
@@ -68,14 +115,15 @@ export async function loadMenuCatalog(storeId: string, brandId?: string | null) 
   if (itemIds.length === 0) return { categories: [] as CatalogCategory[], items: [] as CatalogMenuItem[] };
 
   const [itemsResult, categoriesResult] = await Promise.all([
-    supabase.from("menu_items")
-      .select("id,name,description,price,category_id,photo_path,recipe_id,is_active,sort_order")
+    (supabase as any).from("menu_items")
+      .select("id,name,description,price,category_id,photo_path,recipe_id,is_active,sort_order,channels,fulfillment")
       .in("id", itemIds).eq("is_active", true).order("sort_order"),
     brandId
-      ? supabase.from("menu_categories").select("id,name,sort_order,brand_id")
+      ? (supabase as any).from("menu_categories").select("id,name,sort_order,brand_id,is_yolo_exclusive")
         .or(`brand_id.eq.${brandId},brand_id.is.null`).order("sort_order")
-      : supabase.from("menu_categories").select("id,name,sort_order,brand_id").order("sort_order"),
+      : (supabase as any).from("menu_categories").select("id,name,sort_order,brand_id,is_yolo_exclusive").order("sort_order"),
   ]);
+
   if (itemsResult.error) throw itemsResult.error;
   if (categoriesResult.error) throw categoriesResult.error;
 
@@ -112,11 +160,47 @@ export async function loadMenuCatalog(storeId: string, brandId?: string | null) 
       ?? null,
   }));
 
-  return {
-    categories: (categoriesResult.data ?? []) as CatalogCategory[],
-    items,
-  };
+  // Canal e modalidade por item (arrays vazios/nulos = disponível em tudo)
+  const { channel, fulfillment, yoloUnlocked, now } = options;
+  if (channel) {
+    items = items.filter((item) => !item.channels?.length || item.channels.includes(channel));
+  }
+  if (fulfillment) {
+    items = items.filter((item) => !item.fulfillment?.length || item.fulfillment.includes(fulfillment));
+  }
+
+  let categories = (categoriesResult.data ?? []) as CatalogCategory[];
+
+  // Categorias exclusivas Yolo: só com código validado e dentro da janela da loja
+  const yoloCategoryIds = categories.filter((c) => c.is_yolo_exclusive).map((c) => c.id);
+  if (yoloCategoryIds.length) {
+    let allowed = new Set<string>();
+    if (yoloUnlocked) {
+      const { data: windows } = await (supabase as any)
+        .from("menu_category_store_windows")
+        .select("category_id,weekday,start_time,end_time")
+        .eq("store_id", storeId)
+        .in("category_id", yoloCategoryIds);
+      const reference = now ?? new Date();
+      const weekday = reference.getDay();
+      const minutes = reference.getHours() * 60 + reference.getMinutes();
+      for (const window of (windows ?? []) as any[]) {
+        if (window.weekday !== weekday) continue;
+        if (isWithinWindow(minutes, String(window.start_time), String(window.end_time))) {
+          allowed.add(window.category_id);
+        }
+      }
+    }
+    const blocked = new Set(yoloCategoryIds.filter((id) => !allowed.has(id)));
+    if (blocked.size) {
+      categories = categories.filter((category) => !blocked.has(category.id));
+      items = items.filter((item) => !item.category_id || !blocked.has(item.category_id));
+    }
+  }
+
+  return { categories, items };
 }
+
 
 /** Lê primeiro o catálogo reutilizável; usa o espelho legado apenas como compatibilidade. */
 export async function loadItemComplements(menuItemId: string): Promise<CatalogComplementGroup[]> {

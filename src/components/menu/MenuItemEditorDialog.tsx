@@ -15,6 +15,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { fmt } from "@/lib/menuFormat";
+import { MENU_CHANNELS, MENU_FULFILLMENTS } from "@/lib/menuCatalog";
+
 
 interface Category { id: string; name: string; }
 interface RecipeOpt { id: string; name: string; }
@@ -83,6 +85,9 @@ export default function MenuItemEditorDialog({
   const [components, setComponents] = useState<Component[]>([]);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedStores, setSelectedStores] = useState<string[]>([]);
+  const [channels, setChannels] = useState<string[]>(MENU_CHANNELS.map((c) => c.value));
+  const [fulfillment, setFulfillment] = useState<string[]>(MENU_FULFILLMENTS.map((f) => f.value));
+
   const [linkedGroupIds, setLinkedGroupIds] = useState<string[]>([]);
 
   const [recipes, setRecipes] = useState<RecipeOpt[]>([]);
@@ -124,6 +129,9 @@ export default function MenuItemEditorDialog({
           setServesPeople((it as any).serves_people != null ? String((it as any).serves_people) : "");
           setTotalWeight((it as any).total_weight_g != null ? String((it as any).total_weight_g) : "");
           setProteinWeight((it as any).protein_weight_g != null ? String((it as any).protein_weight_g) : "");
+          setChannels(((it as any).channels?.length ? (it as any).channels : MENU_CHANNELS.map((c) => c.value)));
+          setFulfillment(((it as any).fulfillment?.length ? (it as any).fulfillment : MENU_FULFILLMENTS.map((f) => f.value)));
+
 
         }
         const [compRes, brRes, linksRes, stRes] = await Promise.all([
@@ -144,6 +152,9 @@ export default function MenuItemEditorDialog({
         setPrice("0"); setIsCombo(!!defaultIsCombo); setIsActive(true);
         setComponents([]); setLinkedGroupIds([]);
         setServesPeople(""); setTotalWeight(""); setProteinWeight("");
+        setChannels(MENU_CHANNELS.map((c) => c.value));
+        setFulfillment(MENU_FULFILLMENTS.map((f) => f.value));
+
 
         setSelectedBrands(defaultBrandId ? [defaultBrandId] : []);
         // Por padrão, novos itens ficam disponíveis em todas as 4 lojas
@@ -198,6 +209,9 @@ export default function MenuItemEditorDialog({
         is_combo: isCombo,
         is_active: isActive,
         serves_people: servesPeople.trim() === "" ? null : Number(servesPeople),
+        channels,
+        fulfillment,
+
         total_weight_g: totalWeight.trim() === "" ? null : Number(totalWeight),
         protein_weight_g: proteinWeight.trim() === "" ? null : Number(proteinWeight),
 
@@ -360,6 +374,47 @@ export default function MenuItemEditorDialog({
                     );
                   })}
                 </div>
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Canais (onde o item aparece)</Label>
+                <div className="flex flex-wrap gap-2">
+                  {MENU_CHANNELS.map((c) => {
+                    const checked = channels.includes(c.value);
+                    return (
+                      <button
+                        type="button" key={c.value}
+                        onClick={() => setChannels((p) =>
+                          checked ? p.filter((x) => x !== c.value) : [...p, c.value])}
+                        className={`px-3 py-1.5 rounded-md border text-xs sm:text-sm transition-colors ${
+                          checked ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"
+                        }`}
+                      >
+                        {c.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Modalidade</Label>
+                <div className="flex flex-wrap gap-2">
+                  {MENU_FULFILLMENTS.map((f) => {
+                    const checked = fulfillment.includes(f.value);
+                    return (
+                      <button
+                        type="button" key={f.value}
+                        onClick={() => setFulfillment((p) =>
+                          checked ? p.filter((x) => x !== f.value) : [...p, f.value])}
+                        className={`px-3 py-1.5 rounded-md border text-xs sm:text-sm transition-colors ${
+                          checked ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
               </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <Label>Nome</Label>

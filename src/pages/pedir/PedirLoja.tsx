@@ -2,12 +2,13 @@
 // adaptado para web/mobile: imagens menores, 2-col no celular, 3/4 no desktop.
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Plus, Minus, ImageIcon } from "lucide-react";
+import { Plus, Minus, ImageIcon, Ticket } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PedirLayout, BrandCode } from "./PedirLayout";
 import { useEcommerceCart, formatBRL } from "@/hooks/useEcommerceCart";
 import { parmeAssets } from "@/assets/parme-assets";
 import { loadMenuCatalog } from "@/lib/menuCatalog";
+import YoloCodeDialog from "@/components/yolo/YoloCodeDialog";
 
 type EStore = {
   id: string;
@@ -39,6 +40,8 @@ export default function PedirLoja() {
   const [store, setStore] = useState<EStore | null>(null);
   const [items, setItems] = useState<MenuRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [yoloUnlocked, setYoloUnlocked] = useState(false);
+  const [yoloOpen, setYoloOpen] = useState(false);
   const cart = useEcommerceCart(slug);
 
   useEffect(() => {
@@ -55,7 +58,10 @@ export default function PedirLoja() {
       }
       setStore(s as EStore);
 
-      const catalog = await loadMenuCatalog((s as EStore).store_id);
+      const catalog = await loadMenuCatalog((s as EStore).store_id, null, {
+        channel: "site",
+        yoloUnlocked,
+      });
       const itemIds = catalog.items.map((item) => item.id);
       const { data: brandRows } = itemIds.length
         ? await supabase.from("menu_item_brands").select("menu_item_id,brands(slug)").in("menu_item_id", itemIds)
@@ -83,7 +89,7 @@ export default function PedirLoja() {
       setItems(mapped);
       setLoading(false);
     })();
-  }, [slug]);
+  }, [slug, yoloUnlocked]);
 
   // Dedup por nome+preço (mesmo prato compartilhado entre marcas aparece 1x)
   const filtered = useMemo(() => {
@@ -121,7 +127,24 @@ export default function PedirLoja() {
         <h1 className="ap-display mt-3" style={{ fontSize: "clamp(2rem, 6vw, 2.75rem)" }}>
           {store?.display_name ?? "Carregando…"}
         </h1>
+        {!yoloUnlocked && (
+          <button
+            onClick={() => setYoloOpen(true)}
+            className="mt-3 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold"
+            style={{ borderColor: "hsl(var(--ap-red) / .35)", color: "hsl(var(--ap-red))" }}
+          >
+            <Ticket className="h-4 w-4" /> Tenho código Yolo
+          </button>
+        )}
       </div>
+
+      <YoloCodeDialog
+        open={yoloOpen}
+        onOpenChange={setYoloOpen}
+        storeId={store?.store_id ?? ""}
+        channel="online"
+        onUnlocked={() => setYoloUnlocked(true)}
+      />
 
 
       {/* Lista */}

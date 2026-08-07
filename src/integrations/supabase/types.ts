@@ -8781,6 +8781,7 @@ export type Database = {
           brand_id: string | null
           created_at: string
           id: string
+          is_yolo_exclusive: boolean
           name: string
           sort_order: number
           updated_at: string
@@ -8789,6 +8790,7 @@ export type Database = {
           brand_id?: string | null
           created_at?: string
           id?: string
+          is_yolo_exclusive?: boolean
           name: string
           sort_order?: number
           updated_at?: string
@@ -8797,6 +8799,7 @@ export type Database = {
           brand_id?: string | null
           created_at?: string
           id?: string
+          is_yolo_exclusive?: boolean
           name?: string
           sort_order?: number
           updated_at?: string
@@ -8840,6 +8843,54 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "menu_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_category_store_windows: {
+        Row: {
+          category_id: string
+          created_at: string
+          end_time: string
+          id: string
+          start_time: string
+          store_id: string
+          updated_at: string
+          weekday: number
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          end_time?: string
+          id?: string
+          start_time?: string
+          store_id: string
+          updated_at?: string
+          weekday: number
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          end_time?: string
+          id?: string
+          start_time?: string
+          store_id?: string
+          updated_at?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_category_store_windows_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "menu_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_category_store_windows_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
@@ -9086,9 +9137,11 @@ export type Database = {
       menu_items: {
         Row: {
           category_id: string | null
+          channels: string[]
           created_at: string
           created_by: string | null
           description: string | null
+          fulfillment: string[]
           id: string
           is_active: boolean
           is_combo: boolean
@@ -9104,9 +9157,11 @@ export type Database = {
         }
         Insert: {
           category_id?: string | null
+          channels?: string[]
           created_at?: string
           created_by?: string | null
           description?: string | null
+          fulfillment?: string[]
           id?: string
           is_active?: boolean
           is_combo?: boolean
@@ -9122,9 +9177,11 @@ export type Database = {
         }
         Update: {
           category_id?: string | null
+          channels?: string[]
           created_at?: string
           created_by?: string | null
           description?: string | null
+          fulfillment?: string[]
           id?: string
           is_active?: boolean
           is_combo?: boolean

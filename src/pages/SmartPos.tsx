@@ -134,7 +134,7 @@ export default function SmartPos() {
     if (!storeId) return;
     void (async () => {
       try {
-        const catalog = await loadMenuCatalog(storeId);
+        const catalog = await loadMenuCatalog(storeId, null, { channel: "pdv" });
         setCategories(catalog.categories);
         setItems(catalog.items);
       } catch (error) {

@@ -10,13 +10,14 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Plus, Minus, Trash2, ShoppingCart, ArrowLeft, Printer, Check, X, Timer, Hand, CreditCard, QrCode, Utensils, ShoppingBag } from "lucide-react";
+import { Loader2, Plus, Minus, Trash2, ShoppingCart, ArrowLeft, Printer, Check, X, Timer, Hand, CreditCard, QrCode, Utensils, ShoppingBag, Ticket } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { TefPaymentDialog } from "@/components/tef/TefPaymentDialog";
 import { VirtualKeyboard } from "@/components/totem/VirtualKeyboard";
 import type { TefPaymentResult, TefPaymentMethod } from "@/lib/tef";
 import { loadTefConfig } from "@/lib/tef";
 import { closeOrder, createTotemOrderAndClose } from "@/lib/order";
+import YoloCodeDialog from "@/components/yolo/YoloCodeDialog";
 import { loadItemComplements, loadMenuCatalog, type CatalogComplementGroup, type SelectedComplement } from "@/lib/menuCatalog";
 import logoAquelaParme from "@/assets/logo-aquela-parme.png";
 import logoBoxCaipira from "@/assets/logo-box-caipira.png";
@@ -164,6 +165,8 @@ export default function Totem() {
   const [activeCat, setActiveCat] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [yoloUnlocked, setYoloUnlocked] = useState(false);
+  const [yoloDialogOpen, setYoloDialogOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [pickupCode, setPickupCode] = useState<string>("");
@@ -239,7 +242,11 @@ export default function Totem() {
       setLoading(true);
       try {
         const physicalStoreId = selectedStore.parent_store_id ?? selectedStore.id;
-        const catalog = await loadMenuCatalog(physicalStoreId, selectedBrand.id);
+        const catalog = await loadMenuCatalog(physicalStoreId, selectedBrand.id, {
+          channel: "totem",
+          fulfillment: "pickup",
+          yoloUnlocked,
+        });
         setCategories(catalog.categories as Category[]);
         setItems(catalog.items as MenuItem[]);
       } catch (error) {
@@ -249,7 +256,7 @@ export default function Totem() {
         setLoading(false);
       }
     })();
-  }, [step, selectedBrand, selectedStore]);
+  }, [step, selectedBrand, selectedStore, orderType, yoloUnlocked]);
 
 
   // ----- timeout de inatividade
@@ -266,6 +273,7 @@ export default function Totem() {
     setOrderNumber("");
     setCpf("");
     setNoteDialog(null);
+    setYoloUnlocked(false);
     setShowCpfKb(false);
     setShowNoteKb(false);
   }, []);
@@ -537,6 +545,12 @@ export default function Totem() {
             </h1>
           </div>
           <div className="flex items-center gap-3">
+            {step === "menu" && !yoloUnlocked && (
+              <Button variant="outline" size="lg" className="h-14 px-5 text-base gap-2"
+                onClick={() => setYoloDialogOpen(true)}>
+                <Ticket className="h-5 w-5" /> Código Yolo
+              </Button>
+            )}
             {step === "menu" && (
               <Button size="lg" className="h-14 px-6 text-lg gap-2"
                 onClick={() => setStep("checkout")} disabled={cart.length === 0}>
@@ -562,6 +576,14 @@ export default function Totem() {
           <X className="h-7 w-7" />
         </button>
       )}
+
+      <YoloCodeDialog
+        open={yoloDialogOpen}
+        onOpenChange={setYoloDialogOpen}
+        storeId={(selectedStore?.parent_store_id ?? selectedStore?.id) ?? ""}
+        channel="totem"
+        onUnlocked={() => setYoloUnlocked(true)}
+      />
 
       {/* Conteúdo */}
       <main className="flex-1 overflow-hidden">
