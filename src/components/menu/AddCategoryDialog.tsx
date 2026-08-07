@@ -31,7 +31,7 @@ export default function AddCategoryDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Adicionar categoria</DialogTitle>
+          <DialogTitle>{editingId ? "Editar categoria" : "Adicionar categoria"}</DialogTitle>
           <DialogDescription>
             A categoria pode aparecer em uma ou mais marcas. Mudou aqui, muda em todas.
           </DialogDescription>
@@ -85,7 +85,7 @@ export default function AddCategoryDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={onSave}>Adicionar</Button>
+          <Button onClick={onSave}>{editingId ? "Salvar" : "Adicionar"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
