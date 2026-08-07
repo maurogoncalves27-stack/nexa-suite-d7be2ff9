@@ -451,6 +451,8 @@ export default function Garcom() {
 
     toast({ title: `Rodada ${round.round_number} enviada para a cozinha` });
     setCart([]);
+    setYoloUnlocked(false);
+
     await loadSessionDetail(activeSession.id);
     setScreen("session");
   };
