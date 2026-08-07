@@ -70,6 +70,7 @@ export default function Menu() {
   const [catName, setCatName] = useState("");
   const [catBrands, setCatBrands] = useState<string[]>([]);
   const [catYolo, setCatYolo] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [windowsCategory, setWindowsCategory] = useState<Category | null>(null);
 
 
