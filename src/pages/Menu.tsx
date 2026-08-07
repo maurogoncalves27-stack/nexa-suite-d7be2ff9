@@ -491,9 +491,28 @@ export default function Menu() {
               return (
                 <Card key={catId}>
                   <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2 space-y-0">
-                    <CardTitle className="text-base">{catName_(catId === "__none__" ? null : catId)}</CardTitle>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      {catName_(catId === "__none__" ? null : catId)}
+                      {catIdx >= 0 && categories[catIdx]?.is_yolo_exclusive && (
+                        <Badge variant="secondary" className="gap-1">
+                          <Ticket className="h-3 w-3" /> Yolo
+                        </Badge>
+                      )}
+                    </CardTitle>
                     {catIdx >= 0 && (
                       <div className="flex items-center gap-1">
+                        {categories[catIdx]?.is_yolo_exclusive && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            title="Dias e horários por loja"
+                            onClick={() => setWindowsCategory(categories[catIdx])}
+                          >
+                            <Ticket className="h-4 w-4" />
+                          </Button>
+                        )}
+
                         <Button
                           size="icon"
                           variant="ghost"
@@ -615,8 +634,19 @@ export default function Menu() {
         brands={brands}
         selectedBrands={catBrands}
         onSelectedBrandsChange={setCatBrands}
+        isYolo={catYolo}
+        onIsYoloChange={setCatYolo}
         onSave={saveCategory}
       />
+
+      <YoloCategoryWindowsDialog
+        open={!!windowsCategory}
+        onOpenChange={(v) => { if (!v) setWindowsCategory(null); }}
+        categoryId={windowsCategory?.id ?? null}
+        categoryName={windowsCategory?.name ?? ""}
+        stores={stores}
+      />
+
 
       <MenuItemEditorDialog
         open={editorOpen}
