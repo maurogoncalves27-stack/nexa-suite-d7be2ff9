@@ -151,6 +151,10 @@ export default function Garcom() {
 
   // catalog
   const [activeCat, setActiveCat] = useState("all");
+  // Yolo: desbloqueio vale apenas para a rodada atual.
+  const [yoloUnlocked, setYoloUnlocked] = useState(false);
+  const [yoloDialogOpen, setYoloDialogOpen] = useState(false);
+
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [complementDialog, setComplementDialog] = useState<ComplementDialog | null>(null);
