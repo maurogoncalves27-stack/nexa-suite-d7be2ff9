@@ -140,6 +140,7 @@ const Quotations = lazy(() => import("./pages/Quotations.tsx"));
 const PdvNovo = lazy(() => import("./pages/PdvNovo.tsx"));
 
 const TefPaygoSetup = lazy(() => import("./pages/TefPaygoSetup.tsx"));
+const TefSetup = lazy(() => import("./pages/TefSetup.tsx"));
 const YoloIntegration = lazy(() => import("./pages/YoloIntegration.tsx"));
 
 const TefPayerSetup = lazy(() => import("./pages/TefPayerSetup.tsx"));
