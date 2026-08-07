@@ -1024,12 +1024,6 @@ export default function Totem() {
           </DialogHeader>
           {noteDialog && (
             <div className="space-y-5">
-              {(() => {
-                const url = noteDialog.item.photo_url ?? fakePhotoFor(noteDialog.item, selectedBrand);
-                return (
-                  <img src={url} alt={noteDialog.item.name} className="w-full aspect-video object-cover rounded-md" />
-                );
-              })()}
               {noteDialog.item.description && (
                 <p className="text-lg text-muted-foreground">{noteDialog.item.description}</p>
               )}
@@ -1040,16 +1034,21 @@ export default function Totem() {
               ) : noteDialog.groups.map((group) => {
                 const selected = noteDialog.selected[group.id] ?? [];
                 const minimum = Math.max(group.is_required ? 1 : 0, group.min_choices);
+                const isComplete = selected.length >= minimum;
                 return (
-                  <section key={group.id} className="border rounded-md p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-4">
+                  <section key={group.id} className={`border-2 rounded-md p-4 space-y-3 transition-colors ${minimum > 0 ? (isComplete ? "border-primary/40 bg-primary/5" : "border-destructive/60 bg-destructive/5") : "border-muted"}`}>
+                    <div className="flex items-center justify-between gap-4">
                       <div>
-                        <h3 className="text-xl font-bold">{group.name}</h3>
-                        <p className="text-sm text-muted-foreground">
+                        <h3 className="text-2xl font-black">{group.name}</h3>
+                        <p className={`text-base font-semibold ${minimum > 0 && !isComplete ? "text-destructive" : "text-muted-foreground"}`}>
                           {minimum > 0 ? `Escolha pelo menos ${minimum}` : "Opcional"} · máximo {group.max_choices}
                         </p>
                       </div>
-                      {minimum > 0 && <Badge variant={selected.length >= minimum ? "secondary" : "destructive"}>Obrigatório</Badge>}
+                      {minimum > 0 && (
+                        <Badge variant={isComplete ? "secondary" : "destructive"} className="text-base px-3 py-1 h-auto font-black">
+                          {isComplete ? "✓ " : "⚠ "}Obrigatório
+                        </Badge>
+                      )}
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {group.options.map((option) => {
