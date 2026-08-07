@@ -244,7 +244,7 @@ export default function Totem() {
         const physicalStoreId = selectedStore.parent_store_id ?? selectedStore.id;
         const catalog = await loadMenuCatalog(physicalStoreId, selectedBrand.id, {
           channel: "totem",
-          fulfillment: orderType === "delivery" ? "delivery" : "pickup",
+          fulfillment: "pickup",
           yoloUnlocked,
         });
         setCategories(catalog.categories as Category[]);
