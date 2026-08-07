@@ -497,7 +497,6 @@ export default function Menu() {
                       {catIdx >= 0 && categories[catIdx]?.is_yolo_exclusive && (
                         <Badge variant="secondary" className="gap-1.5 py-0.5">
                           <img src={yoloLogo.url} alt="Yolo Club" className="h-3 w-auto opacity-80" />
-                          <span className="text-[11px]">Exclusiva</span>
                         </Badge>
                       )}
                     </CardTitle>
