@@ -137,3 +137,26 @@ manual em local seguro (cofre/drive privado).
 & "$env:JAVA_HOME\bin\jarsigner" -verify -verbose -certs `
   android\app\build\outputs\apk\release\app-release.apk
 ```
+
+## Tela branca na maquininha (GPOS720/780)
+
+Causa: o WebView dessas POS é antigo (Chrome ~60) e o bundle era gerado em
+ES2020 (optional chaining / nullish). O WebView aborta o script e fica em branco.
+
+Correções aplicadas:
+
+- `vite.config.ts`: `build.target = ["es2015","chrome60","safari12"]`.
+- `capacitor.config.ts`: `appId = com.aquelaparme.nexa`, `androidScheme: "https"`,
+  `webContentsDebuggingEnabled: true` (permite ver o erro via logcat / chrome://inspect).
+
+Depois de qualquer correção:
+
+1. **Publicar** o NEXA Suite (o APK carrega o site publicado, não o bundle local).
+2. `npx cap sync android` e gerar o APK de novo (`.\scripts\build-apk-release.ps1`).
+3. Como o `appId` mudou, **desinstale** o APK antigo antes de instalar o novo.
+
+### Dados técnicos para a Payer
+
+- Package name: `com.aquelaparme.nexa`
+- minSdkVersion: 23 (Android 6.0) — padrão do Capacitor 7; targetSdk 35
+- App é WebView; TEF via **API Localhost** `http://127.0.0.1:6060` (Checkout Payer)
