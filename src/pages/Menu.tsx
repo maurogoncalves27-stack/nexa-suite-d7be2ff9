@@ -172,7 +172,8 @@ export default function Menu() {
       .from("recipe_books")
       .select("menu_item_id, recipe_id, photo_path")
       .not("photo_path", "is", null)
-      .or(`menu_item_id.in.(${itemIds.join(",")})${recipeIds.length ? `,recipe_id.in.(${recipeIds.join(",")})` : ""}`);
+      .or(`menu_item_id.in.(${itemIds.join(",")})${recipeIds.length ? `,recipe_id.in.(${recipeIds.join(",")})` : ""}`)
+      .order("updated_at", { ascending: true });
     const byRecipe: Record<string, string> = {};
     for (const b of (books ?? []) as any[]) {
       const url = supabase.storage.from("recipe-book-photos").getPublicUrl(b.photo_path).data.publicUrl;
@@ -585,7 +586,7 @@ export default function Menu() {
                     {list.map((it) => {
                       const itemBrandIds = itemBrands[it.id] ?? [];
                       const isExclusive = itemBrandIds.length === 1;
-                      const photo = (it.recipe_id ? recipePhotos[it.recipe_id] : null) ?? bookPhotos[it.id] ?? null;
+                      const photo = bookPhotos[it.id] ?? (it.recipe_id ? recipePhotos[it.recipe_id] : null) ?? null;
                       const storesAvail = itemStores[it.id] ?? [];
                       const availableHere = storesAvail.includes(activeStore);
                       const pausedCount = Math.max(0, stores.length - storesAvail.length);

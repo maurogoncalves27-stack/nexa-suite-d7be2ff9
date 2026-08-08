@@ -135,7 +135,8 @@ export async function loadMenuCatalog(
       : Promise.resolve({ data: [], error: null }),
     (supabase as any).from("recipe_books").select("menu_item_id,recipe_id,photo_path")
       .not("photo_path", "is", null)
-      .or(`menu_item_id.in.(${itemIds.join(",")})${recipeIds.length ? `,recipe_id.in.(${recipeIds.join(",")})` : ""}`),
+      .or(`menu_item_id.in.(${itemIds.join(",")})${recipeIds.length ? `,recipe_id.in.(${recipeIds.join(",")})` : ""}`)
+      .order("updated_at", { ascending: true }),
   ]);
 
   const recipePhotos = new Map<string, string>();
@@ -153,10 +154,11 @@ export async function loadMenuCatalog(
   }
   items = items.map((item) => ({
     ...item,
-    photo_url: (item.recipe_id ? recipePhotos.get(item.recipe_id) : null)
-      ?? publicUrl("menu-photos", item.photo_path)
-      ?? bookByItem.get(item.id)
+    // Receituário é a fonte visual mais recente: tem prioridade sobre a ficha técnica.
+    photo_url: bookByItem.get(item.id)
       ?? (item.recipe_id ? bookByRecipe.get(item.recipe_id) : null)
+      ?? publicUrl("menu-photos", item.photo_path)
+      ?? (item.recipe_id ? recipePhotos.get(item.recipe_id) : null)
       ?? null,
   }));
 
