@@ -257,7 +257,12 @@ Deno.serve(async (req) => {
           });
         }
         if (waEnabled && waConfig) {
-          const waText = `📋 *Check-lists expirados* · ${storeName}\n${message}\n\nAbrir: ${APP_BASE_URL}/checklists-gerenciar`;
+          const waShort = list
+            .slice(0, 5)
+            .map((p) => `• ${p.name} — ${p.templateTitle}`)
+            .join("\n");
+          const waExtra = list.length - Math.min(list.length, 5);
+          const waText = `📋 *${list.length} check-list(s) expirado(s)* · ${storeName}\n${waShort}${waExtra > 0 ? `\n+ ${waExtra} outro(s)` : ""}`;
           const already = new Set<string>();
           const { data: mgrEmps } = await supabase
             .from("employees").select("user_id, phone").in("user_id", managerUserIds);

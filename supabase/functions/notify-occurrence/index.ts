@@ -116,11 +116,14 @@ Deno.serve(async (req) => {
       reporterName ? `*Relatou:* ${reporterName}` : null,
     ].filter(Boolean);
 
+    const shortSummary = summary
+      ? String(summary).replace(/\s+/g, " ").trim().slice(0, 140) +
+        (String(summary).replace(/\s+/g, " ").trim().length > 140 ? "…" : "")
+      : "";
     const text =
-      `🚨 *Ocorrência: ${title}*\n\n` +
-      parts.join("\n") +
-      (summary ? `\n\n${summary}` : "") +
-      `\n\nAbrir: ${APP_BASE_URL}/ocorrencias/relatorio`;
+      `🚨 *Ocorrência: ${title}*\n` +
+      parts.join(" · ").replace(/\*/g, "") +
+      (shortSummary ? `\n${shortSummary}` : "");
 
     // Alvos: gestores da loja (ou todos se sem storeId)
     const targetUserIds: string[] = [];

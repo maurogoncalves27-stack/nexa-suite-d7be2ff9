@@ -204,11 +204,8 @@ Deno.serve(async (req) => {
       }
 
       const waText =
-        `⏰ *Atraso de ponto*\n` +
-        `*${emp.full_name}* ainda não bateu o ponto de entrada.\n` +
-        `Escala: ${startTime.slice(0, 5)}${store ? ` · ${store.name}` : ""}\n` +
-        `Atraso: ${lateMin} min\n\n` +
-        `Abrir: ${APP_BASE_URL}/ponto`;
+        `⏰ *Atraso de ponto* · ${emp.full_name}\n` +
+        `Escala ${startTime.slice(0, 5)}${store ? ` · ${store.name}` : ""} · ${lateMin} min`;
       await fanoutWhatsapp(managerUserIds, waText);
       await pushToUsers(managerUserIds, {
         title,
@@ -307,11 +304,8 @@ Deno.serve(async (req) => {
         }
 
         const waText =
-          `⏰ *Freelancer atrasado*\n` +
-          `*${freelancer.full_name}* ainda não fez check-in.\n` +
-          `Vaga: ${op.title} · Início: ${op.start_time.slice(0, 5)}${store ? ` · ${store.name}` : ""}\n` +
-          `Atraso: ${lateMin} min\n\n` +
-          `Abrir: ${APP_BASE_URL}/freelancers`;
+          `⏰ *Freelancer atrasado* · ${freelancer.full_name}\n` +
+          `${op.title} · início ${op.start_time.slice(0, 5)}${store ? ` · ${store.name}` : ""} · ${lateMin} min`;
         await fanoutWhatsapp(managerUserIds, waText);
         await pushToUsers(managerUserIds, {
           title,

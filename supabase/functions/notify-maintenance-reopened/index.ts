@@ -68,12 +68,12 @@ Deno.serve(async (req) => {
     ]);
 
     const text =
-      `⚠️ *Manutenção reaberta pela loja*\n\n` +
-      `*Loja:* ${store?.name || "Loja"}\n` +
-      `*Equipamento:* ${reqRow.equipment_type}\n` +
-      (reporter?.full_name ? `*Loja quem reabriu:* ${reporter.full_name}\n` : "") +
-      (reqRow.reopen_reason ? `*Motivo:* ${reqRow.reopen_reason}\n` : "") +
-      `\nAcesse: ${APP_BASE_URL}/area-gestor`;
+      `⚠️ *Manutenção reaberta* · ${store?.name || "Loja"}\n` +
+      `${reqRow.equipment_type}` +
+      (reporter?.full_name ? `\nReaberto por: ${reporter.full_name}` : "") +
+      (reqRow.reopen_reason
+        ? `\n${String(reqRow.reopen_reason).replace(/\s+/g, " ").trim().slice(0, 120)}`
+        : "");
 
     // WhatsApp: SOMENTE destinatários extras cadastrados em /configuracoes → Alertas → Manutenção
     const { loadAlertConfig, fanoutExtras } = await import("../_shared/notifyChannels.ts");

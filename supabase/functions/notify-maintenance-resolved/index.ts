@@ -94,11 +94,12 @@ Deno.serve(async (req) => {
     }
 
     const text =
-      `✅ *Manutenção resolvida pelo gestor*\n\n` +
-      `*Loja:* ${store?.name || "Loja"}\n` +
-      `*Equipamento:* ${reqRow.equipment_type}\n` +
-      (reqRow.resolved_note ? `*O que foi feito:* ${reqRow.resolved_note}\n` : "") +
-      `\nO problema foi realmente resolvido? Confirme ou reabra em:\n${APP_BASE_URL}/area-colaborador`;
+      `✅ *Manutenção resolvida* · ${store?.name || "Loja"}\n` +
+      `${reqRow.equipment_type}` +
+      (reqRow.resolved_note
+        ? `\n${String(reqRow.resolved_note).replace(/\s+/g, " ").trim().slice(0, 120)}`
+        : "") +
+      `\nConfirme ou reabra na Área do Colaborador.`;
 
     const r = await sendWhatsapp(phone, text);
     return new Response(JSON.stringify({ ok: true, notified: r.ok ? 1 : 0, result: r }), {
