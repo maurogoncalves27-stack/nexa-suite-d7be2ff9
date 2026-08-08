@@ -139,7 +139,10 @@ async function calcRecipeCostInternal(
       }
     }
     const unitCost = await costPerUnitOfProduct(i.product_id, new Set(visited), depth);
-    const lineCost = qty * unitCost;
+    // Custo é por unidade de estoque do produto (ex.: R$/KG); converte a
+    // quantidade da ficha (G, ML...) para essa unidade antes de multiplicar.
+    const costQty = convertQty(qty, i.unit, i.product?.unit ?? i.unit);
+    const lineCost = costQty * unitCost;
     const isProduced = i.product?.product_type === "produzido";
     total += lineCost;
     if (!isProduced) inputBase += qty;
