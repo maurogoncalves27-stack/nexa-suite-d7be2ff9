@@ -2,6 +2,7 @@
 // Funciona recursivamente: se um ingrediente também é produto produzido,
 // busca a receita dele e soma o custo proporcional. Tem proteção anti-loop.
 import { supabase } from "@/integrations/supabase/client";
+import { convertQty } from "@/lib/unitConvert";
 
 export interface RecipeCostResult {
   totalCost: number;             // custo total dos ingredientes da receita
@@ -26,7 +27,7 @@ interface IngredientRow {
   quantity: number | null;
   unit: string | null;
   ingredient_state: string | null;
-  product: { name: string | null; product_type: string | null } | null;
+  product: { name: string | null; product_type: string | null; unit: string | null } | null;
 }
 
 interface ConversionRow {
@@ -100,7 +101,7 @@ async function calcRecipeCostInternal(
 
   const { data: ingsData } = await supabase
     .from("recipe_ingredients")
-    .select("product_id, quantity, unit, ingredient_state, product:inventory_products(name, product_type)")
+    .select("product_id, quantity, unit, ingredient_state, product:inventory_products(name, product_type, unit)")
     .eq("recipe_id", recipeId)
     .returns<IngredientRow[]>();
   const ings: IngredientRow[] = ingsData ?? [];
