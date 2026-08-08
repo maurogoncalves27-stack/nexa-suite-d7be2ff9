@@ -2,6 +2,7 @@
 // Funciona recursivamente: se um ingrediente também é produto produzido,
 // busca a receita dele e soma o custo proporcional. Tem proteção anti-loop.
 import { supabase } from "@/integrations/supabase/client";
+import { convertQty } from "@/lib/unitConvert";
 
 export interface RecipeCostResult {
   totalCost: number;             // custo total dos ingredientes da receita
@@ -26,7 +27,7 @@ interface IngredientRow {
   quantity: number | null;
   unit: string | null;
   ingredient_state: string | null;
-  product: { name: string | null; product_type: string | null } | null;
+  product: { name: string | null; product_type: string | null; unit: string | null } | null;
 }
 
 interface ConversionRow {
@@ -100,7 +101,7 @@ async function calcRecipeCostInternal(
 
   const { data: ingsData } = await supabase
     .from("recipe_ingredients")
-    .select("product_id, quantity, unit, ingredient_state, product:inventory_products(name, product_type)")
+    .select("product_id, quantity, unit, ingredient_state, product:inventory_products(name, product_type, unit)")
     .eq("recipe_id", recipeId)
     .returns<IngredientRow[]>();
   const ings: IngredientRow[] = ingsData ?? [];
@@ -139,7 +140,10 @@ async function calcRecipeCostInternal(
       }
     }
     const unitCost = await costPerUnitOfProduct(i.product_id, new Set(visited), depth);
-    const lineCost = qty * unitCost;
+    // Custo é por unidade de estoque do produto (ex.: R$/KG); converte a
+    // quantidade da ficha (G, ML...) para essa unidade antes de multiplicar.
+    const costQty = convertQty(qty, i.unit, i.product?.unit ?? i.unit);
+    const lineCost = costQty * unitCost;
     const isProduced = i.product?.product_type === "produzido";
     total += lineCost;
     if (!isProduced) inputBase += qty;

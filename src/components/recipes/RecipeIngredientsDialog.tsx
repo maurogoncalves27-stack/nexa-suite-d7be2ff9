@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGr
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { convertQty } from "@/lib/unitConvert";
 
 const UNITS = ["UN", "KG", "G", "L", "ML", "CX", "PCT", "FD", "DZ", "MT", "PORCAO"];
 
@@ -116,10 +117,16 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
     return preparedPerRaw > 0 ? i.quantity / preparedPerRaw : i.quantity;
   };
 
-  const totalCost = items.reduce((sum, i) => {
+  // Custo médio é por unidade de estoque do produto (ex.: R$/KG).
+  // Se a ficha usa outra unidade compatível (G, ML...), converte antes de multiplicar.
+  const lineCost = (i: Item): number => {
     const p = products.find((p) => p.id === i.product_id);
-    return sum + rawEquivalent(i) * Number(p?.average_cost ?? 0);
-  }, 0);
+    const stockUnit = recipeByOutput[i.product_id]?.yield_unit ?? p?.unit;
+    const qty = convertQty(rawEquivalent(i), i.unit, stockUnit);
+    return qty * Number(p?.average_cost ?? 0);
+  };
+
+  const totalCost = items.reduce((sum, i) => sum + lineCost(i), 0);
   const costPerUnit = yieldQuantity > 0 ? totalCost / yieldQuantity : 0;
 
   const add = (isPack: boolean) =>
@@ -201,7 +208,7 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
                   <div className="space-y-2">
                     {rows.map(({ it: i, idx }) => {
                       const p = products.find((p) => p.id === i.product_id);
-                      const subtotal = rawEquivalent(i) * Number(p?.average_cost ?? 0);
+                      const subtotal = lineCost(i);
                       const prep = prepConvByProduct[i.product_id];
                       return (
                         <div key={idx} className="border rounded-md p-2 space-y-2">
