@@ -193,7 +193,7 @@ Deno.serve(async (req) => {
           });
         }
         if (waEnabled && waConfig) {
-          const waText = `${icon} *Saúde operacional* · ${row.store_name}\n${message}\n\nAbrir: ${APP_BASE_URL}/saude-operacional`;
+          const waText = `${icon} *Saúde operacional* · ${row.store_name}\n${issues.slice(0, 4).map((i) => `• ${i.label}`).join("\n")}${issues.length > 4 ? `\n+ ${issues.length - 4} outro(s)` : ""}`;
           const sentPhones = new Set<string>();
           const { data: mgrEmps } = await supabase
             .from("employees").select("user_id, phone").in("user_id", managerUserIds);

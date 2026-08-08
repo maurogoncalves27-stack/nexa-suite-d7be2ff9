@@ -92,14 +92,14 @@ Deno.serve(async (req) => {
     };
     const urg = urgencyLabel[reqRow.urgency] || reqRow.urgency;
 
+    const shortDesc = reqRow.description
+      ? String(reqRow.description).replace(/\s+/g, " ").trim().slice(0, 120)
+      : "";
     const text =
-      `🔧 *Nova solicitação de manutenção*\n\n` +
-      `*Loja:* ${store?.name || "Loja"}\n` +
-      `*Equipamento:* ${reqRow.equipment_type}\n` +
-      `*Urgência:* ${urg}\n` +
-      (reqRow.description ? `*Descrição:* ${reqRow.description}\n` : "") +
-      (requester?.full_name ? `*Solicitante:* ${requester.full_name}\n` : "") +
-      `\nResolva com 1 clique em: ${APP_BASE_URL}/area-gestor`;
+      `🔧 *Manutenção* · ${store?.name || "Loja"}\n` +
+      `${reqRow.equipment_type} · ${urg}` +
+      (shortDesc ? `\n${shortDesc}` : "") +
+      (requester?.full_name ? `\nSolicitante: ${requester.full_name}` : "");
 
     // WhatsApp: SOMENTE destinatários extras cadastrados em /configuracoes → Alertas → Manutenção
     const { loadAlertConfig, fanoutExtras } = await import("../_shared/notifyChannels.ts");
