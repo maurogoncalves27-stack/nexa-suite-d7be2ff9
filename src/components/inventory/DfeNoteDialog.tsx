@@ -372,10 +372,10 @@ export default function DfeNoteDialog({ noteId, onClose, onImported }: Props) {
 
     await supabase.from("dfe_inbound_notes").update({
       imported_invoice_id: invId,
-      status: "in_review",
     }).eq("id", note.id);
 
-    setNote({ ...note, imported_invoice_id: invId, status: "in_review" });
+    setNote({ ...note, imported_invoice_id: invId });
+
     await reloadInvItems(invId);
     return invId;
   };
