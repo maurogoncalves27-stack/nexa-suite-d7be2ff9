@@ -116,10 +116,16 @@ const RecipeIngredientsDialog = ({ open, onOpenChange, recipeId, recipeName, yie
     return preparedPerRaw > 0 ? i.quantity / preparedPerRaw : i.quantity;
   };
 
-  const totalCost = items.reduce((sum, i) => {
+  // Custo médio é por unidade de estoque do produto (ex.: R$/KG).
+  // Se a ficha usa outra unidade compatível (G, ML...), converte antes de multiplicar.
+  const lineCost = (i: Item): number => {
     const p = products.find((p) => p.id === i.product_id);
-    return sum + rawEquivalent(i) * Number(p?.average_cost ?? 0);
-  }, 0);
+    const stockUnit = recipeByOutput[i.product_id]?.yield_unit ?? p?.unit;
+    const qty = convertQty(rawEquivalent(i), i.unit, stockUnit);
+    return qty * Number(p?.average_cost ?? 0);
+  };
+
+  const totalCost = items.reduce((sum, i) => sum + lineCost(i), 0);
   const costPerUnit = yieldQuantity > 0 ? totalCost / yieldQuantity : 0;
 
   const add = (isPack: boolean) =>
